@@ -1,0 +1,72 @@
+# Model Looking Glass
+
+Can many transparent observation points help us follow a model's internal computation, and does reporting a vector through a separate gradient offer anything over copying it directly?
+
+This repository compares two reporting channels at the **same named observation points**, plus an ID-only baseline. It also separates a vector's contents from its execution metadata and tests how sparse versus dense observation changes where an introduced numerical difference first becomes visible.
+
+**Initial result:** the observation API works on the tested synthetic model, but the gradient reporting channel adds **no vector information** over direct capture and takes **2.60–3.81× its latency** (median paired ratios across seeds) in this small CPU experiment. Dense taps narrow the first-observed difference to the injected tap; sparse taps report a later block output. All 48 training-transparency comparisons passed exactly, and all 26 unit tests passed. See [RESULTS.md](RESULTS.md) for measurements, raw evidence and limitations—not an LLM-scale claim.
+
+## The three channels
+
+- **Direct:** a forward hook saves `activation.detach().clone()` and returns `None`, leaving the original output alone.
+- **Gradient:** the hook creates a separate zero-valued leaf `q` and calculates `grad_q sum(stopgrad(activation) * q)`. For finite inputs the derivative is the activation. `q` is ephemeral, outside the model and every optimizer.
+- **ID-only:** log node labels and invocation counts without saving tensor values.
+
+All channels use genuine identity taps. There is no floating-point cancellation gate or hidden payload. The gradient channel already reads the activation to form its reporting objective; it does not gain information unavailable to direct capture. Its reliability and overhead are the experiment, not an assumed benefit.
+
+## What the experiment checks
+
+1. Unchanged task outputs, scalar loss, parameter gradients, input gradients and one SGD update.
+2. Equality of direct and gradient recordings at matched locations.
+3. An identical-output branch control: equal vectors cannot identify which branch executed, while explicit node metadata can.
+4. Where a fixed numerical perturbation is first observed with sparse versus dense taps.
+5. Complete per-call runtime, event counts and exact bytes of saved tensor values. Saved bytes are **not peak memory**.
+
+The initial model is a small randomly initialized residual network with a controlled route. It is not a pretrained language model. Trace labels identify instrumented boundaries, not a unique last neuron or the model's reasoning.
+
+## Run locally
+
+Python 3.10+ and PyTorch 2.6+ are required. Use the [official PyTorch installation instructions](https://pytorch.org/get-started/locally/) for your platform. No models or datasets are downloaded by this code, and traces stay in the local process/files.
+
+The recorded run used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records its installed version inventory; it is not a cross-platform dependency lock. Other versions allowed by the package metadata have not been validated here. For the tested CPU version, install into an isolated environment with `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
+
+```bash
+python -m unittest discover -s tests -v
+python -m looking_glass.experiment --output results/my-full-run
+```
+
+For a short smoke check, use `--quick`. It is explicitly labeled as not the full protocol. Existing output directories are never overwritten. Full results contain raw timing samples, CSV summaries, numerical checks, source hashes and environment versions. Once evaluation starts, a failed run writes a failure record rather than a successful summary. Missing dependencies fail at import with an error on stderr, before a run directory is created.
+
+Run the experiment as a standalone process: it seeds PyTorch's RNG and sets its intra-op thread count to one. Active CPU autocast is rejected rather than silently mislabeling mixed-precision data. Timing covers forward execution and the complete observation-session lifecycle, not task backward or optimizer latency.
+
+## Use the observation API
+
+```python
+from looking_glass.model import TinyResidual
+from looking_glass.probes import TraceSession
+import torch
+
+model = TinyResidual(width=16)
+x = torch.randn(8, 16)
+with TraceSession(model, mode="gradient", placement="dense", run_id="example") as trace:
+    y = model(x, route=0)
+for event in trace.events:
+    print(event.metadata())
+    activation_copy = event.value
+```
+
+`TapPoint` is an identity module that can be inserted at explicit model boundaries. Sparse placement records block outputs; dense placement records every available tap. `TraceSession` is single-use and single-threaded. Concurrent tracing, checkpoint recomputation, compiled execution and distributed models are outside this initial implementation. A configured event limit raises on overflow; capture errors abort the call and are not silently ignored. Direct and gradient capture require finite floating tensors.
+
+Full activations can contain sensitive information. This synthetic benchmark saves no input data, model weights or activation tensors in its result files. If you use the API on a real model, control who can access the in-memory traces and any files you write; the taps are not a privacy mechanism.
+
+## Research notes
+
+- [Mathematical identity and provenance limits](docs/MATHEMATICS.md)
+- [Prespecified experiment](PROTOCOL.md)
+- [Protocol clarifications and run history](docs/PROTOCOL_NOTES.md)
+- [Independent review and corrections](REVIEW.md)
+- [Verification status](evidence/STATUS.md)
+- [Design](docs/superpowers/specs/2026-10-28-runtime-probes-design.md)
+- [Implementation plan](docs/superpowers/plans/2026-10-28-runtime-probes.md)
+
+This work grew out of the [Trojan Regularizer Audit](https://github.com/EastonSell/turing-complete-malware-pytorch-backward-pass-audit), but addresses trusted runtime instrumentation. It is not a general backdoor detector or model-safety certification. Ordinary PyTorch hooks and the gradient identity are standard mechanisms; possible value lies in the measured placement, provenance and operating costs, not a novelty claim for those mechanisms.

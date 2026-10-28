@@ -1,0 +1,33 @@
+<repo>/.venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:377: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:82.)
+  cpu = _conversion_method_template(device=torch.device("cpu"))
+test_ambient_cpu_autocast_is_rejected (test_experiment.ExperimentTests.test_ambient_cpu_autocast_is_rejected) ... ok
+test_existing_output_is_never_overwritten (test_experiment.ExperimentTests.test_existing_output_is_never_overwritten) ... ok
+test_explicit_cpu_float32_despite_ambient_default (test_experiment.ExperimentTests.test_explicit_cpu_float32_despite_ambient_default) ... ok
+test_failed_evidence_write_preserves_original_error (test_experiment.ExperimentTests.test_failed_evidence_write_preserves_original_error) ... ok
+test_first_difference_and_metadata_validation (test_experiment.ExperimentTests.test_first_difference_and_metadata_validation) ... ok
+test_quick_smoke_succeeds (test_experiment.ExperimentTests.test_quick_smoke_succeeds) ... ok
+test_started_failure_is_recorded (test_experiment.ExperimentTests.test_started_failure_is_recorded) ... ok
+test_timing_summary (test_experiment.ExperimentTests.test_timing_summary) ... ok
+test_all_channels_preserve_training_step (test_model.ModelTests.test_all_channels_preserve_training_step) ... ok
+test_capture_channels_agree (test_model.ModelTests.test_capture_channels_agree) ... ok
+test_full_model_capture_in_inference_mode (test_model.ModelTests.test_full_model_capture_in_inference_mode) ... ok
+test_identical_branches_need_metadata (test_model.ModelTests.test_identical_branches_need_metadata) ... ok
+test_injection_is_before_named_point_and_does_not_change_input (test_model.ModelTests.test_injection_is_before_named_point_and_does_not_change_input) ... ok
+test_invalid_model_inputs (test_model.ModelTests.test_invalid_model_inputs) ... ok
+test_duplicate_node_ids_rejected (test_probes.ProbeTests.test_duplicate_node_ids_rejected) ... ok
+test_gradient_readout_exact_and_detached (test_probes.ProbeTests.test_gradient_readout_exact_and_detached) ... ok
+test_gradient_readout_under_disabled_grad (test_probes.ProbeTests.test_gradient_readout_under_disabled_grad) ... ok
+test_hooks_preserve_output_and_input_gradient (test_probes.ProbeTests.test_hooks_preserve_output_and_input_gradient) ... ok
+test_invalid_configuration_rejected (test_probes.ProbeTests.test_invalid_configuration_rejected) ... ok
+test_nonfinite_rejected (test_probes.ProbeTests.test_nonfinite_rejected) ... ok
+test_overflow_and_exception_cleanup (test_probes.ProbeTests.test_overflow_and_exception_cleanup) ... ok
+test_partial_registration_failure_removes_earlier_hooks (test_probes.ProbeTests.test_partial_registration_failure_removes_earlier_hooks) ... ok
+test_reused_point_has_occurrence_ids (test_probes.ProbeTests.test_reused_point_has_occurrence_ids) ... ok
+test_session_cannot_be_entered_twice (test_probes.ProbeTests.test_session_cannot_be_entered_twice) ... ok
+test_snapshot_does_not_alias (test_probes.ProbeTests.test_snapshot_does_not_alias) ... ok
+test_sparse_filters_group (test_probes.ProbeTests.test_sparse_filters_group) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.920s
+
+OK

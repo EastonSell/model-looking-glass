@@ -1,0 +1,49 @@
+<repo>/.venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:377: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:82.)
+  cpu = _conversion_method_template(device=torch.device("cpu"))
+test_ambient_cpu_autocast_is_rejected (test_experiment.ExperimentTests.test_ambient_cpu_autocast_is_rejected) ... ok
+test_existing_output_is_never_overwritten (test_experiment.ExperimentTests.test_existing_output_is_never_overwritten) ... ok
+test_explicit_cpu_float32_despite_ambient_default (test_experiment.ExperimentTests.test_explicit_cpu_float32_despite_ambient_default) ... ok
+test_failed_evidence_write_preserves_original_error (test_experiment.ExperimentTests.test_failed_evidence_write_preserves_original_error) ... ERROR
+test_first_difference_and_metadata_validation (test_experiment.ExperimentTests.test_first_difference_and_metadata_validation) ... ok
+test_quick_smoke_succeeds (test_experiment.ExperimentTests.test_quick_smoke_succeeds) ... ok
+test_started_failure_is_recorded (test_experiment.ExperimentTests.test_started_failure_is_recorded) ... ok
+test_timing_summary (test_experiment.ExperimentTests.test_timing_summary) ... ok
+
+======================================================================
+ERROR: test_failed_evidence_write_preserves_original_error (test_experiment.ExperimentTests.test_failed_evidence_write_preserves_original_error)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/looking_glass/experiment.py", line 171, in run_experiment
+    result = _evaluate(quick)
+             ^^^^^^^^^^^^^^^^
+  File "<python>/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<python>/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<python>/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+RuntimeError: original
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<repo>/tests/test_experiment.py", line 73, in test_failed_evidence_write_preserves_original_error
+    run_experiment(Path(path)/'failed',quick=True)
+  File "<repo>/looking_glass/experiment.py", line 187, in run_experiment
+    (output_dir/'failure.json').write_text(json.dumps({"type":type(exc).__name__,"message":str(exc)})+'\n')
+  File "<python>/lib/python3.12/unittest/mock.py", line 1139, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<python>/lib/python3.12/unittest/mock.py", line 1143, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<python>/lib/python3.12/unittest/mock.py", line 1198, in _execute_mock_call
+    raise effect
+OSError: disk failure
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.935s
+
+FAILED (errors=1)

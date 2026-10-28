@@ -1,0 +1,23 @@
+<repo>/.venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:377: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:82.)
+  cpu = _conversion_method_template(device=torch.device("cpu"))
+test_ambient_cpu_autocast_is_rejected (test_experiment.ExperimentTests.test_ambient_cpu_autocast_is_rejected) ... FAIL
+test_existing_output_is_never_overwritten (test_experiment.ExperimentTests.test_existing_output_is_never_overwritten) ... ok
+test_explicit_cpu_float32_despite_ambient_default (test_experiment.ExperimentTests.test_explicit_cpu_float32_despite_ambient_default) ... ok
+test_first_difference_and_metadata_validation (test_experiment.ExperimentTests.test_first_difference_and_metadata_validation) ... ok
+test_quick_smoke_succeeds (test_experiment.ExperimentTests.test_quick_smoke_succeeds) ... ok
+test_started_failure_is_recorded (test_experiment.ExperimentTests.test_started_failure_is_recorded) ... ok
+test_timing_summary (test_experiment.ExperimentTests.test_timing_summary) ... ok
+
+======================================================================
+FAIL: test_ambient_cpu_autocast_is_rejected (test_experiment.ExperimentTests.test_ambient_cpu_autocast_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/test_experiment.py", line 64, in test_ambient_cpu_autocast_is_rejected
+    with self.assertRaisesRegex(RuntimeError,'autocast'):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.166s
+
+FAILED (failures=1)

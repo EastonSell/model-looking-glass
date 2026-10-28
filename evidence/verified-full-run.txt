@@ -1,0 +1,6 @@
+measurement_start=2026-10-28T19:18:39Z
+68d17069a67afc2a23df28d72c9b3e9b64811b09
+<repo>/.venv/lib/python3.12/site-packages/torch/_subclasses/functional_tensor.py:377: UserWarning: Failed to initialize NumPy: No module named 'numpy' (Triggered internally at /__w/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:82.)
+  cpu = _conversion_method_template(device=torch.device("cpu"))
+{"output": "results/verified-cpu-v1", "mode": "full protocol v1", "transparency_cases": 48, "timing_cells": 56, "all_transparent": true}
+measurement_end=2026-10-28T19:18:45Z

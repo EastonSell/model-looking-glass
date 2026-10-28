@@ -1,0 +1,21 @@
+test_probes (unittest.loader._FailedTest.test_probes) ... ERROR
+
+======================================================================
+ERROR: test_probes (unittest.loader._FailedTest.test_probes)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_probes
+Traceback (most recent call last):
+  File "<python>/lib/python3.12/unittest/loader.py", line 396, in _find_test_path
+    module = self._get_module_from_name(name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<python>/lib/python3.12/unittest/loader.py", line 339, in _get_module_from_name
+    __import__(name)
+  File "<repo>/tests/test_probes.py", line 3, in <module>
+    import torch
+ModuleNotFoundError: No module named 'torch'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
