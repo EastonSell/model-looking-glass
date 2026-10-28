@@ -1,5 +1,16 @@
 # Model Looking Glass
 
+**Mission: build a causal debugger for neural networks that can discover how a behavior is produced, test that explanation, and help change the behavior precisely.**
+
+The long-term goal is to turn internal observations into explanations that predict interventions on unseen inputs, then use that understanding for targeted model improvements. Language, vision, multimodal systems, training and inference are all within the research direction. The current small experiment is the first instrument, not the ceiling.
+
+- [Research roadmap: observation → tracing → tested explanations → targeted changes](docs/RESEARCH_ROADMAP.md)
+- [Efficiency plan: parallel agent teams and a shared GPU experiment service](docs/EFFICIENCY_PLAN.md)
+
+These documents are plans, not implemented capabilities. The released API remains single-threaded; no GPU scheduler, pretrained-model result, causal explanation engine or model repair system is claimed yet.
+
+## First experiment
+
 Can many transparent observation points help us follow a model's internal computation, and does reporting a vector through a separate gradient offer anything over copying it directly?
 
 This repository compares two reporting channels at the **same named observation points**, plus an ID-only baseline. It also separates a vector's contents from its execution metadata and tests how sparse versus dense observation changes where an introduced numerical difference first becomes visible.
