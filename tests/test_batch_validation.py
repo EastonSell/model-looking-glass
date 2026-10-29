@@ -212,6 +212,25 @@ class BatchValidationTests(unittest.TestCase):
         result = self.validator._comparison(reference, candidate, atol, 2.0 ** -105)
         self.assertEqual(result['status'], 'matched')
 
+    def test_comparison_rejects_incompatible_shapes_in_both_directions(self):
+        reference = torch.tensor([1.0, 2.0, 3.0])
+        candidates = (torch.tensor([1.0, 2.0]),
+                      torch.tensor([1.0, 2.0, 3.0, 4.0]),
+                      reference.reshape(1, 3))
+        for candidate in candidates:
+            for left, right in ((reference, candidate), (candidate, reference)):
+                with self.subTest(left=tuple(left.shape), right=tuple(right.shape)):
+                    with self.assertRaisesRegex(ValueError, 'same shape'):
+                        self.validator._comparison(left, right, 0.0, 0.0)
+
+    def test_comparison_checks_values_beyond_the_first_chunk(self):
+        reference = torch.zeros(4097)
+        candidate = reference.clone()
+        candidate[-1] = 1.0
+        result = self.validator._comparison(reference, candidate, 0.0, 0.0)
+        self.assertEqual(result['status'], 'mismatch')
+        self.assertEqual(result['max_abs_error'], 1.0)
+
     def test_nonrepresentable_integer_tolerance_is_rejected(self):
         self.binding['serial_atol'] = 9007199254740995
         with self.assertRaises(ValueError):
