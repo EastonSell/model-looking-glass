@@ -123,7 +123,8 @@ def floats(raw):
 
 def distance(a, b):
     assert len(a) == len(b)
-    return math.sqrt(math.fsum((float(x) - float(y)) ** 2 for x, y in zip(a, b)))
+    differences = [float(x) - float(y) for x, y in zip(a, b)]
+    return math.sqrt(math.fsum(value * value for value in differences))
 
 
 records = {}

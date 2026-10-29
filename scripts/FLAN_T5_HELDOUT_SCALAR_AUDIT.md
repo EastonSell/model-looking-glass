@@ -31,3 +31,10 @@ the auditor before any held-out model forward against the separate 858-forward
 fabricated model/tokenizer fixture, including a semantic exclusion and a
 strict-gate failure with a positive descriptive result. Its outputs and
 fake source identities do not establish behavior of the pretrained model.
+
+The first published scalar version stopped on an exact L2 comparison in the
+closed real attempt: exponentiation and multiplication differed by one
+binary64 ULP. This corrected version uses the fixed protocol's multiplication
+and was written after that failure was inspected. Preserve the first incomplete
+report and label this version as a post-inspection diagnostic; the separately
+frozen full saved-byte auditor preceded the real run.
