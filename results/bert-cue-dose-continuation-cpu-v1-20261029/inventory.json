@@ -1,0 +1,120 @@
+{
+  "files": [
+    {
+      "bytes": 29237,
+      "path": "audit_cont_full.py",
+      "sha256": "c91e3ca04eb4b2255622b605fa9cfa7298852863203d5a662a0fbbdb4fe8371f"
+    },
+    {
+      "bytes": 14478,
+      "path": "audit_cont_scores.py",
+      "sha256": "1f3621656a7cdb92a2efe1667facd4cce9dd315c90b05b4f276654285938972d"
+    },
+    {
+      "bytes": 13388,
+      "path": "audit_subset.py",
+      "sha256": "7e7bf0b4f257653bf888027d3f0fb078388ecad9ee7283c99e8160d5077c1aec"
+    },
+    {
+      "bytes": 5535,
+      "path": "BERT_CUE_DOSE_CONTINUATION_V1.md",
+      "sha256": "cb17169645a5830c96dbd4988c150f60c7b145182a10c8aeb037c043ee0d5d21"
+    },
+    {
+      "bytes": 10447,
+      "path": "BERT_CUE_DOSE_RESPONSE_V1.md",
+      "sha256": "a4af23e2c3fd678dbd0af1329e305edcf68b11a29a36d362f1652aaf0dec22e0"
+    },
+    {
+      "bytes": 4071,
+      "path": "compare_prefix.py",
+      "sha256": "9fa19c1481aab9d234fb146798d142d71241ee26d48c288286a9ea98f57163e8"
+    },
+    {
+      "bytes": 37129,
+      "path": "continuation-full-audit.json",
+      "sha256": "eb22a7db644c10664915de1d9c5493c7b90e4532fdcebb8a787aee9034f40abf"
+    },
+    {
+      "bytes": 37371,
+      "path": "continuation-scalar-audit.json",
+      "sha256": "f54b20eda814d4b464df888a86418388b9101a69a6b1663d8363c6aedf595d57"
+    },
+    {
+      "bytes": 305,
+      "path": "controller-exit.json",
+      "sha256": "a932efaf2be7b8a8cf72456c73e9bbcb8dd4623e1fa370ef6fe56384dd38f042"
+    },
+    {
+      "bytes": 6458,
+      "path": "derive_subset.py",
+      "sha256": "332f6a124801e059da60649a6cfacc9b2f2047c174e6a1ddb2b702daf001f3d4"
+    },
+    {
+      "bytes": 22785,
+      "path": "manifest.json",
+      "sha256": "6205dc2c1c2e779e98df2366410221c04845758549f9e79cd5fa15e51a8fb07a"
+    },
+    {
+      "bytes": 45196,
+      "path": "original-prefix-audit.json",
+      "sha256": "510a79781a37bd6df254d64845911cd63d950bf3b237abaf7d5c447fdd7b6d33"
+    },
+    {
+      "bytes": 5615,
+      "path": "pooled-summary.json",
+      "sha256": "f5a63ddb51983593c2fbe4c6895f0fd6d85f96708bc3f3154489aadc7bc2c3cf"
+    },
+    {
+      "bytes": 433,
+      "path": "prefix-comparison.json",
+      "sha256": "7b19778100d02eadba9ba225504e8575fa0842df471ca53af323320ab70a9db7"
+    },
+    {
+      "bytes": 4240,
+      "path": "preflight.json",
+      "sha256": "14d6fb9c97c17baf01d2a4f288ec231facd4ca4ed6de1d8275e6e1d4d1e6825b"
+    },
+    {
+      "bytes": 8372,
+      "path": "public-exposure-check.json",
+      "sha256": "88033d47752b7803bdb13fcac1fa0c820d9e39c7f59548d25878caf04df346cb"
+    },
+    {
+      "bytes": 8743,
+      "path": "README.md",
+      "sha256": "485ec6ca9f5d8ff300c7ad3050d6ecb6820cbd2c1e1af9da0c8cd7d5eb25c8e0"
+    },
+    {
+      "bytes": 156468,
+      "path": "result.json",
+      "sha256": "cce115669ca1a957428d000950aa36e04c8087a0a96a87dc78492cdff59662d5"
+    },
+    {
+      "bytes": 15039,
+      "path": "review_bert_cue_dose_saved_scores.py",
+      "sha256": "3817034b95f5cf30abc9e196c71998b8082ce1304d921a1192956c80e1837d25"
+    },
+    {
+      "bytes": 8448,
+      "path": "score-subset.jsonl.gz",
+      "sha256": "342f3750e10509d7baebc314d4351dbd56ee1302a82caf125fd7e8a62380c3f9"
+    },
+    {
+      "bytes": 3981,
+      "path": "started.json",
+      "sha256": "c7d35e9c1113eef722a7a6654965cfcda0fcde801314513b22270a5011e22e2c"
+    },
+    {
+      "bytes": 39080,
+      "path": "subset-audit.json",
+      "sha256": "d35291b1a3d6c969805f70e5e57afd1e3d89a2303a3ab7d621089891a0f3e391"
+    },
+    {
+      "bytes": 10545,
+      "path": "summarize.py",
+      "sha256": "d1e0430689144a60d64f31bb2b8093f556cda9ea8cf243c6030055154710ff4e"
+    }
+  ],
+  "schema": "bert-cue-dose-continuation-public-inventory-v1"
+}
