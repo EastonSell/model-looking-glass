@@ -32,7 +32,7 @@ class ServicePreparationTests(unittest.TestCase):
         (self.package / "gpu_service.py").write_text("# fixed owner fixture\n")
         (self.package / "supervisor.py").write_text("# reaping supervisor fixture\n")
         (self.package / "trusted_profile_collector.py").write_text(
-            "TRUSTED_SERVICE_COLLECTOR_CONTRACT = 'two-token-worker-profile-v1'\n")
+            "TRUSTED_SERVICE_COLLECTOR_CONTRACT = 'two-token-custody-worker-profile-v1'\n")
         self.source = TrustedServiceSource(str(self.repo), str(self.cache), b"source", b"assets", ())
         self.profiles = tuple(ProfileFiles(self.root / f"profile-{index}",
                                            self.root / f"evidence-{index}",
@@ -128,6 +128,10 @@ class ServicePreparationTests(unittest.TestCase):
             with patch.object(service._supervisor_module, "SUPERVISOR_LAUNCH_CUSTODY_CONTRACT", "old"):
                 with self.assertRaisesRegex(RuntimeError, "launch-custody supervisor"):
                     prepared.start()
+            (self.package / "trusted_profile_collector.py").write_text(
+                "TRUSTED_SERVICE_COLLECTOR_CONTRACT = 'two-token-worker-profile-v1'\n")
+            with self.assertRaisesRegex(RuntimeError, "worker profile collector"):
+                prepared.start()
             (self.package / "trusted_profile_collector.py").write_text(
                 "TRUSTED_SERVICE_COLLECTOR_CONTRACT = 'old'\n")
             with self.assertRaisesRegex(RuntimeError, "launch-custody supervisor"):

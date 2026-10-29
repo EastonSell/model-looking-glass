@@ -23,6 +23,8 @@ runtime identity, the fixed token case and ordered stage seeds under its lease.
 A fixed-commitment owner, reviewed worker/broker result and retirement custody,
 a supervisor with the reviewed launch-grant and child custody contract, and
 collector source must also be present in the selected checkout before launch.
+The collector compatibility marker identifies the custody-bound worker path;
+an older direct-worker collector cannot authorize the repaired service.
 The owner must export the completion-custody contract marker only after that
 worker/broker wiring has passed review. A native spawn interrupted before Python obtains a
 usable child handle remains uncertain and must retain the unsafe marker; the
