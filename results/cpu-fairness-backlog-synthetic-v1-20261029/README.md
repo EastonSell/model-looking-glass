@@ -77,7 +77,7 @@ on-disk source checkout at local commit
 receipts are not in-memory execution, dependency, hardware-activity or
 isolation attestations. The captured [watcher](watch_windows.py) uses the
 original local worktree layout. The exact local source commit and its
-development history are preserved in [source.bundle](source.bundle), with
+development history are preserved in [source.bundle](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/cpu-fairness-backlog-synthetic-v1-20261029/source.bundle), with
 repository commits `d1382d2bdb23873a89a1a2234ecd29b14a82fbfa` and
 `503a553f763d7f3a5f78864b5edc74926dbe7990` as prerequisites. In a clone
 containing those commits, `git bundle verify source.bundle` verifies the
@@ -98,7 +98,7 @@ and host isolation are not established.
 | [backlog watchdog receipt](backlog_watchdog.json) | `8d9c8408359b8a5d2f3bb791fe940762620f15c04f287cd683525e4a434ae518` |
 | [watch_windows.py](watch_windows.py) | `c2e10f55cff1c901834754fadbdcf84badf8bde2fc9dd70512abf9803a923071` |
 | [independent_audit.py](independent_audit.py) | `06ab8c022dede10aa340bfbb21787de7a050dbdfae2cebd8fbdb63b3df0baa24` |
-| [source.bundle](source.bundle) | `ae8fa6bd37865d619b8cab88daaf59d0f55d4295e602e766f36343f174e5942c` |
+| [source.bundle](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/cpu-fairness-backlog-synthetic-v1-20261029/source.bundle) | `ae8fa6bd37865d619b8cab88daaf59d0f55d4295e602e766f36343f174e5942c` |
 
 The four stdout/stderr captures are empty and match the hashes in their
 receipts. The independent, standard-library-only audit recomputes the plan,

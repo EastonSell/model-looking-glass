@@ -130,7 +130,7 @@ or pretraining-exposure attestations. The source checkout, interpreter and
 installed dependencies are trusted to remain quiescent during execution.
 
 After outcome inspection, a separate reader derived the compact
-[score subset](score-subset.jsonl.gz): for each forward it retains only the
+[score subset](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/bert-cue-heldout-frames-cpu-v1-20261029/score-subset.jsonl.gz): for each forward it retains only the
 exact float32 `any` and `some` logit bytes and the fields needed to replay the
 fixed decision. The public subset reader can check that arithmetic and action
 order without the full journal. The subset alone does not authenticate its

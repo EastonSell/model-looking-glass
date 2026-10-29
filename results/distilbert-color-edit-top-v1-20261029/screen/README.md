@@ -47,7 +47,7 @@ that they were not forwarded.
 
 ## Saved evidence and scope
 
-- [Archive index](index.json), [compressed stage evidence](part-0000.gzchunk),
+- [Archive index](index.json), [compressed stage evidence](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/distilbert-color-edit-top-v1-20261029/screen/part-0000.gzchunk),
   and the indexed [run record](run.json) preserve the exact cooperative stage
   files. The journal SHA-256 is
   `3e55c8eebf990e930f73f902a635d7866f0a7f314b30dc62f41e43277b97fb83`;

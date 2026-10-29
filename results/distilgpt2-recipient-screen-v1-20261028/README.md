@@ -57,7 +57,7 @@ before this CPU run. The checkpoint was `distilbert/distilgpt2` revision
 `2290a62682d06624634c1f46a6ad5be0f47f38aa`; its model-weight SHA-256 was
 `e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b`.
 The direct process returned zero; all 64 forwards and records were observed,
-the 12,865,792-byte [raw logits](run/last_logits.f32) are intact, stderr is
+the 12,865,792-byte [raw logits](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/distilgpt2-recipient-screen-v1-20261028/run/last_logits.f32) are intact, stderr is
 empty, no failure record exists, and model state and buffers matched before
 and after. CUDA was hidden. The [manifest](run/manifest.json),
 [journal](run/attempt.jsonl), [result](run/result.json),

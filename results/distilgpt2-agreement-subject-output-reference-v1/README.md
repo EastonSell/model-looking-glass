@@ -18,7 +18,7 @@ reproduced all output bytes. All 804,112 source elements were finite normal
 f32 values, so no subnormal handling depends on ambient flush-to-zero in this
 particular input.
 
-* Output vector: [output-slope.f64le](output-slope.f64le), 402,056 bytes,
+* Output vector: [output-slope.f64le](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/distilgpt2-agreement-subject-output-reference-v1/output-slope.f64le), 402,056 bytes,
   SHA-256 `bdb31d5b74b6cff17ed2a683415beab22e36b101220257d774909be6f9f804bd`.
 * Manifest: SHA-256 `69c7bdadb365c83bd4a591da405cc5e1dccd686c204a68f9b03264c604e82ed5`.
 * Source journal: SHA-256 `7c8be25d480d986b087052685720ba7d2813c53d27509dcc81e67f9e2049eca6`.

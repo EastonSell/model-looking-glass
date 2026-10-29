@@ -32,7 +32,7 @@ The selected site produced ten strict sign reversals across 32 opposite-number d
 
 - [Machine-readable discovery record](discovery-summary.json) retains every site, family and donor-cell effect.
 - [Independent audit acknowledgment](independent-audit.json) is the exact saved audit output.
-- [Audited evidence archive](discovery-evidence.zip) contains the exact journal start, event and terminal files and all 1,120 content-addressed tensor payloads. The archive SHA-256 is `9ea7ebf83f0580335cbf35b65b2277d8990090adff5b3eb8d0b3b68409cd3a69`.
+- [Audited evidence archive](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/distilgpt2-natural-agreement-v1-20261028/discovery-evidence.zip) contains the exact journal start, event and terminal files and all 1,120 content-addressed tensor payloads. The archive SHA-256 is `9ea7ebf83f0580335cbf35b65b2277d8990090adff5b3eb8d0b3b68409cd3a69`.
 - [Published runtime binding](binding-v2.json) identifies the source, checkpoint, exposed cases and budgets. The executed source is commit `def07cbb168408a12c76ba30f196af45149e111d`.
 - [Frozen predictions](natural-prediction-v2.json), [publication provenance](natural-prediction-provenance.json) and the later [prediction freeze](natural-prediction-freeze.json) were published before held-out allocation.
 - The exact [prediction publication receipt](natural-prediction-track-receipt.json) and [aggregate publication receipt](natural-prediction-aggregate-receipt.json) record the observed official commits.

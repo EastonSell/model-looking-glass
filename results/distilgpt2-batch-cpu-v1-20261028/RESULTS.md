@@ -50,7 +50,7 @@ The [protocol](../../docs/DISTILGPT2_BATCH_CPU_V1.md) fixes the public EOS-token
 fixtures, input and output shapes, tolerance, controls, runtime and trust
 boundaries. The [primary report](run/primary-report.json),
 [summary](run/summary.json), [attempt record](run/attempt.json), and
-[raw logits archive](run/logits.zip) retain the result. The archive contains
+[raw logits archive](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/distilgpt2-batch-cpu-v1-20261028/run/logits.zip) retain the result. The archive contains
 6,432,896 raw little-endian float32 bytes and has SHA-256
 `d1d2c114fb46b8fd810ba2c5940e62e39dc75f82ab1671349822e76bc7017562`.
 The summary lists each member's request ID, shape and checksum. A separate

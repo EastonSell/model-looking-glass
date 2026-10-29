@@ -81,7 +81,7 @@ full-vocabulary unique top changed under the opposite donor in 0, 4, 0, 3, and
 0, 4, and 4 cases, and random in 1, 1, 0, 2, and 2. Median full-vocabulary
 total-variation distances for opposite donors were 0.0212, 0.0332, 0.0199,
 0.0423, and 0.0238 respectively. All arm-level TV/KL values, signs, and tops
-are retained in the [per-case replay](saved-replay.json.gz).
+are retained in the [per-case replay](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/bert-multisuffix-agreement-cpu-v1-20261029/saved-replay.json.gz).
 
 All recorded `q` values were 2.0, while the ten natural same/opposite donor
 distances per base ranged from 8.75 to 14.83. Equal input L2 does not imply
@@ -106,7 +106,7 @@ complete, independently verified local evidence archive is 122,677,157 bytes,
 SHA-256 `4d1f462222b3420094094bf96979a257ea98e1acd41a5652c8de4460adc0bf0a`;
 it is retained by the operator rather than in this repository.
 
-The compact [public raw subset](selected-evidence-v1.zip), SHA-256
+The compact [public raw subset](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/bert-multisuffix-agreement-cpu-v1-20261029/selected-evidence-v1.zip), SHA-256
 `47b8106c4d71ce91b618f27f03a441af70f42911dcea75dddded70dd78194bb9`, contains
 the original starts, events, plan, metadata, receipt, and 1,088 × 4 original
 float32 logits in the order `is`, `are`, `was`, `were`. Its manifest identifies
@@ -116,7 +116,7 @@ values to the full saved logits. It omits full-vocabulary logits and subject
 witnesses, so it cannot by itself reproduce the probability, TV/KL, or
 geometry checks. The full local archive includes those bytes.
 
-The [saved replay](saved-replay.json.gz) has uncompressed SHA-256
+The [saved replay](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/bert-multisuffix-agreement-cpu-v1-20261029/saved-replay.json.gz) has uncompressed SHA-256
 `a503c1d165a8d12244965737842537a292f01ade93d182baf283bcd1bf4faa45` and
 contains every case, ending, arm, group, and retained contrast. The executed
 reader can obscure an extremely small paired probability difference by

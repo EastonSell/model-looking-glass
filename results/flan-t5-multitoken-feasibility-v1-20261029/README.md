@@ -23,7 +23,7 @@ All **640/640** saved rows passed this pilot's structural span checks. The
 screen uses the pinned FLAN-T5 tokenizer, checks the complete adjective and
 its immediately preceding space, and records every input ID, attention mask,
 special-token mask, offset, final adjective-overlapping position and rejection
-in the [full report](report.json.gz). Some tokenizations include a separate
+in the [full report](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/flan-t5-multitoken-feasibility-v1-20261029/report.json.gz). Some tokenizations include a separate
 leading-space token; such a token belongs to the boundary span but is not an
 adjective-character-overlapping lexical token.
 
@@ -73,7 +73,7 @@ check establishes semantic correctness or behavior.
 | [Candidate list](candidates.json) | `2b32da31aab398d19ef80e013c377d2ed3d1a06912a431ee918bfeccb64107d1` |
 | [Original pilot source](original-pilot.py) | `8da53bef610521104f4c302e831ad7dd95599053fab0b95aa47b2743a4dc7b83` |
 | Uncompressed report bytes | `c1426f1ea4690f7c5185580167001d946425dcf0e3d08664a1f993fc7ac0a62f` |
-| [Compressed report](report.json.gz) | `53686f255ac854e8aa6ceed88ce83a14c53dec6e29ce285081c6ed41b34c8b1e` |
+| [Compressed report](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/flan-t5-multitoken-feasibility-v1-20261029/report.json.gz) | `53686f255ac854e8aa6ceed88ce83a14c53dec6e29ce285081c6ed41b34c8b1e` |
 | [Independent check](independent-tokenizer-audit.json) | `b477be3a621d7b21a3ce7ddcb72e0d809a5aab720a1fc947f2e4eea9e919634e` |
 | [Independent check source](independent-tokenizer-audit.py) | `59596cf1a0d38fad7b1cb02aa709e2503a9d8b6abc12d445916a672bb5baf443` |
 | [Portable replay](replay.py) | `fe41652633c506bcf0b9d1f32dec6e47f5a4bda8014d9346745978c719ec7cf5` |

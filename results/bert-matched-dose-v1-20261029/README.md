@@ -108,7 +108,7 @@ The model-state SHA-256 was
 
 [Evidence inventory](evidence-inventory.json) pins the exported evidence and
 replay files and the auditor source; it does not hash this README or itself.
-[events.jsonl.gz](events.jsonl.gz) decompresses exactly to the closed journal,
+[events.jsonl.gz](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/bert-matched-dose-v1-20261029/events.jsonl.gz) decompresses exactly to the closed journal,
 SHA-256 `9f482a369742960e24273d595d33d2a5fdc8ba2dfc82f1d65f6046266301a3ca`;
 the gzip SHA-256 is
 `1a405510648a649b7561a88fa2a770532fcafb2e6e87d587e038eada99033495`.
