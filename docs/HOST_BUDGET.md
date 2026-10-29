@@ -103,6 +103,17 @@ configured transfer-history cap bounds metadata. One additional cleanup-only
 transfer is reserved after cancellation, even if ordinary transfer history is
 full.
 
+`claim.bind_once(purpose)` permanently associates a live claim with one
+trusted purpose, such as a uniquely identified batch. Repeating the same
+binding is an idempotent recovery check; a different binding is rejected. An
+initial binding requires that no operation is already using the claim. The
+binding appears in `ClaimInfo` and survives operations, transfer, and
+cancellation until the claim is released. The coordinator must generate
+distinct bounded purpose IDs and prevent a single purpose from running twice:
+the label is not authentication or proof of which buffers are covered. A
+binding cannot substitute for reserving each overlapping allocation before
+it happens or retaining the claim until every covered alias is disposed.
+
 Cancellation is a tombstone: it blocks new reservations and operations, but
 does not release a claim, stop a copy, or prove that any buffer was disposed.
 Existing operations remain pinned until their owners confirm completion. A
