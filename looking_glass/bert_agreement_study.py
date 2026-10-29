@@ -634,7 +634,17 @@ def _owner_main(*, repo, cache, run_dir, commit, git_exe, split, family, run_id)
                         {'schema': 'bert-agreement-owner-failure-v1', 'status': 'incomplete',
                          'run_id': run_id, 'pid': os.getpid(), 'stage': stage,
                          'error_type': type(error).__name__})
-        except BaseException:
+        except (KeyboardInterrupt, SystemExit) as cancellation:
+            try:
+                _write_json(Path(run_dir) / 'owner-cancelled.json',
+                            {'schema': 'bert-agreement-owner-cancel-v1', 'status': 'incomplete',
+                             'run_id': run_id, 'pid': os.getpid(), 'stage': stage,
+                             'error_type': type(cancellation).__name__,
+                             'previous_error_type': type(error).__name__})
+            except Exception:
+                pass
+            raise cancellation from error
+        except Exception:
             pass
         return 1
 
@@ -665,6 +675,8 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
     wait_error_type = None
     owner_failure = None
     owner_failure_read_error_type = None
+    owner_cancellation = None
+    owner_cancellation_read_error_type = None
     try:
         controller_started = {'schema': 'bert-agreement-controller-start-v1',
                               'run_id': run_id, 'source_commit': commit, 'split': split, 'family': family,
@@ -715,6 +727,22 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
                     raise cleanup_error from wait_error
             raise
         if exit_code != 0:
+            if (destination / 'owner-cancelled.json').exists():
+                try:
+                    record = _read_json(destination / 'owner-cancelled.json')
+                    if (set(record) != {'schema', 'status', 'run_id', 'pid', 'stage',
+                                        'error_type', 'previous_error_type'}
+                            or record['schema'] != 'bert-agreement-owner-cancel-v1'
+                            or record['status'] != 'incomplete' or record['run_id'] != run_id
+                            or type(record['pid']) is not int or record['pid'] != child.pid
+                            or record['stage'] not in ('startup', 'model_load', 'forwards', 'verification')
+                            or record['error_type'] not in ('KeyboardInterrupt', 'SystemExit')
+                            or type(record['previous_error_type']) is not str
+                            or re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,79}', record['previous_error_type']) is None):
+                        raise ValueError('invalid owner cancellation record')
+                    owner_cancellation = record
+                except Exception as cancellation_error:
+                    owner_cancellation_read_error_type = type(cancellation_error).__name__
             try:
                 record = _read_json(destination / 'owner-failure.json')
                 if (set(record) != {'schema', 'status', 'run_id', 'pid', 'stage', 'error_type'}
@@ -792,18 +820,37 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
                   'owner_exit_code': exit_code, 'owner_state': owner_state,
                   'error_type': type(error).__name__, 'wait_error_type': wait_error_type,
                   'cleanup_error_type': cleanup_error_type,
-                  'cancelled': isinstance(error, KeyboardInterrupt),
+                  'cancelled': isinstance(error, (KeyboardInterrupt, SystemExit)) or owner_cancellation is not None or
+                               (owner_failure is not None and owner_failure['error_type'] in ('KeyboardInterrupt', 'SystemExit')),
                   'timed_out': isinstance(error, subprocess.TimeoutExpired),
                   'owner_failure': owner_failure, 'owner_failure_read_error_type': owner_failure_read_error_type,
+                  'owner_cancellation': owner_cancellation,
+                  'owner_cancellation_read_error_type': owner_cancellation_read_error_type,
                   'finished_utc': datetime.now(timezone.utc).isoformat()}
         try:
             _write_json(destination / 'controller-failure.json', result)
-        except BaseException:
+        except (KeyboardInterrupt, SystemExit) as cancellation:
+            cancelled_result = dict(result, error_type=type(cancellation).__name__, cancelled=True,
+                                    previous_error_type=type(error).__name__)
+            try:
+                _write_json(destination / 'controller-cancelled.json', cancelled_result)
+            except Exception:
+                pass
+            raise cancellation from error
+        except Exception:
             pass
         try:
             if not (destination / 'result.json').exists():
                 _write_json(destination / 'result.json', result)
-        except BaseException:
+        except (KeyboardInterrupt, SystemExit) as cancellation:
+            cancelled_result = dict(result, error_type=type(cancellation).__name__, cancelled=True,
+                                    previous_error_type=type(error).__name__)
+            try:
+                _write_json(destination / 'controller-cancelled.json', cancelled_result)
+            except Exception:
+                pass
+            raise cancellation from error
+        except Exception:
             pass
         return result
 

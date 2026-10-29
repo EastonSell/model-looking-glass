@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import torch
 
-from looking_glass.bert_agreement_study import (EventJournal, capture_model_state,
+from looking_glass.bert_agreement_study import (EventJournal, capture_model_state, _owner_main,
                                                aggregate_families, stage_verified_assets, verify_model_state,
                                                read_journal, run_cpu_controller, validate_owner_result, verify_git_sources,
                                                verify_tokenizer_rows, _checked_manifest, _require_checkout, _write_json)
@@ -297,13 +297,19 @@ os.environ['LOOKING_GLASS_BERT_SITE'] = str(root)
 class Child:
     pid = 12345
     def __init__(self, command):
-        if mode == 'failed':
+        if mode in ('failed', 'owner_cancelled'):
             run_id = command[command.index('--run-id') + 1]
-            _write_json(root/'attempt'/'owner-failure.json',
-                {'schema':'bert-agreement-owner-failure-v1', 'status':'incomplete',
-                 'run_id':run_id, 'pid':self.pid, 'stage':'forwards', 'error_type':'MemoryError'})
+            if mode == 'failed':
+                _write_json(root/'attempt'/'owner-failure.json',
+                    {'schema':'bert-agreement-owner-failure-v1', 'status':'incomplete',
+                     'run_id':run_id, 'pid':self.pid, 'stage':'forwards', 'error_type':'MemoryError'})
+            else:
+                _write_json(root/'attempt'/'owner-cancelled.json',
+                    {'schema':'bert-agreement-owner-cancel-v1', 'status':'incomplete',
+                     'run_id':run_id, 'pid':self.pid, 'stage':'verification',
+                     'error_type':'KeyboardInterrupt', 'previous_error_type':'OSError'})
     def wait(self, timeout):
-        if mode == 'failed': return 9
+        if mode in ('failed', 'owner_cancelled'): return 9
         if mode == 'cancel_during_kill': raise subprocess.TimeoutExpired('owner', timeout)
         raise KeyboardInterrupt('cancelled while waiting')
     def poll(self): return None
@@ -319,7 +325,7 @@ with patch('looking_glass.bert_agreement_study._require_bootstrap'), \
                                 commit='a'*40, split='development', family=1)
 print(json.dumps(result))
 '''
-            for mode in ('failed', 'cancelled', 'cancel_during_kill'):
+            for mode in ('failed', 'owner_cancelled', 'cancelled', 'cancel_during_kill'):
                 case_dir = root / mode
                 case_dir.mkdir()
                 completed = subprocess.run([sys.executable, '-c', code, str(case_dir), mode],
@@ -332,6 +338,10 @@ print(json.dumps(result))
                     self.assertEqual(result['owner_exit_code'], 9)
                     self.assertEqual(result['owner_failure']['stage'], 'forwards')
                     self.assertEqual(result['owner_failure']['error_type'], 'MemoryError')
+                elif mode == 'owner_cancelled':
+                    self.assertEqual(result['owner_state'], 'reaped')
+                    self.assertTrue(result['cancelled'])
+                    self.assertEqual(result['owner_cancellation']['previous_error_type'], 'OSError')
                 else:
                     self.assertEqual(result['owner_state'], 'possibly_active')
                     self.assertEqual(result['error_type'], 'KeyboardInterrupt')
@@ -367,6 +377,54 @@ print(json.dumps(result))
             self.assertEqual(result['status'], 'incomplete')
             self.assertEqual(result['error_type'], 'OSError')
             self.assertEqual(json.loads((root/'attempt'/'result.json').read_text())['status'], 'incomplete')
+
+    def test_owner_cancellation_during_failure_publication_propagates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = _write_json
+            def interrupt_failure(path, value):
+                if Path(path).name == 'owner-failure.json':
+                    raise KeyboardInterrupt('cancelled during failure publication')
+                return original(path, value)
+            with patch('looking_glass.bert_agreement_study._require_bootstrap', side_effect=OSError('startup')), \
+                 patch('looking_glass.bert_agreement_study._write_json', side_effect=interrupt_failure):
+                with self.assertRaises(KeyboardInterrupt) as raised:
+                    _owner_main(repo=root, cache=root, run_dir=root, commit='a'*40, git_exe='git',
+                                split='development', family=1, run_id='f'*32)
+            self.assertIsInstance(raised.exception.__cause__, OSError)
+            cancellation = json.loads((root/'owner-cancelled.json').read_text())
+            self.assertEqual(cancellation['error_type'], 'KeyboardInterrupt')
+            self.assertEqual(cancellation['previous_error_type'], 'OSError')
+
+    def test_controller_cancellation_during_failure_publication_propagates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            code = r'''
+import json, sys
+from pathlib import Path
+from unittest.mock import patch
+import looking_glass.bert_agreement_study as study
+root = Path(sys.argv[1])
+original = study._write_json
+def fail_then_cancel(path, value):
+    if Path(path).name == 'started.json': raise OSError('startup')
+    if Path(path).name == 'controller-failure.json': raise KeyboardInterrupt('cancelled')
+    return original(path, value)
+with patch.object(study, '_require_bootstrap'), patch.object(study, '_write_json', side_effect=fail_then_cancel):
+    try:
+        study.run_cpu_controller(repo=root, cache=root, output_dir=root/'attempt',
+                                 commit='a'*40, split='development', family=1)
+    except KeyboardInterrupt as error:
+        print(json.dumps({'error_type':type(error).__name__, 'cause':type(error.__cause__).__name__}))
+    else: raise RuntimeError('cancellation was swallowed')
+'''
+            completed = subprocess.run([sys.executable, '-c', code, str(root)],
+                                       capture_output=True, text=True, timeout=30)
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertEqual(json.loads(completed.stdout), {'error_type': 'KeyboardInterrupt', 'cause': 'OSError'})
+            cancellation = json.loads((root/'attempt'/'controller-cancelled.json').read_text())
+            self.assertEqual(cancellation['error_type'], 'KeyboardInterrupt')
+            self.assertEqual(cancellation['previous_error_type'], 'OSError')
 
     def test_controller_inventories_success_and_marks_post_link_cancellation(self):
         with tempfile.TemporaryDirectory() as directory:

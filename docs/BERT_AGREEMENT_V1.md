@@ -226,8 +226,8 @@ preflight, owner-start, owner-candidate and journal files into the terminal.
 JSON records are flushed to a same-directory temporary file and published by a
 no-clobber hard link; this is not a claim of crash-proof directory durability.
 Accept a completed terminal only with the controller's zero process exit,
-zero owner exit, a reaped owner, matching evidence hashes, and no
-`controller-failure.json`. In particular, interruption can arrive after the
+zero owner exit, a reaped owner, matching evidence hashes, and neither
+`controller-failure.json` nor `controller-cancelled.json`. In particular, interruption can arrive after the
 complete record's link: the file may remain present while the controller
 reports cancellation and exits nonzero. A nonzero, missing or uncertain process
 exit, partial journal, failed audit, missing evidence, or a possibly active
