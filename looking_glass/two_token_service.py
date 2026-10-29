@@ -26,7 +26,7 @@ from .trusted_service_profile import prepare_trusted_source
 _REQUIRED_OWNER_CONTRACT = "fixed-two-token-commitments-v1"
 _REQUIRED_COMPLETION_CONTRACT = "service-result-retirement-v1"
 _REQUIRED_SPAWN_CONTRACT = "gated-rooted-child-v1"
-_REQUIRED_COLLECTOR_CONTRACT = "two-token-worker-profile-v1"
+_REQUIRED_COLLECTOR_CONTRACT = "two-token-custody-worker-profile-v1"
 
 
 def _collector_contract_matches(path):
