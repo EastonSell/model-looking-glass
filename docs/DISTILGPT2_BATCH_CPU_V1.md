@@ -88,7 +88,9 @@ The source-only bootstrap `tools/run_distilgpt2_batch_cpu_v1.py` requires
 `-I -S -B` and an absent `-X pycache_prefix` path. It places the standard
 library before the explicitly selected virtual environment's dependency
 directory, rejects sourceless dependency loaders, and restricts project
-imports to listed `.py` files. Both freeze and execution verify that the
+imports to listed `.py` files. It checks `CUDA_VISIBLE_DEVICES=-1` before
+importing dependencies, and records CUDA initialization as false before and
+after the run. Both freeze and execution verify that the
 recorded source commit is an ancestor of the clean checkout and that all
 tracked project source blobs match that commit. Publish the source commit,
 then freeze and publish the manifest as a subsequent commit before any model
@@ -97,7 +99,9 @@ outside the clean checkout and copy its evidence into the repository only
 afterward. Runtime information is checked again after the model calls.
 The interpreter, native libraries, dependency installation, filesystem and
 process isolation are trusted; these measures are not an execution
-attestation. Python hash randomization is not fixed or claimed to be fixed.
+attestation. In particular, project source paths and any filesystem link
+targets remain trusted. Python hash randomization is not fixed or claimed to
+be fixed.
 
 Use a separately identified deterministic batch-mean toy model as a negative
 control: its serial outputs are zero while mixed outputs depend on their

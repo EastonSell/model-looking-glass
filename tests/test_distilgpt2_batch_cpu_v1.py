@@ -1,6 +1,7 @@
 import copy
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -126,6 +127,17 @@ class DistilGPT2BatchCpuV1Tests(unittest.TestCase):
                                 cwd=self.e.ROOT, capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('pycache_prefix', result.stderr)
+
+    def test_bootstrap_requires_gpu_hidden_before_importing_dependencies(self):
+        bootstrap = self.e.ROOT / 'tools' / 'run_distilgpt2_batch_cpu_v1.py'
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = str(Path(directory) / 'missing-cache')
+            env = dict(os.environ, CUDA_VISIBLE_DEVICES='0')
+            result = subprocess.run([sys.executable, '-I', '-S', '-B', '-X',
+                                     f'pycache_prefix={prefix}', str(bootstrap), '--help'],
+                                    cwd=self.e.ROOT, capture_output=True, text=True, env=env)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('CUDA_VISIBLE_DEVICES=-1 before importing dependencies', result.stderr)
 
     def test_playback_control_rejects_row_swap_and_batch_mean(self):
         manifest = self.e.freeze(self.runtime, self.sources, source_commit='b' * 40)

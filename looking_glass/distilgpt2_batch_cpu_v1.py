@@ -188,8 +188,8 @@ def configure_runtime():
 
 def runtime_info():
     validation._require_denormals()
-    if sys.byteorder != 'little' or torch.is_autocast_enabled('cpu'):
-        raise RuntimeError('this experiment requires little endian and disabled CPU autocast')
+    if sys.byteorder != 'little' or torch.is_autocast_enabled('cpu') or torch.cuda.is_initialized():
+        raise RuntimeError('this experiment requires little endian, CPU only and disabled CPU autocast')
     import numpy
     import transformers
     if torch.__version__ != '2.8.0+cu128' or transformers.__version__ != '4.57.3':
@@ -212,6 +212,7 @@ def runtime_info():
         'default_dtype': str(torch.get_default_dtype()),
         'default_device': str(torch.get_default_device()),
         'cpu_autocast_enabled': torch.is_autocast_enabled('cpu'),
+        'cuda_initialized': torch.cuda.is_initialized(),
         'denormal_preserving_calling_thread': True,
         'environment': {key: os.environ.get(key) for key in (
             'CUDA_VISIBLE_DEVICES', 'OMP_NUM_THREADS', 'MKL_NUM_THREADS', 'OMP_DYNAMIC', 'MKL_DYNAMIC')},

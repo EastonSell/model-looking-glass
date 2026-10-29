@@ -13,6 +13,8 @@ if (not sys.flags.isolated or not sys.flags.no_site or not sys.dont_write_byteco
         or sys._xoptions.get('pycache_prefix') != sys.pycache_prefix
         or os.path.lexists(sys.pycache_prefix)):
     raise SystemExit('use -I -S -B and a nonexistent -X pycache_prefix path')
+if os.environ.get('CUDA_VISIBLE_DEVICES') != '-1':
+    raise SystemExit('launch with CUDA_VISIBLE_DEVICES=-1 before importing dependencies')
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE = ROOT / 'looking_glass'
