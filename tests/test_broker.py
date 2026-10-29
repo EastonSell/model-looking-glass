@@ -1,4 +1,5 @@
 import threading
+import traceback
 import unittest
 import weakref
 import gc
@@ -862,8 +863,14 @@ class BrokerTests(unittest.TestCase):
                 logits = torch.ones(1)
             return ForwardResult(request_id, logits)
 
+        def result_with_extra_owner(request_id):
+            result = ForwardResult(request_id, torch.tensor([1]))
+            object.__setattr__(result, 'owner', object())
+            return result
+
         cases = (
             (lambda request_id: TracedResult(request_id, torch.tensor([1])), True),
+            (result_with_extra_owner, True),
             (lambda request_id: ForwardResult(request_id, 'not a tensor'), True),
             (lambda request_id: ForwardResult(request_id, torch.empty(1, device='meta')), True),
             (lambda request_id: ForwardResult(request_id, torch.tensor([1.0], requires_grad=True)), True),
@@ -889,6 +896,60 @@ class BrokerTests(unittest.TestCase):
                         self.assertFalse(worker.closed)
                     else:
                         broker.close(timeout=2)
+
+    def test_extra_fields_on_caller_request_are_rejected_before_custody(self):
+        from looking_glass.resident_worker import InvalidRequest
+
+        worker = FakeWorker()
+        with Broker(worker, max_pending=1, max_pending_per_team=1) as broker:
+            request = FakeRequest('one', b'x')
+            object.__setattr__(request, 'owner', object())
+            with self.assertRaises(InvalidRequest):
+                broker.submit('alpha', request)
+            self.assertTrue(broker.available)
+            self.assertFalse(broker.quarantined)
+            self.assertEqual(len(broker._queue), 0)
+            self.assertEqual(broker.submit('alpha', FakeRequest('two', b'x')).wait(2).state,
+                             RequestState.SUCCEEDED)
+
+    def test_worker_request_and_result_extra_owners_stay_rooted_on_rejection(self):
+        class Owner:
+            pass
+
+        for which in ('snapshot', 'result'):
+            with self.subTest(which=which):
+                class TaggedWorker(FakeWorker):
+                    def tag(self, value, tensor):
+                        owner = Owner()
+                        self.owner_ref = weakref.ref(owner)
+                        self.alias = tensor.detach()
+                        object.__setattr__(value, 'owner', owner)
+                        return value
+
+                    def snapshot_request(self, request):
+                        value = super().snapshot_request(request)
+                        return self.tag(value, value.inputs['input_ids']) if which == 'snapshot' else value
+
+                    def execute(self, request, cancel_event=None):
+                        result = super().execute(request, cancel_event)
+                        return self.tag(result, result.logits) if which == 'result' else result
+
+                worker = TaggedWorker()
+                broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+                if which == 'snapshot':
+                    with self.assertRaises(BrokerUnavailable):
+                        broker.submit('alpha', FakeRequest('one', b'x'))
+                else:
+                    outcome = broker.submit('alpha', FakeRequest('one', b'x')).wait(2)
+                    self.assertEqual(outcome.error_type, 'InvalidWorkerResult')
+                self.assertTrue(broker.quarantined)
+                with self.assertRaises(BrokerShutdownError):
+                    broker.close(timeout=2)
+                del broker
+                gc.collect()
+                self.assertIsNotNone(worker.owner_ref())
+                self.assertGreater(worker.alias.numel(), 0)
+                self.assertFalse(worker.closed)
 
     def test_unknown_result_and_worker_remain_retained_after_broker_is_dropped(self):
         @dataclass(frozen=True)
@@ -1011,7 +1072,7 @@ class BrokerTests(unittest.TestCase):
         with self.assertRaises(BrokerShutdownError):
             broker.close(timeout=2)
 
-    def test_unexpected_owner_error_does_not_strand_pending_jobs(self):
+    def test_unknown_worker_health_quarantines_pending_jobs(self):
         class BadHealth(FakeWorker):
             @property
             def poisoned(self):
@@ -1030,13 +1091,76 @@ class BrokerTests(unittest.TestCase):
 
         worker = BadHealth()
         worker.release.clear()
-        with Broker(worker, max_pending=1, max_pending_per_team=1) as broker:
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        try:
             running = broker.submit('alpha', FakeRequest('running', b'x'))
             self.assertTrue(worker.started.wait(2))
             pending = broker.submit('beta', FakeRequest('waiting', b'y'))
             worker.release.set()
             self.assertEqual(running.wait(2).state, RequestState.FAILED)
-            self.assertEqual(pending.wait(2).state, RequestState.FAILED)
+            with self.assertRaises(BrokerUnavailable):
+                pending.wait(2)
+            self.assertTrue(broker.quarantined)
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(timeout=2)
+        finally:
+            worker.release.set()
+
+    def test_status_failure_after_snapshot_or_execution_retains_private_owner(self):
+        for stage in ('snapshot', 'execute'):
+            with self.subTest(stage=stage):
+                refs, aliases = [], []
+
+                class Owner:
+                    pass
+
+                class BadHealth(FakeWorker):
+                    @property
+                    def poisoned(self):
+                        if self.break_health:
+                            original = torch.ones(1)
+                            original.owner = Owner()
+                            refs.append(weakref.ref(original.owner))
+                            aliases.append(original.detach())
+                            raise KeyboardInterrupt('status failure')
+                        return False
+
+                    @poisoned.setter
+                    def poisoned(self, value):
+                        self.break_health = value
+
+                    def snapshot_request(self, request):
+                        if stage == 'snapshot':
+                            self.break_health = True
+                            raise ValueError('snapshot failure')
+                        return super().snapshot_request(request)
+
+                    def execute(self, request, cancel_event=None):
+                        result = super().execute(request, cancel_event)
+                        self.break_health = True
+                        return result
+
+                worker = BadHealth()
+                broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+                error = None
+                if stage == 'snapshot':
+                    try:
+                        broker.submit('alpha', FakeRequest('one', b'x'))
+                    except KeyboardInterrupt as exc:
+                        error = exc
+                    self.assertIsNotNone(error)
+                    self.assertIsNone(error.__context__)
+                    traceback.clear_frames(error.__traceback__)
+                else:
+                    handle = broker.submit('alpha', FakeRequest('one', b'x'))
+                    self.assertEqual(handle.wait(2).state, RequestState.FAILED)
+                self.assertTrue(broker.quarantined)
+                self.assertFalse(worker.closed)
+                gc.collect()
+                self.assertIsNotNone(refs[0]())
+                self.assertEqual(len(aliases), 1)
+                with self.assertRaises(BrokerShutdownError):
+                    broker.close(timeout=2)
 
     def test_persistent_queue_oom_wakes_waiters_without_claiming_completion(self):
         worker = FakeWorker()

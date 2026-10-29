@@ -77,12 +77,21 @@ The [pretrained intervention smoke](results/distilgpt2-intervention-dev-cpu-v1-2
 
 The [sampled pretrained batch check](results/distilgpt2-batch-cpu-v1-20261028/RESULTS.md) compares serial and two-row outputs on four fixed public CPU cases against a prespecified tolerance, with negative controls and a same-host replay. It does not establish general batch separability or GPU throughput.
 
-The recorded original experiment used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records its installed version inventory; it is not a cross-platform dependency lock. Other versions allowed by the package metadata have not been validated here. For the tested CPU version, install into an isolated environment with `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
+The recorded original experiment used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records that run's installed versions; it is not a cross-platform dependency lock. Later experiments record their own environments. To install the original run's PyTorch version in an isolated environment, use `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
+
+Install the test and transformer extras and use pytest to discover both
+`unittest` cases and pytest-style tests. Some checks require optional local
+model assets and will be skipped when those assets are unavailable. Set
+`CUDA_VISIBLE_DEVICES=-1` before testing to keep the run CPU-only.
 
 ```bash
-python -m unittest discover -s tests -v
+python -m pip install -e ".[test,transformer]"
+python -m pytest -q tests
 python -m looking_glass.experiment --output results/my-full-run
 ```
+
+`unittest discover` can still run individual unittest-based files, but it
+does not collect the module-level pytest tests and is not the full test suite.
 
 For a short smoke check, use `--quick`. It is explicitly labeled as not the full protocol. Existing output directories are never overwritten. Full results contain raw timing samples, CSV summaries, numerical checks, source hashes and environment versions. Once evaluation starts, a failed run writes a failure record rather than a successful summary. Missing dependencies fail at import with an error on stderr, before a run directory is created.
 

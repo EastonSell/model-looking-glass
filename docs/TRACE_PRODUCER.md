@@ -1,9 +1,10 @@
 # Producer host-custody envelope (prototype)
 
 `looking_glass.trace_producer` provides cooperative admission and custody for
-one **trusted synchronous CPU forward**. It is a standalone building block:
-the broker, traced worker, trace store, transport and IPC do not currently use
-it. It does not enable shared-model tracing or GPU execution.
+one **trusted synchronous CPU forward**. It is a standalone building block;
+the separate [CPU trace owner](CPU_TRACE_OWNER.md) composes its producer slot
+with the traced worker and private batch store. This does not enable broker,
+network, IPC, shared-model tracing or GPU execution.
 
 A trusted coordinator supplies a model- and workload-specific `ProducerProfile`
 with four `ClaimLimit(nbytes, items)` commitments. Profile versioning and
