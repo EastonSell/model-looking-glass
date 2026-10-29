@@ -4,6 +4,18 @@ These private helpers write a **synthetic-only** evaluation attempt while the
 live evaluation entry remains disabled. No pretrained checkpoint, evaluation
 forward, complete terminal, or experimental outcome is claimed here.
 
+The private orchestration helper shares the development owner's v1 runtime,
+checkpoint and candidate-reconstruction checks, then reconstructs the
+committed selected controls through the selection gate before invoking the
+writer. Its synthetic round trip exercises the real control reconstruction,
+writer, parent audit and independent reader without loading a checkpoint or
+running a pretrained model. It neither certifies model disposal nor enables a
+live entry point; the caller must still establish source, witness, process and
+custody requirements before any real forward.
+Interrupted discovery/reconstruction must terminate the isolated owner and
+leave the attempt incomplete; its attempted hook cleanup alone is not proof of
+model disposal or authorization to continue with held-out rows.
+
 Before writing a row, the writer checks the supplied selection snapshot's
 manifest/source, selection commit and terminal identities, distinct run ID,
 model/weight and supplemental buffer digests, and recorded runtime against the
