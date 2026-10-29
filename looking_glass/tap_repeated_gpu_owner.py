@@ -283,7 +283,19 @@ def _failure_record(exc):
         record['journal_close_confirmed'] = getattr(journal, 'closed', None) is True
     source = {'model_setup': 'setup', 'preflight': 'preflight', 'samples': 'lean',
               'screen_wait': 'lean', 'disposal': 'lean'}.get(stage)
-    partial = getattr(_CUSTODY.get(source), 'partial', None) if source else None
+    component = _CUSTODY.get(source) if source else None
+    operations = _CUSTODY.get('operations')
+    roots = getattr(operations, 'roots', None)
+    failures = {'component': getattr(component, 'failure', None),
+                'operation_root': getattr(roots, 'failure', None)}
+    private_types = {}
+    for key, error in failures.items():
+        if isinstance(error, BaseException):
+            name = type(error).__name__
+            private_types[key] = name if re.fullmatch('[A-Za-z_][A-Za-z_0-9]{0,63}', name) else 'other'
+    if private_types:
+        record['private_error_types'] = private_types
+    partial = getattr(component, 'partial', None)
     if type(partial) is dict:
         projected = {'source': source}
         allowed = ('setup', 'checkpoint_verified', 'preflight_setup', 'prepared', 'gate_pending',
@@ -293,6 +305,11 @@ def _failure_record(exc):
             projected['stage'] = partial['stage']
         if partial.get('mode') in ('none', 'direct', 'gradient'):
             projected['mode'] = partial['mode']
+        steps = ('peak_allocated_query', 'peak_reserved_query', 'final_memory_snapshot', 'peak_comparison',
+                 'postcheck_clock_query', 'postcheck_time_validation', 'guarded_end_clock_query',
+                 'guarded_end_time_validation')
+        if partial.get('diagnostic_step') in steps:
+            projected['diagnostic_step'] = partial['diagnostic_step']
         for key in ('started_ns', 'completion_ns', 'ended_ns', 'postcheck_completed_ns',
                     'guarded_started_ns', 'guarded_ended_ns', 'memory_snapshot_started_ns',
                     'memory_snapshot_ended_ns', 'gate_lower_ns', 'gate_upper_ns',

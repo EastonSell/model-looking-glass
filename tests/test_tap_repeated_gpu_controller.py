@@ -146,6 +146,9 @@ def test_failure_preserves_partial_evidence_without_claiming_a_completed_sample(
     journal.write_bytes(b''.join(controller._canonical(row) for row in rows))
     def fail(**_kwargs):
         controller._ROOTS.update(run_dir=tmp_path, stage='supervised_owner')
+        (tmp_path / 'failure.json').write_bytes(controller._canonical(
+            {'private_error_types': {'operation_root': 'ValueError'},
+             'partial': {'diagnostic_step': 'postcheck_time_validation'}}))
         raise RuntimeError('private-sentinel')
     monkeypatch.setattr(controller, '_run_session', fail)
     with pytest.raises(RuntimeError, match='private-sentinel'):
@@ -154,6 +157,8 @@ def test_failure_preserves_partial_evidence_without_claiming_a_completed_sample(
     result = json.loads(output.read_bytes())
     assert result['status'] == 'incomplete' and result['unvalidated_present_pairs'] == 1
     assert b'private-sentinel' not in output.read_bytes()
+    assert b'private_error_types' not in output.read_bytes()
+    assert b'postcheck_time_validation' not in output.read_bytes()
     assert (tmp_path / 'controller-failure.json').read_bytes() == output.read_bytes()
     with pytest.raises(RuntimeError, match='single-use'):
         controller.run_session(workspace_root=tmp_path, cache_dir=tmp_path, output=tmp_path / 'second.json',

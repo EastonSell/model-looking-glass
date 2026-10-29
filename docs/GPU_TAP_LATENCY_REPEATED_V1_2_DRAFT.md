@@ -59,6 +59,13 @@ after the snapshot and gate and immediately before that stamp. This bounds
 observation age but cannot eliminate a scheduler pause or an external memory
 change after any check.
 
+The private failure record may retain bounded exception class names from the
+component and the first rooted owner-operation failure, a fixed diagnostic
+step, and a postcheck timestamp if it was already returned. It does not retain
+exception messages or turn an incomplete sample into a result. These host-side
+diagnostic assignments occur after the primary wall interval and before the
+postcheck; they add work to the guarded interval for every mode.
+
 The clock-resolution screen, event/wall consistency check, postcheck ordering,
 source/identity binding, parent activity barriers, durable journal, retained
 failure evidence and strict reaped-owner requirements remain mandatory. The
