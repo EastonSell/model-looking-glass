@@ -1,0 +1,3604 @@
+{
+  "cases": [
+    {
+      "above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "above_values": [
+        19,
+        20,
+        21
+      ],
+      "case_id": "year-direction-01-war-after-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-01-war-after-high",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        2998,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        2919,
+        2931,
+        940
+      ],
+      "local_above_values": [
+        8,
+        9,
+        10
+      ],
+      "local_below_ids": [
+        3023,
+        2713,
+        3312
+      ],
+      "local_below_values": [
+        4,
+        5,
+        6
+      ],
+      "middle_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "middle_values": [
+        10,
+        11,
+        12
+      ],
+      "pair_index": 0,
+      "pair_noun_index": 0,
+      "rotation": 0,
+      "text": "The war took place after the year 1707 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 7
+    },
+    {
+      "above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "above_values": [
+        19,
+        20,
+        21
+      ],
+      "case_id": "year-direction-01-war-after-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-01-war-after-low",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        1433,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        1558,
+        1507,
+        1129
+      ],
+      "local_above_values": [
+        17,
+        18,
+        19
+      ],
+      "local_below_ids": [
+        1485,
+        1415,
+        1314
+      ],
+      "local_below_values": [
+        13,
+        14,
+        15
+      ],
+      "middle_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "middle_values": [
+        10,
+        11,
+        12
+      ],
+      "pair_index": 0,
+      "pair_noun_index": 0,
+      "rotation": 1,
+      "text": "The war took place after the year 1716 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 16
+    },
+    {
+      "above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "above_values": [
+        19,
+        20,
+        21
+      ],
+      "case_id": "year-direction-01-war-before-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-01-war-before-high",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        2998,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        2919,
+        2931,
+        940
+      ],
+      "local_above_values": [
+        8,
+        9,
+        10
+      ],
+      "local_below_ids": [
+        3023,
+        2713,
+        3312
+      ],
+      "local_below_values": [
+        4,
+        5,
+        6
+      ],
+      "middle_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "middle_values": [
+        10,
+        11,
+        12
+      ],
+      "pair_index": 0,
+      "pair_noun_index": 0,
+      "rotation": 2,
+      "text": "The war took place before the year 1707 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 7
+    },
+    {
+      "above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "above_values": [
+        19,
+        20,
+        21
+      ],
+      "case_id": "year-direction-01-war-before-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-01-war-before-low",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        1433,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        1558,
+        1507,
+        1129
+      ],
+      "local_above_values": [
+        17,
+        18,
+        19
+      ],
+      "local_below_ids": [
+        1485,
+        1415,
+        1314
+      ],
+      "local_below_values": [
+        13,
+        14,
+        15
+      ],
+      "middle_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "middle_values": [
+        10,
+        11,
+        12
+      ],
+      "pair_index": 0,
+      "pair_noun_index": 0,
+      "rotation": 3,
+      "text": "The war took place before the year 1716 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 16
+    },
+    {
+      "above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "above_values": [
+        19,
+        20,
+        21
+      ],
+      "case_id": "year-direction-01-war-near-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-01-war-near-high",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        2998,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        2919,
+        2931,
+        940
+      ],
+      "local_above_values": [
+        8,
+        9,
+        10
+      ],
+      "local_below_ids": [
+        3023,
+        2713,
+        3312
+      ],
+      "local_below_values": [
+        4,
+        5,
+        6
+      ],
+      "middle_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "middle_values": [
+        10,
+        11,
+        12
+      ],
+      "pair_index": 0,
+      "pair_noun_index": 0,
+      "rotation": 0,
+      "text": "The war took place near the year 1707 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 7
+    },
+    {
+      "above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "above_values": [
+        19,
+        20,
+        21
+      ],
+      "case_id": "year-direction-01-war-near-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-01-war-near-low",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        1433,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        1558,
+        1507,
+        1129
+      ],
+      "local_above_values": [
+        17,
+        18,
+        19
+      ],
+      "local_below_ids": [
+        1485,
+        1415,
+        1314
+      ],
+      "local_below_values": [
+        13,
+        14,
+        15
+      ],
+      "middle_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "middle_values": [
+        10,
+        11,
+        12
+      ],
+      "pair_index": 0,
+      "pair_noun_index": 0,
+      "rotation": 1,
+      "text": "The war took place near the year 1716 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 16
+    },
+    {
+      "above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "above_values": [
+        19,
+        20,
+        21
+      ],
+      "case_id": "year-direction-01-reign-after-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-01-reign-after-high",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        2998,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        2919,
+        2931,
+        940
+      ],
+      "local_above_values": [
+        8,
+        9,
+        10
+      ],
+      "local_below_ids": [
+        3023,
+        2713,
+        3312
+      ],
+      "local_below_values": [
+        4,
+        5,
+        6
+      ],
+      "middle_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "middle_values": [
+        10,
+        11,
+        12
+      ],
+      "pair_index": 0,
+      "pair_noun_index": 1,
+      "rotation": 1,
+      "text": "The reign took place after the year 1707 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 7
+    },
+    {
+      "above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "above_values": [
+        19,
+        20,
+        21
+      ],
+      "case_id": "year-direction-01-reign-after-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-01-reign-after-low",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        1433,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        1558,
+        1507,
+        1129
+      ],
+      "local_above_values": [
+        17,
+        18,
+        19
+      ],
+      "local_below_ids": [
+        1485,
+        1415,
+        1314
+      ],
+      "local_below_values": [
+        13,
+        14,
+        15
+      ],
+      "middle_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "middle_values": [
+        10,
+        11,
+        12
+      ],
+      "pair_index": 0,
+      "pair_noun_index": 1,
+      "rotation": 2,
+      "text": "The reign took place after the year 1716 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 16
+    },
+    {
+      "above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "above_values": [
+        19,
+        20,
+        21
+      ],
+      "case_id": "year-direction-01-reign-before-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-01-reign-before-high",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        2998,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        2919,
+        2931,
+        940
+      ],
+      "local_above_values": [
+        8,
+        9,
+        10
+      ],
+      "local_below_ids": [
+        3023,
+        2713,
+        3312
+      ],
+      "local_below_values": [
+        4,
+        5,
+        6
+      ],
+      "middle_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "middle_values": [
+        10,
+        11,
+        12
+      ],
+      "pair_index": 0,
+      "pair_noun_index": 1,
+      "rotation": 3,
+      "text": "The reign took place before the year 1707 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 7
+    },
+    {
+      "above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "above_values": [
+        19,
+        20,
+        21
+      ],
+      "case_id": "year-direction-01-reign-before-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-01-reign-before-low",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        1433,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        1558,
+        1507,
+        1129
+      ],
+      "local_above_values": [
+        17,
+        18,
+        19
+      ],
+      "local_below_ids": [
+        1485,
+        1415,
+        1314
+      ],
+      "local_below_values": [
+        13,
+        14,
+        15
+      ],
+      "middle_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "middle_values": [
+        10,
+        11,
+        12
+      ],
+      "pair_index": 0,
+      "pair_noun_index": 1,
+      "rotation": 0,
+      "text": "The reign took place before the year 1716 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 16
+    },
+    {
+      "above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "above_values": [
+        19,
+        20,
+        21
+      ],
+      "case_id": "year-direction-01-reign-near-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-01-reign-near-high",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        2998,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        2919,
+        2931,
+        940
+      ],
+      "local_above_values": [
+        8,
+        9,
+        10
+      ],
+      "local_below_ids": [
+        3023,
+        2713,
+        3312
+      ],
+      "local_below_values": [
+        4,
+        5,
+        6
+      ],
+      "middle_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "middle_values": [
+        10,
+        11,
+        12
+      ],
+      "pair_index": 0,
+      "pair_noun_index": 1,
+      "rotation": 1,
+      "text": "The reign took place near the year 1707 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 7
+    },
+    {
+      "above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "above_values": [
+        19,
+        20,
+        21
+      ],
+      "case_id": "year-direction-01-reign-near-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-01-reign-near-low",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        1433,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        1558,
+        1507,
+        1129
+      ],
+      "local_above_values": [
+        17,
+        18,
+        19
+      ],
+      "local_below_ids": [
+        1485,
+        1415,
+        1314
+      ],
+      "local_below_values": [
+        13,
+        14,
+        15
+      ],
+      "middle_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "middle_values": [
+        10,
+        11,
+        12
+      ],
+      "pair_index": 0,
+      "pair_noun_index": 1,
+      "rotation": 2,
+      "text": "The reign took place near the year 1716 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 16
+    },
+    {
+      "above_ids": [
+        3901,
+        3682,
+        3559
+      ],
+      "above_values": [
+        41,
+        42,
+        43
+      ],
+      "case_id": "year-direction-02-war-after-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-02-war-after-high",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        1959,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        1270,
+        3132,
+        2624
+      ],
+      "local_above_values": [
+        30,
+        31,
+        32
+      ],
+      "local_below_ids": [
+        2075,
+        1983,
+        2078
+      ],
+      "local_below_values": [
+        26,
+        27,
+        28
+      ],
+      "middle_ids": [
+        2624,
+        2091,
+        2682
+      ],
+      "middle_values": [
+        32,
+        33,
+        34
+      ],
+      "pair_index": 1,
+      "pair_noun_index": 2,
+      "rotation": 2,
+      "text": "The war took place after the year 1729 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 29
+    },
+    {
+      "above_ids": [
+        3901,
+        3682,
+        3559
+      ],
+      "above_values": [
+        41,
+        42,
+        43
+      ],
+      "case_id": "year-direction-02-war-after-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-02-war-after-low",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        2548,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        2670,
+        1821,
+        3901
+      ],
+      "local_above_values": [
+        39,
+        40,
+        41
+      ],
+      "local_below_ids": [
+        2327,
+        2623,
+        2718
+      ],
+      "local_below_values": [
+        35,
+        36,
+        37
+      ],
+      "middle_ids": [
+        2624,
+        2091,
+        2682
+      ],
+      "middle_values": [
+        32,
+        33,
+        34
+      ],
+      "pair_index": 1,
+      "pair_noun_index": 2,
+      "rotation": 3,
+      "text": "The war took place after the year 1738 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 38
+    },
+    {
+      "above_ids": [
+        3901,
+        3682,
+        3559
+      ],
+      "above_values": [
+        41,
+        42,
+        43
+      ],
+      "case_id": "year-direction-02-war-before-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-02-war-before-high",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        1959,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        1270,
+        3132,
+        2624
+      ],
+      "local_above_values": [
+        30,
+        31,
+        32
+      ],
+      "local_below_ids": [
+        2075,
+        1983,
+        2078
+      ],
+      "local_below_values": [
+        26,
+        27,
+        28
+      ],
+      "middle_ids": [
+        2624,
+        2091,
+        2682
+      ],
+      "middle_values": [
+        32,
+        33,
+        34
+      ],
+      "pair_index": 1,
+      "pair_noun_index": 2,
+      "rotation": 0,
+      "text": "The war took place before the year 1729 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 29
+    },
+    {
+      "above_ids": [
+        3901,
+        3682,
+        3559
+      ],
+      "above_values": [
+        41,
+        42,
+        43
+      ],
+      "case_id": "year-direction-02-war-before-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-02-war-before-low",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        2548,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        2670,
+        1821,
+        3901
+      ],
+      "local_above_values": [
+        39,
+        40,
+        41
+      ],
+      "local_below_ids": [
+        2327,
+        2623,
+        2718
+      ],
+      "local_below_values": [
+        35,
+        36,
+        37
+      ],
+      "middle_ids": [
+        2624,
+        2091,
+        2682
+      ],
+      "middle_values": [
+        32,
+        33,
+        34
+      ],
+      "pair_index": 1,
+      "pair_noun_index": 2,
+      "rotation": 1,
+      "text": "The war took place before the year 1738 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 38
+    },
+    {
+      "above_ids": [
+        3901,
+        3682,
+        3559
+      ],
+      "above_values": [
+        41,
+        42,
+        43
+      ],
+      "case_id": "year-direction-02-war-near-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-02-war-near-high",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        1959,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        1270,
+        3132,
+        2624
+      ],
+      "local_above_values": [
+        30,
+        31,
+        32
+      ],
+      "local_below_ids": [
+        2075,
+        1983,
+        2078
+      ],
+      "local_below_values": [
+        26,
+        27,
+        28
+      ],
+      "middle_ids": [
+        2624,
+        2091,
+        2682
+      ],
+      "middle_values": [
+        32,
+        33,
+        34
+      ],
+      "pair_index": 1,
+      "pair_noun_index": 2,
+      "rotation": 2,
+      "text": "The war took place near the year 1729 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 29
+    },
+    {
+      "above_ids": [
+        3901,
+        3682,
+        3559
+      ],
+      "above_values": [
+        41,
+        42,
+        43
+      ],
+      "case_id": "year-direction-02-war-near-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-02-war-near-low",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        2548,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        2670,
+        1821,
+        3901
+      ],
+      "local_above_values": [
+        39,
+        40,
+        41
+      ],
+      "local_below_ids": [
+        2327,
+        2623,
+        2718
+      ],
+      "local_below_values": [
+        35,
+        36,
+        37
+      ],
+      "middle_ids": [
+        2624,
+        2091,
+        2682
+      ],
+      "middle_values": [
+        32,
+        33,
+        34
+      ],
+      "pair_index": 1,
+      "pair_noun_index": 2,
+      "rotation": 3,
+      "text": "The war took place near the year 1738 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 38
+    },
+    {
+      "above_ids": [
+        3901,
+        3682,
+        3559
+      ],
+      "above_values": [
+        41,
+        42,
+        43
+      ],
+      "case_id": "year-direction-02-reign-after-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-02-reign-after-high",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        1959,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        1270,
+        3132,
+        2624
+      ],
+      "local_above_values": [
+        30,
+        31,
+        32
+      ],
+      "local_below_ids": [
+        2075,
+        1983,
+        2078
+      ],
+      "local_below_values": [
+        26,
+        27,
+        28
+      ],
+      "middle_ids": [
+        2624,
+        2091,
+        2682
+      ],
+      "middle_values": [
+        32,
+        33,
+        34
+      ],
+      "pair_index": 1,
+      "pair_noun_index": 3,
+      "rotation": 3,
+      "text": "The reign took place after the year 1729 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 29
+    },
+    {
+      "above_ids": [
+        3901,
+        3682,
+        3559
+      ],
+      "above_values": [
+        41,
+        42,
+        43
+      ],
+      "case_id": "year-direction-02-reign-after-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-02-reign-after-low",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        2548,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        2670,
+        1821,
+        3901
+      ],
+      "local_above_values": [
+        39,
+        40,
+        41
+      ],
+      "local_below_ids": [
+        2327,
+        2623,
+        2718
+      ],
+      "local_below_values": [
+        35,
+        36,
+        37
+      ],
+      "middle_ids": [
+        2624,
+        2091,
+        2682
+      ],
+      "middle_values": [
+        32,
+        33,
+        34
+      ],
+      "pair_index": 1,
+      "pair_noun_index": 3,
+      "rotation": 0,
+      "text": "The reign took place after the year 1738 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 38
+    },
+    {
+      "above_ids": [
+        3901,
+        3682,
+        3559
+      ],
+      "above_values": [
+        41,
+        42,
+        43
+      ],
+      "case_id": "year-direction-02-reign-before-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-02-reign-before-high",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        1959,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        1270,
+        3132,
+        2624
+      ],
+      "local_above_values": [
+        30,
+        31,
+        32
+      ],
+      "local_below_ids": [
+        2075,
+        1983,
+        2078
+      ],
+      "local_below_values": [
+        26,
+        27,
+        28
+      ],
+      "middle_ids": [
+        2624,
+        2091,
+        2682
+      ],
+      "middle_values": [
+        32,
+        33,
+        34
+      ],
+      "pair_index": 1,
+      "pair_noun_index": 3,
+      "rotation": 1,
+      "text": "The reign took place before the year 1729 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 29
+    },
+    {
+      "above_ids": [
+        3901,
+        3682,
+        3559
+      ],
+      "above_values": [
+        41,
+        42,
+        43
+      ],
+      "case_id": "year-direction-02-reign-before-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-02-reign-before-low",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        2548,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        2670,
+        1821,
+        3901
+      ],
+      "local_above_values": [
+        39,
+        40,
+        41
+      ],
+      "local_below_ids": [
+        2327,
+        2623,
+        2718
+      ],
+      "local_below_values": [
+        35,
+        36,
+        37
+      ],
+      "middle_ids": [
+        2624,
+        2091,
+        2682
+      ],
+      "middle_values": [
+        32,
+        33,
+        34
+      ],
+      "pair_index": 1,
+      "pair_noun_index": 3,
+      "rotation": 2,
+      "text": "The reign took place before the year 1738 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 38
+    },
+    {
+      "above_ids": [
+        3901,
+        3682,
+        3559
+      ],
+      "above_values": [
+        41,
+        42,
+        43
+      ],
+      "case_id": "year-direction-02-reign-near-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-02-reign-near-high",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        1959,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        1270,
+        3132,
+        2624
+      ],
+      "local_above_values": [
+        30,
+        31,
+        32
+      ],
+      "local_below_ids": [
+        2075,
+        1983,
+        2078
+      ],
+      "local_below_values": [
+        26,
+        27,
+        28
+      ],
+      "middle_ids": [
+        2624,
+        2091,
+        2682
+      ],
+      "middle_values": [
+        32,
+        33,
+        34
+      ],
+      "pair_index": 1,
+      "pair_noun_index": 3,
+      "rotation": 3,
+      "text": "The reign took place near the year 1729 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 29
+    },
+    {
+      "above_ids": [
+        3901,
+        3682,
+        3559
+      ],
+      "above_values": [
+        41,
+        42,
+        43
+      ],
+      "case_id": "year-direction-02-reign-near-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-02-reign-near-low",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        2548,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        2670,
+        1821,
+        3901
+      ],
+      "local_above_values": [
+        39,
+        40,
+        41
+      ],
+      "local_below_ids": [
+        2327,
+        2623,
+        2718
+      ],
+      "local_below_values": [
+        35,
+        36,
+        37
+      ],
+      "middle_ids": [
+        2624,
+        2091,
+        2682
+      ],
+      "middle_values": [
+        32,
+        33,
+        34
+      ],
+      "pair_index": 1,
+      "pair_noun_index": 3,
+      "rotation": 0,
+      "text": "The reign took place near the year 1738 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 38
+    },
+    {
+      "above_ids": [
+        5066,
+        2414,
+        2996
+      ],
+      "above_values": [
+        63,
+        64,
+        65
+      ],
+      "case_id": "year-direction-03-war-after-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-03-war-after-high",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        4349,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        4309,
+        4310,
+        4051
+      ],
+      "local_above_values": [
+        52,
+        53,
+        54
+      ],
+      "local_below_ids": [
+        2780,
+        2920,
+        1120
+      ],
+      "local_below_values": [
+        48,
+        49,
+        50
+      ],
+      "middle_ids": [
+        4051,
+        2816,
+        3980
+      ],
+      "middle_values": [
+        54,
+        55,
+        56
+      ],
+      "pair_index": 2,
+      "pair_noun_index": 4,
+      "rotation": 0,
+      "text": "The war took place after the year 1751 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 51
+    },
+    {
+      "above_ids": [
+        5066,
+        2414,
+        2996
+      ],
+      "above_values": [
+        63,
+        64,
+        65
+      ],
+      "case_id": "year-direction-03-war-after-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-03-war-after-low",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        1899,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        5333,
+        5237,
+        5066
+      ],
+      "local_above_values": [
+        61,
+        62,
+        63
+      ],
+      "local_below_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "local_below_values": [
+        57,
+        58,
+        59
+      ],
+      "middle_ids": [
+        4051,
+        2816,
+        3980
+      ],
+      "middle_values": [
+        54,
+        55,
+        56
+      ],
+      "pair_index": 2,
+      "pair_noun_index": 4,
+      "rotation": 1,
+      "text": "The war took place after the year 1760 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 60
+    },
+    {
+      "above_ids": [
+        5066,
+        2414,
+        2996
+      ],
+      "above_values": [
+        63,
+        64,
+        65
+      ],
+      "case_id": "year-direction-03-war-before-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-03-war-before-high",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        4349,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        4309,
+        4310,
+        4051
+      ],
+      "local_above_values": [
+        52,
+        53,
+        54
+      ],
+      "local_below_ids": [
+        2780,
+        2920,
+        1120
+      ],
+      "local_below_values": [
+        48,
+        49,
+        50
+      ],
+      "middle_ids": [
+        4051,
+        2816,
+        3980
+      ],
+      "middle_values": [
+        54,
+        55,
+        56
+      ],
+      "pair_index": 2,
+      "pair_noun_index": 4,
+      "rotation": 2,
+      "text": "The war took place before the year 1751 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 51
+    },
+    {
+      "above_ids": [
+        5066,
+        2414,
+        2996
+      ],
+      "above_values": [
+        63,
+        64,
+        65
+      ],
+      "case_id": "year-direction-03-war-before-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-03-war-before-low",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        1899,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        5333,
+        5237,
+        5066
+      ],
+      "local_above_values": [
+        61,
+        62,
+        63
+      ],
+      "local_below_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "local_below_values": [
+        57,
+        58,
+        59
+      ],
+      "middle_ids": [
+        4051,
+        2816,
+        3980
+      ],
+      "middle_values": [
+        54,
+        55,
+        56
+      ],
+      "pair_index": 2,
+      "pair_noun_index": 4,
+      "rotation": 3,
+      "text": "The war took place before the year 1760 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 60
+    },
+    {
+      "above_ids": [
+        5066,
+        2414,
+        2996
+      ],
+      "above_values": [
+        63,
+        64,
+        65
+      ],
+      "case_id": "year-direction-03-war-near-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-03-war-near-high",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        4349,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        4309,
+        4310,
+        4051
+      ],
+      "local_above_values": [
+        52,
+        53,
+        54
+      ],
+      "local_below_ids": [
+        2780,
+        2920,
+        1120
+      ],
+      "local_below_values": [
+        48,
+        49,
+        50
+      ],
+      "middle_ids": [
+        4051,
+        2816,
+        3980
+      ],
+      "middle_values": [
+        54,
+        55,
+        56
+      ],
+      "pair_index": 2,
+      "pair_noun_index": 4,
+      "rotation": 0,
+      "text": "The war took place near the year 1751 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 51
+    },
+    {
+      "above_ids": [
+        5066,
+        2414,
+        2996
+      ],
+      "above_values": [
+        63,
+        64,
+        65
+      ],
+      "case_id": "year-direction-03-war-near-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-03-war-near-low",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        1899,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        5333,
+        5237,
+        5066
+      ],
+      "local_above_values": [
+        61,
+        62,
+        63
+      ],
+      "local_below_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "local_below_values": [
+        57,
+        58,
+        59
+      ],
+      "middle_ids": [
+        4051,
+        2816,
+        3980
+      ],
+      "middle_values": [
+        54,
+        55,
+        56
+      ],
+      "pair_index": 2,
+      "pair_noun_index": 4,
+      "rotation": 1,
+      "text": "The war took place near the year 1760 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 60
+    },
+    {
+      "above_ids": [
+        5066,
+        2414,
+        2996
+      ],
+      "above_values": [
+        63,
+        64,
+        65
+      ],
+      "case_id": "year-direction-03-reign-after-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-03-reign-after-high",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        4349,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        4309,
+        4310,
+        4051
+      ],
+      "local_above_values": [
+        52,
+        53,
+        54
+      ],
+      "local_below_ids": [
+        2780,
+        2920,
+        1120
+      ],
+      "local_below_values": [
+        48,
+        49,
+        50
+      ],
+      "middle_ids": [
+        4051,
+        2816,
+        3980
+      ],
+      "middle_values": [
+        54,
+        55,
+        56
+      ],
+      "pair_index": 2,
+      "pair_noun_index": 5,
+      "rotation": 1,
+      "text": "The reign took place after the year 1751 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 51
+    },
+    {
+      "above_ids": [
+        5066,
+        2414,
+        2996
+      ],
+      "above_values": [
+        63,
+        64,
+        65
+      ],
+      "case_id": "year-direction-03-reign-after-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-03-reign-after-low",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        1899,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        5333,
+        5237,
+        5066
+      ],
+      "local_above_values": [
+        61,
+        62,
+        63
+      ],
+      "local_below_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "local_below_values": [
+        57,
+        58,
+        59
+      ],
+      "middle_ids": [
+        4051,
+        2816,
+        3980
+      ],
+      "middle_values": [
+        54,
+        55,
+        56
+      ],
+      "pair_index": 2,
+      "pair_noun_index": 5,
+      "rotation": 2,
+      "text": "The reign took place after the year 1760 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 60
+    },
+    {
+      "above_ids": [
+        5066,
+        2414,
+        2996
+      ],
+      "above_values": [
+        63,
+        64,
+        65
+      ],
+      "case_id": "year-direction-03-reign-before-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-03-reign-before-high",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        4349,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        4309,
+        4310,
+        4051
+      ],
+      "local_above_values": [
+        52,
+        53,
+        54
+      ],
+      "local_below_ids": [
+        2780,
+        2920,
+        1120
+      ],
+      "local_below_values": [
+        48,
+        49,
+        50
+      ],
+      "middle_ids": [
+        4051,
+        2816,
+        3980
+      ],
+      "middle_values": [
+        54,
+        55,
+        56
+      ],
+      "pair_index": 2,
+      "pair_noun_index": 5,
+      "rotation": 3,
+      "text": "The reign took place before the year 1751 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 51
+    },
+    {
+      "above_ids": [
+        5066,
+        2414,
+        2996
+      ],
+      "above_values": [
+        63,
+        64,
+        65
+      ],
+      "case_id": "year-direction-03-reign-before-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-03-reign-before-low",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        1899,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        5333,
+        5237,
+        5066
+      ],
+      "local_above_values": [
+        61,
+        62,
+        63
+      ],
+      "local_below_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "local_below_values": [
+        57,
+        58,
+        59
+      ],
+      "middle_ids": [
+        4051,
+        2816,
+        3980
+      ],
+      "middle_values": [
+        54,
+        55,
+        56
+      ],
+      "pair_index": 2,
+      "pair_noun_index": 5,
+      "rotation": 0,
+      "text": "The reign took place before the year 1760 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 60
+    },
+    {
+      "above_ids": [
+        5066,
+        2414,
+        2996
+      ],
+      "above_values": [
+        63,
+        64,
+        65
+      ],
+      "case_id": "year-direction-03-reign-near-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-03-reign-near-high",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        4349,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        4309,
+        4310,
+        4051
+      ],
+      "local_above_values": [
+        52,
+        53,
+        54
+      ],
+      "local_below_ids": [
+        2780,
+        2920,
+        1120
+      ],
+      "local_below_values": [
+        48,
+        49,
+        50
+      ],
+      "middle_ids": [
+        4051,
+        2816,
+        3980
+      ],
+      "middle_values": [
+        54,
+        55,
+        56
+      ],
+      "pair_index": 2,
+      "pair_noun_index": 5,
+      "rotation": 1,
+      "text": "The reign took place near the year 1751 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 51
+    },
+    {
+      "above_ids": [
+        5066,
+        2414,
+        2996
+      ],
+      "above_values": [
+        63,
+        64,
+        65
+      ],
+      "case_id": "year-direction-03-reign-near-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-03-reign-near-low",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        1899,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        5333,
+        5237,
+        5066
+      ],
+      "local_above_values": [
+        61,
+        62,
+        63
+      ],
+      "local_below_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "local_below_values": [
+        57,
+        58,
+        59
+      ],
+      "middle_ids": [
+        4051,
+        2816,
+        3980
+      ],
+      "middle_values": [
+        54,
+        55,
+        56
+      ],
+      "pair_index": 2,
+      "pair_noun_index": 5,
+      "rotation": 2,
+      "text": "The reign took place near the year 1760 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 60
+    },
+    {
+      "above_ids": [
+        5332,
+        4521,
+        5774
+      ],
+      "above_values": [
+        85,
+        86,
+        87
+      ],
+      "case_id": "year-direction-04-war-after-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-04-war-after-high",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        4790,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        4524,
+        2425,
+        4304
+      ],
+      "local_above_values": [
+        74,
+        75,
+        76
+      ],
+      "local_below_ids": [
+        2154,
+        4869,
+        4761
+      ],
+      "local_below_values": [
+        70,
+        71,
+        72
+      ],
+      "middle_ids": [
+        4304,
+        3324,
+        3695
+      ],
+      "middle_values": [
+        76,
+        77,
+        78
+      ],
+      "pair_index": 3,
+      "pair_noun_index": 6,
+      "rotation": 2,
+      "text": "The war took place after the year 1773 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 73
+    },
+    {
+      "above_ids": [
+        5332,
+        4521,
+        5774
+      ],
+      "above_values": [
+        85,
+        86,
+        87
+      ],
+      "case_id": "year-direction-04-war-after-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-04-war-after-low",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        6469,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        5999,
+        5705,
+        5332
+      ],
+      "local_above_values": [
+        83,
+        84,
+        85
+      ],
+      "local_below_ids": [
+        3720,
+        1795,
+        6659
+      ],
+      "local_below_values": [
+        79,
+        80,
+        81
+      ],
+      "middle_ids": [
+        4304,
+        3324,
+        3695
+      ],
+      "middle_values": [
+        76,
+        77,
+        78
+      ],
+      "pair_index": 3,
+      "pair_noun_index": 6,
+      "rotation": 3,
+      "text": "The war took place after the year 1782 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 82
+    },
+    {
+      "above_ids": [
+        5332,
+        4521,
+        5774
+      ],
+      "above_values": [
+        85,
+        86,
+        87
+      ],
+      "case_id": "year-direction-04-war-before-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-04-war-before-high",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        4790,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        4524,
+        2425,
+        4304
+      ],
+      "local_above_values": [
+        74,
+        75,
+        76
+      ],
+      "local_below_ids": [
+        2154,
+        4869,
+        4761
+      ],
+      "local_below_values": [
+        70,
+        71,
+        72
+      ],
+      "middle_ids": [
+        4304,
+        3324,
+        3695
+      ],
+      "middle_values": [
+        76,
+        77,
+        78
+      ],
+      "pair_index": 3,
+      "pair_noun_index": 6,
+      "rotation": 0,
+      "text": "The war took place before the year 1773 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 73
+    },
+    {
+      "above_ids": [
+        5332,
+        4521,
+        5774
+      ],
+      "above_values": [
+        85,
+        86,
+        87
+      ],
+      "case_id": "year-direction-04-war-before-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-04-war-before-low",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        6469,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        5999,
+        5705,
+        5332
+      ],
+      "local_above_values": [
+        83,
+        84,
+        85
+      ],
+      "local_below_ids": [
+        3720,
+        1795,
+        6659
+      ],
+      "local_below_values": [
+        79,
+        80,
+        81
+      ],
+      "middle_ids": [
+        4304,
+        3324,
+        3695
+      ],
+      "middle_values": [
+        76,
+        77,
+        78
+      ],
+      "pair_index": 3,
+      "pair_noun_index": 6,
+      "rotation": 1,
+      "text": "The war took place before the year 1782 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 82
+    },
+    {
+      "above_ids": [
+        5332,
+        4521,
+        5774
+      ],
+      "above_values": [
+        85,
+        86,
+        87
+      ],
+      "case_id": "year-direction-04-war-near-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-04-war-near-high",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        4790,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        4524,
+        2425,
+        4304
+      ],
+      "local_above_values": [
+        74,
+        75,
+        76
+      ],
+      "local_below_ids": [
+        2154,
+        4869,
+        4761
+      ],
+      "local_below_values": [
+        70,
+        71,
+        72
+      ],
+      "middle_ids": [
+        4304,
+        3324,
+        3695
+      ],
+      "middle_values": [
+        76,
+        77,
+        78
+      ],
+      "pair_index": 3,
+      "pair_noun_index": 6,
+      "rotation": 2,
+      "text": "The war took place near the year 1773 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 73
+    },
+    {
+      "above_ids": [
+        5332,
+        4521,
+        5774
+      ],
+      "above_values": [
+        85,
+        86,
+        87
+      ],
+      "case_id": "year-direction-04-war-near-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-04-war-near-low",
+      "event": "war",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        1175,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        6469,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        5999,
+        5705,
+        5332
+      ],
+      "local_above_values": [
+        83,
+        84,
+        85
+      ],
+      "local_below_ids": [
+        3720,
+        1795,
+        6659
+      ],
+      "local_below_values": [
+        79,
+        80,
+        81
+      ],
+      "middle_ids": [
+        4304,
+        3324,
+        3695
+      ],
+      "middle_values": [
+        76,
+        77,
+        78
+      ],
+      "pair_index": 3,
+      "pair_noun_index": 6,
+      "rotation": 3,
+      "text": "The war took place near the year 1782 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 82
+    },
+    {
+      "above_ids": [
+        5332,
+        4521,
+        5774
+      ],
+      "above_values": [
+        85,
+        86,
+        87
+      ],
+      "case_id": "year-direction-04-reign-after-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-04-reign-after-high",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        4790,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        4524,
+        2425,
+        4304
+      ],
+      "local_above_values": [
+        74,
+        75,
+        76
+      ],
+      "local_below_ids": [
+        2154,
+        4869,
+        4761
+      ],
+      "local_below_values": [
+        70,
+        71,
+        72
+      ],
+      "middle_ids": [
+        4304,
+        3324,
+        3695
+      ],
+      "middle_values": [
+        76,
+        77,
+        78
+      ],
+      "pair_index": 3,
+      "pair_noun_index": 7,
+      "rotation": 3,
+      "text": "The reign took place after the year 1773 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 73
+    },
+    {
+      "above_ids": [
+        5332,
+        4521,
+        5774
+      ],
+      "above_values": [
+        85,
+        86,
+        87
+      ],
+      "case_id": "year-direction-04-reign-after-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-04-reign-after-low",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        6469,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        5999,
+        5705,
+        5332
+      ],
+      "local_above_values": [
+        83,
+        84,
+        85
+      ],
+      "local_below_ids": [
+        3720,
+        1795,
+        6659
+      ],
+      "local_below_values": [
+        79,
+        80,
+        81
+      ],
+      "middle_ids": [
+        4304,
+        3324,
+        3695
+      ],
+      "middle_values": [
+        76,
+        77,
+        78
+      ],
+      "pair_index": 3,
+      "pair_noun_index": 7,
+      "rotation": 0,
+      "text": "The reign took place after the year 1782 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 82
+    },
+    {
+      "above_ids": [
+        5332,
+        4521,
+        5774
+      ],
+      "above_values": [
+        85,
+        86,
+        87
+      ],
+      "case_id": "year-direction-04-reign-before-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-04-reign-before-high",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        4790,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        4524,
+        2425,
+        4304
+      ],
+      "local_above_values": [
+        74,
+        75,
+        76
+      ],
+      "local_below_ids": [
+        2154,
+        4869,
+        4761
+      ],
+      "local_below_values": [
+        70,
+        71,
+        72
+      ],
+      "middle_ids": [
+        4304,
+        3324,
+        3695
+      ],
+      "middle_values": [
+        76,
+        77,
+        78
+      ],
+      "pair_index": 3,
+      "pair_noun_index": 7,
+      "rotation": 1,
+      "text": "The reign took place before the year 1773 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 73
+    },
+    {
+      "above_ids": [
+        5332,
+        4521,
+        5774
+      ],
+      "above_values": [
+        85,
+        86,
+        87
+      ],
+      "case_id": "year-direction-04-reign-before-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-04-reign-before-low",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        6469,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        5999,
+        5705,
+        5332
+      ],
+      "local_above_values": [
+        83,
+        84,
+        85
+      ],
+      "local_below_ids": [
+        3720,
+        1795,
+        6659
+      ],
+      "local_below_values": [
+        79,
+        80,
+        81
+      ],
+      "middle_ids": [
+        4304,
+        3324,
+        3695
+      ],
+      "middle_values": [
+        76,
+        77,
+        78
+      ],
+      "pair_index": 3,
+      "pair_noun_index": 7,
+      "rotation": 2,
+      "text": "The reign took place before the year 1782 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 82
+    },
+    {
+      "above_ids": [
+        5332,
+        4521,
+        5774
+      ],
+      "above_values": [
+        85,
+        86,
+        87
+      ],
+      "case_id": "year-direction-04-reign-near-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-04-reign-near-high",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        4790,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        4524,
+        2425,
+        4304
+      ],
+      "local_above_values": [
+        74,
+        75,
+        76
+      ],
+      "local_below_ids": [
+        2154,
+        4869,
+        4761
+      ],
+      "local_below_values": [
+        70,
+        71,
+        72
+      ],
+      "middle_ids": [
+        4304,
+        3324,
+        3695
+      ],
+      "middle_values": [
+        76,
+        77,
+        78
+      ],
+      "pair_index": 3,
+      "pair_noun_index": 7,
+      "rotation": 3,
+      "text": "The reign took place near the year 1773 in the year 17",
+      "year_index": 0,
+      "year_position": 8,
+      "year_role": "low",
+      "year_suffix": 73
+    },
+    {
+      "above_ids": [
+        5332,
+        4521,
+        5774
+      ],
+      "above_values": [
+        85,
+        86,
+        87
+      ],
+      "case_id": "year-direction-04-reign-near-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 4,
+      "donor_case_id": "year-direction-04-reign-near-low",
+      "event": "reign",
+      "final_position": 12,
+      "input_ids": [
+        464,
+        13580,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        6469,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "local_above_ids": [
+        5999,
+        5705,
+        5332
+      ],
+      "local_above_values": [
+        83,
+        84,
+        85
+      ],
+      "local_below_ids": [
+        3720,
+        1795,
+        6659
+      ],
+      "local_below_values": [
+        79,
+        80,
+        81
+      ],
+      "middle_ids": [
+        4304,
+        3324,
+        3695
+      ],
+      "middle_values": [
+        76,
+        77,
+        78
+      ],
+      "pair_index": 3,
+      "pair_noun_index": 7,
+      "rotation": 0,
+      "text": "The reign took place near the year 1782 in the year 17",
+      "year_index": 1,
+      "year_position": 8,
+      "year_role": "high",
+      "year_suffix": 82
+    }
+  ],
+  "conditions": [
+    "after",
+    "before",
+    "near"
+  ],
+  "events": [
+    "war",
+    "reign"
+  ],
+  "known_exposure_sha256": "e5734470ccd3b4e2655c91608caf8ffa158fa8650ff0bdd7f5aeaa1028046f3a",
+  "known_exposure_version": "distilgpt2-development-exposures-v17",
+  "max_block_snapshot_bytes": 47185920,
+  "max_logit_bytes": 67545408,
+  "model_id": "distilbert/distilgpt2",
+  "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "numeric_ids": [
+    405,
+    486,
+    2999,
+    3070,
+    3023,
+    2713,
+    3312,
+    2998,
+    2919,
+    2931,
+    940,
+    1157,
+    1065,
+    1485,
+    1415,
+    1314,
+    1433,
+    1558,
+    1507,
+    1129,
+    1238,
+    2481,
+    1828,
+    1954,
+    1731,
+    1495,
+    2075,
+    1983,
+    2078,
+    1959,
+    1270,
+    3132,
+    2624,
+    2091,
+    2682,
+    2327,
+    2623,
+    2718,
+    2548,
+    2670,
+    1821,
+    3901,
+    3682,
+    3559,
+    2598,
+    2231,
+    3510,
+    2857,
+    2780,
+    2920,
+    1120,
+    4349,
+    4309,
+    4310,
+    4051,
+    2816,
+    3980,
+    3553,
+    3365,
+    3270,
+    1899,
+    5333,
+    5237,
+    5066,
+    2414,
+    2996,
+    2791,
+    3134,
+    3104,
+    3388,
+    2154,
+    4869,
+    4761,
+    4790,
+    4524,
+    2425,
+    4304,
+    3324,
+    3695,
+    3720,
+    1795,
+    6659,
+    6469,
+    5999,
+    5705,
+    5332,
+    4521,
+    5774,
+    3459,
+    4531,
+    3829,
+    6420,
+    5892,
+    6052,
+    5824,
+    3865,
+    4846,
+    5607,
+    4089,
+    2079
+  ],
+  "pairs": [
+    [
+      7,
+      16
+    ],
+    [
+      29,
+      38
+    ],
+    [
+      51,
+      60
+    ],
+    [
+      73,
+      82
+    ]
+  ],
+  "planned_forwards": 336,
+  "protocol_revision": "e5f71eb66e233a54f1171d1e6f489c0fca587156",
+  "protocol_sha256": "68f028e401fd4c43d1cac89772da10c92cf5e5de7af30c4043c18c21678b902e",
+  "schema": "distilgpt2-explicit-year-direction-cases-v1",
+  "tokenizer_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+  "year_roles": [
+    "low",
+    "high"
+  ]
+}
