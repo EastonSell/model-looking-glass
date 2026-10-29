@@ -5,6 +5,7 @@ establish CUDA ownership, identity or safety.
 """
 
 import hashlib
+from pathlib import Path
 
 from .bert_gpu_evidence import write_json_new
 
@@ -58,7 +59,7 @@ class PilotExecutor:
     def __init__(self, *, torch, check, synchronize, snapshot, reset_peaks, directory, roots,
                  device='cuda:0', vocab_size=50257, load_limit=512 * MIB, job_limit=1024 * MIB):
         self.torch, self.check, self.synchronize = torch, check, synchronize
-        self.snapshot, self.reset_peaks, self.directory, self.roots = snapshot, reset_peaks, directory, roots
+        self.snapshot, self.reset_peaks, self.directory, self.roots = snapshot, reset_peaks, Path(directory), roots
         self.device, self.vocab_size = device, vocab_size
         self.limits = (load_limit, job_limit)
         self.index, self.current, self.before, self.forward_count = 0, None, None, 0
