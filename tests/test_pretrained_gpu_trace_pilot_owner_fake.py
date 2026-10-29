@@ -1,8 +1,10 @@
 """Exercise the actual owner lifecycle with a tiny CPU model and fake CUDA."""
 
 import gc
+import json
 from types import SimpleNamespace
 
+import pytest
 import torch
 from transformers import GPT2Config, GPT2LMHeadModel
 
@@ -10,11 +12,15 @@ from looking_glass import pretrained, pretrained_gpu_trace_pilot as owner
 from looking_glass import pretrained_gpu_trace_pilot_runtime as runtime
 
 
-def test_actual_measurement_lifecycle_with_tiny_cpu_model_and_fake_device(tmp_path, monkeypatch):
-    session, lease = object(), object()
+@pytest.mark.parametrize('entry', [False, True])
+def test_actual_measurement_lifecycle_with_tiny_cpu_model_and_fake_device(tmp_path, monkeypatch, entry):
+    session = SimpleNamespace(identity=SimpleNamespace(workspace_root=str(tmp_path)), run_id='fake-supervisor',
+                              device_lease_path=tmp_path / 'fake-device.lock')
+    lease = object()
     roots = {'session': session, 'lease': lease, 'gc_disabled': True, 'claims_ready': False,
              'budget': None, 'resident': None, 'job': None, 'pending_return': None,
-             'model': None, 'bundle': None, 'executor': None, 'stage': 'entry', 'cuda_pending': False}
+             'model': None, 'bundle': None, 'executor': None, 'stage': 'entry', 'cuda_pending': False,
+             'sync_pending': False, 'entered': False, 'failure': None, 'diagnostic_failure': None}
     monkeypatch.setattr(owner, '_ROOT', roots)
     monkeypatch.setattr(owner.OwnerSession, 'check', lambda *_a: None)
     monkeypatch.setattr(owner.OwnerSession, 'verify_runtime_binding', lambda *_a, **_k: None)
@@ -63,16 +69,46 @@ def test_actual_measurement_lifecycle_with_tiny_cpu_model_and_fake_device(tmp_pa
         def __init__(self, **kwargs):
             super().__init__(**kwargs, device='cpu', vocab_size=6767)
     monkeypatch.setattr(runtime, 'PilotExecutor', CpuExecutor)
+    attested = []
+    if entry:
+        from copy import deepcopy
+        commit = 'a' * 40
+        monkeypatch.setattr(owner, '_startup', lambda: None)
+        monkeypatch.setattr(owner, '_pristine', lambda: None)
+        monkeypatch.setattr(owner.OwnerSession, 'from_environment', lambda: session)
+        monkeypatch.setattr(owner.OwnerSession, 'attest_clean', lambda *_a: attested.append(True))
+        monkeypatch.setattr(owner.DeviceLease, 'acquire', lambda *_a, **_k: lease)
+        monkeypatch.setattr(owner, '_validate_workspace_spec', lambda *_a: None)
+        monkeypatch.setattr(owner, '_validate_workspace_binding', lambda *_a: None)
+        monkeypatch.setattr(owner, '_validate_runtime_dirs', lambda *_a: None)
+        monkeypatch.setattr(owner, '_workspace_root', lambda *_a: tmp_path)
+        monkeypatch.setattr(owner, '_cache_path', lambda *_a: tmp_path)
+        monkeypatch.setattr(owner, '_source_identity', lambda *_a: (commit, {}))
+        monkeypatch.setattr(owner, '_verify_offline_cache', lambda *_a: None)
+        original_validate = owner._validate_saved
+        def validate(directory, measurement):
+            adjusted = deepcopy(measurement)
+            adjusted['runtime']['device'] = 'cpu'
+            return original_validate(directory, adjusted, hidden=8, vocab=6767, device='cpu')
+        monkeypatch.setattr(owner, '_validate_saved', validate)
     (tmp_path / 'stage').mkdir()
     was_enabled, old_collect = gc.isenabled(), gc.collect
     gc.disable()
     gc.collect = owner._forbid_collection
     try:
-        result = owner._measure(session, lease, torch, tmp_path, tmp_path)
+        if entry:
+            code = owner.main(['--owner', str(tmp_path), str(tmp_path), 'fake-run', commit, 'fake-git'])
+            failure = tmp_path / 'failure.json'
+            assert code == 0, failure.read_text() if failure.exists() else 'missing candidate'
+            result = json.loads((tmp_path / 'candidate.json').read_bytes())['measurement']
+            assert attested == [True] and (tmp_path / 'final.json').is_file()
+        else:
+            result = owner._measure(session, lease, torch, tmp_path, str(tmp_path))
         assert result['forward_count'] == 10 and result['model_input_trace_weakrefs_dead'] is True
         assert result['active_memory_leases'] == 0 and result['cleanup']['reserved_bytes'] == 0
-        result['runtime']['device'] = 'cpu'  # Only this fabricated executor used CPU tensors.
-        assert owner._validate_saved(tmp_path, result, hidden=8, vocab=6767, device='cpu') == 10
+        if not entry:
+            result['runtime']['device'] = 'cpu'  # Only this fabricated executor used CPU tensors.
+            assert owner._validate_saved(tmp_path, result, hidden=8, vocab=6767, device='cpu') == 10
     finally:
         gc.collect = old_collect
         if was_enabled:
