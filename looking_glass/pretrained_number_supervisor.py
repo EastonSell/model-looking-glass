@@ -153,8 +153,9 @@ def run_discovery(*, model, attempt_dir, plan_bytes, source_commit, plan_sha256,
     """Execute one local, non-resumable discovery attempt on an owned CPU model.
 
     Limits are this phase's reserved shares of the global 512 MiB logical
-    tensor cap and 1 GiB physical evidence allowance. The caller must reserve
-    them across all tracks and check the whole-study free-space requirement.
+    tensor cap and a separately reserved physical evidence allowance. The caller
+    must reserve them across all tracks and check the whole-study free-space
+    requirement.
     """
     if (type(logical_limit_bytes) is not int or not _FORWARD_RESERVE <= logical_limit_bytes <= _STUDY_LIMIT
             or type(disk_limit_bytes) is not int or not _FINAL_DISK_RESERVE <= disk_limit_bytes <= _DISK_LIMIT):
