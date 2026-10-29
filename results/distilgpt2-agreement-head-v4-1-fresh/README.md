@@ -26,7 +26,7 @@ The following are post-hoc next-token distribution summaries over all 50,257 sav
 | 4 | 0.0053694 | 0.0059681 | 0.0792034 |
 | 8 | 0.0020777 | 0.0020072 | 0.0125037 |
 
-TV is total variation between softmax distributions. A larger overall distribution change does not establish that the change is agreement-specific, and no continuation was generated.
+TV is total variation between softmax distributions. An independent saved-logit calculation reproduced these summaries; see `independent-vocabulary-review.json`. A larger overall distribution change does not establish that the change is agreement-specific, and no continuation was generated.
 
 ## Evidence and scope
 
