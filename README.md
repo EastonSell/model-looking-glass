@@ -14,6 +14,7 @@ The roadmap is a research plan, not a claim that its milestones are complete. Th
 - The [trace schema](docs/TRACE_SCHEMA.md) records execution coordinates separately from tensor values and hypotheses. Unknown coordinates remain unknown.
 - The [fair queue](docs/FAIR_QUEUE.md) rotates among admitted teams; it does not by itself guarantee admission fairness or equal GPU time.
 - The [memory budget](docs/MEMORY_BUDGET.md) tracks conservative leases and trace allowances. Estimates and logical byte counts are not peak-memory guarantees or proof of device enforcement.
+- The [resident worker](docs/RESIDENT_WORKER.md) and [broker](docs/BROKER.md) reuse one trusted model for queued in-process forwards. Their current execution is serial; cross-process GPU service and concurrent device throughput require separate integration and validation.
 - The [experiment registry](docs/REGISTRY.md) records manifests, artifacts and terminal states. [Research cases](docs/RESEARCH_CASES.md), [localization](docs/LOCALIZATION.md), and [causal metrics](docs/CAUSAL_METRICS.md) support controlled, reproducible evaluations; the public held-out cases are not a protected blind benchmark.
 
 These components have their own tests and limits; their presence alone does not establish end-to-end model sharing, causal discovery, or GPU throughput.
@@ -43,6 +44,10 @@ All channels use genuine identity taps. There is no floating-point cancellation 
 5. Complete per-call runtime, event counts and exact bytes of saved tensor values. Saved bytes are **not peak memory**.
 
 The initial model is a small randomly initialized residual network with a controlled route. It is not a pretrained language model. Trace labels identify instrumented boundaries, not a unique last neuron or the model's reasoning.
+
+## Exploratory intervention study
+
+The [synthetic causal v1 study](docs/CAUSAL_RESULTS_V1.md) records fixed predictions and tests clean-state patches on 16 public held-out inputs. Its selected injection-site patch and the single random draw, a final-state patch, produced the same measured scalar effects, illustrating why restoration alone does not identify a unique cause. One held-out vector was previously used during development, so the result is explicitly exploratory; the raw run and protocol clarification are preserved alongside the report.
 
 ## Run locally
 
