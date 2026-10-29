@@ -114,7 +114,7 @@ class TraceBatchOwnerTests(unittest.TestCase):
         def interrupt_return(method):
             code = method.__func__.__code__
             offset = next(item.offset for item in dis.get_instructions(code)
-                          if item.opname == "RETURN_VALUE")
+                          if item.opname in ("RETURN_VALUE", "RETURN_CONST"))
             def trace(frame, event, arg):
                 if event == "call":
                     frame.f_trace_opcodes = True
@@ -122,6 +122,18 @@ class TraceBatchOwnerTests(unittest.TestCase):
                     sys.settrace(None)
                     raise KeyboardInterrupt("lost successful return")
                 return trace
+            def prime(frame, event, arg):
+                if event == "call":
+                    frame.f_trace_opcodes = True
+                return prime
+            def warmup():
+                return None
+            try:
+                # CPython 3.12 can omit opcode events in the first session.
+                sys.settrace(prime)
+                warmup()
+            finally:
+                sys.settrace(None)
             try:
                 sys.settrace(trace)
                 with self.assertRaises(KeyboardInterrupt):
