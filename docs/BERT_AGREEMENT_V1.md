@@ -117,6 +117,13 @@ The separate four-forward GPU calibration in
 `results/bert-gpu-calibration-v1-20261029/` used only the previously exposed
 `farmer`/`farmers` rows with plural `nurses`; it added no unique input rows and
 is device/resource evidence, not a held-out behavioral result.
+The subsequent supervised CPU retry is preserved in
+`results/bert-agreement-supervised-dev-v1-20261028/`. It reused the same eight
+development-family-1 rows. The append-only v3 snapshot in
+`experiments/bert_agreement_exposures_v3.json`, SHA-256
+`6945a478e3af37083af055bf20bf65628fa979e0ee8b253ea8bacb475cb9e9f2`,
+records that retry and is the cited pre-evaluation snapshot. It does not
+certify all prior exposure or replace later attempt records.
 
 Held-out families use the distinct template `The {subject} beside the
 {distractor} [MASK] ready.` and ordered pairs `(painter, artist)`, `(actor,
@@ -139,7 +146,9 @@ attempt under the same frozen protocol and source, never a pristine first
 evaluation; do not alter sites, examples, controls or thresholds in response
 to partial results. The first complete evaluation attempt is the primary
 result; any later complete runs under the same protocol are separately labeled
-replays. Retain all attempts and report which were inspected and the retry order.
+replays. If any prior attempt may have started, the first complete result is
+also a repeat and must not be described as a clean first-exposure result. Retain
+all attempts and report which were inspected and the retry order.
 
 ## Interventions and comparisons
 
@@ -219,7 +228,14 @@ For singular targets the raw `is`/`are` odds move in the opposite direction
 from the aligned contrast. The separate location-specificity prediction is that the candidate's
 family-mean average exceeds the matched block-2 distractor effect by more than
 0.1; it can fail independently of the directional hypothesis. Report each
-random site's family means and contrast as descriptive baselines.
+random site's family means and candidate-minus-site contrasts as descriptive
+baselines. For each family compute `math.fsum((candidate_family_mean,
+-comparison_family_mean))`; for the aggregate contrast compute
+`math.fsum((candidate_site_mean, -comparison_site_mean))`. Also report
+`math.fsum(family_contrasts) / 8.0` in the fixed family order. This arithmetic
+mean may differ slightly from the difference of site means by rounding; the
+prespecified specificity decision uses the latter. Do not infer significance
+from these descriptive values.
 
 All 32 target cases, including model mistakes, remain in both the data and
 effect summary. Report baseline agreement accuracy and mean margins for all
@@ -290,6 +306,61 @@ owner is incomplete. The failure record identifies a bounded controller stage
 and distinguishes the original failure,
 reap/cleanup failure and any validated owner failure where available. A later
 retry uses a fresh directory and is a separate attempt.
+
+The CPU evaluation uses the fixed, machine-specific root identities in
+`experiments/bert_agreement_cpu_evaluation_v1.json`: distinct cooperative CPU
+custody roots for the controller and model owner, and a persistent attempt
+ledger. Their path hashes identify the
+chosen roots and are not secrets. The controller acquires the ledger's
+cross-process lock, validates the cited v3 snapshot and exact 64 target/donor
+rows, and publishes a no-clobber reservation before granting a child. Each
+reservation binds the source, protocol, checkpoint, manifest, roots, controller
+PID and supervisor birth token, exact rows, and hashes of all prior attempt
+records. At most 32 attempts are allowed. A possibly started attempt makes all
+64 rows potentially exposed; completed-forward records describe a narrower
+observed subset and must not erase that conservative accounting.
+
+The source-isolated launcher uses the separate controller root and the reviewed
+private launch grant before the controller can claim its lease. The controller
+claims before source preflight, reservation, or model-capable imports. The
+launcher supervises the exact direct child, whose parent watchdog exits if the
+launcher dies; a lost spawn, cancellation or uncertain teardown retains the
+controller root's unsafe marker. The controller retains that lease through
+exit and attests only after the inner owner is reaped or known never started
+and its ledger session is released. The trusted controller holds its ledger session through owner launch, reaping,
+journal audit and terminal publication. The owner separately claims the CPU
+supervisor session before model dependencies, verifies its direct parent and
+birth token, and checks that the ledger lock is contended. Contention alone
+does not identify the lock holder; ownership depends on the trusted controller
+retaining its session. The supervisor's parent watchdog and the sticky CPU
+custody marker are separate controls. A missing reservation, uncertain owner,
+partial record, absent local controller-exit observation or contradictory
+failure sidecar blocks an automatic retry. The launcher records its observed
+reaped controller exit only after clean controller custody; the observation
+must match the controller PID and supervisor run ID in the reservation.
+The inner owner-start and candidate records bind the inner supervisor run ID
+to the controller's reaped-owner observation. These are cooperative checks.
+The launcher publishes its local exit observation separately;
+it is cooperative evidence, not independent process attestation. The launcher
+uses a new local work directory for the controller and its TEMP/TMP, and
+omits `SYSTEMDRIVE` from their sanitized environment to contain the observed
+unexpanded relative cache path. Absolute filesystem writes are not sandboxed.
+
+File contents are flushed before atomic no-clobber publication, but directory
+entries are not proven durable across OS crashes or power loss. After such an
+event, reconcile the externally preserved attempt history and custody state
+before any retry; this ledger does not establish a complete history after a
+filesystem failure. Its locks and records require cooperating processes and a
+trusted filesystem, not a hostile-process boundary.
+
+Before a later retry, completed prior attempts are re-audited against the
+canonical manifest and their full recorded schedule; source, runtime, model,
+custody, artifact and exit records must agree. That read-only controller audit
+may import the pinned Torch runtime with CUDA masked, checks PyTorch CUDA state
+and caller-thread denormal mode, and performs no model forward. Its runtime is
+recorded in the next reservation. These checks do not attest system-wide GPU
+inactivity. The 16 MiB journal limit bounds stored bytes, not the larger host
+memory needed for decoded JSON, Python objects and Torch during re-audit.
 
 For a development-only CPU run on Windows, use the base interpreter behind
 the installed virtual environment, the virtual environment's `site-packages`,
