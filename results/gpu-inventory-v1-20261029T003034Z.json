@@ -1,0 +1,63 @@
+{
+  "schema_version": "model-looking-glass.gpu-inventory.v1",
+  "classification": "point-in-time hardware inventory; not a performance benchmark",
+  "gpu_snapshot": {
+    "source": "nvidia-smi --query-gpu=timestamp,name,memory.total,memory.reserved,memory.used,memory.free,driver_version --format=csv,noheader,nounits",
+    "query_started_utc": "2026-10-29T00:30:34.378Z",
+    "query_finished_utc": "2026-10-29T00:30:34.466Z",
+    "reported_local_timestamp": "2026-10-28 17:30:34.453",
+    "local_timezone": "America/Los_Angeles",
+    "name": "NVIDIA GeForce RTX 2070 SUPER",
+    "memory_total_mib": 8192,
+    "memory_reserved_mib": 203,
+    "memory_used_mib": 1424,
+    "memory_free_mib": 6566,
+    "driver_version": "616.92"
+  },
+  "driver_header": {
+    "source": "first three lines of nvidia-smi output",
+    "reported_local_timestamp": "2026-10-28 17:30:47",
+    "local_timezone": "America/Los_Angeles",
+    "nvidia_smi_version": "616.92",
+    "kmd_version": "616.92",
+    "cuda_umd_version": "13.4"
+  },
+  "software_snapshot": {
+    "query_started_utc": "2026-10-29T00:30:34.394Z",
+    "query_finished_utc": "2026-10-29T00:30:37.888Z",
+    "python_implementation": "CPython",
+    "python_version": "3.11.15",
+    "pytorch_version": "2.8.0+cu128",
+    "pytorch_compiled_cuda_version": "12.8",
+    "machine_architecture": "AMD64"
+  },
+  "machine_snapshot": {
+    "source": "Windows CIM Win32_OperatingSystem and Win32_Processor selected fields",
+    "timestamp": null,
+    "timestamp_note": "collected in the same session; exact query time was not recorded",
+    "os_caption": "Microsoft Windows 11 Pro",
+    "os_version": "10.0.26200",
+    "os_build": "26200",
+    "os_architecture": "64-bit",
+    "cpu_name": "AMD Ryzen 9 5900X 12-Core Processor",
+    "cpu_physical_cores": 12,
+    "cpu_logical_processors": 24,
+    "os_visible_memory_kib": 67032384
+  },
+  "earlier_ad_hoc_cuda_smoke": {
+    "local_date": "2026-10-28",
+    "exact_timestamp_utc": null,
+    "provenance": "earlier coordinated setup smoke reported in the session; no raw result file or timing samples were saved",
+    "status": "passed",
+    "gpu_name": "NVIDIA GeForce RTX 2070 SUPER",
+    "compute_capability": [7, 5],
+    "pytorch_version": "2.8.0+cu128",
+    "pytorch_compiled_cuda_version": "12.8",
+    "cuda_reported_free_bytes_at_query": 7477395456,
+    "cuda_reported_total_bytes_at_query": 8589606912,
+    "operation": "multiply a two-element CUDA tensor [1.0, 2.0] by 2, synchronize, and verify [2.0, 4.0]",
+    "explicit_cuda_synchronize": true,
+    "benchmark": false
+  },
+  "privacy": "No usernames, process paths, process lists, secrets, or physical GPU UUIDs are included."
+}
