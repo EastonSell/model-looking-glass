@@ -376,6 +376,34 @@ def test_parent_and_verified_reader_accept_full_fabricated_bundle_and_reject_wro
     assert parent.assess_result(tmp_path, 0, source, source, True)["status"] == "incomplete"
     records = [json.loads(line) for line in original.splitlines()]
     action = next(e for e in records if e.get("event") == "forward_complete" and e.get("mode") == "ingredient_matched")
+    action["summary"].update(mask_logits_sha256="d" * 64, sweet_probability=0.4, sour_probability=0.1)
+    changed = b"".join((json.dumps(record) + "\n").encode() for record in records)
+    journal.write_bytes(changed)
+    altered = copy.deepcopy(result)
+    reported = next(e for e in altered["effects"] if e["recipient"] == action["row_id"]
+                    and e["layer"] == action["layer"] and e["mode"] == "ingredient_matched")
+    reported["summary"] = copy.deepcopy(action["summary"])
+    altered["journals"]["coffee.jsonl"] = {"size": len(changed), "sha256": hashlib.sha256(changed).hexdigest()}
+    result_path.write_text(json.dumps(altered), encoding="utf-8")
+    assert parent.assess_result(tmp_path, 0, source, source, True)["status"] == "incomplete"
+    records = [json.loads(line) for line in original.splitlines()]
+    action = next(e for e in records if e.get("event") == "forward_complete" and e.get("mode") == "ingredient_matched")
+    baseline = next(e for e in records if e.get("event") == "forward_complete"
+                    and e.get("mode") == "capture_ingredient" and e.get("layer") == 0
+                    and e.get("row_id") == action["row_id"])
+    assert action["summary"]["mask_logits_sha256"] == baseline["summary"]["mask_logits_sha256"]
+    action["summary"]["sweet_probability"] = 0.0
+    changed = b"".join((json.dumps(record) + "\n").encode() for record in records)
+    journal.write_bytes(changed)
+    altered = copy.deepcopy(result)
+    reported = next(e for e in altered["effects"] if e["recipient"] == action["row_id"]
+                    and e["layer"] == action["layer"] and e["mode"] == "ingredient_matched")
+    reported["summary"]["sweet_probability"] = 0.0
+    altered["journals"]["coffee.jsonl"] = {"size": len(changed), "sha256": hashlib.sha256(changed).hexdigest()}
+    result_path.write_text(json.dumps(altered), encoding="utf-8")
+    assert parent.assess_result(tmp_path, 0, source, source, True)["status"] == "incomplete"
+    records = [json.loads(line) for line in original.splitlines()]
+    action = next(e for e in records if e.get("event") == "forward_complete" and e.get("mode") == "ingredient_matched")
     wrong = base64.b64encode(struct.pack("<768f", 0., 1., *([0.] * 766))).decode("ascii")
     action["source_float32_le_base64"] = action["after_float32_le_base64"] = wrong
     changed = b"".join((json.dumps(record) + "\n").encode() for record in records)
