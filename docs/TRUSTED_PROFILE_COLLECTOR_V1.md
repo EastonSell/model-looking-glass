@@ -74,10 +74,12 @@ attestation or during quarantine. The supervisor observes its process exit.
 
 When the driver inventory subprocess fails, the private failure record may also
 contain its command, exit status, up to 4 KiB each of captured stdout and stderr,
-and a bounded allowlist of its launch environment. These fields can contain
-device identifiers or paths and remain private. The retained-size limit is not
-a bound on the subprocess's temporary output allocation. Missing diagnostics
-do not establish the cause, and collection does not retry or clear quarantine.
+and a bounded allowlist of the parent environment observed while handling the
+failure. That observation is not a verified snapshot of the subprocess's launch
+environment. These fields can contain device identifiers or paths and remain
+private. The retained-size limit is not a bound on the subprocess's temporary
+output allocation. Missing diagnostics do not establish the cause, and
+collection does not retry or clear quarantine.
 
 CPU tests use fake device callbacks and a real CPU worker/IPC frame; they do
 not establish GPU behavior. The versioned protocol also records source and
