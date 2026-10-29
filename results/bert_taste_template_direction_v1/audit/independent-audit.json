@@ -1,0 +1,134 @@
+{
+  "eligibility_descriptive": {
+    "chocolate-after": true,
+    "chocolate-with": false,
+    "cream-after": true,
+    "cream-with": true,
+    "dessert-after": false,
+    "dessert-with": false,
+    "rice-after": true,
+    "rice-with": false,
+    "salad-after": false,
+    "salad-with": true,
+    "syrup-after": true,
+    "syrup-with": true
+  },
+  "final_block_controls": 24,
+  "forwards": 336,
+  "journals": {
+    "chocolate.jsonl": {
+      "sha256": "6149aabb3247357cd043609d562b1cba2d1d3a9d5bb306f2abaf31e463644cb4",
+      "size": 1504164
+    },
+    "cream.jsonl": {
+      "sha256": "294b9d80ec22edd61f4458f52bb5d39460d8f5857f78e38e8f643f3ddda19900",
+      "size": 1502926
+    },
+    "dessert.jsonl": {
+      "sha256": "1a035c17bb0a58205734b63dd79a06fe25999909e96e1b448b96d6b9f2fa0852",
+      "size": 1503784
+    },
+    "rice.jsonl": {
+      "sha256": "5719c7bdf647e4fdbcd1c92d32ae7287682d490f8a29e10b84a315284075241a",
+      "size": 1502528
+    },
+    "salad.jsonl": {
+      "sha256": "62e41587c3d4e36f2362da594f439b7ac78c491c8804febfb8e2eebf0563f2c8",
+      "size": 1503099
+    },
+    "syrup.jsonl": {
+      "sha256": "a366d49c7e10db57642c4b580008e77fd1f3f3b070ce16371fdb44e910ca8871",
+      "size": 1502972
+    }
+  },
+  "limitations": [
+    "Saved-record consistency does not independently attest execution.",
+    "Whole-output untouched coordinates and patched full-logit vectors were not retained.",
+    "The saved top-five token strings are not independently mapped to the pinned vocabulary.",
+    "Recomputed baseline probabilities are checked with relative and near-underflow ULP tolerances."
+  ],
+  "manifest_sha256": "e59f5e1da0b3ce8c99ea9c231b4998e1c1e685d09c20bff4fdb734dc4910256f",
+  "matched_actions": 144,
+  "means": {
+    "after": 0.08496491114298503,
+    "direction_main": 0.011770248413085938,
+    "direction_specificity_after": 0.040382583936055504,
+    "direction_specificity_template_difference": 0.0040430426597595215,
+    "direction_specificity_with": 0.03633954127629598,
+    "template_difference": 0.017387866973876953,
+    "template_direction_interaction": 0.01639238993326823,
+    "with": 0.06757704416910808
+  },
+  "result_sha256": "b7667ad827ff7e9a1380acfcfcad3dd14150be49751a129348f92b5f829276a3",
+  "self_controls": 48,
+  "status": "saved-record-consistency-pass",
+  "stem_summaries": [
+    {
+      "after": 0.07135248184204102,
+      "direction_main": 0.020940780639648438,
+      "direction_specificity_after": 0.04181480407714844,
+      "direction_specificity_template_difference": -0.0008542537689208984,
+      "direction_specificity_with": 0.042669057846069336,
+      "stem": "chocolate",
+      "template_difference": 0.022909164428710938,
+      "template_direction_interaction": 0.021459579467773438,
+      "with": 0.04844331741333008
+    },
+    {
+      "after": 0.09981155395507812,
+      "direction_main": 0.01072549819946289,
+      "direction_specificity_after": 0.07267928123474121,
+      "direction_specificity_template_difference": 0.04644513130187988,
+      "direction_specificity_with": 0.026234149932861328,
+      "stem": "rice",
+      "template_difference": 0.020993709564208984,
+      "template_direction_interaction": 0.02685832977294922,
+      "with": 0.07881784439086914
+    },
+    {
+      "after": 0.09318399429321289,
+      "direction_main": 0.0017218589782714844,
+      "direction_specificity_after": 0.02842426300048828,
+      "direction_specificity_template_difference": 0.011362552642822266,
+      "direction_specificity_with": 0.017061710357666016,
+      "stem": "salad",
+      "template_difference": 0.015963077545166016,
+      "template_direction_interaction": 0.008246421813964844,
+      "with": 0.07722091674804688
+    },
+    {
+      "after": 0.06792497634887695,
+      "direction_main": 0.0141754150390625,
+      "direction_specificity_after": 0.02769303321838379,
+      "direction_specificity_template_difference": -0.007425785064697266,
+      "direction_specificity_with": 0.035118818283081055,
+      "stem": "syrup",
+      "template_difference": -6.103515625e-05,
+      "template_direction_interaction": 0.017515182495117188,
+      "with": 0.06798601150512695
+    },
+    {
+      "after": 0.07664155960083008,
+      "direction_main": 0.0013899803161621094,
+      "direction_specificity_after": 0.0519719123840332,
+      "direction_specificity_template_difference": 0.011426091194152832,
+      "direction_specificity_with": 0.04054582118988037,
+      "stem": "dessert",
+      "template_difference": 0.017447948455810547,
+      "template_direction_interaction": 0.004061698913574219,
+      "with": 0.05919361114501953
+    },
+    {
+      "after": 0.1008749008178711,
+      "direction_main": 0.021667957305908203,
+      "direction_specificity_after": 0.019712209701538086,
+      "direction_specificity_template_difference": -0.03669548034667969,
+      "direction_specificity_with": 0.05640769004821777,
+      "stem": "cream",
+      "template_difference": 0.027074337005615234,
+      "template_direction_interaction": 0.02021312713623047,
+      "with": 0.07380056381225586
+    }
+  ],
+  "stems": 6
+}
