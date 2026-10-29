@@ -72,6 +72,13 @@ the checkpoint, account for subprocess lifetime, and ensure any spawn-free
 replacement exactly matches the frozen v1 environment. Do not weaken process
 accounting to make this preflight pass.
 
+The separate [source-bound rehearsal](TARGETED_EDIT_V2_SOURCE_REHEARSAL.md)
+exercises that path without a checkpoint or forward. It uses one CPU
+supervisor and its pre-grant Windows Job. It is a diagnostic, not a complete
+live-study controller: its parent-held source protections do not survive
+parent death, and it does not establish a manifest, custody receipt, witness,
+or study readiness.
+
 The private condition guard checks the original named parameter identity,
 registered parameter and module identities, parameter gradient/require-grad
 flags, module training flags, forward/backward and state/load-state hook
