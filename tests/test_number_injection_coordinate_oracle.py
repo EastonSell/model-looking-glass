@@ -160,7 +160,7 @@ def reference(site, condition, layer=None, donor=None):
 
 
 class InjectionCoordinateOracle(unittest.TestCase):
-    def test_all_hidden_candidate_orders_and_controls(self):
+    def setUp(self):
         old_threads = torch.get_num_threads()
         torch.set_num_threads(1)
         self.addCleanup(torch.set_num_threads, old_threads)
@@ -169,6 +169,8 @@ class InjectionCoordinateOracle(unittest.TestCase):
         if not torch.set_flush_denormal(False):
             self.skipTest("CPU denormal mode cannot be configured")
         self.addCleanup(torch.set_flush_denormal, was_flushed)
+
+    def test_all_hidden_candidate_orders_and_controls(self):
         token = len(IDS) - 1
         expected_paths = [name for layer in range(6)
                           for name in (f"transformer.h.{layer}.attn", f"transformer.h.{layer}.mlp")]
@@ -291,6 +293,45 @@ class InjectionCoordinateOracle(unittest.TestCase):
                     self.assertEqual(len(executor.completed()), 14)
                 self.assertTrue(all(not module._forward_hooks and not module._forward_pre_hooks
                                     for module in model.modules()))
+
+    def test_local_token_boundaries_with_repeated_ids(self):
+        global IDS
+        original = IDS
+        try:
+            for ids in ((7,), (7,) * 32):
+                with self.subTest(length=len(ids)):
+                    IDS = ids
+                    token = len(ids) - 1
+                    model = Model()
+                    with NumberInjectionExecutor(model, site=3) as executor:
+                        clean = executor.forward(ids, request_id=f"{1:032x}", condition="clean")
+                        injected = executor.forward(ids, request_id=f"{2:032x}", condition="injected")
+                        restored = executor.forward(ids, request_id=f"{3:032x}", condition="clean_to_injected",
+                                                    layer=3, donor=clean.mlp_donor(3))
+                        clean_ref, _, clean_logits = reference(3, "clean")
+                        injected_ref, injected_witnesses, injected_logits = reference(3, "injected")
+                        restored_ref, restored_witnesses, restored_logits = reference(
+                            3, "clean_to_injected", 3, clean_ref["mlp_3"])
+                        for observation, expected, logits in ((clean, clean_ref, clean_logits),
+                                                              (injected, injected_ref, injected_logits),
+                                                              (restored, restored_ref, restored_logits)):
+                            self.assertEqual(observation.logits, logits)
+                            self.assertTrue(all(boundary.token_index == token for boundary in observation.trace))
+                            self.assertEqual(observation.mlp[3], expected["mlp_3"])
+                        self.assertEqual(restored.action.token_index, token)
+                        self.assertEqual(restored.action.output_shape, (1, len(ids), WIDTH))
+                        for request_id, expected in ((injected.request_id, injected_witnesses),
+                                                     (restored.request_id, restored_witnesses)):
+                            actual = [item for item in executor.private_evidence() if item.request_id == request_id]
+                            self.assertEqual({item.operation for item in actual}, set(expected))
+                            for item in actual:
+                                path, before, after, source = expected[item.operation]
+                                self.assertEqual((item.module_path, item.token_index, item.before, item.after, item.donor),
+                                                 (path, token, before, after, source))
+                                start, end = token * WIDTH * 4, (token + 1) * WIDTH * 4
+                                self.assertEqual((before[:start], before[end:]), (after[:start], after[end:]))
+        finally:
+            IDS = original
 
 
 if __name__ == "__main__":
