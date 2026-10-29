@@ -1,4 +1,4 @@
-"""Trusted CPU witness for a final-position GPT-2 head-output ablation.
+"""Trusted CPU witness for a token-position GPT-2 head-output ablation.
 
 The caller owns the model exclusively.  This helper does not authenticate the
 model, reserve workspace, or establish the provenance of the chosen head.
@@ -33,14 +33,16 @@ class HeadProjectionWitness:
     """Observe or alter one head slice entering one projection call.
 
     ``observe`` leaves the original argument untouched. ``noop`` passes an
-    identical clone; ``zero`` passes a clone with one head at the last token
-    zeroed.  All three capture the input actually passed to the projection and
-    the projection output.  Only CPU float32, batch size one and the declared
+    identical clone; ``zero`` passes a clone with one head at a specified token
+    position zeroed (the default is the final position). All three capture the
+    input actually passed to the projection and the projection output. Only
+    CPU float32, batch size one and the declared
     fixed shape are supported.
     """
 
     def __init__(self, projection, *, sequence_length: int, width: int,
-                 heads: int, mode: str, head: int | None = None):
+                 heads: int, mode: str, head: int | None = None,
+                 position: int | None = None):
         if (type(sequence_length) is not int or sequence_length < 1
                 or type(width) is not int or width < 1
                 or type(heads) is not int or heads < 1 or width % heads
@@ -49,14 +51,17 @@ class HeadProjectionWitness:
         if mode == "zero":
             if type(head) is not int or not 0 <= head < heads:
                 raise ValueError("zero mode needs an in-range head")
-        elif head is not None:
-            raise ValueError("only zero mode takes a head")
+            if position is not None and (type(position) is not int or not 0 <= position < sequence_length):
+                raise ValueError("zero mode position must be an in-range integer")
+        elif head is not None or position is not None:
+            raise ValueError("only zero mode takes a head or position")
         self.projection = projection
         self.sequence_length = sequence_length
         self.width = width
         self.heads = heads
         self.mode = mode
         self.head = head
+        self.position = sequence_length - 1 if position is None else position
         self.before = None
         self.after = None
         self.output = None
@@ -85,12 +90,12 @@ class HeadProjectionWitness:
             delivered = value.clone().contiguous()
             if self.mode == "zero":
                 size = self.width // self.heads
-                delivered[0, -1, self.head * size:(self.head + 1) * size] = 0.0
+                delivered[0, self.position, self.head * size:(self.head + 1) * size] = 0.0
         self.after = delivered.detach().clone().contiguous()
         expected = self.before.clone()
         if self.mode == "zero":
             size = self.width // self.heads
-            expected[0, -1, self.head * size:(self.head + 1) * size] = 0.0
+            expected[0, self.position, self.head * size:(self.head + 1) * size] = 0.0
         if not _equal_float_bits(self.after, expected):
             raise ProjectionWitnessError("projection intervention changed other bits")
         if self.mode != "observe":
