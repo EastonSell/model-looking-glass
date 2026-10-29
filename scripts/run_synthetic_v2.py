@@ -208,11 +208,13 @@ def run(checkout, venv, dependencies, work, output, *, rehearsal, timeout):
             "platform_uname": parent_platform}, separators=(",", ":")).encode("ascii")
         if len(frame) > 262144:
             raise launcher.LaunchError("guarded start frame exceeds its bound")
-        quarantine.child.stdin.write(frame)
-        quarantine.child.stdin.close()
-        quarantine.child.stdin = None
         pending = None
         try:
+            # A write or close can raise after the complete frame/EOF reached
+            # the child. Treat the whole handoff as potentially delivered.
+            quarantine.child.stdin.write(frame)
+            quarantine.child.stdin.close()
+            quarantine.child.stdin = None
             if quarantine.child.wait(timeout=timeout):
                 pending = launcher.LaunchError("isolated owner failed; retained evidence may be incomplete")
         except BaseException as error:
@@ -293,6 +295,10 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except SystemExit:
+        # argparse --help and argument errors must keep their standard codes;
+        # cancellations inside run() are already wrapped with their status.
+        raise
     except BaseException as error:
         status = "cancelled" if isinstance(error, (KeyboardInterrupt, SystemExit)) else getattr(error, "status", "failed")
         quarantine = getattr(error, "quarantine", None)

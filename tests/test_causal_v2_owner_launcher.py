@@ -117,6 +117,17 @@ def test_study_bootstrap_rejects_missing_guarded_start_before_project_import(che
     assert not output.with_name(output.name + ".attempt.json").exists()
 
 
+@pytest.mark.parametrize("script", ["run_synthetic_v2.py", "v2_source_launcher.py"])
+def test_help_preserves_successful_exit(checkout, script):
+    repo, _, _, work, _ = checkout
+    base_python = Path(sys.base_prefix) / "python.exe"
+    result = subprocess.run([str(base_python), "-I", "-S", "-B", str(repo / "scripts" / script), "--help"],
+                            capture_output=True, text=True, cwd=work, timeout=15)
+    assert result.returncode == 0
+    assert "usage:" in result.stdout
+    assert result.stderr == ""
+
+
 def test_uncommitted_source_blocks_rehearsal_before_output(checkout):
     (checkout[0] / "looking_glass" / "causal_v2_study_entry.py").write_text("raise AssertionError()\n")
     result = _run(checkout, "--rehearsal")

@@ -354,6 +354,71 @@ class V2SourceLauncherTests(unittest.TestCase):
         self.assertTrue(child.killed)
         self.assertTrue(raised.exception.child_reaped)
 
+    def test_system_exit_during_drain_preserves_code_and_retry_protections(self):
+        spec = importlib.util.spec_from_file_location("v2_launcher_exit_test", ROOT / "scripts" / SCRIPT_FILES[0])
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        class Child:
+            stdin = None
+            killed = False
+            def poll(self):
+                return None if not self.killed else 1
+            def kill(self):
+                self.killed = True
+            def wait(self, timeout):
+                return 1
+        class Job:
+            def __init__(self):
+                self.fail = True
+                self.closed = False
+            def terminate_and_wait(self):
+                if self.fail:
+                    raise SystemExit(7)
+            def close(self):
+                self.closed = True
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory) / "launch"
+            temporary.mkdir()
+            manifest = temporary / "sources.json"
+            manifest.write_bytes(b"{}")
+            quarantine = module.LaunchQuarantine(temporary, manifest)
+            quarantine.child, quarantine.job = Child(), Job()
+            with self.assertRaises(SystemExit) as raised:
+                quarantine.retry_cleanup()
+            self.assertEqual(raised.exception.code, 7)
+            self.assertTrue(raised.exception.child_reaped)
+            self.assertTrue(quarantine.child.killed)
+            self.assertFalse(quarantine.job.closed)
+            self.assertFalse(quarantine.complete)
+            self.assertTrue(manifest.exists())
+            quarantine.job.fail = False
+            quarantine.retry_cleanup()
+            self.assertTrue(quarantine.complete)
+            self.assertFalse(temporary.exists())
+
+    def test_cancellation_survives_unconfirmed_reap_and_newer_cancellation_wins(self):
+        spec = importlib.util.spec_from_file_location("v2_launcher_reap_test", ROOT / "scripts" / SCRIPT_FILES[0])
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        for job_error, reap_error, expected, cause in (
+                (KeyboardInterrupt(), subprocess.TimeoutExpired("child", 5), KeyboardInterrupt, subprocess.TimeoutExpired),
+                (SystemExit(7), subprocess.TimeoutExpired("child", 5), SystemExit, subprocess.TimeoutExpired),
+                (KeyboardInterrupt(), SystemExit(9), SystemExit, KeyboardInterrupt)):
+            with self.subTest(job_error=type(job_error).__name__, reap_error=type(reap_error).__name__):
+                class Child:
+                    stdin = None
+                    def poll(self): return None
+                    def kill(self): pass
+                    def wait(self, timeout): raise reap_error
+                class Job:
+                    def terminate_and_wait(self): raise job_error
+                with self.assertRaises(expected) as raised:
+                    module._stop_and_reap(Child(), Job())
+                self.assertFalse(raised.exception.child_reaped)
+                self.assertIsInstance(raised.exception.__cause__, cause)
+                if isinstance(raised.exception, SystemExit):
+                    self.assertEqual(raised.exception.code, 9 if isinstance(reap_error, SystemExit) else 7)
+
     def test_unknown_sourceless_module_fails_before_execution(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
