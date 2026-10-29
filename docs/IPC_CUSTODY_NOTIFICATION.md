@@ -13,6 +13,89 @@ disposed, or that socket/kernel/client buffers or any external alias were
 released. The guardian must hold its handle, claims and accounting until its
 own separately established completion and disposal conditions are met.
 
+## Experimental owner-completion binding
+
+An authority-bound fixed-workspace owner must pass its exact
+`completion_authority` to `IPCServer`. The server accepts an exact direct
+`Broker`, or an exact `FairIPCBridge` used as its own custody guardian. In
+the fair case, the bridge's pinned target, the target's broker, the broker's
+fair handoff, and the authority's bound broker must all agree. Before startup
+or admission, that bridge must also have rooted this exact server through its
+single-server construction guard. A manually constructed, unrooted fair
+server is rejected. An omitted or
+mismatched authority is rejected for an already bound backend. Genuinely
+unbound legacy backends retain their existing configuration. These are trusted
+in-process identity checks, not protection against code that mutates private
+objects concurrently.
+
+An observed uncertain IPC custody transition calls that authority's
+nonblocking sticky `mark_unsafe()` before setting the IPC quarantine flag and
+before the handler sends a rejection or continues cleanup. This includes an
+uncertain registration, input construction, submission return, observation,
+cancellation, serialization, notification, or handler-bookkeeping failure.
+An outcome with an unexpected broker, job, team or request identity is not
+disclosed; it marks the authority before the failure response and does not
+qualify for a clean handler-close notice.
+Before accepting a submission, the server checks the exact returned direct
+handle's broker/team/request identity, or the fair proxy against its rooted
+connection record. Invalid handles are not used for cancellation. Direct
+request IDs can be reused, so matching handle fields alone do not prove that a
+handle belongs to this particular call: that still depends on the exact
+trusted broker's return contract. A separate pre-registered submission
+identity would be needed to independently recover or prove a lost direct
+handoff. Cancellation returns must be exact booleans; a malformed return is
+uncertain and cannot produce a cancellation acknowledgement.
+The exact direct broker's ordinary rejection is accepted as clean only under
+its own no-unknown-custody contract; exact guardian capacity denial retains
+the no-mutation contract described below. Authority-bound constructor and
+listener/handler setup or teardown failures also signal the owner. If accepted
+socket or handler startup is uncertain, the server reports incomplete
+shutdown; supervised process replacement is needed unless a trusted owner
+separately proves a safe recovery. Startup and accept-loop failure tracebacks
+are rooted when possible, as is an accepted socket after its explicit orphan
+handoff. An interruption after `socket()` or `accept()` returns but before the
+returned object is assigned may leave no recoverable Python reference; the
+unsafe owner requires process-level recovery.
+
+An ordinary `stop_accepting`, `drain`, or `close` timeout returning `False`
+is incomplete and retryable; that result alone does not mark the authority.
+In the current transport, a handler removes its own thread from the server's
+tracked set just before returning. A `True` close result therefore does not
+by itself prove that every handler thread has actually exited or can no longer
+signal a fault. Do not use it as an owner-quiescence or clean-attestation proof;
+the live service remains gated until a separately reviewed exit protocol is
+composed with the owner lifecycle.
+The owner must mark it if its own deadline or custody checks cannot establish
+safe teardown. Bound-server startup and handler checks reject an owner they
+already observe as unsafe, but do not form an atomic admission barrier against
+a racing signal. A broker success decision linearizes at its authority check:
+a fault signaled afterward can precede delivery of a success already decided,
+and does not retract it. Neither the signal nor the local handler notification
+proves that a worker, broker result, socket, serializer, or client alias has
+been disposed. The caller must root a partially constructed server and factory;
+if construction/return or process state is uncertain, keep the service gated
+and use supervised process-level recovery. This primitive does not guarantee
+recovery from arbitrary asynchronous Python interruption. A direct sticky
+fallback covers a one-shot interruption while requesting the unsafe signal;
+it does not establish completion or recovery after repeated interruptions.
+
+The trusted request factory can reject an otherwise valid IPC envelope before
+constructing its request by raising the **exact** `IPCInputRejected` from
+`looking_glass.ipc`. This asserts that its invocation has created no
+request-owned tensors or retained aliases, external side effects, or
+asynchronous/native work. IPC cannot verify that assertion: a factory that
+raises it after such work violates the custody contract. The signal is
+recognized only around the factory call; subclasses and all ordinary factory
+errors remain uncertain. If a validating wrapper calls a downstream factory,
+it must convert an unexpected `IPCInputRejected` escaping that call into an
+ordinary uncertain failure rather than misclassifying it as a clean denial.
+The bounded response is `invalid_request` and does not expose exception text.
+An already registered guardian still receives its normal handler-close notice
+after the handler clears local input references; that notice alone does not
+prove release of a guardian claim. This mechanism does not validate token IDs
+against a model: a service must independently bind its checks to trusted
+checkpoint and workload settings before permitting execution.
+
 ## Trusted owner configuration
 
 - Supply `IPCServer(..., team_ids=[...], custody_guardian=guardian,
