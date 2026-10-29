@@ -93,6 +93,19 @@ acquired lease in the child; that child must not continue work and should exit
 without attesting. Timeout, an available lock, or garbage collection is not
 proof of teardown.
 
+On Windows, the parent may additionally pass a fresh, empty, independently
+reviewed `process_job` capability to `run_cpu_study`. The supervisor assigns
+the exact direct child to it before the launch grant and requires confirmed
+whole-job drain before clearing the study marker. A live descendant, uncertain
+assignment or drain, or unavailable accounting leaves the marker sticky.
+These checks are cooperative and do not attest processes that escaped or were
+never in the job. Without a job, `clean` still covers the direct child only.
+The caller must keep the job and associated source protections in trusted
+custody: never close or reuse a job retained by a pending supervisor recovery
+record. Errors before supervisor adoption may leave the caller responsible for
+the unused job; inspect and reconcile any uncertain outcome under the exact
+supervisor recovery contract before releasing protections.
+
 The launch gate, exact-child recovery registry, startup-channel cancellation
 ordering, bounded gate deadline, unknown native-spawn outcomes and
 asynchronous-interruption limitations are described in

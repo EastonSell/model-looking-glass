@@ -170,6 +170,7 @@ class CudaAgreementCalibrator(CudaAgreementRunner):
         try:
             try:
                 lease.acquire()
+                self._cancel_check()
                 self._baseline_contract = self._execution_contract()
                 self._baseline_hooks = _hook_state(self.model)
                 if (any(any(registry for registry in module[1:]) for module in self._baseline_hooks[0])
@@ -222,6 +223,7 @@ class CudaAgreementCalibrator(CudaAgreementRunner):
                 self.journal.record({'kind': 'gpu_calibration_action', **record}, {})
             finally:
                 primary = sys.exc_info()[1]
+                self._before_rng_cleanup(primary)
                 try:
                     if rng_before is not None:
                         try:

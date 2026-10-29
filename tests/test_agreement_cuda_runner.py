@@ -111,6 +111,331 @@ class CudaAgreementGuardTests(unittest.TestCase):
                 runner._restore_device_rng()
         get_rng.assert_not_called()
 
+    def test_failed_rng_seed_quarantines_before_any_restore_attempt(self):
+        # CPU fakes model a saved CUDA RNG state followed by a failing read.
+        # Unwinding may call _restore_device_rng, but it must not touch CUDA.
+        runner = object.__new__(CudaAgreementRunner)
+        runner.quarantined = False
+        runner._device_drain_uncertain = False
+        runner._device_rng_before = None
+        def check_owner(*, allow_quarantined=False, allow_pending=False):
+            if runner.quarantined and not (allow_quarantined or allow_pending):
+                raise StudyFailure('owner quarantined')
+        runner._check_owner = check_owner
+        runner._check_headroom = check_owner
+        generator = mock.Mock()
+        initial = torch.tensor([1, 2, 3], dtype=torch.uint8)
+        with (mock.patch.object(torch.cuda, 'get_rng_state',
+                                side_effect=[initial, RuntimeError('RNG read failed')]) as get_rng,
+              mock.patch.object(torch.cuda, 'default_generators', (generator,)),
+              mock.patch.object(torch.cuda, 'set_rng_state') as set_rng):
+            with self.assertRaisesRegex(RuntimeError, 'RNG read failed'):
+                runner._seed_device_rng()
+            self.assertTrue(runner.quarantined)
+            self.assertTrue(runner._device_drain_uncertain)
+            with self.assertRaises(StudyFailure):
+                runner._restore_device_rng()
+            self.assertEqual(get_rng.call_count, 2)
+            set_rng.assert_not_called()
+
+    def test_successful_rng_seed_clears_pending_and_restores(self):
+        runner = object.__new__(CudaAgreementRunner)
+        runner.quarantined = False
+        runner._device_drain_uncertain = False
+        runner._device_rng_before = None
+        def check_owner(*, allow_quarantined=False, allow_pending=False):
+            if runner._quarantine_latched and not allow_quarantined:
+                raise StudyFailure('owner quarantined')
+            if runner._device_drain_uncertain and not allow_pending:
+                raise StudyFailure('device operation pending')
+        runner._check_owner = check_owner
+        runner._check_headroom = check_owner
+        initial = torch.tensor([1, 2, 3], dtype=torch.uint8)
+        seeded = torch.tensor([4, 5, 6], dtype=torch.uint8)
+        generator = mock.Mock()
+        with (mock.patch.object(torch.cuda, 'get_rng_state', side_effect=[initial, seeded, initial]),
+              mock.patch.object(torch.cuda, 'default_generators', (generator,)),
+              mock.patch.object(torch.cuda, 'set_rng_state') as set_rng):
+            result = runner._seed_device_rng()
+            self.assertFalse(runner.quarantined)
+            self.assertFalse(runner._device_drain_uncertain)
+            self.assertEqual(result['seeded_state_sha256'], hashlib.sha256(bytes([4, 5, 6])).hexdigest())
+            runner._restore_device_rng()
+            set_rng.assert_called_once_with(initial, 0)
+        self.assertFalse(runner.quarantined)
+
+    def test_each_rng_seed_failure_boundary_latches_before_cleanup(self):
+        for fault in ('headroom', 'first_get', 'owner1', 'seed', 'owner2', 'second_get', 'owner3', 'hash'):
+            with self.subTest(fault=fault):
+                runner = object.__new__(CudaAgreementRunner)
+                runner.quarantined = False
+                runner._device_drain_uncertain = False
+                runner._device_rng_before = None
+                events, gets, checks = [], [0], [0]
+                def fail():
+                    events.append('fault')
+                    raise torch.OutOfMemoryError('simulated boundary failure')
+                def check_owner(*, allow_quarantined=False, allow_pending=False):
+                    if runner._quarantine_latched and not allow_quarantined:
+                        raise StudyFailure('owner quarantined')
+                    if allow_pending:
+                        checks[0] += 1
+                        if fault == 'owner' + str(checks[0]):
+                            fail()
+                    elif runner._device_drain_uncertain:
+                        raise StudyFailure('device operation pending')
+                runner._check_owner = check_owner
+                def check_headroom():
+                    check_owner()
+                    if fault == 'headroom':
+                        fail()
+                runner._check_headroom = check_headroom
+                def get_rng(*args):
+                    gets[0] += 1
+                    events.append('get')
+                    if fault == ('first_get' if gets[0] == 1 else 'second_get'):
+                        fail()
+                    if fault == 'hash' and gets[0] == 2:
+                        return SimpleNamespace(numpy=fail)
+                    return torch.tensor([1], dtype=torch.uint8)
+                def seed(*args):
+                    events.append('seed')
+                    if fault == 'seed':
+                        fail()
+                with (mock.patch.object(torch.cuda, 'get_rng_state', side_effect=get_rng),
+                      mock.patch.object(torch.cuda, 'set_rng_state', side_effect=lambda *_: events.append('set')),
+                      mock.patch.object(torch.cuda, 'default_generators', (SimpleNamespace(manual_seed=seed),))):
+                    with self.assertRaises(torch.OutOfMemoryError):
+                        runner._seed_device_rng()
+                    self.assertTrue(runner.quarantined)
+                    self.assertTrue(runner._device_drain_uncertain)
+                    if runner._device_rng_before is not None:
+                        with self.assertRaises(StudyFailure):
+                            runner._restore_device_rng()
+                self.assertEqual(events[events.index('fault') + 1:], [])
+
+    def test_failed_rng_restore_latches_before_caller_cleanup(self):
+        runner = object.__new__(CudaAgreementRunner)
+        runner.quarantined = False
+        runner._device_drain_uncertain = False
+        runner._device_rng_before = torch.tensor([1], dtype=torch.uint8)
+        runner._check_headroom = lambda: None
+        runner._check_owner = lambda **kwargs: None
+        with (mock.patch.object(torch.cuda, 'set_rng_state',
+                                side_effect=torch.OutOfMemoryError('restore failed')),
+              mock.patch.object(torch.cuda, 'get_rng_state') as get_rng):
+            with self.assertRaisesRegex(torch.OutOfMemoryError, 'restore failed'):
+                runner._restore_device_rng()
+            self.assertTrue(runner.quarantined)
+            self.assertTrue(runner._device_drain_uncertain)
+            get_rng.assert_not_called()
+
+    def test_interrupt_in_rng_restore_failure_handler_keeps_pending_latch(self):
+        runner = object.__new__(CudaAgreementRunner)
+        runner.quarantined = False
+        runner._device_drain_uncertain = False
+        runner._device_rng_before = torch.tensor([1], dtype=torch.uint8)
+        runner._check_headroom = lambda: None
+        runner._check_owner = lambda **kwargs: None
+        source, start = inspect.getsourcelines(CudaAgreementRunner._restore_device_rng)
+        handler = start + next(index for index, line in enumerate(source)
+                               if line.strip() == 'except BaseException:')
+        target = handler + 1
+        fired = []
+        def trace(frame, event, arg):
+            if (frame.f_code is CudaAgreementRunner._restore_device_rng.__code__
+                    and event == 'line' and frame.f_lineno == target):
+                fired.append(True)
+                raise KeyboardInterrupt('restore handler interrupted')
+            return trace
+        with (mock.patch.object(torch.cuda, 'set_rng_state',
+                                side_effect=torch.OutOfMemoryError('restore failed')),
+              mock.patch.object(torch.cuda, 'get_rng_state') as get_rng):
+            previous = sys.gettrace()
+            try:
+                sys.settrace(trace)
+                with self.assertRaisesRegex(KeyboardInterrupt, 'restore handler interrupted'):
+                    runner._restore_device_rng()
+            finally:
+                sys.settrace(previous)
+            self.assertEqual(fired, [True])
+            self.assertTrue(runner.quarantined)
+            self.assertTrue(runner._device_drain_uncertain)
+            get_rng.assert_not_called()
+
+    def test_each_rng_restore_failure_boundary_blocks_another_device_call(self):
+        for fault in ('headroom', 'set', 'owner1', 'get', 'owner2', 'mismatch'):
+            with self.subTest(fault=fault):
+                runner = object.__new__(CudaAgreementRunner)
+                runner.quarantined = False
+                runner._device_drain_uncertain = False
+                runner._device_rng_before = torch.tensor([1], dtype=torch.uint8)
+                events, checks = [], [0]
+                def fail():
+                    events.append('fault')
+                    raise KeyboardInterrupt('simulated restore interruption')
+                def check_owner(*, allow_quarantined=False, allow_pending=False):
+                    if runner._quarantine_latched and not allow_quarantined:
+                        raise StudyFailure('owner quarantined')
+                    if allow_pending:
+                        checks[0] += 1
+                        if fault == 'owner' + str(checks[0]):
+                            fail()
+                    elif runner._device_drain_uncertain:
+                        raise StudyFailure('device operation pending')
+                runner._check_owner = check_owner
+                def check_headroom():
+                    check_owner()
+                    if fault == 'headroom':
+                        fail()
+                runner._check_headroom = check_headroom
+                def set_rng(*args):
+                    events.append('set')
+                    if fault == 'set':
+                        fail()
+                def get_rng(*args):
+                    events.append('get')
+                    if fault == 'get':
+                        fail()
+                    if fault == 'mismatch':
+                        events.append('fault')
+                        return torch.tensor([2], dtype=torch.uint8)
+                    return torch.tensor([1], dtype=torch.uint8)
+                with (mock.patch.object(torch.cuda, 'set_rng_state', side_effect=set_rng),
+                      mock.patch.object(torch.cuda, 'get_rng_state', side_effect=get_rng)):
+                    with self.assertRaises((KeyboardInterrupt, StudyFailure)):
+                        runner._restore_device_rng()
+                    self.assertTrue(runner.quarantined)
+                    self.assertTrue(runner._device_drain_uncertain)
+                    with self.assertRaises(StudyFailure):
+                        runner._restore_device_rng()
+                self.assertEqual(events[events.index('fault') + 1:], [])
+
+    def test_failed_or_cancelled_calibration_retains_custody_without_rng_restore(self):
+        from looking_glass.agreement_cuda_calibration import CudaAgreementCalibrator
+        from looking_glass.agreement_journal import AgreementJournal
+        from looking_glass.agreement_patch_runner import _model_contract, _state_hash
+        from looking_glass.model_ownership import ModelLease
+        spec = importlib.util.spec_from_file_location('rng_custody_fixture',
+                    Path(__file__).with_name('test_agreement_patch_runner.py'))
+        fixture = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(fixture)
+        for mode in ('warmup', 'clean_capture'):
+            for fault in ('first_get', 'seed', 'second_get', 'cancel_after_seed', 'cancel_before', 'post_seed_oom'):
+                with self.subTest(mode=mode, fault=fault), tempfile.TemporaryDirectory() as temporary:
+                    model = fixture.ToyModel().eval()
+                    journal = AgreementJournal(Path(temporary) / 'attempt', {'test': 'cpu-fake'})
+                    runner = object.__new__(CudaAgreementCalibrator)
+                    NaturalAgreementRunner.__init__(runner, model, journal, expected_quartets=1)
+                    runner._warmup_completed, runner._completed = mode != 'warmup', False
+                    runner._calibration_index, runner._calibration_in_callback = 0, False
+                    runner._device_rng_before, runner._device_drain_uncertain = None, False
+                    runner._execution_contract = lambda: _model_contract(model)
+                    runner._model_digest = lambda: _state_hash(model)
+                    runner._check_owner = lambda **kwargs: None
+                    if fault == 'post_seed_oom':
+                        def fail_forward(*args):
+                            events.append('fault')
+                            raise torch.OutOfMemoryError('simulated post-seed failure')
+                        runner._forward = fail_forward
+                    def check_headroom():
+                        if runner.quarantined:
+                            raise StudyFailure('owner unsafe')
+                    runner._check_headroom = check_headroom
+                    device, memory, resident = object(), object(), object()
+                    runner._device_lease, runner._memory_lease, runner._resident_lease = device, memory, resident
+                    events, calls = [], [0]
+                    def get_rng(*args):
+                        calls[0] += 1
+                        events.append('get')
+                        if (fault == 'first_get' and calls[0] == 1) or (fault == 'second_get' and calls[0] == 2):
+                            events.append('fault')
+                            raise torch.OutOfMemoryError('simulated RNG failure')
+                        if fault == 'cancel_after_seed' and calls[0] == 2:
+                            runner.cancel_event.cancel()
+                            events.append('fault')
+                        return torch.tensor([0], dtype=torch.uint8)
+                    def seed(*args):
+                        events.append('seed')
+                        if fault == 'seed':
+                            events.append('fault')
+                            raise torch.OutOfMemoryError('simulated RNG failure')
+                    def set_rng(*args):
+                        events.append('set')
+                    if fault == 'cancel_before':
+                        runner.cancel_event.cancel()
+                        events.append('fault')
+                    previous_rng = torch.random.get_rng_state().clone()
+                    with (mock.patch.object(torch.cuda, 'get_rng_state', side_effect=get_rng),
+                          mock.patch.object(torch.cuda, 'set_rng_state', side_effect=set_rng),
+                          mock.patch.object(torch.cuda, 'default_generators', (SimpleNamespace(manual_seed=seed),)),
+                          mock.patch.object(torch.cuda, 'synchronize') as synchronize):
+                        with self.assertRaises((torch.OutOfMemoryError, StudyFailure)):
+                            runner.warmup() if mode == 'warmup' else runner.calibrate_action(mode)
+                        synchronize.assert_not_called()
+                    self.assertIn('fault', events)
+                    self.assertEqual(events[events.index('fault') + 1:], [])
+                    self.assertTrue(runner.quarantined)
+                    self.assertTrue(runner._device_drain_uncertain)
+                    self.assertIsNotNone(runner._lease)
+                    self.assertTrue(runner._lease._quarantined)
+                    with self.assertRaisesRegex(RuntimeError, 'already leased'):
+                        ModelLease(model).acquire()
+                    self.assertIs(runner._device_lease, device)
+                    self.assertIs(runner._memory_lease, memory)
+                    self.assertIs(runner._resident_lease, resident)
+                    self.assertTrue(torch.equal(previous_rng, torch.random.get_rng_state()))
+                    self.assertFalse(torch.cuda.is_initialized())
+
+    def test_cancelled_study_does_not_restore_device_rng_or_release_model(self):
+        from looking_glass.agreement_journal import AgreementJournal
+        from looking_glass.agreement_patch_runner import _model_contract, _state_hash
+        from looking_glass.model_ownership import ModelLease
+        spec = importlib.util.spec_from_file_location('rng_study_fixture',
+                    Path(__file__).with_name('test_agreement_patch_runner.py'))
+        fixture = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(fixture)
+        model = fixture.ToyModel().eval()
+        with tempfile.TemporaryDirectory() as temporary:
+            journal = AgreementJournal(Path(temporary) / 'attempt', {'test': 'cpu-fake'})
+            runner = object.__new__(CudaAgreementRunner)
+            NaturalAgreementRunner.__init__(runner, model, journal, expected_quartets=1)
+            runner._warmup_completed, runner._device_drain_uncertain = True, False
+            runner._device_rng_before = None
+            runner._execution_contract = lambda: _model_contract(model)
+            runner._model_digest = lambda: _state_hash(model)
+            runner._runtime_metadata = lambda: {'device': 'cpu-fake'}
+            runner._check_owner = lambda **kwargs: None
+            def check_headroom():
+                if runner.quarantined:
+                    raise StudyFailure('owner unsafe')
+            runner._check_headroom = check_headroom
+            events, calls = [], [0]
+            def get_rng(*args):
+                calls[0] += 1
+                events.append('get')
+                if calls[0] == 2:
+                    runner.cancel_event.cancel()
+                    events.append('cancel')
+                return torch.tensor([0], dtype=torch.uint8)
+            def set_rng(*args):
+                events.append('set')
+            previous_rng = torch.random.get_rng_state().clone()
+            with (mock.patch.object(torch.cuda, 'get_rng_state', side_effect=get_rng),
+                  mock.patch.object(torch.cuda, 'set_rng_state', side_effect=set_rng),
+                  mock.patch.object(torch.cuda, 'default_generators', (SimpleNamespace(manual_seed=lambda *_: None),))):
+                with self.assertRaises(StudyFailure):
+                    NaturalAgreementRunner.run(runner, fixture.cases())
+            self.assertEqual(events, ['get', 'get', 'cancel'])
+            self.assertTrue(runner.quarantined)
+            self.assertTrue(runner._device_drain_uncertain)
+            self.assertIsNotNone(runner._lease)
+            with self.assertRaisesRegex(RuntimeError, 'already leased'):
+                ModelLease(model).acquire()
+            self.assertEqual(model.forward_calls, 0)
+            self.assertTrue(torch.equal(previous_rng, torch.random.get_rng_state()))
+            self.assertFalse(torch.cuda.is_initialized())
+
     def test_warmup_state_witness_rejects_value_or_identity_drift(self):
         from looking_glass.agreement_patch_runner import _state_identity
         for drift in ('value', 'replacement'):
@@ -230,6 +555,25 @@ class CudaAgreementGuardTests(unittest.TestCase):
                     probe.snapshot()
             allocated.assert_not_called()
             reserved.assert_not_called()
+
+    def test_telemetry_stops_between_queries_when_cancelled(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            module, key, warm, cold, session, device, memory, probe, count, journal = self._fake_owner(temporary)
+            runner = CudaAgreementRunner(None, journal('cancelled-telemetry'), session=session,
+                device_lease=device, memory_lease=memory, memory_probe=probe, profile=warm,
+                warmup_profile=cold, expected_key=key)
+            def cancel_after_first_query(*args):
+                runner.cancel_event.cancel()
+                return 6 * GIB, 8 * GIB
+            with (mock.patch.object(torch.cuda, 'mem_get_info', side_effect=cancel_after_first_query),
+                  mock.patch.object(torch.cuda, 'memory_allocated') as allocated,
+                  mock.patch.object(torch.cuda, 'memory_reserved') as reserved):
+                with self.assertRaises(StudyFailure):
+                    probe.snapshot()
+            allocated.assert_not_called()
+            reserved.assert_not_called()
+            self.assertTrue(runner.quarantined)
+            self.assertTrue(runner._device_drain_uncertain)
 
     def test_profile_requires_exact_policy_order_seed_and_margin(self):
         key = workload()

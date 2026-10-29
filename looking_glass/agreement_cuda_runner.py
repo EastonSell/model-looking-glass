@@ -361,6 +361,12 @@ class CudaAgreementRunner(NaturalAgreementRunner):
         if self._device_drain_uncertain and not allow_pending:
             self.quarantined = True
             raise StudyFailure('a CUDA drain is unverified; process replacement is required')
+        try:
+            self._cancel_check()
+        except BaseException:
+            self._device_drain_uncertain = True
+            self.quarantined = True
+            raise
         if threading.current_thread() is not self._owner_thread:
             raise StudyFailure('agreement GPU owner is bound to its creating thread')
         OwnerSession.check(self._owner_session, self._device_lease)
@@ -625,24 +631,50 @@ class CudaAgreementRunner(NaturalAgreementRunner):
                 primary_error.add_note('Rejected-forward evidence could not be saved: ' + type(error).__name__)
 
     def _seed_device_rng(self):
-        self._check_headroom()
-        self._device_rng_before = torch.cuda.get_rng_state(0)
-        self._check_owner()
-        torch.cuda.default_generators[0].manual_seed(_RNG_SEED)
-        self._check_owner()
-        state = torch.cuda.get_rng_state(0)
-        self._check_owner()
-        return {'seed': _RNG_SEED, 'seeded_state_sha256': hashlib.sha256(state.numpy().tobytes()).hexdigest()}
+        try:
+            self._check_headroom()
+            # Treat an interrupted RNG call as uncertain before making it, so
+            # cleanup cannot restore or inspect device state after a failure.
+            self._device_drain_uncertain = True
+            self._device_rng_before = torch.cuda.get_rng_state(0)
+            self._check_owner(allow_pending=True)
+            torch.cuda.default_generators[0].manual_seed(_RNG_SEED)
+            self._check_owner(allow_pending=True)
+            state = torch.cuda.get_rng_state(0)
+            self._check_owner(allow_pending=True)
+            result = {'seed': _RNG_SEED, 'seeded_state_sha256': hashlib.sha256(state.numpy().tobytes()).hexdigest()}
+            self._device_drain_uncertain = False
+            return result
+        except BaseException:
+            self._device_drain_uncertain = True
+            self.quarantined = True
+            raise
+
+    def _before_rng_cleanup(self, primary_error):
+        if primary_error is not None:
+            # Any failed callback leaves completion uncertain. Retain model
+            # and device custody without performing RNG restoration on CUDA.
+            self._device_drain_uncertain = True
+            self.quarantined = True
 
     def _restore_device_rng(self):
         if self._device_rng_before is not None:
-            self._check_headroom()
-            torch.cuda.set_rng_state(self._device_rng_before, 0)
-            self._check_owner()
-            current = torch.cuda.get_rng_state(0)
-            self._check_owner()
-            if not torch.equal(current, self._device_rng_before):
-                raise StudyFailure('CUDA RNG state restoration failed')
+            try:
+                self._check_headroom()
+                # Keep the unsafe latch set across both device calls and the
+                # result check, including interruptions in caller cleanup.
+                self._device_drain_uncertain = True
+                torch.cuda.set_rng_state(self._device_rng_before, 0)
+                self._check_owner(allow_pending=True)
+                current = torch.cuda.get_rng_state(0)
+                self._check_owner(allow_pending=True)
+                if not torch.equal(current, self._device_rng_before):
+                    raise StudyFailure('CUDA RNG state restoration failed')
+                self._device_drain_uncertain = False
+            except BaseException:
+                self._device_drain_uncertain = True
+                self.quarantined = True
+                raise
 
     def _runtime_metadata(self):
         return {'device': self.device, 'device_uuid': self._expected_key.device_uuid,
@@ -664,6 +696,7 @@ class CudaAgreementRunner(NaturalAgreementRunner):
         try:
             try:
                 lease.acquire()
+                self._cancel_check()
                 self._baseline_contract = self._execution_contract()
                 self._baseline_hooks = _hook_state(self.model)
                 if (any(any(registry for registry in module[1:]) for module in self._baseline_hooks[0])
@@ -688,6 +721,7 @@ class CudaAgreementRunner(NaturalAgreementRunner):
                 self.journal.record({'kind': 'gpu_warmup', **warmup_record}, {})
             finally:
                 primary_error = sys.exc_info()[1]
+                self._before_rng_cleanup(primary_error)
                 try:
                     if rng_before is not None:
                         try:
