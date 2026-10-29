@@ -180,6 +180,9 @@ class ResidentWorker:
         # device drain fails, retain known inputs/outputs on this worker even
         # when a failure-time append to the process hold list cannot allocate.
         self._live_buffers = [None, None, None, None, None]
+        # Set before any device work and cleared only after a successful drain.
+        # A missing receipt is conservatively treated as an uncertain drain.
+        self._drain_pending = False
         self._poison_pending = threading.Event()
         self._closed = False
         self._baseline = self._model_state()
@@ -291,7 +294,7 @@ class ResidentWorker:
         self._release_model()
 
     def _release_model(self):
-        if _is_process_quarantined() and self._model is not None:
+        if (_is_process_quarantined() or self._drain_pending) and self._model is not None:
             try:
                 _quarantine_references.append(self._model)
             except BaseException:
@@ -312,7 +315,11 @@ class ResidentWorker:
         try:
             return self._perform_with_custody(request)
         finally:
-            if not _is_process_quarantined():
+            if self._drain_pending:
+                # A failed/interrupted cleanup may have skipped its first
+                # attempt to publish the process latch; retry before clearing.
+                _mark_process_quarantined()
+            elif not _is_process_quarantined():
                 for index in range(len(self._live_buffers)):
                     self._live_buffers[index] = None
 
@@ -321,6 +328,8 @@ class ResidentWorker:
         device_inputs, output, logits = None, None, None
         devices = [self.device.index] if self.device.type == "cuda" else []
         sync_attempted = False
+        if devices:
+            self._drain_pending = True
 
         def quarantine():
             nonlocal sync_failure
@@ -347,53 +356,66 @@ class ResidentWorker:
 
         try:
             with _rng_lock:
-                if _is_process_quarantined():
-                    return None, (WorkerSynchronizationError, "execution process is quarantined")
                 try:
-                    with torch.random.fork_rng(devices=devices):
-                        try:
-                            torch.random.default_generator.manual_seed(request.seed)
-                            if devices:
-                                torch.cuda.default_generators[self.device.index].manual_seed(request.seed)
-                            with torch.inference_mode():
-                                device_inputs = {}
-                                self._live_buffers[1] = device_inputs
-                                for name, tensor in request.inputs.items():
-                                    device_inputs[name] = tensor.to(self.device)
-                                output = self._model(**device_inputs)
-                                self._live_buffers[2] = output
-                                if isinstance(output, Mapping) and output.get("past_key_values") is not None:
-                                    raise WorkerStateError("model returned an unsupported key/value cache")
-                                logits = output if type(output) is torch.Tensor else output.get("logits") if isinstance(output, Mapping) else None
-                                self._live_buffers[3] = logits
-                                if type(logits) is not torch.Tensor or not logits.is_floating_point() or logits.ndim != 3:
-                                    raise ValueError("model must return rank-three floating logits")
-                                if tuple(logits.shape[:2]) != tuple(request.inputs["input_ids"].shape):
-                                    raise ValueError("logits must match input batch and sequence dimensions")
-                                if logits.numel() * logits.element_size() > self.max_output_bytes:
-                                    raise OutputLimitExceeded("logits exceed the configured output byte bound")
-                                with torch.inference_mode(False):
-                                    outcome = logits.detach().to(device="cpu", copy=True,
-                                                                 memory_format=torch.contiguous_format)
-                                self._live_buffers[4] = outcome
-                                if (not outcome.is_contiguous() or outcome.storage_offset() != 0
-                                        or outcome.untyped_storage().nbytes()
-                                        != outcome.numel() * outcome.element_size()):
-                                    raise WorkerExecutionError("copied logits do not own exact contiguous storage")
-                        finally:
-                            if devices:
-                                sync_attempted = True
-                                try:
-                                    torch.cuda.synchronize(self.device)
-                                except BaseException:
-                                    quarantine()
+                    if _is_process_quarantined():
+                        return None, (WorkerSynchronizationError, "execution process is quarantined")
+                    try:
+                        with torch.random.fork_rng(devices=devices):
+                            try:
+                                torch.random.default_generator.manual_seed(request.seed)
+                                if devices:
+                                    torch.cuda.default_generators[self.device.index].manual_seed(request.seed)
+                                with torch.inference_mode():
+                                    device_inputs = {}
+                                    self._live_buffers[1] = device_inputs
+                                    for name, tensor in request.inputs.items():
+                                        device_inputs[name] = tensor.to(self.device)
+                                    output = self._model(**device_inputs)
+                                    self._live_buffers[2] = output
+                                    if isinstance(output, Mapping) and output.get("past_key_values") is not None:
+                                        raise WorkerStateError("model returned an unsupported key/value cache")
+                                    logits = output if type(output) is torch.Tensor else output.get("logits") if isinstance(output, Mapping) else None
+                                    self._live_buffers[3] = logits
+                                    if type(logits) is not torch.Tensor or not logits.is_floating_point() or logits.ndim != 3:
+                                        raise ValueError("model must return rank-three floating logits")
+                                    if tuple(logits.shape[:2]) != tuple(request.inputs["input_ids"].shape):
+                                        raise ValueError("logits must match input batch and sequence dimensions")
+                                    if logits.numel() * logits.element_size() > self.max_output_bytes:
+                                        raise OutputLimitExceeded("logits exceed the configured output byte bound")
+                                    with torch.inference_mode(False):
+                                        outcome = logits.detach().to(device="cpu", copy=True,
+                                                                     memory_format=torch.contiguous_format)
+                                    self._live_buffers[4] = outcome
+                                    if (not outcome.is_contiguous() or outcome.storage_offset() != 0
+                                            or outcome.untyped_storage().nbytes()
+                                            != outcome.numel() * outcome.element_size()):
+                                        raise WorkerExecutionError("copied logits do not own exact contiguous storage")
+                            finally:
+                                if devices:
+                                    sync_attempted = True
+                                    try:
+                                        torch.cuda.synchronize(self.device)
+                                        self._drain_pending = False
+                                    except BaseException:
+                                        quarantine()
+                    finally:
+                        if devices and not sync_attempted:
+                            try:
+                                torch.cuda.synchronize(self.device)
+                                self._drain_pending = False
+                            except BaseException:
+                                quarantine()
                 finally:
-                    if devices and not sync_attempted:
-                        try:
-                            torch.cuda.synchronize(self.device)
-                        except BaseException:
-                            quarantine()
+                    # No peer may pass the shared execution lock while a
+                    # device drain remains unverified and unlatchable.
+                    if self._drain_pending:
+                        quarantine()
         except BaseException as exc:
+            # The original synchronization failure remains authoritative even
+            # if publishing quarantine was itself interrupted once. Recover
+            # the local references before this frame can unwind.
+            if self._drain_pending:
+                quarantine()
             if isinstance(exc, (MemoryError, torch.OutOfMemoryError)):
                 failure = (WorkerOutOfMemory, _describe_failure(exc, "allocation failed"))
             elif isinstance(exc, OutputLimitExceeded):

@@ -494,6 +494,174 @@ class ResidentWorkerTests(unittest.TestCase):
         worker.execute(ForwardRequest('r', {'input_ids': torch.tensor([[1]])}))
         self.assertEqual(worker._live_buffers, [None] * 5)
 
+    def test_interrupted_failed_drain_latch_is_retried_before_cleanup(self):
+        references = {}
+
+        class NoRetentionSpace:
+            def append(self, item):
+                raise MemoryError('no space to retain references')
+
+        class ObservedModel(nn.Module):
+            def forward(self, input_ids):
+                logits = torch.stack((input_ids.float(), input_ids.float() + 1), dim=-1)
+                references['logits'] = weakref.ref(logits)
+                return {'logits': logits}
+
+        model = ObservedModel().eval()
+        model_ref = weakref.ref(model)
+        worker = ResidentWorker('cuda', model)
+        del model
+        worker._device = torch.device('cuda:0')
+        source, first = inspect.getsourcelines(worker_module._mark_process_quarantined)
+        target = first + next(i for i, line in enumerate(source)
+                              if line.strip() == '_process_quarantine_latch = _process_quarantined')
+        fired = []
+
+        def trace(frame, event, arg):
+            if (frame.f_code is worker_module._mark_process_quarantined.__code__
+                    and event == 'line' and frame.f_lineno == target):
+                sys.settrace(None)
+                fired.append(True)
+                raise KeyboardInterrupt('latch interrupted')
+            return trace
+
+        with patch.object(worker_module, '_quarantine_references', NoRetentionSpace()):
+            with patch('torch.random.fork_rng', return_value=nullcontext()):
+                with patch('torch.cuda.default_generators', [Mock()]):
+                    with patch.object(torch.Tensor, 'to', lambda tensor, *args, **kwargs: tensor):
+                        with patch('torch.cuda.synchronize', side_effect=RuntimeError('drain failed')):
+                            try:
+                                sys.settrace(trace)
+                                with self.assertRaises(WorkerSynchronizationError):
+                                    worker.execute(ForwardRequest('fail', {'input_ids': torch.tensor([[1]])}))
+                            finally:
+                                sys.settrace(None)
+            worker.close()
+            gc.collect()
+            self.assertEqual(fired, [True])
+            self.assertTrue(worker.quarantined)
+            self.assertIsNotNone(model_ref())
+            self.assertIsNotNone(references['logits']())
+            with self.assertRaises(WorkerSynchronizationError):
+                ResidentWorker('later', SmallModel().eval())
+
+    def test_interrupted_entry_to_failed_drain_handler_still_quarantines(self):
+        references = {}
+
+        class NoRetentionSpace:
+            def append(self, item):
+                raise MemoryError('no space to retain references')
+
+        class ObservedModel(nn.Module):
+            def forward(self, input_ids):
+                logits = torch.stack((input_ids.float(), input_ids.float() + 1), dim=-1)
+                references['logits'] = weakref.ref(logits)
+                return {'logits': logits}
+
+        worker = ResidentWorker('cuda', ObservedModel().eval())
+        worker._device = torch.device('cuda:0')
+        source, first = inspect.getsourcelines(ResidentWorker._perform_with_custody)
+        target = first + next(i for i, line in enumerate(source)
+                              if line.strip() == 'sync_failure = "target device synchronization failed"')
+        fired = []
+
+        def trace(frame, event, arg):
+            if frame.f_code.co_name == 'quarantine' and event == 'line' and frame.f_lineno == target:
+                sys.settrace(None)
+                fired.append(True)
+                raise KeyboardInterrupt('drain handler interrupted')
+            return trace
+
+        with patch.object(worker_module, '_quarantine_references', NoRetentionSpace()):
+            with patch('torch.random.fork_rng', return_value=nullcontext()):
+                with patch('torch.cuda.default_generators', [Mock()]):
+                    with patch.object(torch.Tensor, 'to', lambda tensor, *args, **kwargs: tensor):
+                        with patch('torch.cuda.synchronize', side_effect=RuntimeError('drain failed')):
+                            try:
+                                sys.settrace(trace)
+                                with self.assertRaises(WorkerSynchronizationError):
+                                    worker.execute(ForwardRequest('fail', {'input_ids': torch.tensor([[1]])}))
+                            finally:
+                                sys.settrace(None)
+            worker.close()
+            gc.collect()
+            self.assertEqual(fired, [True])
+            self.assertTrue(worker.quarantined)
+            self.assertIsNotNone(references['logits']())
+
+    def test_successful_cuda_drain_clears_pending_marker_on_oom(self):
+        class FailingModel(nn.Module):
+            def forward(self, input_ids):
+                raise torch.OutOfMemoryError('injected')
+
+        worker = ResidentWorker('cuda', FailingModel().eval())
+        worker._device = torch.device('cuda:0')
+        with patch('torch.random.fork_rng', return_value=nullcontext()):
+            with patch('torch.cuda.default_generators', [Mock()]):
+                with patch.object(torch.Tensor, 'to', lambda tensor, *args, **kwargs: tensor):
+                    with patch('torch.cuda.synchronize'):
+                        with self.assertRaises(WorkerOutOfMemory):
+                            worker.execute(ForwardRequest('fail', {'input_ids': torch.tensor([[1]])}))
+        self.assertFalse(worker._drain_pending)
+        self.assertFalse(worker.quarantined)
+        self.assertTrue(worker.poisoned)
+
+    def test_latch_retry_blocks_another_worker_before_its_forward(self):
+        retry_entered, resume_retry, peer_entered = (threading.Event() for _ in range(3))
+        errors = []
+        calls = []
+
+        class PeerModel(SmallModel):
+            def forward(self, input_ids, attention_mask=None):
+                peer_entered.set()
+                return super().forward(input_ids, attention_mask)
+
+        failed = ResidentWorker('cuda', SmallModel().eval())
+        failed._device = torch.device('cuda:0')
+        peer = ResidentWorker('peer', PeerModel().eval())
+        original_mark = worker_module._mark_process_quarantined
+
+        def interrupted_mark():
+            calls.append(True)
+            if len(calls) == 1:
+                raise KeyboardInterrupt('first latch attempt interrupted')
+            if len(calls) == 2:
+                retry_entered.set()
+                if not resume_retry.wait(5):
+                    raise RuntimeError('retry timed out')
+            return original_mark()
+
+        def run(worker, request_id):
+            try:
+                worker.execute(ForwardRequest(request_id, {'input_ids': torch.tensor([[1]])}))
+            except BaseException as exc:
+                errors.append(exc)
+
+        first = threading.Thread(target=run, args=(failed, 'fail'))
+        second = threading.Thread(target=run, args=(peer, 'peer'))
+        with patch.object(worker_module, '_mark_process_quarantined', interrupted_mark):
+            with patch('torch.random.fork_rng', return_value=nullcontext()):
+                with patch('torch.cuda.default_generators', [Mock()]):
+                    with patch.object(torch.Tensor, 'to', lambda tensor, *args, **kwargs: tensor):
+                        with patch('torch.cuda.synchronize', side_effect=RuntimeError('drain failed')):
+                            first.start()
+                            try:
+                                self.assertTrue(retry_entered.wait(5))
+                                second.start()
+                                self.assertFalse(peer_entered.wait(0.2))
+                                self.assertTrue(second.is_alive())
+                            finally:
+                                resume_retry.set()
+                                first.join(5)
+                                if second.ident is not None:
+                                    second.join(5)
+        self.assertFalse(first.is_alive() or second.is_alive())
+        self.assertFalse(peer_entered.is_set())
+        self.assertEqual(len(errors), 2)
+        self.assertTrue(all(isinstance(exc, WorkerSynchronizationError) for exc in errors))
+        self.assertTrue(failed.quarantined)
+        self.assertTrue(peer.quarantined)
+
     def test_worker_already_waiting_for_execution_lock_observes_quarantine(self):
         entered, release, submitted = threading.Event(), threading.Event(), threading.Event()
         seen = []
