@@ -1,0 +1,7 @@
+{
+  "operator_clock_utc": "2026-10-29T08:17:07.423695+00:00",
+  "original_sha256": "9be2866113fb1714403153bb6a7ce01884b3a170c360a6c993513a10416e16bb",
+  "projection_scope": "Public projection omits the local process ID; the original remains private.",
+  "schema": "bert-template-direction-operator-spawn-v1",
+  "source_commit": "05e55bffacbf5019d181546286c2743b8ccbf487"
+}

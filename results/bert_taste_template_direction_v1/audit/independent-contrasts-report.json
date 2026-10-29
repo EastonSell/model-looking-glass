@@ -1,0 +1,304 @@
+{
+  "status": "pass",
+  "scope": "closed journal/summary arithmetic; no model replay or execution attestation",
+  "result_sha256": "b7667ad827ff7e9a1380acfcfcad3dd14150be49751a129348f92b5f829276a3",
+  "forwards": 336,
+  "contrasts": 24,
+  "token_string_mapping_verified": true,
+  "eligibility": {
+    "chocolate-after": true,
+    "chocolate-with": false,
+    "rice-after": true,
+    "rice-with": false,
+    "salad-after": false,
+    "salad-with": true,
+    "syrup-after": true,
+    "syrup-with": true,
+    "dessert-after": false,
+    "dessert-with": false,
+    "cream-after": true,
+    "cream-with": true
+  },
+  "summaries": [
+    {
+      "stem": "chocolate",
+      "after": 0.07135248184204102,
+      "with": 0.04844331741333008,
+      "template_difference": 0.022909164428710938,
+      "direction_main": 0.020940780639648438,
+      "template_direction_interaction": 0.021459579467773438,
+      "direction_specificity_after": 0.04181480407714844,
+      "direction_specificity_with": 0.042669057846069336,
+      "direction_specificity_template_difference": -0.0008542537689208984
+    },
+    {
+      "stem": "rice",
+      "after": 0.09981155395507812,
+      "with": 0.07881784439086914,
+      "template_difference": 0.020993709564208984,
+      "direction_main": 0.01072549819946289,
+      "template_direction_interaction": 0.02685832977294922,
+      "direction_specificity_after": 0.07267928123474121,
+      "direction_specificity_with": 0.026234149932861328,
+      "direction_specificity_template_difference": 0.04644513130187988
+    },
+    {
+      "stem": "salad",
+      "after": 0.09318399429321289,
+      "with": 0.07722091674804688,
+      "template_difference": 0.015963077545166016,
+      "direction_main": 0.0017218589782714844,
+      "template_direction_interaction": 0.008246421813964844,
+      "direction_specificity_after": 0.02842426300048828,
+      "direction_specificity_with": 0.017061710357666016,
+      "direction_specificity_template_difference": 0.011362552642822266
+    },
+    {
+      "stem": "syrup",
+      "after": 0.06792497634887695,
+      "with": 0.06798601150512695,
+      "template_difference": -6.103515625e-05,
+      "direction_main": 0.0141754150390625,
+      "template_direction_interaction": 0.017515182495117188,
+      "direction_specificity_after": 0.02769303321838379,
+      "direction_specificity_with": 0.035118818283081055,
+      "direction_specificity_template_difference": -0.007425785064697266
+    },
+    {
+      "stem": "dessert",
+      "after": 0.07664155960083008,
+      "with": 0.05919361114501953,
+      "template_difference": 0.017447948455810547,
+      "direction_main": 0.0013899803161621094,
+      "template_direction_interaction": 0.004061698913574219,
+      "direction_specificity_after": 0.0519719123840332,
+      "direction_specificity_with": 0.04054582118988037,
+      "direction_specificity_template_difference": 0.011426091194152832
+    },
+    {
+      "stem": "cream",
+      "after": 0.1008749008178711,
+      "with": 0.07380056381225586,
+      "template_difference": 0.027074337005615234,
+      "direction_main": 0.021667957305908203,
+      "template_direction_interaction": 0.02021312713623047,
+      "direction_specificity_after": 0.019712209701538086,
+      "direction_specificity_with": 0.05640769004821777,
+      "direction_specificity_template_difference": -0.03669548034667969
+    }
+  ],
+  "means": {
+    "after": 0.08496491114298503,
+    "with": 0.06757704416910808,
+    "template_difference": 0.017387866973876953,
+    "direction_main": 0.011770248413085938,
+    "template_direction_interaction": 0.01639238993326823,
+    "direction_specificity_after": 0.040382583936055504,
+    "direction_specificity_with": 0.03633954127629598,
+    "direction_specificity_template_difference": 0.0040430426597595215
+  },
+  "position_effects": [
+    {
+      "stem": "chocolate",
+      "template": "after",
+      "direction": "sugar_to_lemon",
+      "signed_ingredient": 0.07408428192138672,
+      "signed_the": -0.013103485107421875,
+      "signed_difference": 0.0871877670288086
+    },
+    {
+      "stem": "chocolate",
+      "template": "after",
+      "direction": "lemon_to_sugar",
+      "signed_ingredient": 0.042801856994628906,
+      "signed_the": -0.012715339660644531,
+      "signed_difference": 0.05551719665527344
+    },
+    {
+      "stem": "chocolate",
+      "template": "with",
+      "direction": "sugar_to_lemon",
+      "signed_ingredient": 0.05170917510986328,
+      "signed_the": -0.0018396377563476562,
+      "signed_difference": 0.05354881286621094
+    },
+    {
+      "stem": "chocolate",
+      "template": "with",
+      "direction": "lemon_to_sugar",
+      "signed_ingredient": 0.03938579559326172,
+      "signed_the": -0.0039520263671875,
+      "signed_difference": 0.04333782196044922
+    },
+    {
+      "stem": "rice",
+      "template": "after",
+      "direction": "sugar_to_lemon",
+      "signed_ingredient": 0.08987617492675781,
+      "signed_the": -0.022012710571289062,
+      "signed_difference": 0.11188888549804688
+    },
+    {
+      "stem": "rice",
+      "template": "after",
+      "direction": "lemon_to_sugar",
+      "signed_ingredient": 0.06970405578613281,
+      "signed_the": -0.018030166625976562,
+      "signed_difference": 0.08773422241210938
+    },
+    {
+      "stem": "rice",
+      "template": "with",
+      "direction": "sugar_to_lemon",
+      "signed_ingredient": 0.06523799896240234,
+      "signed_the": -0.012228012084960938,
+      "signed_difference": 0.07746601104736328
+    },
+    {
+      "stem": "rice",
+      "template": "with",
+      "direction": "lemon_to_sugar",
+      "signed_ingredient": 0.0635385513305664,
+      "signed_the": -0.016631126403808594,
+      "signed_difference": 0.080169677734375
+    },
+    {
+      "stem": "salad",
+      "template": "after",
+      "direction": "sugar_to_lemon",
+      "signed_ingredient": 0.05728340148925781,
+      "signed_the": -0.03882312774658203,
+      "signed_difference": 0.09610652923583984
+    },
+    {
+      "stem": "salad",
+      "template": "after",
+      "direction": "lemon_to_sugar",
+      "signed_ingredient": 0.055263519287109375,
+      "signed_the": -0.03499794006347656,
+      "signed_difference": 0.09026145935058594
+    },
+    {
+      "stem": "salad",
+      "template": "with",
+      "direction": "sugar_to_lemon",
+      "signed_ingredient": 0.04751396179199219,
+      "signed_the": -0.02850627899169922,
+      "signed_difference": 0.0760202407836914
+    },
+    {
+      "stem": "salad",
+      "template": "with",
+      "direction": "lemon_to_sugar",
+      "signed_ingredient": 0.047064781188964844,
+      "signed_the": -0.0313568115234375,
+      "signed_difference": 0.07842159271240234
+    },
+    {
+      "stem": "syrup",
+      "template": "after",
+      "direction": "sugar_to_lemon",
+      "signed_ingredient": 0.05890178680419922,
+      "signed_the": -0.02048969268798828,
+      "signed_difference": 0.0793914794921875
+    },
+    {
+      "stem": "syrup",
+      "template": "after",
+      "direction": "lemon_to_sugar",
+      "signed_ingredient": 0.03653430938720703,
+      "signed_the": -0.019924163818359375,
+      "signed_difference": 0.056458473205566406
+    },
+    {
+      "stem": "syrup",
+      "template": "with",
+      "direction": "sugar_to_lemon",
+      "signed_ingredient": 0.04623699188232422,
+      "signed_the": -0.024457931518554688,
+      "signed_difference": 0.0706949234008789
+    },
+    {
+      "stem": "syrup",
+      "template": "with",
+      "direction": "lemon_to_sugar",
+      "signed_ingredient": 0.03899192810058594,
+      "signed_the": -0.026285171508789062,
+      "signed_difference": 0.065277099609375
+    },
+    {
+      "stem": "dessert",
+      "template": "after",
+      "direction": "sugar_to_lemon",
+      "signed_ingredient": 0.060420989990234375,
+      "signed_the": -0.017930984497070312,
+      "signed_difference": 0.07835197448730469
+    },
+    {
+      "stem": "dessert",
+      "template": "after",
+      "direction": "lemon_to_sugar",
+      "signed_ingredient": 0.056801795959472656,
+      "signed_the": -0.018129348754882812,
+      "signed_difference": 0.07493114471435547
+    },
+    {
+      "stem": "dessert",
+      "template": "with",
+      "direction": "sugar_to_lemon",
+      "signed_ingredient": 0.053351402282714844,
+      "signed_the": -0.0055217742919921875,
+      "signed_difference": 0.05887317657470703
+    },
+    {
+      "stem": "dessert",
+      "template": "with",
+      "direction": "lemon_to_sugar",
+      "signed_ingredient": 0.05176687240600586,
+      "signed_the": -0.007747173309326172,
+      "signed_difference": 0.05951404571533203
+    },
+    {
+      "stem": "cream",
+      "template": "after",
+      "direction": "sugar_to_lemon",
+      "signed_ingredient": 0.08401203155517578,
+      "signed_the": -0.03275012969970703,
+      "signed_difference": 0.11676216125488281
+    },
+    {
+      "stem": "cream",
+      "template": "after",
+      "direction": "lemon_to_sugar",
+      "signed_ingredient": 0.058373451232910156,
+      "signed_the": -0.02661418914794922,
+      "signed_difference": 0.08498764038085938
+    },
+    {
+      "stem": "cream",
+      "template": "with",
+      "direction": "sugar_to_lemon",
+      "signed_ingredient": 0.06814098358154297,
+      "signed_the": -0.011440277099609375,
+      "signed_difference": 0.07958126068115234
+    },
+    {
+      "stem": "cream",
+      "template": "with",
+      "direction": "lemon_to_sugar",
+      "signed_ingredient": 0.060947418212890625,
+      "signed_the": -0.00707244873046875,
+      "signed_difference": 0.06801986694335938
+    }
+  ],
+  "counts": {
+    "positive_contrasts": 24,
+    "negative_contrasts": 0,
+    "positive_template_differences": 5,
+    "negative_template_differences": 1
+  },
+  "limitations": [
+    "Patched full logits and untouched whole tensors are owner-observed, not independently retained.",
+    "The receipt and external source chronology are separately reviewed."
+  ]
+}
