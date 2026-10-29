@@ -9,7 +9,8 @@ test of statistical significance or proof that either head has no effect.
 The [protocol](../../docs/DISTILGPT2_COPY_HEAD_PROMPT_DOSE_V1.md) froze eight
 families of four prompts each before this run: a repeated sequence and three
 shuffles. For each prompt, the actual removed pre-projection activation L2 was
-matched across layer-3 heads 2, 10 and the fixed head-7 active control. Define
+matched within the fixed relative tolerance of `1e-5` across layer-3 heads 2,
+10 and the fixed head-7 active control. Define
 `D_h` as the change in target-token log probability for the repeat minus the
 mean change for the shuffles. `D_h10 - D_h2 > 0` favors a more negative
 repeat-specific change for head 2. At least six evaluable families, a positive
@@ -27,7 +28,8 @@ mean contrast and at least 75% positive signs were required.
 | 8 | -1.197779 | -0.718481 | -0.008964 | +0.479298 |
 
 Across the eight families, mean D was -0.587514 for head 2, -0.552885 for
-head 10, and +0.004804 for head 7. The [family table](family-effects.csv)
+head 10, and +0.004804 for head 7. Comparisons with head 7 are descriptive;
+the primary criterion compares heads 2 and 10. The [family table](family-effects.csv)
 retains full precision and target-logit contrasts. The
 [prompt/arm table](prompt-effects.csv) has all 96 edited observations, their
 common and realized doses, target ranks and logit/log-probability changes,
@@ -45,7 +47,8 @@ and 13.7202 for heads 2, 10 and 7 respectively. Mean full-vocabulary
 top token changed in 6, 5 and 4 of 32 prompts. Head 7 is one fixed active
 control, not a distribution of random controls or a match on output effect.
 
-The earlier [zeroing study](../distilgpt2-copy-head-eval-v1-20261028/README.md)
+The earlier [zeroing evaluation](../distilgpt2-copy-head-eval-v1-20261028/README.md),
+[head-2 versus head-10 zeroing follow-up](../distilgpt2-copy-head-followup-v2-20261028/README.md)
 and [family-dose follow-up](../distilgpt2-copy-head-factorial-v1-20261028/README.md)
 remain unchanged. Their results informed this design, so this is not a blind
 confirmation. The public families were selected without new model outputs and
