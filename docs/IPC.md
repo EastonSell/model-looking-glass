@@ -76,6 +76,22 @@ identifies a job only within one broker lifetime, and caller-provided request
 IDs may repeat across teams or submissions.
 There is no durable registry or result replay after a connection closes.
 
+For finite CPU `torch.float32` results, each JSON number represents the exact
+binary32 value as a binary64 number, including subnormals and the sign of zero,
+independently of the serializer thread's denormal-flush setting. This is a
+numeric wire format, not a raw tensor-byte format: consumers must use a
+binary64-capable parser that preserves signed zero. A later conversion back to
+float32 may itself flush subnormals, depending on the consumer's environment.
+The default encoder also accepts normal values and signed zeros for float16,
+bfloat16, and float64; it rejects their subnormals as `invalid_result` until
+their transport is independently verified. Other floating dtypes, non-strided
+layouts, and lazy negative or conjugate views are rejected. Nonfinite results
+are rejected for every supported dtype.
+When available, NumPy converts float32 integer bit views in bulk; otherwise a
+standard-library decoder provides the same wire values. Conversion can hold
+temporary integer copies, NumPy arrays, Python numbers, and JSON buffers at
+once. The wire-size preflight is not a reservation or bound on that host memory.
+
 In per-team mode, the server rejects a token used with a different configured
 team before broker admission. Token possession is the identity; tokens do not
 identify a human or protect against deliberate sharing, compromised accounts,

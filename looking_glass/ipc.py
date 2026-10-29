@@ -182,19 +182,104 @@ def _default_request_factory(request_id, inputs, seed):
                                   for name, value in inputs.items()}, seed=seed)
 
 
+def _float32_word_as_float(word):
+    """Decode a finite binary32 word using only integer operations first.
+
+    Every nonzero finite binary32 value is normal in binary64. Constructing its
+    binary64 bits avoids a denormal-sensitive binary32-to-float conversion.
+    """
+    word &= 0xffffffff
+    exponent = (word >> 23) & 0xff
+    fraction = word & 0x7fffff
+    if exponent == 0xff:
+        raise _ProtocolError("non-finite worker result")
+    if exponent:
+        exponent64 = exponent + 896
+        fraction64 = fraction << 29
+    elif fraction:
+        leading = fraction.bit_length() - 1
+        exponent64 = leading + 874
+        fraction64 = (fraction - (1 << leading)) << (52 - leading)
+    else:
+        exponent64, fraction64 = 0, 0
+    bits = ((word & 0x80000000) << 32) | (exponent64 << 52) | fraction64
+    return struct.unpack("!d", struct.pack("!Q", bits))[0]
+
+
+def _float32_numpy_values(integer_tensor, numpy):
+    """Decode binary32 fields in bulk without binary32 floating arithmetic."""
+    try:
+        try:
+            bits = integer_tensor.numpy().view(numpy.uint32)
+        except RuntimeError:
+            # PyTorch may have been built without NumPy integration even when
+            # NumPy itself is installed; integer conversion remains exact.
+            bits = numpy.asarray(integer_tensor.tolist(), dtype=numpy.int32).view(numpy.uint32)
+        exponent = (bits >> 23) & 0xff
+        if bool(numpy.any(exponent == 0xff)):
+            raise _ProtocolError("non-finite worker result")
+        fraction = bits & 0x7fffff
+        significand = numpy.where(exponent != 0, fraction | (1 << 23), fraction).astype(numpy.float64)
+        power = numpy.where(exponent != 0, exponent.astype(numpy.int16) - 150, -149)
+        values = numpy.ldexp(significand, power)
+        values = numpy.copysign(values, numpy.where((bits & 0x80000000) != 0, -1.0, 1.0))
+        return values.tolist()
+    except (RuntimeError, TypeError, ValueError) as exc:
+        raise _ProtocolError("unsupported worker result representation") from exc
+
+
 def _encode_tensor_result(result, max_response_bytes):
     import torch
     logits = result.logits
     if (not isinstance(logits, torch.Tensor) or logits.device.type != "cpu" or
             logits.ndim != 3 or not logits.is_floating_point()):
         raise _ProtocolError("invalid worker result")
-    # Reserve 32 bytes per floating-point value before building Python objects.
+    # Bound the estimated wire size before building Python objects. This is not
+    # a bound on peak host memory during conversion or JSON serialization.
     if logits.numel() > (max_response_bytes - 512) // 32:
         raise _ResultTooLarge
-    if not bool(torch.isfinite(logits).all()):
-        raise _ProtocolError("non-finite worker result")
+    formats = {
+        torch.float16: (torch.int16, 0xffff, 0x7c00, 0x03ff),
+        torch.bfloat16: (torch.int16, 0xffff, 0x7f80, 0x007f),
+        torch.float32: (torch.int32, 0xffffffff, 0x7f800000, 0x007fffff),
+        torch.float64: (torch.int64, 0xffffffffffffffff, 0x7ff0000000000000,
+                        0x000fffffffffffff),
+    }
+    if logits.dtype not in formats or logits.layout != torch.strided or logits.is_neg() or logits.is_conj():
+        raise _ProtocolError("unsupported worker result representation")
+    integer_dtype, mask, exponent_mask, fraction_mask = formats[logits.dtype]
+    try:
+        # Reinterpret before flattening: a floating-point copy can itself flush
+        # subnormals. NumPy is optional and receives only this integer view.
+        integer_tensor = logits.detach().view(integer_dtype).reshape(-1)
+    except (RuntimeError, TypeError, ValueError) as exc:
+        raise _ProtocolError("unsupported worker result representation") from exc
+    if logits.dtype == torch.float32:
+        try:
+            import numpy
+        except ImportError:
+            numpy = None
+        if numpy is not None:
+            values = _float32_numpy_values(integer_tensor, numpy)
+            return {"shape": list(logits.shape), "dtype": str(logits.dtype), "logits": values}
+    # The standard-library fallback reuses the integer list for float32 values.
+    words = integer_tensor.tolist()
+    for index, signed_word in enumerate(words):
+        word = signed_word & mask
+        exponent, fraction = word & exponent_mask, word & fraction_mask
+        if exponent == exponent_mask:
+            raise _ProtocolError("non-finite worker result")
+        if logits.dtype == torch.float32:
+            words[index] = _float32_word_as_float(word)
+        elif exponent == 0 and fraction:
+            raise _ProtocolError("subnormal worker result dtype is not supported")
+    if logits.dtype == torch.float32:
+        values = words
+    else:
+        del words
+        values = logits.reshape(-1).tolist()
     return {"shape": list(logits.shape), "dtype": str(logits.dtype),
-            "logits": logits.reshape(-1).tolist()}
+            "logits": values}
 
 
 class IPCServer:

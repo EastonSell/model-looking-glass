@@ -8,6 +8,7 @@ import types
 import unittest
 from unittest import mock
 
+from opcode_support import run_opcode_trace
 import torch
 
 from looking_glass.capture_dispatcher import CapturedSlice
@@ -149,22 +150,21 @@ class DeliverySlotTests(unittest.TestCase):
 
         target = next(op.offset for op in dis.get_instructions(caller)
                       if op.opname == "STORE_FAST" and op.argval == "observed")
+        injected = []
 
         def interrupt(frame, action, _arg):
             if frame.f_code is caller.__code__:
                 if action == "call":
                     frame.f_trace_opcodes = True
                 if action == "opcode" and frame.f_lasti == target:
+                    injected.append(True)
                     sys.settrace(None)
                     raise KeyboardInterrupt("simulated caller interruption")
             return interrupt
 
-        try:
-            sys.settrace(interrupt)
-            with self.assertRaises(KeyboardInterrupt):
-                caller()
-        finally:
-            sys.settrace(None)
+        with self.assertRaises(KeyboardInterrupt):
+            run_opcode_trace(interrupt, caller)
+        self.assertEqual(injected, [True])
         self.assertIs(registry.lookup("slot", 1).adopt(), original)
         self.assertEqual(budget.snapshot().used_bytes, 65536)
         self.assertTrue(original.close(1))
@@ -177,22 +177,21 @@ class DeliverySlotTests(unittest.TestCase):
         insertion = next(i for i, op in enumerate(instructions)
                          if op.opname == "STORE_SUBSCR")
         target = instructions[insertion + 1].offset
+        injected = []
 
         def interrupt(frame, action, _arg):
             if frame.f_code is type(registry).register.__code__:
                 if action == "call":
                     frame.f_trace_opcodes = True
                 if action == "opcode" and frame.f_lasti == target:
+                    injected.append(True)
                     sys.settrace(None)
                     raise KeyboardInterrupt("lost registration return")
             return interrupt
 
-        try:
-            sys.settrace(interrupt)
-            with self.assertRaises(KeyboardInterrupt):
-                registry.register("known", 9)
-        finally:
-            sys.settrace(None)
+        with self.assertRaises(KeyboardInterrupt):
+            run_opcode_trace(interrupt, lambda: registry.register("known", 9))
+        self.assertEqual(injected, [True])
         self.assertEqual(registry.active_slots(), (("known", 9, "reserved"),))
         self.assertTrue(registry.lookup("known", 9).retire())
         with self.assertRaises(DeliverySlotError):
@@ -206,27 +205,28 @@ class DeliverySlotTests(unittest.TestCase):
         registry.register("known", 1)
         slot = registry.lookup("known", 1)
         instructions = list(dis.get_instructions(type(slot).construct))
-        init_load = next(i for i, op in enumerate(instructions)
-                         if op.opname == "LOAD_ATTR" and op.argval == "__init__")
+        init_loads = [i for i, op in enumerate(instructions)
+                      if op.opname == "LOAD_ATTR" and op.argval == "__init__"]
+        self.assertEqual(len(init_loads), 1)
+        init_load = init_loads[0]
         constructor_call = next(i for i in range(init_load, len(instructions))
-                                if instructions[i].opname == "CALL")
+                                if instructions[i].opname in ("CALL", "CALL_FUNCTION_KW", "CALL_KW"))
         target = instructions[constructor_call + 1].offset
+        observed = []
 
         def interrupt(frame, action, _arg):
             if frame.f_code is type(slot).construct.__code__:
                 if action == "call":
                     frame.f_trace_opcodes = True
                 if action == "opcode" and frame.f_lasti == target:
+                    observed.append(True)
                     sys.settrace(None)
                     raise KeyboardInterrupt("lost constructor return")
             return interrupt
 
-        try:
-            sys.settrace(interrupt)
-            with self.assertRaises(DeliverySlotError):
-                slot.construct(budget, store, **options())
-        finally:
-            sys.settrace(None)
+        with self.assertRaises(DeliverySlotError):
+            run_opcode_trace(interrupt, lambda: slot.construct(budget, store, **options()))
+        self.assertEqual(observed, [True])
         self.assertEqual(slot.state, "quarantined")
         child = registry.lookup("known", 1).owned_delivery()
         self.assertIs(type(child), TraceDelivery)
@@ -246,22 +246,21 @@ class DeliverySlotTests(unittest.TestCase):
         slot = registry.lookup("slot", 1)
         target = next(op.offset for op in dis.get_instructions(type(slot).construct)
                       if op.opname == "STORE_ATTR" and op.argval == "_delivery")
+        observed = []
 
         def interrupt(frame, action, _arg):
             if frame.f_code is type(slot).construct.__code__:
                 if action == "call":
                     frame.f_trace_opcodes = True
                 if action == "opcode" and frame.f_lasti == target:
+                    observed.append(True)
                     sys.settrace(None)
                     raise MemoryError("allocation handoff")
             return interrupt
 
-        try:
-            sys.settrace(interrupt)
-            with self.assertRaises(DeliverySlotError):
-                slot.construct(budget, store, **options())
-        finally:
-            sys.settrace(None)
+        with self.assertRaises(DeliverySlotError):
+            run_opcode_trace(interrupt, lambda: slot.construct(budget, store, **options()))
+        self.assertEqual(observed, [True])
         self.assertEqual(slot.state, "failed_clean")
         self.assertFalse(budget.active_requests())
         self.assertTrue(slot.retire())
@@ -523,12 +522,15 @@ class DeliverySlotTests(unittest.TestCase):
         markers = [i for i, op in enumerate(instructions)
                    if op.opname == "STORE_ATTR" and op.argval == "_construction_clean"]
         self.assertEqual(len(markers), 3)
-        open_load = next(i for i, op in enumerate(instructions)
-                         if op.opname == "LOAD_METHOD" and op.argval == "open")
+        open_loads = [i for i, op in enumerate(instructions)
+                      if op.opname in ("LOAD_METHOD", "LOAD_ATTR") and op.argval == "open"]
+        self.assertEqual(len(open_loads), 1)
+        open_load = open_loads[0]
         open_call = next(i for i in range(open_load, len(instructions))
-                         if instructions[i].opname == "CALL")
+                         if instructions[i].opname in ("CALL", "CALL_METHOD"))
         metadata_assignments = [i for i, op in enumerate(instructions)
                                 if op.opname == "STORE_ATTR" and op.argval == "_metadata_claim"]
+        self.assertEqual(len(metadata_assignments), 2)
         cases = (
             ("before first evidence", markers[0], False, "quarantined"),
             ("after initial clean", markers[0] + 1, False, "failed_clean"),
@@ -559,12 +561,8 @@ class DeliverySlotTests(unittest.TestCase):
                             raise KeyboardInterrupt("constructor boundary")
                     return interrupt
 
-                try:
-                    sys.settrace(interrupt)
-                    with self.assertRaises(DeliverySlotError):
-                        slot.construct(budget, store, **options())
-                finally:
-                    sys.settrace(None)
+                with self.assertRaises(DeliverySlotError):
+                    run_opcode_trace(interrupt, lambda: slot.construct(budget, store, **options()))
                 self.assertTrue(observed)
                 self.assertEqual(slot.state, expected)
                 self.assertFalse(budget.active_requests())
@@ -600,12 +598,14 @@ class DeliverySlotTests(unittest.TestCase):
         signal = next(i for i, op in enumerate(instructions)
                       if op.opname == "STORE_ATTR" and op.argval == "_cancel_requested")
         target = instructions[signal + 1].offset
+        observed = []
 
         def interrupt(frame, action, _arg):
             if frame.f_code is type(slot).cancel.__code__:
                 if action == "call":
                     frame.f_trace_opcodes = True
                 if action == "opcode" and frame.f_lasti == target:
+                    observed.append(True)
                     sys.settrace(None)
                     raise KeyboardInterrupt("cancel boundary")
             return interrupt
@@ -615,13 +615,12 @@ class DeliverySlotTests(unittest.TestCase):
             thread.start()
             self.assertTrue(entered.wait(1))
             try:
-                sys.settrace(interrupt)
                 with self.assertRaises(DeliverySlotError):
-                    slot.cancel()
+                    run_opcode_trace(interrupt, slot.cancel)
             finally:
-                sys.settrace(None)
                 resume.set()
             thread.join(3)
+        self.assertEqual(observed, [True])
         self.assertFalse(thread.is_alive())
         self.assertTrue(failures)
         self.assertEqual(slot.state, "quarantined")
