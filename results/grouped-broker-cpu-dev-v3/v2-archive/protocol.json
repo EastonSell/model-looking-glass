@@ -1,0 +1,19 @@
+{
+  "version": "grouped-broker-cpu-development-review-v1",
+  "scope": "CPU-only integration smoke on previously published synthetic batch-validation rows; not new held-out evidence, a benchmark, a production memory profile, or evidence of GPU batch separability.",
+  "checkpoint": "distilbert/distilgpt2@2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "seed": 2026102808,
+  "inputs": {
+    "shape_per_request": [1, 4],
+    "dtype": "int64",
+    "mask": "all ones",
+    "groups": [
+      [[50256, 103, 203, 303], [50256, 104, 204, 304]],
+      [[50256, 105, 205, 305], [50256, 106, 206, 306]]
+    ],
+    "discovery_rows_not_forwarded": [[50256, 101, 201, 301], [50256, 102, 202, 302]]
+  },
+  "execution": "Load the offline pinned CPU checkpoint once, build a fresh descriptive serial-versus-two-row validation report from these already disclosed cases, then run each group through the experimental broker and compare both routed outputs with individual resident-worker outputs. Observe model entry shapes and cooperative host/device lease cleanup. A cancellation race is tested separately with a small synthetic CPU model.",
+  "elementwise_tolerance": {"absolute": 1e-6, "relative_to_serial": 1e-5},
+  "limits": "The runtime identity and reservations are local development declarations, not measured worst-case limits or production authorization. These same inputs are reused for validation and integration. Record incomplete failures rather than replacing them."
+}

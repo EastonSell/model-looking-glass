@@ -7,7 +7,7 @@ import runpy
 import stat
 import sys
 
-_MODULES = frozenset(("bert_gpu_calibration", "gpu_oneshot", "device_identity", "device_lease",
+_MODULES = frozenset(("bert_gpu_calibration", "bert_gpu_evidence", "gpu_oneshot", "device_identity", "device_lease",
                       "supervisor", "memory_budget", "intervention_plan", "interventions",
                       "model_ownership"))
 
