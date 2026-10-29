@@ -11,6 +11,14 @@ the only tree difference. The caller must use a clean checkout, an empty
 absolute bytecode-prefix directory, `-B`, offline flags and hidden CUDA. These
 are cooperative local checks; they do not authenticate the interpreter,
 operating system, process tree or clock.
+The operator launches the bootstrap explicitly; its environment marker is not
+an authentication mechanism and does not prevent a caller from bypassing it.
+
+The operator must keep the source checkout exclusively assigned and refrain
+from changing its files from the bootstrap's first source check through the
+owner's final source recheck and process exit. An outside actor can still
+change a file between checks; without this cooperative condition the saved
+checks cannot establish which bytes were imported.
 
 For each input, the owner runs clean, witnessed no-op, three left-rotated
 single-head actions if the planned dose is eligible, and clean-after. It
