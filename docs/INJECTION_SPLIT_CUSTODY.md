@@ -15,9 +15,12 @@ binding; a trusted bootstrap must check those source bytes **before** import.
 
 `prepare_study_once` is the real-study entry: it pins the already published
 injection-only aggregate, discovery source, runtime, prediction, public plan
-and site commitment before calling the generic `prepare_once` helper. The
-generic helper supports fabricated tests and must not be substituted for that
-fixed-study gate in production.
+and site commitment before calling the generic `prepare_once` helper. It also
+requires `mlg-injection-heldout-operational-binding-v2`, which separately
+identifies the preparation child, structural auditor, outer observer and the
+source-first gate callers. The
+generic helper retains v1 compatibility for historical or fabricated inputs;
+it must not be substituted for the fixed-study gate in production.
 
 The helper accepts immutable public bytes, a private site nonce and record,
 the protected parent path, and trusted publication, exposure-observation,
@@ -33,7 +36,11 @@ audited; this component binds its exact published bytes and entropy but does not
 recompute its full request schedule. The operational binding lists exact hashes
 for the supplement, owner, executor, journal, supervisor, auditor, shared gate,
 lease, comparator, custody, ledger, tokenizer and accounting amendment, plus the
-inventory source revision/hash and inventory digest. A trusted `source_check`
+inventory source revision/hash and inventory digest. V2 also binds exact
+`preparation_child_source_sha256`, `preparation_audit_source_sha256` and
+`outer_observer_source_sha256`, plus `gate_allocation_caller_source_sha256`
+and `gate_transition_caller_source_sha256`; the existing auditor field refers
+to the independent held-out numerical auditor. A trusted `source_check`
 must check those published and locally executed bytes, and a trusted
 `prediction_check` must validate the frozen prediction's schema and means using
 the prebound discovery scoring source before either claim or nonce draw.
