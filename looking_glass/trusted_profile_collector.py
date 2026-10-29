@@ -753,6 +753,8 @@ def run_supervised_collector(*, workspace_root, cache_root, hf_home, site_packag
 
     Private artifacts contain the device UUID and absolute paths. Returned IDs
     require independent approval and are not service authorization. The
+    supervisor retains its unsafe marker after a nonzero or unknown child exit,
+    even if that child previously attested a clean drain. The
     caller must coordinate the GPU window with other participating owners.
     """
     from .device_identity import resolve_device_identity
@@ -813,7 +815,7 @@ def run_supervised_collector(*, workspace_root, cache_root, hf_home, site_packag
     try:
         supervision = run_supervised(launch.command, device_lease_path=identity.lock_path,
             marker_path=identity.marker_path, identity=identity, timeout=timeout, lease_timeout=30,
-            cwd=repo, env=launch.environment, inherit_environment=False)
+            cwd=repo, env=launch.environment, inherit_environment=False, require_zero_exit=True)
     except BaseException as exc:
         supervisor_error = type(exc).__name__
     supervised = (None if supervision is None else {'run_id': supervision.run_id, 'pid': supervision.pid,
