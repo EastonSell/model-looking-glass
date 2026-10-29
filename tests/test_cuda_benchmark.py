@@ -447,7 +447,7 @@ class ScheduleTests(unittest.TestCase):
 
     def test_trial_runner_warms_each_mode_and_keeps_interleaved_raw_rows(self):
         calls = []
-        def fake_measure(invoke, factory, mode, device, cuda, start, end):
+        def fake_measure(invoke, factory, mode, device, cuda, start, end, validate=None):
             calls.append(mode)
             return {"wall_ns": len(calls), "cuda_ms": 0.1}
         progress = {"raw": []}
@@ -455,10 +455,14 @@ class ScheduleTests(unittest.TestCase):
             bench.collect_trials(None, None, 0, None, None, None,
                                  seed=17, warmup_rounds=2, measured_rounds=3, progress=progress)
         self.assertEqual(len(calls), 20)
+        self.assertEqual(len(progress["warmups"]), 8)
         self.assertEqual(len(progress["raw"]), 12)
         self.assertCountEqual(calls[:4], ["none", "id", "direct", "gradient"])
         self.assertCountEqual(calls[4:8], ["none", "id", "direct", "gradient"])
         self.assertEqual({row["seed"] for row in progress["raw"]}, {17})
+        self.assertEqual({row["schedule_seed"] for row in progress["warmups"]}, {17 ^ 0x5A17})
+        self.assertEqual({row["sample_kind"] for row in progress["warmups"]}, {"warmup"})
+        self.assertEqual({row["sample_kind"] for row in progress["raw"]}, {"measured"})
         self.assertEqual({row["round"] for row in progress["raw"]}, {0, 1, 2})
         self.assertEqual(progress["raw"][0]["wall_ns"], 9)
 
@@ -489,6 +493,25 @@ class ScheduleTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "memory"):
             guard()
 
+    def test_sample_measurements_reject_contradictory_counters_and_timing(self):
+        valid = {"started_monotonic_ns": 100, "ended_monotonic_ns": 150, "wall_ns": 50,
+                 "cuda_ms": 0.25, "events": 18, "recorded_tensor_bytes": 165888,
+                 "device_total_bytes": 1000, "device_free_before_bytes": 700,
+                 "device_free_after_bytes": 650, "allocated_before_bytes": 100,
+                 "reserved_before_bytes": 200, "allocated_after_bytes": 100,
+                 "reserved_after_bytes": 200, "peak_allocated_bytes": 150,
+                 "peak_reserved_bytes": 250}
+        bench.validate_measurement(valid)
+        changes = (("device_total_bytes", 0), ("device_free_before_bytes", -1),
+                   ("device_free_after_bytes", 1001), ("reserved_before_bytes", 99),
+                   ("peak_allocated_bytes", 99), ("peak_reserved_bytes", 199),
+                   ("peak_allocated_bytes", 251), ("wall_ns", 0),
+                   ("cuda_ms", -1.0), ("cuda_ms", float("nan")),
+                   ("cuda_ms", float("inf")), ("events", True))
+        for key, value in changes:
+            with self.subTest(field=key, value=value), self.assertRaises(ValueError):
+                bench.validate_measurement(dict(valid, **{key: value}))
+
 
 class TelemetryTests(unittest.TestCase):
     def test_cuda_runtime_uuid_normalizes_only_complete_physical_ids(self):
@@ -518,6 +541,7 @@ class TelemetryTests(unittest.TestCase):
         observations = [{"observed_monotonic_ns": int(n * 1_000_000_000),
                          "query_started_monotonic_ns": int(n * 1_000_000_000),
                          "query_ended_monotonic_ns": int(n * 1_000_000_000),
+                         "total_bytes": 8192, "used_bytes": 1200, "free_bytes": 6992,
                          "utilization_percent": 0, "gpu_uuid": "GPU-abc"} for n in times]
         result = bench.classify_isolation(True, observations, 20_000_000_000,
             21_000_000_000, [{"ok": True, "pids": []}] * 2, own_pid=1,
@@ -547,16 +571,41 @@ class TelemetryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             bench.parse_telemetry_line("bad, data", 1234)
 
+    def test_impossible_memory_telemetry_cannot_pass_the_isolation_screen(self):
+        for total, used, free in ((0, 0, 0), (8192, 8193, 10), (8192, 10, 8193)):
+            with self.subTest(total=total, used=used, free=free):
+                with self.assertRaisesRegex(ValueError, "invalid"):
+                    bench.parse_telemetry_line(f"timestamp, GPU-abc, {total}, {used}, {free}, 0", 1)
+        observations = [{"observed_monotonic_ns": n * 1_000_000_000,
+                         "query_started_monotonic_ns": n * 1_000_000_000,
+                         "query_ended_monotonic_ns": n * 1_000_000_000,
+                         "total_bytes": 0, "used_bytes": 999999, "free_bytes": 123456,
+                         "utilization_percent": 0, "gpu_uuid": "GPU-abc"} for n in range(1, 11)]
+        result = bench.classify_isolation(True, observations, 4_000_000_000,
+            7_000_000_000, [{"ok": True, "pids": []}] * 2, own_pid=1,
+            gpu_uuid="GPU-abc", telemetry_errors=[])
+        self.assertEqual(result["status"], "unverified")
+        self.assertTrue(any("invalid" in reason for reason in result["reasons"]))
+        # MiB rounding and driver-reserved memory do not require used + free == total.
+        bench.parse_telemetry_line("timestamp, GPU-abc, 8192, 1200, 6993, 0", 1)
+
     def test_isolation_screen_rejects_missing_data_and_foreign_processes(self):
         observations = [{"observed_monotonic_ns": n * 1_000_000_000,
                          "query_started_monotonic_ns": n * 1_000_000_000,
                          "query_ended_monotonic_ns": n * 1_000_000_000,
+                         "total_bytes": 8192, "used_bytes": 1200, "free_bytes": 6992,
                          "utilization_percent": 0, "gpu_uuid": "GPU-abc"}
                         for n in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)]
         processes = [{"ok": True, "pids": [44]}, {"ok": True, "pids": [44]}]
         screened = bench.classify_isolation(True, observations, 4_000_000_000,
             7_000_000_000, processes, own_pid=44, gpu_uuid="GPU-abc", telemetry_errors=[])
         self.assertEqual(screened["status"], "no_contamination_observed")
+        observations[4]["total_bytes"] += 1
+        changed_total = bench.classify_isolation(True, observations, 4_000_000_000,
+            7_000_000_000, processes, own_pid=44, gpu_uuid="GPU-abc", telemetry_errors=[])
+        self.assertEqual(changed_total["status"], "unverified")
+        self.assertTrue(any("inconsistent total" in reason for reason in changed_total["reasons"]))
+        observations[4]["total_bytes"] -= 1
         foreign = [{"ok": True, "pids": [44, 55]}, processes[1]]
         self.assertEqual(bench.classify_isolation(True, observations, 4_000_000_000,
             7_000_000_000, foreign, own_pid=44, gpu_uuid="GPU-abc", telemetry_errors=[])["status"], "contaminated")
@@ -579,6 +628,7 @@ class TelemetryTests(unittest.TestCase):
         observations = [{"observed_monotonic_ns": n * 1_000_000_000,
                          "query_started_monotonic_ns": n * 1_000_000_000,
                          "query_ended_monotonic_ns": n * 1_000_000_000,
+                         "total_bytes": 8192, "used_bytes": 1200, "free_bytes": 6992,
                          "utilization_percent": 0, "gpu_uuid": "GPU-abc"}
                         for n in range(1, 11)]
         processes = [{"ok": True, "pids": []}] * 2
@@ -808,6 +858,7 @@ class ArtifactTests(unittest.TestCase):
     def test_partial_samples_survive_an_evaluation_failure(self):
         def fail(*, quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
             progress["raw"].append({"mode": "id", "wall_ns": 123})
+            progress["warmups"].append({"mode": "none", "wall_ns": 456})
             raise RuntimeError("interrupted")
         with tempfile.TemporaryDirectory() as root:
             output = Path(root) / "new"
@@ -815,7 +866,9 @@ class ArtifactTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     bench.run_benchmark(output, quick=True, exclusive=False)
             self.assertEqual(json.loads((output / "failure.json").read_text())["partial_samples"], 1)
+            self.assertEqual(json.loads((output / "failure.json").read_text())["partial_warmups"], 1)
             self.assertIn("id,123", (output / "partial_raw_timing.csv").read_text())
+            self.assertIn("none,456", (output / "partial_warmup_timing.csv").read_text())
 
     def test_bundle_write_failure_does_not_prevent_partial_sample_evidence(self):
         def fail(*, quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
@@ -869,6 +922,7 @@ import os, sys
 from looking_glass import cuda_benchmark as bench
 def stop(**kwargs):
     kwargs['progress']['record_manifest']({'seed': 17, 'model_sha256': 'verified'})
+    kwargs['progress']['record_warmup']({'sample_kind': 'warmup', 'mode': 'none', 'wall_ns': 42})
     kwargs['progress']['record_sample']({'mode': 'id', 'wall_ns': 123})
     os._exit(19)
 bench._evaluate = stop
@@ -882,8 +936,9 @@ bench.run_benchmark(sys.argv[1], quick=True)
             self.assertTrue((output / "started.json").is_file())
             self.assertEqual(json.loads((output / "manifest.json").read_text()),
                              {"seed": 17, "model_sha256": "verified"})
-            row = json.loads((output / "raw_progress.jsonl").read_text().strip())
-            self.assertEqual(row, {"mode": "id", "wall_ns": 123})
+            rows = [json.loads(line) for line in (output / "raw_progress.jsonl").read_text().splitlines()]
+            self.assertEqual(rows, [{"sample_kind": "warmup", "mode": "none", "wall_ns": 42},
+                                    {"mode": "id", "wall_ns": 123}])
             self.assertFalse((output / "results.json").exists())
             self.assertFalse((output / "failure.json").exists())
 
@@ -1118,6 +1173,66 @@ class EquivalenceTests(unittest.TestCase):
                 lambda mode: WrongMetadataSession(model, mode=mode),
                 lambda e: (e.node_id, e.occurrence))
 
+    def test_sample_guard_rejects_changed_locations_values_and_output_layout(self):
+        output = torch.zeros((1, 8, 50257), dtype=torch.float32)
+        identities = tuple(str(index) for index in range(18))
+        def events(mode):
+            value = None if mode == "id" else torch.zeros((1, 3, 768), dtype=torch.float32)
+            return [SimpleNamespace(sequence=index, run_id=bench.PROTOCOL, capture_mode=mode,
+                    module_path=str(index), shape=(1, 8, 768), dtype="torch.float32",
+                    device="cpu", value=value, tensor_bytes=0 if value is None else 3 * 768 * 4)
+                    for index in range(18)]
+        identity = lambda event: event.module_path
+        bench.validate_transformer_sample("none", output, None, identity=identity,
+                                          identities=identities, device="cpu")
+        for mode in ("id", "direct", "gradient"):
+            trace = SimpleNamespace(successful=True, events=events(mode),
+                                    tensor_bytes=0 if mode == "id" else 18 * 3 * 768 * 4)
+            bench.validate_transformer_sample(mode, output, trace, identity=identity,
+                                              identities=identities, device="cpu")
+        trace = SimpleNamespace(successful=True, events=events("direct"), tensor_bytes=18 * 3 * 768 * 4)
+        trace.events[0].module_path = trace.events[1].module_path
+        with self.assertRaisesRegex(AssertionError, "locations"):
+            bench.validate_transformer_sample("direct", output, trace, identity=identity,
+                                              identities=identities, device="cpu")
+        trace.events = events("direct")
+        trace.events[0].value = torch.zeros((1, 2, 768))
+        with self.assertRaisesRegex(AssertionError, "value layout"):
+            bench.validate_transformer_sample("direct", output, trace, identity=identity,
+                                              identities=identities, device="cpu")
+        with self.assertRaisesRegex(AssertionError, "output"):
+            bench.validate_transformer_sample("none", output[:, :7], None, identity=identity,
+                                              identities=identities, device="cpu")
+        output[0, 0, 0] = float("inf")
+        with self.assertRaisesRegex(AssertionError, "non-finite"):
+            bench.validate_transformer_sample("none", output, None, identity=identity,
+                                              identities=identities, device="cpu")
+
+    def test_nondefault_or_changed_stream_never_produces_a_sample(self):
+        class Cuda:
+            default = object()
+            active = default
+            def synchronize(self, device): pass
+            def current_stream(self, device): return self.active
+            def default_stream(self, device): return self.default
+            def reset_peak_memory_stats(self, device): pass
+            def mem_get_info(self, device): return (700, 1000)
+            def memory_allocated(self, device): return 100
+            def memory_reserved(self, device): return 200
+        class Event:
+            def record(self, stream): pass
+        cuda, calls = Cuda(), []
+        cuda.active = object()
+        with self.assertRaisesRegex(RuntimeError, "default stream"):
+            bench.measure_sample(lambda: calls.append(1), None, "none", 0, cuda, Event(), Event())
+        self.assertEqual(calls, [])
+        cuda.active = cuda.default
+        def switch_stream():
+            cuda.active = object()
+            return torch.ones(1)
+        with self.assertRaisesRegex(RuntimeError, "changed.*stream"):
+            bench.measure_sample(switch_stream, None, "none", 0, cuda, Event(), Event())
+
     def test_timed_capture_synchronizes_before_and_after_retaining_values(self):
         trace_reference = []
         log = []
@@ -1129,11 +1244,14 @@ class EquivalenceTests(unittest.TestCase):
                 return result
 
         class FakeCuda:
+            stream = object()
             def synchronize(self, device):
                 log.append("synchronize")
                 if len(trace_reference) and len([x for x in log if x == "synchronize"]) == 2:
                     if trace_reference[0]() is None:
                         raise AssertionError("capture was released before completion synchronization")
+            def current_stream(self, device): return self.stream
+            def default_stream(self, device): return self.stream
             def reset_peak_memory_stats(self, device): pass
             def mem_get_info(self, device): return (700, 1000)
             def memory_allocated(self, device): return 100
@@ -1143,16 +1261,23 @@ class EquivalenceTests(unittest.TestCase):
 
         class FakeEvent:
             def __init__(self, name): self.name = name
-            def record(self): log.append(self.name)
+            def record(self, stream):
+                self.stream = stream
+                log.append(self.name)
             def elapsed_time(self, other): return 0.25
 
         model = nn.Sequential(TapPoint("point"))
         def invoke():
             log.append("forward")
             return model(torch.ones(1))
-        result = bench.measure_sample(invoke, lambda mode: RecordingSession(model, mode=mode),
-            "direct", 0, FakeCuda(), FakeEvent("start"), FakeEvent("end"))
+        cuda, start, end = FakeCuda(), FakeEvent("start"), FakeEvent("end")
+        with patch.object(bench.time, "monotonic_ns", side_effect=[1000, 2000]):
+            result = bench.measure_sample(invoke, lambda mode: RecordingSession(model, mode=mode),
+                "direct", 0, cuda, start, end)
         self.assertEqual(log, ["synchronize", "start", "forward", "end", "synchronize", "synchronize"])
+        self.assertIs(start.stream, cuda.stream)
+        self.assertIs(end.stream, cuda.stream)
+        self.assertTrue(result["cuda_stream_is_default"])
         self.assertIsNone(trace_reference[0]())
         self.assertEqual(result["peak_allocated_bytes"], 150)
         self.assertEqual(result["peak_reserved_bytes"], 250)
