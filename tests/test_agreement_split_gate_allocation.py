@@ -91,6 +91,25 @@ class GateCallerTests(unittest.TestCase):
             CALLER.operate('allocate', 'natural', self.root, self.source_root, reader=self.reader)
         self.assertFalse((self.root / 'natural-allocation.json').exists())
 
+    def test_interruption_after_marker_keeps_the_one_use_allocation(self):
+        original_load = CALLER.load_sources
+        def load_with_interruption(*args, **kwargs):
+            gate_module = original_load(*args, **kwargs)
+            original_write = gate_module._write_new
+            def write_then_interrupt(path, raw):
+                original_write(path, raw)
+                raise KeyboardInterrupt()
+            gate_module._write_new = write_then_interrupt
+            return gate_module
+        with mock.patch.object(CALLER, 'load_sources', side_effect=load_with_interruption):
+            with self.assertRaises(KeyboardInterrupt):
+                CALLER.operate('allocate', 'natural', self.root, self.source_root, reader=self.reader)
+        self.assertTrue((self.root / 'natural-allocation.json').is_file())
+        self.clear_modules()
+        with self.assertRaises(Exception):
+            CALLER.operate('allocate', 'natural', self.root, self.source_root, reader=self.reader)
+        self.assertFalse(any('nonce' in p.name for p in self.root.iterdir()))
+
 
 if __name__ == '__main__':
     unittest.main()
