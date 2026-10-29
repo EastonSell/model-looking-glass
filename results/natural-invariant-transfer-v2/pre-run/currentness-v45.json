@@ -1,0 +1,13 @@
+{
+  "bidirectional_pairs": 3725856,
+  "case_count": 68,
+  "case_sha256": "188782606abd576cde029408bb34975e7fd7ac2113bf17299dbb7e1aa2ddd76b",
+  "examples": [],
+  "foreign_sequences": 6088,
+  "inventory_sha256": "8c0e09c2a1bf276e931f3cd7580cbb5076ad696b3371002307cf8cc76e4e4b37",
+  "own_reservation_count": 68,
+  "own_sequences": 612,
+  "relations": 0,
+  "schema": "natural-invariant-transfer-currentness-v1",
+  "scope": "Known public inventory only; no protected, unknown or pretraining exposure is established."
+}
