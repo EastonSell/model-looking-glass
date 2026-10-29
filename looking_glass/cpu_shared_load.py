@@ -194,9 +194,11 @@ def _build_owner(owner, plan):
         raise RuntimeError('synthetic warmup produced an invalid result')
     owner.worker._transfer_result(warmup_result)
     del warmup_result, warmup
-    owner.broker = Broker(owner.worker, max_pending=plan['max_pending'], max_pending_per_team=1,
+    owner.broker = Broker(owner.worker, max_pending=plan['max_pending'],
+                          max_pending_per_team=plan['max_pending_per_team'],
                           completion_authority=owner.authority)
-    owner.server = IPCServer(owner.broker, team_ids=tuple(plan['teams']), max_connections=len(plan['teams']),
+    owner.server = IPCServer(owner.broker, team_ids=tuple(plan['teams']),
+                             max_connections=plan.get('max_connections', len(plan['teams'])),
                              max_request_bytes=4096, max_response_bytes=4096, max_batch=1, max_tokens=2,
                              io_timeout=3.0, job_timeout=10.0, completion_authority=owner.authority)
     owner.observation.bind_service(owner.worker, owner.broker, owner.server)
@@ -304,7 +306,7 @@ def _client_run(owner, plan, team, team_index, start, ready, jobs, samples):
         ready.set()
 
 
-def _audit_events(plan, samples, recording, start_ns, end_ns, drained):
+def _audit_events(plan, samples, recording, start_ns, end_ns, drained, *, closed_loop=True):
     """Validate the recorded CPU observations without manufacturing gaps."""
     errors = []
     recorder_fields = {'events_complete', 'recorded', 'lost_capacity', 'lost_invalid', 'lost_internal',
@@ -426,15 +428,16 @@ def _audit_events(plan, samples, recording, start_ns, end_ns, drained):
             accepted.append((broker_id, job_id))
     if len(set(accepted)) != len(accepted) or len({key[0] for key in accepted}) > 1:
         errors.append('invalid_broker_identity')
-    for team in plan['teams']:
-        team_rows = [rows[job['job_id']] for job in plan['jobs']
-                     if job['team_id'] == team and job['job_id'] in rows]
-        for previous, current in zip(team_rows, team_rows[1:]):
-            if (current['attempt_ns'] is not None
-                    and (type(previous['handled_ns']) is not int
-                         or type(current['attempt_ns']) is not int
-                         or current['attempt_ns'] < previous['handled_ns'])):
-                errors.append('team_closed_loop_order_invalid')
+    if closed_loop:
+        for team in plan['teams']:
+            team_rows = [rows[job['job_id']] for job in plan['jobs']
+                         if job['team_id'] == team and job['job_id'] in rows]
+            for previous, current in zip(team_rows, team_rows[1:]):
+                if (current['attempt_ns'] is not None
+                        and (type(previous['handled_ns']) is not int
+                             or type(current['attempt_ns']) is not int
+                             or current['attempt_ns'] < previous['handled_ns'])):
+                    errors.append('team_closed_loop_order_invalid')
     for job_id, job in planned.items():
         row = rows.get(job_id)
         if row is None or row.get('team_id') != job['team_id']:
@@ -528,8 +531,9 @@ def _audit_events(plan, samples, recording, start_ns, end_ns, drained):
     return sorted(set(errors)), by_kind
 
 
-def _summarize(plan, samples, recording, start_ns, end_ns, drained, resolution_ns):
-    errors, by_kind = _audit_events(plan, samples, recording, start_ns, end_ns, drained)
+def _summarize(plan, samples, recording, start_ns, end_ns, drained, resolution_ns, *, closed_loop=True):
+    errors, by_kind = _audit_events(plan, samples, recording, start_ns, end_ns, drained,
+                                    closed_loop=closed_loop)
     elapsed = end_ns - start_ns
     seconds = elapsed / 1_000_000_000
     expected_teams = {job['job_id']: job['team_id'] for job in plan['jobs']}
