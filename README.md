@@ -13,7 +13,8 @@ The roadmap is a research plan, not a claim that its milestones are complete. Th
 
 - The [trace schema](docs/TRACE_SCHEMA.md) records execution coordinates separately from tensor values and hypotheses. Unknown coordinates remain unknown.
 - The [GPT-2 trace adapter](docs/TRANSFORMER_TRACE.md) captures selected layer, module, local token and invocation coordinates; generation and cache positions remain unknown unless established separately. The [ordered intervention plan](docs/INTERVENTION_PLANS.md) can capture, inject and patch at specified boundaries.
-- The [DistilBERT masked-LM trace adapter](docs/DISTILBERT_TRACE.md) records bounded eager CPU snapshots at selected attention, FFN and block outputs, with encoder-specific limitations.
+- The [DistilBERT masked-LM trace adapter](docs/DISTILBERT_TRACE.md) records bounded eager CPU snapshots at selected attention, FFN and block outputs. Its [intervention workflow](docs/DISTILBERT_INTERVENTION_WORKFLOW.md) tests a known artificial injection with restoration and an off-target comparison.
+- The [T5 trace adapter](docs/FLAN_T5_TRACE.md) captures selected encoder and decoder outputs in one uncached forward with explicit masks. It does not trace generation or a separate cross-attention output.
 - The [fair queue](docs/FAIR_QUEUE.md) rotates among admitted teams; it does not by itself guarantee admission fairness or equal GPU time.
 - The [memory budget](docs/MEMORY_BUDGET.md) and [resource profiles](docs/RESOURCE_PROFILE.md) track conservative leases, trace allowances and workload-specific measurements. Estimates and logical byte counts are not peak-memory guarantees or proof of device enforcement; no shared-service GPU workload profile has yet been approved.
 - The [resident worker](docs/RESIDENT_WORKER.md) and [broker](docs/BROKER.md) reuse one trusted model for queued forwards. Their current execution is serial; GPU-wide admission and concurrent device throughput require separate integration and validation.
@@ -75,6 +76,8 @@ In the [taste-context propagation follow-up](results/bert_taste_context_propagat
 
 On six public nonblind contexts from one template, [DistilBERT negation-cue transfers](results/bert-negation-cue-cpu-v1-20261029/README.md) met the directional `any`-versus-`some` logit rule (mean +0.2543, 6/6 positive). The reverse effect was not unique to the `just` donor: the absolute shift from the `also` donor was at least as large in 11/12 matched-recipient comparisons; this does not test polarity specificity. The compact repository does not contain the locally retained full journal.
 
+The [cue-class follow-up](results/bert-cue-class-cpu-v1-20261029/README.md) passed its fixed specificity rule in all three frames: seven of nine new public evaluation contexts passed, and all nine were eligible. Each template also had a development context; the cues differ in lexical identity and frequency, so the result does not establish general negation understanding or unique localization. The full journal is locally retained but omitted from the repository.
+
 In a [matched-dose taste follow-up](results/bert-taste-matched-dose-v1-20261029/RESULTS.md), 29 of 30 directional comparisons across blocks 0–4 favored the ingredient patch over the position control. Only three of six frames met the baseline rule, all using the same template; the comparisons are dependent and do not establish a general taste mechanism.
 
 The [crossed-template taste study](results/bert_taste_template_direction_v1/RESULTS.md) compared six public stems under two templates. Its mean ingredient-versus-`the` donor-signed contrasts were +0.085 for `after adding` and +0.068 for `with some`; the `the` control itself moved opposite the donor in all 24 comparisons. These dependent, nonblind comparisons do not establish a general taste mechanism.
@@ -124,6 +127,8 @@ A [targeted parameter-edit experiment](results/targeted-edit-cpu-v1-20261028/REA
 The [projected-edit follow-up](results/targeted-edit-projected-cpu-v1-20261028/README.md) was ineligible because only two of four targets had the required baseline preference; neither reversed. The projected and unprojected edits had different target effects, and the nine locality probes cannot establish broad capability preservation.
 
 In the [screened-edit follow-up](results/targeted-edit-screened-matched-v1-20261029/README.md), both preset projected-edit comparisons were negative on eight baseline-selected public targets and twelve locality prompts: one target margin reversed, and one locality top-token ID changed from ` euro` to ` Euro`. These fixed probes do not establish broad capability preservation.
+
+The [full-vocabulary targeted-edit screen](results/targeted-edit-full-top-cpu-v1-20261029/screen/README.md) was ineligible: none of four facts met the fixed baseline selection rule across its public prompts. No edit or locality prompt was run, so this is a feasibility outcome rather than a negative edit result.
 
 The preserved v1 runner has a [cleanup compatibility limitation](docs/TARGETED_EDIT_V2_OWNER.md#historical-v1-cleanup-limitations) in Python 3.10 and when called while an unrelated exception is being handled. The recorded run used Python 3.11; this limitation does not reclassify its result.
 
