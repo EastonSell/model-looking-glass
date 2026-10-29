@@ -1,0 +1,22 @@
+{
+  "schema": "public-known-injection-e-launch-observation-v1",
+  "observed_at_utc": "2026-10-29 11:42:10 UTC",
+  "observed_official_main": "57fd1560ad08d09a1d03fe11d569bd1be21209d2",
+  "pre_run_sha256": "b4f632ed69f0b20ceb82a176ee64047a815771231072ec04bb60dc880c18d6c6",
+  "pre_run_public_commit": "362c584871d12b57702bd7f16f18caf7c878f1b0",
+  "source_commit": "ea3f1e78e9074e3455087919d96c84d7c20db0cc",
+  "latest_exposure": {
+    "version": "distilgpt2-development-exposures-v35",
+    "merge": "21353f15818b5f38f74b5d555a63235d710916f7",
+    "module_blob": "7a48d1c2c979e55e28379258e3a1443a32f11cb9",
+    "canonical_sha256": "3a7ecf81eb7f04759ed5b8ffd0607c5955b634b938756e76eb52d2435aef9610"
+  },
+  "study_reservation": "distilgpt2-development-exposures-v34",
+  "new_v35_scope": "54 planned, reported unforwarded inputs already independently compared against study inputs and continuations",
+  "known_lane_reports": "causal, projected-controls and localization each report no newly forwarded unreserved DistilGPT-2 inputs in their lane; an unpublished cross-model proposal is tokenizer-only and reported unforwarded",
+  "free_bytes_observed": {
+    "c_free": 2953228288,
+    "e_free": 398055268352
+  },
+  "limits": "Point-in-time public inventory and cooperative lane reports; not proof of unknown outside or pretraining exposure, synchronized timing, or protected-split disjointness."
+}
