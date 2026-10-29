@@ -1,0 +1,45 @@
+{
+  "additional_independent_checks": [
+    "All 16 saved source hashes matched the Git blobs at the recorded commit.",
+    "The recorded source tree matched the reviewed tree and the public branch at review time.",
+    "All five current cache assets matched saved sizes and hashes and the committed loader pins.",
+    "The operator record reported a zero exit and matched the saved source, observer and result hashes."
+  ],
+  "audit_script_sha256": "92b322e684ee826fdc81541443f408b2c2e0eeee308c415f078222544eac4e6a",
+  "cases_sha256": "983be330b6691ce23986f26e50a345f77ca5cf46dd28a660a3a012a2cf598a7c",
+  "counts": {
+    "baseline_rows": 12,
+    "comparisons": 72,
+    "completed_forwards": 516,
+    "dose_plans": 36,
+    "patch_effects": 360
+  },
+  "eligible_frames": [
+    "coffee",
+    "milk",
+    "soup"
+  ],
+  "journal_sha256": {
+    "cake.jsonl": "2167be12c5d4be6ce4b9636adf2c7556b8cc764ab6cd6ce67cc99f237ae1989e",
+    "cocoa.jsonl": "263ac9945042beb36d5b6251d1f2daba4e31add62c98b6195e517e06f42663e8",
+    "coffee.jsonl": "6c3593951cb7436d6938037776ac6b764bf7a37df8a7776494674562892f8f04",
+    "milk.jsonl": "aeef7bf17e322a9726cb23a7d1f3d022dc8a4daa5f4720487316e5d8214eaab8",
+    "pudding.jsonl": "1bd33200cf5ab2d8ec6c6225dec0741f823fc44237c79154f195f77814b41483",
+    "soup.jsonl": "f3cdadacaf6db52c689abd7de1ba90f251177d7fa6beb22ee8ed75da5af0566b"
+  },
+  "limitations": [
+    "The audit checks saved consistency and does not authenticate execution or publication chronology.",
+    "The operator and observer describe direct processes; whole-process-tree cleanup was not verified.",
+    "Whole-output untouched-coordinate equality and patched full-vocabulary summaries are owner-observed.",
+    "Six noun pairs use two public templates; the result is exploratory and has no held-out or population claim.",
+    "All three eligible frames use the same after-adding template; all with-some frames are ineligible."
+  ],
+  "observer_sha256": "64553741dfe735f482ec0541ea1aa1b85195236f0edd8ddd6be7449b5012a760",
+  "operator_record_sha256": "2913352a8e8d7427b5ecd135ce61d05491de5d085353adff2ab07ce7cdf4846d",
+  "result_sha256": "cad47fbb5599f5ec44161d59ddbfc6d26bd904b399f23c68089b709921ec194e",
+  "schema": "bert-taste-matched-independent-saved-audit-v1",
+  "source_commit": "74227e9909e4a485296065aced0368a1ccafba64",
+  "source_tree": "cdbdb9053f5efe956c52ab3042796bf6a2430dbe",
+  "started_sha256": "b63403c3d07f207f370fae6b24f0bc78a06c219199bf6c5865a5a126d2cdddf0",
+  "status": "saved_consistency_verified"
+}
