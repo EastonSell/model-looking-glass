@@ -517,8 +517,12 @@ def test_recorded_exit_and_phase_hashes_must_close_before_science(tmp_path):
         path.write_bytes(audit.canonical(value) + b'\n')
     (root/'evidence/events.jsonl').write_bytes(b'')
     (root/'evidence/logits.f32').write_bytes(b'')
+    resource = [{'index':i, 'call':1, 'boundary':boundary, 'source_free':audit.C_FREE_FLOOR,
+                 'output_free':audit.E_FREE_FLOOR, 'passed':True} for i,boundary in enumerate(('before','after'))]
+    (root/'resources.jsonl').write_bytes(b''.join(audit.canonical(row)+b'\n' for row in resource))
     write(root/'result.json', {'status':'complete'})
-    stdout = audit.canonical({'pid':123,'parent_pid':456,'site':'fixture'}) + b'\n'
+    caches = audit.expected_cache_paths(root)
+    stdout = audit.canonical({'pid':123,'parent_pid':456,'site':'fixture','cache_paths':caches}) + b'\n'
     (root/'stdout.log').write_bytes(stdout)
     (root/'stderr.log').write_bytes(b'')
     source, manifest_sha, scope = 'a'*40, 'b'*64, 'c'*64
@@ -530,21 +534,33 @@ def test_recorded_exit_and_phase_hashes_must_close_before_science(tmp_path):
         'pid':123, 'parent_pid':456, 'calls':1, 'cumulative_calls':1,
         'result_sha256':audit.file_sha(root/'result.json'),
         'events_sha256':audit.file_sha(root/'evidence/events.jsonl'),
-        'logits_sha256':audit.file_sha(root/'evidence/logits.f32')}
+        'logits_sha256':audit.file_sha(root/'evidence/logits.f32'),
+        'resources_sha256':audit.file_sha(root/'resources.jsonl'),
+        'resource_summary':{'checks':2,'checked_calls':1,'min_source_free':audit.C_FREE_FLOOR,
+                            'min_output_free':audit.E_FREE_FLOOR}}
     write(root/'phase.json', phase)
-    write(root/'operator-start.json', {'phase':'development','source':source,
-                                      'scope_sha256':scope,'rehearsal':False})
+    start = {'phase':'development','source':source,'scope_sha256':scope,'rehearsal':False,
+             'parent_temp':{'TEMP':str(root.parent.resolve()),'TMP':str(root.parent.resolve())},
+             'child_cache_paths':caches}
+    write(root/'operator-start.json', start)
     write(root/'operator-spawn.json', {'pid':123,'parent_pid':456})
     def log(path): return {'bytes':path.stat().st_size, 'sha256':audit.file_sha(path),
                            'finished':True,'truncated':False,'error':None}
     observed = {'status':'complete_candidate','exit_code':0,'reaped':True,'drained':True,
-        'identity_matches':True,'timed_out':False,'error':None,'phase_sha256':audit.file_sha(root/'phase.json'),
+        'identity_matches':True,'timed_out':False,'error':None,'error_detail':None,
+        'phase_sha256':audit.file_sha(root/'phase.json'),
         'direct_child_pid':123,'operator_pid':456,'phase_consistent':True,'within_evidence_cap':True,
         'cumulative_evidence_bytes_before_exit_record':100,'supervised_elapsed_seconds':0.1,
         'logs':{'stdout':log(root/'stdout.log'),'stderr':log(root/'stderr.log')}}
     write(root/'operator-exit.json', observed)
     result = audit.validate_closed_phase(root, 'development', manifest, manifest_sha, asset)
     assert result[0]['calls'] == 1
+    broken = copy.deepcopy(start)
+    broken['child_cache_paths']['HF_HOME'] = str(root.parent.parent.parent/'other')
+    write(root/'operator-start.json', broken)
+    with pytest.raises(audit.AuditError, match='cache paths differ'):
+        audit.validate_closed_phase(root, 'development', manifest, manifest_sha, asset)
+    write(root/'operator-start.json', start)
     observed['reaped'] = False
     write(root/'operator-exit.json', observed)
     with pytest.raises(audit.AuditError, match='exit is incomplete'):
@@ -677,13 +693,13 @@ def test_oversized_individual_logit_span_is_rejected_before_read(tmp_path):
         audit.Journal(fixture.root, fixture.expected, fixture.random, phase='development', vocabulary=8)
 
 
-def test_split_public_handoff_and_review_bind_all_nine_artifacts(tmp_path, monkeypatch):
+def test_split_public_handoff_and_review_bind_all_ten_artifacts(tmp_path, monkeypatch):
     root = tmp_path/'dev'
     (root/'evidence').mkdir(parents=True)
     paths = {'result':root/'result.json', 'events':root/'evidence/events.jsonl',
              'logits':root/'evidence/logits.f32', 'phase':root/'phase.json', 'exit':root/'operator-exit.json',
              'stdout':root/'stdout.log', 'stderr':root/'stderr.log', 'scope':tmp_path/'scope.json',
-             'review':tmp_path/'review.json'}
+             'resources':root/'resources.jsonl', 'review':tmp_path/'review.json'}
     for name, path in paths.items():
         if name != 'review': path.write_bytes(('fake-' + name).encode())
     source, public = 'a'*40, 'b'*40
@@ -725,13 +741,41 @@ def test_split_public_handoff_and_review_bind_all_nine_artifacts(tmp_path, monke
         audit.validate_handoff(*args)
 
 
+def test_resource_observations_cover_each_call_and_fail_closed(tmp_path):
+    path = tmp_path/'resources.jsonl'
+    records = [{'index':i, 'call':i//2+1, 'boundary':'before' if i%2 == 0 else 'after',
+                'source_free':audit.C_FREE_FLOOR+i, 'output_free':audit.E_FREE_FLOOR+i, 'passed':True}
+               for i in range(4)]
+    summary = {'checks':4,'checked_calls':2,'min_source_free':audit.C_FREE_FLOOR,
+               'min_output_free':audit.E_FREE_FLOOR}
+    def write(): path.write_bytes(b''.join(audit.canonical(r)+b'\n' for r in records))
+    write()
+    assert audit.validate_resource_log(path, 2, summary) == summary
+    for key,value in (('source_free',audit.C_FREE_FLOOR-1), ('passed',False), ('call',True),
+                      ('boundary','after')):
+        original = records[0][key]
+        records[0][key] = value
+        write()
+        with pytest.raises(audit.AuditError): audit.validate_resource_log(path, 2, summary)
+        records[0][key] = original
+    write()
+    with pytest.raises(audit.AuditError, match='summary differs'):
+        audit.validate_resource_log(path, 2, {**summary,'min_source_free':summary['min_source_free']+1})
+    with pytest.raises(audit.AuditError, match='cover all calls'):
+        audit.validate_resource_log(path, 3, summary)
+    path.write_bytes(b'')
+    assert audit.validate_resource_log(path, 0, {'checks':0,'checked_calls':0,
+        'min_source_free':None,'min_output_free':None})['checked_calls'] == 0
+
+
 def test_manifest_requires_all_fixed_source_paths_including_conftest(tmp_path, monkeypatch):
     runtime = ('owner','driver','cases','numerical','guard','journal','worker','decision','study','session','handoff','results')
     tests = ('owner','case','numerical','guard','journal','worker','decision','study','session','handoff','results','driver')
-    paths = {f'flan_weight_edit_{name}.py':f'scripts/flan_weight_edit_{name}.py' for name in runtime}
-    paths.update({f'flan_weight_edit_{name}_test.py':f'tests/flan_weight_edit/flan_weight_edit_{name}_test.py'
+    base = 'studies/flan_weight_edit_v2/'
+    paths = {f'flan_weight_edit_{name}.py':base+f'scripts/flan_weight_edit_{name}.py' for name in runtime}
+    paths.update({f'flan_weight_edit_{name}_test.py':base+f'tests/flan_weight_edit/flan_weight_edit_{name}_test.py'
                   for name in tests})
-    paths['flan_weight_edit_conftest.py'] = 'tests/flan_weight_edit/conftest.py'
+    paths['flan_weight_edit_conftest.py'] = base+'tests/flan_weight_edit/conftest.py'
     blob = b'synthetic source'
     source, revision = 'a'*40, 'b'*40
     manifest = {'schema':'flan-weight-edit-manifest-v1','source_revision':source,
@@ -761,6 +805,7 @@ def test_manifest_requires_all_fixed_source_paths_including_conftest(tmp_path, m
 
 
 def test_tokenizer_ineligibility_requires_a_real_reproduced_mismatch(tmp_path, monkeypatch):
+    monkeypatch.setattr(audit, 'STUDY_ROOT', tmp_path)
     monkeypatch.setattr(audit, 'file_sha', lambda path: audit.CASE_SHA)
     monkeypatch.setattr(audit, 'load_json', lambda path: {})
     monkeypatch.setattr(audit, 'valid_cases', lambda bundle: [])
@@ -772,11 +817,16 @@ def test_tokenizer_ineligibility_requires_a_real_reproduced_mismatch(tmp_path, m
     monkeypatch.setattr(audit, 'verify_unchanged', lambda snapshot: None)
     monkeypatch.setattr(audit, 'validate_closed_phase', lambda *args,**kwargs: ({}, {}, None))
     args = SimpleNamespace(cases=tmp_path/'cases', repo=tmp_path, manifest=tmp_path/'manifest',
-        manifest_revision='c'*40, assets=tmp_path/'assets', development=tmp_path/'dev',
+        manifest_revision='c'*40, assets=tmp_path/'assets', development=tmp_path/'fixed-attempt/development',
         development_scope=tmp_path/'scope', evaluation=None, evaluation_scope=None, handoff=None)
     def mismatch(*args): raise audit.CaseAlignmentError('mismatch')
     monkeypatch.setattr(audit, 'verify_tokenized_cases', mismatch)
     assert audit.audit(args)['reason'] == 'tokenizer-alignment'
+    original = args.development
+    args.development = tmp_path/'other'
+    with pytest.raises(audit.AuditError, match='fixed v2 study root'):
+        audit.audit(args)
+    args.development = original
     monkeypatch.setattr(audit, 'verify_tokenized_cases', lambda *args: None)
     with pytest.raises(audit.AuditError, match='mismatch was not reproduced'):
         audit.audit(args)

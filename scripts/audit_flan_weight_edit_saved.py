@@ -31,18 +31,24 @@ PROTOCOL_SHA = 'c06fd598e6b5d9cf8d9734c26f6711fbf53b0fbfda08f009ab691ee91dca5478
 ASSET_SHA = 'd369e3095dc35c52608f40fbd2715d7a2ff80a02fd71f0692c24af2cf3402083'
 MODEL_SHA = '495fa51e204676f1a857a9fc13c4c89f3f5ba9f480b898cebca02add25e6d749'
 TOKENIZER_SHA = 'fe2ebbbbde2985be723e0ce18217853e4020c5e9d35bd07be2c27ab9d3ead57a'
-MANIFEST_PATH = 'docs/FLAN_T5_WEIGHT_EDIT_EXECUTION_MANIFEST_V1.json'
-MANIFEST_REVISION = '05230f9fa9b1a3aa229f72e24057591befa4c01c'
-SOURCE_REVISION = '07498325b991daa5228a7c661ea42de4b1edbe19'
-MANIFEST_SHA = 'd6dbb3b453190490c57bffc5460c4fa2c271b3d3ae0565f614e89d7953311e5f'
+MANIFEST_PATH = 'docs/FLAN_T5_WEIGHT_EDIT_EXECUTION_MANIFEST_V2.json'
+MANIFEST_REVISION = '60691c687cc737c081a6f2f27df3b51bcc4d5c87'
+SOURCE_REVISION = 'b3c7e19a5349cd2fb76ef4908407342233c7e240'
+MANIFEST_SHA = '09623ddf8716a1467cc35ef0469f7bb6d2119fdf574fd35aafe13f55e9fa669b'
 PUBLIC_INPUTS = {'docs/FLAN_T5_TARGETED_WEIGHT_EDIT_V1.md': PROTOCOL_SHA,
                  'docs/FLAN_T5_WEIGHT_EDIT_CASES_V1.json': CASE_SHA,
                  'docs/FLAN_T5_WEIGHT_EDIT_PUBLICATION_V1.md': 'f29d98e1b436298f4867b1f722fb41f184cb761b97b2914139f23bf3d910a660',
                  'experiments/flan_t5_known_injection_cases_v1.json': '1b21870b8d2c83a7c144ecbf2911728fcdc14a828bf2e8078fca43780df64c11',
                  'docs/FLAN_T5_WEIGHT_EDIT_STORAGE_V1.md': 'b61d09688242e322e525adc74b7e9336b33f471fef20a883a724200805a0815c',
-                 'docs/FLAN_T5_WEIGHT_EDIT_STORAGE_AMENDMENT_V1.md': '7314cd1950cab87382b3b530ca067c29e878cbd2273ae6d8181b10d58c024155'}
+                 'docs/FLAN_T5_WEIGHT_EDIT_STORAGE_AMENDMENT_V1.md': '7314cd1950cab87382b3b530ca067c29e878cbd2273ae6d8181b10d58c024155',
+                 'docs/FLAN_T5_WEIGHT_EDIT_RESOURCE_SUCCESSOR_V2.md': '210716fe1c2ce99338cafab47ef3d1789e75e4e67f87be71909821c4f28ca3ea',
+                 'results/flan-t5-weight-edit-cpu-v1-20261029/development-failure/README.md': '8b62c0adc2f80eb8a7a321eb34c8b076d9613f9add5a0b69eec1360ad0bebc83',
+                 'results/flan-t5-weight-edit-cpu-v1-20261029/development-failure/independent-process-audit-v1.json': 'efc379b31781c36775aa5eb6588f0c93d52a79f613108b4c00ac101c01c466cf'}
 MAX_EVENTS_BYTES = 64 * 1024**2
 MAX_LOGIT_BYTES = 256 * 1024**2
+C_FREE_FLOOR = 1207959552
+E_FREE_FLOOR = 2416967680
+STUDY_ROOT = Path(r'E:\Codex\model-looking-glass\work\flan-t5-weight-edit-v2')
 
 
 class AuditError(ValueError):
@@ -1048,10 +1054,11 @@ def validate_manifest(repo, path, revision):
                'decision', 'study', 'session', 'handoff', 'results')
     tests = ('owner', 'case', 'numerical', 'guard', 'journal', 'worker',
              'decision', 'study', 'session', 'handoff', 'results', 'driver')
-    expected = ({f'flan_weight_edit_{name}.py': 'scripts/' + f'flan_weight_edit_{name}.py' for name in runtime}
-                | {f'flan_weight_edit_{name}_test.py': 'tests/flan_weight_edit/' + f'flan_weight_edit_{name}_test.py'
+    base = 'studies/flan_weight_edit_v2/'
+    expected = ({f'flan_weight_edit_{name}.py': base + 'scripts/' + f'flan_weight_edit_{name}.py' for name in runtime}
+                | {f'flan_weight_edit_{name}_test.py': base + 'tests/flan_weight_edit/' + f'flan_weight_edit_{name}_test.py'
                    for name in tests}
-                | {'flan_weight_edit_conftest.py': 'tests/flan_weight_edit/conftest.py'})
+                | {'flan_weight_edit_conftest.py': base + 'tests/flan_weight_edit/conftest.py'})
     require(type(sources) is dict and set(sources) == set(expected), 'source inventory differs')
     for name, source_path in expected.items():
         item = sources[name]
@@ -1079,6 +1086,17 @@ def reject_failure_markers(root):
                     'failure or partial marker coexists with a completed phase')
 
 
+def expected_cache_paths(root):
+    temp = (Path(root) / 'temp').resolve()
+    names = {'HF_HOME': 'hf', 'HF_HUB_CACHE': 'hf-hub', 'HF_ASSETS_CACHE': 'hf-assets',
+             'HF_DATASETS_CACHE': 'hf-datasets', 'HF_MODULES_CACHE': 'hf-modules',
+             'HUGGINGFACE_HUB_CACHE': 'hf-hub-legacy', 'HUGGINGFACE_ASSETS_CACHE': 'hf-assets-legacy',
+             'TRANSFORMERS_CACHE': 'transformers', 'TORCH_HOME': 'torch', 'XDG_CACHE_HOME': 'xdg',
+             'MPLCONFIGDIR': 'mpl'}
+    return {'TEMP': str(temp), 'TMP': str(temp),
+            **{name: str(temp / 'library-cache' / directory) for name, directory in names.items()}}
+
+
 def validate_closed_phase(directory, phase_name, manifest, manifest_sha, asset_manifest, *, scope_path=None, claim_path=None):
     root = Path(directory)
     reject_failure_markers(root)
@@ -1094,7 +1112,8 @@ def validate_closed_phase(directory, phase_name, manifest, manifest_sha, asset_m
             and type(exit_record.get('cumulative_evidence_bytes_before_exit_record')) is int
             and 0 <= exit_record['cumulative_evidence_bytes_before_exit_record'] <= 255 * 1024**2
             and number(exit_record.get('supervised_elapsed_seconds')) and exit_record['supervised_elapsed_seconds'] >= 0
-            and exit_record.get('error') is None and exit_record.get('phase_sha256') == file_sha(phase_path),
+            and exit_record.get('error') is None and 'error_detail' in exit_record
+            and exit_record['error_detail'] is None and exit_record.get('phase_sha256') == file_sha(phase_path),
             'phase or direct-child exit is incomplete')
     start, spawn = load_json(root / 'operator-start.json'), load_json(root / 'operator-spawn.json')
     require(start.get('phase') == phase_name and start.get('source') == manifest['source_revision']
@@ -1107,6 +1126,13 @@ def validate_closed_phase(directory, phase_name, manifest, manifest_sha, asset_m
             and phase.get('manifest_sha256') == manifest_sha and phase.get('case_sha256') == CASE_SHA
             and hex_digest(start.get('scope_sha256')) and phase.get('scope_sha256') == start['scope_sha256'],
             'phase process or source records differ')
+    parent_temp = start.get('parent_temp')
+    study_root = root.parent.parent.resolve()
+    require(type(parent_temp) is dict and set(parent_temp) == {'TEMP', 'TMP'}
+            and all(type(value) is str and Path(value).is_absolute()
+                    and Path(value).resolve().is_relative_to(study_root) for value in parent_temp.values())
+            and exact(start.get('child_cache_paths'), expected_cache_paths(root)),
+            'recorded parent or child cache paths differ')
     if scope_path is not None:
         require(file_sha(scope_path) == start['scope_sha256'], 'scope artifact differs')
     if claim_path is not None:
@@ -1128,7 +1154,8 @@ def validate_closed_phase(directory, phase_name, manifest, manifest_sha, asset_m
     require(stdout, 'child identity record is absent')
     identity = strict_json(stdout[0])
     require(type(identity.get('pid')) is int and type(identity.get('parent_pid')) is int
-            and identity['pid'] == spawn['pid'] and identity['parent_pid'] == spawn['parent_pid'],
+            and identity['pid'] == spawn['pid'] and identity['parent_pid'] == spawn['parent_pid']
+            and exact(identity.get('cache_paths'), start['child_cache_paths']),
             'direct-child identity record differs')
     if phase.get('scientific_status') == 'ineligible' and phase.get('model_loaded') is False:
         require(phase.get('reason') == 'tokenizer-alignment' and type(phase.get('calls')) is int
@@ -1140,14 +1167,45 @@ def validate_closed_phase(directory, phase_name, manifest, manifest_sha, asset_m
             'phase runtime, assets, source or scope binding differs')
     files = {'result_sha256': root / 'result.json',
              'events_sha256': root / 'evidence' / 'events.jsonl',
-             'logits_sha256': root / 'evidence' / 'logits.f32'}
+             'logits_sha256': root / 'evidence' / 'logits.f32',
+             'resources_sha256': root / 'resources.jsonl'}
     for key, path in files.items():
         require(hex_digest(phase.get(key)) and path.is_file() and file_sha(path) == phase[key],
                 'phase artifact hash differs: ' + key)
     require(type(phase.get('calls')) is int and 0 <= phase['calls'] <= 1200
             and type(phase.get('cumulative_calls')) is int and 0 <= phase['cumulative_calls'] <= 1200,
             'phase call accounting differs')
+    validate_resource_log(files['resources_sha256'], phase['calls'], phase.get('resource_summary'))
     return phase, exit_record, files
+
+
+def validate_resource_log(path, calls, summary):
+    """Check the recorded per-call disk observations, not a filesystem reservation."""
+    path = Path(path)
+    require(type(calls) is int and 0 <= calls <= 1200 and path.is_file()
+            and path.stat().st_size <= 1024 * 1024, 'resource log is missing or oversized')
+    records = []
+    with path.open('rb') as stream:
+        for raw in stream:
+            require(len(raw) <= 4096 and raw.endswith(b'\n') and len(records) < 2400,
+                    'resource observation is oversized or incomplete')
+            record = strict_json(raw)
+            index = len(records)
+            require(type(record) is dict and set(record) ==
+                    {'index', 'call', 'boundary', 'source_free', 'output_free', 'passed'}
+                    and type(record.get('index')) is int and record['index'] == index
+                    and type(record.get('call')) is int and record['call'] == index // 2 + 1
+                    and record.get('boundary') == ('before' if index % 2 == 0 else 'after')
+                    and type(record.get('source_free')) is int and C_FREE_FLOOR <= record['source_free'] < 2**64
+                    and type(record.get('output_free')) is int and E_FREE_FLOOR <= record['output_free'] < 2**64
+                    and record.get('passed') is True, 'resource observation differs or failed')
+            records.append(record)
+    require(len(records) == 2 * calls, 'resource observations do not cover all calls')
+    expected = {'checks': len(records), 'checked_calls': calls,
+                'min_source_free': min((r['source_free'] for r in records), default=None),
+                'min_output_free': min((r['output_free'] for r in records), default=None)}
+    require(exact(summary, expected), 'resource summary differs')
+    return expected
 
 
 def validate_phase_journal(phase, journal, *, previous_calls=0):
@@ -1166,14 +1224,15 @@ def validate_handoff(repo, path, dev_dir, dev_phase, dev_exit, source_revision, 
             and handoff.get('source_revision') == source_revision, 'evaluation handoff source differs')
     artifacts = handoff.get('artifacts')
     require(type(artifacts) is dict and set(artifacts) ==
-            {'result', 'events', 'logits', 'phase', 'exit', 'review', 'stdout', 'stderr', 'scope'},
+            {'result', 'events', 'logits', 'resources', 'phase', 'exit', 'review', 'stdout', 'stderr', 'scope'},
             'evaluation handoff inventory differs')
     public = handoff.get('public_revision')
     require(sha(git_blob(repo, public, MANIFEST_PATH)) == manifest_sha, 'published manifest differs')
     expected = {'result': Path(dev_dir) / 'result.json', 'events': Path(dev_dir) / 'evidence/events.jsonl',
                 'logits': Path(dev_dir) / 'evidence/logits.f32', 'phase': Path(dev_dir) / 'phase.json',
                 'exit': Path(dev_dir) / 'operator-exit.json', 'stdout': Path(dev_dir) / 'stdout.log',
-                'stderr': Path(dev_dir) / 'stderr.log', 'scope': Path(scope_path)}
+                'stderr': Path(dev_dir) / 'stderr.log', 'scope': Path(scope_path),
+                'resources': Path(dev_dir) / 'resources.jsonl'}
     for name, item in artifacts.items():
         require(type(item) is dict and hex_digest(item.get('sha256'))
                 and type(item.get('local_path')) is str and Path(item['local_path']).is_absolute()
@@ -1204,7 +1263,7 @@ def validate_handoff(repo, path, dev_dir, dev_phase, dev_exit, source_revision, 
     review = load_json(artifacts['review']['local_path'])
     require(review.get('status') == 'passed' and review.get('source_revision') == source_revision
             and all(review.get(name + '_sha256') == artifacts[name]['sha256']
-                    for name in ('result', 'events', 'logits', 'phase', 'exit', 'stdout', 'stderr', 'scope'))
+                    for name in ('result', 'events', 'logits', 'resources', 'phase', 'exit', 'stdout', 'stderr', 'scope'))
             and type(review.get('review_scope')) is list
             and all(type(value) is str for value in review['review_scope'])
             and {'saved-logits', 'saved-process', 'restoration'}.issubset(review['review_scope'])
@@ -1280,7 +1339,8 @@ def phase_file_snapshot(root, scope_path, claim_path, *, has_evidence):
     paths = [root / 'phase.json', root / 'operator-exit.json', root / 'operator-start.json',
              root / 'operator-spawn.json', root / 'stdout.log', root / 'stderr.log', Path(scope_path), Path(claim_path)]
     if has_evidence:
-        paths += [root / 'result.json', root / 'evidence/events.jsonl', root / 'evidence/logits.f32']
+        paths += [root / 'result.json', root / 'evidence/events.jsonl', root / 'evidence/logits.f32',
+                  root / 'resources.jsonl']
     return {path: file_sha(path) for path in paths}
 
 
@@ -1290,6 +1350,14 @@ def verify_unchanged(snapshot):
 
 
 def audit(args):
+    study_root = STUDY_ROOT.resolve()
+    require(Path(args.development).resolve() == (study_root / 'fixed-attempt/development').resolve()
+            and Path(args.development_scope).resolve().is_relative_to(study_root),
+            'development attempt or scope is outside the fixed v2 study root')
+    if args.evaluation is not None:
+        require(Path(args.evaluation).resolve() == (study_root / 'fixed-attempt/evaluation').resolve()
+                and Path(args.evaluation_scope).resolve().is_relative_to(study_root),
+                'evaluation attempt or scope is outside the fixed v2 study root')
     require(file_sha(args.cases) == CASE_SHA, 'fixed case-file hash differs')
     cases = valid_cases(load_json(args.cases))
     manifest, manifest_sha = validate_manifest(args.repo, args.manifest, args.manifest_revision)
@@ -1344,14 +1412,15 @@ def audit(args):
     dev = development(dev_journal, cases, dev_saved, decoder, special)
     require(dev_phase.get('scientific_status') == dev_saved['status'], 'development scientific status differs')
     result = {**common, 'status': 'passed' if dev['status'] == 'complete' else 'ineligible',
-              'review_scope': ['saved-logits', 'saved-process', 'restoration'],
+              'review_scope': ['saved-logits', 'saved-process', 'restoration', 'saved-resources'],
               'scientific_status': dev['status'], 'phase_sha256': file_sha(Path(args.development) / 'phase.json'),
               'exit_sha256': file_sha(Path(args.development) / 'operator-exit.json'),
               'stdout_sha256': dev_snapshot[dev_root / 'stdout.log'],
               'stderr_sha256': dev_snapshot[dev_root / 'stderr.log'],
               'scope_sha256': dev_snapshot[Path(args.development_scope)],
               'result_sha256': dev_phase['result_sha256'], 'events_sha256': dev_phase['events_sha256'],
-              'logits_sha256': dev_phase['logits_sha256'], 'development': dev}
+              'logits_sha256': dev_phase['logits_sha256'], 'resources_sha256': dev_phase['resources_sha256'],
+              'resource_summary': dev_phase['resource_summary'], 'development': dev}
     if args.evaluation is None:
         require(args.handoff is None, 'handoff requires an evaluation phase')
         numeric_mode()
@@ -1384,6 +1453,8 @@ def audit(args):
     result.update({'scientific_status': assessed['status'], 'evaluation': assessed, 'handoff': handoff,
                    'evaluation_hashes': {'result_sha256': eval_phase['result_sha256'],
                      'events_sha256': eval_phase['events_sha256'], 'logits_sha256': eval_phase['logits_sha256'],
+                     'resources_sha256': eval_phase['resources_sha256'],
+                     'resource_summary': eval_phase['resource_summary'],
                      'phase_sha256': file_sha(Path(args.evaluation) / 'phase.json'),
                      'exit_sha256': file_sha(Path(args.evaluation) / 'operator-exit.json')}})
     numeric_mode()
