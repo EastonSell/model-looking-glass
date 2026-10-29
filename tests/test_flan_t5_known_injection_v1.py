@@ -19,11 +19,11 @@ else:
     spec.loader.exec_module(study)
 
 
-def tiny_model():
+def tiny_model(layers=8):
     torch.set_num_threads(1)
     torch.manual_seed(19)
-    config = T5Config(vocab_size=96, d_model=16, d_kv=8, d_ff=32, num_layers=6,
-                      num_decoder_layers=6, num_heads=2, dropout_rate=0.0,
+    config = T5Config(vocab_size=96, d_model=16, d_kv=8, d_ff=32, num_layers=layers,
+                      num_decoder_layers=layers, num_heads=2, dropout_rate=0.0,
                       decoder_start_token_id=0, pad_token_id=0, eos_token_id=1)
     config._attn_implementation = 'eager'
     return T5ForConditionalGeneration(config).eval()
@@ -48,6 +48,18 @@ def test_synthetic_two_stack_schedule_and_landing(tmp_path):
         assert set(event['inputs']) == {'input_ids', 'attention_mask', 'decoder_input_ids', 'decoder_attention_mask'}
         assert all(v['dtype'] == 'torch.int64' and v['shape'][0] == 1 for v in event['inputs'].values())
     assert events[-1]['event'] == 'complete'
+
+
+def test_rejects_wrong_model_layer_count_before_output_or_forward(tmp_path, monkeypatch):
+    def unexpected_forward(*args, **kwargs):
+        raise AssertionError('a model forward must not run')
+
+    model=tiny_model(layers=6)
+    monkeypatch.setattr(model,'forward',unexpected_forward)
+    root=tmp_path/'wrong-model-dimensions'
+    with pytest.raises(ValueError, match='unexpected model dimensions'):
+        study.execute(model,[case()],[0,3],root,vocab=96,hidden=16)
+    assert not root.exists()
 
 
 def test_landing_rejects_other_position_or_wrong_source():

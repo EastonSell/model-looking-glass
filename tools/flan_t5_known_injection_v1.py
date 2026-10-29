@@ -270,7 +270,7 @@ def execute(model, cases, decoder_ids, root, *, vocab, hidden, raw_limit=RAW_LIM
     if sys.byteorder != 'little' or type(raw_limit) is not int or not 0 < raw_limit <= RAW_LIMIT:
         raise ValueError('unsupported byte order or evidence limit')
     if (int(model.config.d_model) != hidden or int(model.get_output_embeddings().weight.shape[0]) != vocab
-            or len(model.encoder.block) != 6 or len(model.decoder.block) != 6):
+            or len(model.encoder.block) != 8 or len(model.decoder.block) != 8):
         raise ValueError('unexpected model dimensions')
     if not cases or len({c['case_id'] for c in cases}) != len(cases) or (metadata is not None and type(metadata) is not dict):
         raise ValueError('empty or duplicate cases')
