@@ -414,6 +414,7 @@ class IPCServer:
         self._custody_epoch = custody_epoch
         self._custody_generation = 0
         self._custody_quarantine = threading.Event()
+        self._max_connections = max_connections
         self._slots = threading.BoundedSemaphore(max_connections)
         self._lock = threading.Lock()
         self._lifecycle = threading.Lock()
@@ -421,6 +422,9 @@ class IPCServer:
         self._admissions_active = 0
         self._clients = set()
         self._handlers = set()
+        # Completed handlers remain rooted until another thread has observed
+        # their actual termination. A handler cannot prove its own exit.
+        self._retiring_handlers = set()
         self._stop = threading.Event()
         self._accepting_stopped = threading.Event()
         self._listener = None
@@ -607,17 +611,36 @@ class IPCServer:
                         client.close()
                     self._accept_orphan = None
                     continue
-                thread = threading.Thread(target=self._serve, args=(client,), daemon=True,
+                thread = threading.Thread(target=self._run_handler, args=(client,), daemon=True,
                                           name="looking-glass-ipc-client")
+                full = False
                 with self._lock:
                     if self._accepting_stopped.is_set():
                         client.close()
                         self._slots.release()
                         self._accept_orphan = None
                         return
-                    self._clients.add(client)
-                    self._handlers.add(thread)
-                    thread.start()
+                    # A socket slot can have been released just before its
+                    # handler exits. Keep the combined live thread count
+                    # bounded even in that interval.
+                    self._retiring_handlers.difference_update(
+                        [prior for prior in self._retiring_handlers if not prior.is_alive()])
+                    if len(self._handlers) + len(self._retiring_handlers) >= self._max_connections:
+                        full = True
+                    else:
+                        self._clients.add(client)
+                        self._handlers.add(thread)
+                        thread.start()
+                        self._accept_orphan = None
+                if full:
+                    try:
+                        _send(client, {"version": 1, "status": "rejected", "error": "busy"},
+                              self.max_response_bytes, time.monotonic() + min(self.io_timeout, 0.2))
+                    except (OSError, EOFError, TimeoutError, ValueError, _ProtocolError, _ResultTooLarge):
+                        pass
+                    finally:
+                        client.close()
+                        self._slots.release()
                     self._accept_orphan = None
             except BaseException:
                 self._mark_custody_fault()
@@ -628,6 +651,15 @@ class IPCServer:
 
     def _send(self, client, message):
         _send(client, message, self.max_response_bytes, time.monotonic() + self.io_timeout)
+
+    def _run_handler(self, client):
+        # Retain a source-time fault signal even if an unexpected exception
+        # escapes the final part of the handler's own cleanup.
+        try:
+            self._serve(client)
+        except BaseException:
+            self._mark_custody_fault()
+            raise
 
     def _serve(self, client):
         handle = None
@@ -869,6 +901,9 @@ class IPCServer:
                             # Keep the handler discoverable until connection
                             # accounting has actually completed.
                             self._slots.release()
+                            # Root first, then remove from active handlers;
+                            # only another thread can observe actual exit.
+                            self._retiring_handlers.add(threading.current_thread())
                             self._handlers.discard(threading.current_thread())
                         except BaseException:
                             # A notice may already have been observed. Latch
@@ -1010,12 +1045,14 @@ class IPCServer:
         if self._accept_thread is not None and self._accept_thread is not threading.current_thread():
             self._accept_thread.join(timeout=_remaining(deadline))
         with self._lock:
-            handlers = list(self._handlers)
+            handlers = list(self._handlers | self._retiring_handlers)
         for thread in handlers:
             if thread is not threading.current_thread():
                 thread.join(timeout=_remaining(deadline))
         with self._lock:
-            return (not self._handlers and
+            self._retiring_handlers.difference_update(
+                [thread for thread in self._retiring_handlers if not thread.is_alive()])
+            return (not self._handlers and not self._retiring_handlers and
                     (self._accept_thread is None or not self._accept_thread.is_alive()))
 
     def close(self, timeout=5.0):
@@ -1067,12 +1104,14 @@ class IPCServer:
         if self._startup_uncertain or self._accept_uncertain or self._accept_orphan is not None:
             return False
         with self._lock:
-            handlers = list(self._handlers)
+            handlers = list(self._handlers | self._retiring_handlers)
         for thread in handlers:
             if thread is not threading.current_thread():
                 thread.join(timeout=_remaining(deadline))
         with self._lock:
-            return (not self._handlers and
+            self._retiring_handlers.difference_update(
+                [thread for thread in self._retiring_handlers if not thread.is_alive()])
+            return (not self._handlers and not self._retiring_handlers and
                     (self._accept_thread is None or not self._accept_thread.is_alive()))
 
     def __enter__(self):

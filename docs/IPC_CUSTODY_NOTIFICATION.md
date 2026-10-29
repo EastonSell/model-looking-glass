@@ -59,12 +59,21 @@ unsafe owner requires process-level recovery.
 
 An ordinary `stop_accepting`, `drain`, or `close` timeout returning `False`
 is incomplete and retryable; that result alone does not mark the authority.
-In the current transport, a handler removes its own thread from the server's
-tracked set just before returning. A `True` close result therefore does not
-by itself prove that every handler thread has actually exited or can no longer
-signal a fault. Do not use it as an owner-quiescence or clean-attestation proof;
-the live service remains gated until a separately reviewed exit protocol is
-composed with the owner lifecycle.
+The server roots each completed handler in a bounded retiring set before it
+leaves the active set. New admissions count both active and still-alive
+retiring handlers, and `close`/`drain` join them and prune only after actual
+thread exit. A `True` return from `close` or `drain` establishes quiescence
+of the server's tracked acceptor and handler threads under this cooperative
+Python contract; the owner must still check the sticky authority/quarantine
+state after the join and establish broker, worker, device and external-alias disposal
+separately. Exceptions escaping the protected handler call are marked by its
+wrapper. An interruption at the wrapper's own return or in Python's thread
+bootstrap or exception reporting can escape that protection. A joined thread
+and a clear flag therefore do not prove that every possible handler fault was
+observed. The owner needs separately reviewed fault supervision and, when its
+outcome is uncertain, process-level recovery before a clean attestation. The
+live service remains gated until the complete owner lifecycle is reviewed and
+composed.
 The owner must mark it if its own deadline or custody checks cannot establish
 safe teardown. Bound-server startup and handler checks reject an owner they
 already observe as unsafe, but do not form an atomic admission barrier against
