@@ -14,3 +14,9 @@ Then `git cat-file -t 42519c13a5b33ce3601b89ba65d67b07ebd2f78d` should report
 required by the saved-evidence reader. Importing the objects does not change a
 branch. The source snapshot establishes recorded bytes, not proof of model
 execution or complete process-tree custody.
+
+The executed reader has two scoped review findings: place its output outside
+the attempt and controller directories to preserve their inventories, and do
+not infer a strict sign from a zero produced by subtracting separately rounded
+binary64 probabilities. A separately checked paired-difference audit must
+resolve or mark such cases before interpreting the fixed scientific rule.
