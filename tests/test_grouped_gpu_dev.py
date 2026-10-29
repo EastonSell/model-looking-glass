@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -133,7 +134,8 @@ dev._owner_process_main()
         manifest = {'schema': 'grouped-gpu-source-manifest-v1', 'run_id': 'test',
                     'source_commit': 'a' * 40, 'source_sha256': hashes}
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / 'source-manifest.json'
+            path = Path(directory) / dev._MANIFEST
+            path.parent.mkdir()
             dev._write_json(path, manifest)
             digest = hashlib.sha256(path.read_bytes()).hexdigest()
             with patch.object(dev.subprocess, 'run', side_effect=AssertionError('child must not invoke Git')):
@@ -203,22 +205,95 @@ dev._owner_process_main()
         hashes = {name: hashlib.sha256((repo / name).read_bytes()).hexdigest() for name in dev._SOURCE_PATHS}
         with tempfile.TemporaryDirectory() as directory:
             run_dir = Path(directory)
-            path = run_dir / 'source-manifest.json'
+            path = run_dir / dev._MANIFEST
+            path.parent.mkdir()
             path.write_bytes(b'original')
             lease = dev._protect_manifest(repo, hashes, run_dir)
             child_lease = None
             try:
                 self.assertIs(dev._ROOTS[24], lease)
                 child_lease = dev._protect_manifest(repo, hashes, run_dir)
+                dev._write_json(run_dir / 'started.json', {'stage': 'started'})
                 lease.__exit__(None, None, None)
+                for name in ('owner.json', 'failure.json', 'memory-000.json', 'candidate.json'):
+                    dev._write_json(run_dir / name, {'stage': name})
                 with self.assertRaises(PermissionError):
                     path.write_bytes(b'changed')
+                with self.assertRaises(PermissionError):
+                    path.rename(path.with_name('renamed.json'))
+                with self.assertRaises(PermissionError):
+                    path.parent.rename(path.parent.with_name('renamed-protected'))
+                with self.assertRaises(PermissionError):
+                    run_dir.rename(run_dir.with_name(run_dir.name + '-renamed'))
                 self.assertEqual(path.read_bytes(), b'original')
             finally:
                 lease.__exit__(None, None, None)
                 if child_lease is not None:
                     child_lease.__exit__(None, None, None)
             path.write_bytes(b'permitted after release')
+
+    @unittest.skipUnless(os.name == 'nt', 'source file leases are Windows-specific')
+    def test_child_manifest_lease_survives_parent_release_and_allows_publication(self):
+        repo = Path(__file__).resolve().parents[1]
+        hashes = {name: hashlib.sha256((repo / name).read_bytes()).hexdigest() for name in dev._SOURCE_PATHS}
+        code = '''
+import hashlib, sys, time
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from looking_glass import grouped_gpu_dev as dev
+repo, root = Path(sys.argv[1]), Path(sys.argv[2])
+digest = sys.argv[3]
+sources = dev._verify_child_sources(repo, root, 'test', 'a' * 40, digest)
+guard = dev._protect_manifest(repo, sources, root)
+assert dev._verify_child_sources(repo, root, 'test', 'a' * 40, digest) == sources
+assert 'torch' not in sys.modules
+dev._write_json(root / 'child-ready.json', {'ready': True})
+deadline = time.monotonic() + 20
+while not (root / 'continue.signal').exists():
+    if time.monotonic() >= deadline:
+        raise RuntimeError('parent did not release child')
+    time.sleep(.02)
+dev._write_json(root / 'owner.json', {'stage': 'owner'})
+assert hashlib.sha256((root / dev._MANIFEST).read_bytes()).hexdigest() == digest
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / dev._MANIFEST
+            path.parent.mkdir()
+            dev._write_json(path, {'schema': 'grouped-gpu-source-manifest-v1', 'run_id': 'test',
+                                   'source_commit': 'a' * 40, 'source_sha256': hashes})
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            guard = dev._protect_manifest(repo, hashes, root)
+            process = None
+            try:
+                dev._write_json(root / 'started.json', {'stage': 'started'})
+                process = subprocess.Popen([sys._base_executable, '-I', '-S', '-B', '-c', code,
+                                            str(repo), str(root), digest],
+                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                deadline = time.monotonic() + 20
+                while not (root / 'child-ready.json').exists():
+                    if process.poll() is not None:
+                        self.fail('child exited before its independent manifest lease: ' +
+                                  process.stderr.read().decode('utf-8', 'replace'))
+                    if time.monotonic() >= deadline:
+                        self.fail('child did not acquire its independent manifest lease')
+                    time.sleep(.02)
+                guard.__exit__(None, None, None)
+                with self.assertRaises(PermissionError):
+                    path.write_bytes(b'changed')
+                with self.assertRaises(PermissionError):
+                    path.parent.rename(path.parent.with_name('renamed-protected'))
+                dev._write_json(root / 'failure.json', {'stage': 'failure'})
+                (root / 'continue.signal').write_bytes(b'continue')
+                stdout, stderr = process.communicate(timeout=20)
+                self.assertEqual(process.returncode, 0, (stdout, stderr))
+                self.assertEqual(json.loads((root / 'owner.json').read_bytes()), {'stage': 'owner'})
+                path.write_bytes(b'permitted after child exit')
+            finally:
+                if process is not None and process.poll() is None:
+                    process.kill()
+                    process.communicate(timeout=20)
+                guard.__exit__(None, None, None)
 
     @unittest.skipUnless(os.name == 'nt', 'the process-job contract is Windows-specific')
     def test_isolated_source_check_reaps_a_real_job_under_restricted_path(self):
@@ -243,6 +318,14 @@ sources = dev._verify_child_sources(Path(sys.argv[1]), Path(sys.argv[2]), 'test'
 dev._protect_sources(Path(sys.argv[1]), sources)
 dev._protect_manifest(Path(sys.argv[1]), sources, Path(sys.argv[2]))
 assert dev._verify_child_sources(Path(sys.argv[1]), Path(sys.argv[2]), 'test', 'a' * 40, sys.argv[3]) == sources
+for name in ('owner.json', 'memory-000.json', 'failure.json', 'candidate.json'):
+    dev._write_json(Path(sys.argv[2]) / name, {'stage': name})
+try:
+    (Path(sys.argv[2]) / dev._MANIFEST).write_bytes(b'changed')
+except PermissionError:
+    pass
+else:
+    raise AssertionError('owner manifest was not protected')
 subprocess.run = original_run
 lease = DeviceLease.acquire(session.device_lease_path, timeout=3)
 session.check(lease)
@@ -276,10 +359,13 @@ session.attest_clean(lease)
             root = Path(directory)
             manifest = {'schema': 'grouped-gpu-source-manifest-v1', 'run_id': 'test',
                         'source_commit': 'a' * 40, 'source_sha256': hashes}
-            dev._write_json(root / 'source-manifest.json', manifest)
-            digest = hashlib.sha256((root / 'source-manifest.json').read_bytes()).hexdigest()
+            manifest_path = root / dev._MANIFEST
+            manifest_path.parent.mkdir()
+            dev._write_json(manifest_path, manifest)
+            digest = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
             source_lease = dev._protect_sources(repo, hashes)
             manifest_lease = dev._protect_manifest(repo, hashes, root)
+            dev._write_json(root / 'started.json', {'stage': 'started'})
             job = dev._new_process_job(repo, hashes['scripts/v2_source_guards.py'])
             environment = {key: os.environ[key] for key in ('SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP')
                            if key in os.environ}
@@ -295,6 +381,9 @@ session.attest_clean(lease)
                 self.assertIsNone(job._handle)
                 self.assertTrue(job._confirmed)
                 self.assertFalse((root / 'gpu.unsafe.json').exists())
+                for name in ('started.json', 'owner.json', 'memory-000.json', 'failure.json', 'candidate.json'):
+                    self.assertEqual(json.loads((root / name).read_bytes()),
+                                     {'stage': 'started' if name == 'started.json' else name})
             finally:
                 if job._handle is not None:
                     job.close()
@@ -1771,8 +1860,9 @@ runpy.run_module('looking_glass.grouped_gpu_dev', run_name='__main__')
                 source_commit = 'b' * 40
                 source_manifest = {'schema': 'grouped-gpu-source-manifest-v1', 'run_id': 'synthetic',
                                    'source_commit': source_commit, 'source_sha256': {'synthetic': 'a' * 64}}
-                dev._write_json(run_dir / 'source-manifest.json', source_manifest)
-                manifest_sha = hashlib.sha256((run_dir / 'source-manifest.json').read_bytes()).hexdigest()
+                (run_dir / dev._MANIFEST).parent.mkdir()
+                dev._write_json(run_dir / dev._MANIFEST, source_manifest)
+                manifest_sha = hashlib.sha256((run_dir / dev._MANIFEST).read_bytes()).hexdigest()
                 records = {
                     'owner.json': {'schema': 'grouped-gpu-owner-v1', **identity,
                                    'source_manifest_sha256': manifest_sha},
@@ -1797,6 +1887,7 @@ runpy.run_module('looking_glass.grouped_gpu_dev', run_name='__main__')
                     _expected_device='cpu')
                 self.assertEqual(promoted['status'], 'passed')
                 self.assertIn('private-runtime.json', inventory)
+                self.assertIn(dev._MANIFEST, inventory)
                 self.assertTrue(all(set(item) == {'bytes', 'sha256'} for item in inventory.values()))
                 profile_path = run_dir / 'resource-profile.json'
                 profile_raw = profile_path.read_bytes()
@@ -1820,7 +1911,7 @@ runpy.run_module('looking_glass.grouped_gpu_dev', run_name='__main__')
                                      if item['stage'] == 'admission']
                 self.assertEqual([item['admission_kind'] for item in public_admissions[:4]],
                                  ['resident', 'precopy', 'workspace', 'owner-verify'])
-                manifest_path = run_dir / 'source-manifest.json'
+                manifest_path = run_dir / dev._MANIFEST
                 started_path = run_dir / 'started.json'
                 owner_path = run_dir / 'owner.json'
                 changed_manifest = dict(source_manifest, source_sha256={'synthetic': 'c' * 64})

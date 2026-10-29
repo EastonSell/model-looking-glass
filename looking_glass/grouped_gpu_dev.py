@@ -37,6 +37,7 @@ from .supervisor import OwnerSession, run_supervised
 _GIB = 1024 ** 3
 _OWNER_TIMEOUT_SECONDS = 900
 _PROTOCOL = 'experiments/grouped_gpu_dev_v3.json'
+_MANIFEST = 'protected-manifest/source-manifest.json'
 _SOURCE_PATHS = (
     _PROTOCOL, 'docs/GROUPED_GPU_DEV_PLAN.md', 'scripts/grouped_gpu_dev_bootstrap.py', 'looking_glass/__init__.py',
     'looking_glass/grouped_gpu_dev.py', 'looking_glass/bert_gpu_evidence.py',
@@ -213,7 +214,7 @@ def _verify_child_sources(repo, run_dir, run_id, commit, manifest_sha256):
     if (type(manifest_sha256) is not str or re.fullmatch(r'[0-9a-f]{64}', manifest_sha256) is None
             or type(commit) is not str or re.fullmatch(r'[0-9a-f]{40}', commit) is None):
         raise RuntimeError('invalid parent source binding')
-    raw = _bounded_bytes(run_dir / 'source-manifest.json', 65536)
+    raw = _bounded_bytes(run_dir / _MANIFEST, 65536)
     if hashlib.sha256(raw).hexdigest() != manifest_sha256:
         raise RuntimeError('parent source manifest digest differs')
     manifest = json.loads(raw)
@@ -808,7 +809,7 @@ def _verify_promotion(run_dir, run_id, supervised, gpu_uuid, protocol, protocol_
 
     owner = read('owner.json')
     started = read('started.json')
-    manifest = read('source-manifest.json', 65536)
+    manifest = read(_MANIFEST, 65536)
     candidate = read('candidate.json')
     observation = read('observations.json')
     runtime = read('private-runtime.json')
@@ -821,7 +822,7 @@ def _verify_promotion(run_dir, run_id, supervised, gpu_uuid, protocol, protocol_
     sample = read('sample-evidence.json')
     resource_profile = read('resource-profile.json')
     identity = {'run_id': run_id, 'supervisor_run_id': supervised.run_id, 'pid': supervised.pid}
-    manifest_sha = inventory['source-manifest.json']['sha256']
+    manifest_sha = inventory[_MANIFEST]['sha256']
     require(manifest == {'schema': 'grouped-gpu-source-manifest-v1', 'run_id': run_id,
                          'source_commit': source_commit, 'source_sha256': source_hashes})
     require(started == {'schema': 'grouped-gpu-start-v1', 'run_id': run_id,
@@ -1743,7 +1744,10 @@ def _protect_manifest(repo, sources, run_dir):
     guard_type = _source_guard_types(repo, sources['scripts/v2_source_guards.py'])['SourceFileLease']
     guard = guard_type.__new__(guard_type)
     _ROOTS[24] = guard
-    guard_type.__init__(guard, run_dir, [run_dir / 'source-manifest.json'])
+    manifest = run_dir / _MANIFEST
+    # Lock only the dedicated manifest directory: the sibling run directory
+    # must remain writable for create-only hard-link evidence publication.
+    guard_type.__init__(guard, manifest.parent, [manifest])
     guard.__enter__()
     return guard
 
@@ -1817,16 +1821,17 @@ def run_development(*, workspace_root, cache_dir, output, site_packages, smi):
         'MKL_NUM_THREADS': '1'})
     identity = resolve_device_identity(root, gpu_uuid, physical_uuids=[gpu_uuid], environ=environment)
     run_dir = Path(tempfile.mkdtemp(prefix='grouped-gpu-dev-', dir=root / 'work'))
+    (run_dir / _MANIFEST).parent.mkdir()
     prefix = Path(tempfile.mkdtemp(prefix='pycache-', dir=run_dir))
     environment['PYTHONPYCACHEPREFIX'] = str(prefix)
     run_id = secrets.token_hex(16)
     _write_json(run_dir / 'private-smi-before.json', {'schema': 'grouped-gpu-private-smi-v1',
                 'run_id': run_id, 'snapshot': before_private})
-    _write_json(run_dir / 'source-manifest.json', {'schema': 'grouped-gpu-source-manifest-v1',
+    _write_json(run_dir / _MANIFEST, {'schema': 'grouped-gpu-source-manifest-v1',
                 'run_id': run_id, 'source_commit': commit, 'source_sha256': sources})
-    source_manifest_sha256 = hashlib.sha256(_bounded_bytes(run_dir / 'source-manifest.json', 65536)).hexdigest()
+    source_manifest_sha256 = hashlib.sha256(_bounded_bytes(run_dir / _MANIFEST, 65536)).hexdigest()
     _protect_manifest(repo, sources, run_dir)
-    if hashlib.sha256(_bounded_bytes(run_dir / 'source-manifest.json', 65536)).hexdigest() != source_manifest_sha256:
+    if hashlib.sha256(_bounded_bytes(run_dir / _MANIFEST, 65536)).hexdigest() != source_manifest_sha256:
         raise RuntimeError('source manifest changed while acquiring protection')
     _write_json(run_dir / 'started.json', {'schema': 'grouped-gpu-start-v1', 'run_id': run_id,
                 'source_commit': commit, 'protocol_sha256': protocol_sha256,
