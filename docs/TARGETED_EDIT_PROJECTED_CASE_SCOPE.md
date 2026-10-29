@@ -1,0 +1,7 @@
+# Projected-edit case scope: pre-forward clarification
+
+The fixed projected protocol describes four France-capital paraphrases. The published cases contain two direct national-capital prompts (targets 1 and 4) and two related prompts about the location or seat of government (targets 2 and 3). Those relations need not be logically equivalent to the national-capital relation. This distinction was identified after case publication and before any projected-study model forward.
+
+The frozen four-case target mean, two-of-four reversal criterion, cases, controls and all other rules remain unchanged. A passing numerical gate could be met by the two related-relation rows alone, so the result will also report the two direct-capital and two related-relation cases individually, including their original and edited margins, both candidate-token NLLs and full-vocabulary top tokens. These subgroup observations are descriptive and add no post hoc pass criterion.
+
+Projected and unprojected edits have matched planned norms, not matched target efficacy. Report each condition's target gains and every locality KL, expected-token NLL and top-token change side by side; do not infer broad capability preservation or a gain-matched tradeoff from this small public sample. The earlier v1 study used a different dose, cases and numerical success thresholds, so its binary result is not a directly comparable success rate. Random and nuisance controls are single descriptive draws.
