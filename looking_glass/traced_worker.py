@@ -421,6 +421,8 @@ class TracedGPT2Worker(ResidentWorker):
         guard_lock = threading.Lock()
         frames = defaultdict(list)
         guard = {"active": False, "entries": 0, "completed": 0, "failed": False}
+        site_states = {path: {"active": False, "entries": 0, "completed": 0, "failed": False}
+                       for _, path, _ in selected}
         owner_thread = threading.get_ident()
 
         def begin(_module, _args):
@@ -449,17 +451,56 @@ class TracedGPT2Worker(ResidentWorker):
                         guard["completed"] += 1
             return None
 
+        def site_pre_hook(path):
+            def start(_module, _args):
+                with guard_lock:
+                    state = site_states[path]
+                    if (threading.get_ident() != owner_thread or not guard["active"]
+                            or state["active"] or state["failed"]):
+                        state["failed"] = True
+                        guard["failed"] = True
+                        raise RuntimeError("failed, incomplete, or reentrant site invocation")
+                    state["active"] = True
+                    state["entries"] += 1
+            return start
+
         def site_hook(path, site):
             def capture(_module, _args, output):
-                if type(output) is torch.Tensor:
-                    tensor, output_path = output, ()
-                elif isinstance(output, (tuple, list)) and output and type(output[0]) is torch.Tensor:
-                    tensor, output_path = output[0], (0,)
-                else:
-                    raise TypeError("unsupported GPT-2 boundary output")
-                dispatcher.record(path, layer_index=site.layer_index,
-                                  module_kind=site.module_kind, output=tensor,
-                                  output_path=output_path)
+                with guard_lock:
+                    state = site_states[path]
+                    if threading.get_ident() != owner_thread or not state["active"]:
+                        state["failed"] = True
+                        guard["failed"] = True
+                        if output is None:
+                            # Preserve the original pre-hook/forward exception.
+                            return None
+                        raise RuntimeError("site invocation has no matching owner entry")
+                if output is None:
+                    # PyTorch invokes always_call hooks with None when an
+                    # ordinary forward exception propagates. Record the
+                    # failure even if an enclosing module later catches it.
+                    with guard_lock:
+                        state["active"] = False
+                        state["failed"] = True
+                    return None
+                try:
+                    if type(output) is torch.Tensor:
+                        tensor, output_path = output, ()
+                    elif isinstance(output, (tuple, list)) and output and type(output[0]) is torch.Tensor:
+                        tensor, output_path = output[0], (0,)
+                    else:
+                        raise TypeError("unsupported GPT-2 boundary output")
+                    dispatcher.record(path, layer_index=site.layer_index,
+                                      module_kind=site.module_kind, output=tensor,
+                                      output_path=output_path)
+                except BaseException:
+                    with guard_lock:
+                        state["active"] = False
+                        state["failed"] = True
+                    raise
+                with guard_lock:
+                    state["active"] = False
+                    state["completed"] += 1
                 return None
             return capture
 
@@ -485,7 +526,8 @@ class TracedGPT2Worker(ResidentWorker):
             register(model.register_forward_pre_hook, begin, prepend=True)
             register(model.register_forward_hook, end, always_call=True)
             for module, path, site in selected:
-                register(module.register_forward_hook, site_hook(path, site))
+                register(module.register_forward_pre_hook, site_pre_hook(path))
+                register(module.register_forward_hook, site_hook(path, site), always_call=True)
             try:
                 outcome, events = dispatcher.run(perform_once)
             except CaptureAbortedError:
@@ -504,6 +546,9 @@ class TracedGPT2Worker(ResidentWorker):
                 return outcome
             if guard["failed"] or guard["entries"] != 1 or guard["completed"] != 1:
                 raise RuntimeError("exactly one completed root forward is required")
+            if any(state["failed"] or state["active"] or state["entries"] != state["completed"]
+                   for state in site_states.values()):
+                raise RuntimeError("a selected site invocation failed or did not complete")
             if {event.module_path for event in events} != {path for _, path, _ in selected}:
                 raise RuntimeError("not all requested trace sites were observed")
             validate_trace(event.to_trace_event() for event in events)

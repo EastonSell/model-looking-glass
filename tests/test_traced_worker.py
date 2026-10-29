@@ -156,6 +156,85 @@ class TracedWorkerTests(unittest.TestCase):
         captured.add_(1)
         self.assertTrue(torch.equal(self.inputs, original_inputs))
 
+    def test_reused_site_counts_every_successful_invocation(self):
+        worker = self.make_worker()
+        model_forward, mlp = self.model.forward, self.model.transformer.h[0].mlp
+
+        def two_calls(*args, **kwargs):
+            mlp(torch.zeros(2, 3, 8))
+            return model_forward(*args, **kwargs)
+
+        with patch.object(self.model, "forward", two_calls):
+            result = self.traced(worker, sites=(self.TraceSite(0, "mlp"),))
+        self.assertEqual([event.invocation for event in result.events], [0, 0, 1, 1])
+        self.assert_no_hooks()
+
+    def test_caught_failed_site_invocation_rejects_later_capture(self):
+        for exception_type in (RuntimeError, KeyboardInterrupt):
+            with self.subTest(exception_type=exception_type):
+                self.setUp()
+                worker, calls = self.make_worker(), []
+                model_forward, mlp = self.model.forward, self.model.transformer.h[0].mlp
+                mlp_forward = mlp.forward
+
+                def flaky(*args, **kwargs):
+                    calls.append(True)
+                    if len(calls) == 1:
+                        raise exception_type("TEST first site invocation failed")
+                    return mlp_forward(*args, **kwargs)
+
+                def recover(*args, **kwargs):
+                    try:
+                        mlp(torch.zeros(2, 3, 8))
+                    except exception_type:
+                        pass
+                    return model_forward(*args, **kwargs)
+
+                with patch.object(mlp, "forward", flaky), \
+                        patch.object(self.model, "forward", recover):
+                    with self.assertRaisesRegex(RuntimeError, "invocation"):
+                        self.traced(worker, sites=(self.TraceSite(0, "mlp"),))
+                self.assertTrue(calls)
+                self.assertTrue(worker.poisoned)
+                self.assert_no_hooks()
+
+    def test_caught_failed_site_without_retry_rejects_trace(self):
+        for exception_type in (RuntimeError, KeyboardInterrupt):
+            with self.subTest(exception_type=exception_type):
+                self.setUp()
+                worker, mlp = self.make_worker(), self.model.transformer.h[0].mlp
+
+                def recover_without_retry(*args, **kwargs):
+                    try:
+                        mlp(torch.zeros(2, 3, 8))
+                    except exception_type:
+                        pass
+                    return {"logits": torch.zeros(2, 3, 32)}
+
+                with patch.object(mlp, "forward", side_effect=exception_type("site failure")), \
+                        patch.object(self.model, "forward", recover_without_retry):
+                    with self.assertRaisesRegex(RuntimeError, "invocation"):
+                        self.traced(worker, sites=(self.TraceSite(0, "mlp"),))
+                self.assertTrue(worker.poisoned)
+                self.assert_no_hooks()
+
+    def test_reentrant_site_invocation_is_rejected(self):
+        worker, calls = self.make_worker(), []
+        mlp = self.model.transformer.h[0].mlp
+        original = mlp.forward
+
+        def recurse(*args, **kwargs):
+            calls.append(True)
+            if len(calls) == 1:
+                return mlp(*args, **kwargs)
+            return original(*args, **kwargs)
+
+        with patch.object(mlp, "forward", recurse):
+            with self.assertRaisesRegex(RuntimeError, "invocation"):
+                self.traced(worker, sites=(self.TraceSite(0, "mlp"),))
+        self.assertTrue(worker.poisoned)
+        self.assert_no_hooks()
+
     def test_forward_and_sequence_allocation_span_two_calls_without_collisions(self):
         from looking_glass.trace_schema import validate_trace
         worker = self.make_worker()
@@ -337,7 +416,7 @@ class TracedWorkerTests(unittest.TestCase):
             def remove(self):
                 raise RuntimeError("simulated removal failure")
         with patch.object(mlp, "register_forward_hook",
-                          side_effect=lambda hook: BrokenHandle(register(hook))):
+                          side_effect=lambda hook, **kw: BrokenHandle(register(hook, **kw))):
             with self.assertRaisesRegex(RuntimeError, "cleanup"):
                 self.traced(worker)
         self.assertTrue(worker.poisoned)
@@ -354,7 +433,7 @@ class TracedWorkerTests(unittest.TestCase):
             def remove(self):
                 return None
         with patch.object(mlp, "register_forward_hook",
-                          side_effect=lambda hook: NoopHandle(register(hook))):
+                          side_effect=lambda hook, **kw: NoopHandle(register(hook, **kw))):
             with self.assertRaisesRegex(RuntimeError, "quarantined"):
                 self.traced(worker)
         self.assertTrue(worker.poisoned)
@@ -370,7 +449,7 @@ class TracedWorkerTests(unittest.TestCase):
             def remove(self):
                 raise RuntimeError("TEST cleanup removal failed")
         with patch.object(mlp, "register_forward_hook",
-                          side_effect=lambda hook: BrokenHandle(register(hook))), \
+                          side_effect=lambda hook, **kw: BrokenHandle(register(hook, **kw))), \
                 patch.object(torch.Tensor, "index_select", side_effect=torch.OutOfMemoryError("TEST OOM")):
             with self.assertRaises(RuntimeError) as caught:
                 self.traced(worker)
@@ -393,7 +472,7 @@ class TracedWorkerTests(unittest.TestCase):
             def remove(self):
                 raise KeyboardInterrupt("TEST interrupted cleanup")
         with patch.object(mlp, "register_forward_hook",
-                          side_effect=lambda hook: InterruptedHandle(register(hook))):
+                          side_effect=lambda hook, **kw: InterruptedHandle(register(hook, **kw))):
             with self.assertRaises(KeyboardInterrupt) as caught:
                 self.traced(worker)
         self.assertIn("TEST interrupted cleanup", str(caught.exception))

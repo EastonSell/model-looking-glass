@@ -19,7 +19,9 @@ function, hook, arbitrary module path, or model code is accepted as a trace
 plan. Exactly one root forward and at least one observation of every requested
 site are required. The bridge extracts a direct tensor or the first tensor in
 a tuple/list and records the actual output selector. Hooks return `None` and
-never replace a model output.
+never replace a model output. Site invocations are counted at module entry;
+if a selected call fails, remains incomplete, or reenters the same site, the
+entire trace is rejected even if an enclosing module catches the exception.
 
 The trusted caller submits an ordinary `ForwardRequest`, one or more
 `CaptureRequest`s, explicit run-scoped `sequence_starts`, and per-batch event
