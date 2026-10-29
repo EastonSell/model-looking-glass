@@ -76,7 +76,8 @@ def example_report():
                       "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783",
                       "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
                       "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"}},
-        "source_hashes": {"git_commit": "f" * 40, "clean": True, "scope": "executed project files only",
+        "source_hashes": {"git_commit": "f" * 40, "clean": True, "bytecode_attested": False,
+                          "scope": "executed project files only",
                           "files": {"docs/PRETRAINED_SMOKE_V1.md": "b" * 64,
                                     "looking_glass/pretrained_smoke.py": "c" * 64,
                                     "looking_glass/__init__.py": "a" * 64,
@@ -99,6 +100,7 @@ def example_report():
                         "cudnn_deterministic": False, "cudnn_benchmark": False,
                         "cublas_workspace_config": None, "cuda_visible_devices_policy": "unset",
                         "torch_build_config_sha256": "a" * 64, "torch_cpu_capability": "AVX2",
+                        "cpu_subnormal_multiply_bits": 1,
                         "omp_num_threads": None, "mkl_num_threads": None},
         "checks": {"passed": True, "baseline_logit_sha256": list(logits), "baseline_repeat_equal": True,
                    "baseline_logit_shape": [1, 5, 50257], "baseline_logit_dtype": "torch.float32",
@@ -275,6 +277,27 @@ class ReplayComparisonTests(unittest.TestCase):
                     reference["source_hashes"]["clean"] = False
                 with self.assertRaises(ReplayError):
                     compare_reports(reference, independent_report(example_report()))
+
+    def test_bytecode_attestation_and_cpu_subnormal_probe_are_explicit(self):
+        for mutation in ("missing_bytecode", "claimed_bytecode", "missing_probe", "invalid_probe", "boolean_probe"):
+            with self.subTest(mutation=mutation):
+                reference = example_report()
+                if mutation == "missing_bytecode":
+                    del reference["source_hashes"]["bytecode_attested"]
+                elif mutation == "claimed_bytecode":
+                    reference["source_hashes"]["bytecode_attested"] = True
+                elif mutation == "missing_probe":
+                    del reference["environment"]["cpu_subnormal_multiply_bits"]
+                elif mutation == "invalid_probe":
+                    reference["environment"]["cpu_subnormal_multiply_bits"] = 2
+                else:
+                    reference["environment"]["cpu_subnormal_multiply_bits"] = False
+                with self.assertRaises(ReplayError):
+                    compare_reports(reference, independent_report(example_report()))
+        reference = example_report()
+        replay = independent_report(reference)
+        replay["environment"]["cpu_subnormal_multiply_bits"] = 0
+        self.assertEqual(compare_reports(reference, replay)["status"], "incompatible")
 
     def test_missing_backend_identity_or_unexpected_cpu_gpu_is_rejected(self):
         for mutation in ("visible", "determinism", "benchmark", "cpu_gpu"):

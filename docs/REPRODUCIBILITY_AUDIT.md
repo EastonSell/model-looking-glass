@@ -22,6 +22,16 @@ Both saved full runs contain 56 unique timing cells and 5,600 indexed samples. E
 
 The final record reports 48/48 transparent training cases and 16/16 equal-capture cases containing 51,200 elements; both runs report 96/96 detections per placement, with 96/96 dense first observations at the injected tap and 96/96 sparse first observations later than the injected tap. The saved booleans and intervals support reproducing these *reported counts*, but no activation tensors, gradients, or model weights were stored, so their equality cannot be independently recomputed from the artifacts. Branch-control values are similarly saved only as booleans. The fixed perturbations were deliberately placed immediately before known observation points; localization is an instrumentation sanity check rather than a discovered mechanism.
 
+The published source matching the final run used `torch.equal` on floating
+tensors for transparency, capture and localization comparisons. Signed zeros
+compare equal, and under a flush-to-zero CPU mode subnormal values can also
+compare equal to zero even when their bit patterns differ. The final run's CPU
+denormal mode was not recorded. Its reported equalities therefore mean that
+`torch.equal` returned true; they do not establish bitwise identity. The earlier
+run's differing source is unavailable here, so its comparator is unverified.
+Neither artifact contains the tensors needed to determine whether this affected
+any case.
+
 At audit time the five recorded source/protocol SHA-256 values for `verified-cpu-v1` match the published snapshot, and both root and packaged protocol files have SHA-256 `07586071c05174315466f90c5d7552e40a6e46a22d3b4b588e1bcb64b5d77fd7`. For `initial-cpu-v1`, the four other hashes match, while `experiment.py` records `a4edcb211d82a4aa72256b97b29cf056fd308147e376b89699a7fda05b4fce59` instead of the published snapshot's `7d6f0a9591cf808358dad3fc94672c5e04868ef273ea4cded2a4c938dd3d0d5d`. The recorded local measurement commits `38ff944e46f05ec06a58e07b2905f8b6bff6c4a3` and `68d17069a67afc2a23df28d72c9b3e9b64811b09` are unavailable in this checkout; the published history is a content snapshot. Their absence here does not prove they cannot be recovered elsewhere.
 
 The five final-run files are recoverable from published snapshot commit `e94e20660cff32ddcd2643307d60e8d9a3c74f2f`, even if newer work has changed the current package. To compare against that snapshot without changing the current checkout, create a separate worktree and point the verifier at its package directory:
