@@ -1,0 +1,12 @@
+{
+  "child_custody_sha256": "d0923459352542f1313df31e1540a6777c19b5fea9da54162a5cc722cdab8c8c",
+  "no_case_claim": true,
+  "no_run_directory": true,
+  "operator_observed_exit_code": 0,
+  "prelaunch_sha256": "ebeb3bac70a8a662756911d06373168e5b2ef5e76863a74513dd761fccc5e456",
+  "purpose": "synthetic no-model validation",
+  "recorded_utc": "2026-10-29T10:21:58.537868+00:00",
+  "schema": "agreement-subject-rehearsal-parent-exit-v1",
+  "scope": "Cooperative operator observation; not authenticated execution or descendant drain.",
+  "supervisor_sha256": "41f6f111dcfd044eb5f7b904555bc8b7aa7437132b33e158f57056542641fb9d"
+}
