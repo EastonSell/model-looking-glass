@@ -32,6 +32,9 @@ explicit module path, stack-qualified module kind, layer, invocation, source
 shape, output selector, and selected batch/token coordinates. Values are
 detached clones. Distinct points at the same boundary may select different
 tokens; duplicate points are rejected.
+The event does not retain the input IDs or masks: preserve them separately
+when comparing traces. A module path identifies the selected registered module,
+not independently verified call-site provenance.
 
 | Boundary | Module path | Meaning of captured tensor |
 | --- | --- | --- |
@@ -53,6 +56,8 @@ autocast disabled, no gradient checkpointing and no pre-existing local or
 process-global forward hooks.
 The adapter uses inference mode and the cooperative model lease provided by
 `ActivationPlan`; callers remain responsible for GPU ownership and lifetime.
+Hook checks are preflight checks under a cooperative process assumption; they
+do not prevent another thread from installing a hook during the forward.
 The current checkpoint smoke and unit tests run on CPU, not CUDA.
 
 Limits apply to the number of points, aggregate captured bytes, each captured
