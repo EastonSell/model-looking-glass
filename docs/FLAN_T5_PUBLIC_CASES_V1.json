@@ -1,0 +1,485 @@
+{
+  "asset_manifest_sha256": "d369e3095dc35c52608f40fbd2715d7a2ff80a02fd71f0692c24af2cf3402083",
+  "eos_token_id": 1,
+  "model": "google/flan-t5-small",
+  "neutral": {
+    "attention_mask": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "input_ids": [
+      30355,
+      15,
+      1566,
+      12,
+      2968,
+      10,
+      1
+    ],
+    "offsets": [
+      [
+        0,
+        8
+      ],
+      [
+        8,
+        9
+      ],
+      [
+        9,
+        17
+      ],
+      [
+        17,
+        20
+      ],
+      [
+        20,
+        27
+      ],
+      [
+        27,
+        28
+      ],
+      [
+        0,
+        0
+      ]
+    ],
+    "special_tokens_mask": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+    ],
+    "text": "Translate English to German:"
+  },
+  "pad_token_id": 0,
+  "pairs": [
+    {
+      "sources": [
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            30355,
+            15,
+            1566,
+            12,
+            2968,
+            10,
+            1712,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              8
+            ],
+            [
+              8,
+              9
+            ],
+            [
+              9,
+              17
+            ],
+            [
+              17,
+              20
+            ],
+            [
+              20,
+              27
+            ],
+            [
+              27,
+              28
+            ],
+            [
+              28,
+              32
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "Translate English to German: cat",
+          "token_strings": [
+            "\u2581Translat",
+            "e",
+            "\u2581English",
+            "\u2581to",
+            "\u2581German",
+            ":",
+            "\u2581cat",
+            "</s>"
+          ],
+          "word_position": 6
+        },
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            30355,
+            15,
+            1566,
+            12,
+            2968,
+            10,
+            1782,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              8
+            ],
+            [
+              8,
+              9
+            ],
+            [
+              9,
+              17
+            ],
+            [
+              17,
+              20
+            ],
+            [
+              20,
+              27
+            ],
+            [
+              27,
+              28
+            ],
+            [
+              28,
+              32
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "Translate English to German: dog",
+          "token_strings": [
+            "\u2581Translat",
+            "e",
+            "\u2581English",
+            "\u2581to",
+            "\u2581German",
+            ":",
+            "\u2581dog",
+            "</s>"
+          ],
+          "word_position": 6
+        }
+      ],
+      "targets": [
+        {
+          "input_ids": [
+            16699,
+            15,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              4
+            ],
+            [
+              4,
+              5
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "text": "Katze",
+          "token_strings": [
+            "\u2581Katz",
+            "e",
+            "</s>"
+          ]
+        },
+        {
+          "input_ids": [
+            14587,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              4
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "text": "Hund",
+          "token_strings": [
+            "\u2581Hund",
+            "</s>"
+          ]
+        }
+      ]
+    },
+    {
+      "sources": [
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            30355,
+            15,
+            1566,
+            12,
+            2968,
+            10,
+            484,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              8
+            ],
+            [
+              8,
+              9
+            ],
+            [
+              9,
+              17
+            ],
+            [
+              17,
+              20
+            ],
+            [
+              20,
+              27
+            ],
+            [
+              27,
+              28
+            ],
+            [
+              28,
+              33
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "Translate English to German: book",
+          "token_strings": [
+            "\u2581Translat",
+            "e",
+            "\u2581English",
+            "\u2581to",
+            "\u2581German",
+            ":",
+            "\u2581book",
+            "</s>"
+          ],
+          "word_position": 6
+        },
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            30355,
+            15,
+            1566,
+            12,
+            2968,
+            10,
+            629,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              8
+            ],
+            [
+              8,
+              9
+            ],
+            [
+              9,
+              17
+            ],
+            [
+              17,
+              20
+            ],
+            [
+              20,
+              27
+            ],
+            [
+              27,
+              28
+            ],
+            [
+              28,
+              34
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "Translate English to German: house",
+          "token_strings": [
+            "\u2581Translat",
+            "e",
+            "\u2581English",
+            "\u2581to",
+            "\u2581German",
+            ":",
+            "\u2581house",
+            "</s>"
+          ],
+          "word_position": 6
+        }
+      ],
+      "targets": [
+        {
+          "input_ids": [
+            4675,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              4
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "text": "Buch",
+          "token_strings": [
+            "\u2581Buch",
+            "</s>"
+          ]
+        },
+        {
+          "input_ids": [
+            4598,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              4
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "text": "Haus",
+          "token_strings": [
+            "\u2581Haus",
+            "</s>"
+          ]
+        }
+      ]
+    }
+  ],
+  "revision": "0fc9ddf78a1e988dac52e2dac162b0ede4fd74ab",
+  "schema": "mlg-flan-t5-public-cases-v1",
+  "tokenizer_class": "T5TokenizerFast"
+}
