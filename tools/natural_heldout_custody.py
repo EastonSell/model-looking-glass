@@ -621,6 +621,8 @@ def verify_preparation_supervisor(attempt, supervisor_dir, public, wrapper_bytes
         if (type(receipt) is not dict or receipt.get('status') != 'evidence_complete'
                 or type(receipt.get('exit_code')) is not int or receipt['exit_code'] != 0
                 or type(receipt.get('child_pid')) is not int or not 0 < receipt['child_pid'] <= 0xffffffff
+                or type(receipt.get('postexit_active_processes')) is not int
+                or receipt['postexit_active_processes'] != 0
                 or any(receipt.get(field) is not True for field in
                        ('child_reaped', 'job_drained', 'job_closed', 'logs_complete', 'cleanup_verified'))
                 or any(receipt.get(field) is not False for field in
@@ -701,7 +703,8 @@ def _outer_supervisor_job(guards):
 
 
 def observe_supervisor_process(command, attempt, supervisor_dir, public, wrapper_bytes, *,
-                               config_path, config_sha256, job_factory, custody_state=None, timeout=7200):
+                               config_path, config_sha256, job_factory, protect_process,
+                               custody_state=None, timeout=7200):
     """Observe and reap the actual preparation supervisor before recording success.
 
     The process owns its own Windows Job and private child logs. On an
@@ -710,7 +713,7 @@ def observe_supervisor_process(command, attempt, supervisor_dir, public, wrapper
     """
     if (os.name != 'nt' or type(command) is not list or not command
             or any(type(item) is not str or not item for item in command)
-            or type(timeout) is not int or not 1 <= timeout <= 7200):
+            or not callable(protect_process) or type(timeout) is not int or not 1 <= timeout <= 7200):
         raise CustodyError('invalid outer process observation')
     config_path = _checked_path(config_path)
     if (type(config_sha256) is not str or re.fullmatch(r'[0-9a-f]{64}', config_sha256) is None
@@ -731,9 +734,15 @@ def observe_supervisor_process(command, attempt, supervisor_dir, public, wrapper
     reaped = False
     drained = False
     closed = False
+    spawn_attempted = False
+    gate_attempted = False
     try:
         job = job_factory()
         custody_state[0] = job
+        # Root uncertainty before creating any process. The gate is tracked
+        # separately so known pre-gate children can still be reaped normally.
+        custody_state[2] = True
+        spawn_attempted = True
         process = subprocess.Popen(command, env=os.environ.copy(), stdin=subprocess.PIPE,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                    creationflags=subprocess.DETACHED_PROCESS)
@@ -741,9 +750,10 @@ def observe_supervisor_process(command, attempt, supervisor_dir, public, wrapper
         if type(process.pid) is not int or not 0 < process.pid <= 0xffffffff:
             raise CustodyError('invalid outer supervisor PID')
         job.assign(process)
+        protect_process(process)
         birth = _process_birth_100ns(process)
         start = b'MLG-natural-discovery-start-v1\n'
-        custody_state[2] = True
+        gate_attempted = True
         if process.stdin.write(start + start) != len(start) * 2:
             raise CustodyError('outer supervisor start gate failed')
         process.stdin.close()
@@ -780,11 +790,18 @@ def observe_supervisor_process(command, attempt, supervisor_dir, public, wrapper
                 'preparation_config_sha256': claim['preparation_config_sha256'],
                 'operational_binding_sha256': _digest(public.operational_binding)}
     except BaseException as primary_error:
-        if custody_state[2] and not custody_state[3]:
+        if gate_attempted and not custody_state[3]:
             # Do not kill an outer supervisor that may own the only live
             # handles for its breakaway inner Job. The enclosing source-lease
             # scope sees this preallocated state and holds it for recovery.
             raise
+        # A partially duplicated source lease or a lost Popen return requires
+        # the enclosing lease scope to retain custody until all pre-gate
+        # cleanup is positively verified. Set the existing state before any
+        # fallible cleanup operation, including error collection itself.
+        if job is not None or spawn_attempted:
+            custody_state[1] = process
+            custody_state[2] = True
         cleanup_errors = []
         if job is not None and not drained:
             try:
@@ -816,8 +833,11 @@ def observe_supervisor_process(command, attempt, supervisor_dir, public, wrapper
             if selected is primary_error:
                 raise primary_error from cleanup_errors[0]
             raise selected from primary_error
-        if process is None and job is not None and not isinstance(primary_error, (KeyboardInterrupt, SystemExit)):
-            raise CustodyError('outer supervisor spawn return is unverified; stop and reconcile') from primary_error
+        if process is None and spawn_attempted:
+            if not isinstance(primary_error, (KeyboardInterrupt, SystemExit)):
+                raise CustodyError('outer supervisor spawn return is unverified; stop and reconcile') from primary_error
+            raise
+        custody_state[2] = False
         raise
 
 
@@ -890,10 +910,11 @@ def _ignore_console_interrupts():
             signal.signal(kind, signal.SIG_IGN)
 
 
-def _supervise_preparation(supervisor, command, directory, audit_result):
+def _supervise_preparation(supervisor, command, directory, audit_result, *, inherited_handles=()):
     """Keep the inner supervisor rooted when its own cleanup is uncertain."""
     try:
-        verdict = supervisor.supervise_heldout(command, directory, os.environ.copy(), audit_result=audit_result)
+        verdict = supervisor.supervise_heldout(command, directory, os.environ.copy(),
+                                               audit_result=audit_result, inherited_handles=inherited_handles)
     finally:
         _quarantine_supervisor_if_needed(supervisor)
     if type(verdict) is not dict or verdict.get('cleanup_verified') is not True:
@@ -1171,7 +1192,8 @@ def production_prepare(config_path, *, mode='validate', expected_config_sha=None
         'results/distilgpt2-agreement-preflight-v1-20261028/run/result.json',
         'results/distilgpt2-agreement-preflight-v1-20261028/run/last_logits.f32')]
     operation_files = [custody_root / relative for relative in SOURCE_SUFFIXES.values()]
-    with SourceFileLease(root, core_files), SourceFileLease(custody_root, operation_files):
+    with SourceFileLease(root, core_files) as frozen_lease, \
+         SourceFileLease(custody_root, operation_files) as operational_lease:
         if control.verify_source_inventory(root, *initial) != initial:
             raise CustodyError('frozen source changed before protection')
         runtime = runpy.run_path(str(root / 'tools/natural_agreement_cpu.py'), run_name='heldout_frozen_runtime')
@@ -1213,6 +1235,8 @@ def production_prepare(config_path, *, mode='validate', expected_config_sha=None
                     return observe_supervisor_process(outer_command, attempt, supervisor_dir, public, wrapper_bytes,
                                                       config_path=config_path, config_sha256=config_sha,
                                                       job_factory=lambda: _outer_supervisor_job(guards),
+                                                      protect_process=lambda process: guards.duplicate_to_process(
+                                                          frozen_lease.handles() + operational_lease.handles(), process),
                                                       custody_state=custody_state)
                 finally:
                     _quarantine_state_if_needed(custody_state)
@@ -1224,7 +1248,9 @@ def production_prepare(config_path, *, mode='validate', expected_config_sha=None
                        '--config-sha', config_sha]
             def audit_result(_directory, _exit_code, _reaped):
                 return audit_preparation(attempt, public, wrapper_bytes)
-            _supervise_preparation(supervisor, command, supervisor_dir, audit_result)
+            with guards.InheritableHandles(frozen_lease.handles() + operational_lease.handles()) as inherited:
+                _supervise_preparation(supervisor, command, supervisor_dir, audit_result,
+                                       inherited_handles=inherited)
             verify_preparation_supervisor(attempt, supervisor_dir, public, wrapper_bytes,
                                           require_outer_observation=False)
             commitment = json.loads(_read_private(attempt / 'commitment.json', 8192))
