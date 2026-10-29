@@ -1,0 +1,876 @@
+{
+  "candidate_eligible": {
+    "box": false,
+    "drink": false,
+    "room": false,
+    "rope": false
+  },
+  "journal_bytes": 1962332,
+  "journal_sha256": "7ed70ebfe6e3d05d45cf7e7f5cf6904b936faf7eefcffced7ceb63540132982e",
+  "manifest_sha256": "284fc9adc0cc3caa52ea5d122c1f08db50c8dda2d881297e2dcd1f2229cb6386",
+  "rows": [
+    {
+      "accepted": [
+        "small",
+        "little"
+      ],
+      "case_id": "box-discovery",
+      "decimal_precision_digits": 220,
+      "discovery_top_pass": false,
+      "eligible": false,
+      "log_normalizer_omission_upper_bound_decimal": "0E-741",
+      "margin": 0.959357738494873,
+      "margin_exact": {
+        "denominator": 2097152,
+        "numerator": 2011919
+      },
+      "margin_pass": true,
+      "object": "box",
+      "omitted_tail_terms": 0,
+      "pair_probability_mass": 0.004088172088916726,
+      "role": "discovery",
+      "shifted_log_normalizer_decimal": "2.947825475028146985715249942709146008467021019432686805421863869211849540259039987279242031432913734681381479584782688106014950286639276375966653284325927724320185280052307156480732572349216207728159732481027286936296160",
+      "tokens": {
+        "accepted_0": {
+          "id": 2235,
+          "log_probability": -5.824012799552073,
+          "logit": 5.753877639770508,
+          "logit_f32le": "c41fb840",
+          "probability": 0.0029557206012782882,
+          "rank": 61
+        },
+        "accepted_1": {
+          "id": 2210,
+          "log_probability": -9.836962743094553,
+          "logit": 1.7409276962280273,
+          "logit_f32le": "b8d6de3f",
+          "probability": 5.3439373988339376e-05,
+          "rank": 1157
+        },
+        "counterfactual": {
+          "id": 2312,
+          "log_probability": -6.783370538046946,
+          "logit": 4.794519901275635,
+          "logit_f32le": "b56c9940",
+          "probability": 0.0011324514876384377,
+          "rank": 153
+        },
+        "factual": {
+          "id": 2235,
+          "log_probability": -5.824012799552073,
+          "logit": 5.753877639770508,
+          "logit_f32le": "c41fb840",
+          "probability": 0.0029557206012782882,
+          "rank": 61
+        },
+        "wrong_target": {
+          "id": 2417,
+          "log_probability": -10.387135787299265,
+          "logit": 1.1907546520233154,
+          "logit_f32le": "a66a983f",
+          "probability": 3.08265018803568e-05,
+          "rank": 1624
+        }
+      },
+      "top_five_ids": [
+        5717,
+        20610,
+        2825,
+        5662,
+        4242
+      ],
+      "top_ids": [
+        5717
+      ],
+      "top_representative": 5717,
+      "unique_top": 5717
+    },
+    {
+      "accepted": [
+        "small",
+        "little"
+      ],
+      "case_id": "box-calibration-01",
+      "decimal_precision_digits": 220,
+      "discovery_top_pass": true,
+      "eligible": true,
+      "log_normalizer_omission_upper_bound_decimal": "0E-741",
+      "margin": 1.4442157745361328,
+      "margin_exact": {
+        "denominator": 524288,
+        "numerator": 757185
+      },
+      "margin_pass": true,
+      "object": "box",
+      "omitted_tail_terms": 0,
+      "pair_probability_mass": 0.030998949396371937,
+      "role": "calibration-01",
+      "shifted_log_normalizer_decimal": "2.683091653374863008715996119091639995676409274840724046858863534129598395700262856484197300192511946543630350602409993431859807403145652770742668768138439871215577455836425385423817553078348393834814446616684890404323160",
+      "tokens": {
+        "accepted_0": {
+          "id": 2235,
+          "log_probability": -3.685626519707871,
+          "logit": 7.708767890930176,
+          "logit_f32le": "3aaef640",
+          "probability": 0.02508145577346811,
+          "rank": 2
+        },
+        "accepted_1": {
+          "id": 2210,
+          "log_probability": -6.168702615288925,
+          "logit": 5.225691795349121,
+          "logit_f32le": "de38a740",
+          "probability": 0.0020939508988824327,
+          "rank": 63
+        },
+        "counterfactual": {
+          "id": 2312,
+          "log_probability": -5.129842294244003,
+          "logit": 6.264552116394043,
+          "logit_f32le": "3677c840",
+          "probability": 0.005917493622903824,
+          "rank": 15
+        },
+        "factual": {
+          "id": 2235,
+          "log_probability": -3.685626519707871,
+          "logit": 7.708767890930176,
+          "logit_f32le": "3aaef640",
+          "probability": 0.02508145577346811,
+          "rank": 2
+        },
+        "wrong_target": {
+          "id": 2417,
+          "log_probability": -7.668380750207138,
+          "logit": 3.726013660430908,
+          "logit_f32le": "02776e40",
+          "probability": 0.0004673740065767319,
+          "rank": 333
+        }
+      },
+      "top_five_ids": [
+        10806,
+        2235,
+        19747,
+        3760,
+        8206
+      ],
+      "top_ids": [
+        10806
+      ],
+      "top_representative": 10806,
+      "unique_top": 10806
+    },
+    {
+      "accepted": [
+        "small",
+        "little"
+      ],
+      "case_id": "box-calibration-02",
+      "decimal_precision_digits": 220,
+      "discovery_top_pass": true,
+      "eligible": true,
+      "log_normalizer_omission_upper_bound_decimal": "0E-741",
+      "margin": 2.3876466751098633,
+      "margin_exact": {
+        "denominator": 1048576,
+        "numerator": 2503629
+      },
+      "margin_pass": true,
+      "object": "box",
+      "omitted_tail_terms": 0,
+      "pair_probability_mass": 0.1183609346984588,
+      "role": "calibration-02",
+      "shifted_log_normalizer_decimal": "1.745466555490769242677211845358116214325610466355055097803419537991699267145741931729943235622819229001989376403548274959340987037758874991673519098235837018893209347164787749157438086447633901742474355106687634029318636",
+      "tokens": {
+        "accepted_0": {
+          "id": 2235,
+          "log_probability": -2.2218860043433084,
+          "logit": 9.70272445678711,
+          "logit_f32le": "5c3e1b41",
+          "probability": 0.10840446461458622,
+          "rank": 3
+        },
+        "accepted_1": {
+          "id": 2210,
+          "log_probability": -6.4000056637671365,
+          "logit": 5.524604797363281,
+          "logit_f32le": "90c9b040",
+          "probability": 0.0016615478625271053,
+          "rank": 52
+        },
+        "counterfactual": {
+          "id": 2312,
+          "log_probability": -4.609532679453172,
+          "logit": 7.315077781677246,
+          "logit_f32le": "1e15ea40",
+          "probability": 0.009956470083872583,
+          "rank": 5
+        },
+        "factual": {
+          "id": 2235,
+          "log_probability": -2.2218860043433084,
+          "logit": 9.70272445678711,
+          "logit_f32le": "5c3e1b41",
+          "probability": 0.10840446461458622,
+          "rank": 3
+        },
+        "wrong_target": {
+          "id": 2417,
+          "log_probability": -9.298001135721481,
+          "logit": 2.6266093254089355,
+          "logit_f32le": "5e1a2840",
+          "probability": 9.160715887127526e-05,
+          "rank": 888
+        }
+      },
+      "top_five_ids": [
+        10806,
+        3760,
+        2235,
+        8206,
+        2312
+      ],
+      "top_ids": [
+        10806
+      ],
+      "top_representative": 10806,
+      "unique_top": 10806
+    },
+    {
+      "accepted": [
+        "short"
+      ],
+      "case_id": "rope-discovery",
+      "decimal_precision_digits": 220,
+      "discovery_top_pass": false,
+      "eligible": false,
+      "log_normalizer_omission_upper_bound_decimal": "0E-741",
+      "margin": 0.1518235206604004,
+      "margin_exact": {
+        "denominator": 2097152,
+        "numerator": 318397
+      },
+      "margin_pass": true,
+      "object": "rope",
+      "omitted_tail_terms": 0,
+      "pair_probability_mass": 0.0009832239275584516,
+      "role": "discovery",
+      "shifted_log_normalizer_decimal": "2.828798028768177846237519642407010033734859453703601053563164468900517551804743176167267509503392002149519539221428471928253022273431773033652303800356109351360242359864656310672886989677240795737322370812993764504094761",
+      "tokens": {
+        "accepted_0": {
+          "id": 2460,
+          "log_probability": -7.54478761845934,
+          "logit": 4.2036004066467285,
+          "logit_f32le": "e5838640",
+          "probability": 0.0005288595731870172,
+          "rank": 262
+        },
+        "counterfactual": {
+          "id": 2146,
+          "log_probability": -7.6966111391197405,
+          "logit": 4.051776885986328,
+          "logit_f32le": "28a88140",
+          "probability": 0.00045436435437143434,
+          "rank": 292
+        },
+        "factual": {
+          "id": 2460,
+          "log_probability": -7.54478761845934,
+          "logit": 4.2036004066467285,
+          "logit_f32le": "e5838640",
+          "probability": 0.0005288595731870172,
+          "rank": 262
+        },
+        "wrong_target": {
+          "id": 2417,
+          "log_probability": -10.5313865869652,
+          "logit": 1.2170014381408691,
+          "logit_f32le": "b4c69b3f",
+          "probability": 2.668559671564497e-05,
+          "rank": 1664
+        }
+      },
+      "top_five_ids": [
+        5717,
+        5662,
+        5020,
+        20610,
+        2825
+      ],
+      "top_ids": [
+        5717
+      ],
+      "top_representative": 5717,
+      "unique_top": 5717
+    },
+    {
+      "accepted": [
+        "short"
+      ],
+      "case_id": "rope-calibration-01",
+      "decimal_precision_digits": 220,
+      "discovery_top_pass": true,
+      "eligible": true,
+      "log_normalizer_omission_upper_bound_decimal": "0E-741",
+      "margin": 1.8053455352783203,
+      "margin_exact": {
+        "denominator": 524288,
+        "numerator": 946521
+      },
+      "margin_pass": true,
+      "object": "rope",
+      "omitted_tail_terms": 0,
+      "pair_probability_mass": 0.17282022645278208,
+      "role": "calibration-01",
+      "shifted_log_normalizer_decimal": "1.907724455859053064439479582207143376147495890340749435384099202576528095679325642231437125492471584955441864189095541269935754879769446414128220177915637647031620640288294340661579676927513963965077323350347577263921979",
+      "tokens": {
+        "accepted_0": {
+          "id": 2460,
+          "log_probability": -1.9077244558590531,
+          "logit": 10.267553329467773,
+          "logit_f32le": "e6472441",
+          "probability": 0.1484177337301487,
+          "rank": 1
+        },
+        "counterfactual": {
+          "id": 2146,
+          "log_probability": -3.7130699911373735,
+          "logit": 8.462207794189453,
+          "logit_f32le": "34650741",
+          "probability": 0.024402492722633375,
+          "rank": 6
+        },
+        "factual": {
+          "id": 2460,
+          "log_probability": -1.9077244558590531,
+          "logit": 10.267553329467773,
+          "logit_f32le": "e6472441",
+          "probability": 0.1484177337301487,
+          "rank": 1
+        },
+        "wrong_target": {
+          "id": 2417,
+          "log_probability": -9.2780202188748,
+          "logit": 2.8972575664520264,
+          "logit_f32le": "ab6c3940",
+          "probability": 9.345596278503574e-05,
+          "rank": 831
+        }
+      },
+      "top_five_ids": [
+        2460,
+        7820,
+        7471,
+        4867,
+        27039
+      ],
+      "top_ids": [
+        2460
+      ],
+      "top_representative": 2460,
+      "unique_top": 2460
+    },
+    {
+      "accepted": [
+        "short"
+      ],
+      "case_id": "rope-calibration-02",
+      "decimal_precision_digits": 220,
+      "discovery_top_pass": true,
+      "eligible": true,
+      "log_normalizer_omission_upper_bound_decimal": "0E-741",
+      "margin": 2.69464111328125,
+      "margin_exact": {
+        "denominator": 16384,
+        "numerator": 44149
+      },
+      "margin_pass": true,
+      "object": "rope",
+      "omitted_tail_terms": 0,
+      "pair_probability_mass": 0.33203739690964607,
+      "role": "calibration-02",
+      "shifted_log_normalizer_decimal": "1.167889552579188693512722401122661272615344997966925872593373919716177856179480428565422359665640831299729270734725293401306495656937658144235279952030166700628321633642150091421696089849020324080981112422186820012583657",
+      "tokens": {
+        "accepted_0": {
+          "id": 2460,
+          "log_probability": -1.1678895525791886,
+          "logit": 11.827062606811523,
+          "logit_f32le": "a63b3d41",
+          "probability": 0.3110226460480423,
+          "rank": 1
+        },
+        "counterfactual": {
+          "id": 2146,
+          "log_probability": -3.862530665860439,
+          "logit": 9.132421493530273,
+          "logit_f32le": "661e1241",
+          "probability": 0.021014750861603766,
+          "rank": 6
+        },
+        "factual": {
+          "id": 2460,
+          "log_probability": -1.1678895525791886,
+          "logit": 11.827062606811523,
+          "logit_f32le": "a63b3d41",
+          "probability": 0.3110226460480423,
+          "rank": 1
+        },
+        "wrong_target": {
+          "id": 2417,
+          "log_probability": -10.554203467831874,
+          "logit": 2.440748691558838,
+          "logit_f32le": "3a351c40",
+          "probability": 2.608360849778618e-05,
+          "rank": 1016
+        }
+      },
+      "top_five_ids": [
+        2460,
+        7820,
+        4867,
+        3760,
+        4857
+      ],
+      "top_ids": [
+        2460
+      ],
+      "top_representative": 2460,
+      "unique_top": 2460
+    },
+    {
+      "accepted": [
+        "cold"
+      ],
+      "case_id": "drink-discovery",
+      "decimal_precision_digits": 220,
+      "discovery_top_pass": false,
+      "eligible": false,
+      "log_normalizer_omission_upper_bound_decimal": "0E-741",
+      "margin": -0.605339527130127,
+      "margin_exact": {
+        "denominator": 2097152,
+        "numerator": -1269489
+      },
+      "margin_pass": false,
+      "object": "drink",
+      "omitted_tail_terms": 0,
+      "pair_probability_mass": 0.001365735174365818,
+      "role": "discovery",
+      "shifted_log_normalizer_decimal": "3.036386567861979796474870531014346150268433665579975778831331145628868031608459694195257278399526414277609801618315339694294769316034377132693265076495541135106189620141349141105763352447975369794712606259125559592305436",
+      "tokens": {
+        "accepted_0": {
+          "id": 3147,
+          "log_probability": -7.637001115591472,
+          "logit": 4.153564453125,
+          "logit_f32le": "00ea8440",
+          "probability": 0.00048227256528848064,
+          "rank": 269
+        },
+        "counterfactual": {
+          "id": 2980,
+          "log_probability": -7.031661588461345,
+          "logit": 4.758903980255127,
+          "logit_f32le": "f1489840",
+          "probability": 0.0008834626090773374,
+          "rank": 168
+        },
+        "factual": {
+          "id": 3147,
+          "log_probability": -7.637001115591472,
+          "logit": 4.153564453125,
+          "logit_f32le": "00ea8440",
+          "probability": 0.00048227256528848064,
+          "rank": 269
+        },
+        "wrong_target": {
+          "id": 2417,
+          "log_probability": -8.991821128637737,
+          "logit": 2.7987444400787354,
+          "logit_f32le": "a11e3340",
+          "probability": 0.00012442329595927415,
+          "rank": 670
+        }
+      },
+      "top_five_ids": [
+        5717,
+        11701,
+        11674,
+        4242,
+        5662
+      ],
+      "top_ids": [
+        5717
+      ],
+      "top_representative": 5717,
+      "unique_top": 5717
+    },
+    {
+      "accepted": [
+        "cold"
+      ],
+      "case_id": "drink-calibration-01",
+      "decimal_precision_digits": 220,
+      "discovery_top_pass": true,
+      "eligible": false,
+      "log_normalizer_omission_upper_bound_decimal": "0E-741",
+      "margin": -1.025101661682129,
+      "margin_exact": {
+        "denominator": 1048576,
+        "numerator": -1074897
+      },
+      "margin_pass": false,
+      "object": "drink",
+      "omitted_tail_terms": 0,
+      "pair_probability_mass": 0.44975274683217586,
+      "role": "calibration-01",
+      "shifted_log_normalizer_decimal": "1.105629811513838328773339688032277022717890626588098104956647920347563458207732823102966920347781442269769630421829982098050117694847758661397250101499036409242427499428596639335008486144768491350500441713147749076223342",
+      "tokens": {
+        "accepted_0": {
+          "id": 3147,
+          "log_probability": -2.1307314731959672,
+          "logit": 10.163105010986328,
+          "logit_f32le": "149c2241",
+          "probability": 0.1187503993416525,
+          "rank": 2
+        },
+        "counterfactual": {
+          "id": 2980,
+          "log_probability": -1.1056298115138383,
+          "logit": 11.188206672668457,
+          "logit_f32le": "e5023341",
+          "probability": 0.3310023474905234,
+          "rank": 1
+        },
+        "factual": {
+          "id": 3147,
+          "log_probability": -2.1307314731959672,
+          "logit": 10.163105010986328,
+          "logit_f32le": "149c2241",
+          "probability": 0.1187503993416525,
+          "rank": 2
+        },
+        "wrong_target": {
+          "id": 2417,
+          "log_probability": -7.422350774038253,
+          "logit": 4.871485710144043,
+          "logit_f32le": "36e39b40",
+          "probability": 0.0005977423354521196,
+          "rank": 111
+        }
+      },
+      "top_five_ids": [
+        2980,
+        3147,
+        3730,
+        27150,
+        4010
+      ],
+      "top_ids": [
+        2980
+      ],
+      "top_representative": 2980,
+      "unique_top": 2980
+    },
+    {
+      "accepted": [
+        "cold"
+      ],
+      "case_id": "drink-calibration-02",
+      "decimal_precision_digits": 220,
+      "discovery_top_pass": true,
+      "eligible": true,
+      "log_normalizer_omission_upper_bound_decimal": "0E-741",
+      "margin": 0.5218305587768555,
+      "margin_exact": {
+        "denominator": 1048576,
+        "numerator": 547179
+      },
+      "margin_pass": true,
+      "object": "drink",
+      "omitted_tail_terms": 0,
+      "pair_probability_mass": 0.3360067772493143,
+      "role": "calibration-02",
+      "shifted_log_normalizer_decimal": "1.250451254755409070171363070610269228427843737674831390309803014578894835012480225782192878664332971204639661801011932988264862644222350457173627952489464163926355384779939788419908613965034819053797954113701986709765817",
+      "tokens": {
+        "accepted_0": {
+          "id": 3147,
+          "log_probability": -1.5565149067939832,
+          "logit": 11.191715240478516,
+          "logit_f32le": "44113341",
+          "probability": 0.2108696926218214,
+          "rank": 2
+        },
+        "counterfactual": {
+          "id": 2980,
+          "log_probability": -2.078345465570839,
+          "logit": 10.66988468170166,
+          "logit_f32le": "d9b72a41",
+          "probability": 0.12513708462749293,
+          "rank": 3
+        },
+        "factual": {
+          "id": 3147,
+          "log_probability": -1.5565149067939832,
+          "logit": 11.191715240478516,
+          "logit_f32le": "44113341",
+          "probability": 0.2108696926218214,
+          "rank": 2
+        },
+        "wrong_target": {
+          "id": 2417,
+          "log_probability": -8.301321196466835,
+          "logit": 4.446908950805664,
+          "logit_f32le": "144d8e40",
+          "probability": 0.00024818870435906607,
+          "rank": 157
+        }
+      },
+      "top_five_ids": [
+        3730,
+        3147,
+        2980,
+        4318,
+        14904
+      ],
+      "top_ids": [
+        3730
+      ],
+      "top_representative": 3730,
+      "unique_top": 3730
+    },
+    {
+      "accepted": [
+        "dark",
+        "dim"
+      ],
+      "case_id": "room-discovery",
+      "decimal_precision_digits": 220,
+      "discovery_top_pass": false,
+      "eligible": false,
+      "log_normalizer_omission_upper_bound_decimal": "0E-741",
+      "margin": -1.498565673828125,
+      "margin_exact": {
+        "denominator": 32768,
+        "numerator": -49105
+      },
+      "margin_pass": false,
+      "object": "room",
+      "omitted_tail_terms": 0,
+      "pair_probability_mass": 0.0027297617011947635,
+      "role": "discovery",
+      "shifted_log_normalizer_decimal": "2.848506952870325358429529684131783776850082825639842995902777121310914174081953051298478253050826828969371119104289771369294117097036730021899550661488782614440415799033209412522568375687598519745511011679775279046145327",
+      "tokens": {
+        "accepted_0": {
+          "id": 2601,
+          "log_probability": -7.603781725514368,
+          "logit": 3.884310722351074,
+          "logit_f32le": "8c987840",
+          "probability": 0.0004985624375692884,
+          "rank": 279
+        },
+        "accepted_1": {
+          "id": 11737,
+          "log_probability": -7.591843868840174,
+          "logit": 3.8962485790252686,
+          "logit_f32le": "235c7940",
+          "probability": 0.0005045498719520691,
+          "rank": 274
+        },
+        "counterfactual": {
+          "id": 4408,
+          "log_probability": -6.105216051686243,
+          "logit": 5.382876396179199,
+          "logit_f32le": "8640ac40",
+          "probability": 0.0022311992636254753,
+          "rank": 74
+        },
+        "factual": {
+          "id": 2601,
+          "log_probability": -7.603781725514368,
+          "logit": 3.884310722351074,
+          "logit_f32le": "8c987840",
+          "probability": 0.0004985624375692884,
+          "rank": 279
+        },
+        "wrong_target": {
+          "id": 2417,
+          "log_probability": -8.057775999653773,
+          "logit": 3.43031644821167,
+          "logit_f32le": "4e8a5b40",
+          "probability": 0.0003166302085205001,
+          "rank": 399
+        }
+      },
+      "top_five_ids": [
+        5717,
+        6835,
+        11674,
+        5793,
+        5263
+      ],
+      "top_ids": [
+        5717
+      ],
+      "top_representative": 5717,
+      "unique_top": 5717
+    },
+    {
+      "accepted": [
+        "dark",
+        "dim"
+      ],
+      "case_id": "room-calibration-01",
+      "decimal_precision_digits": 220,
+      "discovery_top_pass": true,
+      "eligible": false,
+      "log_normalizer_omission_upper_bound_decimal": "0E-741",
+      "margin": -0.4402503967285156,
+      "margin_exact": {
+        "denominator": 262144,
+        "numerator": -115409
+      },
+      "margin_pass": false,
+      "object": "room",
+      "omitted_tail_terms": 0,
+      "pair_probability_mass": 0.286752317340517,
+      "role": "calibration-01",
+      "shifted_log_normalizer_decimal": "1.746192808753314516242112828709627326258198852991508336940355770763967730075563461349567726815606944010671309758431865652412875111141837783274169326307493438597145354922248541772825892112884099599123087399773948586032023",
+      "tokens": {
+        "accepted_0": {
+          "id": 2601,
+          "log_probability": -2.1864432054818304,
+          "logit": 9.640711784362793,
+          "logit_f32le": "5b401a41",
+          "probability": 0.11231552225284283,
+          "rank": 2
+        },
+        "accepted_1": {
+          "id": 11737,
+          "log_probability": -5.30289303839809,
+          "logit": 6.524261951446533,
+          "logit_f32le": "c1c6d040",
+          "probability": 0.004977173902940003,
+          "rank": 21
+        },
+        "counterfactual": {
+          "id": 4408,
+          "log_probability": -1.7461928087533145,
+          "logit": 10.080962181091309,
+          "logit_f32le": "9f4b2141",
+          "probability": 0.17443679508767418,
+          "rank": 1
+        },
+        "factual": {
+          "id": 2601,
+          "log_probability": -2.1864432054818304,
+          "logit": 9.640711784362793,
+          "logit_f32le": "5b401a41",
+          "probability": 0.11231552225284283,
+          "rank": 2
+        },
+        "wrong_target": {
+          "id": 2417,
+          "log_probability": -5.5122140604317815,
+          "logit": 6.314940929412842,
+          "logit_f32le": "ff13ca40",
+          "probability": 0.004037158966785123,
+          "rank": 26
+        }
+      },
+      "top_five_ids": [
+        4408,
+        2601,
+        23751,
+        2317,
+        2665
+      ],
+      "top_ids": [
+        4408
+      ],
+      "top_representative": 4408,
+      "unique_top": 4408
+    },
+    {
+      "accepted": [
+        "dark",
+        "dim"
+      ],
+      "case_id": "room-calibration-02",
+      "decimal_precision_digits": 220,
+      "discovery_top_pass": true,
+      "eligible": true,
+      "log_normalizer_omission_upper_bound_decimal": "0E-741",
+      "margin": 1.0562114715576172,
+      "margin_exact": {
+        "denominator": 524288,
+        "numerator": 553759
+      },
+      "margin_pass": true,
+      "object": "room",
+      "omitted_tail_terms": 0,
+      "pair_probability_mass": 0.22569397474223715,
+      "role": "calibration-02",
+      "shifted_log_normalizer_decimal": "1.787027302404041627895537472605145103733868742116944308704743245637998856215097746056852307791430031598251790665249785086560629774481052085626438548130723554229668392999672637402135705525024859389234874042716448133101837",
+      "tokens": {
+        "accepted_0": {
+          "id": 2601,
+          "log_probability": -1.7870273024040417,
+          "logit": 10.024162292480469,
+          "logit_f32le": "f8622041",
+          "probability": 0.16745723020131761,
+          "rank": 1
+        },
+        "accepted_1": {
+          "id": 11737,
+          "log_probability": -5.3883690267997935,
+          "logit": 6.422820568084717,
+          "logit_f32le": "bf87cd40",
+          "probability": 0.004569419862878145,
+          "rank": 27
+        },
+        "counterfactual": {
+          "id": 4408,
+          "log_probability": -2.8432387739616587,
+          "logit": 8.967950820922852,
+          "logit_f32le": "ba7c0f41",
+          "probability": 0.058236744540919545,
+          "rank": 2
+        },
+        "factual": {
+          "id": 2601,
+          "log_probability": -1.7870273024040417,
+          "logit": 10.024162292480469,
+          "logit_f32le": "f8622041",
+          "probability": 0.16745723020131761,
+          "rank": 1
+        },
+        "wrong_target": {
+          "id": 2417,
+          "log_probability": -6.068646851201649,
+          "logit": 5.742542743682861,
+          "logit_f32le": "e9c2b740",
+          "probability": 0.002314302688702093,
+          "rank": 52
+        }
+      },
+      "top_five_ids": [
+        2601,
+        4408,
+        3147,
+        2317,
+        4251
+      ],
+      "top_ids": [
+        2601
+      ],
+      "top_representative": 2601,
+      "unique_top": 2601
+    }
+  ],
+  "schema": "independent-antonym-screen-review-v1",
+  "scope": "Saved screen records and numerical cross-check only; source, chronology, exposure and execution require separate evidence. Later edit/locality gates require a separate reader.",
+  "selected_object": null,
+  "selection_rule": "discovery factual unique top and all three exact f32 margins > 1/10",
+  "status": "baseline-ineligible"
+}

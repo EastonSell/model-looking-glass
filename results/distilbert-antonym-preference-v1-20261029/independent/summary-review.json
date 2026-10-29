@@ -1,0 +1,11 @@
+{
+  "fabricated": false,
+  "independent_report_sha256": "c64862705bf087242140e88177cc5b72f4198c7a5395dd0357ef4073cb084a52",
+  "journal_sha256": "7ed70ebfe6e3d05d45cf7e7f5cf6904b936faf7eefcffced7ceb63540132982e",
+  "owner_summary_sha256": "ef66b2aadf515856c02ef24edd53735a20bde86f529e6e319797124d1adb5538",
+  "rows_checked": 12,
+  "schema": "independent-antonym-owner-summary-review-v1",
+  "scope": "Saved journal and numeric summary consistency only; source, chronology and execution are separate.",
+  "selected_object": null,
+  "status": "baseline-ineligible"
+}
