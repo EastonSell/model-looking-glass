@@ -165,7 +165,9 @@ the companion model-free test. The fixed seed string is
 `agreement-invariant-noun-v1:20261029`, UTF-8 encoded. For sorting, compute
 SHA-256 of `seed|split|domain|identity`, order by digest bytes, and break an
 exact digest tie by the identity string. This is deterministic ordering, not
-random sampling or a randomization test. Case identity is
+random sampling or a randomization test. Run the model on CPU in evaluation
+mode with Torch's CPU generator seeded to `20261030`, restore its prior state
+afterward, and fix OMP and MKL thread counts at one. Case identity is
 `<split>_target_f<f>_c<c>_n<n>_<this|these>`,
 `<split>_fragment_f<f>_c<c>`, or
 `<split>_demonstrative_f<f>_<this|these>` with zero-based frame and
