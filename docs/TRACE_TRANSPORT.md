@@ -93,6 +93,12 @@ lifecycle lock; cleanup holds the relevant claims until local disposal ends.
 There is at most one cleanup worker per active generation. A blocked cleanup
 therefore makes drain return false, not a false completion.
 
+This single-event signal-check rule does not implement the request-level atomic
+publication transaction proposed in [TRACE_CUSTODY_PLAN.md](TRACE_CUSTODY_PLAN.md).
+Publishing several individual events cannot seal a multi-event batch: a future
+coordinator must establish its own atomic manifest/cancellation decision after
+all expected events and postchecks are complete.
+
 The owner must treat `state == "quarantined"` or a failed drain as unresolved.
 On uncertain handoff, deferred sink, failed ledger transition, or failed
 disposal, claims are deliberately retained rather than guessed away. A
@@ -101,6 +107,19 @@ resource accounting until cleanup is verified or the actual process has
 terminated. This prototype has no recovery API for a quarantined delivery.
 Invocation guards quarantine exposed uncertain handoffs, but Python cannot
 promise atomic cleanup under arbitrary interruption at every bytecode.
+Construction uses a host-ledger guard bound to its exact request generation.
+If construction fails, its payload-free metadata claim is released only after
+that exact generation is tombstoned and its acquisition-specific owner token,
+stage, size and untransferred ownership are checked. The trusted
+coordinator must give the constructor exclusive ownership of that generation
+until construction or its cleanup has stopped; other code must not adopt,
+reserve, transfer, release, or recover its claims concurrently. If cleanup
+itself fails, no delivery is returned: `DeliveryConstructionError.guard`
+identifies the exact guard for trusted supervisor reconciliation. If even the
+error cannot be constructed or delivered, `HostBudget.active_guards()`
+can expose outstanding guards but does not identify the failed one by itself;
+stop and reconcile affected work, or use process-level recovery rather than
+guessing which generation can be released.
 
 ## Scope of the declared bounds
 
