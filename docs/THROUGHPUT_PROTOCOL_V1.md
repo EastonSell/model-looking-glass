@@ -203,7 +203,8 @@ for OMP, MKL, OpenBLAS, NumExpr, BLIS and vecLib, and a deterministic cuBLAS
 workspace, while recording the permitted device visibility,
 ordering, cache and connection settings. After verifying the physical device the
 child checks the native allocator backend, sets its per-process PyTorch allocator
-fraction to 0.75, reads it back, and records deterministic and TF32 settings.
+fraction to 0.25 for this development workload, reads it back, and records
+deterministic and TF32 settings.
 This cap covers PyTorch's caching allocator, not the CUDA context, other device
 allocations or other processes.
 The policy also rejects toolkit-path overrides such as `CUDA_PATH` and

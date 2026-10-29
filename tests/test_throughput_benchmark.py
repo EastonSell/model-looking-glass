@@ -517,7 +517,7 @@ class ProtocolArtifactTests(unittest.TestCase):
             'python_no_site': True, 'python_ignores_environment': True,
             'python_isolated': True, 'python_hash_randomization': True,
             'cuda_environment': benchmark._configure_cuda_environment({}),
-            'allocator_backend': 'native', 'allocator_fraction': 0.75,
+            'allocator_backend': 'native', 'allocator_fraction': 0.25,
             'torch_threads': 1, 'torch_interop_threads': 1,
             'cudnn_benchmark': False, 'cudnn_deterministic': True, 'cudnn_allow_tf32': False,
             'matmul_allow_tf32': False, 'cublas_workspace_config': ':4096:8'}
@@ -1447,10 +1447,12 @@ class SupervisedIdentityTests(unittest.TestCase):
                 get_per_process_memory_fraction=lambda device: fraction)
             with self.assertRaisesRegex(RuntimeError, 'fraction'):
                 benchmark._configure_cuda_allocator(SimpleNamespace(cuda=cuda), 'cuda:0')
+        calls = []
         cuda = SimpleNamespace(get_allocator_backend=lambda: 'native',
-            set_per_process_memory_fraction=lambda value, device: None,
-            get_per_process_memory_fraction=lambda device: 0.75)
-        self.assertEqual(benchmark._configure_cuda_allocator(SimpleNamespace(cuda=cuda), 'cuda:0'), ('native', 0.75))
+            set_per_process_memory_fraction=lambda value, device: calls.append((value, device)),
+            get_per_process_memory_fraction=lambda device: 0.25)
+        self.assertEqual(benchmark._configure_cuda_allocator(SimpleNamespace(cuda=cuda), 'cuda:0'), ('native', 0.25))
+        self.assertEqual(calls, [(0.25, 'cuda:0')])
 
     def test_cpu_preflight_masks_gpu_and_restores_visibility(self):
         import os
@@ -1754,7 +1756,7 @@ class SupervisedIdentityTests(unittest.TestCase):
                 patch.object(torch.cuda, 'synchronize', side_effect=sync),
                 patch.object(torch.cuda, 'get_allocator_backend', return_value='native'),
                 patch.object(torch.cuda, 'set_per_process_memory_fraction'),
-                patch.object(torch.cuda, 'get_per_process_memory_fraction', return_value=0.75),
+                patch.object(torch.cuda, 'get_per_process_memory_fraction', return_value=0.25),
                 patch.object(torch, 'set_num_interop_threads'),
                 patch.object(torch, 'get_num_interop_threads', return_value=1),
                 patch.object(torch.cuda, 'empty_cache', side_effect=lambda: events.append('empty_cache')),
