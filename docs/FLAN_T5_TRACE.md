@@ -1,5 +1,8 @@
 # Eager FLAN-T5 encoder/decoder traces
 
+For a bounded donor-state patch with same-site and off-target controls, see the
+[T5 intervention workflow](FLAN_T5_INTERVENTION_WORKFLOW.md).
+
 `looking_glass.flan_t5_trace` captures selected token vectors during one
 standard `T5ForConditionalGeneration` forward. The caller supplies an already
 loaded model, encoder IDs and mask, decoder IDs and mask; the adapter does not
