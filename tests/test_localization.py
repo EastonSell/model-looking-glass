@@ -154,6 +154,15 @@ class LocalizationTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 compare(events, events, atol=value)
 
+    def test_integer_tolerances_must_be_exactly_representable(self):
+        events = [event("a", 0, 0, [1.])]
+        with self.assertRaises(ValueError):
+            compare(events, events, atol=9007199254740995)
+        self.assertEqual(compare(events, events, atol=9007199254740994)["status"],
+                         "no_difference_observed")
+        self.assertEqual(compare(events, events, atol=1 << 100)["status"],
+                         "no_difference_observed")
+
     def test_named_and_lazy_negative_views_are_unavailable(self):
         tensor = torch.tensor([1.])
         with warnings.catch_warnings():
