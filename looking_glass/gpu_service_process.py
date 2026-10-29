@@ -111,10 +111,13 @@ def _result_code(result, *, monitor_failed, monitor_alive):
 def _owner(config):
     """Run only as the direct child of the identity-aware supervisor."""
     global _LEASE_HOLD
-    # Avoid importing a CUDA-capable dependency before obtaining the real
-    # lease. This check cannot undo earlier CUDA activity or authenticate code.
-    if any(name.partition('.')[0] in ('torch', 'transformers') for name in sys.modules):
-        raise RuntimeError('GPU dependencies were imported before owner acquisition')
+    # The launcher establishes the cache environment before any of these
+    # dependencies are imported. Hugging Face Hub caches paths at import time;
+    # an environment check alone cannot detect an earlier import under a
+    # different HF_HOME. This is not an authentication of the interpreter.
+    if any(name.partition('.')[0] in ('torch', 'transformers', 'huggingface_hub')
+           for name in sys.modules):
+        raise RuntimeError('model dependencies were imported before owner acquisition')
     from .two_token_service import _check_owner_contract
     _check_owner_contract(config.repo_root)
     from .device_identity import DeviceIdentity

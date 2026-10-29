@@ -8,7 +8,12 @@ are not yet available. Do not treat the direct-model GPU pilot as a profile for
 this owner.
 
 The child first reads and checks the exact private config bytes pinned by the
-parent. It then obtains the actual `DeviceLease`, checks its `OwnerSession` and
+parent. Before acquiring ownership it rejects previously imported Torch,
+Transformers or Hugging Face Hub modules, including submodules: Hub caches
+its home at import time, so a later environment change cannot correct an
+earlier import. The trusted launcher establishes the cache environment in a
+fresh process; this check does not authenticate the interpreter or libraries.
+The child then obtains the actual `DeviceLease`, checks its `OwnerSession` and
 workspace identity, and reconstructs trusted source, checkpoint and runtime
 identity. Three independently approved load, cold-forward and warm-forward
 profiles must match that live identity, the fixed input `[15496, 995]`, and

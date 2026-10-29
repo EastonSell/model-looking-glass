@@ -131,13 +131,16 @@ class TrustedProfileCollectorTests(unittest.TestCase):
             if args[1] == 'symbolic-ref': return SimpleNamespace(stdout='', returncode=1)
             raise AssertionError('unexpected subprocess')
         with tempfile.TemporaryDirectory() as folder:
+            home = Path(folder) / 'hf'
+            cache = home / 'hub'
+            cache.mkdir(parents=True)
             with (patch.object(supervisor, 'SUPERVISOR_LAUNCH_CUSTODY_CONTRACT', None, create=True),
                   patch.object(collector.subprocess, 'run', side_effect=git_result),
                   patch.object(profile, 'prepare_trusted_source') as source,
                   patch.object(gpu_oneshot, '_smi_snapshot') as inventory,
                   patch.object(supervisor, 'run_supervised') as launch):
                 run_dir, terminal = collector.run_supervised_collector(
-                    workspace_root=folder, cache_root=folder, site_packages=folder,
+                    workspace_root=folder, cache_root=cache, hf_home=home, site_packages=folder,
                     environment_root=folder, private_parent=folder, trusted_path=folder)
             self.assertEqual(terminal['status'], 'failed_prelaunch')
             self.assertEqual(terminal['prelaunch_error_type'], 'CollectorError')
@@ -145,6 +148,103 @@ class TrustedProfileCollectorTests(unittest.TestCase):
             source.assert_not_called()
             inventory.assert_not_called()
             launch.assert_not_called()
+
+    def test_hf_home_must_contain_offline_cache(self):
+        import looking_glass.trusted_profile_collector as collector
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            home, outside = root / 'hf', root / 'other'
+            home.mkdir()
+            outside.mkdir()
+            inside = home / 'hub'
+            inside.mkdir()
+            self.assertEqual(collector._validated_hf_home(inside, home), home.resolve())
+            for cache, selected_home in ((outside, home), (home, home), (inside, None),
+                                         (inside, 'relative-home')):
+                with self.subTest(cache=cache, home=selected_home), self.assertRaises(ValueError):
+                    collector._validated_hf_home(cache, selected_home)
+
+    def test_missing_hf_home_stops_child_before_owner_or_lease(self):
+        import looking_glass.supervisor as supervisor
+        import looking_glass.trusted_profile_collector as collector
+        from looking_glass.device_lease import DeviceLease
+        from looking_glass.supervisor import OwnerSession
+        with tempfile.TemporaryDirectory() as folder:
+            config = {'run_dir': folder, 'run_id': 'a' * 32, 'cache_root': folder}
+            with (patch.object(supervisor, 'SUPERVISOR_LAUNCH_CUSTODY_CONTRACT',
+                               'gated-rooted-child-v1', create=True),
+                  patch.dict(os.environ, {'HF_HOME': ''}),
+                  patch.object(OwnerSession, 'from_environment') as session,
+                  patch.object(DeviceLease, 'acquire') as acquire):
+                self.assertEqual(collector._owner_main(config), 1)
+            session.assert_not_called()
+            acquire.assert_not_called()
+            self.assertEqual(json.loads((Path(folder) / 'failure.json').read_bytes())['error_type'], 'ValueError')
+
+    def test_preloaded_hub_with_stale_home_stops_before_owner(self):
+        repo = str(Path(__file__).resolve().parents[1])
+        site = sysconfig.get_path('purelib')
+        script = textwrap.dedent('''
+            import json, os, pathlib, sys
+            from unittest.mock import patch
+            repo, site, old, home, cache, run_dir, drop_parent = sys.argv[1:]
+            sys.path.extend((repo, site))
+            os.environ['HF_HOME'] = old
+            import huggingface_hub.constants as constants
+            assert pathlib.Path(constants.HF_HOME).resolve() == pathlib.Path(old).resolve()
+            os.environ['HF_HOME'] = home
+            if drop_parent == 'yes':
+                sys.modules.pop('huggingface_hub', None)
+            from looking_glass import trusted_profile_collector as collector
+            from looking_glass.supervisor import OwnerSession
+            from looking_glass.device_lease import DeviceLease
+            config = {'run_dir': run_dir, 'run_id': 'a' * 32, 'cache_root': cache}
+            with patch.object(OwnerSession, 'from_environment') as session, \\
+                 patch.object(DeviceLease, 'acquire') as acquire:
+                assert collector._owner_main(config) == 1
+                assert not session.called and not acquire.called
+            assert json.loads((pathlib.Path(run_dir) / 'failure.json').read_bytes())['error_type'] == 'CollectorError'
+        ''')
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            old, home = root / 'old', root / 'home'
+            cache = home / 'hub'
+            old.mkdir()
+            cache.mkdir(parents=True)
+            env = dict(os.environ)
+            env.pop('PYTHONPATH', None)
+            env.pop('PYTHONHOME', None)
+            env['CUDA_VISIBLE_DEVICES'] = ''
+            for mode in ('no', 'yes'):
+                run_dir = root / ('run-' + mode)
+                run_dir.mkdir()
+                result = subprocess.run([sys.executable, '-B', '-S', '-P', '-c', script, repo, site,
+                                         str(old), str(home), str(cache), str(run_dir), mode],
+                                        cwd=repo, env=env, capture_output=True, text=True, timeout=30)
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_preloaded_transformers_stops_before_owner(self):
+        import types
+        from looking_glass import trusted_profile_collector as collector
+        from looking_glass.device_lease import DeviceLease
+        from looking_glass.supervisor import OwnerSession
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            home, cache = root / 'hf', root / 'hf' / 'hub'
+            cache.mkdir(parents=True)
+            for name in ('transformers', 'transformers.models'):
+                run_dir = root / name
+                run_dir.mkdir()
+                config = {'run_dir': str(run_dir), 'run_id': 'a' * 32, 'cache_root': str(cache)}
+                with (patch.dict(sys.modules, {name: types.ModuleType(name)}),
+                      patch.dict(os.environ, {'HF_HOME': str(home)}),
+                      patch.object(OwnerSession, 'from_environment') as session,
+                      patch.object(DeviceLease, 'acquire') as acquire):
+                    self.assertEqual(collector._owner_main(config), 1)
+                session.assert_not_called()
+                acquire.assert_not_called()
+                failure = json.loads((run_dir / 'failure.json').read_bytes())
+                self.assertEqual(failure['error_type'], 'CollectorError')
 
     def test_assembled_profiles_bind_order_cases_source_and_margins(self):
         identity, samples = identity_and_samples()
@@ -184,12 +284,16 @@ class TrustedProfileCollectorTests(unittest.TestCase):
         finally:
             owned.close()
 
-    def test_guarded_lifecycle_releases_jobs_and_resident_only_after_cleanup(self):
+    def test_guarded_lifecycle_retains_both_claims_through_cleanup(self):
         result, events, budget = self.run_fake_owned(fail_forward=False, validate_candidate=True)
         self.assertEqual(result['seeds'], [17, 17, 29, 43, 71])
         self.assertEqual(events[:5], ['load', 'copy', 'forward-17', 'forward-29', 'forward-43'])
         self.assertEqual(events[-3:], ['forward-71', 'worker-close', 'workspace-clear'])
-        self.assertEqual(budget.active_leases(), ())
+        self.assertEqual(sorted(lease.estimated_incremental_bytes for lease in budget.active_leases()),
+                         [512 * 1024 ** 2, 2 * GIB])
+        self.assertEqual(result['cleanup']['owner_commitments'], {
+            'active_leases': 2, 'resident_bytes': 2 * GIB, 'forward_bytes': 512 * 1024 ** 2,
+            'committed_incremental_bytes': 2 * GIB + 512 * 1024 ** 2, 'retained_until_exit': True})
 
     def test_failed_forward_retains_resident_and_job_commitments(self):
         with self.assertRaises(CollectorError) as captured:
@@ -199,6 +303,95 @@ class TrustedProfileCollectorTests(unittest.TestCase):
         self.assertEqual(sorted(lease.estimated_incremental_bytes for lease in budget.active_leases()),
                          [512 * 1024 ** 2, 2 * GIB])
         self.assertNotIn('probe-sync', self.captured_events)
+
+    def test_unsafe_completion_never_publishes_output_or_releases_claims(self):
+        with self.assertRaises(CollectorError):
+            self.run_fake_owned(fail_forward=False, latch_at='forward')
+        self.assertNotIn('cold-17-output.json', self.captured_writes)
+        self.assertNotIn('cold-17-sample.json', self.captured_writes)
+        self.assertEqual(sorted(lease.estimated_incremental_bytes for lease in self.captured_budget.active_leases()),
+                         [512 * 1024 ** 2, 2 * GIB])
+
+    def test_unsafe_before_sample_publication_retains_claims(self):
+        with self.assertRaises(CollectorError):
+            self.run_fake_owned(fail_forward=False, latch_at='postcheck')
+        self.assertNotIn('cold-17-sample.json', self.captured_writes)
+        self.assertEqual(sorted(lease.estimated_incremental_bytes for lease in self.captured_budget.active_leases()),
+                         [512 * 1024 ** 2, 2 * GIB])
+
+    def test_unsafe_after_sample_retains_claims(self):
+        with self.assertRaises(CollectorError):
+            self.run_fake_owned(fail_forward=False, latch_at='sample')
+        self.assertNotIn('warm-29-admission.json', self.captured_writes)
+        self.assertEqual(sorted(lease.estimated_incremental_bytes for lease in self.captured_budget.active_leases()),
+                         [512 * 1024 ** 2, 2 * GIB])
+
+    def test_lost_owner_after_sample_retains_claims(self):
+        with self.assertRaises(CollectorError):
+            self.run_fake_owned(fail_forward=False, latch_at='lost-owner')
+        self.assertNotIn('warm-29-admission.json', self.captured_writes)
+        self.assertEqual(sorted(lease.estimated_incremental_bytes for lease in self.captured_budget.active_leases()),
+                         [512 * 1024 ** 2, 2 * GIB])
+
+    def test_released_forward_claim_prevents_next_observation(self):
+        with self.assertRaises(CollectorError):
+            self.run_fake_owned(fail_forward=False, latch_at='release-forward')
+        self.assertNotIn('warm-29-admission.json', self.captured_writes)
+        self.assertNotIn('worker-close', self.captured_events)
+        self.assertEqual([lease.estimated_incremental_bytes for lease in self.captured_budget.active_leases()],
+                         [2 * GIB])
+
+    def test_released_resident_claim_prevents_next_observation(self):
+        with self.assertRaises(CollectorError):
+            self.run_fake_owned(fail_forward=False, latch_at='release-resident')
+        self.assertNotIn('warm-29-admission.json', self.captured_writes)
+        self.assertNotIn('worker-close', self.captured_events)
+        self.assertEqual([lease.estimated_incremental_bytes for lease in self.captured_budget.active_leases()],
+                         [512 * 1024 ** 2])
+
+    def test_unsafe_after_candidate_write_never_attests(self):
+        import looking_glass.trusted_profile_collector as collector
+        import looking_glass.trusted_service_profile as trusted
+        from looking_glass.device_lease import DeviceLease
+        from looking_glass.memory_budget import MemoryBudget
+        from looking_glass.supervisor import OwnerSession
+        source = SimpleNamespace(source_base=b'source', asset_manifest=b'assets')
+        budget = MemoryBudget(lambda: CudaMemorySnapshot(6 * GIB, 8 * GIB, 0, 0),
+                              max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        resident = budget.acquire(2 * GIB, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        job = budget.acquire(512 * 1024 ** 2, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        state = {'unsafe': False, 'worker': None}
+        owner = SimpleNamespace(device_lease_path='fake', identity=SimpleNamespace(gpu_uuid='fake'), run_id='b' * 32)
+        commitments = {'active_leases': 2, 'resident_bytes': 2 * GIB, 'forward_bytes': 512 * 1024 ** 2,
+                       'committed_incremental_bytes': 2 * GIB + 512 * 1024 ** 2, 'retained_until_exit': True}
+        def completed(*args):
+            collector._OWNER_CUSTODY[3] = state
+            collector._OWNER_CUSTODY[5:8] = [budget, resident, job]
+            return {'cleanup': {'owner_commitments': commitments}}
+        original_write = collector._write_json
+        def write(path, value):
+            original_write(path, value)
+            if Path(path).name == 'candidate.json':
+                state['unsafe'] = True
+        with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
+            config = {'run_dir': directory, 'run_id': 'a' * 32, 'repo_root': directory,
+                      'cache_root': directory, 'source_base_sha256': hashlib.sha256(b'source').hexdigest(),
+                      'asset_sha256': hashlib.sha256(b'assets').hexdigest()}
+            for obj, name, value in ((collector, '_require_gated_supervisor', lambda: None),
+                                     (collector, '_validated_hf_home', lambda *args: None),
+                                     (collector, 'collect_owned', completed),
+                                     (collector, '_bounded_read', lambda *args, **kwargs: b'fixture'),
+                                     (collector, '_write_json', write),
+                                     (trusted, 'prepare_trusted_source', lambda *args: source),
+                                     (OwnerSession, 'from_environment', lambda: owner),
+                                     (DeviceLease, 'acquire', lambda *args, **kwargs: object()),
+                                     (OwnerSession, 'check', lambda *args: None)):
+                stack.enter_context(patch.object(obj, name, new=value))
+            attest = stack.enter_context(patch.object(OwnerSession, 'attest_clean'))
+            self.assertEqual(collector._owner_main(config), 1)
+            attest.assert_not_called()
+            self.assertTrue((Path(directory) / 'failure.json').exists())
+        self.assertEqual(set(budget.active_leases()), {resident, job})
 
     def test_interrupted_acquire_keeps_published_leases_in_rooted_budget(self):
         import looking_glass.trusted_profile_collector as collector
@@ -308,23 +501,26 @@ class TrustedProfileCollectorTests(unittest.TestCase):
             source = SimpleNamespace(source_base=b'base', asset_manifest=b'assets')
             trusted.prepare_trusted_source = lambda *args: source
             config = {'schema': 'trusted-profile-owner-config-v1', 'repo_root': repo,
-                      'cache_root': folder, 'run_dir': folder, 'run_id': 'a' * 32,
+                      'cache_root': str(Path(folder) / 'hf' / 'hub'), 'run_dir': folder, 'run_id': 'a' * 32,
                       'source_base_sha256': hashlib.sha256(b'base').hexdigest(),
                       'asset_sha256': hashlib.sha256(b'assets').hexdigest()}
             launch.read_trusted_config = lambda *args, **kwargs: json.dumps(config).encode()
             path = str(Path(folder) / 'config.json')
             sys.argv = ['looking_glass.trusted_profile_collector', '--config', path,
                         '--config-id', '1:1', '--config-sha256', 'a' * 64]
+            assert not any(name == 'huggingface_hub' or name.startswith('huggingface_hub.') for name in sys.modules)
             runpy.run_module('looking_glass.trusted_profile_collector', run_name='__main__', alter_sys=True)
         ''')
         with tempfile.TemporaryDirectory() as folder:
             prefix = Path(folder) / 'pycache'
             prefix.mkdir()
+            (Path(folder) / 'hf' / 'hub').mkdir(parents=True)
             (Path(folder) / 'config.json').write_text('{}')
             env = dict(os.environ)
             env.pop('PYTHONPATH', None)
             env.pop('PYTHONHOME', None)
             env['CUDA_VISIBLE_DEVICES'] = ''
+            env['HF_HOME'] = str(Path(folder) / 'hf')
             completed = subprocess.run([sys._base_executable, '-B', '-S', '-P', '-X',
                 'pycache_prefix=' + str(prefix), '-c', script, str(repo), site, folder],
                 env=env, capture_output=True, text=True, timeout=30)
@@ -354,9 +550,11 @@ class TrustedProfileCollectorTests(unittest.TestCase):
         gpu_uuid = 'GPU-12345678-1234-5678-9abc-1234567890ab'
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder).resolve()
-            workspace, private, cache = (root / name for name in ('workspace', 'private', 'cache'))
-            for path in (workspace, private, cache):
+            workspace, private, home = (root / name for name in ('workspace', 'private', 'hf'))
+            for path in (workspace, private, home):
                 path.mkdir()
+            cache = home / 'hub'
+            cache.mkdir()
             run_dir = private / 'run'
             run_dir.mkdir()
             config = {'schema': 'trusted-profile-owner-config-v1', 'repo_root': str(repo),
@@ -367,7 +565,7 @@ class TrustedProfileCollectorTests(unittest.TestCase):
             launch = prepare_trusted_launch(repo_root=str(repo), site_packages=str(site),
                 environment_root=str(environment), private_parent=str(private), gpu_uuid=gpu_uuid,
                 module='looking_glass.trusted_profile_collector', config_path=str(config_path),
-                trusted_path=str(base_python.parent))
+                trusted_path=str(base_python.parent), hf_home=str(home))
             identity = resolve_device_identity(workspace, gpu_uuid, physical_uuids=[gpu_uuid],
                                                environ=launch.environment)
             launch.verify_ready()
@@ -392,7 +590,8 @@ class TrustedProfileCollectorTests(unittest.TestCase):
                 self.assertFalse((run_dir / 'owner.json').exists())
             self.assertFalse((run_dir / 'candidate.json').exists())
 
-    def run_fake_owned(self, *, fail_forward, fail_acquire=False, fail_post=False, validate_candidate=False):
+    def run_fake_owned(self, *, fail_forward, fail_acquire=False, fail_post=False,
+                       validate_candidate=False, latch_at=None):
         import looking_glass.trusted_profile_collector as collector
         import looking_glass.trusted_service_profile as trusted
         import looking_glass.memory_budget as memory
@@ -458,6 +657,8 @@ class TrustedProfileCollectorTests(unittest.TestCase):
             events.append('forward-' + str(seed))
             if fail_forward:
                 raise CollectorError('fake forward failure')
+            if latch_at == 'forward' and seed == 17:
+                collector._OWNER_CUSTODY[3]['unsafe'] = True
             return {'seed': seed, 'cold': kwargs['cold'], 'case_sha256': FORWARD_CASE_SHA256,
                     'finite': True, 'output_shape': [1, 2, 50257], 'output_dtype': 'torch.float32',
                     'output_tensor_bytes': 402056, 'representative_frame_bytes': 500000}
@@ -465,6 +666,10 @@ class TrustedProfileCollectorTests(unittest.TestCase):
             events.append('workspace-clear')
             return {'before': {'allocated_bytes': 32, 'reserved_bytes': 32},
                     'after': {'allocated_bytes': 0, 'reserved_bytes': 0}, 'api': 'fake'}
+        owner_alive = [True]
+        def check_owner(*args):
+            if not owner_alive[0]:
+                raise CollectorError('owner lost')
         patches = ((collector, '_import_uninitialized_torch', lambda: fake_torch),
                    (trusted, 'build_trusted_service_identity', lambda *args: live),
                    (trusted, 'prepare_trusted_source', lambda *args: source),
@@ -476,7 +681,7 @@ class TrustedProfileCollectorTests(unittest.TestCase):
                    (live_profile, 'decode_cuda_uuid', lambda *args: live.keys[0].device_uuid),
                    (cleanup, 'clear_cublas_after_drain', clear),
                    (collector, 'run_fixed_forward', forward),
-                   (OwnerSession, 'check', lambda *args: None),
+                   (OwnerSession, 'check', check_owner),
                    (OwnerSession, 'verify_runtime_binding', lambda *args, **kwargs: None))
         # Keep a direct constructor before patching the module attribute.
         original_budget = memory.MemoryBudget
@@ -499,7 +704,18 @@ class TrustedProfileCollectorTests(unittest.TestCase):
         original_write = collector._write_json
         def record_write(path, value):
             self.captured_writes.append(Path(path).name)
-            return original_write(path, value)
+            result = original_write(path, value)
+            if latch_at == 'postcheck' and Path(path).name == 'cold-17-postcheck.json':
+                collector._OWNER_CUSTODY[3]['unsafe'] = True
+            elif latch_at == 'sample' and Path(path).name == 'cold-17-sample.json':
+                collector._OWNER_CUSTODY[3]['unsafe'] = True
+            elif latch_at == 'lost-owner' and Path(path).name == 'cold-17-sample.json':
+                owner_alive[0] = False
+            elif latch_at == 'release-forward' and Path(path).name == 'cold-17-sample.json':
+                collector._OWNER_CUSTODY[7].release()
+            elif latch_at == 'release-resident' and Path(path).name == 'cold-17-sample.json':
+                collector._OWNER_CUSTODY[6].release()
+            return result
         with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
             for obj, name, value in patches:
                 stack.enter_context(patch.object(obj, name, new=value))
@@ -532,6 +748,7 @@ class TrustedProfileCollectorTests(unittest.TestCase):
                 for name, field, replacement in (
                         ('cold-17-output.json', 'output_shape', [True, 2, 50257]),
                         ('load-17-checks.json', 'cpu_model_verified', 1),
+                        ('cleanup.json', 'owner_commitments', {'active_leases': 1}),
                         ('cold-17-after-observed.json', 'process_allocated_bytes', False)):
                     path = Path(directory) / name
                     original = path.read_bytes()

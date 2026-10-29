@@ -22,15 +22,18 @@ class TrustedServiceLaunchTests(unittest.TestCase):
         self.repo = self.root / 'repo'
         self.site = self.root / 'env' / 'site-packages'
         self.private = self.root / 'private'
+        self.hf_home = self.root / 'hf-home'
         self.repo.mkdir()
         self.site.mkdir(parents=True)
         self.private.mkdir()
+        self.hf_home.mkdir()
         package = self.repo / 'looking_glass'
         package.mkdir()
         (package / '__init__.py').write_text('', encoding='utf-8')
         source = ("import json,os,sys\n"
                   "print(json.dumps({'path':sys.path,'argv':sys.argv[1:],"
                   "'visibility':os.environ.get('CUDA_VISIBLE_DEVICES'),"
+                  "'hf_home':os.environ.get('HF_HOME'),"
                   "'rogue':os.environ.get('CUDA_LAUNCH_BLOCKING'),"
                   "'pythonpath':os.environ.get('PYTHONPATH')}))\n")
         for name in ('gpu_service_process', 'trusted_profile_collector'):
@@ -40,10 +43,11 @@ class TrustedServiceLaunchTests(unittest.TestCase):
 
     def build(self, module='looking_glass.gpu_service_process', **overrides):
         arguments = dict(repo_root=self.repo, site_packages=self.site,
-            environment_root=self.site.parent, private_parent=self.private,
+            environment_root=self.site.parent, private_parent=self.private, hf_home=self.hf_home,
             gpu_uuid=UUID, module=module, config_path=self.config,
             trusted_path=str(self.root), inherited_environment={**os.environ,
-                'CUDA_LAUNCH_BLOCKING': '1', 'PYTHONPATH': 'untrusted', 'EXTRA_SECRET': 'hidden'})
+                'CUDA_LAUNCH_BLOCKING': '1', 'PYTHONPATH': 'untrusted', 'HF_HOME': 'untrusted',
+                'EXTRA_SECRET': 'hidden'})
         arguments.update(overrides)
         return prepare_trusted_launch(**arguments)
 
@@ -66,6 +70,7 @@ class TrustedServiceLaunchTests(unittest.TestCase):
         self.assertEqual(outputs[0]['argv'], ['--config', str(self.config),
             '--config-id', f'{info.st_dev}:{info.st_ino}', '--config-sha256', digest])
         self.assertEqual(outputs[0]['visibility'], UUID)
+        self.assertEqual([output['hf_home'] for output in outputs], [str(self.hf_home)] * 2)
         self.assertIsNone(outputs[0]['rogue'])
         self.assertIsNone(outputs[0]['pythonpath'])
 
@@ -129,6 +134,8 @@ class TrustedServiceLaunchTests(unittest.TestCase):
             self.build(config_path=external)
         with self.assertRaisesRegex(ValueError, 'absolute'):
             self.build(trusted_path='relative-directory')
+        with self.assertRaisesRegex(ValueError, 'absolute'):
+            self.build(hf_home='relative-directory')
 
 
 if __name__ == '__main__':
