@@ -80,7 +80,6 @@ class AdapterValidationTests(unittest.TestCase):
             self.fail('non-GPT-2 model was accepted')
         self.assertEqual(len(model._forward_hooks), 0)
 
-
 @unittest.skipIf(GPT2Config is None, "optional transformers package not installed")
 class GPT2TraceTests(unittest.TestCase):
     @classmethod
@@ -103,6 +102,21 @@ class GPT2TraceTests(unittest.TestCase):
                              'native GPT-2 trace adapter missing')
         from looking_glass.transformer_trace import GPT2TraceSession
         return GPT2TraceSession(model, run_id='unit', **kwargs)
+
+    def test_schema_text_inputs_reject_string_subclasses(self):
+        from looking_glass.transformer_trace import GPT2TraceSession
+        class StringSubclass(str):
+            pass
+        model = self.make_model()
+        for kwargs in ({'run_id': StringSubclass('unit')},
+                       {'run_id': 'unit', 'mode': StringSubclass('id')},
+                       {'run_id': 'unit', 'targets': (StringSubclass('block'),)},
+                       {'run_id': 'unit', 'capture_device': StringSubclass('cpu')}):
+            with self.subTest(kwargs=kwargs):
+                with self.assertRaises((TypeError, ValueError)):
+                    GPT2TraceSession(model, **kwargs)
+        self.assertTrue(all(not m._forward_hooks and not m._forward_pre_hooks
+                            for m in model.modules()))
 
     def test_boundary_values_and_coordinates_match_independent_hooks(self):
         model = self.make_model()
@@ -243,6 +257,114 @@ class GPT2TraceTests(unittest.TestCase):
                 model(torch.tensor([[1, 2]]))
             events.extend(event.to_schema() for event in trace.events)
         validate_trace(events)
+
+    def test_single_explicit_uncached_forward_has_verified_context(self):
+        from looking_glass.trace_schema import GenerationContext, TraceEvent
+        model = self.make_model()
+        context = GenerationContext(stage='forward', use_cache=False)
+        for mode in ('direct', 'id'):
+            with self.subTest(mode=mode):
+                with self.session(model, layers=(0,), targets=('attn', 'mlp', 'block'),
+                                  mode=mode, forward_context=context) as trace:
+                    model(input_ids=torch.tensor([[1, 2]]),
+                          position_ids=torch.tensor([[4, 5]]), use_cache=False)
+                self.assertTrue(trace.successful)
+                for event in trace.events:
+                    self.assertEqual(event.to_schema().generation, context)
+                    self.assertEqual(TraceEvent.from_json(event.to_schema().to_json()).generation, context)
+                    self.assertIsNone(event.metadata()['generation']['cache_position'])
+                    self.assertIsNone(event.metadata()['generation']['generation_step'])
+
+    def test_verified_context_fails_closed_for_unspecified_or_supplied_cache(self):
+        from looking_glass.trace_schema import GenerationContext
+        context = GenerationContext(stage='forward', use_cache=False)
+        cases = ({}, {'use_cache': True},
+                 {'use_cache': False, 'past_key_values': object()})
+        for kwargs in cases:
+            with self.subTest(kwargs=kwargs):
+                model = self.make_model()
+                trace = self.session(model, targets=('block',), layers=(0,),
+                                     forward_context=context)
+                with trace:
+                    with self.assertRaises(ValueError):
+                        model(torch.tensor([[1, 2]]), **kwargs)
+                self.assertFalse(trace.successful)
+                self.assertEqual(trace.events, [])
+                self.assertTrue(all(not m._forward_hooks and not m._forward_pre_hooks
+                                    for m in model.modules()))
+        model = self.make_model()
+        trace = self.session(model, targets=('block',), layers=(0,),
+                             forward_context=context)
+        with trace:
+            with self.assertRaises(ValueError):
+                model(torch.tensor([[1, 2]]), object(), use_cache=False)
+        self.assertFalse(trace.successful)
+        self.assertEqual(trace.events, [])
+
+    def test_verified_context_rejects_second_forward_and_other_claims(self):
+        from looking_glass.trace_schema import GenerationContext
+        model = self.make_model()
+        context = GenerationContext(stage='forward', use_cache=False)
+        trace = self.session(model, targets=('block',), layers=(0,),
+                             forward_context=context)
+        with trace:
+            model(torch.tensor([[1]]), use_cache=False)
+            with self.assertRaises(RuntimeError):
+                model(torch.tensor([[2]]), use_cache=False)
+        self.assertFalse(trace.successful)
+        self.assertEqual(trace.events, [])
+        for invalid in (GenerationContext(stage='decode', use_cache=False),
+                        GenerationContext(stage='forward', use_cache=False, cache_position=0),
+                        'forward'):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises((TypeError, ValueError)):
+                    self.session(model, forward_context=invalid)
+
+    def test_verified_context_rejects_existing_backbone_hook_rewriting_cache(self):
+        from looking_glass.trace_schema import GenerationContext
+        model = self.make_model()
+        def rewrite(_module, args, kwargs):
+            return args, dict(kwargs, use_cache=True)
+        handle = model.transformer.register_forward_pre_hook(rewrite, with_kwargs=True)
+        trace = self.session(model, forward_context=GenerationContext(stage='forward', use_cache=False))
+        try:
+            with self.assertRaises(RuntimeError):
+                with trace:
+                    model(torch.tensor([[1]]), use_cache=False)
+            self.assertFalse(trace.successful)
+            self.assertEqual(trace.events, [])
+        finally:
+            handle.remove()
+
+    def test_verified_context_rejects_hook_environment_changes(self):
+        from looking_glass.trace_schema import GenerationContext
+        model = self.make_model()
+        trace = self.session(model, forward_context=GenerationContext(stage='forward', use_cache=False))
+        with trace:
+            def rewrite(_module, args, kwargs):
+                return args, dict(kwargs, use_cache=True)
+            handle = model.transformer.register_forward_pre_hook(rewrite, with_kwargs=True)
+            try:
+                with self.assertRaises(RuntimeError):
+                    model(torch.tensor([[1]]), use_cache=False)
+            finally:
+                handle.remove()
+        self.assertFalse(trace.successful)
+        self.assertEqual(trace.events, [])
+
+    def test_verified_context_rejects_global_forward_hooks(self):
+        from looking_glass.trace_schema import GenerationContext
+        model = self.make_model()
+        handle = torch.nn.modules.module.register_module_forward_pre_hook(lambda _m, _a: None)
+        trace = self.session(model, forward_context=GenerationContext(stage='forward', use_cache=False))
+        try:
+            with self.assertRaises(RuntimeError):
+                with trace:
+                    model(torch.tensor([[1]]), use_cache=False)
+        finally:
+            handle.remove()
+        self.assertFalse(trace.successful)
+        self.assertEqual(trace.events, [])
 
     def test_direct_and_gradient_preserve_training_and_match_snapshots(self):
         original = self.make_model()
