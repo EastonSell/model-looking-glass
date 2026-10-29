@@ -1,8 +1,9 @@
 # Development-selected targeted edit: CPU protocol v2
 
-**Status:** prospective draft. Scoring helpers exist; the execution, frozen
-manifest and committed-selection verification are not yet implemented. No v2
-model run or result is claimed.
+**Status:** prospective draft. CPU scoring, edit construction, public-inventory
+and saved/committed-selection verification helpers exist. The complete
+execution owner, frozen manifest and integrated pre-forward gate are not yet
+available. No v2 model run or result is claimed.
 
 This is a prospective, exploratory follow-up to the published
 [v1 negative result](../results/targeted-edit-cpu-v1-20261028/README.md).
@@ -90,6 +91,12 @@ their own reservation. Do not inspect another team's private or reserved
 cases. If a custodian has unexposed reserved rows, obtain only its documented
 exact/prefix pass/fail result; otherwise disclose that no such comparison was
 performed. Unknown prior exposure and pretraining remain unverified.
+The manifest records the queried lanes, their reported scope and observation
+time as an operator attestation, not independent or exhaustive evidence. Recheck
+the applicable custodians before the first forward; if protected rows have
+since been generated, obtain and preserve a pass/fail collision result without
+reading them. A change requiring different cases or controls requires a new
+protocol and manifest, not an unrecorded substitution.
 
 Reconstruct and check v1 as above. Then measure the unedited baseline and a
 fixed, ascending grid of relative Frobenius doses
