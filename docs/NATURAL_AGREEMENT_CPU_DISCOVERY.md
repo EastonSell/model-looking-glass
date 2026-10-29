@@ -39,7 +39,13 @@ retrievable at their commit IDs. The parent and owner hold read-only Windows
 source-file leases, recheck source, and each independently bind runtime/assets.
 The parent verifies committed bytes using Git before the owner starts; the
 owner verifies the exact frozen source inventory under its own lease without
-starting Git or other study subprocesses.
+starting Git or other study subprocesses. A Python audit hook rejects subprocess
+creation before importing Torch; native code is outside that hook and the job
+still fails closed if its lifetime process inventory cannot be verified.
+The Windows platform-version probe uses the process-observed Win32 version
+instead of starting a shell, including when Torch queries the architecture.
+The binding separately records the Win32 platform version; these process-visible
+values can reflect Windows compatibility mode and are not an OS attestation.
 In the cooperating supervisor path, the gated owner waits until the supervisor
 has a process handle and assigns it to a kill-on-close Windows job before
 loading the model. Do not invoke `child` directly. Startup, execution,
@@ -90,9 +96,12 @@ injection held-out, leaving 105,835,456 bytes for failures or extra evidence.
 Those future caps require enforcement and reconciliation by their respective
 owners; the binding does not perform that work. The 160 MiB estimate covers
 the natural held-out 32-token protocol limit, and injection reservations cover
-the current no-deduplication estimates. These limits do not bound transient
-memory, metadata, or physical disk copies. Before launch the owner checks at
-least 1 GiB free disk and exclusively writes a local one-shot claim adjacent to
+the current no-deduplication estimates. Separately, a prospective 1 GiB physical
+host-disk allowance reserves 224/224/128/192 MiB for those four phases and leaves
+256 MiB for preflight copies, failures and overhead. It includes serialized
+copies and metadata, and requires custodian reconciliation and enforcement; it
+is not a GPU memory reservation. Before launch the owner checks at least 1 GiB
+free disk and exclusively writes a local one-shot claim adjacent to
 the binding. The claim prevents reuse of that local binding, but copies can
 bypass it: the custodian must coordinate a single study owner externally, and
 source read leases are not a study-wide lock. This first-attempt launcher binds
