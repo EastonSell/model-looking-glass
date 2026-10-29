@@ -1,0 +1,165 @@
+{
+  "asset_manifest_sha256": "d369e3095dc35c52608f40fbd2715d7a2ff80a02fd71f0692c24af2cf3402083",
+  "case_sha256": "a118dde671351d21c519b6a61957e9478c9501bac52d55aa34e8394772e933d5",
+  "contract": {
+    "device": "cpu",
+    "donor_token_id": 16242,
+    "failure_reserve_bytes": 1048576,
+    "grid": [
+      0.25,
+      0.5,
+      0.75,
+      1.0,
+      1.25,
+      1.5,
+      2.0,
+      3.0,
+      4.0
+    ],
+    "match_absolute_tolerance": 0.1,
+    "match_relative_tolerance": 0.1,
+    "max_calls_cumulative": 1200,
+    "max_evidence_bytes": 268435456,
+    "max_input_tokens": 64,
+    "max_new_tokens_including_eos": 4,
+    "model_revision": "0fc9ddf78a1e988dac52e2dac162b0ede4fd74ab",
+    "negative_label_ids": [
+      2841,
+      1
+    ],
+    "phase_timeout_seconds": 2700,
+    "positive_label_ids": [
+      1465,
+      1
+    ],
+    "preserve_denormals": true,
+    "primary_effect_floor": 0.5,
+    "primary_token_id": 1627,
+    "seed": 20261029,
+    "vocabulary_size": 32128
+  },
+  "prior_preflight_note": {
+    "git_path": "docs/FLAN_T5_WEIGHT_EDIT_MANIFEST_PREFLIGHT_V1.md",
+    "sha256": "46485943997a86fb5c0f2e381269476716aa82f65bb48353dbf35dcde524ea7e"
+  },
+  "protocol_sha256": "c06fd598e6b5d9cf8d9734c26f6711fbf53b0fbfda08f009ab691ee91dca5478",
+  "public_inputs": {
+    "docs/FLAN_T5_TARGETED_WEIGHT_EDIT_V1.md": "c06fd598e6b5d9cf8d9734c26f6711fbf53b0fbfda08f009ab691ee91dca5478",
+    "docs/FLAN_T5_WEIGHT_EDIT_CASES_V1.json": "a118dde671351d21c519b6a61957e9478c9501bac52d55aa34e8394772e933d5",
+    "docs/FLAN_T5_WEIGHT_EDIT_PUBLICATION_V1.md": "f29d98e1b436298f4867b1f722fb41f184cb761b97b2914139f23bf3d910a660",
+    "docs/FLAN_T5_WEIGHT_EDIT_STORAGE_AMENDMENT_V1.md": "7314cd1950cab87382b3b530ca067c29e878cbd2273ae6d8181b10d58c024155",
+    "docs/FLAN_T5_WEIGHT_EDIT_STORAGE_V1.md": "b61d09688242e322e525adc74b7e9336b33f471fef20a883a724200805a0815c",
+    "experiments/flan_t5_known_injection_cases_v1.json": "1b21870b8d2c83a7c144ecbf2911728fcdc14a828bf2e8078fca43780df64c11"
+  },
+  "runtime": {
+    "numpy": "2.4.6",
+    "python": "3.11.15",
+    "tokenizers": "0.22.2",
+    "torch": "2.8.0+cu128",
+    "transformers": "4.57.3"
+  },
+  "schema": "flan-weight-edit-manifest-v1",
+  "source_revision": "07498325b991daa5228a7c661ea42de4b1edbe19",
+  "sources": {
+    "flan_weight_edit_case_test.py": {
+      "git_path": "tests/flan_weight_edit/flan_weight_edit_case_test.py",
+      "sha256": "a226aa3fdfcad51e870f24234c63e603d917862d64d2a8d85e19ca61060e1e3c"
+    },
+    "flan_weight_edit_cases.py": {
+      "git_path": "scripts/flan_weight_edit_cases.py",
+      "sha256": "4a02a87bdb8111c6a4c2baa3f25281a7c6e7852ae3d3475d56fc3f8dba31376a"
+    },
+    "flan_weight_edit_conftest.py": {
+      "git_path": "tests/flan_weight_edit/conftest.py",
+      "sha256": "be169f4bbdce91ec9a233be173ddae0eddd6d1e90e2b8a4cf8ca2e69950ea60f"
+    },
+    "flan_weight_edit_decision.py": {
+      "git_path": "scripts/flan_weight_edit_decision.py",
+      "sha256": "18840c775595eb73d2ffe3422b57f27f871590e0fe38b5808b9a0380c99849f6"
+    },
+    "flan_weight_edit_decision_test.py": {
+      "git_path": "tests/flan_weight_edit/flan_weight_edit_decision_test.py",
+      "sha256": "e23a9b1b7f920e63b223fdf8ee1982135ff6e1e30c9c0f5957e63c6bc073d39a"
+    },
+    "flan_weight_edit_driver.py": {
+      "git_path": "scripts/flan_weight_edit_driver.py",
+      "sha256": "29e2c383cb15644874d77f64f7d122672b4c21f72ed6ce675f882ace170481f1"
+    },
+    "flan_weight_edit_driver_test.py": {
+      "git_path": "tests/flan_weight_edit/flan_weight_edit_driver_test.py",
+      "sha256": "66d66ea8d49bbe86fd0fcac5d6dd230833b3f0f82bb1a06a63a78a46bfc21f78"
+    },
+    "flan_weight_edit_guard.py": {
+      "git_path": "scripts/flan_weight_edit_guard.py",
+      "sha256": "c17d091205817c74e2331a93b4d40bdf89004cb744c3bb92d747ff621b0f0782"
+    },
+    "flan_weight_edit_guard_test.py": {
+      "git_path": "tests/flan_weight_edit/flan_weight_edit_guard_test.py",
+      "sha256": "70b7fbb4c391421bbbfc4f5a8590fba1966b68098d5dd9cd6b95beb788b8a90e"
+    },
+    "flan_weight_edit_handoff.py": {
+      "git_path": "scripts/flan_weight_edit_handoff.py",
+      "sha256": "d20bd954e8426978274c933e0d7d78719cf029f089837ab60df7287652e4f392"
+    },
+    "flan_weight_edit_handoff_test.py": {
+      "git_path": "tests/flan_weight_edit/flan_weight_edit_handoff_test.py",
+      "sha256": "b633fff34a8d67d24ebad4bcb0eda90a87f96e271e5388ea8c9bf45c1fb6564f"
+    },
+    "flan_weight_edit_journal.py": {
+      "git_path": "scripts/flan_weight_edit_journal.py",
+      "sha256": "ec1fea9f7f297ebfdbae5682205404311918e065e27bf8e35e8fce86ec3adfd3"
+    },
+    "flan_weight_edit_journal_test.py": {
+      "git_path": "tests/flan_weight_edit/flan_weight_edit_journal_test.py",
+      "sha256": "5af5069435ace937b2db5c68a7c0c810108d5bdf24f4a030a68a5e8915ee8572"
+    },
+    "flan_weight_edit_numerical.py": {
+      "git_path": "scripts/flan_weight_edit_numerical.py",
+      "sha256": "6b8e53b5ed84f21d85dd6643827b03baf43452565b8dce2da31114594da0b387"
+    },
+    "flan_weight_edit_numerical_test.py": {
+      "git_path": "tests/flan_weight_edit/flan_weight_edit_numerical_test.py",
+      "sha256": "5013b98b94b1309ce9d2b64da75c8a40413a364f82a234ea85f7d29e1cc5af6d"
+    },
+    "flan_weight_edit_owner.py": {
+      "git_path": "scripts/flan_weight_edit_owner.py",
+      "sha256": "8f6660e5d100b0cbeb006317c23bdbd39e42eb6394710229018ec170faf87d8c"
+    },
+    "flan_weight_edit_owner_test.py": {
+      "git_path": "tests/flan_weight_edit/flan_weight_edit_owner_test.py",
+      "sha256": "00e81929e2ca203a1902791d5331b13050472efc0b604a7e5ef26d9fb37716f9"
+    },
+    "flan_weight_edit_results.py": {
+      "git_path": "scripts/flan_weight_edit_results.py",
+      "sha256": "e657b792bfb33bf40f4729231b6ddf18a121c61263d278781c510c70bbda2b64"
+    },
+    "flan_weight_edit_results_test.py": {
+      "git_path": "tests/flan_weight_edit/flan_weight_edit_results_test.py",
+      "sha256": "9df3f24e097578abf6ec8caaecc3de4c3afd0f64c31352b899c85d2fd7b77384"
+    },
+    "flan_weight_edit_session.py": {
+      "git_path": "scripts/flan_weight_edit_session.py",
+      "sha256": "cff1857afb40f92b87401d8f11be99ab52b0345acab9005108875888ad2073e3"
+    },
+    "flan_weight_edit_session_test.py": {
+      "git_path": "tests/flan_weight_edit/flan_weight_edit_session_test.py",
+      "sha256": "466da1f7f76678a0819108aed266c4d8b6145e5098a139e6c593ac70bb89b523"
+    },
+    "flan_weight_edit_study.py": {
+      "git_path": "scripts/flan_weight_edit_study.py",
+      "sha256": "661adfee77d23220581ed2ee4b7d874c47cd0a5bb8324a191c715dc6a42faadb"
+    },
+    "flan_weight_edit_study_test.py": {
+      "git_path": "tests/flan_weight_edit/flan_weight_edit_study_test.py",
+      "sha256": "0c8aacd7244e4ad31a504f465d7f8fc28ee08d2a73abc9d013e0c56294338138"
+    },
+    "flan_weight_edit_worker.py": {
+      "git_path": "scripts/flan_weight_edit_worker.py",
+      "sha256": "2832020e2fbf9ce2107d9c481e30784070495eabff6c0a784ed5bb20a6b898cf"
+    },
+    "flan_weight_edit_worker_test.py": {
+      "git_path": "tests/flan_weight_edit/flan_weight_edit_worker_test.py",
+      "sha256": "536eb413c5d9d24c00fe70d057e9c76ed4234b619dfddccf0b64e5070bdca6ec"
+    }
+  }
+}
