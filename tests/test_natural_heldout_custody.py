@@ -969,6 +969,43 @@ class CustodyTests(unittest.TestCase):
         self.assertTrue(result['cleanup_verified'])
         self.assertEqual(seen, [(11, 22)])
 
+    @unittest.skipUnless(os.name == 'nt', 'requires real Windows Jobs and source leases')
+    def test_real_supervisor_accepts_protected_fabricated_preparation(self):
+        from looking_glass import natural_heldout_supervisor as supervisor
+        from scripts import v2_source_guards as guards
+        attempt, _ = self.prepare()
+        fake_entry = self.root / 'fake-preparation-entry.py'
+        fake_entry.write_text(
+            "import os,sys\n"
+            "token=b'MLG-natural-discovery-start-v1\\n'\n"
+            "sys.exit(0 if os.read(0,len(token))==token else 7)\n", encoding='utf-8')
+        frozen_file = self.root / 'fake-frozen-source.py'
+        operational_file = self.root / 'fake-operational-source.py'
+        frozen_file.write_bytes(b'frozen')
+        operational_file.write_bytes(b'operational')
+        output = self.root / 'actual-preparation-supervisor'
+        base_interpreter = getattr(sys, '_base_executable', sys.executable)
+        command = [base_interpreter, '-I', '-S', '-B', '-X',
+                   'pycache_prefix=' + str(self.root / 'unused-real-pycache'),
+                   '-c', custody.BOOTSTRAP, str(fake_entry), 'prepare', '--config', str(self.config_path),
+                   '--config-sha', hashlib.sha256(self.config_bytes).hexdigest()]
+        def audit(_directory, _code, _reaped):
+            return custody.audit_preparation(attempt, self.public, self.wrapper)
+        with mock.patch.object(custody, '__file__', str(fake_entry)), \
+             mock.patch.object(custody.sys, 'executable', base_interpreter), \
+             mock.patch.dict(os.environ, {'MLG_NATURAL_SITE': str(self.root)}), \
+             guards.SourceFileLease(self.root, [frozen_file]) as frozen_lease, \
+             guards.SourceFileLease(self.root, [operational_file]) as operational_lease:
+            with guards.InheritableHandles(frozen_lease.handles() + operational_lease.handles()) as handles:
+                receipt = supervisor.supervise_heldout(command, output, os.environ.copy(),
+                    audit_result=audit, timeout=30, inherited_handles=handles)
+            self.assertEqual(receipt['status'], 'evidence_complete', receipt)
+            self.assertIs(type(receipt['postexit_active_processes']), int)
+            self.assertEqual(receipt['postexit_active_processes'], 0)
+            self.assertEqual(receipt['audit'], custody.audit_preparation(attempt, self.public, self.wrapper))
+            custody.verify_preparation_supervisor(attempt, output, self.public, self.wrapper,
+                                                  require_outer_observation=False)
+
     def test_complete_observation_after_write_error_is_recoverable_without_redraw(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)
