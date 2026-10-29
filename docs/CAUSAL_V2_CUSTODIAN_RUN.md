@@ -81,8 +81,11 @@ arbitrary callbacks must not be treated as scientific evidence.
 Each attempt is single-use. The first unexpected exception, failed validation,
 storage uncertainty or cancellation stops further forwards. A completed prefix
 of a failed cell is published as incomplete when the private writer is known
-safe; the full private failure records both a primary and cleanup error if they
-fit. Public failure records contain an opaque cell ID and generic stage only.
+safe. The current executor does not retain intermediate fragments from an
+unfinished condition; a bounded partial record explicitly marks those facts
+unavailable rather than implying they were saved. The full private failure
+records both a primary and cleanup error if they fit. Public failure records
+contain an opaque cell ID and generic stage only.
 No exception is silently truncated. If failure serialization or publication is
 uncertain, the attempt remains incomplete. Public publication exceptions and
 retained `.pending` files stop further public writes; the underlying registry's

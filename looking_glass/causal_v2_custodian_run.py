@@ -350,7 +350,13 @@ def run_study_once(path, *, prepared, expected_context, exclusion_bytes, pilot_b
             cell.publish_complete()
         else:
             cell.mark_failed()
-            cell.publish_incomplete()
+            # The current executor does not expose intermediate fragments of a
+            # failed condition. Preserve the completed prefix and explicitly
+            # record that any in-progress partial facts are unavailable.
+            partial = registry._json_bytes({"schema": "causal-v2-partial-record-v1",
+                "cell_id": cell.cell_id, "phase": cell.phase, "model_seed": cell.model_seed,
+                "stage": "cell_callback_failed", "evidence": {"status": "unavailable"}})
+            cell.publish_incomplete(partial)
         raw = _read(private.path / "artifacts" / cell.name, CELL_CHUNK_LIMIT)
         info = _chunk(raw, cell.name, CELL_CHUNK_LIMIT)
         if info["state"] != ("complete" if complete else "incomplete"):
