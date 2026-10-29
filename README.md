@@ -81,6 +81,8 @@ On six public nonblind contexts from one template, [DistilBERT negation-cue tran
 
 The [cue-class follow-up](results/bert-cue-class-cpu-v1-20261029/README.md) passed its fixed specificity rule in all three frames: seven of nine new public evaluation contexts passed, and all nine were eligible. Each template also had a development context; the cues differ in lexical identity and frequency, so the result does not establish general negation understanding or unique localization. The full journal is locally retained but omitted from the repository.
 
+The [held-out-frame follow-up](results/bert-cue-heldout-frames-cpu-v1-20261029/README.md) failed that specificity rule in all six eligible contexts; cue words and frames changed together. In the [cue-set × placement factorial](results/bert-cue-factorial-cpu-v1-20261029/README.md), all four cells failed the fixed rule (0/3 cases each), although 11 of 12 worst-target margins remained positive. The factorial used a lower common dose than the earlier study and changed the template, so it cannot determine the cause of the earlier difference or establish zero effect.
+
 In a [matched-dose taste follow-up](results/bert-taste-matched-dose-v1-20261029/RESULTS.md), 29 of 30 directional comparisons across blocks 0–4 favored the ingredient patch over the position control. Only three of six frames met the baseline rule, all using the same template; the comparisons are dependent and do not establish a general taste mechanism.
 
 The [crossed-template taste study](results/bert_taste_template_direction_v1/RESULTS.md) compared six public stems under two templates. Its mean ingredient-versus-`the` donor-signed contrasts were +0.085 for `after adding` and +0.068 for `with some`; the `the` control itself moved opposite the donor in all 24 comparisons. These dependent, nonblind comparisons do not establish a general taste mechanism.
@@ -96,6 +98,10 @@ The [DistilGPT2 agreement preflight](results/distilgpt2-agreement-preflight-v1-2
 The independently audited [agreement discovery](results/distilgpt2-natural-agreement-v1-20261028/README.md) selected the layer 3 attention output at the final token. Across four public families, opposite-number donors caused a mean 3.095-logit greater shift away from the target's present-tense agreement margin than same-number donors. They reversed the margin in 10 of 32 donor–target pairs involving six distinct targets, versus none of 32 same-number pairs. These are development results, and a shift can reflect weakening rather than transfer of number information; held-out prediction remains to be tested.
 
 On fixed public nonblind cases, both exploratory [agreement-direction rules](results/distilgpt2-agreement-direction-study-v1/RESULTS.md) passed (8/8 families and 16/16 pairs). Subject-free but number-marked context fragments also showed a substantial response, so the result does not establish an abstract number feature or unique circuit.
+
+The [subject-form sensitivity study](results/distilgpt2-agreement-subject-dependence-v1/RESULTS.md) found a larger signed response for the singular member in 31/32 public matched pairs, while subjectless fragments also responded. The cases are dependent and nonblind; morphology, lexical identity and context-dependent gain remain possible explanations.
+
+The [two-attractor patch follow-up](results/public-two-attractor-patch-v1-20261029/README.md) found a near-zero pooled clean interaction that concealed opposite subject-specific means. Its donor displacements were unequal and changed local lexical identity, so these descriptive results do not establish independent attractor channels or additivity.
 
 The [natural-agreement held-out attempt](results/distilgpt2-natural-agreement-v1-20261028/heldout-attempt-status-v1.md) stopped without an evaluable result. Its one-use claim and sealed split remain preserved; the recorded RuntimeError and a no-model startup reproduction support, but do not prove, a missing dependency-path diagnosis. An [independent held-out auditor](docs/INDEPENDENT_NATURAL_HELDOUT_AUDIT.md) is prepared for saved controls and frozen-prediction errors after a valid reveal.
 
@@ -131,6 +137,8 @@ The [same-site small-dose ViT follow-up](results/vision-coco-same-site-v3-202610
 
 The [recognized-donor ViT follow-up](results/vision-coco-recognized-v4-20261029/README.md) was negative under its preset composite: all four selected pairs were eligible, and none passed both directional side rules. The screen was conditioned on model recognition, and two cat donors were reused, so the comparisons are dependent and do not establish spatial localization.
 
+In the [CLS versus spatial follow-up](results/vision-coco-cls-v5-20261029/README.md), both screened pairs were eligible but neither passed the fixed two-sided composite. Active controls sometimes had larger effects, and one spatial intervention changed top-1; the result does not imply no effect or equivalence. The pairs reused both donors and were conditioned on model recognition.
+
 A [targeted parameter-edit experiment](results/targeted-edit-cpu-v1-20261028/README.md) changed the intended answer preference but failed its preset locality thresholds on public probes. The negative result and a same-host replay are preserved; the study does not establish general capability preservation.
 
 The [projected-edit follow-up](results/targeted-edit-projected-cpu-v1-20261028/README.md) was ineligible because only two of four targets had the required baseline preference; neither reversed. The projected and unprojected edits had different target effects, and the nine locality probes cannot establish broad capability preservation.
@@ -138,6 +146,8 @@ The [projected-edit follow-up](results/targeted-edit-projected-cpu-v1-20261028/R
 In the [screened-edit follow-up](results/targeted-edit-screened-matched-v1-20261029/README.md), both preset projected-edit comparisons were negative on eight baseline-selected public targets and twelve locality prompts: one target margin reversed, and one locality top-token ID changed from ` euro` to ` Euro`. These fixed probes do not establish broad capability preservation.
 
 The [full-vocabulary targeted-edit screen](results/targeted-edit-full-top-cpu-v1-20261029/screen/README.md) was ineligible: none of four facts met the fixed baseline selection rule across its public prompts. No edit or locality prompt was run, so this is a feasibility outcome rather than a negative edit result.
+
+The [answer-format feasibility study](results/answer-format-feasibility-cpu-v1-20261029/README.md) also selected no edit target: neither development nor held-out family met the fixed full-vocabulary baseline. The held-out examples instead showed a strong response to the two supplied demonstrations; they reused the development facts and do not identify a copying mechanism.
 
 The preserved v1 runner has a [cleanup compatibility limitation](docs/TARGETED_EDIT_V2_OWNER.md#historical-v1-cleanup-limitations) in Python 3.10 and when called while an unrelated exception is being handled. The recorded run used Python 3.11; this limitation does not reclassify its result.
 
