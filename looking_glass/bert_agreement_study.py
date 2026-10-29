@@ -29,11 +29,14 @@ ASSETS = {
     'model.safetensors': (267954768, '5e3f1108e3cb34ee048634875d8482665b65ac713291a7e32396fb18f6ff0063'),
 }
 SOURCE_PATHS = (
-    'scripts/bert_agreement_bootstrap.py', 'docs/BERT_AGREEMENT_V1.md',
+    'scripts/bert_agreement_bootstrap.py', 'scripts/bert_agreement_cpu_evaluation.py', 'docs/BERT_AGREEMENT_V1.md',
     'docs/CPU_STUDY_SUPERVISION.md', 'docs/SUPERVISOR.md', 'docs/BERT_AGREEMENT_EXPOSURES_V2.md',
+    'docs/BERT_AGREEMENT_EXPOSURES_V3.md', 'experiments/bert_agreement_cpu_evaluation_v1.json',
     'experiments/bert_agreement_public_cases_v1.json', 'experiments/bert_agreement_exposures_v2.json',
+    'experiments/bert_agreement_exposures_v3.json',
     'looking_glass/__init__.py', 'looking_glass/bert_agreement_cases.py',
-    'looking_glass/bert_agreement_exposures_v2.py', 'looking_glass/bert_agreement_runner.py',
+    'looking_glass/bert_agreement_exposures_v2.py', 'looking_glass/bert_agreement_exposures_v3.py',
+    'looking_glass/bert_evaluation_ledger.py', 'looking_glass/bert_agreement_runner.py',
     'looking_glass/bert_agreement_audit.py', 'looking_glass/bert_agreement_study.py',
     'looking_glass/pretrained.py', 'looking_glass/intervention_plan.py',
     'looking_glass/interventions.py', 'looking_glass/model_ownership.py',
@@ -41,6 +44,8 @@ SOURCE_PATHS = (
     'looking_glass/device_lease.py', 'looking_glass/device_identity.py',
 )
 _CPU_CUSTODY = {}
+_CONTROLLER_CUSTODY = {}
+EVALUATION_ENABLED = False  # Enable only in the independently reviewed frozen revision.
 
 
 def stage_verified_assets(snapshot, destination):
@@ -242,14 +247,25 @@ def aggregate_families(manifest, families):
         for site in sites:
             family_means[site].append(math.fsum(effects[site]) / 4.0)
     means = {site: math.fsum(values) / 8.0 for site, values in family_means.items()}
+    comparisons = sites[1:]
+    candidate_minus_site = {site: math.fsum((means['candidate'], -means[site])) for site in comparisons}
+    family_candidate_minus_site = {
+        site: [math.fsum((candidate, -other)) for candidate, other in zip(family_means['candidate'],
+                                                                           family_means[site])]
+        for site in comparisons}
+    mean_family_candidate_minus_site = {site: math.fsum(values) / 8.0
+                                        for site, values in family_candidate_minus_site.items()}
     cells = {name: {'n': len(values), 'correct': sum(correct for _, correct in values),
                     'mean_margin': math.fsum(margin for margin, _ in values) / len(values)}
              for name, values in cell_records.items()}
     positive = sum(value > 0 for value in family_means['candidate'])
     return {'site_means': means, 'family_means': family_means,
+            'candidate_minus_site': candidate_minus_site,
+            'family_candidate_minus_site': family_candidate_minus_site,
+            'mean_family_candidate_minus_site': mean_family_candidate_minus_site,
             'positive_candidate_families': positive,
             'directional_hypothesis_passed': means['candidate'] > .1 and positive >= 6,
-            'site_specificity_passed': math.fsum((means['candidate'], -means['block2_distractor'])) > .1,
+            'site_specificity_passed': candidate_minus_site['block2_distractor'] > .1,
             'baseline': {'n': 32, 'correct': sum(cell['correct'] for cell in cells.values()), 'cells': cells}}
 
 
@@ -521,6 +537,26 @@ def _require_denormals(torch):
             raise RuntimeError('the calling thread must preserve denormals')
 
 
+def audit_cpu_evaluation_journal(manifest, path, expected_sha256):
+    """Audit a CPU journal without loading a model, recording local runtime."""
+    import platform
+    if 'transformers' in sys.modules:
+        raise RuntimeError('controller journal audit must not import model dependencies')
+    import torch
+    if (str(torch.__version__) != '2.8.0+cu128' or torch.cuda.is_initialized()
+            or not torch.set_flush_denormal(False)):
+        raise RuntimeError('controller audit runtime or CUDA state differs')
+    _require_denormals(torch)
+    audited = audit_event_journal(manifest, path, split='evaluation', family=None, mask_id=103,
+                                  hidden_size=768, expected_sha256=expected_sha256)
+    _require_denormals(torch)
+    if torch.cuda.is_initialized() or 'transformers' in sys.modules:
+        raise RuntimeError('controller audit changed CUDA or model-dependency state')
+    return audited, {'python': platform.python_version(), 'torch': str(torch.__version__),
+                     'cuda_initialized_before_after': False, 'denormals_preserved_calling_thread': True,
+                     'model_forwarded': False}
+
+
 def _reported_machine(platform_module):
     """Record an unavailable OS machine string explicitly, without guessing."""
     value = platform_module.machine()
@@ -560,6 +596,70 @@ def _checked_manifest(repo, commit, git_exe, split):
     return hashes, json.loads(manifest_raw), checked.manifest_sha256
 
 
+def _evaluation_binding(repo, commit, hashes, manifest, manifest_sha, custody_root, ledger_root,
+                        controller_custody_root):
+    """Derive the ledger identity from verified sources and canonical cases."""
+    from .bert_agreement_cases import build_manifest, manifest_digest
+    from .bert_agreement_exposures_v3 import build_snapshot, verify_snapshot_bytes
+    from .bert_evaluation_ledger import MAX_ATTEMPTS, root_identity
+
+    profile_path = 'experiments/bert_agreement_cpu_evaluation_v1.json'
+    exposure_path = 'experiments/bert_agreement_exposures_v3.json'
+    profile_raw = (Path(repo) / profile_path).read_bytes()
+    exposure_raw = (Path(repo) / exposure_path).read_bytes()
+    if (hashlib.sha256(profile_raw).hexdigest() != hashes[profile_path]
+            or hashlib.sha256(exposure_raw).hexdigest() != hashes[exposure_path]):
+        raise RuntimeError('evaluation profile or exposure snapshot changed after verification')
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('duplicate evaluation profile key')
+            result[key] = value
+        return result
+    profile = json.loads(profile_raw, object_pairs_hook=unique,
+                         parse_constant=lambda _: (_ for _ in ()).throw(ValueError('nonfinite JSON')))
+    checked = verify_snapshot_bytes(exposure_raw)
+    ledger, ledger_sha = root_identity(ledger_root)
+    custody = Path(custody_root).resolve(strict=True)
+    cpu = _cpu_study_binding(custody)
+    controller_custody = Path(controller_custody_root).resolve(strict=True)
+    controller_cpu = _cpu_study_binding(controller_custody)
+    checkout = Path(repo).resolve(strict=True)
+    if (type(profile) is not dict or set(profile) != {'schema', 'ledger_root_sha256', 'custody_root_sha256',
+            'controller_custody_root_sha256',
+            'manifest_sha256', 'exposure_sha256', 'evaluation_rows', 'maximum_attempts'}
+            or profile['schema'] != 'bert-agreement-cpu-evaluation-v1'
+            or profile['ledger_root_sha256'] != ledger_sha
+            or profile['custody_root_sha256'] != cpu['custody_root_sha256']
+            or profile['controller_custody_root_sha256'] != controller_cpu['custody_root_sha256']
+            or profile['manifest_sha256'] != manifest_sha or manifest_sha != manifest_digest()
+            or not _same_json(manifest, build_manifest()) or profile['exposure_sha256'] != checked.snapshot_sha256
+            or type(profile['evaluation_rows']) is not int or profile['evaluation_rows'] != 64
+            or type(profile['maximum_attempts']) is not int or profile['maximum_attempts'] != MAX_ATTEMPTS
+            or not custody.is_dir() or not controller_custody.is_dir()
+            or any(a == b or a.is_relative_to(b) or b.is_relative_to(a)
+                   for a, b in ((ledger, custody), (ledger, checkout), (custody, checkout),
+                                (controller_custody, ledger), (controller_custody, custody),
+                                (controller_custody, checkout)))):
+        raise RuntimeError('evaluation profile does not match the frozen roots or inputs')
+    def rows(data):
+        return [{'row_id': item['row_id'], 'input_ids': item['input_ids'], 'attention_mask': item['attention_mask']}
+                for item in data if item['split'] == 'evaluation']
+    evaluation_rows = rows(manifest['rows'])
+    if checked.public_evaluation_rows != 64 or checked.exact_development_evaluation_overlap != 0 or not _same_json(
+            evaluation_rows, rows(build_snapshot()['rows'])):
+        raise RuntimeError('evaluation rows differ from the cited exposure snapshot')
+    return {'source_commit': commit, 'source_sha256': hashes,
+            'protocol_sha256': hashes['docs/BERT_AGREEMENT_V1.md'], 'manifest_sha256': manifest_sha,
+            'exposure_sha256': checked.snapshot_sha256, 'ledger_root_sha256': ledger_sha,
+            'cpu_study': cpu, 'controller_cpu_study': controller_cpu,
+            'model': {'model': MODEL_ID, 'revision': REVISION,
+                                       'assets': {name: {'size': size, 'sha256': digest}
+                                                  for name, (size, digest) in ASSETS.items()}},
+            'rows': evaluation_rows}
+
+
 def _require_bootstrap():
     if (os.environ.get('LOOKING_GLASS_BERT_BOOTSTRAP_PID') != str(os.getpid())
             or os.environ.get('CUDA_VISIBLE_DEVICES') not in ('-1', '')
@@ -577,14 +677,39 @@ def _require_checkout(repo):
     return actual
 
 
-def _owner_main(*, repo, cache, run_dir, commit, git_exe, split, family, run_id, custody_root=None):
+def validate_cpu_runtime_and_model(runtime, model, state_sha):
+    """Enforce the fixed CPU model and runtime evidence for a completed run."""
+    expected_model = {'model': MODEL_ID, 'revision': REVISION,
+                      'assets': {name: {'size': size, 'sha256': sha} for name, (size, sha) in ASSETS.items()},
+                      'model_class': 'DistilBertForMaskedLM', 'tokenizer_class': 'DistilBertTokenizerFast',
+                      'torch_version': '2.8.0+cu128', 'transformers_version': '4.57.3',
+                      'dtype': 'float32', 'device': 'cpu', 'attention_implementation': 'eager',
+                      'parameter_count': 66985530, 'pytorch_cuda_initialized': False}
+    if (type(runtime) is not dict or runtime.get('pytorch_cuda_initialized') is not False
+            or runtime.get('denormals_preserved_calling_thread') is not True
+            or runtime.get('deterministic_algorithms') is not True
+            or type(runtime.get('intraop_threads')) is not int or runtime['intraop_threads'] != 1
+            or type(runtime.get('interop_threads')) is not int or runtime['interop_threads'] != 1
+            or runtime.get('torch') != '2.8.0+cu128' or runtime.get('transformers') != '4.57.3'
+            or runtime.get('numpy') != '2.4.6' or type(runtime.get('seed')) is not int
+            or runtime['seed'] != 2026102810 or any(type(runtime.get(k)) is not str or not runtime[k]
+                                                     for k in ('python', 'platform', 'machine'))
+            or runtime.get('python_hash_seed') != 'isolated interpreter; OS-randomized'
+            or type(model) is not dict or not _same_json(model, expected_model)
+            or type(state_sha) is not str or re.fullmatch('[0-9a-f]{64}', state_sha) is None):
+        raise RuntimeError('owner runtime or model evidence differs from the fixed contract')
+
+
+def _owner_main(*, repo, cache, run_dir, commit, git_exe, split, family, run_id, custody_root=None,
+                ledger_root=None, controller_custody_root=None):
     """Run one CPU owner; the supervising controller decides final status."""
     stage = 'startup'
     try:
         _require_bootstrap()
         _require_checkout(repo)
-        if split == 'evaluation':
-            raise RuntimeError('evaluation requires reviewed child-process custody')
+        if split == 'evaluation' and (not EVALUATION_ENABLED or custody_root is None or ledger_root is None
+                                       or controller_custody_root is None):
+            raise RuntimeError('evaluation requires the reviewed frozen custody and ledger')
         cpu_binding = None
         if custody_root is not None:
             stage = 'custody_claim'
@@ -599,11 +724,24 @@ def _owner_main(*, repo, cache, run_dir, commit, git_exe, split, family, run_id,
             raise ValueError('invalid study selection')
         stage = 'source_preflight'
         hashes, manifest, manifest_sha = _checked_manifest(repo, commit, git_exe, split)
+        evaluation_ledger = None
+        if split == 'evaluation':
+            from .bert_evaluation_ledger import reservation_binding, verify_owner_claim
+            binding = _evaluation_binding(repo, commit, hashes, manifest, manifest_sha, custody_root, ledger_root,
+                                          controller_custody_root)
+            session.check(lease)
+            reservation, reservation_sha = verify_owner_claim(
+                ledger_root, binding['ledger_root_sha256'], run_dir, run_id, binding,
+                supervisor_pid=session.supervisor_pid, supervisor_birth=session.supervisor_birth)
+            evaluation_ledger = reservation_binding(reservation, reservation_sha)
         owner_started = {'schema': 'bert-agreement-owner-start-v1', 'run_id': run_id,
                          'pid': os.getpid(), 'source_commit': commit, 'manifest_sha256': manifest_sha,
                          'split': split, 'family': family}
         if cpu_binding is not None:
             owner_started['cpu_study'] = cpu_binding
+        if evaluation_ledger is not None:
+            owner_started['evaluation_ledger'] = evaluation_ledger
+            owner_started['cpu_owner_session_run_id'] = session.run_id
         _write_json(Path(run_dir) / 'owner-started.json', owner_started)
         stage = 'model_load'
         import gc
@@ -670,6 +808,9 @@ def _owner_main(*, repo, cache, run_dir, commit, git_exe, split, family, run_id,
                      'model_state_sha256_before_after': state_sha, 'audited': audited}
         if cpu_binding is not None:
             candidate['cpu_study'] = cpu_binding
+        if evaluation_ledger is not None:
+            candidate['evaluation_ledger'] = evaluation_ledger
+            candidate['cpu_owner_session_run_id'] = session.run_id
         _write_json(Path(run_dir) / 'owner-candidate.json', candidate)
         if custody_root is not None:
             session.attest_clean(lease)
@@ -695,26 +836,31 @@ def _owner_main(*, repo, cache, run_dir, commit, git_exe, split, family, run_id,
         return 1
 
 
-def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, timeout=600, custody_root=None):
+def _run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, timeout=600, custody_root=None,
+                        ledger_root=None, ledger_context=None, controller_custody_root=None):
     """Run an isolated CPU owner, then audit its closed evidence after exit."""
     import secrets
     import shutil
 
     _require_bootstrap()
-    if split == 'evaluation':
-        raise RuntimeError('evaluation requires reviewed child-process custody')
-    if 'torch' in sys.modules or 'transformers' in sys.modules:
-        raise RuntimeError('the controller must start before model dependency import')
+    if split == 'evaluation' and (not EVALUATION_ENABLED or ledger_context is None):
+        raise RuntimeError('evaluation requires the reviewed frozen custody and ledger')
     if (split not in ('development', 'evaluation') or (split == 'development' and
             (type(family) is not int or not 1 <= family <= 4)) or (split == 'evaluation' and family is not None)
             or type(timeout) is not int or not 1 <= timeout <= 1200):
         raise ValueError('invalid study selection or timeout')
     root, cache_path = Path(repo).resolve(strict=True), Path(cache).resolve(strict=True)
     destination = Path(output_dir)
-    if not destination.is_absolute() or destination.exists() or not destination.parent.is_dir():
-        raise ValueError('output must be a new absolute directory with an existing parent')
-    destination.mkdir()
-    run_id = secrets.token_hex(16)
+    if ledger_context is None:
+        if not destination.is_absolute() or destination.exists() or not destination.parent.is_dir():
+            raise ValueError('output must be a new absolute directory with an existing parent')
+        destination.mkdir()
+        run_id = secrets.token_hex(16)
+    else:
+        if (split != 'evaluation' or not destination.is_absolute() or destination.is_symlink()
+                or not destination.is_dir() or destination != ledger_context['directory']):
+            raise ValueError('evaluation output must be its reserved attempt directory')
+        run_id = ledger_context['reservation']['run_id']
     child = None
     owner_pid = None
     exit_code = None
@@ -728,8 +874,20 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
     owner_cancellation_read_error_type = None
     supervision = None
     cpu_binding = None
+    evaluation_ledger = None
     stage = 'startup'
     try:
+        if 'transformers' in sys.modules:
+            raise RuntimeError('the controller cannot import model dependencies')
+        if 'torch' in sys.modules:
+            # A previous complete attempt is re-audited after the outer CPU
+            # claim. It is the only permitted source of this Torch import.
+            audits = None if ledger_context is None else ledger_context['reservation']['prior_audits']
+            torch = sys.modules['torch']
+            if (not audits or str(torch.__version__) != '2.8.0+cu128'
+                    or torch.cuda.is_initialized()):
+                raise RuntimeError('unexpected controller Torch state')
+            _require_denormals(torch)
         controller_started = {'schema': 'bert-agreement-controller-start-v1',
                               'run_id': run_id, 'source_commit': commit, 'split': split, 'family': family,
                               'started_utc': datetime.now(timezone.utc).isoformat()}
@@ -752,10 +910,20 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
                    for a, b in ((custody, root), (custody, output_root))):
                 raise ValueError('CPU study custody root must be separate from checkout and attempt')
             cpu_binding = _cpu_study_binding(custody)
+        if ledger_context is not None:
+            from .bert_evaluation_ledger import reservation_binding
+            ledger_context['ledger']._check()
+            binding = _evaluation_binding(root, commit, hashes, manifest, manifest_sha, custody_root, ledger_root,
+                                          controller_custody_root)
+            if not _same_json(binding, ledger_context['binding']):
+                raise RuntimeError('evaluation binding changed after reservation')
+            evaluation_ledger = reservation_binding(ledger_context['reservation'], ledger_context['reservation_sha256'])
         preflight = {'schema': 'bert-agreement-preflight-v1', 'run_id': run_id, 'source_commit': commit,
                      'source_sha256': hashes, 'manifest_sha256': manifest_sha, 'split': split, 'family': family}
         if cpu_binding is not None:
             preflight['cpu_study'] = cpu_binding
+        if evaluation_ledger is not None:
+            preflight['evaluation_ledger'] = evaluation_ledger
         _write_json(destination / 'preflight.json', preflight)
         prefix = destination / 'owner-pycache'
         prefix.mkdir()
@@ -777,6 +945,11 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
                    '--split', split, '--family', str(family or 0), '--run-id', run_id]
         if custody_root is not None:
             command.extend(('--custody-root', str(custody)))
+        if evaluation_ledger is not None:
+            command.extend(('--ledger-root', str(ledger_root)))
+            command.extend(('--controller-custody-root', str(controller_custody_root)))
+            ledger_context['ledger']._check()
+            ledger_context['controller_session'].check(ledger_context['controller_lease'])
         stage = 'owner_start'
         owner_state = 'possibly_active'
         if custody_root is not None:
@@ -857,8 +1030,13 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
             raise RuntimeError('the CPU study owner did not establish clean custody')
         stage = 'evidence_validation'
         candidate = _read_json(destination / 'owner-candidate.json')
-        audited = audit_event_journal(manifest, destination / 'events.jsonl', split=split, family=family,
-                                      mask_id=103, hidden_size=768, expected_sha256=candidate.get('journal_sha256'))
+        controller_audit_runtime = None
+        if split == 'evaluation':
+            audited, controller_audit_runtime = audit_cpu_evaluation_journal(
+                manifest, destination / 'events.jsonl', candidate.get('journal_sha256'))
+        else:
+            audited = audit_event_journal(manifest, destination / 'events.jsonl', split=split, family=family,
+                                          mask_id=103, hidden_size=768, expected_sha256=candidate.get('journal_sha256'))
         validate_owner_result(candidate, run_id=run_id, pid=owner_pid, exit_code=exit_code,
                               source_commit=commit, journal_sha256=audited['sha256'])
         started = _read_json(destination / 'owner-started.json')
@@ -867,41 +1045,30 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
                             'split': split, 'family': family}
         if cpu_binding is not None:
             expected_started['cpu_study'] = cpu_binding
+        if evaluation_ledger is not None:
+            expected_started['evaluation_ledger'] = evaluation_ledger
+            expected_started['cpu_owner_session_run_id'] = supervision['run_id']
         if (not _same_json(started, expected_started)
                 or not _same_json(_read_json(destination / 'started.json'), controller_started)
                 or not _same_json(_read_json(destination / 'preflight.json'), preflight)
                 or candidate.get('source_sha256') != hashes or candidate.get('manifest_sha256') != manifest_sha
                 or not _same_json(candidate.get('cpu_study'), cpu_binding)
+                or not _same_json(candidate.get('evaluation_ledger'), evaluation_ledger)
+                or (evaluation_ledger is not None and candidate.get('cpu_owner_session_run_id') != supervision['run_id'])
                 or candidate.get('split') != split or not _same_json(candidate.get('family'), family)
                 or not _same_json(candidate.get('audited'), audited) or any(prefix.iterdir())
                 or verify_git_sources(root, commit, SOURCE_PATHS, git_exe=git_exe) != hashes):
             raise RuntimeError('owner evidence, source or bytecode prefix changed')
         stage = 'runtime_validation'
         runtime, model = candidate.get('runtime'), candidate.get('model')
-        expected_model = {'model': MODEL_ID, 'revision': REVISION,
-                          'assets': {name: {'size': size, 'sha256': sha} for name, (size, sha) in ASSETS.items()},
-                          'model_class': 'DistilBertForMaskedLM', 'tokenizer_class': 'DistilBertTokenizerFast',
-                          'torch_version': '2.8.0+cu128', 'transformers_version': '4.57.3',
-                          'dtype': 'float32', 'device': 'cpu', 'attention_implementation': 'eager',
-                          'parameter_count': 66985530, 'pytorch_cuda_initialized': False}
-        if (type(runtime) is not dict or runtime.get('pytorch_cuda_initialized') is not False
-                or runtime.get('denormals_preserved_calling_thread') is not True
-                or runtime.get('deterministic_algorithms') is not True
-                or type(runtime.get('intraop_threads')) is not int or runtime['intraop_threads'] != 1
-                or type(runtime.get('interop_threads')) is not int or runtime['interop_threads'] != 1
-                or runtime.get('torch') != '2.8.0+cu128' or runtime.get('transformers') != '4.57.3'
-                or runtime.get('numpy') != '2.4.6' or type(runtime.get('seed')) is not int
-                or runtime['seed'] != 2026102810 or any(type(runtime.get(k)) is not str or not runtime[k]
-                                                         for k in ('python', 'platform', 'machine'))
-                or runtime.get('python_hash_seed') != 'isolated interpreter; OS-randomized'
-                or type(model) is not dict or not _same_json(model, expected_model)
-                or type(candidate.get('model_state_sha256_before_after')) is not str
-                or re.fullmatch('[0-9a-f]{64}', candidate['model_state_sha256_before_after']) is None):
-            raise RuntimeError('owner runtime or model evidence differs from the fixed contract')
+        validate_cpu_runtime_and_model(runtime, model, candidate.get('model_state_sha256_before_after'))
         stage = 'evidence_inventory'
-        artifacts = _artifact_inventory(destination, {'started.json': 1024 * 1024,
+        artifact_limits = {'started.json': 1024 * 1024,
             'preflight.json': 1024 * 1024, 'owner-started.json': 1024 * 1024,
-            'owner-candidate.json': 1024 * 1024, 'events.jsonl': 16 * 1024 * 1024})
+            'owner-candidate.json': 1024 * 1024, 'events.jsonl': 16 * 1024 * 1024}
+        if evaluation_ledger is not None:
+            artifact_limits['reservation.json'] = 1024 * 1024
+        artifacts = _artifact_inventory(destination, artifact_limits)
         if artifacts['events.jsonl']['sha256'] != audited['sha256']:
             raise RuntimeError('closed journal changed during evidence inventory')
         result = {'schema': 'bert-agreement-controller-result-v1', 'status': 'complete',
@@ -917,6 +1084,13 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
                                   'full mask logits are represented by hashes, not retained tensors',
                                   'source hashes and event consistency do not attest faithful execution',
                                   'one checkpoint and correlated families do not establish generalization']}
+        if evaluation_ledger is not None:
+            result['evaluation_ledger'] = evaluation_ledger
+            result['controller_audit_runtime'] = controller_audit_runtime
+            result['evaluation_interpretation'] = {
+                'designation': 'replay' if evaluation_ledger['prior_complete'] else 'first-complete-primary',
+                'prior_attempt_may_have_exposed_rows': evaluation_ledger['prior_may_have_exposed'],
+                'unknown_history_and_pretraining': True}
         stage = 'terminal_publication'
         _write_json(destination / 'result.json', result)
         return result
@@ -936,6 +1110,8 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
                   'owner_cancellation': owner_cancellation,
                   'owner_cancellation_read_error_type': owner_cancellation_read_error_type,
                   'finished_utc': datetime.now(timezone.utc).isoformat()}
+        if evaluation_ledger is not None:
+            result['evaluation_ledger'] = evaluation_ledger
         try:
             _write_json(destination / 'controller-failure.json', result)
         except (KeyboardInterrupt, SystemExit) as cancellation:
@@ -964,6 +1140,108 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
         return result
 
 
+def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, timeout=600,
+                       custody_root=None, ledger_root=None, controller_custody_root=None):
+    """Serialize each evaluation reservation through its complete controller attempt."""
+    if split != 'evaluation':
+        if ledger_root is not None or controller_custody_root is not None:
+            raise ValueError('development attempts do not use the evaluation ledger')
+        return _run_cpu_controller(repo=repo, cache=cache, output_dir=output_dir, commit=commit,
+                                   split=split, family=family, timeout=timeout, custody_root=custody_root)
+    if (not EVALUATION_ENABLED or custody_root is None or ledger_root is None
+            or controller_custody_root is None):
+        raise RuntimeError('evaluation requires the reviewed frozen custody and ledger')
+    if family is not None or type(timeout) is not int or not 1 <= timeout <= 1200:
+        raise ValueError('evaluation must use all families and a bounded timeout')
+    if not Path(cache).resolve(strict=True).is_dir():
+        raise ValueError('checkpoint cache must be an existing directory')
+    import shutil
+    from .bert_evaluation_ledger import EvaluationLedger, verify_reservation
+    from .cpu_study_supervision import claim_cpu_study
+
+    _require_bootstrap()
+    # The controller is itself a separately supervised direct child. Claim
+    # before source preflight, reservation, or any model-capable dependency.
+    session, controller_lease = claim_cpu_study(controller_custody_root)
+    _CONTROLLER_CUSTODY.update(session=session, lease=controller_lease)
+    checkout = _require_checkout(repo)
+    cache_path = Path(cache).resolve(strict=True)
+    for study_root in (Path(custody_root).resolve(strict=True), Path(controller_custody_root).resolve(strict=True),
+                       Path(ledger_root).resolve(strict=True)):
+        if (study_root == cache_path or study_root.is_relative_to(cache_path)
+                or cache_path.is_relative_to(study_root)):
+            raise ValueError('cache and study custody roots must be separate')
+    git_exe = shutil.which('git')
+    if not git_exe:
+        raise RuntimeError('Git is required for evaluation preflight')
+    hashes, manifest, manifest_sha = _checked_manifest(checkout, commit, git_exe, split)
+    binding = _evaluation_binding(checkout, commit, hashes, manifest, manifest_sha, custody_root, ledger_root,
+                                  controller_custody_root)
+    destination = Path(output_dir)
+    root = Path(ledger_root).resolve(strict=True)
+    if (not destination.is_absolute() or destination.parent.resolve(strict=True) != root
+            or re.fullmatch('[0-9a-f]{32}', destination.name) is None or destination.exists()):
+        raise ValueError('evaluation output must name a new attempt within the frozen ledger root')
+    ledger = EvaluationLedger.acquire(root, binding['ledger_root_sha256'], binding)
+    known_inner_quarantine = False
+    try:
+        session.check(controller_lease)
+        marker = Path(custody_root).resolve(strict=True) / 'cpu-study.unsafe.json'
+        # Avoid consuming an attempt for a quarantine already visible while
+        # the ledger lock is held. This is not atomic admission against other
+        # users of the owner root; its supervisor remains authoritative.
+        known_inner_quarantine = os.path.lexists(marker) or os.path.lexists(str(marker) + '.attestation')
+        if not known_inner_quarantine:
+            directory, reservation_sha, _ = ledger.reserve(destination.name, controller_supervision_run_id=session.run_id)
+            reservation, checked_sha = verify_reservation(directory, destination.name, binding)
+            if checked_sha != reservation_sha:
+                raise RuntimeError('evaluation reservation changed during publication')
+            context = {'ledger': ledger, 'directory': directory, 'reservation': reservation,
+                       'reservation_sha256': reservation_sha, 'binding': binding,
+                       'controller_session': session, 'controller_lease': controller_lease}
+            result = _run_cpu_controller(repo=repo, cache=cache, output_dir=directory, commit=commit, split=split,
+                                         family=family, timeout=timeout, custody_root=custody_root,
+                                         ledger_root=root, ledger_context=context,
+                                         controller_custody_root=controller_custody_root)
+    finally:
+        ledger.release()
+    if known_inner_quarantine:
+        # No reservation or inner launch occurred in this controller.
+        session.attest_clean(controller_lease)
+        raise RuntimeError('inner CPU owner is quarantined; no evaluation attempt was reserved')
+    # Only attest after the inner owner is known reaped or never started and
+    # the ledger lock is released. Retain the outer lease until process exit.
+    if result.get('owner_state') not in ('not_started', 'reaped'):
+        raise RuntimeError('inner owner state is uncertain; retain controller quarantine')
+    session.attest_clean(controller_lease)
+    return result
+
+
+def record_cpu_evaluation_exit(*, repo, commit, output_dir, run_id, supervision, custody_root, ledger_root,
+                               controller_custody_root):
+    """Record the local launcher's observed controller exit, without a model load."""
+    if (not EVALUATION_ENABLED or custody_root is None or ledger_root is None
+            or controller_custody_root is None):
+        raise RuntimeError('evaluation requires the reviewed frozen custody and ledger')
+    import shutil
+    from .bert_evaluation_ledger import record_controller_exit
+
+    _require_bootstrap()
+    checkout = _require_checkout(repo)
+    git_exe = shutil.which('git')
+    if not git_exe:
+        raise RuntimeError('Git is required for exit evidence')
+    hashes, manifest, manifest_sha = _checked_manifest(checkout, commit, git_exe, 'evaluation')
+    binding = _evaluation_binding(checkout, commit, hashes, manifest, manifest_sha, custody_root, ledger_root,
+                                  controller_custody_root)
+    destination = Path(output_dir)
+    root = Path(ledger_root).resolve(strict=True)
+    if (not destination.is_absolute() or destination.parent.resolve(strict=True) != root
+            or destination.name != run_id):
+        raise ValueError('exit evidence must name the reserved attempt')
+    return record_controller_exit(root, binding['ledger_root_sha256'], run_id, binding, supervision)
+
+
 def main(argv=None):
     import argparse
 
@@ -975,6 +1253,8 @@ def main(argv=None):
     parser.add_argument('--split', choices=('development', 'evaluation'), required=True)
     parser.add_argument('--family', type=int, default=0)
     parser.add_argument('--custody-root', help='existing persistent CPU study custody directory')
+    parser.add_argument('--ledger-root', help='existing frozen evaluation attempt ledger')
+    parser.add_argument('--controller-custody-root', help='distinct supervised controller custody directory')
     parser.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--git', help=argparse.SUPPRESS)
     parser.add_argument('--run-id', help=argparse.SUPPRESS)
@@ -983,9 +1263,11 @@ def main(argv=None):
     if args.worker:
         return _owner_main(repo=args.repo, cache=args.cache, run_dir=args.output, commit=args.commit,
                            git_exe=args.git, split=args.split, family=family, run_id=args.run_id,
-                           custody_root=args.custody_root)
+                           custody_root=args.custody_root, ledger_root=args.ledger_root,
+                           controller_custody_root=args.controller_custody_root)
     result = run_cpu_controller(repo=args.repo, cache=args.cache, output_dir=args.output,
-                                commit=args.commit, split=args.split, family=family, custody_root=args.custody_root)
+                                commit=args.commit, split=args.split, family=family, custody_root=args.custody_root,
+                                ledger_root=args.ledger_root, controller_custody_root=args.controller_custody_root)
     print(json.dumps({'status': result['status'], 'run_id': result['run_id']}, sort_keys=True))
     return 0 if result['status'] == 'complete' else 1
 

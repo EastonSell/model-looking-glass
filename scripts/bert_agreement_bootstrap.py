@@ -11,7 +11,8 @@ import stat
 import sys
 
 
-_MODULES = frozenset(('bert_agreement_study', 'bert_agreement_cases', 'bert_agreement_exposures_v2', 'bert_agreement_runner',
+_MODULES = frozenset(('bert_agreement_study', 'bert_agreement_cases', 'bert_agreement_exposures_v2',
+                      'bert_agreement_exposures_v3', 'bert_evaluation_ledger', 'bert_agreement_runner',
                       'bert_agreement_audit', 'pretrained', 'intervention_plan',
                       'interventions', 'model_ownership', 'cpu_study_supervision',
                       'supervisor', 'device_lease', 'device_identity'))
@@ -108,6 +109,8 @@ def main():
     site = _checked_path(site)
     if not site.is_dir():
         raise ValueError('the dependency directory must be an absolute plain directory')
+    if site == checkout or site.is_relative_to(checkout) or checkout.is_relative_to(site):
+        raise ValueError('dependency directory must be separate from the checkout')
     del sys.argv[1:3]
     if sys.argv[1:] == ['--check-only']:
         print(json.dumps({'status': 'ok', 'torch_imported': 'torch' in sys.modules}, sort_keys=True))
@@ -118,6 +121,13 @@ def main():
     os.environ['LOOKING_GLASS_BERT_BOOTSTRAP_PID'] = str(os.getpid())
     os.environ['LOOKING_GLASS_BERT_ROOT'] = str(checkout)
     os.environ['LOOKING_GLASS_BERT_SITE'] = str(site)
+    if sys.argv[1:2] == ['--launcher']:
+        del sys.argv[1]
+        launcher = _checked_path(checkout / 'scripts' / 'bert_agreement_cpu_evaluation.py')
+        if launcher.parent != checkout / 'scripts' or not launcher.is_file():
+            raise RuntimeError('evaluation launcher source is unavailable')
+        runpy.run_path(str(launcher), run_name='__main__')
+        return
     runpy.run_module('looking_glass.bert_agreement_study', run_name='__main__', alter_sys=True)
 
 
