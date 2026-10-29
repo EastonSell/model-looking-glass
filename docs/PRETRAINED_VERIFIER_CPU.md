@@ -1,4 +1,4 @@
-# Real-checkpoint CPU verifier challenge v1
+# Real-checkpoint CPU verifier challenge v2
 
 This opt-in correctness check loads the pinned offline DistilGPT2 checkpoint
 once on CPU and challenges the loaded-model verifier with controlled changes.
@@ -19,7 +19,8 @@ The original model must pass. Individual modifications must fail: one
 attention parameter value, an attention mask value, its masked-bias buffer,
 vocabulary configuration, training mode, attention scaling, equal-valued
 noncontiguous float weight and bool mask, nonzero parameter storage offset,
-equal-valued shared mask storage, untied output embeddings, and local and
+equal-valued shared mask storage, an untied output embedding and a distinct
+output-embedding Parameter sharing the original storage, and local and
 process-global forward hooks. The test restores each change, rechecks a clean
 model between groups, and requires the final logits to match the original
 bitwise. It checks that the parameter, mask-value and attention-scaling

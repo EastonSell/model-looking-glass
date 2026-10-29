@@ -199,6 +199,15 @@ def _child(phase):
         valid_after_group()
 
         original_head = model.lm_head.weight
+        shared_head = torch.nn.Parameter(original_head.detach(), requires_grad=original_head.requires_grad)
+        assert shared_head is not original_head
+        assert shared_head.untyped_storage().data_ptr() == original_head.untyped_storage().data_ptr()
+        assert shared_head.shape == original_head.shape and shared_head.stride() == original_head.stride()
+        assert shared_head.storage_offset() == original_head.storage_offset()
+        reject("shared_storage_distinct_parameter", lambda: setattr(model.lm_head, "weight", shared_head),
+               lambda: setattr(model.lm_head, "weight", original_head))
+        del shared_head
+
         untied = torch.nn.Parameter(original_head.detach().clone(), requires_grad=original_head.requires_grad)
         assert torch.equal(original_head.detach().contiguous().view(torch.uint8),
                            untied.detach().contiguous().view(torch.uint8))
@@ -270,11 +279,11 @@ class PretrainedVerifierCpuTests(unittest.TestCase):
                       "attention_mask_value", "masked_bias_value", "vocab_config", "training_mode",
                       "attention_scaling", "parameter_stride", "attention_mask_stride",
                       "parameter_storage_offset", "attention_mask_storage_alias", "untied_head",
-                      "local_hook", "global_hook", "restored_model", "final"}
+                      "shared_storage_distinct_parameter", "local_hook", "global_hook", "restored_model", "final"}
             phase = summary.get("phase") if summary.get("phase") in phases else "unknown"
             self.fail(f"CPU verifier child failed at {phase}; private output withheld")
         if os.environ.get(SUMMARY_ENV) == "1":
-            print("PRETRAINED_VERIFIER_CPU_V1 " + json.dumps(summary, sort_keys=True), flush=True)
+            print("PRETRAINED_VERIFIER_CPU_V2 " + json.dumps(summary, sort_keys=True), flush=True)
 
 
 @unittest.skipUnless(sys.implementation.name == "cpython", "test uses CPython timestamp pyc headers")
@@ -327,8 +336,8 @@ class VerifierCollectorIsolationTests(unittest.TestCase):
         valid = {"status": "passed", "verifier_source_sha256": "verifier", "case_sha256": "case",
                  "rejected_cases": ["parameter_value", "attention_mask_value", "masked_bias_value", "vocab_config",
                                     "training_mode", "attention_scaling", "parameter_stride", "attention_mask_stride",
-                                    "parameter_storage_offset", "attention_mask_storage_alias", "untied_head",
-                                    "local_hook", "global_hook"],
+                                    "parameter_storage_offset", "attention_mask_storage_alias",
+                                    "shared_storage_distinct_parameter", "untied_head", "local_hook", "global_hook"],
                  "max_absolute_logit_changes": {"parameter_value": 1.0, "attention_mask_value": 2.0,
                                                 "attention_scaling": 3.0},
                  "restored_output_bitwise_equal": True, "direct_loader_calls": 1,

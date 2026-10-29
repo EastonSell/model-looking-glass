@@ -36,7 +36,8 @@ def _unittest_command(executable, private_prefix):
 def _validate_summary(observed, case_sha256, verifier_sha256):
     cases = ["parameter_value", "attention_mask_value", "masked_bias_value", "vocab_config",
              "training_mode", "attention_scaling", "parameter_stride", "attention_mask_stride",
-             "parameter_storage_offset", "attention_mask_storage_alias", "untied_head", "local_hook", "global_hook"]
+             "parameter_storage_offset", "attention_mask_storage_alias", "shared_storage_distinct_parameter",
+             "untied_head", "local_hook", "global_hook"]
     fields = {"status", "verifier_source_sha256", "case_sha256", "rejected_cases", "max_absolute_logit_changes",
               "restored_output_bitwise_equal", "direct_loader_calls", "guarded_cuda_and_network_calls"}
     differences = observed.get("max_absolute_logit_changes") if isinstance(observed, dict) else None
@@ -103,7 +104,7 @@ def main():
     env.update({"LOOKING_GLASS_TEST_CACHE": str(cache), "LOOKING_GLASS_TEST_SCRATCH": str(scratch),
                 "LOOKING_GLASS_VERIFIER_CPU_SUMMARY": "1", "CUDA_VISIBLE_DEVICES": "-1",
                 "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1"})
-    record = {"schema": "pretrained-verifier-cpu-evidence-v1", "purpose": args.purpose,
+    record = {"schema": "pretrained-verifier-cpu-evidence-v2", "purpose": args.purpose,
               "status": "failed", "started_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
               "source_commit": commit, "source_tree": git(repo, "show", "-s", "--format=%T", commit),
               "source_files_sha256": hashes,
@@ -143,9 +144,9 @@ def main():
         record["exit_code"] = completed.returncode
         record["stdout_sha256"] = hashlib.sha256(completed.stdout).hexdigest()
         record["stderr_sha256"] = hashlib.sha256(completed.stderr).hexdigest()
-        lines = [line.removeprefix("PRETRAINED_VERIFIER_CPU_V1 ")
+        lines = [line.removeprefix("PRETRAINED_VERIFIER_CPU_V2 ")
                  for line in completed.stdout.decode("utf-8", errors="replace").splitlines()
-                 if line.startswith("PRETRAINED_VERIFIER_CPU_V1 ")]
+                 if line.startswith("PRETRAINED_VERIFIER_CPU_V2 ")]
         record["final_source_commit"] = git(repo, "rev-parse", "HEAD")
         record["selected_source_files_unchanged"] = (
             {name: sha256(repo / name) for name in source_paths} == hashes)
@@ -162,7 +163,7 @@ def main():
             phases = {"startup", "torch_import", "imports", "fixture", "model_load", "parameter_value",
                       "attention_mask_value", "masked_bias_value", "vocab_config", "training_mode",
                       "attention_scaling", "parameter_stride", "attention_mask_stride", "parameter_storage_offset",
-                      "attention_mask_storage_alias", "untied_head", "local_hook", "global_hook",
+                      "attention_mask_storage_alias", "shared_storage_distinct_parameter", "untied_head", "local_hook", "global_hook",
                       "restored_model", "final"}
             phase = match.group(1).decode("ascii") if match else None
             if phase in phases:
