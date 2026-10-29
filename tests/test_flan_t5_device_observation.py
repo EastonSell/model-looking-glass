@@ -32,6 +32,15 @@ def tiny_t5():
         torch.random.set_rng_state(previous)
 
 
+def pinned_meta_t5():
+    config = T5Config(vocab_size=32128, d_model=512, d_kv=64, d_ff=1024,
+                      num_layers=8, num_decoder_layers=8, num_heads=6,
+                      feed_forward_proj='gated-gelu', tie_word_embeddings=False,
+                      dropout_rate=0.1, decoder_start_token_id=0, pad_token_id=0, eos_token_id=1)
+    with torch.device('meta'):
+        return T5ForConditionalGeneration(config).eval()
+
+
 def raw(tensor):
     return tensor.detach().view(torch.int32).contiguous().numpy().tobytes()
 
@@ -511,9 +520,7 @@ def test_cuda_entry_consumes_its_claim_even_if_forward_is_skipped(monkeypatch):
                             max_host_trace_bytes=api.HOST_TRACE_CLAIM)
     memory.reserve_trace('gpu', api.GPU_TRACE_CLAIM)
     memory.reserve_trace('host', api.HOST_TRACE_CLAIM)
-    model = tiny_t5()
-    model.config.d_model, model.config.vocab_size = 512, 32128
-    model.config.num_layers = model.config.num_decoder_layers = 6
+    model = pinned_meta_t5()
     monkeypatch.setattr(api, '_cuda_owner_check', lambda *args: None)
     monkeypatch.setattr(api, '_cuda_numeric_state', lambda: None)
     monkeypatch.setattr(api, '_cuda_numerics', lambda: {})
@@ -526,3 +533,32 @@ def test_cuda_entry_consumes_its_claim_even_if_forward_is_skipped(monkeypatch):
     memory.release_trace('gpu', api.GPU_TRACE_CLAIM)
     memory.release_trace('host', api.HOST_TRACE_CLAIM)
     memory.release()
+
+
+def test_pinned_flan_requires_eight_layers_and_an_untied_output_head():
+    api = subject()
+    model = pinned_meta_t5()
+    api._validate_flan_checkpoint_model(model)
+    model.config.num_layers = 6
+    with pytest.raises(ValueError, match='pinned'):
+        api._validate_flan_checkpoint_model(model)
+    model.config.num_layers = 8
+    model.config.num_decoder_layers = 6
+    with pytest.raises(ValueError, match='pinned'):
+        api._validate_flan_checkpoint_model(model)
+    model.config.num_decoder_layers = 8
+    original = model.encoder.block
+    model.encoder.block = torch.nn.ModuleList(list(original)[:-1])
+    with pytest.raises(ValueError, match='pinned'):
+        api._validate_flan_checkpoint_model(model)
+    model.encoder.block = original
+    original_decoder = model.decoder.block
+    model.decoder.block = torch.nn.ModuleList(list(original_decoder)[:-1])
+    with pytest.raises(ValueError, match='pinned'):
+        api._validate_flan_checkpoint_model(model)
+    model.decoder.block = original_decoder
+    model.lm_head.weight = torch.nn.Parameter(model.shared.weight.detach())
+    assert model.lm_head.weight is not model.shared.weight
+    assert model.lm_head.weight.untyped_storage() is model.shared.weight.untyped_storage()
+    with pytest.raises(ValueError, match='pinned'):
+        api._validate_flan_checkpoint_model(model)
