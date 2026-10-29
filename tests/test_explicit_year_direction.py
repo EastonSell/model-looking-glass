@@ -88,6 +88,8 @@ def test_strict_clean_gate_uses_both_anchors_and_both_metrics():
             metrics[row['case_id']]['local_score'] = -0.5
     summary = study.summarize_clean(rows, metrics)
     assert not summary['comparator_gate_passed'] and summary['comparator_gate_count'] == 5
+    assert summary['check_counts']['before_high'] == 5
+    assert all(value == 8 for key, value in summary['check_counts'].items() if key != 'before_high')
     assert len(summary['pairs']) == 8
 
 

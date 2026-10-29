@@ -159,7 +159,8 @@ def summarize_clean(rows, metrics):
                            'fixed_band_wording_differences': fixed_differences,
                            'checks': checks, 'comparator_pass': all(checks.values())})
     passed = [g for g in groups if g['comparator_pass']]
-    return {'pairs': groups, 'comparator_gate_count': len(passed),
+    check_counts = {key: sum(group['checks'][key] for group in groups) for key in groups[0]['checks']}
+    return {'pairs': groups, 'check_counts': check_counts, 'comparator_gate_count': len(passed),
             'comparator_gate_passed': len(passed) >= 6 and len({g['pair_index'] for g in passed}) >= 3}
 
 
