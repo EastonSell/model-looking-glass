@@ -6,6 +6,17 @@ cases and executable must be published and reviewed before any new pretrained
 forward. The earlier [full-vocabulary-top screen](../results/distilbert-color-edit-top-v1-20261029/screen/README.md)
 is closed as baseline-ineligible and is not revised or discarded.
 
+The initially published v2 protocol accepted only `green` for the ripe-lime
+locality. After publication, independent semantic review of the first
+tokenizer-only case draft (SHA-256
+`b6f3e0d9f417f992abfa69361d70437afa201afec3947a932290ba428e0423a0`)
+identified that ripe limes may also be yellow. This pre-forward correction
+accepts both colors; see [UC Davis](https://postharvest.ucdavis.edu/produce-facts-sheets/lime)
+and [University of Florida](https://gardeningsolutions.ifas.ufl.edu/mastergardener/resources/plantid/fruits-and-nuts/lime-key/).
+The wording and input token rows are unchanged. Publish and independently
+review this revision before freezing the corrected case inventory. No v2
+pretrained forward occurred before this correction.
+
 In that exposed screen, the usual color beat the fixed alternative `purple`
 in 8 of 9 saved rows while it was the full-vocabulary top in 0 of 9. The two
 calibration frames also allowed non-color completions. Those observed results
@@ -72,7 +83,7 @@ The other ten fixed localities, scored for every available arm, are:
 | --- | --- | --- |
 | other color | `The usual color of a ripe orange is [MASK].` | `{orange}` |
 | other color | `The color of fresh snow is [MASK].` | `{white}` |
-| other color | `The color of a ripe lime is [MASK].` | `{green}` |
+| other color | `The color of a ripe lime is [MASK].` | `{green, yellow}` |
 | other color | `A ripe eggplant is [MASK] in color.` | `{purple}` |
 | other color | `In daylight, a clear sky is [MASK] in color.` | `{blue}` |
 | unrelated | `A calf is a young [MASK].` | `{cow}` |
