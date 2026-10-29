@@ -136,6 +136,55 @@ def test_big_endian_is_rejected_before_forward(monkeypatch):
     assert not any(x._forward_hooks or x._forward_pre_hooks for x in model.modules())
 
 
+@pytest.mark.parametrize("stack", ["encoder", "decoder"])
+def test_interrupt_inside_forward_propagates_and_does_not_reuse_dirty_model(stack):
+    # The isolated process may deliberately retain a quarantined model/lease.
+    script = f"""
+import torch
+from transformers import T5Config, T5ForConditionalGeneration
+from looking_glass.flan_t5_trace import T5TracePoint
+from looking_glass.flan_t5_intervention_workflow import compare_t5_donor_patch
+torch.set_num_threads(1)
+cfg = T5Config(vocab_size=32, d_model=16, d_kv=8, d_ff=32, num_layers=2,
+    num_decoder_layers=2, num_heads=2, dropout_rate=0, decoder_start_token_id=0, pad_token_id=0)
+model = T5ForConditionalGeneration(cfg).eval()
+target_module = model.get_submodule({(stack + '.block.1')!r})
+original = target_module.forward
+calls = [0]
+def interrupt(*args, **kwargs):
+    calls[0] += 1
+    if calls[0] == 3:
+        raise KeyboardInterrupt('inside selected boundary')
+    return original(*args, **kwargs)
+target_module.forward = interrupt
+ids = torch.tensor([[4, 5, 1]])
+donor = torch.tensor([[4, 6, 1]])
+decoder = torch.tensor([[0, 7, 1]])
+kwargs = dict(receiver_input_ids=ids, donor_input_ids=donor, attention_mask=torch.ones_like(ids),
+    receiver_decoder_input_ids=decoder, donor_decoder_input_ids=decoder,
+    decoder_attention_mask=torch.ones_like(decoder), target=T5TracePoint({stack!r}, 1, 'block', 0, 1),
+    control=T5TracePoint({stack!r}, 1, 'block', 0, 0), readout_position=1, readout_token_id=7)
+try:
+    compare_t5_donor_patch(model, **kwargs)
+except KeyboardInterrupt as error:
+    assert str(error) == 'inside selected boundary'
+else:
+    raise AssertionError('interruption was not propagated')
+assert calls[0] == 3
+dirty = any(m._forward_hooks or m._forward_pre_hooks for m in model.modules())
+try:
+    result = compare_t5_donor_patch(model, **kwargs)
+except (ValueError, RuntimeError):
+    assert calls[0] == 3  # quarantined model was rejected before another forward
+else:
+    # A future runtime may complete cleanup on BaseException; only accept reuse
+    # if no hooks remained and the full controls still pass.
+    assert not dirty and all(result.report['controls'].values())
+"""
+    completed = subprocess.run([sys.executable, "-B", "-c", script], capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr
+
+
 def test_displacement_decodes_binary32_subnormals_without_float32_casts():
     script = """
 import torch

@@ -72,7 +72,9 @@ The caller must exclusively own the model throughout all six calls, including
 against noncooperating threads or other processes. Hooks are sequential and
 the underlying lease is cooperative. No `generate`, cached decoding, compiled
 execution, autocast, CUDA workflow or pre-existing hooks are supported. If a
-fatal interruption leaves hook cleanup uncertain, discard the model and worker.
+`KeyboardInterrupt` or `SystemExit` occurs during a forward, PyTorch may skip
+completion hooks and leave the plan's hooks and lease installed. Discard the
+model and worker instead of attempting to reuse them.
 
 For a runnable offline CPU example, the pinned FLAN-T5-small assets used by
 the repository's [trace smoke](FLAN_T5_TRACE.md) can be reused:
