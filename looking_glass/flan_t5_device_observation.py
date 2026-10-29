@@ -229,6 +229,33 @@ def _record_cuda_stage(cuda, check_owner, stage, record_stage):
     return snapshot
 
 
+def _validate_flan_checkpoint_model(model):
+    """Check the pinned FLAN-T5-small configuration and embedding identities."""
+    if type(model) is not T5ForConditionalGeneration:
+        raise ValueError('model differs from the pinned FLAN-T5 profile')
+    config = model.config
+    dimensions = {'d_model': 512, 'vocab_size': 32128,
+                  'num_layers': 8, 'num_decoder_layers': 8}
+    if (any(type(getattr(config, key, None)) is not int or getattr(config, key) != value
+            for key, value in dimensions.items())
+            or config.tie_word_embeddings is not False
+            or len(model.encoder.block) != 8 or len(model.decoder.block) != 8
+            or model.encoder.embed_tokens.weight is not model.shared.weight
+            or model.decoder.embed_tokens.weight is not model.shared.weight
+            or model.lm_head.weight is model.shared.weight):
+        raise ValueError('model differs from the pinned FLAN-T5 profile')
+    shared = model.shared.weight.untyped_storage()
+    head = model.lm_head.weight.untyped_storage()
+    if shared is head:
+        raise ValueError('model differs from the pinned FLAN-T5 profile')
+    if model.shared.weight.device == model.lm_head.weight.device:
+        shared_start, head_start = shared.data_ptr(), head.data_ptr()
+        if (shared_start and head_start
+                and max(shared_start, head_start) < min(shared_start + shared.nbytes(),
+                                                        head_start + head.nbytes())):
+            raise ValueError('model differs from the pinned FLAN-T5 profile')
+
+
 def observe_cuda_owned(model, source, target, *, action, token_index=None, value=None,
                        custody, session, device_lease, memory_lease, record_stage):
     """Observe under a verified owner; this does not launch or attest the owner.
@@ -243,10 +270,7 @@ def observe_cuda_owned(model, source, target, *, action, token_index=None, value
         _cuda_numeric_state()
     check_owner()
     _cuda_numerics()
-    if (type(model) is not T5ForConditionalGeneration or model.config.d_model != 512
-            or model.config.vocab_size != 32128 or model.config.num_layers != 6
-            or model.config.num_decoder_layers != 6):
-        raise ValueError('model dimensions differ from the pinned FLAN-T5 profile')
+    _validate_flan_checkpoint_model(model)
     _consume_observation_claim(memory_lease)
     check_owner()
     def synchronize(stage):

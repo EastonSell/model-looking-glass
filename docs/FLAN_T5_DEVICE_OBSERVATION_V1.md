@@ -49,6 +49,11 @@ those properties; process failure or restart needs outer accounting.
 
 The CUDA entry checks CPython 3.11.15, PyTorch 2.8.0+cu128 / CUDA build 12.8,
 Transformers 4.57.3, tokenizers 0.22.2, safetensors 0.8.0 and NumPy 2.4.6.
+The pinned FLAN-T5-small configuration has eight encoder and eight decoder
+layers, shared encoder/decoder input embeddings, and an output head with
+separate storage. The observer checks the declared and actual block counts and
+the embedding storage relationship; the later owner must still verify the full
+checkpoint configuration and bytes.
 It requires one intra-op and inter-op thread, deterministic algorithms without
 warn-only mode, `CUBLAS_WORKSPACE_CONFIG=:4096:8`, disabled matmul/cuDNN TF32,
 disabled cuDNN benchmarking, enabled cuDNN deterministic mode, disabled CPU
