@@ -9,7 +9,8 @@ from dataclasses import dataclass, replace
 import os
 from pathlib import Path
 import re
-from threading import Event, Lock
+from threading import Event, Lock, current_thread
+from types import TracebackType
 
 from .memory_budget import CudaMemorySnapshot, MemoryBudget
 
@@ -28,10 +29,10 @@ _OWNER_COMPLETION = None
 _OWNER_DRAIN_PENDING = False
 # Preallocate process-lifetime custody before any owner can touch CUDA.  The
 # fixed slots hold session, device lease, backend, registry, budget, resident
-# lease, worker, broker, server and two failure tracebacks, respectively.  The
+# lease, worker, broker, server, two failure tracebacks and a final barrier. The
 # first failure is never overwritten by a later failure while quarantining.
 # The process serves only one owner and must exit after its result, even on success.
-_OWNER_CUSTODY = [None] * 11
+_OWNER_CUSTODY = [None] * 12
 _OWNER_CLAIMED = False
 _OWNER_CUSTODY_LOCK = Lock()
 _RAW_RUNTIME_UUID = re.compile(r'[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\Z', re.ASCII)
@@ -195,6 +196,178 @@ def _load_profile_registry(files, identity):
     return registry, declared_keys
 
 
+class _HealthFailureSlot:
+    """Preallocated roots for one trusted health-observer thread."""
+
+    def __init__(self):
+        self.error = self.traceback = None
+        self.cleanup_error = self.cleanup_traceback = None
+        # Allocate the public errors while the observer is still healthy.
+        # Once an observation fails, constructing an exception may itself run
+        # out of memory and expose the original failure as its context.
+        message = 'owner health is uncertain; terminate the owner process'
+        self.public_keyboard = KeyboardInterrupt(message)
+        self.public_system_exit = SystemExit(message)
+        self.public_generator_exit = GeneratorExit(message)
+        self.public_runtime = RuntimeError(message)
+        self.public_base = BaseException(message)
+
+    def public_for(self, exc):
+        if isinstance(exc, KeyboardInterrupt):
+            return self.public_keyboard
+        if isinstance(exc, SystemExit):
+            return self.public_system_exit
+        if isinstance(exc, GeneratorExit):
+            return self.public_generator_exit
+        if isinstance(exc, Exception):
+            return self.public_runtime
+        return self.public_base
+
+    def retain(self, exc):
+        traceback = BaseException.__dict__['__traceback__'].__get__(exc, BaseException)
+        if type(traceback) is not TracebackType:
+            raise RuntimeError('health failure traceback is unavailable')
+        if self.error is None or self.error is exc:
+            self.error, self.traceback = exc, traceback
+        elif self.cleanup_error is None or self.cleanup_error is exc:
+            self.cleanup_error, self.cleanup_traceback = exc, traceback
+        else:
+            raise RuntimeError('health failure custody is exhausted')
+
+
+class _DirectOwnerHealth:
+    """Observe one exact owner graph without taking the broker condition."""
+
+    def __init__(self, server, broker, worker, authority):
+        self.server, self.broker, self.worker, self.authority = server, broker, worker, authority
+        self._owner_thread = current_thread()
+        # serve_owner invokes the provider on its caller and at most one
+        # shutdown thread. Each gets separate pre-rooted failure storage.
+        self._owner_failures, self._shutdown_failures = _HealthFailureSlot(), _HealthFailureSlot()
+
+    def __call__(self):
+        authority = self.authority
+        slot = None
+        try:
+            slot = self._owner_failures if current_thread() is self._owner_thread else self._shutdown_failures
+            try:
+                try:
+                    return self._read()
+                except BaseException as exc:
+                    try:
+                        try:
+                            authority._unsafe = True
+                        finally:
+                            authority._unsafe = True
+                    finally:
+                        try:
+                            slot.retain(exc)
+                        finally:
+                            slot.retain(exc)
+                    raise
+            except BaseException as exc:
+                try:
+                    try:
+                        slot.retain(exc)
+                    finally:
+                        authority._unsafe = True
+                    public_error = slot.public_for(exc)
+                except BaseException as recovery_error:
+                    # An interruption during capture or category selection
+                    # still has the original private error as context.
+                    try:
+                        slot.retain(recovery_error)
+                    finally:
+                        authority._unsafe = True
+                    public_error = slot.public_for(recovery_error)
+            # Leave the private exception handler before raising the public
+            # category, including when the caller already has an active error.
+            try:
+                raise public_error from None
+            except BaseException:
+                public_error.__context__ = None
+                public_error.__cause__ = None
+                raise
+        finally:
+            # Clear the private graph from this public traceback frame on both
+            # ordinary exit and exceptional exit, including an interruption
+            # at the first assignment. The observer remains rooted by backend.
+            try:
+                try:
+                    self = slot = None
+                finally:
+                    self = slot = None
+            except BaseException as cleanup_error:
+                try:
+                    authority._unsafe = True
+                finally:
+                    authority._unsafe = True
+                cleanup_error.__context__ = None
+                cleanup_error.__cause__ = None
+                raise
+            finally:
+                try:
+                    try:
+                        authority = None
+                    finally:
+                        authority = None
+                except BaseException as final_error:
+                    # The global is the exact authority validated by a healthy
+                    # observation. A failed graph check has already marked
+                    # its pinned authority before reaching this cleanup.
+                    try:
+                        if _OWNER_COMPLETION is not None:
+                            _OWNER_COMPLETION._unsafe = True
+                    finally:
+                        if _OWNER_COMPLETION is not None:
+                            _OWNER_COMPLETION._unsafe = True
+                    final_error.__context__ = None
+                    final_error.__cause__ = None
+                    raise
+
+    def _read(self):
+        from .broker import Broker, BrokerHealth
+        from .ipc import IPCServer
+        from .owner_completion import LifetimeWorkspaceWorker, OwnerCompletionAuthority
+        from .service import OwnerHealth
+
+        server, broker, worker, authority = self.server, self.broker, self.worker, self.authority
+        if (type(server) is not IPCServer or type(broker) is not Broker
+                or type(worker) is not LifetimeWorkspaceWorker
+                or type(authority) is not OwnerCompletionAuthority
+                or authority is not _OWNER_COMPLETION or authority._broker is not broker
+                or authority._worker is not worker or broker._worker is not worker
+                or broker._completion_authority is not authority or worker._authority is not authority
+                or server.broker is not broker or type(server._completion_binding) is not tuple
+                or len(server._completion_binding) != 3
+                or server._completion_binding[0] is not authority
+                or server._completion_binding[1] is not broker
+                or server._completion_binding[2] is not None):
+            raise RuntimeError('direct owner health binding changed')
+        broker_health = broker.health_snapshot
+        if (type(broker_health) is not BrokerHealth
+                or any(type(getattr(broker_health, name)) is not bool
+                       for name in ('failed', 'quarantined', 'closed', 'owner_alive'))):
+            raise RuntimeError('invalid broker health observation')
+        unavailable, failed = worker.poisoned, worker.failed
+        worker_quarantined, ipc_quarantined = worker.quarantined, server.custody_quarantined
+        if any(type(value) is not bool for value in
+               (unavailable, failed, worker_quarantined, ipc_quarantined)):
+            raise RuntimeError('invalid worker or IPC health observation')
+        quarantined = (_owner_is_unsafe() or broker_health.quarantined
+                       or broker_health.failed or worker_quarantined or failed
+                       or ipc_quarantined)
+        if quarantined:
+            authority._unsafe = True
+        return OwnerHealth(bool(quarantined), unavailable, failed, broker_health.failed,
+                           broker_health.closed, broker_health.owner_alive)
+
+    def mark_uncertain(self):
+        # Mark the pinned authority before touching the process-level signal.
+        self.authority._unsafe = True
+        _mark_unsafe()
+
+
 class _TorchServiceBackend:
     """Fixed no-capture, two-token backend for an already supervised child.
 
@@ -225,6 +398,7 @@ class _TorchServiceBackend:
         if type(shutdown_timeout) not in (int, float) or not 0 < shutdown_timeout <= 300:
             raise ValueError('invalid shutdown timeout')
         self.session, self.device_lease = session, device_lease
+        self._owner_session_binding, self._owner_lease_binding = session, device_lease
         self.cache_dir, self.team_ids = cache_dir, team_ids
         self.live_key_builder, self.shutdown_timeout = live_key_builder, shutdown_timeout
         self.verify_loaded_model = verify_loaded_model
@@ -249,9 +423,15 @@ class _TorchServiceBackend:
         return _canonical_runtime_uuid(getattr(properties, 'uuid', None), uuid_type), count
 
     def _check_owner_lease(self, *, allow_pending=False):
+        if (self.session is not self._owner_session_binding
+                or self.device_lease is not self._owner_lease_binding):
+            raise RuntimeError('backend owner binding changed')
         _require_unquarantined(allow_pending=allow_pending)
-        self.session.check(self.device_lease)
+        self._owner_session_binding.check(self._owner_lease_binding)
         _require_unquarantined(allow_pending=allow_pending)
+        if (self.session is not self._owner_session_binding
+                or self.device_lease is not self._owner_lease_binding):
+            raise RuntimeError('backend owner binding changed')
 
     def live_keys(self, identity):
         _require_unquarantined()
@@ -260,14 +440,12 @@ class _TorchServiceBackend:
         return keys
 
     def _check_runtime(self):
-        _require_unquarantined()
-        self.session.check(self.device_lease)
-        _require_unquarantined()
+        self._check_owner_lease()
         runtime_uuid, count = self.runtime_binding()
-        _require_unquarantined()
-        self.session.verify_runtime_binding(self.device_lease, runtime_uuid=runtime_uuid,
-                                            device_count=count)
-        _require_unquarantined()
+        self._check_owner_lease()
+        self._owner_session_binding.verify_runtime_binding(
+            self._owner_lease_binding, runtime_uuid=runtime_uuid, device_count=count)
+        self._check_owner_lease()
 
     def resolve_profiles(self, registry, keys):
         from .resource_profile import WorkloadKey, ProfileRegistry, resolve_worker_profile
@@ -332,6 +510,7 @@ class _TorchServiceBackend:
         from .owner_completion import LifetimeWorkspaceWorker, OwnerCompletionAuthority
         from .broker import Broker
         from .ipc import IPCServer
+        from .fixed_service_request import FixedServiceRequestFactory
         from .service import make_gpt2_request_factory
         from .trusted_service_profile import LOAD_COMMITMENT, JOB_COMMITMENT
 
@@ -437,68 +616,75 @@ class _TorchServiceBackend:
         if worker.quarantined or set(budget.active_leases()) != {resident_lease, workspace_lease}:
             raise RuntimeError('cold warmup did not drain safely')
         self._retained[4] = worker
-        broker = Broker(worker, max_pending=8, max_pending_per_team=2,
+        broker = Broker(worker, max_pending=2, max_pending_per_team=1,
                         completion_authority=_OWNER_COMPLETION)
         self._retained[5] = broker
-        factory = make_gpt2_request_factory(vocab_size=config.vocab_size,
-            max_positions=config.n_positions, max_batch=1, max_tokens=2)
-
-        def exact_request(request_id, inputs, seed):
-            if type(inputs) is not dict or set(inputs) != {'input_ids'}:
-                raise ValueError('only the profiled input_ids signature is supported')
-            if (type(inputs['input_ids']) is not list or len(inputs['input_ids']) != 1
-                    or type(inputs['input_ids'][0]) is not list
-                    or len(inputs['input_ids'][0]) != 2
-                    or any(type(token) is not int for token in inputs['input_ids'][0])
-                    or inputs['input_ids'][0] != [15496, 995]):
-                raise ValueError('only the profiled [15496, 995] input is supported')
-            if type(seed) is not int or seed not in (29, 43, 71):
-                raise ValueError('only the profiled warm seeds are supported')
-            return factory(request_id, inputs, seed)
+        factory = FixedServiceRequestFactory(make_gpt2_request_factory(
+            vocab_size=config.vocab_size, max_positions=config.n_positions,
+            max_batch=1, max_tokens=2))
 
         # IPC preflights JSON at 32 bytes per value plus envelope overhead.
         if 32 * 2 * config.vocab_size + 512 > 4 * 1024 * 1024:
             raise RuntimeError('full logits exceed the bounded IPC response')
-        server = IPCServer(broker, team_ids=self.team_ids, request_factory=exact_request,
-                           max_connections=8, max_batch=1, max_tokens=2,
+        server = IPCServer(broker, team_ids=self.team_ids, request_factory=factory,
+                           completion_authority=_OWNER_COMPLETION,
+                           max_connections=2, max_request_bytes=4096, max_batch=1, max_tokens=2,
                            max_response_bytes=4 * 1024 * 1024)
         self._retained[6] = server
         return worker, broker, server
 
     def serve(self, server, broker, worker, stop_event, announce, verify_drain):
         from .service import serve_owner
+        health = _DirectOwnerHealth(server, broker, worker, _OWNER_COMPLETION)
+        # Root provider failures and their tracebacks for the owner lifetime.
+        self._retained[2] = health
         return serve_owner(server, broker, worker, stop_event, announce=announce,
-                           verify_drain=verify_drain, shutdown_timeout=self.shutdown_timeout)
+                           verify_drain=verify_drain, shutdown_timeout=self.shutdown_timeout,
+                           health_provider=health, on_health_uncertain=health.mark_uncertain)
 
 
 def _run_bound_owner(session, device_lease, *, backend, registry, stop_event,
-                     announce, minimum_reserve_bytes=0):
+                     announce, before_attest, minimum_reserve_bytes=0):
     """Run trusted owner operations under one supervised, retained device lease.
 
     ``backend`` is a private construction seam, not a client-provided plugin.
     A production launcher must bind it to the fixed reviewed implementation and
     use a real OwnerSession and DeviceLease. Tests use a fake CPU-only backend.
     The resident load reservation remains held through process exit.
+    ``before_attest`` is trusted owner code that must stop and join its own
+    remaining signalers and return exactly True before clean attestation.
     """
     global _OWNER_CLAIMED, _OWNER_COMPLETION
+    if not callable(before_attest):
+        raise TypeError('a pre-attestation barrier is required')
+    if isinstance(backend, _TorchServiceBackend) and (
+            backend.session is not session or backend.device_lease is not device_lease
+            or backend._owner_session_binding is not session
+            or backend._owner_lease_binding is not device_lease):
+        raise ValueError('backend must use the owner session and device lease')
     with _OWNER_CUSTODY_LOCK:
         if _owner_is_unsafe() or _OWNER_DRAIN_PENDING:
             raise RuntimeError('GPU owner process is quarantined')
         if _OWNER_CLAIMED:
             raise RuntimeError('GPU owner process has already been used')
         from .owner_completion import OwnerCompletionAuthority
-        guard = backend._check_owner_lease if type(backend) is _TorchServiceBackend else None
+        # The real child supplies a trusted subclass to check profile identity.
+        # Pin the base lease-check implementation to that exact backend rather
+        # than silently omitting the guard for the subclass.
+        guard = (_TorchServiceBackend._check_owner_lease.__get__(backend)
+                 if isinstance(backend, _TorchServiceBackend) else None)
         _OWNER_COMPLETION = OwnerCompletionAuthority(device_guard=guard)
         _OWNER_CLAIMED = True
         _OWNER_CUSTODY[0] = session
         _OWNER_CUSTODY[1] = device_lease
         _OWNER_CUSTODY[2] = backend
         _OWNER_CUSTODY[3] = registry
+        _OWNER_CUSTODY[11] = before_attest
     try:
         return _run_bound_owner_inner(
             session, device_lease, backend=backend, registry=registry,
             stop_event=stop_event, announce=announce,
-            minimum_reserve_bytes=minimum_reserve_bytes,
+            before_attest=before_attest, minimum_reserve_bytes=minimum_reserve_bytes,
         )
     except BaseException as exc:
         if _OWNER_CUSTODY[9] is None:
@@ -511,7 +697,7 @@ def _run_bound_owner(session, device_lease, *, backend, registry, stop_event,
 
 
 def _run_bound_owner_inner(session, device_lease, *, backend, registry,
-                           stop_event, announce, minimum_reserve_bytes):
+                           stop_event, announce, before_attest, minimum_reserve_bytes):
     from .trusted_service_profile import LOAD_COMMITMENT
     session.check(device_lease)
     if session.identity is None:
@@ -645,7 +831,19 @@ def _run_bound_owner_inner(session, device_lease, *, backend, registry,
             status = 'quarantined'
         return GpuOwnerResult(status, False, getattr(result, 'error_type', None),
                               getattr(result, 'error_message', None))
-    if status not in ('clean', 'worker_failed', 'shutdown_incomplete') or not verify_drain():
+    if status not in ('clean', 'worker_failed', 'shutdown_incomplete'):
+        _quarantine(session, device_lease, backend, registry, budget,
+                    resident_lease, worker, broker, server, result)
+        return GpuOwnerResult('quarantined', False)
+    # The child owns signalers outside serve_owner, such as the stop monitor.
+    # Keep this exact callback rooted even if it cannot establish quiescence.
+    if before_attest() is not True:
+        _quarantine(session, device_lease, backend, registry, budget,
+                    resident_lease, worker, broker, server, result, before_attest)
+        return GpuOwnerResult('quarantined', False)
+    # Join the child's remaining signalers before the final independent device
+    # drain. The barrier alone does not establish other components' quiescence.
+    if not verify_drain():
         _quarantine(session, device_lease, backend, registry, budget,
                     resident_lease, worker, broker, server, result)
         return GpuOwnerResult('quarantined', False)
