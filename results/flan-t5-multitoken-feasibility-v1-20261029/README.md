@@ -2,15 +2,16 @@
 
 A tokenizer-only development screen found that the fixed proposed list can
 form up to **seven** disjoint four-adjective units with at least two lexical
-subtokens, subject to later semantic and exposure review. No model was loaded
-or forwarded. These are combinatorial upper bounds, not behavior, successful
+subtokens, subject to later semantic and exposure review. The pilot operator
+reports no model load or forward; the saved files do not independently attest
+execution. These are combinatorial upper bounds, not behavior, successful
 interventions, or evidence of a sentiment mechanism.
 
 This pilot was designed after the earlier
 [selection-incomplete study](../flan-t5-sentiment-intervention-v1-20261029/README.md)
-reported one eligible unit out of twelve and no model forward. That result is
-unchanged. The pilot's 160 locally authored, provisional-polarity adjectives
-and four exact templates are [recorded in full](candidates.json); they and
+reported one eligible unit out of twelve; its custodian reported no model
+forward. That result is unchanged. The pilot's 160 locally authored,
+provisional-polarity adjectives and four exact templates are [recorded in full](candidates.json); they and
 their 640 tokenized rows are outcome-informed development exposures, not a
 blind lexical pool. The subjects `story` and `concert` and both instruction
 frames are fixed in that file. No independent semantic review of these new
@@ -75,16 +76,19 @@ check establishes semantic correctness or behavior.
 | [Compressed report](report.json.gz) | `53686f255ac854e8aa6ceed88ce83a14c53dec6e29ce285081c6ed41b34c8b1e` |
 | [Independent check](independent-tokenizer-audit.json) | `b477be3a621d7b21a3ce7ddcb72e0d809a5aab720a1fc947f2e4eea9e919634e` |
 | [Independent check source](independent-tokenizer-audit.py) | `59596cf1a0d38fad7b1cb02aa709e2503a9d8b6abc12d445916a672bb5baf443` |
-| [Portable replay](replay.py) | `f43343ac966b5b846d91b2b7c0149a27443291d434026052fc463ba488afe303` |
+| [Portable replay](replay.py) | `fe41652633c506bcf0b9d1f32dec6e47f5a4bda8014d9346745978c719ec7cf5` |
 
 The observed runtime was Python 3.11.15 and `tokenizers` 0.22.2. The original
 pilot verified the pinned asset-manifest SHA-256
 `d369e3095dc35c52608f40fbd2715d7a2ff80a02fd71f0692c24af2cf3402083`
 and the tokenizer JSON SHA-256
 `fe2ebbbbde2985be723e0ce18217853e4020c5e9d35bd07be2c27ab9d3ead57a`.
-It did not read model weights. The pool and old screen were read from Git
+The operator reports that it did not read model weights. The pool and old
+screen were read from Git
 object `461a6d44f180e4cf924a0ad47e3f624a9d5191ad`; the report records their
-individual hashes.
+individual hashes; the portable replay verifies both hashes and ignores
+ambient Git overrides and replacement objects. It disables Git lazy fetching,
+so the two source objects must already be available in the checkout.
 
 To reproduce with a checkout containing that Git object and the pinned local
 tokenizer assets, run the [portable replay](replay.py), providing a new output
@@ -102,7 +106,9 @@ python -I -B results/flan-t5-multitoken-feasibility-v1-20261029/replay.py \
 
 The replay matched the original scientific fields in normal and optimized
 Python modes. It also rejected deliberately altered candidate bytes and an
-altered expected scientific field before writing an output. The independent
+altered expected scientific field before writing an output. The hardened replay
+continued to match with an invalid ambient `GIT_DIR`, and rejected a
+deliberately wrong expected source hash before writing an output. The independent
 check source accepts the uncompressed original report, candidate file and
 pinned assets; decompressing the report preserves the recorded uncompressed
 hash. The original source is retained as executed; use the portable replay

@@ -4,6 +4,7 @@ import collections
 import gzip
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -26,6 +27,10 @@ ASSETS = ARGS.asset_dir.resolve()
 SOURCE = "461a6d44f180e4cf924a0ad47e3f624a9d5191ad"
 EXPECTED_LIST_SHA = "2b32da31aab398d19ef80e013c377d2ed3d1a06912a431ee918bfeccb64107d1"
 EXPECTED_ASSET_MANIFEST_SHA = "d369e3095dc35c52608f40fbd2715d7a2ff80a02fd71f0692c24af2cf3402083"
+EXPECTED_SOURCE_SHA = {
+    "results/flan-t5-sentiment-intervention-v1-20261029/custody/pool.json": "de4c13ea29ecb0f58eb36a6a6c171abf1488e5036fd0c2fe567b13d34692b93e",
+    "docs/FLAN_T5_SENTIMENT_SCREEN_V1.md": "78898528c8dafb4016210ffa0914d9169eb58a02b0f54d0206cffd2622442bff",
+}
 
 
 def sha(data):
@@ -33,7 +38,17 @@ def sha(data):
 
 
 def git_blob(path):
-    return subprocess.check_output(["git", "-C", str(REPO), "show", f"{SOURCE}:{path}"])
+    # Pin exact source bytes even if local Git state has been altered. Ignore
+    # ambient Git overrides and replacement objects, and prohibit lazy fetch.
+    env = {k: v for k, v in os.environ.items() if not k.upper().startswith("GIT_")}
+    env.update({"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+                "GIT_NO_REPLACE_OBJECTS": "1", "GIT_NO_LAZY_FETCH": "1",
+                "GIT_TERMINAL_PROMPT": "0"})
+    raw = subprocess.check_output(["git", "--no-replace-objects", "-C", str(REPO),
+                                   "cat-file", "blob", f"{SOURCE}:{path}"], env=env)
+    if sha(raw) != EXPECTED_SOURCE_SHA[path]:
+        raise ValueError(f"published source hash differs: {path}")
+    return raw
 
 
 def canonical(data):
