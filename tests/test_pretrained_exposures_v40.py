@@ -24,8 +24,20 @@ sys.modules[spec.name] = v40
 spec.loader.exec_module(v40)
 
 
-def test_exact_planned_records_and_predecessor():
-    old = v40.prior.inventory_payload()
+@pytest.fixture(scope='module')
+def predecessor():
+    path = os.environ.get('INVARIANT_V39_CANONICAL')
+    if path:
+        raw = Path(path).read_bytes()
+        if hashlib.sha256(raw).hexdigest() != v40.PREDECESSOR_SHA256:
+            raise ValueError('fixture predecessor digest differs')
+        return json.loads(raw)
+    return v40.prior.inventory_payload()
+
+
+def test_exact_planned_records_and_predecessor(predecessor, monkeypatch):
+    old = predecessor
+    monkeypatch.setattr(v40.prior, 'inventory_payload', lambda: copy.deepcopy(old))
     payload = v40.inventory_payload()
     raw = v40.canonical_inventory_bytes()
     assert hashlib.sha256(raw).hexdigest() == v40.INVENTORY_SHA256
@@ -42,8 +54,7 @@ def test_exact_planned_records_and_predecessor():
     assert sum(x['case_role'] == 'demonstrative' for x in appended) == 8
 
 
-def test_foreign_prefix_and_extension_are_rejected():
-    predecessor = v40.prior.inventory_payload()
+def test_foreign_prefix_and_extension_are_rejected(predecessor):
     case_id, _, _, row = v40.INVARIANT_NOUN_CASES[0]
     for candidate in (row, row[:-1], row + (v40.INVARIANT_NOUN_ANSWER_IDS[0], 99)):
         modified = copy.deepcopy(predecessor)
