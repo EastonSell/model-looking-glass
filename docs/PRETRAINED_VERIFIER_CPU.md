@@ -73,3 +73,6 @@ CPython. A launched-test failure is recorded if the output can be written;
 early setup, interruption or write failures can leave no complete record.
 `controlled-missing-cache` requires a path absent before execution and exercises
 child startup failure; it is not a loader-level missing-asset test.
+
+The [saved CPU challenge records](PRETRAINED_VERIFIER_CPU_EVIDENCE.md) preserve
+both the earlier checks and the later tied-parameter failure and fix.
