@@ -16,6 +16,11 @@ screen as contaminated and do not claim
 physical exclusivity. If initial telemetry or the process query is unavailable,
 ambiguous or malformed, stop before preflight and samples; cleanly drain the
 owner and report no completed comparison. Abort on unsafe memory pressure.
+The latest initial observation must have started no more than two seconds
+before the workload begins and must not end in the future.
+The process query is an interval observation: its command must have started at
+most two seconds before the workload and completed before it begins. Every
+returned row must identify the selected GPU and contain a valid PID and name.
 The quiet window coordinates participating project workloads only; it does not
 establish system-wide CPU isolation. Do not close or modify other applications.
 
@@ -89,7 +94,10 @@ external GPU activity using the idle, coverage and process-query rules in
 queries fail, coverage is insufficient or device identity is ambiguous; mark
 observed foreign activity as contaminated. WDDM and periodic samples cannot
 prove physical exclusivity. The cooperative lease does not control other desktop
-applications. Each recorded preflight or sample observation starts as pending;
+applications. Contamination and availability are recorded separately: a
+contaminated screen with unavailable or gapped telemetry is still unverified
+and cannot produce a completed summary, even in exploratory mode. Preserve both
+sets of reasons. Each recorded preflight or sample observation starts as pending;
 only a separate matching passed lease/memory postcheck validates it for a
 successful summary. An interrupted observation remains visibly pending. Do not
 publish private paths or physical GPU identifiers. This

@@ -58,6 +58,8 @@ def _screen_projection(report):
     classification["foreign_compute_process_count"] = len(classification.pop("foreign_compute_pids", []))
     queries = [{"phase": item.get("phase"), "ok": item.get("ok"),
                 "observed_monotonic_ns": item.get("observed_monotonic_ns"),
+                "query_started_monotonic_ns": item.get("query_started_monotonic_ns"),
+                "query_ended_monotonic_ns": item.get("query_ended_monotonic_ns"),
                 "process_count": len(item.get("pids", []))} for item in report["process_queries"]]
     return {"classification": classification, "process_queries": queries,
             "workload_started_monotonic_ns": report["workload_started_monotonic_ns"],
@@ -74,14 +76,22 @@ def _activity_interpretation(screen, exploratory_desktop):
     raise RuntimeError("activity screen is " + str(screen.get("status")))
 
 
-def _initial_monitor_issue(observations, errors, process_query, gpu_uuid):
+def _initial_monitor_issue(observations, errors, process_query, gpu_uuid, now_ns=None):
     """Require available, time-bounded telemetry before beginning a workload."""
     if errors:
         return "telemetry query failed before the workload"
-    if (type(process_query) is not dict or process_query.get("ok") is not True
+    if (type(process_query) is not dict or process_query.get("phase") != "before"
+            or process_query.get("ok") is not True or process_query.get("other_gpu_uuids") != []
             or type(process_query.get("pids")) is not list
             or any(type(pid) is not int or pid <= 0 for pid in process_query["pids"])):
         return "compute process query was unavailable before the workload"
+    start, end = (process_query.get(key) for key in
+                  ("query_started_monotonic_ns", "query_ended_monotonic_ns"))
+    if (type(start) is not int or type(end) is not int or not 0 <= start <= end
+            or process_query.get("observed_monotonic_ns") != start
+            or (now_ns is not None and (type(now_ns) is not int or end > now_ns
+                                        or now_ns - start > 2_000_000_000))):
+        return "compute process query was stale or had invalid timestamps before the workload"
     if len(observations) < 3:
         return "fewer than three telemetry observations before the workload"
     if any(type(row) is not dict or row.get("gpu_uuid") != gpu_uuid for row in observations):
@@ -99,11 +109,15 @@ def _initial_monitor_issue(observations, errors, process_query, gpu_uuid):
             or any(later["query_ended_monotonic_ns"] - earlier["query_started_monotonic_ns"] > 2_000_000_000
                    for earlier, later in zip(rows, rows[1:]))):
         return "telemetry coverage or device total was inconsistent before the workload"
+    if (now_ns is not None and (type(now_ns) is not int or now_ns < rows[-1]["query_ended_monotonic_ns"]
+            or now_ns - rows[-1]["query_started_monotonic_ns"] > 2_000_000_000)):
+        return "the latest telemetry observation was stale or in the future"
     return None
 
 
 def _measure_if_monitored(output, monitor, process_before, gpu_uuid, **sample_args):
-    issue = _initial_monitor_issue(list(monitor.observations), list(monitor.errors), process_before, gpu_uuid)
+    observations, errors = list(monitor.observations), list(monitor.errors)
+    issue = _initial_monitor_issue(observations, errors, process_before, gpu_uuid, time.perf_counter_ns())
     if issue is not None:
         return None, issue
     with (output / "observations.jsonl").open("xb") as journal:
@@ -585,8 +599,9 @@ def _probe_telemetry_environment(smi, env, output):
                         for row in csv.reader(result.stdout.splitlines()):
                             if not row or all(not cell.strip() for cell in row):
                                 continue
-                            if len(row) != 3 or not row[1].strip().isdigit() or int(row[1].strip()) <= 0:
-                                raise ValueError("invalid compute process row")
+                            uuid, _, _ = bench._parse_compute_process_row(row)
+                            if uuid.casefold() != env["CUDA_VISIBLE_DEVICES"].casefold():
+                                raise ValueError("unmatched compute process GPU")
                     records[-1]["valid"] = True
                 except (KeyError, ValueError, csv.Error):
                     records[-1]["valid"] = False
@@ -795,11 +810,17 @@ def run_controller(*, output, workspace_root, cache_dir, smi, exclusive=False,
         if (type(started_ns) is not int or type(ended_ns) is not int or not 0 <= started_ns < ended_ns
                 or not isinstance(queries, list) or len(queries) != 2
                 or queries[0].get("phase") != "before" or queries[1].get("phase") != "after"
-                or any(query.get("ok") is not True or type(query.get("observed_monotonic_ns")) is not int
+                or any(query.get("ok") is not True or query.get("other_gpu_uuids") != []
+                    or type(query.get("observed_monotonic_ns")) is not int
+                    or type(query.get("query_started_monotonic_ns")) is not int
+                    or type(query.get("query_ended_monotonic_ns")) is not int
+                    or not 0 <= query["query_started_monotonic_ns"] <= query["query_ended_monotonic_ns"]
+                    or query["observed_monotonic_ns"] != query["query_started_monotonic_ns"]
                     or type(query.get("pids")) is not list or any(type(pid) is not int or pid <= 0
                     for pid in query["pids"]) for query in queries)
-                or queries[0]["observed_monotonic_ns"] >= started_ns
-                or queries[1]["observed_monotonic_ns"] < ended_ns):
+                or queries[0]["query_ended_monotonic_ns"] > started_ns
+                or started_ns - queries[0]["query_started_monotonic_ns"] > 2_000_000_000
+                or queries[1]["query_started_monotonic_ns"] < ended_ns):
             raise RuntimeError("process queries do not cover the workload interval")
         verified = verify_observations(output / "observations.jsonl", candidate["result"]["summary"],
             expected_total_bytes=runtime["cuda_total_bytes"], expected_cap_bytes=runtime["allocator_limit_bytes"],

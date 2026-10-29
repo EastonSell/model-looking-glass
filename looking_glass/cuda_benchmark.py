@@ -359,11 +359,23 @@ def _cuda_runtime_uuid(value):
     return normalize_gpu_uuid(value)
 
 
+def _parse_compute_process_row(row):
+    if len(row) != 3:
+        raise ValueError("unexpected compute process row")
+    uuid, pid, name = (part.strip() for part in row)
+    if not _GPU_UUID.fullmatch(uuid) or not pid.isascii() or not pid.isdigit() or int(pid) <= 0 or not name:
+        raise ValueError("invalid compute process row")
+    return uuid, int(pid), name
+
+
 def _query_compute_processes(smi, gpu_uuid, phase):
-    result = {"phase": phase, "observed_monotonic_ns": time.perf_counter_ns(),
-              "ok": False, "pids": [], "processes": []}
+    started = time.perf_counter_ns()
+    result = {"phase": phase, "observed_monotonic_ns": started,
+              "query_started_monotonic_ns": started,
+              "ok": False, "pids": [], "processes": [], "other_gpu_uuids": []}
     if not smi or not gpu_uuid:
         result["error"] = "nvidia-smi or GPU UUID unavailable"
+        result["query_ended_monotonic_ns"] = time.perf_counter_ns()
         return result
     try:
         command = _command([smi, "--query-compute-apps=gpu_uuid,pid,process_name",
@@ -371,6 +383,8 @@ def _query_compute_processes(smi, gpu_uuid, phase):
     except (OSError, subprocess.TimeoutExpired) as exc:
         result["error"] = str(exc)
         return result
+    finally:
+        result["query_ended_monotonic_ns"] = time.perf_counter_ns()
     result["returncode"] = command.returncode
     result["stderr"] = command.stderr.strip()[:4096]
     if command.returncode:
@@ -381,16 +395,16 @@ def _query_compute_processes(smi, gpu_uuid, phase):
         for row in csv.reader(command.stdout.splitlines()):
             if not row or all(not cell.strip() for cell in row):
                 continue
-            if len(row) != 3:
-                raise ValueError("unexpected compute process row")
-            uuid, pid, name = (part.strip() for part in row)
-            if uuid == gpu_uuid:
-                result["pids"].append(int(pid))
-                result["processes"].append({"pid": int(pid), "name": name})
+            uuid, pid, name = _parse_compute_process_row(row)
+            if uuid.casefold() == gpu_uuid.casefold():
+                result["pids"].append(pid)
+                result["processes"].append({"pid": pid, "name": name})
+            else:
+                result["other_gpu_uuids"].append(uuid)
         result["ok"] = True
     except ValueError as exc:
         result["error"] = str(exc)
-        result["raw_stdout"] = command.stdout
+        result["raw_stdout"] = command.stdout[:4096]
     return result
 
 

@@ -653,12 +653,15 @@ class TelemetryTests(unittest.TestCase):
         with patch.object(bench, "_command", return_value=gpu):
             with self.assertRaisesRegex(RuntimeError, "unambiguously"):
                 bench._gpu_inventory("nvidia-smi", 1)
+        selected = "GPU-12345678-1234-1234-1234-123456789abc"
+        other = "GPU-87654321-4321-4321-4321-cba987654321"
         processes = SimpleNamespace(returncode=0, stderr="",
-            stdout="GPU-a, 44, python.exe\nGPU-b, 55, other.exe\n")
+            stdout=f"{selected}, 44, python.exe\n{other}, 55, other.exe\n")
         with patch.object(bench, "_command", return_value=processes):
-            result = bench._query_compute_processes("nvidia-smi", "GPU-a", "before")
+            result = bench._query_compute_processes("nvidia-smi", selected, "before")
         self.assertTrue(result["ok"])
         self.assertEqual(result["pids"], [44])
+        self.assertEqual(result["other_gpu_uuids"], [other])
 
 
 class ArtifactTests(unittest.TestCase):

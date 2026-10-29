@@ -370,7 +370,9 @@ class EvidenceBoundaryTests(unittest.TestCase):
                  "utilization_percent": 0, "query_started_monotonic_ns": n * 100,
                  "query_ended_monotonic_ns": n * 100 + 1, "observed_monotonic_ns": n * 100 + 1}
                 for n in range(3)]
-        query = {"ok": True, "pids": [123]}
+        query = {"phase": "before", "ok": True, "pids": [123], "other_gpu_uuids": [],
+                 "observed_monotonic_ns": 100, "query_started_monotonic_ns": 100,
+                 "query_ended_monotonic_ns": 150}
         self.assertIsNone(owner._initial_monitor_issue(rows, [], query, "GPU-test"))
         bad_rows = [dict(row) for row in rows]
         bad_rows[-1]["gpu_uuid"] = "GPU-other"
@@ -379,6 +381,32 @@ class EvidenceBoundaryTests(unittest.TestCase):
         earlier = dict(rows[0], total_bytes=101, free_bytes=100,
                        query_started_monotonic_ns=0, query_ended_monotonic_ns=0, observed_monotonic_ns=0)
         self.assertIn("inconsistent", owner._initial_monitor_issue([earlier, *rows], [], query, "GPU-test"))
+        self.assertIn("stale", owner._initial_monitor_issue(rows, [], query, "GPU-test", 2_000_000_201))
+        self.assertIn("future", owner._initial_monitor_issue(rows, [], query, "GPU-test", 200))
+        stale_query = dict(query, query_started_monotonic_ns=0, observed_monotonic_ns=0,
+                           query_ended_monotonic_ns=100)
+        fresh_rows = [dict(row, query_started_monotonic_ns=2_000_000_000 + n * 100,
+                           query_ended_monotonic_ns=2_000_000_001 + n * 100,
+                           observed_monotonic_ns=2_000_000_001 + n * 100) for n, row in enumerate(rows)]
+        self.assertIn("stale", owner._initial_monitor_issue(fresh_rows, [], stale_query, "GPU-test", 2_000_000_201))
+        future_query = dict(query, query_ended_monotonic_ns=301)
+        self.assertIn("invalid timestamps", owner._initial_monitor_issue(rows, [], future_query, "GPU-test", 300))
+        foreign_device = dict(query, other_gpu_uuids=["GPU-other"])
+        self.assertIn("unavailable", owner._initial_monitor_issue(rows, [], foreign_device, "GPU-test", 300))
+
+    def test_compute_process_query_validates_all_rows_and_records_bounds(self):
+        uuid = "GPU-12345678-1234-1234-1234-123456789abc"
+        result = SimpleNamespace(returncode=0, stderr="", stdout=f"{uuid}, 7, python.exe\n")
+        with patch.object(smoke.bench, "_command", return_value=result), \
+                patch.object(smoke.bench.time, "perf_counter_ns", side_effect=[10, 20]):
+            query = smoke.bench._query_compute_processes("nvidia-smi", uuid, "before")
+        self.assertTrue(query["ok"])
+        self.assertEqual((query["query_started_monotonic_ns"], query["query_ended_monotonic_ns"]), (10, 20))
+        self.assertEqual(query["pids"], [7])
+        for row in ("N/A,not-a-pid,process", "N/A,7,process", f"{uuid},0,process", f"{uuid},7, "):
+            result.stdout = row + "\n"
+            with self.subTest(row=row), patch.object(smoke.bench, "_command", return_value=result):
+                self.assertFalse(smoke.bench._query_compute_processes("nvidia-smi", uuid, "before")["ok"])
 
     def test_public_projections_do_not_expose_process_paths_or_query_output(self):
         report = {"classification": {"status": "contaminated", "foreign_compute_pids": [42]},
