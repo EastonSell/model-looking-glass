@@ -316,7 +316,8 @@ def test_closed_screen_reconstructs_selection_and_rejects_corruption(tmp_path):
         'clean': True, 'timed_out': False, 'terminal_sha256': report['terminal_sha256']}))
     supervisor_hash = hashlib.sha256((tmp_path / 'supervisor.json').read_bytes()).hexdigest()
     observer = canonical({'schema': 'vision-recognized-v4-external-observer', 'status': 'complete',
-                          'mode': 'screen', 'controller_exit_code': 0, 'supervisor_sha256': supervisor_hash,
+                          'mode': 'screen', 'source_revision': 'fake', 'controller_exit_code': 0,
+                          'supervisor_sha256': supervisor_hash,
                           'controller_reaped': True, 'timed_out': False, 'forced_stop': False,
                           'terminal_sha256': report['terminal_sha256']})
     projection = screen_receipt(report, evidence.root, archive_sha, observer)
@@ -324,6 +325,9 @@ def test_closed_screen_reconstructs_selection_and_rejects_corruption(tmp_path):
     with pytest.raises(ValueError, match='external screen controller'):
         screen_receipt(report, evidence.root, archive_sha, observer.replace(b'"controller_exit_code":0',
                                                                             b'"controller_exit_code":1'))
+    with pytest.raises(ValueError, match='external screen controller'):
+        screen_receipt(report, evidence.root, archive_sha, observer.replace(b'"source_revision":"fake"',
+                                                                            b'"source_revision":"other"'))
     record = evidence.root / 'forward-064.bin'
     raw = bytearray(record.read_bytes())
     raw[0] ^= 1

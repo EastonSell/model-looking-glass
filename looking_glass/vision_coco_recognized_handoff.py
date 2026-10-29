@@ -120,6 +120,7 @@ def screen_receipt(screen, data_dir, archive_sha256, observer_raw):
     observer = json.loads(observer_raw)
     if (observer.get('schema') != 'vision-recognized-v4-external-observer' or
             observer.get('status') != 'complete' or observer.get('mode') != 'screen' or
+            observer.get('source_revision') != screen['started']['source']['revision'] or
             type(observer.get('controller_exit_code')) is not int or observer['controller_exit_code'] != 0 or
             observer.get('controller_reaped') is not True or observer.get('timed_out') is not False or
             observer.get('forced_stop') is not False or

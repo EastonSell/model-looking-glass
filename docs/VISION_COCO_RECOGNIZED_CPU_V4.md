@@ -46,3 +46,7 @@ creates an exclusive phase-specific attempt marker before launching either
 child, and preflight consumes neither marker. Reusing a different root or
 deleting a marker remains a trusted-operator responsibility, not a security
 guarantee against another same-account process.
+If controller launch, termination or reaping is unknown, preserve the attempt
+and do not retry on the assumption that it was clean. A forced stop of the
+direct controller does not establish that its worker or descendants stopped;
+failure-receipt writing is best effort.
