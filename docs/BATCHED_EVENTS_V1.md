@@ -46,7 +46,8 @@ Every event has `kind` and `time_ns`, plus exactly these fields:
 
 Each `members` item is an exact dictionary with `job_id`, `team_id`,
 `broker_id`, `broker_job_id`, and `row_offset`. The observed attempt, ready and
-member team IDs must match the frozen job attribution. A forward entry needs exactly one finished
+member team IDs must match the frozen job attribution. Broker job IDs retain
+their actual bounded string or positive integer type. A forward entry needs exactly one finished
 or uncertain observation; uncertain calls retain `finish_ns = null` in the
 output. Every observed attempt needs one client-return observation. A delivered
 broker outcome needs its own terminal observation; an unresolved client may

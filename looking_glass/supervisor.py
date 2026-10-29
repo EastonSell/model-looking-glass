@@ -28,9 +28,10 @@ _SUPERVISOR_BIRTH_ENV = "MLG_SUPERVISOR_BIRTH"
 _IDENTITY_ENV = "MLG_DEVICE_IDENTITY"
 _STARTUP_HANDLE_ENV = "MLG_STARTUP_CHANNEL_HANDLE"
 _STARTUP_LIMIT_ENV = "MLG_STARTUP_CHANNEL_LIMIT"
+_LAUNCH_HANDLE_ENV = "MLG_OWNER_LAUNCH_HANDLE"
 _SUPERVISOR_ENV_KEYS = frozenset({
     _RUN_ENV, _LEASE_ENV, _MARKER_ENV, _SUPERVISOR_ENV, _SUPERVISOR_BIRTH_ENV,
-    _IDENTITY_ENV, _STARTUP_HANDLE_ENV, _STARTUP_LIMIT_ENV,
+    _IDENTITY_ENV, _STARTUP_HANDLE_ENV, _STARTUP_LIMIT_ENV, _LAUNCH_HANDLE_ENV,
 })
 _VERSION = 1
 _watchdog_lock = threading.Lock()
@@ -38,6 +39,13 @@ _watchdogs = {}
 _startup_spawn_lock = threading.Lock()
 _startup_reader_slots = threading.BoundedSemaphore(16)
 _MAX_STARTUP_BYTES = 65536
+_LAUNCH_TIMEOUT = 30.0
+_MAX_SPAWN_CUSTODIES = 64
+_spawn_custody_lock = threading.Lock()
+_spawn_custodies = {}
+
+# This identifies a cooperative compatibility contract, not a security proof.
+SUPERVISOR_LAUNCH_CUSTODY_CONTRACT = "gated-rooted-child-v1"
 
 
 class SupervisorError(RuntimeError):
@@ -72,6 +80,8 @@ class StartupChannel:
             self._lock = threading.Lock()
             self._delivery_lock = threading.Lock()
             self._receive_lock = threading.Lock()
+            self._launch_lock = threading.Lock()
+            self._launch_authorized = False
             owner_lock = threading.Lock()
             self._reader_owner = "pending"
             self._reader_owner_lock = owner_lock
@@ -100,8 +110,8 @@ class StartupChannel:
             try:
                 write_fd = getattr(self, "_write_fd", None)
                 if write_fd is not None:
-                    os.close(write_fd)
                     self._write_fd = None
+                    os.close(write_fd)
             finally:
                 if owner_lock is None:
                     try:
@@ -165,7 +175,7 @@ class StartupChannel:
                 self._frame_valid = True
                 self._ready.set()
         except BaseException:
-            self._failed.set()
+            self._mark_failed()
             with self._delivery_lock:
                 self._payload = None
                 self._discard_partial()
@@ -180,7 +190,7 @@ class StartupChannel:
                     os.close(fd)
                     self._reader_closed = True
                 except BaseException:
-                    self._failed.set()
+                    self._mark_failed()
                     with self._delivery_lock:
                         self._payload = None
                         self._discard_partial()
@@ -207,18 +217,31 @@ class StartupChannel:
             except BaseException:
                 pass
 
+    def _mark_failed(self):
+        # This lock contains no I/O. Cancellation and launch authorization
+        # have a definite order even when a spawn or grant write is stalled.
+        with self._launch_lock:
+            self._failed.set()
+
+    def _authorize_launch(self):
+        with self._launch_lock:
+            if self._failed.is_set():
+                raise StartupChannelError("startup channel failed before launch authorization")
+            self._launch_authorized = True
+
     def _claim(self):
         with self._lock:
             if self._claimed:
                 raise StartupChannelError("startup channel is unavailable")
             if self._failed.is_set():
                 if self._write_fd is not None:
-                    os.close(self._write_fd)
+                    fd = self._write_fd
                     self._write_fd = None
+                    os.close(fd)
                 raise StartupChannelError("startup channel is unavailable")
             self._claimed = True
 
-    def _spawn(self, command, *, cwd, child_env):
+    def _spawn(self, command, *, cwd, child_env, custody):
         # On Windows an inheritable handle is briefly needed for Popen's
         # explicit handle list. Cooperating spawns share this lock; callers
         # must also exclude other broad-inheritance spawns from the launcher.
@@ -227,25 +250,15 @@ class StartupChannel:
                 raise StartupChannelError("startup channel is unavailable")
             fd = self._write_fd
             try:
-                if os.name == "nt":
-                    import msvcrt
-                    endpoint = msvcrt.get_osfhandle(fd)
-                    os.set_inheritable(fd, True)
-                    info = subprocess.STARTUPINFO()
-                    info.lpAttributeList = {"handle_list": [endpoint]}
-                    options = {"startupinfo": info, "close_fds": True}
-                elif os.name == "posix":
-                    endpoint = fd
-                    options = {"pass_fds": (fd,), "close_fds": True}
-                else:
-                    raise StartupChannelError("startup channels are unsupported on this platform")
+                endpoint = _pipe_endpoint(fd)
                 child_env[_STARTUP_HANDLE_ENV] = str(endpoint)
                 child_env[_STARTUP_LIMIT_ENV] = str(self._max_bytes)
-                return subprocess.Popen(command, cwd=cwd, env=child_env,
-                                        stdin=subprocess.DEVNULL, **options)
+                _spawn_with_gate(command, cwd=cwd, child_env=child_env,
+                                 custody=custody, startup_fd=fd)
+                return custody._child
             finally:
-                os.close(fd)
                 self._write_fd = None
+                os.close(fd)
 
     def receive(self, *, timeout):
         """Receive one bytes frame, or fail the owner startup on deadline."""
@@ -258,7 +271,7 @@ class StartupChannel:
             # Never wait on the synchronous reader or the spawn lock here.
             # This short delivery lock contains no I/O, so a frame published
             # concurrently with the deadline cannot retain a stale secret.
-            self._failed.set()
+            self._mark_failed()
             with self._delivery_lock:
                 self._payload = None
                 self._discard_partial()
@@ -273,7 +286,7 @@ class StartupChannel:
 
     def abort(self):
         """Reject startup, including after a caller rejects the received data."""
-        self._failed.set()
+        self._mark_failed()
         with self._delivery_lock:
             self._payload = None
             self._discard_partial()
@@ -283,8 +296,9 @@ class StartupChannel:
         if self._lock.acquire(blocking=False):
             try:
                 if self._write_fd is not None:
-                    os.close(self._write_fd)
+                    fd = self._write_fd
                     self._write_fd = None
+                    os.close(fd)
             finally:
                 self._lock.release()
 
@@ -546,6 +560,15 @@ class OwnerSession:
     def from_environment(cls):
         fd = None
         try:
+            parent_pid = int(os.environ[_SUPERVISOR_ENV])
+            parent_birth = os.environ[_SUPERVISOR_BIRTH_ENV]
+            if os.getppid() != parent_pid:
+                raise UnsafeOwnerError("owner must be the supervisor's direct child")
+            # This watchdog also covers a parent that dies before granting the
+            # launch. A live parent thread abandoning startup is handled by
+            # the private launch gate and the parent's rooted child record.
+            _watch_parent(parent_pid, parent_birth)
+            _await_launch_grant()
             encoded_identity = os.environ.get(_IDENTITY_ENV)
             if encoded_identity is not None and len(encoded_identity) > 32768:
                 raise ValueError("device identity is too large")
@@ -569,7 +592,7 @@ class OwnerSession:
                     raise ValueError("unsupported startup channel")
                 os.set_inheritable(fd, False)
             session = cls(os.environ[_RUN_ENV], os.environ[_LEASE_ENV], os.environ[_MARKER_ENV],
-                          int(os.environ[_SUPERVISOR_ENV]), os.environ[_SUPERVISOR_BIRTH_ENV],
+                          parent_pid, parent_birth,
                           spec, fd, startup_max)
             fd = None  # The session owns the endpoint.
             return session
@@ -688,6 +711,166 @@ def _stop_child(child, grace):
             return None
 
 
+def _pipe_endpoint(fd):
+    if os.name == "nt":
+        import msvcrt
+        return msvcrt.get_osfhandle(fd)
+    if os.name == "posix":
+        return fd
+    raise SupervisorError("launch gates are unsupported on this platform")
+
+
+def _await_launch_grant():
+    """Block a cooperative owner before lease acquisition until authorized."""
+    endpoint = int(os.environ.pop(_LAUNCH_HANDLE_ENV))
+    if endpoint < 0:
+        raise ValueError("invalid launch gate")
+    if os.name == "nt":
+        import msvcrt
+        fd = msvcrt.open_osfhandle(endpoint, os.O_RDONLY | os.O_BINARY)
+    elif os.name == "posix":
+        fd = endpoint
+    else:
+        raise SupervisorError("launch gates are unsupported on this platform")
+    done = threading.Event()
+
+    def expire():
+        if not done.wait(_LAUNCH_TIMEOUT):
+            # A leaked parent writer must not leave an ungranted owner alive
+            # indefinitely. This child has not been permitted to use the device.
+            os._exit(70)
+
+    try:
+        os.set_inheritable(fd, False)
+        threading.Thread(target=expire, name="looking-glass-launch-deadline",
+                         daemon=True).start()
+        if os.read(fd, 1) != b"\x01":
+            raise UnsafeOwnerError("owner launch was not granted")
+    finally:
+        done.set()
+        os.close(fd)
+
+
+class _SpawnCustody:
+    """Root a direct child before grant; recover only after its launcher stops."""
+
+    def __init__(self, run_id):
+        self.run_id = run_id
+        self._child = None
+        self._attempted = False
+        self._read_fd = None
+        self._write_fd = None
+
+    def _register(self):
+        with _spawn_custody_lock:
+            if len(_spawn_custodies) >= _MAX_SPAWN_CUSTODIES:
+                raise SupervisorError("supervised child recovery capacity is exhausted")
+            if self.run_id in _spawn_custodies:
+                raise SupervisorError("duplicate supervised child recovery identity")
+            _spawn_custodies[self.run_id] = self
+
+    def _open_gate(self):
+        self._read_fd, self._write_fd = os.pipe()
+        os.set_inheritable(self._read_fd, False)
+        os.set_inheritable(self._write_fd, False)
+
+    def _start(self, command, **options):
+        self._attempted = True
+        factory = subprocess.Popen
+        if isinstance(factory, type):
+            # Store the object before calling its constructor: an interruption
+            # in or at the return of __init__ must not lose an already stored
+            # process handle. A native spawn can still be interrupted before
+            # Popen installs that handle; no grant is sent in that case.
+            self._child = factory.__new__(factory)
+            factory.__init__(self._child, command, **options)
+        else:
+            # Trusted test/instrumentation wrappers may replace Popen. Their
+            # returned object is still recorded before any grant is sent.
+            self._child = factory(command, **options)
+
+    def _known_child(self):
+        child = self._child
+        if child is None or type(getattr(child, "pid", None)) is not int or child.pid <= 0:
+            return False
+        if os.name == "nt":
+            return getattr(child, "_handle", None) is not None
+        return bool(getattr(child, "_child_created", False))
+
+    def _close_gate(self):
+        # Forget each fd before close: if close is interrupted, never reuse a
+        # stale number that might later refer to an unrelated descriptor.
+        write_fd, self._write_fd = self._write_fd, None
+        try:
+            if write_fd is not None:
+                os.close(write_fd)
+        finally:
+            read_fd, self._read_fd = self._read_fd, None
+            if read_fd is not None:
+                os.close(read_fd)
+
+    def _grant(self):
+        if not self._known_child() or self._write_fd is None:
+            raise SupervisorError("launch has no rooted direct child capability")
+        if os.write(self._write_fd, b"\x01") != 1:
+            raise SupervisorError("owner launch grant did not complete")
+
+    def _retire(self):
+        with _spawn_custody_lock:
+            if _spawn_custodies.get(self.run_id) is self:
+                del _spawn_custodies[self.run_id]
+
+    def recover(self, *, terminate_grace=5):
+        """Stop/reap this exact child after the launcher is known quiescent.
+
+        Unknown native-spawn outcomes cannot be proved reaped with this API.
+        Recovery never removes the sticky device marker.
+        """
+        _finite_timeout(terminate_grace, "terminate_grace")
+        with _spawn_custody_lock:
+            if _spawn_custodies.get(self.run_id) is not self:
+                raise UnsafeOwnerError("supervised child record is stale")
+        self._close_gate()
+        if not self._attempted:
+            # The launcher is quiescent and never reached Popen: there is no
+            # direct child to stop or reap. Quarantine is still untouched.
+            self._retire()
+            return None
+        if not self._known_child():
+            raise UnsafeOwnerError("child creation outcome is unknown; retain quarantine")
+        exit_code = _stop_child(self._child, terminate_grace)
+        if exit_code is None:
+            raise UnsafeOwnerError("direct child exit could not be confirmed")
+        self._retire()
+        return exit_code
+
+
+def pending_supervised_children():
+    """Return rooted recovery records; caller must establish launcher quiescence."""
+    with _spawn_custody_lock:
+        return tuple(_spawn_custodies.values())
+
+
+def _spawn_with_gate(command, *, cwd, child_env, custody, startup_fd=None):
+    """Spawn under _startup_spawn_lock with explicit inherited endpoints."""
+    read_fd = custody._read_fd
+    if read_fd is None:
+        raise SupervisorError("owner launch gate is unavailable")
+    child_env[_LAUNCH_HANDLE_ENV] = str(_pipe_endpoint(read_fd))
+    fds = (read_fd,) if startup_fd is None else (read_fd, startup_fd)
+    if os.name == "nt":
+        for fd in fds:
+            os.set_inheritable(fd, True)
+        info = subprocess.STARTUPINFO()
+        info.lpAttributeList = {"handle_list": [_pipe_endpoint(fd) for fd in fds]}
+        options = {"startupinfo": info, "close_fds": True}
+    elif os.name == "posix":
+        options = {"pass_fds": fds, "close_fds": True}
+    else:
+        raise SupervisorError("launch gates are unsupported on this platform")
+    custody._start(command, cwd=cwd, env=child_env, stdin=subprocess.DEVNULL, **options)
+
+
 def run_supervised(command, *, device_lease_path, marker_path, timeout,
                    lease_timeout=5, terminate_grace=5, cwd=None, env=None, identity=None,
                    startup_channel=None, inherit_environment=True):
@@ -760,13 +943,24 @@ def _run_supervised(command, *, device_lease_path, marker_path, timeout,
             child_env["CUDA_VISIBLE_DEVICES"] = ""
         child_env.update({_RUN_ENV: run_id, _LEASE_ENV: str(device), _MARKER_ENV: str(marker),
                           _SUPERVISOR_ENV: str(os.getpid()), _SUPERVISOR_BIRTH_ENV: _supervisor_birth()})
-        if startup_channel is None:
-            child = subprocess.Popen(command, cwd=cwd, env=child_env, stdin=subprocess.DEVNULL)
-        else:
-            child = startup_channel._spawn(command, cwd=cwd, child_env=child_env)
+        custody = _SpawnCustody(run_id)
         timed_out = False
         startup_failed = False
         try:
+            custody._register()
+            custody._open_gate()
+            if startup_channel is None:
+                with _startup_spawn_lock:
+                    _spawn_with_gate(command, cwd=cwd, child_env=child_env,
+                                     custody=custody)
+            else:
+                startup_channel._spawn(command, cwd=cwd, child_env=child_env,
+                                       custody=custody)
+            child = custody._child
+            if startup_channel is not None:
+                startup_channel._authorize_launch()
+            custody._grant()
+            custody._close_gate()
             if startup_channel is None:
                 try:
                     exit_code = child.wait(timeout=timeout)
@@ -790,8 +984,23 @@ def _run_supervised(command, *, device_lease_path, marker_path, timeout,
                         break
                     except subprocess.TimeoutExpired:
                         pass
+            if exit_code is not None:
+                custody._retire()
         except BaseException:
-            _stop_child(child, terminate_grace)
+            # Keep the original exception. Even if cleanup is interrupted or
+            # fails, the exact record remains rooted for trusted recovery.
+            try:
+                custody._close_gate()
+            except BaseException:
+                pass
+            try:
+                if custody._known_child():
+                    if _stop_child(custody._child, terminate_grace) is not None:
+                        custody._retire()
+                elif not custody._attempted:
+                    custody._retire()
+            except BaseException:
+                pass
             raise
 
         if timed_out:

@@ -361,15 +361,17 @@ class FairAdapterTests(unittest.TestCase):
         with self.assertRaises(AdapterClosed):
             adapter.submit(b'alice-key', b'next')
 
-    def test_close_failure_before_atomic_drain_keeps_waiters_retryable(self):
+    def test_close_failure_during_drain_quarantines_waiters(self):
         adapter = self.make_adapter()
         ticket = adapter.submit(b'alice-key', b'data')
         with patch.object(adapter._queue, 'drain', side_effect=MemoryError):
             with self.assertRaises(MemoryError):
                 adapter.close()
-        self.assertEqual(len(adapter), 1)
+        self.assertTrue(adapter.indeterminate)
+        self.assertGreaterEqual(len(adapter.registration_roots()), 1)
         self.assertEqual(adapter.waiting_bytes, 4)
-        self.assertEqual(adapter.close(), (ticket,))
+        with self.assertRaises(AdapterClosed):
+            adapter.close()
 
     def test_interrupted_claim_closes_adapter_for_owner_reconciliation(self):
         adapter = self.make_adapter()
@@ -389,8 +391,9 @@ class FairAdapterTests(unittest.TestCase):
             adapter.cancel(b'alice-key', ticket)
         with self.assertRaises(AdapterClosed):
             adapter.transfer_next()
-        self.assertEqual(adapter.close(), (ticket,))
-        self.assertFalse(adapter.cancel(b'alice-key', ticket))
+        with self.assertRaises(AdapterClosed):
+            adapter.close()
+        self.assertTrue(adapter.indeterminate)
 
     def test_cancel_and_transfer_race_has_one_winner(self):
         for _ in range(20):

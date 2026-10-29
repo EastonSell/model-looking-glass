@@ -33,7 +33,9 @@ receipts and ticket lists can refer to other principals, so they must never be
 exposed as untrusted client methods. Receipt recovery is supported only by a
 target that implements it.
 
-`submit(credential, payload)` returns a ticket containing a random queue-instance
+For owner handoff at the documented recovery boundaries, retain a registration guard before
+submitting as described in [FAIR_REGISTRATION_GUARD.md](FAIR_REGISTRATION_GUARD.md).
+The legacy `submit(credential, payload)` returns a ticket containing a random queue-instance
 namespace and a monotonically increasing sequence. A ticket from another
 instance cannot cancel current work. `cancel(credential, ticket)` re-verifies
 the caller and cancels a pending ticket only when its verified principal matches
@@ -103,8 +105,8 @@ exception after claim becomes `HandoffFailure` with the claimed ticket; a fatal
 Either exception may occur after a job was published, so it does not establish
 terminal failure. A recoverable target must let the trusted owner retrieve the
 handle and reconcile the outcome. If the queue claim itself raises unexpectedly,
-the adapter fails closed and the owner must call `close()` to recover its
-outstanding ticket IDs for reconciliation. A callback invoked twice, later, or
+the adapter fails closed and preserves its roots for supervisor recovery;
+`close()` refuses to treat an indeterminate queue as canceled. A callback invoked twice, later, or
 from another thread is rejected. These checks cannot protect against a target
 that lies about its lock, reservation, exclusivity, or terminal bookkeeping;
 the target and verifier are trusted dependencies and require integration tests
