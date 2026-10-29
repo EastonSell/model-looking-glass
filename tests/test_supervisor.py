@@ -389,15 +389,51 @@ class SupervisorTests(unittest.TestCase):
         self.assertTrue(self.marker.exists())
 
     def test_owner_spawn_failure_preserves_unsafe_marker(self):
-        with self.assertRaises(OSError):
-            self.api.run_supervised(
-                [str(self.directory / 'nonexistent-executable')],
-                device_lease_path=self.device, marker_path=self.marker,
-                timeout=2, lease_timeout=2,
-            )
+        # An unknown native-spawn outcome intentionally retains custody until
+        # this process exits. Run the check in a disposable process rather than
+        # clearing its recovery record and affecting later tests.
+        driver = textwrap.dedent("""
+            from pathlib import Path
+            import os, sys
+            from looking_glass import supervisor as api
+            device, marker, missing = map(Path, sys.argv[1:4])
+            try:
+                api.run_supervised([str(missing)], device_lease_path=device,
+                                   marker_path=marker, timeout=2, lease_timeout=2)
+            except OSError:
+                pass
+            else:
+                raise AssertionError('nonexistent executable unexpectedly started')
+            if not marker.exists():
+                raise AssertionError('spawn failure lost its unsafe marker')
+            records = api.pending_supervised_children()
+            if os.name == 'nt':
+                if len(records) != 1 or not records[0]._attempted:
+                    raise AssertionError('unknown spawn did not retain its custody record')
+                if records[0]._known_child():
+                    raise AssertionError('failed spawn unexpectedly has a known child')
+                try:
+                    records[0].recover()
+                except api.UnsafeOwnerError:
+                    pass
+                else:
+                    raise AssertionError('unknown spawn must remain quarantined')
+            try:
+                api.run_supervised([sys._base_executable, '-c', 'pass'],
+                                   device_lease_path=device, marker_path=marker,
+                                   timeout=2, lease_timeout=2)
+            except api.UnsafeOwnerError:
+                pass
+            else:
+                raise AssertionError('unsafe marker allowed a successor')
+        """)
+        result = subprocess.run(
+            [sys._base_executable, '-c', driver, str(self.device), str(self.marker),
+             str(self.directory / 'nonexistent-executable')],
+            cwd=Path(__file__).resolve().parents[1], capture_output=True, text=True, timeout=15,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(self.marker.exists())
-        with self.assertRaises(self.api.UnsafeOwnerError):
-            self.run_owner()
 
     def test_gpu_mode_revalidates_identity_under_both_owner_leases(self):
         from looking_glass.device_identity import resolve_device_identity
