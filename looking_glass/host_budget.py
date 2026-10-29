@@ -48,6 +48,7 @@ class ClaimInfo:
     nbytes: int
     items: int
     active_operations: int
+    binding: str | None = None
 
 
 @dataclass(frozen=True)
@@ -97,6 +98,7 @@ class _ClaimRecord:
     cleanup_transfers: tuple[bool, ...]
     nbytes: int
     items: int
+    binding: str | None = None
 
 
 @dataclass(frozen=True)
@@ -168,7 +170,7 @@ class HostBudget:
         generation = self._request(record.request).generation
         return ClaimInfo(claim_id, record.request._request_id, generation, record.stage,
                          record.owners, record.cleanup_transfers, record.nbytes,
-                         record.items, self._operation_count(claim_id))
+                         record.items, self._operation_count(claim_id), record.binding)
 
     def open_request(self, request_id):
         """Open a bounded request lifecycle; a closed ID can later be reused."""
@@ -426,6 +428,35 @@ class HostClaim:
         with budget._lock:
             record = budget._claim(self)
             return budget._claim_info(self._claim_id, record)
+
+    def bind_once(self, binding):
+        """Bind this claim to one trusted purpose, including across transfer.
+
+        Repeating the same binding is an idempotent recovery check. Bindings
+        are labels, not credentials; the coordinator must issue unique values.
+        """
+        _text(binding, "binding")
+        budget = self._budget
+        bound = False
+        with budget._lock:
+            record = budget._claim(self)
+            if budget._request(record.request).cancelled:
+                raise HostRequestCancelled("request is cancelled")
+            if record.binding is not None:
+                if record.binding != binding:
+                    raise ValueError("claim is already bound to another purpose")
+            else:
+                if budget._operation_count(self._claim_id):
+                    raise HostBusy("claim is used by an in-flight operation")
+                replacement = replace(record, binding=binding)
+                try:
+                    budget._claims[self._claim_id] = replacement
+                    bound = True
+                except BaseException:
+                    if budget._claims.get(self._claim_id) is replacement:
+                        budget._claims[self._claim_id] = record
+                    raise
+        return bound
 
     def transfer(self, new_owner, *, cleanup=False):
         """Atomically replace this capability; a cancelled claim permits cleanup only."""
