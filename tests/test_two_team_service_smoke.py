@@ -3,6 +3,7 @@ import hashlib
 from pathlib import Path
 import tempfile
 from threading import Event, Thread
+from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
 
@@ -96,6 +97,126 @@ class TwoTeamSmokeTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             smoke.run_two_team_smoke(self.service)
 
+    def test_direct_smoke_requires_its_own_owner_and_completion_gates(self):
+        prepared = object.__new__(_PreparedService)
+        prepared.start = Mock()
+        with patch.object(smoke._owner_module, 'FAIR_SERVICE_OWNER_CONTRACT',
+                          'two-team-fair-service-v1', create=True), \
+             patch.object(smoke._owner_module, 'DIRECT_SERVICE_OWNER_CONTRACT', None, create=True), \
+             patch.object(smoke._owner_module, 'OWNER_COMPLETION_CUSTODY_CONTRACT',
+                          'service-result-retirement-v1', create=True):
+            with self.assertRaisesRegex(smoke.ServiceSmokeError, 'direct service owner'):
+                smoke.run_direct_two_team_smoke(prepared)
+        with patch.object(smoke._owner_module, 'DIRECT_SERVICE_OWNER_CONTRACT',
+                          'two-team-direct-service-v1', create=True), \
+             patch.object(smoke._owner_module, 'OWNER_COMPLETION_CUSTODY_CONTRACT', None, create=True):
+            with self.assertRaisesRegex(smoke.ServiceSmokeError, 'completion custody'):
+                smoke.run_direct_two_team_smoke(prepared)
+        prepared.start.assert_not_called()
+        with self.assertRaises(TypeError):
+            smoke.run_direct_two_team_smoke(self.service)
+
+    def test_direct_smoke_exercises_two_teams_without_claiming_fairness(self):
+        prepared = object.__new__(_PreparedService)
+        prepared._teams = self.teams
+        prepared._identity = SimpleNamespace(marker_path=self.service.unsafe_marker_path)
+        prepared.start, prepared.client = self.service.start, self.service.client
+        prepared.shutdown, prepared.wait = self.service.shutdown, self.service.wait
+        with patch.object(smoke._owner_module, 'DIRECT_SERVICE_OWNER_CONTRACT',
+                          'two-team-direct-service-v1', create=True), \
+             patch.object(smoke._owner_module, 'OWNER_COMPLETION_CUSTODY_CONTRACT',
+                          'service-result-retirement-v1', create=True), \
+             patch.object(smoke._owner_module, 'FAIR_SERVICE_OWNER_CONTRACT', None, create=True):
+            result = smoke.run_direct_two_team_smoke(prepared)
+            self.assertEqual(result.requests_succeeded, 2)
+            self.assertTrue(result.teardown_verified)
+            self.assertEqual([event[0] for event in self.service.events].count('submit'), 2)
+            self.assertEqual(self.service.events[-1][0], 'shutdown')
+        with patch.object(smoke._owner_module, 'FAIR_SERVICE_OWNER_CONTRACT',
+                          'two-team-fair-service-v1', create=True):
+            with self.assertRaisesRegex(smoke.ServiceSmokeError, 'already claimed'):
+                smoke.run_two_team_smoke(prepared)
+
+    def test_direct_smoke_uses_real_cpu_controller_and_loopback(self):
+        # This supervised child uses a small CPU model and patched owner gates;
+        # it does not validate GPU service startup or measured profiles.
+        import os
+        import sys
+        import sysconfig
+        import textwrap
+        from looking_glass import gpu_service_control as control
+
+        root = Path(self.tmp.name)
+        stop, device, marker = root / 'stop', root / 'device.lock', root / 'device.unsafe.json'
+        repo = Path(__file__).resolve().parents[1]
+        program = r'''
+import os, sys, threading, torch
+from types import SimpleNamespace
+from torch import nn
+from looking_glass.device_lease import DeviceLease
+from looking_glass.gpu_service_control import _encode_ready, _monitor_stop
+from looking_glass.service import OwnerStatus, serve_cpu_model
+from looking_glass.supervisor import OwnerSession
+session = OwnerSession.from_environment()
+lease = DeviceLease.acquire(session.device_lease_path, timeout=3)
+session.check(lease)
+class TinyModel(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.config = SimpleNamespace(vocab_size=50257, n_positions=1024, use_cache=False)
+    def forward(self, input_ids):
+        return {'logits': torch.zeros((1, 2, 50257), dtype=torch.float32)}
+stop = threading.Event()
+monitor, failed, _errors = _monitor_stop(sys.argv[1], stop)
+def announce(server):
+    session.send_startup(lease, _encode_ready(server, ('alpha', 'beta')))
+result = serve_cpu_model(TinyModel().eval(), model_id='test-only',
+    team_ids=('alpha', 'beta'), stop_event=stop, announce=announce,
+    max_tokens=2, max_pending=2, max_pending_per_team=1,
+    max_connections=2, shutdown_timeout=5)
+monitor.join(2)
+if result.status is OwnerStatus.CLEAN and result.teardown_verified and not failed[0] and not monitor.is_alive():
+    session.attest_clean(lease)
+    os._exit(0)
+os._exit(31)
+'''
+        command = [sys._base_executable, '-c', textwrap.dedent(program), str(stop)]
+        env = dict(os.environ)
+        env['PYTHONPATH'] = os.pathsep.join((str(repo), sysconfig.get_paths()['purelib']))
+        env['CUDA_VISIBLE_DEVICES'] = ''
+        owner = control._prepare_owner_controller(stop)
+        prepared = object.__new__(_PreparedService)
+        prepared._controller, prepared._teams = owner, self.teams
+        prepared._identity = SimpleNamespace(marker_path=marker)
+        startup_errors = []
+        def start(**_kwargs):
+            try:
+                return control._start_owner_controller(owner, command, device_lease_path=device,
+                    marker_path=marker, identity=None, env=env, cwd=repo, teams=self.teams,
+                    startup_timeout=15, owner_timeout=45, lease_timeout=3, terminate_grace=2)
+            except BaseException as exc:
+                startup_errors.append((type(exc).__name__, str(exc)))
+                raise
+        prepared.start = start
+        try:
+            with patch.object(smoke._owner_module, 'DIRECT_SERVICE_OWNER_CONTRACT',
+                              'two-team-direct-service-v1', create=True), \
+                 patch.object(smoke._owner_module, 'OWNER_COMPLETION_CUSTODY_CONTRACT',
+                              'service-result-retirement-v1', create=True):
+                try:
+                    result = smoke.run_direct_two_team_smoke(prepared)
+                except smoke.ServiceSmokeError as exc:
+                    self.fail(f'{exc}; startup={startup_errors}; owner={owner._error_type}; result={owner._result}')
+            self.assertEqual(result.requests_succeeded, 2)
+            self.assertEqual(result.float32_sha256, hashlib.sha256(bytes(smoke._NUM_VALUES * 4)).hexdigest())
+            self.assertTrue(result.teardown_verified)
+            self.assertFalse(marker.exists())
+            self.assertTrue(owner._done.is_set())
+        finally:
+            if not owner._done.is_set():
+                owner._channel.abort()
+                owner._done.wait(5)
+
     def test_two_fixed_requests_succeed_only_after_verified_teardown(self):
         result = smoke._exercise(self.service, self.teams)
         self.assertEqual(result.requests_succeeded, 2)
@@ -135,6 +256,8 @@ class TwoTeamSmokeTests(unittest.TestCase):
     def test_unclean_or_timed_out_owner_cannot_report_success(self):
         for result in (SupervisionResult('run', 123, 0, False, False, 'unsafe'),
                        SupervisionResult('run', 123, 1, True, False, 'failed'),
+                       SupervisionResult('run', 123, False, True, False, 'malformed'),
+                       SupervisionResult('run', 123, 0.0, True, False, 'malformed'),
                        SupervisionResult('run', 123, 0, True, True, 'timeout')):
             self.service.result = result
             with self.subTest(result=result), self.assertRaisesRegex(smoke.ServiceSmokeError, 'teardown'):

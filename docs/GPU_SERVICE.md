@@ -10,6 +10,31 @@ requests. The initial service accepts only the same input and warm seeds 29,
 worker serializes model execution; multiple clients may submit
 work, but this is not evidence of concurrent GPU kernels, throughput, or a
 safe upper bound on memory use. Trace retention is zero in this initial mode.
+The direct IPC server is bound to the worker's exact completion authority.
+Its trusted fixed-request factory rejects unsupported tokens and seeds before
+allocating request tensors; an error after tensor construction begins is an
+uncertain failure and marks the owner unsafe. The direct ready queue does not
+establish fair admission. The first direct service permits two connections,
+two pending jobs (at most one per team), and 4 KiB request bodies. These limits
+and the 4 MiB response cap do not reserve or bound aggregate physical host
+memory; model, runtime, JSON serialization and caller allocations need separate
+headroom.
+
+The direct owner's health provider checks the pinned server, broker, worker,
+and completion authority, and observes broker, worker, and IPC latches without
+taking the broker admission condition. It marks the same authority when an
+observation is uncertain and privately retains known observation exceptions
+and tracebacks in separate preallocated owner-thread and shutdown-thread slots.
+Those slots also preallocate the public failure categories before observation,
+so a later error does not require constructing a new exception. Once cleanup
+completes, the public failure has detached cause and context, and its provider
+traceback frame does not retain the private exception or its custody slot.
+The tested interruption cases are recovered; arbitrary interruption of cleanup
+or failure in Python's traceback machinery still requires process recovery. These
+are non-atomic, cooperative observations, not admission decisions or a proof
+that work has completed; source-time fault signals and an external watchdog
+remain necessary. The two-slot contract assumes the one service caller and its
+single shutdown helper; arbitrary extra concurrent callers are unsupported.
 
 The staged owner checks the supervised device lease and the runtime UUID before
 telemetry, resolves separate load/cold/warm profiles against independently
@@ -27,6 +52,12 @@ matching the measured load stage. Ownership is checked between individual CUDA
 identity and telemetry calls and before and after synchronization.
 Every budget telemetry snapshot must report the same 7–9 GiB device total
 bound by all three live workload keys; a mismatch fails before admission.
+The concrete backend and its trusted profile-checking subclass must use the
+same session and device lease as the owner. Their completion authority binds
+the base backend's lease guard to that exact backend instance. The guard uses
+the originally bound session and lease and rechecks their identity before and
+after the session check; this protects against accidental cooperative mutation,
+not arbitrary hostile code in the owner process.
 The exported `FIXED_SERVICE_OWNER_CONTRACT` value
 `fixed-two-token-commitments-v1` lets a controller reject incompatible owner
 versions before startup; it does not replace source and profile verification.
@@ -56,9 +87,31 @@ other known resources without relying on an allocation during failure handling.
 One process is used for at most one owner and must exit after its result. This
 does not prove retention of CUDA temporaries internal to a failed operation.
 Once a drain fails, the process latch prevents retries and clean attestation.
+After the service returns, the owner requires a trusted,
+zero-argument pre-attestation barrier. The child uses it to stop and join its
+remaining monitor and must return exactly `True`; an exception or any other
+value quarantines the owner and suppresses attestation. The callback is retained
+with the owner's other custody roots. The joined stop-file monitor is host-only:
+it may check its path and signal the stop event, and must not launch CUDA work
+or own GPU resources. On monitor failure it marks the shared owner authority
+unsafe before attempting the stop signal, including when that signal fails.
+The owner's final independent device drain follows the barrier, which covers
+only its explicitly
+joined signalers; server handlers, broker and worker owners, and startup or
+shutdown helpers must each be drained and joined separately. The supervisor
+must also preserve the unsafe marker for a nonzero or uncertain child exit.
 The final recheck relies on the service having stopped every potential
 signaler; it is not an atomic lock between an independently running signaler
-and attestation. An uncertain shutdown must remain unverified.
+and attestation. Joining a thread alone does not report every possible fault
+at its outer return or interpreter bootstrap boundary. An uncertain shutdown
+must remain unverified.
+The generic service lifecycle formats startup and shutdown callback errors
+and delegates escaped thread failures to the application's thread hook; it
+does not itself retain the original callback exception graph. Before enabling
+the launcher, the concrete `announce`, transport start/close, broker and
+worker close, and drain callbacks must be reviewed to retain any resources and
+claims owned only by their partial work or failure frames through recovery.
+Their signal and join results alone do not establish that custody.
 The launcher remains gated while this signaler-quiescence/attestation boundary
 and the fair ingress and IPC custody integrations are being completed. No
 compatibility marker for that completed boundary is exported by this draft.
@@ -78,6 +131,12 @@ independently revoked physical session is detected at a point-in-time lease
 check, not atomically at the instant of external revocation. The flag's fast
 publication relies on the supported CPython execution model, not a general
 cross-process atomic or an OS memory limit.
+Before broker binding, the collector may execute private warmup directly.
+Binding rejects an in-progress direct execution or worker cleanup; after
+binding, only the broker owner thread may execute the fixed worker. An
+unexpected broker-construction failure after binding roots the partial broker
+and signals the same authority. The caller must still retain those roots and
+mark the authority unsafe if the constructor return itself is interrupted.
 
 Each bound CUDA operation checks the actual owner session and physical lease
 at its decision boundary. CUDA RNG restoration is skipped after unsafe, and a
@@ -122,7 +181,10 @@ that the GPU path works on this machine.
 Real service launch still requires a reviewed CPU-only preflight, a trusted live
 source/runtime/model verifier, a private supervisor-to-parent startup channel,
 and separately reviewed measured model-load and forward profiles. None of the
-present test profiles is measured or approved. The measured profile must cover
+present test profiles is measured or approved. The child reconstructs the
+`trusted-custody-service-runtime-v1` identity under its supervised lease and
+resolves the separately pinned load, cold and warm profiles against that
+identity, the fixed cases and prescribed seeds. The measured profile must cover
 the same authority-bound `LifetimeWorkspaceWorker` and resident custody/RNG
 path; an unbound `ResidentWorker.execute` profile is a different workload even
 if source hashes and shapes match. All real owners on this machine

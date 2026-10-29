@@ -1,0 +1,6 @@
+# Retain captured Windows bytes exactly for the evidence digests.
+*.json -text whitespace=cr-at-eol
+*.py -text whitespace=cr-at-eol
+*.stdout -text
+*.stderr -text
+*.bundle -text

@@ -1,0 +1,6 @@
+TEMPLATE 0 positive 14 mean_margin -0.16137278079986572
+TEMPLATE 1 positive 15 mean_margin -0.09813845157623291
+TOP1 recipient 3 giver 1 other 60
+RANGE margins -2.1325836181640625 1.4692497253417969 ties 0
+PASS: frozen sources, direct receipt, 193 events, 64 full logits/scores and exact paired gate
+{"both_positive_pairs": 3, "gate_passed": false, "mean_margin": -0.12975561618804932, "name_pair_both_positive": [2, 0, 1, 0, 0, 0, 0, 0], "name_pairs_meeting_requirement": 0, "order_both_positive": [2, 1], "positive_cases": 29, "template_both_positive": [1, 2]}
