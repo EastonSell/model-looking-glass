@@ -189,7 +189,7 @@ def main(argv=None):
         bundle = load_distilgpt2(cache_dir=cache, allow_download=False)
         entries, comparisons = _sequence(bundle, manifest['comparisons'], output)
         status = 'passed' if all(item['comparison']['violations'] == 0 for item in comparisons) else 'failed'
-        _write_json(output / 'result.json', {'schema': 'short-service-cpu-reference-v1', 'status': status,
+        _write_json(output / 'candidate.json', {'schema': 'short-service-cpu-reference-v1', 'status': status,
                     'model_metadata': bundle.metadata, 'entries': entries, 'padding_comparisons': comparisons,
                     'source_commit': args.expected_commit, 'inventory_sha256': INVENTORY_SHA256})
         return 0 if status == 'passed' else 1

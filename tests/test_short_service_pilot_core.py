@@ -123,3 +123,19 @@ def test_comparator_rejects_nonfinite_and_uses_explicit_tolerance():
     assert compare_f32(outside, baseline)['violations'] == 1
     with pytest.raises(ValueError, match='nonfinite'):
         compare_f32(torch.tensor([float('nan'), 1.]), baseline)
+
+
+def test_comparator_decodes_subnormal_bits_even_with_flush_enabled():
+    import math
+    from looking_glass.short_service_pilot_core import _decode_f32_bits
+    raw = torch.tensor([1, -2147483647, -2147483648], dtype=torch.int32).view(torch.float32)
+    zero = torch.zeros(3, dtype=torch.float32)
+    try:
+        if not torch.set_flush_denormal(True):
+            pytest.skip('this runtime cannot control float32 flush mode')
+        decoded = _decode_f32_bits(raw)
+        result = compare_f32(raw, zero, atol=0., rtol=0.)
+        assert result['violations'] == 2 and result['max_abs'] == 2. ** -149
+        assert math.copysign(1., float(decoded[2])) == -1.
+    finally:
+        torch.set_flush_denormal(False)

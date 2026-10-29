@@ -14,6 +14,20 @@ from .owner_completion import LifetimeWorkspaceWorker, OwnerCompletionAuthority
 from .resident_worker import ForwardRequest, ForwardResult
 
 
+def _decode_f32_bits(values):
+    """Decode float32 storage into float64 without flushing float32 subnormals."""
+    words = values.view(torch.int32).to(torch.int64) & 0xffffffff
+    exponent = (words >> 23) & 0xff
+    if bool((exponent == 0xff).any()):
+        raise ValueError('nonfinite saved logits')
+    fraction = words & 0x7fffff
+    normal = exponent != 0
+    mantissa = torch.where(normal, fraction + 0x800000, fraction).to(torch.float64)
+    power = torch.where(normal, exponent - 150, -149).to(torch.int32)
+    result = torch.ldexp(mantissa, power)
+    return torch.where((words & 0x80000000) != 0, -result, result)
+
+
 def compare_f32(left, right, *, atol=1e-6, rtol=1e-5, chunk=8192):
     """Compare bounded CPU f32 tensors using float64 arithmetic and fixed chunks."""
     if (type(left) is not torch.Tensor or type(right) is not torch.Tensor
@@ -30,10 +44,8 @@ def compare_f32(left, right, *, atol=1e-6, rtol=1e-5, chunk=8192):
     count = violations = 0
     maximum = 0.0
     for start in range(0, left.numel(), chunk):
-        a = left[start:start + chunk].to(torch.float64)
-        b = right[start:start + chunk].to(torch.float64)
-        if not bool(torch.isfinite(a).all()) or not bool(torch.isfinite(b).all()):
-            raise ValueError('nonfinite saved logits')
+        a = _decode_f32_bits(left[start:start + chunk])
+        b = _decode_f32_bits(right[start:start + chunk])
         difference = (a - b).abs()
         maximum = max(maximum, float(difference.max()))
         violations += int((difference > (atol + rtol * b.abs())).sum())

@@ -36,7 +36,11 @@ loads CPU float32 eager evaluation mode with cache disabled, and does not
 download. It retains all float32 logits for six calls: the two synthetic rows
 and each science row both unpadded and padded. Each full tensor is at most
 6,432,896 bytes. Start records precede calls and output bytes precede the
-finite check; failures leave an incomplete record and any saved bytes.
+finite check; any surviving partial bytes must be retained. A failure or
+interrupted write can leave no diagnostic, or can leave a seemingly passing
+`candidate.json` even though the call raised. Completion requires a separately
+retained, reaped exit code 0, no failure record, and successful full-inventory
+hash/readback checks; candidate-file presence alone does not establish success.
 For science, the recorded comparison checks all active positions between the
 CPU padded and unpadded outputs at `1e-6 + 1e-5 * abs(reference)` elementwise.
 The input, source and asset hashes are consistency checks under a trusted,
