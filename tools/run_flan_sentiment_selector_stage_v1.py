@@ -31,6 +31,14 @@ def _clear_git_environment():
             os.environ.pop(name, None)
 
 
+def _raise_with_priority(primary, cleanup_error):
+    if primary is None:
+        raise cleanup_error
+    if not isinstance(primary, Exception) or isinstance(cleanup_error, Exception):
+        raise primary from cleanup_error
+    raise cleanup_error from primary
+
+
 def _empty_prefix():
     if (not sys.flags.isolated or not sys.flags.no_site or not sys.dont_write_bytecode
             or not sys.pycache_prefix
@@ -209,8 +217,8 @@ def main(argv=None):
                 _write_new(args.stage_receipt, {'schema': 'flan-t5-sentiment-selector-stage-runtime-v1',
                            'stage': stage, 'status': 'incomplete', 'selector_revision': args.revision,
                            'error_type': type(error).__name__})
-            except BaseException:
-                pass
+            except BaseException as receipt_error:
+                _raise_with_priority(error, receipt_error)
         raise
     finally:
         sys.argv = original_argv

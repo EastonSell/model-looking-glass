@@ -94,7 +94,7 @@ def main(argv=None):
                str(root / 'tools/run_flan_sentiment_selector_stage_v1.py'), '--revision', args.revision,
                '--stage-receipt', str(stage_receipt), '--venv', str(args.venv),
                '--grant-sha256', hashlib.sha256(grant).hexdigest(), '--', *rest]
-    child, code, timed_out, failure, drainers = None, None, False, None, []
+    child, code, timed_out, failure, primary, drainers = None, None, False, None, None, []
     logs = {name: {'retained_bytes': 0, 'truncated': False, 'error_type': None, 'finished': False}
             for name in ('stdout', 'stderr')}
     try:
@@ -125,6 +125,7 @@ def main(argv=None):
             child.kill()
             code = child.wait(timeout=15)
     except BaseException as error:
+        primary = error
         failure = type(error).__name__
         if child is not None:
             try:
@@ -134,41 +135,45 @@ def main(argv=None):
             except BaseException as cleanup_error:
                 if isinstance(error, Exception) and not isinstance(cleanup_error, Exception):
                     failure = type(cleanup_error).__name__
+                    primary = cleanup_error
                     raise cleanup_error from error
         raise
     finally:
-        for thread in drainers:
-            try:
-                thread.join(timeout=15)
-            except RuntimeError:
-                pass
-        logs_complete = (len(drainers) == 2 and all(not thread.is_alive() for thread in drainers)
-                         and all(item['finished'] and not item['truncated'] and item['error_type'] is None
-                                 for item in logs.values()))
-        receipt_sha = output_helper._hash_file(stage_receipt) if stage_receipt.is_file() else None
-        consistent = False
         try:
-            receipt = json.loads(stage_receipt.read_bytes())
-            _bootstrap(root, args.revision)
-            consistent = (receipt['schema'] == 'flan-t5-sentiment-selector-stage-runtime-v1'
-                          and receipt['stage'] == rest[0] and receipt['status'] == 'completed'
-                          and receipt['selector_revision'] == args.revision
-                          and stage_helper._snapshot(root, args.revision) == source
-                          and not any(prefix.iterdir()) and logs_complete
-                          and stage_helper._check_child_identity(args.attempt / 'stdout.log', args.venv, child.pid))
-        except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError):
-            pass
-        for name in ('stdout', 'stderr'):
-            log = args.attempt / (name + '.log')
-            logs[name]['sha256'] = output_helper._hash_file(log) if log.is_file() else None
-        ok = code == 0 and not timed_out and failure is None and consistent
-        output_helper._write_new(args.attempt / 'stage-exit.json', {
-            'schema': 'flan-t5-sentiment-selector-stage-exit-v1',
-            'stage': rest[0], 'status': 'completed' if ok else 'incomplete',
-            'stage_receipt_sha256': receipt_sha, 'reaped': code is not None,
-            'exit_code': code, 'timed_out': timed_out, 'exception_type': failure,
-            'selector_revision': args.revision, 'child_prefix_empty_after': not any(prefix.iterdir()),
-            'logs': logs, 'scope': 'Local direct-child observation; no execution authentication.'})
+            for thread in drainers:
+                try:
+                    thread.join(timeout=15)
+                except RuntimeError:
+                    pass
+            logs_complete = (len(drainers) == 2 and all(not thread.is_alive() for thread in drainers)
+                             and all(item['finished'] and not item['truncated'] and item['error_type'] is None
+                                     for item in logs.values()))
+            receipt_sha = output_helper._hash_file(stage_receipt) if stage_receipt.is_file() else None
+            consistent = False
+            try:
+                receipt = json.loads(stage_receipt.read_bytes())
+                _bootstrap(root, args.revision)
+                consistent = (receipt['schema'] == 'flan-t5-sentiment-selector-stage-runtime-v1'
+                              and receipt['stage'] == rest[0] and receipt['status'] == 'completed'
+                              and receipt['selector_revision'] == args.revision
+                              and stage_helper._snapshot(root, args.revision) == source
+                              and not any(prefix.iterdir()) and logs_complete
+                              and stage_helper._check_child_identity(args.attempt / 'stdout.log', args.venv, child.pid))
+            except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError):
+                pass
+            for name in ('stdout', 'stderr'):
+                log = args.attempt / (name + '.log')
+                logs[name]['sha256'] = output_helper._hash_file(log) if log.is_file() else None
+            ok = code == 0 and not timed_out and failure is None and consistent
+            output_helper._write_new(args.attempt / 'stage-exit.json', {
+                'schema': 'flan-t5-sentiment-selector-stage-exit-v1',
+                'stage': rest[0], 'status': 'completed' if ok else 'incomplete',
+                'stage_receipt_sha256': receipt_sha, 'reaped': code is not None,
+                'exit_code': code, 'timed_out': timed_out, 'exception_type': failure,
+                'selector_revision': args.revision, 'child_prefix_empty_after': not any(prefix.iterdir()),
+                'logs': logs, 'scope': 'Local direct-child observation; no execution authentication.'})
+        except BaseException as cleanup_error:
+            output_helper._raise_with_priority(primary, cleanup_error)
     if not ok:
         raise RuntimeError('selector stage incomplete; retain all evidence and do not retry')
     print(json.dumps({'status': 'completed', 'stage': rest[0], 'stage_receipt_sha256': receipt_sha}))

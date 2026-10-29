@@ -601,9 +601,11 @@ def test_real_isolated_stage_observer_records_exit_and_ignores_checkout_shadow(t
     identity = json.loads((attempt / 'stdout.log').read_bytes().splitlines()[0])
     spawn = json.loads((attempt / 'stage-spawn.json').read_bytes())
     assert identity['pid'] == spawn['pid'] and identity['parent_pid'] == spawn['parent_pid']
-    expected_site = Path(sys.prefix).resolve() / 'Lib' / 'site-packages'
+    site_relative = ('Lib/site-packages' if os.name == 'nt' else
+                     'lib/python%d.%d/site-packages' % sys.version_info[:2])
+    expected_site = Path(sys.prefix).resolve() / site_relative
     assert identity['dependency_site_path_sha256'] == hashlib.sha256(str(expected_site.resolve()).encode()).hexdigest()
-    assert identity['prefix_path_sha256'] == hashlib.sha256(str(Path(sys._base_executable).resolve().parent).encode()).hexdigest()
+    assert identity['prefix_path_sha256'] == hashlib.sha256(str(Path(sys.base_prefix).resolve()).encode()).hexdigest()
     if time_out:
         assert exit_record['reaped'] and exit_record['timed_out'] and exit_record['status'] == 'incomplete'
         assert not (attempt / 'stage-runtime.json').exists()
@@ -722,9 +724,11 @@ def test_direct_interpreter_uses_the_selected_venv_without_site_startup(tmp_path
                                timeout=60, check=False)
     assert completed.returncode == 0, completed.stderr.decode(errors='replace')
     value = json.loads(completed.stdout)
-    site = (Path(sys.prefix).resolve() / 'Lib' / 'site-packages').resolve()
+    site_relative = ('Lib/site-packages' if os.name == 'nt' else
+                     'lib/python%d.%d/site-packages' % sys.version_info[:2])
+    site = (Path(sys.prefix).resolve() / site_relative).resolve()
     assert Path(value['torch_origin']).resolve().is_relative_to(site)
-    assert Path(value['prefix']).resolve() == Path(sys._base_executable).resolve().parent
+    assert Path(value['prefix']).resolve() == Path(sys.base_prefix).resolve()
     assert value['torch'] and value['transformers'] and value['tokenizers']
     assert value['cuda_initialized'] is False
     wrong = tmp_path / 'wrong-venv'
@@ -896,6 +900,186 @@ def test_parent_cleanup_cancellation_takes_precedence_over_spawn_record_error(tm
     record = json.loads((attempt / receipt_name).read_bytes())
     assert not record['reaped' if selector_stage else 'child_reaped']
     assert record['exception_type' if selector_stage else 'operator_exception_type'] == 'KeyboardInterrupt'
+
+
+@pytest.mark.parametrize('selector_stage', [False, True])
+@pytest.mark.parametrize('cancel_first', [False, True])
+def test_parent_finalization_preserves_cancellation_priority(tmp_path, monkeypatch, selector_stage, cancel_first):
+    op = _operator()
+    root = Path(op.__file__).resolve().parents[1]
+    revision = 'a' * 40
+    if selector_stage:
+        launcher = _tool('observe_flan_sentiment_selector_stage_v1.py')
+        stage = SimpleNamespace(_snapshot=lambda root, revision: {'fabricated': 'a' * 64},
+                                _dependency_site=lambda venv: (Path(venv), 'a' * 64),
+                                _check_child_identity=lambda path, venv, pid: True)
+        monkeypatch.setattr(launcher, '_empty_prefix', lambda: None)
+        monkeypatch.setattr(launcher, '_bootstrap', lambda *args: None)
+        monkeypatch.setattr(launcher, '_load', lambda path, name: stage if name == '_flan_stage_helper' else op)
+        attempt = tmp_path / 'selector-stage'
+        arguments = ['--revision', revision, '--attempt', str(attempt), '--venv', str(tmp_path),
+                     '--', 'select', '--repo', str(root)]
+        spawn_name, exit_name = 'stage-spawn.json', 'stage-exit.json'
+    else:
+        launcher = op
+        monkeypatch.setattr(launcher, '_empty_prefix', lambda: None)
+        monkeypatch.setattr(launcher, '_load_owner', lambda root, revision:
+                            SimpleNamespace(source_snapshot=lambda root, revision: {'revision': revision}))
+        attempt = tmp_path / 'attempt'
+        arguments = _operator_args(tmp_path)
+        spawn_name, exit_name = 'operator-spawn.json', 'operator-exit.json'
+
+    class FakeChild:
+        pid = 123
+        killed = False
+        stdin, stdout, stderr = io.BytesIO(), io.BytesIO(b''), io.BytesIO(b'')
+        def poll(self): return 9 if self.killed else None
+        def kill(self): self.killed = True
+        def wait(self, timeout): return 9
+
+    child = FakeChild()
+    monkeypatch.setattr(launcher.subprocess, 'Popen', lambda *a, **k: child)
+    original_write = op._write_new
+    def fail_records(path, value):
+        if Path(path).name == spawn_name:
+            if cancel_first:
+                raise KeyboardInterrupt('original cancellation')
+            raise OSError('original spawn error')
+        if Path(path).name == exit_name:
+            if cancel_first:
+                raise OSError('later receipt error')
+            raise KeyboardInterrupt('later cancellation')
+        return original_write(path, value)
+    monkeypatch.setattr(op, '_write_new', fail_records)
+    with pytest.raises(KeyboardInterrupt, match='original cancellation' if cancel_first else 'later cancellation') as exc:
+        launcher.main(arguments)
+    assert isinstance(exc.value.__cause__, OSError) and child.killed
+    assert not (attempt / exit_name).exists()
+
+
+@pytest.mark.parametrize('selector_stage', [False, True])
+def test_parent_finalization_does_not_revive_ambient_exception(tmp_path, monkeypatch, selector_stage):
+    op = _operator()
+    root = Path(op.__file__).resolve().parents[1]
+    revision = 'a' * 40
+    if selector_stage:
+        launcher = _tool('observe_flan_sentiment_selector_stage_v1.py')
+        stage = SimpleNamespace(_snapshot=lambda root, revision: {'fabricated': 'a' * 64},
+                                _dependency_site=lambda venv: (Path(venv), 'a' * 64),
+                                _check_child_identity=lambda path, venv, pid: True)
+        monkeypatch.setattr(launcher, '_empty_prefix', lambda: None)
+        monkeypatch.setattr(launcher, '_bootstrap', lambda *args: None)
+        monkeypatch.setattr(launcher, '_load', lambda path, name: stage if name == '_flan_stage_helper' else op)
+        attempt = tmp_path / 'selector-stage'
+        arguments = ['--revision', revision, '--attempt', str(attempt), '--venv', str(tmp_path),
+                     '--', 'select', '--repo', str(root)]
+        exit_name = 'stage-exit.json'
+    else:
+        launcher = op
+        monkeypatch.setattr(launcher, '_empty_prefix', lambda: None)
+        monkeypatch.setattr(launcher, '_load_owner', lambda root, revision:
+                            SimpleNamespace(source_snapshot=lambda root, revision: {'revision': revision}))
+        arguments = _operator_args(tmp_path)
+        exit_name = 'operator-exit.json'
+    class FakeChild:
+        pid = 123
+        stdin, stdout, stderr = io.BytesIO(), io.BytesIO(b''), io.BytesIO(b'')
+        def wait(self, timeout): return 0
+    monkeypatch.setattr(launcher.subprocess, 'Popen', lambda *args, **kwargs: FakeChild())
+    original_write = op._write_new
+    def fail_exit(path, value):
+        if Path(path).name == exit_name:
+            raise OSError('actual receipt error')
+        return original_write(path, value)
+    monkeypatch.setattr(op, '_write_new', fail_exit)
+    try:
+        raise ValueError('unrelated outer exception')
+    except ValueError:
+        with pytest.raises(OSError, match='actual receipt error'):
+            launcher.main(arguments)
+
+
+@pytest.mark.parametrize('cancel_first', [False, True])
+def test_owner_child_final_check_preserves_cancellation_priority(tmp_path, monkeypatch, cancel_first):
+    op = _operator()
+    calls = []
+    def check_prefix():
+        calls.append('prefix')
+        if len(calls) == 2:
+            if cancel_first:
+                raise OSError('later source check')
+            raise KeyboardInterrupt('later cancellation')
+    def run(args):
+        if cancel_first:
+            raise KeyboardInterrupt('original cancellation')
+        raise OSError('original owner error')
+    fake_owner = SimpleNamespace(source_snapshot=lambda root, revision: {'revision': revision}, run=run)
+    monkeypatch.setattr(op, '_empty_prefix', check_prefix)
+    monkeypatch.setattr(op, '_receive_grant', lambda value: None)
+    monkeypatch.setattr(op, '_load_owner', lambda root, revision: fake_owner)
+    monkeypatch.setattr(op, '_load_stage_helper', lambda root: SimpleNamespace(
+        _dependency_site=lambda venv: (tmp_path / 'fake-site', 'a' * 64),
+        _process_identity=lambda *args: {'schema': 'fabricated'}))
+    monkeypatch.setattr(op.sys, 'path', list(op.sys.path))
+    arguments = _operator_args(tmp_path) + ['--child', '--grant-sha256', 'a' * 64]
+    with pytest.raises(KeyboardInterrupt, match='original cancellation' if cancel_first else 'later cancellation') as exc:
+        op.main(arguments)
+    assert isinstance(exc.value.__cause__, OSError)
+
+
+def test_owner_child_final_check_does_not_revive_ambient_exception(tmp_path, monkeypatch):
+    op = _operator()
+    calls = []
+    def check_prefix():
+        calls.append('prefix')
+        if len(calls) == 2:
+            raise OSError('actual prefix error')
+    fake_owner = SimpleNamespace(source_snapshot=lambda root, revision: {'revision': revision}, run=lambda args: None)
+    monkeypatch.setattr(op, '_empty_prefix', check_prefix)
+    monkeypatch.setattr(op, '_receive_grant', lambda value: None)
+    monkeypatch.setattr(op, '_load_owner', lambda root, revision: fake_owner)
+    monkeypatch.setattr(op, '_load_stage_helper', lambda root: SimpleNamespace(
+        _dependency_site=lambda venv: (tmp_path / 'fake-site', 'a' * 64),
+        _process_identity=lambda *args: {'schema': 'fabricated'}))
+    monkeypatch.setattr(op.sys, 'path', list(op.sys.path))
+    arguments = _operator_args(tmp_path) + ['--child', '--grant-sha256', 'a' * 64]
+    try:
+        raise ValueError('unrelated outer exception')
+    except ValueError:
+        with pytest.raises(OSError, match='actual prefix error'):
+            op.main(arguments)
+
+
+@pytest.mark.parametrize('cancel_first', [False, True])
+def test_selector_child_receipt_preserves_cancellation_priority(tmp_path, monkeypatch, cancel_first):
+    stage = _tool('run_flan_sentiment_selector_stage_v1.py')
+    monkeypatch.setattr(stage, '_empty_prefix', lambda: None)
+    monkeypatch.setattr(stage, '_receive_grant', lambda value: None)
+    monkeypatch.setattr(stage, '_dependency_site', lambda venv: (tmp_path / 'fake-site', 'a' * 64))
+    monkeypatch.setattr(stage, '_snapshot', lambda *args: {'fabricated': 'a' * 64})
+    monkeypatch.setattr(stage.sys, 'path', list(stage.sys.path))
+    class FakeLoader:
+        def create_module(self, spec): return None
+        def exec_module(self, module):
+            def run():
+                if cancel_first:
+                    raise KeyboardInterrupt('original cancellation')
+                raise OSError('original selector error')
+            module.main = run
+    spec = importlib.machinery.ModuleSpec('_fabricated_selector', FakeLoader())
+    monkeypatch.setattr(stage.importlib.util, 'spec_from_file_location', lambda *args, **kwargs: spec)
+    def fail_receipt(path, value):
+        if cancel_first:
+            raise OSError('later receipt error')
+        raise KeyboardInterrupt('later cancellation')
+    monkeypatch.setattr(stage, '_write_new', fail_receipt)
+    root = Path(stage.__file__).resolve().parents[1]
+    arguments = ['--revision', 'a' * 40, '--stage-receipt', str(tmp_path / 'stage.json'),
+                 '--venv', str(tmp_path), '--grant-sha256', 'a' * 64, '--', 'commit-pool',
+                 '--repo', str(root), '--pool-card', str(tmp_path / 'unused')]
+    with pytest.raises(KeyboardInterrupt, match='original cancellation' if cancel_first else 'later cancellation') as exc:
+        stage.main(arguments)
+    assert isinstance(exc.value.__cause__, OSError)
 
 
 def test_failure_receipt_does_not_swallow_new_cancellation(tmp_path, monkeypatch):

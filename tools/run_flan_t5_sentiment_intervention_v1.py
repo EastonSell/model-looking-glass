@@ -31,6 +31,14 @@ def _clear_git_environment():
             os.environ.pop(name, None)
 
 
+def _raise_with_priority(primary, cleanup_error):
+    if primary is None:
+        raise cleanup_error
+    if not isinstance(primary, Exception) or isinstance(cleanup_error, Exception):
+        raise primary from cleanup_error
+    raise cleanup_error from primary
+
+
 def _empty_prefix():
     prefix = sys.pycache_prefix
     if (not sys.flags.isolated or not sys.flags.no_site or not sys.dont_write_bytecode or not prefix
@@ -175,6 +183,7 @@ def main(argv=None):
     direct_runtime = _load_stage_helper(root)
     site, _ = direct_runtime._dependency_site(args.venv)
     if args.child:
+        primary = None
         try:
             if str(site) in sys.path:
                 raise ValueError('venv site-packages was already on the search path')
@@ -182,10 +191,16 @@ def main(argv=None):
             print(json.dumps(direct_runtime._process_identity(args.venv, os.getpid(), os.getppid()),
                   sort_keys=True), flush=True)
             owner.run(args)
+        except BaseException as error:
+            primary = error
+            raise
         finally:
-            _empty_prefix()
-            if owner.source_snapshot(root, args.revision) != source:
-                raise ValueError('source changed during child execution')
+            try:
+                _empty_prefix()
+                if owner.source_snapshot(root, args.revision) != source:
+                    raise ValueError('source changed during child execution')
+            except BaseException as cleanup_error:
+                _raise_with_priority(primary, cleanup_error)
         return
 
     attempt = args.attempt
@@ -213,7 +228,7 @@ def main(argv=None):
                '--grant-sha256', hashlib.sha256(grant).hexdigest()]
     for name in PATH_OPTIONS:
         command.extend(['--' + name, str(getattr(args, name.replace('-', '_')))])
-    child, code, timed_out, failure = None, None, False, None
+    child, code, timed_out, failure, primary = None, None, False, None, None
     drainers = []
     logs = {name: {'retained_bytes': 0, 'truncated': False, 'error_type': None, 'finished': False}
             for name in ('stdout', 'stderr')}
@@ -244,6 +259,7 @@ def main(argv=None):
             child.kill()
             code = child.wait(timeout=15)
     except BaseException as error:
+        primary = error
         failure = type(error).__name__
         if child is not None:
             try:
@@ -253,42 +269,46 @@ def main(argv=None):
             except BaseException as cleanup_error:
                 if isinstance(error, Exception) and not isinstance(cleanup_error, Exception):
                     failure = type(cleanup_error).__name__
+                    primary = cleanup_error
                     raise cleanup_error from error
         raise
     finally:
-        for thread in drainers:
-            try:
-                thread.join(timeout=15)
-            except RuntimeError:
-                pass
-        logs_complete = (len(drainers) == 2 and all(not thread.is_alive() for thread in drainers)
-                         and all(item['finished'] and not item['truncated'] and item['error_type'] is None
-                                 for item in logs.values()))
-        terminal = attempt / 'child' / 'terminal.json'
-        events = attempt / 'child' / 'events.jsonl'
-        owner_receipt = attempt / 'owner-receipt.json'
-        terminal_sha = _hash_file(terminal) if terminal.is_file() else None
-        events_sha = _hash_file(events) if events.is_file() else None
-        owner_sha = _hash_file(owner_receipt) if owner_receipt.is_file() else None
-        consistent = False
         try:
-            record = json.loads(owner_receipt.read_bytes())
-            terminal_record = json.loads(terminal.read_bytes())
-            consistent = (record['status'] == 'complete_candidate' and record['source_revision'] == args.revision
-                          and record['terminal_sha256'] == terminal_sha and record['events_sha256'] == events_sha
-                          and terminal_record['status'] == 'complete_candidate'
-                          and owner.source_snapshot(root, args.revision) == source and logs_complete and failure is None
-                          and direct_runtime._check_child_identity(attempt / 'stdout.log', args.venv, child.pid))
-        except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError):
-            pass
-        _write_new(attempt / 'operator-exit.json', {
-            'schema': 'flan-t5-sentiment-operator-v1', 'direct_child_exit_code': code,
-            'child_reaped': code is not None, 'timed_out': timed_out, 'operator_exception_type': failure,
-            'terminal_sha256': terminal_sha, 'events_sha256': events_sha, 'owner_receipt_sha256': owner_sha,
-            'terminal_consistent': consistent, 'child_prefix_empty_after': not any(prefix.iterdir()),
-            'logs': logs, 'log_drain_complete': logs_complete,
-            'stdout_sha256': _hash_file(attempt / 'stdout.log') if (attempt / 'stdout.log').is_file() else None,
-            'stderr_sha256': _hash_file(attempt / 'stderr.log') if (attempt / 'stderr.log').is_file() else None})
+            for thread in drainers:
+                try:
+                    thread.join(timeout=15)
+                except RuntimeError:
+                    pass
+            logs_complete = (len(drainers) == 2 and all(not thread.is_alive() for thread in drainers)
+                             and all(item['finished'] and not item['truncated'] and item['error_type'] is None
+                                     for item in logs.values()))
+            terminal = attempt / 'child' / 'terminal.json'
+            events = attempt / 'child' / 'events.jsonl'
+            owner_receipt = attempt / 'owner-receipt.json'
+            terminal_sha = _hash_file(terminal) if terminal.is_file() else None
+            events_sha = _hash_file(events) if events.is_file() else None
+            owner_sha = _hash_file(owner_receipt) if owner_receipt.is_file() else None
+            consistent = False
+            try:
+                record = json.loads(owner_receipt.read_bytes())
+                terminal_record = json.loads(terminal.read_bytes())
+                consistent = (record['status'] == 'complete_candidate' and record['source_revision'] == args.revision
+                              and record['terminal_sha256'] == terminal_sha and record['events_sha256'] == events_sha
+                              and terminal_record['status'] == 'complete_candidate'
+                              and owner.source_snapshot(root, args.revision) == source and logs_complete and failure is None
+                              and direct_runtime._check_child_identity(attempt / 'stdout.log', args.venv, child.pid))
+            except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError):
+                pass
+            _write_new(attempt / 'operator-exit.json', {
+                'schema': 'flan-t5-sentiment-operator-v1', 'direct_child_exit_code': code,
+                'child_reaped': code is not None, 'timed_out': timed_out, 'operator_exception_type': failure,
+                'terminal_sha256': terminal_sha, 'events_sha256': events_sha, 'owner_receipt_sha256': owner_sha,
+                'terminal_consistent': consistent, 'child_prefix_empty_after': not any(prefix.iterdir()),
+                'logs': logs, 'log_drain_complete': logs_complete,
+                'stdout_sha256': _hash_file(attempt / 'stdout.log') if (attempt / 'stdout.log').is_file() else None,
+                'stderr_sha256': _hash_file(attempt / 'stderr.log') if (attempt / 'stderr.log').is_file() else None})
+        except BaseException as cleanup_error:
+            _raise_with_priority(primary, cleanup_error)
     if code != 0 or timed_out or not consistent or any(prefix.iterdir()):
         raise RuntimeError('attempt is incomplete or uncertain; retain its evidence')
     print(json.dumps({'status': 'complete_candidate', 'source_revision': args.revision,
