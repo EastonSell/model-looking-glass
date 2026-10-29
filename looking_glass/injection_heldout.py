@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 import re
 import stat
-from threading import current_thread
+from threading import current_thread, local
 from types import FunctionType
 from dataclasses import dataclass
 
@@ -403,10 +403,13 @@ class HeldoutJournal:
         self._limit, self._used, self._ordinal, self._previous = max_disk_bytes, 4096, 0, bytes(32)
         self._tensor_limit, self._tensor_used = max_tensor_bytes, 0
         self._owner, self._failed, self._busy = current_thread(), False, False
+        self._owner_local, self._owner_token = local(), object()
+        self._owner_local.token = self._owner_token
         self._baseline, self._requests = {}, set()
 
     def append(self, public, private):
-        if current_thread() is not self._owner or self._failed or self._busy:
+        if (current_thread() is not self._owner or getattr(self._owner_local, 'token', None) is not self._owner_token
+                or self._failed or self._busy):
             raise RuntimeError('held-out journal is unavailable')
         self._busy = True
         phase = 'preflight'
