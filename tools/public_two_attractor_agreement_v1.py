@@ -20,8 +20,8 @@ def _partition(case):
     if s in (3, 4) and f == 2:
         return 'evaluation'
     if s in (1, 2) and f == 2:
-        return 'cross_subject_development'
-    return 'cross_subject_evaluation'
+        return 'cross_new_attractor_pair'
+    return 'cross_new_subject'
 
 
 def _mean(values):
@@ -39,6 +39,7 @@ def aggregate(cases, rows):
     if len(by_id) != 128 or set(by_id) != set(expected):
         raise ValueError('saved rows do not match cases')
     units = defaultdict(dict)
+    subject_pairs = defaultdict(dict)
     cases_out = []
     for case in cases:
         row = by_id[case['case_id']]
@@ -56,7 +57,11 @@ def aggregate(cases, rows):
         if cell in units[key]:
             raise ValueError('duplicate factorial cell')
         units[key][cell] = raw
+        subject_key = (case['subject_pair'], case['frame_pair'], case['order'],
+                       case['near_number'], case['beside_number'])
+        subject_pairs[subject_key][case['subject_number']] = raw
         cases_out.append({'case_id': case['case_id'], 'partition': _partition(case),
+                          'subject_number': case['subject_number'],
                           'near_mismatch': near_mismatch, 'beside_mismatch': beside_mismatch,
                           'raw_margins': raw,
                           'signed_margins': {k: sign * v for k, v in raw.items()},
@@ -107,8 +112,51 @@ def aggregate(cases, rows):
                 condition[f'{near}{beside}'][tense] = {
                     'mean_signed_margin': _mean([r['signed_margins'][tense] for r in rows_here]),
                     'correct': sum(r['correct'][tense] for r in rows_here)}
+    baseline = {}
+    for partition in ('development', 'evaluation', 'cross_new_attractor_pair', 'cross_new_subject'):
+        for number in ('singular', 'plural'):
+            selected = [r for r in cases_out if r['partition'] == partition
+                        and r['subject_number'] == number
+                        and r['near_mismatch'] == 0 and r['beside_mismatch'] == 0]
+            if len(selected) != 4:
+                raise ValueError('invalid baseline group')
+            baseline[f'{partition}/{number}'] = {}
+            for tense in ('present', 'past'):
+                margins = [r['signed_margins'][tense] for r in selected]
+                baseline[f'{partition}/{number}'][tense] = {
+                    'correct': sum(x > 0 for x in margins),
+                    'ties': sum(x == 0 for x in margins),
+                    'wrong_sign': sum(x < 0 for x in margins),
+                    'incorrect_including_ties': sum(x <= 0 for x in margins)}
+    subject_controls = []
+    for key in sorted(subject_pairs):
+        values = subject_pairs[key]
+        if set(values) != {'singular', 'plural'}:
+            raise ValueError('missing subject-number comparison')
+        subject, pair, order, near, beside = key
+        subject_controls.append({
+            'subject_pair': subject, 'frame_pair': pair, 'order': order,
+            'near_number': near, 'beside_number': beside,
+            'partition': _partition({'subject_pair': subject, 'frame_pair': pair}),
+            'singular_minus_plural': {tense: values['singular'][tense] - values['plural'][tense]
+                                      for tense in ('present', 'past')}})
+    if len(subject_controls) != 64:
+        raise ValueError('expected 64 subject-number controls')
+    subject_control_summary = {}
+    for partition in ('development', 'evaluation', 'cross_new_attractor_pair', 'cross_new_subject'):
+        for near in ('singular', 'plural'):
+            for beside in ('singular', 'plural'):
+                selected = [r for r in subject_controls if r['partition'] == partition
+                            and r['near_number'] == near and r['beside_number'] == beside]
+                if len(selected) != 4:
+                    raise ValueError('invalid subject-number control group')
+                subject_control_summary[f'{partition}/{near}/{beside}'] = {
+                    tense: _mean([r['singular_minus_plural'][tense] for r in selected])
+                    for tense in ('present', 'past')}
     return {'case_results': cases_out, 'factorial_units': unit_out,
-            'unit_summary': summary, 'condition_summary': condition}
+            'unit_summary': summary, 'condition_summary': condition,
+            'baseline_counts': baseline, 'subject_controls': subject_controls,
+            'subject_control_summary': subject_control_summary}
 
 
 def _append(stream, record):

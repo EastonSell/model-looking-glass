@@ -26,3 +26,18 @@ def test_prespecified_factorial_contrasts():
     assert out['unit_summary']['partition=evaluation']['units'] == 8
     assert out['unit_summary']['all']['present']['interaction'] == 7
     assert all(item['cases'] == 32 for item in out['condition_summary'].values())
+    assert len(out['subject_controls']) == 64
+    assert len(out['subject_control_summary']) == 16
+    assert out['subject_control_summary']['evaluation/singular/singular']['present'] == 10
+    assert out['subject_control_summary']['evaluation/singular/plural']['present'] == 3
+    assert all(x['present'] == {'correct': 4, 'ties': 0, 'wrong_sign': 0,
+                                'incorrect_including_ties': 0}
+               for x in out['baseline_counts'].values())
+    baseline = [c['case_id'] for c in cases if c['subject_pair'] in (3, 4)
+                and c['frame_pair'] == 2 and c['subject_number'] == 'singular'
+                and c['near_number'] == 'singular' and c['beside_number'] == 'singular']
+    by_id = {row['case_id']: row for row in rows}
+    by_id[baseline[0]]['logits']['is'] = 0.0
+    by_id[baseline[1]]['logits']['is'] = -1.0
+    counts = mod.aggregate(cases, rows)['baseline_counts']['evaluation/singular']['present']
+    assert counts == {'correct': 2, 'ties': 1, 'wrong_sign': 1, 'incorrect_including_ties': 2}
