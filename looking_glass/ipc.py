@@ -5,6 +5,7 @@ The broker and adapter callables are trusted, server-side objects.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
 import math
 import re
@@ -1126,10 +1127,19 @@ class IPCServer:
         return False
 
 
+@dataclass(frozen=True)
+class CancelAckObservation:
+    """A validated client acknowledgement receipt, not a broker decision time."""
+
+    accepted: bool
+    received_ns: int
+
+
 class IPCClient:
     """Connect to a known loopback server using an out-of-band secret."""
 
-    def __init__(self, address, token, *, io_timeout=3.0, max_response_bytes=_MAX_RESPONSE):
+    def __init__(self, address, token, *, io_timeout=3.0, max_response_bytes=_MAX_RESPONSE,
+                 observe_cancel_ack=False):
         if (type(address) is not tuple or len(address) != 2 or address[0] != "127.0.0.1" or
                 type(address[1]) is not int or not 0 < address[1] < 65536):
             raise ValueError("only an IPv4 loopback endpoint is allowed")
@@ -1139,8 +1149,11 @@ class IPCClient:
             raise ValueError("invalid io_timeout")
         if type(max_response_bytes) is not int or not 512 <= max_response_bytes <= _MAX_RESPONSE:
             raise ValueError("invalid max_response_bytes")
+        if type(observe_cancel_ack) is not bool:
+            raise ValueError("observe_cancel_ack must be a boolean")
         self.address, self.token = address, token
         self.io_timeout, self.max_response_bytes = io_timeout, max_response_bytes
+        self._observe_cancel_ack = observe_cancel_ack
 
     def submit(self, *, team_id, request_id, inputs, seed=0):
         sock = socket.create_connection(self.address, timeout=self.io_timeout)
@@ -1166,14 +1179,17 @@ class IPCClient:
                     not _BROKER_ID.fullmatch(response["broker_id"])):
                 raise IPCError("invalid admission response")
             return IPCHandle(sock, request_id, team_id, response["broker_id"], response["job_id"], self.io_timeout,
-                             self.max_response_bytes)
+                             self.max_response_bytes, observe_cancel_ack=self._observe_cancel_ack)
         except BaseException:
             sock.close()
             raise
 
 
 class IPCHandle:
-    def __init__(self, sock, request_id, team_id, broker_id, job_id, io_timeout, max_response_bytes):
+    def __init__(self, sock, request_id, team_id, broker_id, job_id, io_timeout, max_response_bytes,
+                 *, observe_cancel_ack=False):
+        if type(observe_cancel_ack) is not bool:
+            raise ValueError("observe_cancel_ack must be a boolean")
         self._sock, self.request_id, self.team_id = sock, request_id, team_id
         self.broker_id, self.job_id = broker_id, job_id
         self._io_timeout, self._max_response_bytes = io_timeout, max_response_bytes
@@ -1181,7 +1197,35 @@ class IPCHandle:
         self._read_lock = threading.Lock()
         self._closed = False
         self._cancel_sent = False
+        self._cancel_attempted = False
         self.cancel_acknowledged = False
+        self._observe_cancel_ack = observe_cancel_ack
+        self._cancel_ack_observation = None
+        self._cancel_ack_observation_failed = False
+        self._cancel_ack_capture_pending = False
+
+    @property
+    def cancel_ack_observation(self):
+        """First validated acknowledgement receipt, or None if not observed."""
+        return self._cancel_ack_observation
+
+    @property
+    def cancel_ack_observation_failed(self):
+        """Whether receipt capture failed or more than one acknowledgement arrived."""
+        return self._cancel_ack_observation_failed or self._cancel_ack_capture_pending
+
+    def _capture_cancel_ack(self, accepted):
+        try:
+            if (self._cancel_ack_observation_failed or self._cancel_ack_observation is not None
+                    or not self._cancel_attempted):
+                self._cancel_ack_observation_failed = True
+                return
+            stamp = time.perf_counter_ns()
+            if type(stamp) is not int or not 0 <= stamp < 2 ** 63:
+                raise ValueError("invalid acknowledgement observation timestamp")
+            self._cancel_ack_observation = CancelAckObservation(accepted, stamp)
+        except Exception:
+            self._cancel_ack_observation_failed = True
 
     def cancel(self):
         """Request cooperative cancellation; call wait() for its acknowledgement."""
@@ -1190,6 +1234,10 @@ class IPCHandle:
                 raise IPCError("handle closed")
             if self._cancel_sent:
                 return
+            if self._observe_cancel_ack:
+                # The peer may reply while _send is still returning; record
+                # the local attempt before a frame can be acknowledged.
+                self._cancel_attempted = True
             _send(self._sock, {"version": 1, "op": "cancel", "request_id": self.request_id},
                   _MAX_REQUEST, time.monotonic() + self._io_timeout)
             self._cancel_sent = True
@@ -1212,8 +1260,21 @@ class IPCHandle:
                                                            "cancel_requested", "cancel_not_accepted"}):
                         raise IPCError("invalid result response")
                     if response["status"] in {"cancel_requested", "cancel_not_accepted"}:
+                        if self._observe_cancel_ack:
+                            # Set before entering the helper so interrupted
+                            # capture cannot be mistaken for complete evidence.
+                            self._cancel_ack_capture_pending = True
+                            try:
+                                self._capture_cancel_ack(response["status"] == "cancel_requested")
+                            except Exception:
+                                self._cancel_ack_observation_failed = True
+                            self._cancel_ack_capture_pending = False
                         self.cancel_acknowledged = response["status"] == "cancel_requested"
                         continue
+                    if (self._observe_cancel_ack and response["status"] == "succeeded"
+                            and self._cancel_ack_observation is not None
+                            and self._cancel_ack_observation.accepted):
+                        self._cancel_ack_observation_failed = True
                     return response
             finally:
                 self.close()
