@@ -3,6 +3,7 @@ import hashlib
 import inspect
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import sys
 from types import SimpleNamespace
@@ -78,17 +79,37 @@ class FakeExecutor:
         self.fail_heldout = fail_heldout
         self.calls = []
         self.closed = False
+        self.budgets = []
+        self.begin_counts = []
+        self.cross_phase_collision = False
+        self.cross_phase_condition_collision = False
+        self.unicode_run_ids = False
 
     def begin_model(self, phase, seed, model_sha256, budget):
         assert model_sha256 == "a" * 64
+        self.budgets.append(budget)
+        self.begin_counts.append(budget.submissions)
         self.calls.append(("begin", phase, seed))
 
     def _cell(self, phase, assignment, cases, cell, budget, predictions=None):
         self.calls.append(("cell", phase))
+        self.budgets.append(budget)
         for index in range(16):
             for strength in (0.25, 0.75):
                 row = record_v2(index, strength, phase=phase)
                 row["case_id"] = cases[index]["case_id"]
+                row["condition_id"] = f"{phase}-condition-{index}-{strength}"
+                if self.cross_phase_condition_collision and phase == "heldout" and index == 0:
+                    row["condition_id"] = f"discovery-condition-{index}-{strength}"
+                names = {"clean": f"{phase}-clean-{index}", "repeat_clean": f"{phase}-repeat-{index}",
+                         "perturbed": f"{phase}-perturbed-{index}-{strength}"}
+                if self.unicode_run_ids:
+                    names = {role: f"{name}-caf\u00e9" for role, name in names.items()}
+                if self.cross_phase_collision and phase == "heldout" and index == 0:
+                    names["clean"] = "discovery-clean-0"
+                for role, events in row["traces"].items():
+                    for event in events:
+                        event["metadata"]["run_id"] = names[role]
                 if predictions is not None:
                     row["prediction_ref"] = predictions[index * 2 + (strength == 0.75)]["reference"]
                 budget.reserve(); budget.root()
@@ -100,7 +121,8 @@ class FakeExecutor:
 
     def run_discovery(self, assignment, cases, cell, budget):
         self._cell("discovery", assignment, cases, cell, budget)
-        return {"selection": "fake"}
+        self.selection = {"selection": "fake"}
+        return self.selection
 
     def run_heldout(self, assignment, cases, predictions, cell, budget):
         public = self.root / "public" / "artifacts"
@@ -162,6 +184,8 @@ class CustodianRunTests(unittest.TestCase):
         self.assertEqual(result["root_forwards"], 64)
         self.assertEqual([c for c in self.executor.calls if c[0] == "cell"],
                          [("cell", "discovery"), ("cell", "heldout")])
+        self.assertTrue(all(budget is self.executor.budgets[0] for budget in self.executor.budgets))
+        self.assertEqual(self.executor.begin_counts, [0, 32])
         private = registry.verify_run(self.root / "private")
         public = registry.verify_run(self.root / "public")
         self.assertEqual(private["state"], "succeeded")
@@ -270,6 +294,53 @@ class CustodianRunTests(unittest.TestCase):
         self.assertTrue((self.root / "public" / "artifacts" / "prediction_commitment.json").exists())
         self.assertEqual(registry.verify_run(self.root / "public")["state"], "incomplete")
         self.assertFalse((self.root / "public" / "artifacts" / "failure.json").exists())
+
+    def test_process_death_after_commitment_leaves_both_runs_incomplete(self):
+        child = r'''import os, sys
+from pathlib import Path
+from unittest.mock import patch
+sys.path.insert(0, str(Path.cwd() / "tests"))
+from test_causal_v2_custodian_run import FakeExecutor, fake_snapshot, fake_freeze
+from looking_glass import registry
+from looking_glass.causal_v2_custody import canonical_json
+from looking_glass.causal_v2_custodian_run import run_study_once
+root = Path(sys.argv[1])
+original = registry.ExperimentRun.write_artifact
+def exit_after_commitment(run, name, data):
+    original(run, name, data)
+    if name == "prediction_commitment.json":
+        os._exit(71)
+class WatchedExecutor(FakeExecutor):
+    def run_heldout(self, *args):
+        (root.parent / "heldout-started").touch()
+        return super().run_heldout(*args)
+with patch("looking_glass.causal_v2_custodian_run._checked_preparation",
+           return_value=(fake_snapshot(), canonical_json({"schema": "fake-public-pre-manifest"}))), \
+     patch("looking_glass.causal_v2_custodian_run._build_freeze", side_effect=fake_freeze), \
+     patch("looking_glass.causal_v2_custodian_run._verify_discovery",
+           side_effect=lambda snapshot, cells, chunks: list(chunks)), \
+     patch("looking_glass.causal_v2_custodian_run._MODEL_SEEDS", (17,)), \
+     patch("looking_glass.causal_v2_custodian_run._CELLS_PER_MODEL", 1), \
+     patch("looking_glass.causal_v2_custodian_run._EXPECTED_FORWARDS", 64), \
+     patch.object(registry.ExperimentRun, "write_artifact", new=exit_after_commitment):
+    run_study_once(root, prepared=None, expected_context={}, exclusion_bytes=b"", pilot_bytes=b"",
+        historical_cases=[], source_sha256={}, clarification_sha256={}, runtime={}, created_utc="fake",
+        executor=WatchedExecutor(root), score=lambda *args, **kwargs: b"{}",
+        classify_exposure=lambda: {"schema": "synthetic-v2-exposure-v1",
+            "classification": "unknown", "basis": "fabricated crash test"})
+raise AssertionError("child unexpectedly continued")
+'''
+        result = subprocess.run([sys.executable, "-c", child, str(self.root)],
+                                cwd=Path(__file__).resolve().parent.parent,
+                                capture_output=True, timeout=30)
+        self.assertEqual(result.returncode, 71, result.stderr.decode("utf-8", errors="replace"))
+        self.assertFalse((self.root.parent / "heldout-started").exists())
+        self.assertEqual(registry.verify_run(self.root / "private")["state"], "incomplete")
+        self.assertEqual(registry.verify_run(self.root / "public")["state"], "incomplete")
+        self.assertTrue((self.root / "public" / "artifacts" / "prediction_commitment.json").exists())
+        self.assertTrue((self.root / "private" / "artifacts" / "prediction_record.json").exists())
+        self.assertFalse((self.root / "private" / "artifacts" / "cell-00-h.json").exists())
+        self.assertFalse((self.root / "public" / "artifacts" / "results.json").exists())
 
     def test_forward_budget_rejects_duplicate_and_unreserved_roots(self):
         budget = ForwardBudget(1)
@@ -463,6 +534,75 @@ class CustodianRunTests(unittest.TestCase):
             self.run_once(scorer_override=scorer)
         self.assertFalse((self.root / "public" / "artifacts" / "results.json").exists())
         self.assertEqual(registry.verify_run(self.root / "public")["state"], "failed")
+
+    def test_cross_phase_trace_id_collision_prevents_result_publication(self):
+        self.executor.cross_phase_collision = True
+        with self.assertRaisesRegex(CustodianError, "reused across discovery and held-out"):
+            self.run_once()
+        self.assertFalse((self.root / "public" / "artifacts" / "results.json").exists())
+        self.assertEqual(registry.verify_run(self.root / "public")["state"], "failed")
+
+    def test_cross_phase_condition_id_collision_prevents_result_publication(self):
+        self.executor.cross_phase_condition_collision = True
+        with self.assertRaisesRegex(CustodianError, "condition ID is reused across"):
+            self.run_once()
+        self.assertFalse((self.root / "public" / "artifacts" / "results.json").exists())
+        self.assertEqual(registry.verify_run(self.root / "public")["state"], "failed")
+
+    def test_non_ascii_registry_trace_ids_are_valid_and_remain_distinct(self):
+        self.executor.unicode_run_ids = True
+        self.run_once()
+        self.assertEqual(registry.verify_run(self.root / "private")["state"], "succeeded")
+        raw = (self.root / "private" / "artifacts" / "cell-00-d.json").read_bytes()
+        self.assertIn("caf\u00e9".encode(), raw)
+
+    def test_non_ascii_failure_is_preserved_in_registry_encoding(self):
+        def fail(*args):
+            raise RuntimeError("private \u00e9chec")
+        self.executor.run_discovery = fail
+        with self.assertRaisesRegex(RuntimeError, "\u00e9chec"):
+            self.run_once()
+        info = registry.verify_run(self.root / "private")
+        self.assertEqual(info["state"], "failed")
+        failure = json.loads((self.root / "private" / "artifacts" / "failure.json").read_bytes())
+        self.assertIn("\u00e9chec", failure["message"])
+
+    def test_mutating_executor_alias_cannot_change_checked_freeze_input(self):
+        def mutate_alias(snapshot, checked_cells, chunks):
+            list(chunks)
+            self.executor.selection["selection"] = "mutated"
+        with patch("looking_glass.causal_v2_custodian_run._verify_discovery", side_effect=mutate_alias):
+            self.run_once()
+        freeze = json.loads((self.root / "public" / "artifacts" / "prediction_freeze.json").read_bytes())
+        self.assertEqual(freeze["cells"][0]["selection"], {"selection": "fake"})
+
+    def test_discovery_verifier_cannot_mutate_selection_snapshot(self):
+        def mutate_checked(snapshot, checked_cells, chunks):
+            list(chunks)
+            checked_cells[0]["selection"] = {"changed": True}
+        with patch("looking_glass.causal_v2_custodian_run._verify_discovery", side_effect=mutate_checked):
+            with self.assertRaisesRegex(CustodianError, "mutated the frozen selection"):
+                self.run_once()
+        self.assertNotIn(("cell", "heldout"), self.executor.calls)
+
+    def test_freeze_must_embed_exact_checked_selection_snapshot(self):
+        def broken(snapshot, manifest, cells):
+            freeze, prediction, _ = fake_freeze(snapshot, manifest, cells)
+            frozen = json.loads(freeze)
+            frozen["cells"][0]["selection"] = {"changed": True}
+            freeze = canonical_json(frozen)
+            record = json.loads(prediction)
+            record["freeze_sha256"] = hashlib.sha256(freeze).hexdigest()
+            prediction = canonical_json(record)
+            public = canonical_json({"schema": "synthetic-v2-prediction-commitment-v1",
+                "pre_manifest_sha256": record["pre_manifest_sha256"],
+                "freeze_sha256": record["freeze_sha256"],
+                "commitment": commitment("predictions", snapshot.prediction_nonce, record)})
+            return freeze, prediction, public
+        with patch("looking_glass.causal_v2_custodian_run._build_freeze", side_effect=broken):
+            with self.assertRaisesRegex(CustodianError, "freeze differs from verified selections"):
+                self.run_once()
+        self.assertNotIn(("cell", "heldout"), self.executor.calls)
 
 
 if __name__ == "__main__":

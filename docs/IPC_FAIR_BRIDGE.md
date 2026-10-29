@@ -91,6 +91,10 @@ are not fairly scheduled by this component. A known waiter-capacity rejection
 is reported as a terminal `QueueFull` result for that connection without
 quarantining other jobs. Admission is still bounded independently by guardian
 connection records, waiting bytes, broker slots and target commitments.
+The read-only `dispatcher_alive` observation does not acquire the bridge
+condition. It reports whether the dispatcher thread is alive at that instant;
+it does not establish that the dispatcher is making progress or is ready to
+accept work, and may change immediately after it is read.
 If detached work retains all connection commitments, a later connection is
 rejected as busy before a new guardian record or claim is created; this known
 capacity denial does not itself quarantine the service. An ambiguous failure
@@ -139,7 +143,11 @@ trusted producer/runtime boundary, not a demonstrated general guarantee.
 For a clean shutdown, stop and close the paired server first, then close the
 bridge and the broker. `bridge.close(timeout=...)` returns false if records
 are still live, the dispatcher is blocked, or custody is quarantined; it does
-not silently release uncertain claims. Timestamp values use
+not silently release uncertain claims. Timeouts for proxy `wait` and bridge
+`close` must be finite, nonnegative and no greater than Python's
+`threading.TIMEOUT_MAX`; `wait(None)` explicitly waits without a deadline.
+Invalid timeouts are rejected before custody or shutdown state changes.
+Timestamp values use
 `perf_counter_ns`; the bridge submission time begins after IPC decoding and
 wire validation. It includes the bridge's private snapshot, model-domain
 validation, encoding and fair waiting, but excludes connection/read and IPC

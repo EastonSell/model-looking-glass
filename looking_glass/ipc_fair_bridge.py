@@ -5,6 +5,7 @@ limits. The owner must use the paired server, codec, broker and supervisor.
 """
 from dataclasses import dataclass, replace
 import json
+import math
 from queue import Full
 import re
 import threading
@@ -59,6 +60,15 @@ def _raise_public_failure(kind):
 
 def _identifier(value):
     return type(value) is str and _IDENTIFIER.fullmatch(value) is not None
+
+
+def _validate_timeout(value, *, allow_none=False):
+    """Reject values that cannot be represented by the runtime's waits."""
+    if value is None and allow_none:
+        return
+    if (type(value) not in (int, float) or value < 0 or value > threading.TIMEOUT_MAX or
+            (type(value) is float and not math.isfinite(value))):
+        raise ValueError('timeout must be finite, nonnegative and within the runtime limit')
 
 
 def _unique_object(pairs):
@@ -320,6 +330,15 @@ class FairIPCBridge:
         return (self._quarantined or self._adapter.indeterminate or
                 self._target_broker.quarantined or
                 (self._server is not None and self._server.custody_quarantined))
+
+    @property
+    def dispatcher_alive(self):
+        """Observe dispatcher thread liveness without acquiring the bridge condition.
+
+        This instantaneous observation does not establish progress or readiness.
+        """
+        thread = self._thread
+        return thread is not None and thread.is_alive()
 
     @property
     def committed_bytes(self):
@@ -609,8 +628,7 @@ class FairIPCBridge:
         return requested
 
     def _wait(self, record, timeout):
-        if timeout is not None and (type(timeout) not in (int, float) or timeout < 0):
-            raise ValueError('timeout must be nonnegative')
+        _validate_timeout(timeout, allow_none=True)
         try:
             return self._wait_inner(record, timeout)
         except TimeoutError:
@@ -796,6 +814,7 @@ class FairIPCBridge:
         return server
 
     def close(self, timeout=3.0):
+        _validate_timeout(timeout)
         deadline = time.monotonic() + timeout
         with self._condition:
             self._accepting = False
@@ -810,7 +829,7 @@ class FairIPCBridge:
             self._condition.notify_all()
             thread = self._thread
         if thread is not None:
-            thread.join(max(0, deadline - time.monotonic()))
+            thread.join(min(threading.TIMEOUT_MAX, max(0, deadline - time.monotonic())))
             if thread.is_alive():
                 return False
         self._adapter.close()

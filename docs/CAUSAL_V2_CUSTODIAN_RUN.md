@@ -18,6 +18,8 @@ are written and reread first. One model per seed and phase is passed to the
 executor across that seed's nine cells. Each held-out condition refers to three
 consecutive committed predictions as
 `sha256:<prediction-record-sha256>:<first-row-index>:3`.
+The binder and freeze builder receive distinct parsed copies of one bounded
+canonical selection snapshot; the custodian rejects mutation of either copy.
 
 The executor is trusted to use each supplied seed, expected model-state hash,
 private assignment and case exactly as specified; check the model/input pair,
@@ -33,7 +35,14 @@ exclusive, quiescent model ownership. The budget's `reserve()` is called before
 each preparation and `root()` immediately before the corresponding root call.
 A success requires precisely 57,408 submissions and root forwards, and both
 counters are limited to 60,000. This is a cooperative counter: it cannot detect
-uncooperative calls that bypass it.
+uncooperative calls that bypass it. The same budget instance spans every model,
+cell and phase. Actual trace run IDs must use an attempt-wide namespace; a
+clean or repeated-clean ID may be reused only for the same retained forward,
+model, input and phase. Trace source IDs bind to their saved `run_id` and site,
+and clean/perturbed base IDs use the matching `<run_id>/logits`. The custodian
+rejects any trace run ID or condition ID occurring in both hash-checked discovery
+and held-out chunks; the discovery and scoring validators separately check
+reuse within each phase.
 
 After successful cleanup, `close()` must return exactly
 `{"input_model_pairing_verified": true, "private_plan_metadata_verified": true}`
@@ -53,6 +62,10 @@ authentication or anonymization mechanism, and predictable private text may be
 guessable from the digest. Missing or invalid classification prevents scoring, and
 unblinded or unknown evidence must not be presented as confirmation. The
 classification is a cooperative attestation, not proof of secrecy.
+
+Protocol records use the protocol's ASCII-escaped canonical JSON. Cell chunks
+and private failure envelopes use the registry's UTF-8 canonical JSON; their
+validators must not conflate these distinct encodings.
 
 The scorer also receives explicit caller assertions about the
 source/case/phase, input-model and private-plan checks; these are not independent
