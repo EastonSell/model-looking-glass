@@ -147,7 +147,8 @@ def saved_artifact_fixture():
     prompt_interactions = [((logistic(b + 2) - logistic(b + 1)) - logistic(b + 1)) + logistic(b)
                            for b in (0, 3, 3, 3)]
     result_raw = encode({"schema": "distilgpt2-copy-head-factorial-result-v1", "status": "complete",
-        "manifest_sha256": digest(manifest_raw), "submitted_forwards": 224, "returned_forwards": 224,
+        "manifest_sha256": digest(manifest_raw), "submitted_forwards": 224,
+        "model_call_returns_observed": 224, "returned_forwards": 224,
         "raw_payload_bytes": sum(map(len, files.values())), "cases": records,
         "summary": {"families": [{"group": i + 1, "interaction": -0.1745489723392314,
                                    "arms": arm_summary, "case_interactions": prompt_interactions}
@@ -195,6 +196,18 @@ def test_saved_artifact_binding_requires_receipt_and_matching_observed_interacti
     with pytest.raises(ValueError, match="arm"):
         reference.analyze_saved(case_raw, manifest_raw, altered, pre_raw, encode(rehashed_receipt),
                                 b"journal", files, expected=expected, vocabulary_size=2)
+    for invalid in (None, 223, True):
+        bad_result = json.loads(result_raw)
+        if invalid is None:
+            del bad_result["model_call_returns_observed"]
+        else:
+            bad_result["model_call_returns_observed"] = invalid
+        altered = encode(bad_result)
+        rehashed_receipt = json.loads(receipt_raw)
+        rehashed_receipt["run_sha256"]["result.json"] = hashlib.sha256(altered).hexdigest()
+        with pytest.raises(ValueError, match="incomplete"):
+            reference.analyze_saved(case_raw, manifest_raw, altered, pre_raw, encode(rehashed_receipt),
+                                    b"journal", files, expected=expected, vocabulary_size=2)
 
 
 def test_saved_directory_requires_the_complete_quiescent_receipt(tmp_path):
