@@ -30,6 +30,7 @@ _CONTEXT = None
 _SEED = 20261028
 _LOGICAL_LIMIT = 48 * 1024 ** 2
 _DISK_LIMIT = 128 * 1024 ** 2
+_OUTER_EVIDENCE_LIMIT = 1024 ** 2
 
 
 def verify_published_bytes(url, expected):
@@ -578,9 +579,10 @@ def _execute_verified(*, source_commit, runtime_bytes, plan_bytes, plan_sha256, 
     if (type(grant.logical_limit_bytes) is not int or grant.logical_limit_bytes != _LOGICAL_LIMIT
             or type(grant.disk_limit_bytes) is not int or grant.disk_limit_bytes != _DISK_LIMIT):
         raise ValueError('phase grant does not match the approved limits')
-    # Reserve the exact start marker and a bounded terminal-marker allowance
-    # inside this phase's physical share, including incomplete attempts.
-    supervisor_disk_limit = grant.disk_limit_bytes - len(start_bytes) - 4096
+    # Reserve the launcher markers and the outer owner's bounded receipts and
+    # logs inside this phase's physical share, including incomplete attempts.
+    supervisor_disk_limit = (grant.disk_limit_bytes - len(start_bytes) - 4096
+                             - _OUTER_EVIDENCE_LIMIT)
     try:
         _write_new(marker, start_bytes)
         bundle = _load_trusted_model(state)
