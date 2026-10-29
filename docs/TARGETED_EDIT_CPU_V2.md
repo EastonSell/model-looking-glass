@@ -212,8 +212,16 @@ smaller edit descriptively. Record full logits, norms, state/cleanup checks
 and all per-case and aggregate measurements for each condition, including
 failed criteria. Record partial, failed and cancelled attempts immutably.
 
-Derive scores using v1's exact float64 log-softmax, NLL, KL and smallest-ID
-top-token tie convention. The selected dose has two distinct predeclared
+Derive float64 log probabilities as `(z - max(z)) - log(sum(exp(z - max(z))))`,
+then use the v1 NLL, KL and smallest-ID top-token tie conventions. Subtracting
+the maximum before the log normalizer avoids losing that normalizer on very
+large tied finite logits. The original v1 implementation and results remain
+unchanged; v2 scores can differ in their final floating-point bits. The
+offline check of the 39 saved v1 reference logit rows found maximum absolute
+log-probability difference `3.55e-15` and maximum locality KL difference
+`5.46e-15`; it does not alter the preserved v1 decision or predict differences
+on other logits. The test suite pins those three saved matrices and repeats the
+comparison with a `1e-12` tolerance. The selected dose has two distinct predeclared
 predictions for each target: positive margin change, and point change equal to
 its mean development target-margin change. Count a sign prediction as correct
 only when observed change is strictly positive; zero is incorrect. Report all

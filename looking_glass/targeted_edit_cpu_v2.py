@@ -58,6 +58,14 @@ def check_split_rows():
     return len(rows)
 
 
+def _score(array):
+    """Use shifted float64 log-softmax without adding a tiny term to a huge max."""
+    z = array.astype(np.float64)
+    shifted = z - float(np.max(z))
+    logp = shifted - float(np.log(np.sum(np.exp(shifted), dtype=np.float64)))
+    return z, logp, int(np.argmax(z))
+
+
 def _scores(logits, cases, names):
     """Calculate scores from private copies of fixed-size raw matrices.
 
@@ -77,7 +85,7 @@ def _scores(logits, cases, names):
         if not np.isfinite(snapshot).all():
             raise v1.StudyError("invalid or nonfinite fixed-shape logit matrix")
         snapshots[name] = snapshot
-    return {name: [v1._score(row) for row in snapshots[name]] for name in names}
+    return {name: [_score(row) for row in snapshots[name]] for name in names}
 
 
 def _condition(scores, cases, name):
