@@ -27,6 +27,7 @@ The roadmap is a research plan, not a claim that its milestones are complete. Th
 - The separate [CPU trace IPC v2](docs/TRACE_IPC_V2.md) delivers bounded multi-event traces to two trusted local client processes. Host budgets are independent per process and release is cooperative; it does not enable GPU tracing.
 - A [CPU trace owner](docs/CPU_TRACE_OWNER.md) composes the [traced worker](docs/TRACED_WORKER.md), [producer envelope](docs/TRACE_PRODUCER.md) and [host custody ledger](docs/HOST_BUDGET.md) for private in-process jobs. It also underpins the separate CPU trace IPC v2; it is not integrated with the existing forward-only broker and does not impose a physical memory limit.
 - The [experiment registry](docs/REGISTRY.md) records manifests, artifacts and terminal states. [Research cases](docs/RESEARCH_CASES.md), [localization](docs/LOCALIZATION.md), and [causal metrics](docs/CAUSAL_METRICS.md) support controlled evaluations; the public held-out cases are not a protected blind benchmark. [Transformer trace comparison](docs/TRANSFORMER_LOCALIZATION.md) requires independently verified pairing and execution context.
+- The [behavioral edit evaluator](docs/BEHAVIORAL_EDIT_EVALUATION.md) reports paired target and locality observations, supplied distribution changes, and scoped rollback evidence. It does not establish semantic damage or prescribe success thresholds.
 
 These components have their own tests and limits; their presence alone does not establish a validated shared GPU service, causal discovery, or a general throughput claim.
 
