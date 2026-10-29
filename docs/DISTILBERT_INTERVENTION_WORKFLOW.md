@@ -59,6 +59,9 @@ sensitivity, or equal causal roles. A zero injection or target displacement, an
 unchanged chosen readout, or an unavailable control makes `restoration_comparison` unavailable;
 all measured values remain in the report. Even when that status is
 `descriptive`, it makes no pass/fail or generalization claim.
+Scalar readouts, vector distances and L2 doses are calculated in binary64
+from the recorded float32 bit patterns, preserving float32 subnormals even
+when CPU arithmetic flushes them.
 
 `result.witnesses` retains the clean selected vectors (with their documented
 singleton axes), every plan's full captured outputs, and all six readout-logit

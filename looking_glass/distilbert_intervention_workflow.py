@@ -36,8 +36,28 @@ def _numerically_equal(left, right):
     return bool(((a == b) | both_zero).all())
 
 
+def _float32_values(tensor):
+    """Decode finite float32 bits without a flush-sensitive float32 cast."""
+    if tensor.dtype != torch.float32 or tensor.device.type != "cpu":
+        raise ValueError("expected CPU float32 values")
+    result = []
+    for signed in tensor.contiguous().view(torch.int32).reshape(-1).tolist():
+        bits = signed & 0xffffffff
+        exponent, fraction = (bits >> 23) & 0xff, bits & 0x7fffff
+        if exponent == 0xff:
+            raise ValueError("expected finite float32 values")
+        significand = fraction if exponent == 0 else fraction | 0x800000
+        if bits >> 31:
+            significand = -significand
+        result.append(math.ldexp(significand, -149 if exponent == 0 else exponent - 150))
+    return result
+
+
 def _l2(left, right):
-    return float(torch.linalg.vector_norm(left.double() - right.double()).item())
+    if left.shape != right.shape:
+        raise ValueError("dose vectors must have the same shape")
+    a, b = _float32_values(left), _float32_values(right)
+    return math.sqrt(math.fsum((x - y) * (x - y) for x, y in zip(a, b)))
 
 
 def _rows(tensor):
@@ -257,10 +277,11 @@ def run_known_distilbert_intervention(model, input_ids, attention_mask, *, injec
         all_logits = {"clean": clean_logits, "injected": injected_logits, "self": self_logits,
                       "target": target_logits, "off_target": control_logits, "undo": undo_logits}
         readout = {name: logits[0, readout_position].detach().clone() for name, logits in all_logits.items()}
-        measurements = {name: {"selected_logit": float(values[readout_token_id].item()),
+        decoded = {name: _float32_values(values) for name, values in readout.items()}
+        measurements = {name: {"selected_logit": decoded[name][readout_token_id],
                                "selected_logit_float32_bits": int(values[readout_token_id:readout_token_id + 1].view(torch.int32)[0].item()) & 0xffffffff,
-                               "max_absolute_distance_from_clean": float((values.double() - readout["clean"].double()).abs().max().item()),
-                               "max_absolute_distance_from_injected": float((values.double() - readout["injected"].double()).abs().max().item())}
+                               "max_absolute_distance_from_clean": max(abs(x - y) for x, y in zip(decoded[name], decoded["clean"])),
+                               "max_absolute_distance_from_injected": max(abs(x - y) for x, y in zip(decoded[name], decoded["injected"]))}
                         for name, values in readout.items()}
         injection_dose = _l2(injected["injection_after"][0, target_token], before[0, target_token])
         target_dose = _l2(target_state["restoration_after"][0, target_token], target_state["restoration_before"][0, target_token])
@@ -295,9 +316,9 @@ def run_known_distilbert_intervention(model, input_ids, attention_mask, *, injec
             "injection": {"module_path": injection_path, "layer": injection_layer, "invocation": 0,
                           "batch_index": 0, "token_index": target_token, "coordinate": coordinate,
                           "requested_addition": amount, "realized_l2": injection_dose,
-                          "float32_addition": float(delta[coordinate].item()),
-                          "before": float(before[0, target_token, coordinate].item()),
-                          "after": float(injected["injection_after"][0, target_token, coordinate].item()),
+                          "float32_addition": _float32_values(delta[coordinate:coordinate + 1])[0],
+                          "before": _float32_values(before[0, target_token, coordinate:coordinate + 1])[0],
+                          "after": _float32_values(injected["injection_after"][0, target_token, coordinate:coordinate + 1])[0],
                           "status": "nonzero" if injection_dose > 0 else "zero_displacement"},
             "restoration": {"module_path": restoration_path, "layer": restoration_layer,
                             "invocation": 0, "batch_index": 0, "token_index": target_token,

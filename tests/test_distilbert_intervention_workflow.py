@@ -1,6 +1,8 @@
 """Fabricated CPU checks of the reusable known-intervention workflow."""
 
 import json
+import subprocess
+import sys
 
 import pytest
 import torch
@@ -39,6 +41,29 @@ def test_numerical_readout_equality_ignores_only_zero_sign():
     subnormal = torch.tensor([1], dtype=torch.int32).view(torch.float32)
     assert _numerically_equal(positive_zero, negative_zero)
     assert not _numerically_equal(positive_zero, subnormal)
+
+
+def test_float32_subnormal_measurements_survive_denormal_flush():
+    code = r'''
+import sys
+import torch
+from looking_glass.distilbert_intervention_workflow import _float32_values, _l2, _numerically_equal
+zero = torch.tensor([0], dtype=torch.int32).view(torch.float32)
+small = torch.tensor([1], dtype=torch.int32).view(torch.float32)
+negative = torch.tensor([-2147483647], dtype=torch.int32).view(torch.float32)
+for mode in (False, True):
+    if not torch.set_flush_denormal(mode):
+        sys.exit(77)
+    assert _float32_values(small) == [2.0 ** -149]
+    assert _float32_values(negative) == [-(2.0 ** -149)]
+    assert _l2(small, zero) == 2.0 ** -149
+    assert _l2(small, negative) == 2.0 ** -148
+    assert not _numerically_equal(small, zero)
+'''
+    result = subprocess.run([sys.executable, "-B", "-c", code], capture_output=True, text=True)
+    if result.returncode == 77:
+        pytest.skip("runtime cannot configure CPU denormal mode")
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_injection_restore_off_target_and_full_witnesses(setup):
