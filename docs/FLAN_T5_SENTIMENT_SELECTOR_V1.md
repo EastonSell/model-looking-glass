@@ -90,6 +90,17 @@ commitments before reporting success, and retain partial files on an error.
 The selector bounds its private pool to 256 KiB and the written/observed
 custody artifacts to 8 MiB with a 256 KiB allowance for external records;
 the surrounding custodian still accounts for its own logs and receipts.
+The selector's printed status precedes the launcher's final source and prefix
+checks. The external custodian must retain and observe the direct process exit,
+accept a stage only after exit 0 and reconciliation of its saved private and
+public artifacts, and treat a nonzero/unknown exit as incomplete even if a card
+or success line exists. Preserve partial records without retrying the fixed
+attempt.
+For each stage, retain the checked selector checkout revision and actual
+Python, Transformers and tokenizers versions. An independent reader must
+replay the complete saved 12-unit tokenizer screen with those recorded
+dependencies and compare all records before the first model forward. The
+asset digest and tokenizer class alone do not pin library behavior.
 The surrounding custodian records stage outcomes and sanitized failures,
 does not retry the fixed attempt, and applies the protocol's reveal rule if
 selection is incomplete. An external independent observer reads the public
