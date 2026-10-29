@@ -163,6 +163,17 @@ def test_uncommitted_owner_directory_is_never_reported_pending(roots):
             state.inspect(locked, root)
 
 
+@pytest.mark.parametrize('size', [0, 1, 31, 33])
+def test_partial_nonce_metadata_is_never_reported_pending(roots, size):
+    gate, root = roots
+    with old_gate.acquire(gate, expected_root=gate, timeout=2) as locked:
+        new_claim(root)
+        state.announce_allocation(locked, root)
+        (root / 'nonce.bin').write_bytes(b'x' * size)
+        with pytest.raises(state.SuccessorStateError, match='nonce file metadata'):
+            state.inspect(locked, root)
+
+
 @pytest.mark.parametrize('unknown', ['natural-successor-allocation-v2.json',
                                     'pool-query-unknown.json', 'phase-claim.tmp',
                                     'nonce.bin.partial', 'owner-started-v2.json'])

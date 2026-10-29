@@ -35,7 +35,9 @@ fixed paths and identities, and canonical bounded marker schemas. Its
 An orphan phase claim, owner-start marker without its forward announcement,
 owner directory without a commitment, unknown or malformed marker, missing or
 changed root, invalid lock, or legacy query artifact causes a stop; it is never
-an absent or clear state. The transition, query, phase-claim, owner-start,
+an absent or clear state. If a nonce file exists, its metadata must describe a
+regular, single-link, non-reparse 32-byte file; its contents are not read by
+the state inspector. The transition, query, phase-claim, owner-start,
 nonce, heldout-record and commitment filename prefixes are reserved: unknown
 or partial names in these namespaces also stop. Successful `inspect` output is a point-in-time observation and
 must not be used after releasing the lock without a fresh check. The injection
