@@ -223,10 +223,20 @@ def _stop_and_reap(child, job):
     if child is not None:
         try:
             child.wait(timeout=5)
-        except subprocess.TimeoutExpired as error:
-            raise LaunchError("child could not be reaped; protections retained", False) from error
+        except BaseException as reap_error:
+            if isinstance(reap_error, (KeyboardInterrupt, SystemExit)):
+                reap_error.child_reaped = False
+                if job_error is not None:
+                    raise reap_error from job_error
+                raise
+            if isinstance(job_error, (KeyboardInterrupt, SystemExit)):
+                job_error.child_reaped = False
+                raise job_error from reap_error
+            if job_error is not None:
+                reap_error.__cause__ = job_error
+            raise LaunchError("child could not be reaped; protections retained", False) from reap_error
     if job_error is not None:
-        if isinstance(job_error, KeyboardInterrupt):
+        if isinstance(job_error, (KeyboardInterrupt, SystemExit)):
             job_error.child_reaped = child is not None
             raise job_error
         raise LaunchError("process job could not be drained", child is not None) from job_error
@@ -328,11 +338,11 @@ def run(checkout, venv, dependencies, work, module, timeout):
         return {"status": "development_only", "study_ready": False,
                 "source_revision": revision, "source_sha256": before, "child_reaped": True}
     except BaseException as error:
-        status = "cancelled" if isinstance(error, KeyboardInterrupt) else "failed"
+        status = "cancelled" if isinstance(error, (KeyboardInterrupt, SystemExit)) else "failed"
         try:
             quarantine.retry_cleanup()
         except BaseException as cleanup_error:
-            if isinstance(cleanup_error, KeyboardInterrupt):
+            if isinstance(cleanup_error, (KeyboardInterrupt, SystemExit)):
                 status = "cancelled"
             raise LaunchError("development cleanup requires retry", quarantine.child_reaped,
                               status=status, quarantine=quarantine) from cleanup_error
@@ -358,15 +368,17 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except SystemExit:
+        raise  # Preserve argparse help and usage exit codes.
     except BaseException as error:
-        status = "cancelled" if isinstance(error, KeyboardInterrupt) else getattr(error, "status", "failed")
+        status = "cancelled" if isinstance(error, (KeyboardInterrupt, SystemExit)) else getattr(error, "status", "failed")
         quarantine = getattr(error, "quarantine", None)
         protection_state = "released"
         if quarantine is not None:
             try:
                 quarantine.retry_cleanup()
             except BaseException as retry_error:
-                if isinstance(retry_error, KeyboardInterrupt):
+                if isinstance(retry_error, (KeyboardInterrupt, SystemExit)):
                     status = "cancelled"
                 protection_state = "unknown_on_process_exit"
         print(json.dumps({"status": status, "study_ready": False, "protection_state": protection_state,

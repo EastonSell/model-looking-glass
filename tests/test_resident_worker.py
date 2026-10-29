@@ -460,8 +460,9 @@ class ResidentWorkerTests(unittest.TestCase):
         worker = ResidentWorker('cuda', ObservedModel().eval())
         worker._device = torch.device('cuda:0')
         source, first = inspect.getsourcelines(ResidentWorker._perform_with_custody)
-        target = first + max(i for i, line in enumerate(source)
-                             if line.strip() == 'self._live_buffers[2] = output')
+        target = first + next(i for i, line in enumerate(source)
+                              if line.strip() == 'self._live_buffers[2] = output'
+                              and source[i - 1].strip() == 'output = self._model(**device_inputs)')
         fired = []
 
         def trace(frame, event, arg):

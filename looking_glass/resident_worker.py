@@ -4,6 +4,7 @@ This is not a sandbox, scheduler, model loader, or trace dispatcher. See
 ``docs/RESIDENT_WORKER.md`` for the ownership and reproducibility contract.
 """
 from collections.abc import Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
 import threading
 from types import MappingProxyType
@@ -62,6 +63,60 @@ class ForwardRequest:
 class ForwardResult:
     request_id: str
     logits: torch.Tensor
+
+
+class _ResidentResultCustody:
+    """Preallocated producer slot for the fixed-workspace service path."""
+
+    __slots__ = ('generation', 'request', 'logits', 'result', 'error',
+                 'producer_error', 'forward_error', 'state_error')
+
+    def __init__(self):
+        self.generation = 0
+        self.request = None
+        self.logits = None
+        self.result = None
+        self.error = None
+        self.producer_error = None
+        self.forward_error = None
+        self.state_error = None
+
+
+def _raise_detached_producer_failure(exc):
+    """Propagate the interruption category without exposing private custody."""
+    message = 'worker ownership is uncertain; terminate the owner process'
+    if isinstance(exc, KeyboardInterrupt):
+        error = KeyboardInterrupt(message)
+    elif isinstance(exc, SystemExit):
+        error = SystemExit(message)
+    elif isinstance(exc, GeneratorExit):
+        error = GeneratorExit(message)
+    elif isinstance(exc, WorkerOutOfMemory):
+        error = WorkerOutOfMemory(message)
+    elif isinstance(exc, WorkerSynchronizationError):
+        error = WorkerSynchronizationError(message)
+    elif isinstance(exc, RequestCancelled):
+        error = RequestCancelled('request cancelled')
+    elif isinstance(exc, InvalidRequest):
+        error = InvalidRequest('invalid request')
+    elif isinstance(exc, WorkerStateError):
+        error = WorkerStateError(message)
+    elif isinstance(exc, WorkerConfigurationError):
+        error = WorkerConfigurationError(message)
+    elif isinstance(exc, OutputLimitExceeded):
+        error = OutputLimitExceeded(message)
+    elif isinstance(exc, WorkerExecutionError):
+        error = WorkerExecutionError(message)
+    elif isinstance(exc, Exception):
+        error = WorkerUnavailable(message)
+    else:
+        error = BaseException(message)
+    try:
+        raise error from None
+    except BaseException:
+        error.__context__ = None
+        error.__cause__ = None
+        raise
 
 
 # PyTorch's default generators are process-global. This lock coordinates this
@@ -179,14 +234,20 @@ class ResidentWorker:
         self._max_output_bytes = max_output_bytes
         self._lock = threading.Lock()
         self._model = model
+        # The fixed service binds an exact completion authority before work.
+        # Other ResidentWorker users retain their existing behavior.
+        self._owner_completion = None
         # Allocate fixed custody slots before any work can be launched. If a
         # device drain fails, retain known inputs/outputs on this worker even
         # when a failure-time append to the process hold list cannot allocate.
         self._live_buffers = [None, None, None, None, None]
+        self._retiring_buffers = [None, None, None, None, None]
         # Set before any device work and cleared only after a successful drain.
         # A missing receipt is conservatively treated as an uncertain drain.
         self._drain_pending = False
         self._poison_pending = threading.Event()
+        self._snapshot_lock = threading.Lock()
+        self._snapshot_error = None
         self._closed = False
         self._baseline = self._model_state()
 
@@ -267,6 +328,46 @@ class ResidentWorker:
 
     def snapshot_request(self, request):
         """Make a bounded CPU snapshot; caller must not mutate during copying."""
+        authority = self._owner_completion
+        if authority is None:
+            try:
+                return self._snapshot_request(request)
+            finally:
+                request = None
+        # A fixed owner keeps at most one failed snapshot traceback. Serializing
+        # preparations ensures a second failed producer cannot overwrite it.
+        with self._snapshot_lock:
+            if authority.unsafe:
+                raise WorkerUnavailable('owner is unsafe before snapshot')
+            try:
+                try:
+                    return self._snapshot_request(request)
+                except InvalidRequest:
+                    raise
+                except WorkerOutOfMemory as exc:
+                    # The caller may itself be handling the private snapshot
+                    # error. Suppressing display does not detach __context__.
+                    _raise_detached_producer_failure(exc)
+                except BaseException as exc:
+                    authority._unsafe = True
+                    if self._snapshot_error is None:
+                        self._snapshot_error = exc
+                    _raise_detached_producer_failure(exc)
+            except (InvalidRequest, WorkerOutOfMemory):
+                raise
+            except BaseException as exc:
+                # A one-shot interrupt can arrive before the inner handler
+                # roots the original error. Its context is then the only
+                # available reference to that producer traceback.
+                try:
+                    if self._snapshot_error is None:
+                        original = BaseException.__getattribute__(exc, '__context__')
+                        self._snapshot_error = original if isinstance(original, BaseException) else exc
+                finally:
+                    authority._unsafe = True
+                _raise_detached_producer_failure(exc)
+
+    def _snapshot_request(self, request):
         if _is_process_quarantined():
             request = None
             raise WorkerSynchronizationError("execution process is quarantined")
@@ -282,7 +383,11 @@ class ResidentWorker:
         try:
             inputs = {name: tensor.detach().clone(memory_format=torch.contiguous_format)
                       for name, tensor in request.inputs.items()}
-        except (MemoryError, torch.OutOfMemoryError):
+        except (MemoryError, torch.OutOfMemoryError) as exc:
+            if self._owner_completion is not None:
+                self._owner_completion._unsafe = True
+                self._snapshot_error = exc
+            self._signal_owner_unsafe()
             self._poison_pending.set()
             oom = True
         if oom:
@@ -292,19 +397,87 @@ class ResidentWorker:
             raise WorkerOutOfMemory("input snapshot allocation failed") from None
         return ForwardRequest(request.request_id, MappingProxyType(inputs), request.seed)
 
+    def _signal_owner_unsafe(self):
+        if self._owner_completion is not None:
+            try:
+                self._owner_completion.mark_unsafe()
+            finally:
+                # The owner flag remains sticky even if notification is
+                # interrupted once while entering the helper.
+                self._owner_completion._unsafe = True
+
+    def _before_owned_device(self):
+        if self._owner_completion is not None:
+            self._owner_completion._before_device()
+
+    @contextmanager
+    def _fork_owned_rng(self, devices):
+        """Avoid a CUDA RNG restore after an owner/session safety failure."""
+        if self._owner_completion is None:
+            with torch.random.fork_rng(devices=devices):
+                yield
+            return
+        state = None
+        if devices:
+            try:
+                self._before_owned_device()
+                state = torch.cuda.get_rng_state(self.device)
+            except BaseException:
+                try:
+                    self._signal_owner_unsafe()
+                finally:
+                    self._owner_completion._unsafe = True
+                raise
+        try:
+            # The ordinary torch helper restores CUDA state unconditionally on
+            # exit. Manage it separately so a revoked owner does not call CUDA.
+            with torch.random.fork_rng(devices=[]):
+                yield
+        except BaseException:
+            # An exception can itself interrupt the first unsafe notification.
+            # Latch before the restoration/final-drain code gets control.
+            self._owner_completion._unsafe = True
+            raise
+        finally:
+            if devices and not self._owner_completion.unsafe:
+                try:
+                    self._before_owned_device()
+                    torch.cuda.set_rng_state(state, self.device)
+                except BaseException:
+                    try:
+                        self._signal_owner_unsafe()
+                    finally:
+                        self._owner_completion._unsafe = True
+                    raise
+
     def _poison(self):
+        self._signal_owner_unsafe()
         self._poison_pending.set()
         self._release_model()
 
     def _release_model(self):
+        authority = self._owner_completion
         if (_is_process_quarantined() or self._drain_pending) and self._model is not None:
+            if authority is not None:
+                authority._unsafe = True
             try:
                 _quarantine_references.append(self._model)
             except BaseException:
                 pass
             # A rooted worker itself remains an allocation-free fallback.
             return
-        self._model = None
+        if authority is None:
+            self._model = None
+            return
+        with authority._decision_lock:
+            if _is_process_quarantined() or self._drain_pending:
+                authority._unsafe = True
+            if authority.unsafe:
+                return
+            # A local root keeps model finalizers outside the decision lock.
+            held_model = self._model
+            self._model = None
+        held_model = None
 
     def close(self):
         """Wait for an active call and release the worker's model reference."""
@@ -312,21 +485,50 @@ class ResidentWorker:
             self._closed = True
             self._release_model()
 
-    def _perform(self, request):
+    def _perform(self, request, custody=None):
         """Return outcome data, not exceptions carrying model/tensor tracebacks."""
         self._live_buffers[0] = request
         try:
-            return self._perform_with_custody(request)
+            if custody is None:
+                return self._perform_with_custody(request)
+            return self._perform_with_custody(request, custody)
         finally:
+            if custody is not None:
+                # Root the copied output before this producer can clear its
+                # buffers or return across the worker's cancellation checks.
+                custody.logits = self._live_buffers[4]
             if self._drain_pending:
                 # A failed/interrupted cleanup may have skipped its first
                 # attempt to publish the process latch; retry before clearing.
-                _mark_process_quarantined()
+                try:
+                    self._signal_owner_unsafe()
+                finally:
+                    if self._owner_completion is not None:
+                        self._owner_completion._unsafe = True
+                    _mark_process_quarantined()
             elif not _is_process_quarantined():
-                for index in range(len(self._live_buffers)):
-                    self._live_buffers[index] = None
+                authority = self._owner_completion
+                if authority is None:
+                    for index in range(len(self._live_buffers)):
+                        self._live_buffers[index] = None
+                else:
+                    # The unsafe read orders cleanup against the owner's
+                    # nonblocking signal. A later signal cannot undo a cleanup
+                    # that already won; an earlier one retains all slots.
+                    cleanup_committed = False
+                    with authority._decision_lock:
+                        if not authority.unsafe:
+                            for index in range(len(self._live_buffers)):
+                                self._retiring_buffers[index] = self._live_buffers[index]
+                                self._live_buffers[index] = None
+                            cleanup_committed = True
+                    # Avoid executing arbitrary object finalizers under the
+                    # decision lock. Both arrays were allocated before work.
+                    if cleanup_committed:
+                        for index in range(len(self._retiring_buffers)):
+                            self._retiring_buffers[index] = None
 
-    def _perform_with_custody(self, request):
+    def _perform_with_custody(self, request, custody=None):
         outcome, failure, sync_failure, interrupt = None, None, None, None
         device_inputs, output, logits = None, None, None
         devices = [self.device.index] if self.device.type == "cuda" else []
@@ -338,7 +540,12 @@ class ResidentWorker:
             nonlocal sync_failure
             # Do this before diagnostics or retention: both can fail in an OOM.
             sync_failure = "target device synchronization failed"
-            _mark_process_quarantined()
+            try:
+                self._signal_owner_unsafe()
+            finally:
+                if self._owner_completion is not None:
+                    self._owner_completion._unsafe = True
+                _mark_process_quarantined()
             # Recover values that were returned to local variables but whose
             # normal custody-slot assignment was interrupted. No new list is
             # allocated on this failure path.
@@ -363,17 +570,20 @@ class ResidentWorker:
                     if _is_process_quarantined():
                         return None, (WorkerSynchronizationError, "execution process is quarantined")
                     try:
-                        with torch.random.fork_rng(devices=devices):
+                        with self._fork_owned_rng(devices):
                             try:
                                 torch.random.default_generator.manual_seed(request.seed)
                                 if devices:
+                                    self._before_owned_device()
                                     torch.cuda.default_generators[self.device.index].manual_seed(request.seed)
                                 with torch.inference_mode():
                                     device_inputs = {}
                                     self._live_buffers[1] = device_inputs
                                     for name, tensor in request.inputs.items():
+                                        self._before_owned_device()
                                         device_inputs[name] = tensor.to(self.device)
                                     _enter_forward(self, request, device_inputs)
+                                    self._before_owned_device()
                                     output = self._model(**device_inputs)
                                     self._live_buffers[2] = output
                                     _returned_forward()
@@ -387,6 +597,7 @@ class ResidentWorker:
                                         raise ValueError("logits must match input batch and sequence dimensions")
                                     if logits.numel() * logits.element_size() > self.max_output_bytes:
                                         raise OutputLimitExceeded("logits exceed the configured output byte bound")
+                                    self._before_owned_device()
                                     with torch.inference_mode(False):
                                         outcome = logits.detach().to(device="cpu", copy=True,
                                                                      memory_format=torch.contiguous_format)
@@ -395,21 +606,41 @@ class ResidentWorker:
                                             or outcome.untyped_storage().nbytes()
                                             != outcome.numel() * outcome.element_size()):
                                         raise WorkerExecutionError("copied logits do not own exact contiguous storage")
+                            except BaseException as exc:
+                                # Every unexpected failure in the fixed owner
+                                # becomes unsafe before any later CUDA call.
+                                if self._owner_completion is not None:
+                                    self._owner_completion._unsafe = True
+                                    if custody is not None:
+                                        custody.forward_error = exc
+                                    try:
+                                        self._signal_owner_unsafe()
+                                    finally:
+                                        self._owner_completion._unsafe = True
+                                raise
                             finally:
-                                if devices:
+                                if devices and self._owner_completion is None:
                                     sync_attempted = True
                                     try:
+                                        self._before_owned_device()
                                         torch.cuda.synchronize(self.device)
+                                        self._before_owned_device()
                                         _finish_forward(True)
                                         self._drain_pending = False
                                     except BaseException:
                                         quarantine()
-                                else:
+                                elif not devices:
                                     _finish_forward(True)
                     finally:
                         if devices and not sync_attempted:
+                            # For the fixed owner, RNG restoration happens on
+                            # context exit. Keep the drain pending until a
+                            # guarded synchronization after that final call.
+                            sync_attempted = True
                             try:
+                                self._before_owned_device()
                                 torch.cuda.synchronize(self.device)
+                                self._before_owned_device()
                                 _finish_forward(True)
                                 self._drain_pending = False
                             except BaseException:
@@ -423,9 +654,26 @@ class ResidentWorker:
             # The original synchronization failure remains authoritative even
             # if publishing quarantine was itself interrupted once. Recover
             # the local references before this frame can unwind.
+            if self._owner_completion is not None:
+                try:
+                    self._owner_completion._unsafe = True
+                finally:
+                    self._owner_completion._unsafe = True
+                if custody is not None and custody.producer_error is None:
+                    custody.producer_error = exc
+                try:
+                    self._live_buffers[0] = request
+                    self._live_buffers[1] = device_inputs
+                    self._live_buffers[2] = output
+                    self._live_buffers[3] = logits
+                    self._live_buffers[4] = outcome
+                except BaseException:
+                    # Repeated interruption still requires process teardown.
+                    pass
             if self._drain_pending:
                 quarantine()
             if isinstance(exc, (MemoryError, torch.OutOfMemoryError)):
+                self._signal_owner_unsafe()
                 failure = (WorkerOutOfMemory, _describe_failure(exc, "allocation failed"))
             elif isinstance(exc, OutputLimitExceeded):
                 failure = (OutputLimitExceeded, _describe_failure(exc, "output byte bound exceeded"))
@@ -434,6 +682,8 @@ class ResidentWorker:
             elif isinstance(exc, Exception):
                 failure = (WorkerExecutionError, _describe_failure(exc, "model execution failed"))
             else:
+                if custody is not None:
+                    _raise_detached_producer_failure(exc)
                 exc.__traceback__ = None
                 exc.__context__ = None
                 exc.__cause__ = None
@@ -447,7 +697,25 @@ class ResidentWorker:
 
     def execute(self, request, cancel_event=None):
         """Execute a validated request, cooperatively discarding cancelled work."""
+        try:
+            return self._execute(request, cancel_event, None)
+        finally:
+            # Preserve the public API's no-input-retention failure contract.
+            request = None
+
+    def _execute_with_custody(self, request, cancel_event, custody):
+        if type(custody) is not _ResidentResultCustody:
+            raise TypeError('result custody must be the resident producer slot')
+        try:
+            return self._execute(request, cancel_event, custody)
+        except BaseException as exc:
+            custody.error = exc
+            _raise_detached_producer_failure(exc)
+
+    def _execute(self, request, cancel_event, custody):
         if _is_process_quarantined():
+            if self._owner_completion is not None:
+                self._owner_completion._unsafe = True
             request = None
             raise WorkerSynchronizationError("execution process is quarantined")
         if cancel_event is not None and type(cancel_event) is not threading.Event:
@@ -457,6 +725,8 @@ class ResidentWorker:
             request = None
             raise RequestCancelled("request cancelled before execution")
         if self._closed or self.poisoned:
+            if self._owner_completion is not None and self.poisoned:
+                self._owner_completion._unsafe = True
             request = None
             raise WorkerUnavailable("worker is closed or poisoned")
         if torch.is_autocast_enabled("cpu") or torch.is_autocast_enabled("cuda"):
@@ -466,8 +736,16 @@ class ResidentWorker:
         try:
             snapshot = self.snapshot_request(request)
         except (InvalidRequest, WorkerOutOfMemory, WorkerSynchronizationError) as exc:
+            if (self._owner_completion is not None
+                    and isinstance(exc, (WorkerOutOfMemory, WorkerSynchronizationError))):
+                self._owner_completion._unsafe = True
             snapshot_error = (type(exc), str(exc))
         except BaseException as exc:
+            if self._owner_completion is not None:
+                self._owner_completion._unsafe = True
+                if custody is not None:
+                    custody.producer_error = exc
+                    _raise_detached_producer_failure(exc)
             request = None
             exc.__traceback__ = None
             exc.__context__ = None
@@ -482,6 +760,8 @@ class ResidentWorker:
             raise RequestCancelled("request cancelled before execution")
         with self._lock:
             if self._closed or self.poisoned:
+                if self._owner_completion is not None and self.poisoned:
+                    self._owner_completion._unsafe = True
                 snapshot = None
                 raise WorkerUnavailable("worker is closed or poisoned")
             if cancel_event is not None and cancel_event.is_set():
@@ -489,9 +769,20 @@ class ResidentWorker:
                 raise RequestCancelled("request cancelled before execution")
             try:
                 state_ok = self._model_state() == self._baseline
-            except Exception:
+            except Exception as exc:
+                if self._owner_completion is not None:
+                    self._owner_completion._unsafe = True
+                    if custody is not None:
+                        custody.state_error = exc
                 state_ok = False
             except BaseException as exc:
+                if self._owner_completion is not None:
+                    self._owner_completion._unsafe = True
+                    if custody is not None:
+                        custody.state_error = exc
+                        self._poison_pending.set()
+                        self._poison()
+                        _raise_detached_producer_failure(exc)
                 snapshot = None
                 exc.__traceback__ = None
                 exc.__context__ = None
@@ -500,13 +791,26 @@ class ResidentWorker:
                 self._poison()
                 raise exc
             if not state_ok:
+                if self._owner_completion is not None:
+                    self._owner_completion._unsafe = True
                 snapshot = None
                 self._poison_pending.set()
                 self._poison()
                 raise WorkerUnavailable("model state changed outside the worker")
             try:
-                logits, failure = self._perform(snapshot)
+                if custody is None:
+                    logits, failure = self._perform(snapshot)
+                else:
+                    logits, failure = self._perform(snapshot, custody)
             except BaseException as exc:
+                if self._owner_completion is not None:
+                    self._owner_completion._unsafe = True
+                    if custody is not None:
+                        if custody.producer_error is None:
+                            custody.producer_error = exc
+                        self._poison_pending.set()
+                        self._poison()
+                        _raise_detached_producer_failure(exc)
                 snapshot = None
                 exc.__traceback__ = None
                 exc.__context__ = None
@@ -514,6 +818,8 @@ class ResidentWorker:
                 self._poison_pending.set()
                 self._poison()
                 raise exc
+            if failure is not None and self._owner_completion is not None:
+                self._owner_completion._unsafe = True
             # An unverified CUDA drain is more serious than any state check.
             # The process-wide latch already prevents subsequent work.
             if failure is not None and failure[0] is WorkerSynchronizationError:
@@ -526,9 +832,20 @@ class ResidentWorker:
             # before dropping the model so its owner can quarantine the lease.
             try:
                 state_ok = self._model_state() == self._baseline
-            except Exception:
+            except Exception as exc:
+                if self._owner_completion is not None:
+                    self._owner_completion._unsafe = True
+                    if custody is not None:
+                        custody.state_error = exc
                 state_ok = False
             except BaseException as exc:
+                if self._owner_completion is not None:
+                    self._owner_completion._unsafe = True
+                    if custody is not None:
+                        custody.state_error = exc
+                        self._poison_pending.set()
+                        self._poison()
+                        _raise_detached_producer_failure(exc)
                 snapshot = None
                 logits = None
                 exc.__traceback__ = None
@@ -538,6 +855,8 @@ class ResidentWorker:
                 self._poison()
                 raise exc
             if not state_ok:
+                if self._owner_completion is not None:
+                    self._owner_completion._unsafe = True
                 snapshot = None
                 logits = None
                 self._poison_pending.set()
@@ -547,6 +866,8 @@ class ResidentWorker:
                     detail += f"; original failure: {failure[0].__name__}: {failure[1]}"
                 raise WorkerStateError(detail) from None
             if self.poisoned:
+                if self._owner_completion is not None:
+                    self._owner_completion._unsafe = True
                 snapshot = None
                 logits = None
                 self._poison()
@@ -562,4 +883,9 @@ class ResidentWorker:
                 snapshot = None
                 logits = None
                 raise RequestCancelled("request cancelled after execution")
-            return ForwardResult(snapshot.request_id, logits)
+            result = ForwardResult(snapshot.request_id, logits)
+            if custody is not None:
+                # Root the exact object before returning across the producer
+                # boundary; the broker later transfers it into its job root.
+                custody.result = result
+            return result
