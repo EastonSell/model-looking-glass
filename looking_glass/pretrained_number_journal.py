@@ -17,6 +17,7 @@ import threading
 
 from .pretrained_number_archive import _MAX_RECORD_BYTES, _ROLES, _read
 from .pretrained_number_commitments import verify_site_reveal
+from .pretrained_number_incomplete import _MAX_RECORD as _MAX_INCOMPLETE_RECORD, decode_incomplete_forward
 from .pretrained_number_requests import family_request_schedule, load_family_request_plan, verify_request
 from .pretrained_number_selection import CHECKPOINT_REVISION, PROTOCOL_SHA256
 from .pretrained_number_witness import _MAX_PRIVATE_RECORD_BYTES, audit_private_forward, decode_private_forward
@@ -284,8 +285,12 @@ class DiscoveryJournal:
             if type(phase) is not str or phase not in ("forward", "cleanup", "external", "resource") or type(cancelled) is not bool:
                 raise ValueError("a sanitized abort phase and status are required")
             if partial_evidence is not None:
-                if type(partial_evidence) is not bytes or not 0 < len(partial_evidence) <= _MAX_FORWARD_BYTES:
+                if type(partial_evidence) is not bytes or not 0 < len(partial_evidence) <= _MAX_INCOMPLETE_RECORD:
                     raise ValueError("partial evidence must be bounded immutable bytes")
+                if len(partial_evidence) > _MAX_FORWARD_BYTES:
+                    # The reviewed format separately bounds raw tensor bytes;
+                    # framing and metadata can make its envelope larger.
+                    decode_incomplete_forward(partial_evidence)
                 header = _PARTIAL.pack(_PARTIAL_MAGIC, self._ordinal, len(partial_evidence), self._binding, self._previous)
                 digest = _digest_parts(_PARTIAL_DOMAIN, header, partial_evidence)
                 parts = (header, partial_evidence, digest, _FOOTER)
@@ -323,13 +328,15 @@ def _parse_partial(raw, ordinal, binding, previous):
         raise ValueError("partial evidence file is incomplete")
     magic, number, size, found_binding, found_previous = _PARTIAL.unpack_from(raw)
     if (magic != _PARTIAL_MAGIC or number != ordinal or found_binding != binding or found_previous != previous or
-            not 0 < size <= _MAX_FORWARD_BYTES or len(raw) != _PARTIAL.size + size + 32 + len(_FOOTER) or
+            not 0 < size <= _MAX_INCOMPLETE_RECORD or len(raw) != _PARTIAL.size + size + 32 + len(_FOOTER) or
             raw[-len(_FOOTER):] != _FOOTER):
         raise ValueError("partial evidence identity or size is invalid")
     evidence = raw[_PARTIAL.size:_PARTIAL.size + size]
     digest = _digest_parts(_PARTIAL_DOMAIN, raw[:_PARTIAL.size], evidence)
     if not hmac.compare_digest(digest, raw[_PARTIAL.size + size:_PARTIAL.size + size + 32]):
         raise ValueError("partial evidence checksum is invalid")
+    if len(evidence) > _MAX_FORWARD_BYTES:
+        decode_incomplete_forward(evidence)
     return evidence
 
 
@@ -379,7 +386,7 @@ def inspect_discovery_journal(directory, *, plan_bytes, expected_source_commit, 
             if ack_path.exists() or ordinal < len(acknowledgments):
                 tail = "invalid"
             elif partial_path.exists():
-                maximum_partial = _PARTIAL.size + _MAX_FORWARD_BYTES + 32 + len(_FOOTER)
+                maximum_partial = _PARTIAL.size + _MAX_INCOMPLETE_RECORD + 32 + len(_FOOTER)
                 limit = min(maximum_partial, max_read_bytes - consumed)
                 if limit <= 0:
                     tail = "capacity"
