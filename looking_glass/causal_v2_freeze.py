@@ -38,6 +38,7 @@ _REQUIRED_SOURCE_FILES = frozenset({
     "looking_glass/model_ownership.py", "looking_glass/intervention_plan.py",
     "looking_glass/interventions.py", "looking_glass/agreement_numeric.py",
     "looking_glass/causal_trace_v2.py", "looking_glass/causal_v2_runtime.py",
+    "looking_glass/causal_v2_runtime_preflight.py", "looking_glass/research_cases.py",
     "looking_glass/causal_v2_selection.py", "looking_glass/causal_v2_model_identity.py",
     "looking_glass/causal_v2_custody.py", "looking_glass/causal_v2_preparation.py",
     "looking_glass/causal_v2_freeze.py", "looking_glass/causal_v2_scoring.py", "looking_glass/causal_v2_executor.py",
@@ -45,7 +46,12 @@ _REQUIRED_SOURCE_FILES = frozenset({
     "scripts/run_synthetic_v2.py", "looking_glass/causal_v2_evidence_encoder.py",
     "looking_glass/causal_v2_evidence_adapter.py", "looking_glass/v2_evidence.py",
     "looking_glass/registry.py", "looking_glass/pretrained_number_injection.py",
+    "results/synthetic-v2-exclusions-20261028/inputs.json",
+    "results/synthetic-v2-resource-pilot-20261028/artifacts/pilot_inputs.json",
 })
+
+_THREAD_ENVIRONMENT = frozenset({"OMP_NUM_THREADS", "MKL_NUM_THREADS", "OMP_DYNAMIC",
+                                 "MKL_DYNAMIC", "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS"})
 
 
 def _sha(data):
@@ -201,12 +207,26 @@ def public_pre_manifest(snapshot, *, source_sha256, clarification_sha256, runtim
             or type(clarification_sha256) is not dict or set(clarification_sha256) != set(_CLARIFICATIONS)
             or not all(_digest(value) for value in clarification_sha256.values())
             or type(runtime) is not dict or set(runtime) != {"python_version", "torch_version", "system",
-                "machine", "byteorder", "intraop_threads", "denormal_preserved", "torch_build_sha256"}
+                "machine", "byteorder", "intraop_threads", "denormal_preserved", "torch_build_sha256",
+                "interop_threads", "float32_matmul_precision", "mkldnn_enabled", "mkldnn_deterministic",
+                "deterministic_algorithms", "deterministic_warn_only", "cpu_capability", "thread_environment"}
             or any(type(runtime[key]) is not str or re.fullmatch(r"[A-Za-z0-9_.+\-]{1,64}", runtime[key]) is None
                    for key in ("python_version", "torch_version", "system", "machine"))
             or runtime["byteorder"] not in ("little", "big")
             or type(runtime["intraop_threads"]) is not int or runtime["intraop_threads"] != 1
             or runtime["denormal_preserved"] is not True or not _digest(runtime["torch_build_sha256"])
+            or type(runtime["interop_threads"]) is not int or not 1 <= runtime["interop_threads"] <= 65536
+            or type(runtime["float32_matmul_precision"]) is not str
+            or runtime["float32_matmul_precision"] not in ("highest", "high", "medium")
+            or any(type(runtime[key]) is not bool for key in ("mkldnn_enabled", "mkldnn_deterministic",
+                "deterministic_algorithms", "deterministic_warn_only"))
+            or type(runtime["cpu_capability"]) is not str
+            or re.fullmatch(r"[A-Z0-9_]{1,64}", runtime["cpu_capability"]) is None
+            or type(runtime["thread_environment"]) is not dict
+            or set(runtime["thread_environment"]) != _THREAD_ENVIRONMENT
+            or any(value is not None and (type(value) is not str
+                   or re.fullmatch(r"[A-Za-z0-9 ,+_.-]{0,128}", value) is None)
+                   for value in runtime["thread_environment"].values())
             or type(created_utc) is not str or not created_utc or len(created_utc) > 128):
         raise ValueError("invalid source, clarification, runtime or clock metadata")
     try:
@@ -224,6 +244,11 @@ def public_pre_manifest(snapshot, *, source_sha256, clarification_sha256, runtim
             or any(source_sha256.get(path) != clarification_sha256[field]
                    for field, path in _CLARIFICATION_FILES.items())):
         raise ValueError("protocol or clarification hashes differ from source inventory")
+    if (source_sha256.get("results/synthetic-v2-exclusions-20261028/inputs.json")
+            != prepared["development_exclusions_sha256"]
+            or source_sha256.get("results/synthetic-v2-resource-pilot-20261028/artifacts/pilot_inputs.json")
+            != prepared["pilot_exclusions_sha256"]):
+        raise ValueError("development exclusion hashes differ from source inventory")
     manifest = dict(prepared)
     manifest.update({"schema": "synthetic-v2-pre-manifest-v1", "source_sha256": source_sha256,
                      "runtime": runtime, "created_utc": created_utc,
