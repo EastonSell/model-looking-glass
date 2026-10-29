@@ -45,6 +45,33 @@ free-space assertion or evidence that the candidate was complete. The third
 amendment binds the earlier chain and changes no logical limit, cases,
 analysis, predictions or results.
 
+The subsequent [evidence-scope clarification](../experiments/agreement_evidence_scope_v1.json)
+applies prospectively after the natural and injection discovery phases. It
+retains the 8 GiB apparent study-evidence allowance, phase shares and 12 GiB
+fresh-free requirement. Study-created or study-retained evidence files,
+including audit scripts and results, dedicated source snapshots retained as
+evidence, publication copies, staging, failures and orphans, remain in scope
+wherever they are kept. Developer source/test checkout files and shared Git
+object stores for general workspace operations are separately reported
+overhead, including when a study owner works there. Specific evidence copies
+created or retained for the study remain in scope wherever they are kept,
+including in a checkout or a dedicated publication archive.
+This is not a limit on total workspace or machine usage. Free space on each
+relevant volume must still be checked immediately before use.
+
+The public [initial-inventory gap record](../results/agreement-physical-accounting-v1-20261029/initial-inventory-gap.json)
+remains part of the evidence. Four public-result roots were discovered after
+the injection claim, with unknown creation times relative to that claim. The
+initial inventory was incomplete and this clarification does not cure it.
+The scope amendment binds the exact pre-reconciliation `meta.data` and
+`meta.inventory` strings with length prefixes, sorted claim rows with a separate
+digest, and ordered reconciliation/retired-evidence rows with a history digest.
+It does not hash the entire database file or SQLite schema. The old ledger did not itself store the initial manifest digest, so the
+association between that digest and the saved state is an independent external
+attestation. This update does not authorize replacing or refunding either
+discovery claim or redrawing a private site; prior draw chronology is an
+operator report, not established by the ledger.
+
 The observed candidate inventory and its generator are retained locally as
 `work/agreement-ledger-inventory-candidate.json` and
 `work/agreement_ledger_inventory_candidate.py`; the later candidate is
@@ -85,15 +112,37 @@ The
 natural attempt and its publication/staging copies belong in its existing
 phase share, not again in prior usage. Additional copies created after an
 inventory must remain within the relevant share and be reconciled by the
-custodian. The custodian must freshly enumerate study evidence immediately
-before each claim, including newly created checkouts, phase side roots and
-orphans, and coordinate that interval. The ledger rechecks only its supplied
-roots and cannot discover an undisclosed copy elsewhere.
-If a listed Git pack is repacked, removed, or changed, the next claim fails
-even if its study blobs remain available. Do not reset, replace or reinitialize
-the ledger to bypass that failure: consumed claims remain consumed. A later
-inventory update requires a separately reviewed reconciliation mechanism that
-preserves every prior claim; this ledger does not currently implement one.
+custodian. Immediately before a future claim the custodian must freshly review
+study-owned evidence, phase side roots and orphans, and coordinate any interval
+needed to keep the reviewed evidence quiescent. The ledger rechecks only its
+supplied roots and cannot discover an undisclosed copy elsewhere. A changed
+study-owned inventory requires a reviewed update; incidental repacking of an
+unrelated workspace Git object store is not a research gate.
+
+`reconcile_study_ledger` atomically updates an existing ledger under its SQLite
+write lock. Its pinned manifest and prospective scope amendment bind the exact
+previous metadata/inventory strings, existing claim rows, published gap, earlier budget
+amendment and reviewed current roots. The custodian independently reviews the
+inventory and its logical subtotals; a digest does not attest completeness.
+The transaction preserves all claim rows and original budget/evidence pins.
+Every historical path, size and content digest absent or replaced in the new
+inventory retains its previous physical charge; the exact same path and bytes,
+if present again, are counted once. Prior snapshots and compact path/content
+digests are retained in bounded history. Each claim checks the current history
+digest, and the next reconciliation requires an independently pinned digest.
+This is conservative apparent-byte
+accounting, not proof that missing files exist or a measurement of allocated
+disk blocks. Database access is cooperative; these digests do not authenticate
+arbitrary out-of-band edits to its tables or hardware-level durability. Once reconciled, schema v6 makes an older v5 claimant fail closed
+even if historical charges happen to be zero. The next execution owner must
+pin the revised claimant source. A committed reconciliation with an ambiguous
+return is inspected rather than replayed; never reset or replace the ledger.
+Completed phase outputs and their private side roots stay charged to their
+already consumed shares and are independently checked by their custodians,
+not folded into the natural/prior inventory or opened by this transaction.
+The ancestry checks rely on cooperatively reviewed roots: a hard link outside a
+private parent can still alias a private file. The custodian must exclude such
+aliases; this is not a hostile-filesystem confidentiality boundary.
 
 `looking_glass.agreement_phase_ledger.initialize_study_ledger` imports the
 already-used natural discovery claim and binding with independently supplied
