@@ -7,6 +7,7 @@ local paths and must not be published without a reviewed projection.
 """
 
 import hashlib
+import io
 import json
 import os
 from datetime import datetime, timezone
@@ -26,7 +27,38 @@ _QUARANTINED = []
 _CUSTODY_LOCK = threading.Lock()
 
 
-def supervise_heldout(command, output, environment, *, audit_result, timeout=7200):
+def _new_job(custody, job_type):
+    job = job_type.__new__(job_type)
+    custody['job'] = job
+    job_type.__init__(job)
+    return job
+
+
+def _spawn(custody, command, **kwargs):
+    process_type = subprocess.Popen
+    child = process_type.__new__(process_type)
+    custody['child'] = child
+    process_type.__init__(child, command, **kwargs)
+    return child
+
+
+def _open_log(custody, path):
+    stream = io.FileIO.__new__(io.FileIO)
+    custody['streams'].append(stream)
+    io.FileIO.__init__(stream, str(path), 'x')
+    return stream
+
+
+def _start_pump(custody, target, args):
+    thread_type = threading.Thread
+    thread = thread_type.__new__(thread_type)
+    custody['pumps'].append(thread)
+    thread_type.__init__(thread, target=target, args=args, daemon=True)
+    thread.start()
+    return thread
+
+
+def supervise_heldout(command, output, environment, *, audit_result, timeout=7200, inherited_handles=()):
     """Run one gated child, then call the structural auditor after clean exit.
 
     ``audit_result(attempt_dir, exit_code, reaped)`` must return a bounded JSON
@@ -42,6 +74,11 @@ def supervise_heldout(command, output, environment, *, audit_result, timeout=720
             any(type(value) is not str or not value for value in command) or
             type(environment) is not dict or not callable(audit_result)):
         raise ValueError('invalid owner command, environment or audit callback')
+    if (type(inherited_handles) not in (tuple, list) or len(inherited_handles) > 8193
+            or any(type(handle) is not int or handle <= 0 for handle in inherited_handles)
+            or len(set(inherited_handles)) != len(inherited_handles)
+            or any(not os.get_handle_inheritable(handle) for handle in inherited_handles)):
+        raise ValueError('invalid restricted inherited protection handles')
     from scripts.v2_source_guards import WindowsJob
 
     output = Path(output)
@@ -63,21 +100,25 @@ def supervise_heldout(command, output, environment, *, audit_result, timeout=720
     started = datetime.now(timezone.utc).isoformat()
     code, reaped, failure, child, job = None, False, None, None, None
     job_drained, job_closed, cancellation_requested = False, False, False
+    postexit_active_processes = None
     logs_complete = True
     overflow = threading.Event()
     pump_errors, pump_close_errors, pumps = [], [], custody['pumps']
     stdout = stderr = None
     try:
-        stdout = (output / 'stdout.txt').open('xb')
-        custody['streams'].append(stdout)
-        stderr = (output / 'stderr.txt').open('xb')
-        custody['streams'].append(stderr)
-        job = WindowsJob()
-        custody['job'] = job
-        child = subprocess.Popen(command, env=environment, stdin=subprocess.PIPE,
-                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                 creationflags=subprocess.DETACHED_PROCESS)
-        custody['child'] = child
+        stdout = _open_log(custody, output / 'stdout.txt')
+        stderr = _open_log(custody, output / 'stderr.txt')
+        job = _new_job(custody, WindowsJob)
+        spawn_options = {}
+        if inherited_handles:
+            startup = subprocess.STARTUPINFO()
+            startup.lpAttributeList = {'handle_list': list(inherited_handles)}
+            spawn_options = {'startupinfo': startup, 'close_fds': True}
+        child = _spawn(custody, command, env=environment, stdin=subprocess.PIPE,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                       creationflags=subprocess.DETACHED_PROCESS, **spawn_options)
+        for handle in inherited_handles:
+            os.set_handle_inheritable(handle, False)
         job.assign(child)
 
         def pump(source, destination):
@@ -111,9 +152,7 @@ def supervise_heldout(command, output, environment, *, audit_result, timeout=720
                     pump_close_errors.append(type(error).__name__)
 
         for source, destination in ((child.stdout, stdout), (child.stderr, stderr)):
-            thread = threading.Thread(target=pump, args=(source, destination), daemon=True)
-            pumps.append(thread)
-            thread.start()
+            _start_pump(custody, pump, (source, destination))
         if child.stdin.write(_START) != len(_START):
             raise OSError('short startup signal write')
         child.stdin.close()
@@ -123,6 +162,18 @@ def supervise_heldout(command, output, environment, *, audit_result, timeout=720
         failure = type(error).__name__
         cancellation_requested = isinstance(error, KeyboardInterrupt)
     finally:
+        job, child = custody['job'], custody['child']
+        if job is not None and reaped:
+            try:
+                active = job._accounting().active_processes
+                if type(active) is not int or active < 0:
+                    raise ValueError('invalid Job process count')
+                postexit_active_processes = active
+                if active:
+                    failure = (failure or 'owner exit') + '; active Job members after direct-child exit'
+            except BaseException as error:
+                failure = (failure or 'owner exit') + '; post-exit Job count: ' + type(error).__name__
+                cancellation_requested |= isinstance(error, KeyboardInterrupt)
         if job is not None:
             try:
                 job.terminate_and_wait()
@@ -138,7 +189,7 @@ def supervise_heldout(command, output, environment, *, audit_result, timeout=720
                 cancellation_requested |= isinstance(error, KeyboardInterrupt)
         if child is not None and not reaped:
             try:
-                if child.stdin is not None and not child.stdin.closed:
+                if getattr(child, 'stdin', None) is not None and not child.stdin.closed:
                     child.stdin.close()
                 if child.poll() is None:
                     child.kill()
@@ -147,6 +198,8 @@ def supervise_heldout(command, output, environment, *, audit_result, timeout=720
             except BaseException as error:
                 failure = (failure or 'child cleanup') + '; reap: ' + type(error).__name__
                 cancellation_requested |= isinstance(error, KeyboardInterrupt)
+        if child is not None and len(pumps) != 2:
+            logs_complete = False
         for thread in pumps:
             try:
                 thread.join(timeout=10)
@@ -179,13 +232,14 @@ def supervise_heldout(command, output, environment, *, audit_result, timeout=720
                     cancellation_requested |= isinstance(error, KeyboardInterrupt)
 
     cleanup_verified = bool(reaped and job_drained and job_closed and logs_complete)
-    child_pid = child.pid if child is not None else None
+    child_pid = getattr(child, 'pid', None) if child is not None else None
     if child is not None and (type(child_pid) is not int or not 0 < child_pid <= 0xffffffff):
         failure = (failure or 'child identity') + '; invalid child PID'
         child_pid = None
     verdict = {'status': 'incomplete', 'exit_code': code, 'child_reaped': reaped,
                'child_pid': child_pid,
                'job_drained': job_drained, 'job_closed': job_closed, 'logs_complete': logs_complete,
+               'postexit_active_processes': postexit_active_processes,
                'cleanup_verified': cleanup_verified, 'retry_safe': False,
                'cancellation_requested': cancellation_requested, 'quarantined': not cleanup_verified,
                'log_overflow': overflow.is_set(), 'supervisor_error': failure,
