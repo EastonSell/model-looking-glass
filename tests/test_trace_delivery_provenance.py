@@ -36,8 +36,8 @@ class TraceDeliveryProvenanceTests(unittest.TestCase):
         config = GPT2Config(vocab_size=32, n_positions=32, n_ctx=32, n_embd=8,
                             n_layer=2, n_head=2, use_cache=False,
                             resid_pdrop=0, embd_pdrop=0, attn_pdrop=0)
-        with torch.random.fork_rng():
-            torch.manual_seed(2026)
+        with torch.random.fork_rng(devices=[]):
+            torch.random.default_generator.manual_seed(2026)
             model = GPT2LMHeadModel(config).eval()
         inputs = (
             {"input_ids": torch.tensor([[0, 0, 7, 7, 4], [0, 7, 7, 0, 5]]),

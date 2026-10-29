@@ -65,6 +65,24 @@ def record(index, strength, *, phase="discovery"):
             "comparison": {"status": "fabricated", "first_unequal": None}}
 
 
+def record_v2(index, strength, *, phase="discovery"):
+    result = record(index, strength, phase=phase)
+    result["schema"] = "causal-v2-condition-record-v2"
+    for plan in result["plans"]:
+        kind, site = plan["kind"], plan["site"]
+        source = {"forward": "clean_sparse_trace", "reverse": "perturbed_sparse_trace",
+                  "null": None, "self": "same_forward_self_source", "upstream": "clean_sparse_trace"}[kind]
+        comparison = ("perturbed_sparse_trace" if kind in ("reverse", "null", "self")
+                      else "clean_sparse_trace")
+        source_id = (None if source is None else "same_forward_self_source" if kind == "self"
+                     else f"{source}/block.{site}.output")
+        plan.update(source_role=source, source_id=source_id, comparison_role=comparison,
+                    comparison_id=f"{comparison}/block.{site}.output",
+                    base_role="clean" if kind == "reverse" else "perturbed",
+                    base_id="base-clean" if kind == "reverse" else "base-perturbed")
+    return result
+
+
 class AdapterTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -233,6 +251,34 @@ class AdapterTests(unittest.TestCase):
                               external_reserve_bytes=256 * 1024 * 1024)
         self.assertEqual(run.status()["state"], "incomplete")
         self.assertEqual(len(run.config["chunks"]), 108)
+
+    def test_versioned_plan_roles_and_comparison_ids_are_retained(self):
+        row = record_v2(0, 0.25)
+        self.cell.append(encoded(row))
+        self.cell.publish_incomplete()
+        saved = json.loads((self.path / "artifacts" / "cell.json").read_bytes())["records"][0]
+        self.assertEqual(saved, row)
+        self.assertEqual(saved["plans"][9]["source_role"], "same_forward_self_source")
+        self.assertEqual(saved["plans"][9]["comparison_id"], "perturbed_sparse_trace/block.1.output")
+
+    def test_rejects_mixed_versions_and_bad_site_reference(self):
+        self.cell.append(encoded(record(0, 0.25)))
+        with self.assertRaises(CellEvidenceError):
+            self.cell.append(encoded(record_v2(0, 0.75)))
+        other = CellEvidence(self.writer, name="cell.json", cell_id="opaque-cell",
+                             phase="discovery", model_seed=17, model_state_sha256="a" * 64)
+        bad = record_v2(0, 0.25)
+        bad["plans"][9]["comparison_id"] = "perturbed_sparse_trace/block.2.output"
+        with self.assertRaises(CellEvidenceError):
+            other.append(encoded(bad))
+
+    def test_caller_can_mark_failed_and_preserve_prefix(self):
+        self.cell.append(encoded(record_v2(0, 0.25)))
+        self.cell.mark_failed()
+        with self.assertRaises(CellEvidenceError):
+            self.cell.append(encoded(record_v2(0, 0.75)))
+        self.cell.publish_incomplete()
+        self.assertEqual(self.writer.status()["state"], "incomplete")
 
 
 if __name__ == "__main__":

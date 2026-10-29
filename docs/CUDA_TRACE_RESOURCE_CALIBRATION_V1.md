@@ -56,9 +56,12 @@ preflight with reviewed evidence and reprofile the changed behavior. Do not
 mislabel it as a direct or gradient-only `resource-profile-v1` workload: the
 current `WorkloadKey` supports only single capture modes and `model_load` or
 `forward` operations. For planning, the composite allowance must include
-two independently capped 4 MiB GPU trace sets, at least three simultaneously
-live 1,608,224-byte FP32 logits tensors, input storage, value-comparison and
-finite-check temporaries, autograd workspace, and allocator/context overhead.
+two independently capped 4 MiB GPU trace sets, four simultaneously live
+1,608,224-byte FP32 logits tensors (6,432,896 bytes in total), input storage,
+value-comparison and finite-check temporaries, autograd workspace, and
+allocator/context overhead. A separate latency-smoke candidate retains all four
+preflight outputs through its completion synchronization; verify whether the
+selected benchmark source has that lifetime before profiling.
 These allowances are conservative declared payloads, not measured peaks.
 Revalidate lifetimes against the exact source selected for the run.
 
