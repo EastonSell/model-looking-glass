@@ -151,9 +151,11 @@ Recheck the owner session immediately before each CUDA-facing or telemetry
 boundary. On unsafe pressure or failure, preserve diagnostics and attempt a
 drain only while ownership remains valid. If synchronization fails or is
 interrupted, or ownership is lost, latch completion as unverified and make no
-further CUDA calls; retain the model, outputs, claims and exception custody
-until process termination, with the sticky unsafe marker left in place. Never
-attest clean or release those claims merely because a failure was recorded.
+further CUDA calls; retain all known, reachable model/output objects, claims
+and exception graphs until process termination, with the sticky unsafe marker
+left in place. Native return values interrupted before Python assignment and
+inaccessible internal temporaries cannot be guaranteed rooted. Never attest
+clean or release those claims merely because a failure was recorded.
 This sticky failure rule is a new requirement: do not copy the older reference
 owner's unconditional failure-drain behavior. Any additional checks included
 inside a timed interval must be identical across modes and documented.
