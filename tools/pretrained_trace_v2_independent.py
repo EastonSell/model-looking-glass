@@ -8,6 +8,7 @@ Synthetic mode is explicitly limited to the documented tiny CPU fixture.
 import argparse
 import hashlib
 import json
+import math
 from pathlib import Path
 import struct
 
@@ -44,7 +45,11 @@ def read_json(raw):
         return result
     def reject(_):
         raise ValueError('nonfinite JSON')
-    return json.loads(raw, object_pairs_hook=pairs, parse_constant=reject)
+    def finite_float(value):
+        parsed = float(value)
+        require(math.isfinite(parsed), 'nonfinite JSON number')
+        return parsed
+    return json.loads(raw, object_pairs_hook=pairs, parse_constant=reject, parse_float=finite_float)
 
 
 def finite_f32(raw):
