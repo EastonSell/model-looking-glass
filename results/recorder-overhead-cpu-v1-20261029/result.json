@@ -1,0 +1,643 @@
+{
+  "version": "batched-recorder-cpu-overhead-v1",
+  "status": "complete",
+  "samples": [
+    {
+      "mode": "record",
+      "start_ns": 1253617567480500,
+      "end_ns": 1253617575899100,
+      "elapsed_ns": 8418600,
+      "event_count": 400,
+      "event_counts": {
+        "selected": 200,
+        "forward_entry": 200
+      },
+      "recorded": 400,
+      "events_complete": true,
+      "gc_before": {
+        "counts": [
+          6,
+          7,
+          9
+        ],
+        "collections": [
+          348,
+          31,
+          2
+        ]
+      },
+      "gc_after": {
+        "counts": [
+          366,
+          8,
+          9
+        ],
+        "collections": [
+          349,
+          31,
+          2
+        ]
+      },
+      "repetition": 0
+    },
+    {
+      "mode": "discard",
+      "start_ns": 1253617578122600,
+      "end_ns": 1253617578206000,
+      "elapsed_ns": 83400,
+      "event_count": 400,
+      "event_counts": {
+        "selected": 200,
+        "forward_entry": 200
+      },
+      "recorded": null,
+      "events_complete": null,
+      "gc_before": {
+        "counts": [
+          0,
+          10,
+          9
+        ],
+        "collections": [
+          351,
+          31,
+          2
+        ]
+      },
+      "gc_after": {
+        "counts": [
+          1,
+          10,
+          9
+        ],
+        "collections": [
+          351,
+          31,
+          2
+        ]
+      },
+      "repetition": 0
+    },
+    {
+      "mode": "discard",
+      "start_ns": 1253617578210600,
+      "end_ns": 1253617578290300,
+      "elapsed_ns": 79700,
+      "event_count": 400,
+      "event_counts": {
+        "selected": 200,
+        "forward_entry": 200
+      },
+      "recorded": null,
+      "events_complete": null,
+      "gc_before": {
+        "counts": [
+          2,
+          10,
+          9
+        ],
+        "collections": [
+          351,
+          31,
+          2
+        ]
+      },
+      "gc_after": {
+        "counts": [
+          3,
+          10,
+          9
+        ],
+        "collections": [
+          351,
+          31,
+          2
+        ]
+      },
+      "repetition": 1
+    },
+    {
+      "mode": "record",
+      "start_ns": 1253617578301300,
+      "end_ns": 1253617588813000,
+      "elapsed_ns": 10511700,
+      "event_count": 400,
+      "event_counts": {
+        "selected": 200,
+        "forward_entry": 200
+      },
+      "recorded": 400,
+      "events_complete": true,
+      "gc_before": {
+        "counts": [
+          7,
+          10,
+          9
+        ],
+        "collections": [
+          351,
+          31,
+          2
+        ]
+      },
+      "gc_after": {
+        "counts": [
+          378,
+          11,
+          9
+        ],
+        "collections": [
+          352,
+          31,
+          2
+        ]
+      },
+      "repetition": 1
+    },
+    {
+      "mode": "discard",
+      "start_ns": 1253617593796000,
+      "end_ns": 1253617593938600,
+      "elapsed_ns": 142600,
+      "event_count": 400,
+      "event_counts": {
+        "selected": 200,
+        "forward_entry": 200
+      },
+      "recorded": null,
+      "events_complete": null,
+      "gc_before": {
+        "counts": [
+          1,
+          1,
+          10
+        ],
+        "collections": [
+          353,
+          32,
+          2
+        ]
+      },
+      "gc_after": {
+        "counts": [
+          2,
+          1,
+          10
+        ],
+        "collections": [
+          353,
+          32,
+          2
+        ]
+      },
+      "repetition": 2
+    },
+    {
+      "mode": "record",
+      "start_ns": 1253617593963200,
+      "end_ns": 1253617608403900,
+      "elapsed_ns": 14440700,
+      "event_count": 400,
+      "event_counts": {
+        "selected": 200,
+        "forward_entry": 200
+      },
+      "recorded": 400,
+      "events_complete": true,
+      "gc_before": {
+        "counts": [
+          6,
+          1,
+          10
+        ],
+        "collections": [
+          353,
+          32,
+          2
+        ]
+      },
+      "gc_after": {
+        "counts": [
+          372,
+          2,
+          10
+        ],
+        "collections": [
+          354,
+          32,
+          2
+        ]
+      },
+      "repetition": 2
+    },
+    {
+      "mode": "record",
+      "start_ns": 1253617612484900,
+      "end_ns": 1253617627950900,
+      "elapsed_ns": 15466000,
+      "event_count": 400,
+      "event_counts": {
+        "selected": 200,
+        "forward_entry": 200
+      },
+      "recorded": 400,
+      "events_complete": true,
+      "gc_before": {
+        "counts": [
+          4,
+          4,
+          10
+        ],
+        "collections": [
+          356,
+          32,
+          2
+        ]
+      },
+      "gc_after": {
+        "counts": [
+          366,
+          5,
+          10
+        ],
+        "collections": [
+          357,
+          32,
+          2
+        ]
+      },
+      "repetition": 3
+    },
+    {
+      "mode": "discard",
+      "start_ns": 1253617632171300,
+      "end_ns": 1253617632309200,
+      "elapsed_ns": 137900,
+      "event_count": 400,
+      "event_counts": {
+        "selected": 200,
+        "forward_entry": 200
+      },
+      "recorded": null,
+      "events_complete": null,
+      "gc_before": {
+        "counts": [
+          0,
+          7,
+          10
+        ],
+        "collections": [
+          359,
+          32,
+          2
+        ]
+      },
+      "gc_after": {
+        "counts": [
+          1,
+          7,
+          10
+        ],
+        "collections": [
+          359,
+          32,
+          2
+        ]
+      },
+      "repetition": 3
+    },
+    {
+      "mode": "discard",
+      "start_ns": 1253617632317300,
+      "end_ns": 1253617632447600,
+      "elapsed_ns": 130300,
+      "event_count": 400,
+      "event_counts": {
+        "selected": 200,
+        "forward_entry": 200
+      },
+      "recorded": null,
+      "events_complete": null,
+      "gc_before": {
+        "counts": [
+          2,
+          7,
+          10
+        ],
+        "collections": [
+          359,
+          32,
+          2
+        ]
+      },
+      "gc_after": {
+        "counts": [
+          3,
+          7,
+          10
+        ],
+        "collections": [
+          359,
+          32,
+          2
+        ]
+      },
+      "repetition": 4
+    },
+    {
+      "mode": "record",
+      "start_ns": 1253617632470500,
+      "end_ns": 1253617646359500,
+      "elapsed_ns": 13889000,
+      "event_count": 400,
+      "event_counts": {
+        "selected": 200,
+        "forward_entry": 200
+      },
+      "recorded": 400,
+      "events_complete": true,
+      "gc_before": {
+        "counts": [
+          7,
+          7,
+          10
+        ],
+        "collections": [
+          359,
+          32,
+          2
+        ]
+      },
+      "gc_after": {
+        "counts": [
+          378,
+          8,
+          10
+        ],
+        "collections": [
+          360,
+          32,
+          2
+        ]
+      },
+      "repetition": 4
+    },
+    {
+      "mode": "discard",
+      "start_ns": 1253617650197000,
+      "end_ns": 1253617650316600,
+      "elapsed_ns": 119600,
+      "event_count": 400,
+      "event_counts": {
+        "selected": 200,
+        "forward_entry": 200
+      },
+      "recorded": null,
+      "events_complete": null,
+      "gc_before": {
+        "counts": [
+          1,
+          10,
+          10
+        ],
+        "collections": [
+          362,
+          32,
+          2
+        ]
+      },
+      "gc_after": {
+        "counts": [
+          2,
+          10,
+          10
+        ],
+        "collections": [
+          362,
+          32,
+          2
+        ]
+      },
+      "repetition": 5
+    },
+    {
+      "mode": "record",
+      "start_ns": 1253617650336900,
+      "end_ns": 1253617661736900,
+      "elapsed_ns": 11400000,
+      "event_count": 400,
+      "event_counts": {
+        "selected": 200,
+        "forward_entry": 200
+      },
+      "recorded": 400,
+      "events_complete": true,
+      "gc_before": {
+        "counts": [
+          6,
+          10,
+          10
+        ],
+        "collections": [
+          362,
+          32,
+          2
+        ]
+      },
+      "gc_after": {
+        "counts": [
+          372,
+          11,
+          10
+        ],
+        "collections": [
+          363,
+          32,
+          2
+        ]
+      },
+      "repetition": 5
+    },
+    {
+      "mode": "record",
+      "start_ns": 1253617765345500,
+      "end_ns": 1253617776779100,
+      "elapsed_ns": 11433600,
+      "event_count": 400,
+      "event_counts": {
+        "selected": 200,
+        "forward_entry": 200
+      },
+      "recorded": 400,
+      "events_complete": true,
+      "gc_before": {
+        "counts": [
+          5,
+          0,
+          0
+        ],
+        "collections": [
+          363,
+          33,
+          3
+        ]
+      },
+      "gc_after": {
+        "counts": [
+          366,
+          1,
+          0
+        ],
+        "collections": [
+          364,
+          33,
+          3
+        ]
+      },
+      "repetition": 6
+    },
+    {
+      "mode": "discard",
+      "start_ns": 1253617780528500,
+      "end_ns": 1253617780670400,
+      "elapsed_ns": 141900,
+      "event_count": 400,
+      "event_counts": {
+        "selected": 200,
+        "forward_entry": 200
+      },
+      "recorded": null,
+      "events_complete": null,
+      "gc_before": {
+        "counts": [
+          0,
+          3,
+          0
+        ],
+        "collections": [
+          366,
+          33,
+          3
+        ]
+      },
+      "gc_after": {
+        "counts": [
+          1,
+          3,
+          0
+        ],
+        "collections": [
+          366,
+          33,
+          3
+        ]
+      },
+      "repetition": 6
+    }
+  ],
+  "phase": "terminal",
+  "startup": {
+    "bytecode_write_disabled": true,
+    "private_prefix_empty_when_checked": true,
+    "cuda_visibility_empty": true,
+    "torch_cuda_initialized": false
+  },
+  "source": {
+    "commit": "f3c6cbb2211f04b46ff5b25dcde9bf251558dc41",
+    "tracked_and_untracked_checkout_clean": true,
+    "sha256": {
+      "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+      "looking_glass/batch_validation.py": "9c19f6e9cc129017b9e784ecc9e45a2ea9b196f8c3b71192e2dc8c2047564b2b",
+      "looking_glass/batched_events.py": "79cc10978caca7a026824be35ddf01013be601b94bce5afcd3303a361d83bffc",
+      "looking_glass/batched_recorder.py": "d557159a7650a5cb4ad5f4a0354570edba04be6c3666f01a6f76421e12ef62f9",
+      "looking_glass/batched_throughput.py": "6b8cf685107a18997f6d0598a111f4eee4c837fdc406a2e282a7513552b5946b",
+      "looking_glass/recorder_overhead.py": "a2d4020b86f0cd2062be17fac2b0012a56bc733ee3c8ccecc6b20cd982f5db69",
+      "looking_glass/resident_worker.py": "4d2d9bb6c61ec904f337c8825934f95543f3a07d64f25887bf3fae03ea96d539",
+      "looking_glass/throughput_benchmark.py": "601aa88f21a6b841bd576a83c7672a13720f304e685d532e81ccb0e5997ced8d"
+    }
+  },
+  "workload": {
+    "seed": 17,
+    "repetitions": 7,
+    "warmup_events_per_mode": 200,
+    "events_per_window": 400,
+    "templates_without_timestamps": [
+      {
+        "kind": "selected",
+        "job_id": "job-a"
+      },
+      {
+        "kind": "forward_entry",
+        "call_id": "call-1",
+        "group_id": "group-1",
+        "profile_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "input_shape": [
+          2,
+          5
+        ],
+        "members": [
+          {
+            "job_id": "job-a",
+            "team_id": "team-a",
+            "broker_id": "broker",
+            "broker_job_id": "broker-j-1",
+            "row_offset": 0
+          },
+          {
+            "job_id": "job-b",
+            "team_id": "team-b",
+            "broker_id": "broker",
+            "broker_job_id": "broker-j-2",
+            "row_offset": 1
+          }
+        ]
+      }
+    ],
+    "order": "seeded randomized balanced 4/3 paired blocks",
+    "execution": "single Python thread"
+  },
+  "workload_sha256": "cb4f0708e34d388d248369d59ec3371857c0209574cfa31719dc5082d96db049",
+  "runtime": {
+    "python": "3.11.15",
+    "python_implementation": "CPython",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "cpu": "AMD64 Family 25 Model 33 Stepping 2, AuthenticAMD",
+    "architecture": "AMD64",
+    "logical_cpu_count": 24,
+    "torch_version": "2.8.0+cu128",
+    "clock": "perf_counter_ns",
+    "clock_implementation": "QueryPerformanceCounter()",
+    "clock_monotonic": true,
+    "clock_adjustable": false,
+    "clock_resolution_ns": 100,
+    "gc_enabled": true,
+    "gc_thresholds": [
+      700,
+      10,
+      10
+    ],
+    "external_cpu_activity": "not monitored"
+  },
+  "active": null,
+  "clock_screen": {
+    "multiplier": 100,
+    "minimum_window_ns": 10000,
+    "monotonic": true,
+    "nonadjustable": true,
+    "passes": true
+  },
+  "summary": {
+    "discard_median_ns": 130300,
+    "record_median_ns": 11433600,
+    "paired_incremental_ns_per_event": [
+      20838.0,
+      26080.0,
+      35745.25,
+      38320.25,
+      34396.75,
+      28201.0,
+      28229.25
+    ],
+    "median_paired_incremental_ns_per_event": 28229.25
+  }
+}
