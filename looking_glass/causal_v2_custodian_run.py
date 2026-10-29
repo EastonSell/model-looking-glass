@@ -14,7 +14,7 @@ import threading
 from . import registry
 from .causal_v2_custody import canonical_json, commitment
 from .causal_v2_evidence_adapter import CELL_CHUNK_LIMIT, CellEvidence
-from .v2_evidence import create_evidence
+from .v2_evidence import _chunk, create_evidence
 
 
 _MODEL_SEEDS = (31201, 31202, 31203, 31204, 31205, 31206)
@@ -142,6 +142,34 @@ def _record(path, name, raw, maximum, expected):
     expected[name] = {"bytes": len(actual), "sha256": _sha(actual)}
 
 
+def _saved_ids(raw, name):
+    chunk = _chunk(raw, name, CELL_CHUNK_LIMIT)
+    try:
+        if (type(chunk) is not dict or chunk.get("state") != "complete"
+                or type(chunk.get("records")) is not list
+                or len(chunk["records"]) != _CASES_PER_MODEL * 2):
+            raise ValueError("incomplete trace chunk")
+        found, conditions = set(), set()
+        for row in chunk["records"]:
+            condition = row["condition_id"]
+            if type(condition) is not str or not 0 < len(condition) <= 256:
+                raise ValueError("invalid condition ID")
+            conditions.add(condition)
+            for role in ("clean", "repeat_clean", "perturbed"):
+                events = row["traces"][role]
+                if type(events) is not list or len(events) != 4:
+                    raise ValueError("incomplete trace")
+                run_id = events[0]["metadata"]["run_id"]
+                if type(run_id) is not str or not 0 < len(run_id) <= 256:
+                    raise ValueError("invalid trace run ID")
+                if any(event["metadata"]["run_id"] != run_id for event in events):
+                    raise ValueError("inconsistent trace run ID")
+                found.add(run_id)
+        return found, conditions
+    except (KeyError, TypeError, IndexError, ValueError) as error:
+        raise CustodianError("cannot validate saved trace or condition IDs") from error
+
+
 def _terminal_matches(path, state, details, expected):
     try:
         info = registry.verify_run(path)
@@ -235,7 +263,7 @@ def _failure(primary, stage, budget, cell_id, phase, outcome, secondary=None):
         result["cell_id"] = cell_id
     if phase is not None:
         result["phase"] = phase
-    return canonical_json(result)
+    return registry._json_bytes(result)
 
 
 def _raise_primary(primary, cleanup):
@@ -324,7 +352,7 @@ def run_study_once(path, *, prepared, expected_context, exclusion_bytes, pilot_b
             cell.mark_failed()
             cell.publish_incomplete()
         raw = _read(private.path / "artifacts" / cell.name, CELL_CHUNK_LIMIT)
-        info = _json(raw, CELL_CHUNK_LIMIT)
+        info = _chunk(raw, cell.name, CELL_CHUNK_LIMIT)
         if info["state"] != ("complete" if complete else "incomplete"):
             raise CustodianError("published cell state differs")
         private_expected[cell.name] = {"bytes": len(raw), "sha256": _sha(raw)}
@@ -366,7 +394,13 @@ def run_study_once(path, *, prepared, expected_context, exclusion_bytes, pilot_b
         for phase in ("discovery", "heldout"):
             if phase == "heldout":
                 stage = "freeze"
+                # Freeze one canonical snapshot; the executor must not be able
+                # to change selection objects between binding and construction.
+                cells_raw = canonical_json(cells)
+                checked_cells = _json(cells_raw, _PUBLIC_LIMITS["prediction_freeze.json"])
                 discovery_reads = 0
+                discovery_trace_ids = set()
+                discovery_condition_ids = set()
                 def saved_discovery_chunks():
                     nonlocal discovery_reads
                     for index in range(len(assignments)):
@@ -374,13 +408,26 @@ def run_study_once(path, *, prepared, expected_context, exclusion_bytes, pilot_b
                         raw = _read(private.path / "artifacts" / name, CELL_CHUNK_LIMIT)
                         if {"bytes": len(raw), "sha256": _sha(raw)} != private_expected[name]:
                             raise CustodianError("discovery chunk changed after publication")
+                        traces, conditions = _saved_ids(raw, name)
+                        discovery_trace_ids.update(traces)
+                        discovery_condition_ids.update(conditions)
                         discovery_reads += 1
                         yield raw
-                _verify_discovery(snapshot, cells, saved_discovery_chunks())
+                _verify_discovery(snapshot, checked_cells, saved_discovery_chunks())
                 if discovery_reads != len(assignments):
                     raise CustodianError("discovery verification did not consume all chunks")
-                freeze_raw, prediction_raw, commitment_raw = _build_freeze(snapshot, manifest, cells)
+                if canonical_json(checked_cells) != cells_raw:
+                    raise CustodianError("discovery verifier mutated the frozen selection snapshot")
+                del checked_cells, cells
+                freeze_cells = _json(cells_raw, _PUBLIC_LIMITS["prediction_freeze.json"])
+                freeze_raw, prediction_raw, commitment_raw = _build_freeze(snapshot, manifest, freeze_cells)
+                if canonical_json(freeze_cells) != cells_raw:
+                    raise CustodianError("freeze builder mutated the frozen selection snapshot")
+                del freeze_cells
                 freeze = _json(freeze_raw, _PUBLIC_LIMITS["prediction_freeze.json"])
+                if type(freeze) is not dict or canonical_json(freeze.get("cells")) != cells_raw:
+                    raise CustodianError("published freeze differs from verified selections")
+                del cells_raw
                 predictions = _json(prediction_raw, _PRIVATE_LIMITS["prediction_record.json"])
                 prediction_sha = _sha(prediction_raw)
                 committed = _json(commitment_raw, _PUBLIC_LIMITS["prediction_commitment.json"])
@@ -476,6 +523,11 @@ def run_study_once(path, *, prepared, expected_context, exclusion_bytes, pilot_b
                 raw = _read(private.path / "artifacts" / name, CELL_CHUNK_LIMIT)
                 if {"bytes": len(raw), "sha256": _sha(raw)} != private_expected[name]:
                     raise CustodianError("held-out chunk changed after publication")
+                traces, conditions = _saved_ids(raw, name)
+                if traces & discovery_trace_ids:
+                    raise CustodianError("trace run ID is reused across discovery and held-out phases")
+                if conditions & discovery_condition_ids:
+                    raise CustodianError("condition ID is reused across discovery and held-out phases")
                 heldout_reads += 1
                 yield raw
         results = score(manifest, freeze_raw, prediction_raw, commitment_raw, snapshot.heldout,

@@ -24,7 +24,7 @@ from .trusted_service_profile import prepare_trusted_source
 
 
 _REQUIRED_OWNER_CONTRACT = "fixed-two-token-commitments-v1"
-_REQUIRED_SPAWN_CONTRACT = "pre-rooted-supervised-child-v1"
+_REQUIRED_SPAWN_CONTRACT = "gated-rooted-child-v1"
 _REQUIRED_COLLECTOR_CONTRACT = "two-token-worker-profile-v1"
 
 
@@ -53,13 +53,13 @@ def _check_owner_contract(repo):
     try:
         valid = (getattr(_owner_module, "FIXED_SERVICE_OWNER_CONTRACT", None) == _REQUIRED_OWNER_CONTRACT
                  and Path(_owner_module.__file__).resolve(strict=True) == owner.resolve(strict=True)
-                 and getattr(_supervisor_module, "REAPABLE_CHILD_SPAWN_CONTRACT", None) == _REQUIRED_SPAWN_CONTRACT
+                 and getattr(_supervisor_module, "SUPERVISOR_LAUNCH_CUSTODY_CONTRACT", None) == _REQUIRED_SPAWN_CONTRACT
                  and Path(_supervisor_module.__file__).resolve(strict=True) == supervisor.resolve(strict=True)
                  and _collector_contract_matches(collector))
     except (OSError, SyntaxError, TypeError, ValueError):
         valid = False
     if not valid:
-        raise RuntimeError("fixed service owner, reaping supervisor or worker profile collector is unavailable")
+        raise RuntimeError("fixed service owner, launch-custody supervisor or worker profile collector is unavailable")
 
 
 class _PreparedService:

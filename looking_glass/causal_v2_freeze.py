@@ -36,10 +36,13 @@ _REQUIRED_SOURCE_FILES = frozenset({
     "scripts/v2_source_launcher.py", "scripts/v2_source_bootstrap.py", "scripts/v2_source_guards.py",
     "looking_glass/__init__.py", "looking_glass/model.py", "looking_glass/probes.py",
     "looking_glass/model_ownership.py", "looking_glass/intervention_plan.py",
+    "looking_glass/interventions.py", "looking_glass/agreement_numeric.py",
     "looking_glass/causal_trace_v2.py", "looking_glass/causal_v2_runtime.py",
     "looking_glass/causal_v2_selection.py", "looking_glass/causal_v2_model_identity.py",
     "looking_glass/causal_v2_custody.py", "looking_glass/causal_v2_preparation.py",
     "looking_glass/causal_v2_freeze.py", "looking_glass/causal_v2_scoring.py", "looking_glass/causal_v2_executor.py",
+    "looking_glass/causal_v2_study_executor.py", "looking_glass/causal_v2_custodian_run.py",
+    "scripts/run_synthetic_v2.py", "looking_glass/causal_v2_evidence_encoder.py",
     "looking_glass/causal_v2_evidence_adapter.py", "looking_glass/v2_evidence.py",
     "looking_glass/registry.py", "looking_glass/pretrained_number_injection.py",
 })
@@ -336,6 +339,138 @@ def _selector(selection, count):
                 "predictions": expected_predictions}
     if canonical_json({key: selection[key] for key in expected}) != canonical_json(expected):
         raise ValueError("selection or prediction means do not match discovery measurements")
+
+
+def verify_discovery_evidence(snapshot, cells, chunks):
+    """Match every selection observation to its persisted private cell chunk.
+
+    ``chunks`` yields complete, canonical discovery chunks read back in the
+    prepared cell order. Only the custodian may call this with private records;
+    the selector receives no hidden target or private plan metadata. This
+    establishes consistency of supplied bytes, not capture validity, secrecy,
+    publication order, or execution. The caller must first verify preparation,
+    source/model/runtime identities, and actual chunk publication.
+    """
+    from . import registry
+    from .causal_v2_evidence_adapter import CELL_CHUNK_LIMIT, CellEvidence
+    from .causal_v2_scoring import validate_saved_controls
+    from .v2_evidence import _chunk
+
+    public, _, schedule = _checked_snapshot(snapshot)
+    assignments = schedule["assignments"]
+    cases = public["discovery_cases"]
+    states = {item["seed"]: item["sha256"] for item in public["context"]["model_state_hashes"]}
+    count = len(cases) // len(states)
+    if type(cells) is not list or len(cells) != len(assignments):
+        raise ValueError("all ordered discovery cells are required")
+    try:
+        source = iter(chunks)
+    except TypeError as error:
+        raise ValueError("ordered discovery chunks are required") from error
+
+    class _NoPublish:
+        def publish_chunk(self, name, data):
+            raise RuntimeError("verification cannot publish evidence")
+
+    def saved_bits(tensor):
+        # CellEvidence has already checked the tensor schema and finiteness.
+        return [0 if bit & 0x7fffffff == 0 else bit for bit in tensor["bits"]]
+
+    def input_digest(values):
+        bits = [_float32_bits(value) for value in values]
+        prefix = b"MLG-v2-input-f32be-v1\0" + (1).to_bytes(4, "big") + (8).to_bytes(4, "big")
+        return _sha(prefix + b"".join(bit.to_bytes(4, "big") for bit in bits))
+
+    condition_ids, target_baselines = set(), {}
+    trace_owners, clean_trace_ids = {}, {}
+    for index, (cell, assignment) in enumerate(zip(cells, assignments)):
+        if (type(cell) is not dict or set(cell) != {"cell_id", "model_seed", "selection"}
+                or type(cell["model_seed"]) is not int or cell["model_seed"] != assignment["model_seed"]
+                or cell["cell_id"] != assignment["cell_id"]):
+            raise ValueError("discovery cell identity or order differs")
+        _selector(cell["selection"], count)
+        name = f"cell-{index:02d}-d.json"
+        try:
+            raw = next(source)
+        except StopIteration as error:
+            raise ValueError("a discovery chunk is missing") from error
+        # _chunk enforces the registry's canonical encoding and byte bound.
+        chunk = _chunk(raw, name, CELL_CHUNK_LIMIT)
+        records = chunk["records"]
+        if chunk["state"] != "complete" or len(records) != count * 2:
+            raise ValueError("a discovery chunk is incomplete")
+        seed = assignment["model_seed"]
+        model_cases = [case for case in cases if case["model_seed"] == seed]
+        buffer = CellEvidence(_NoPublish(), name=name, cell_id=cell["cell_id"],
+                              phase="discovery", model_seed=seed, model_state_sha256=states[seed])
+        for position, record in enumerate(records):
+            case_index, strength_index = divmod(position, 2)
+            case, row = model_cases[case_index], cell["selection"]["measurements"][case_index]
+            condition = row["conditions"][strength_index]
+            # Reuse the writer's strict record, tensor and ordering validation.
+            buffer.append(registry._json_bytes(record))
+            if (record["case_id"] != case["case_id"] or record["input_sha256"] != input_digest(case["values"])
+                    or record["private_integrity"]["target"] != assignment["injection_node"]
+                    or record["private_integrity"]["delta"] != condition["strength"] * row["polarity"]
+                    or record["condition_id"] in condition_ids):
+                raise ValueError("private discovery identity differs")
+            condition_ids.add(record["condition_id"])
+            checked = validate_saved_controls(record, target=assignment["injection_node"],
+                                               strength=condition["strength"], polarity=row["polarity"])
+            target_key = (cell["cell_id"], case_index)
+            target_bits = tuple(0 if bit & 0x7fffffff == 0 else bit for bit in checked["clean_target"])
+            if target_key in target_baselines and target_baselines[target_key] != target_bits:
+                raise ValueError("reused private target capture differs")
+            target_baselines[target_key] = target_bits
+            traces = record["traces"]
+            trace_ids = {key: traces[key][0]["metadata"]["run_id"]
+                         for key in ("clean", "repeat_clean", "perturbed")}
+            if len(set(trace_ids.values())) != 3:
+                raise ValueError("discovery trace pairing is invalid")
+            clean_key = (seed, case_index)
+            clean_pair = (trace_ids["clean"], trace_ids["repeat_clean"])
+            if clean_key in clean_trace_ids and clean_trace_ids[clean_key] != clean_pair:
+                raise ValueError("reused clean trace identity differs")
+            clean_trace_ids[clean_key] = clean_pair
+            for kind in ("clean", "repeat_clean"):
+                owner = (seed, case_index, kind)
+                run_id = trace_ids[kind]
+                if run_id in trace_owners and trace_owners[run_id] != owner:
+                    raise ValueError("discovery trace identity is reused")
+                trace_owners[run_id] = owner
+            if trace_ids["perturbed"] in trace_owners:
+                raise ValueError("discovery trace identity is reused")
+            trace_owners[trace_ids["perturbed"]] = (cell["cell_id"], position, "perturbed")
+            for saved, observed in ((traces["clean"], row["clean_trace"]),
+                                    (traces["repeat_clean"], row["repeated_clean_trace"]),
+                                    (traces["perturbed"], condition["perturbed_trace"])):
+                if [saved_bits(event["value"]) for event in saved] != _trace(observed):
+                    raise ValueError("discovery sparse evidence differs")
+            logits = record["logits"]
+            for saved, observed in ((logits["clean"], row["clean_logits"]),
+                                    (logits["repeat_clean"], row["repeated_clean_logits"]),
+                                    (logits["perturbed"], condition["perturbed_logits"]),
+                                    (logits["upstream"], condition["upstream_logits"]),
+                                    (logits["post_hook_clean"], condition["clean_verify_logits"])):
+                if saved_bits(saved) != _vector(observed, 2):
+                    raise ValueError("discovery logit evidence differs")
+            for key, field in (("forward", "clean_to_perturbed_logits"),
+                               ("reverse", "perturbed_to_clean_logits"),
+                               ("null", "null_logits"), ("self", "identity_logits")):
+                if [saved_bits(value) for value in logits[key]] != [
+                        _vector(value, 2) for value in condition[field]]:
+                    raise ValueError("discovery control evidence differs")
+            comparison = {"status": ("no_difference_observed" if condition["first_unequal"] is None
+                                      else "difference_observed"),
+                          "first_unequal": condition["first_unequal"],
+                          "last_equal": condition["last_equal"], "l2_by_block": condition["l2_by_block"]}
+            if canonical_json(record["comparison"]) != canonical_json(comparison):
+                raise ValueError("discovery comparison evidence differs")
+    try:
+        next(source)
+    except StopIteration:
+        return
+    raise ValueError("unexpected additional discovery chunk")
 
 
 def build_freeze(snapshot, pre_manifest_bytes, cells):

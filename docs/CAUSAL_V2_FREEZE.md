@@ -28,6 +28,22 @@ entries follow model, cell, case, strength and site order. The public freeze
 contains the prediction functions and discovery data, not held-out cases,
 site assignments or concrete held-out predictions.
 
+Before freezing, `verify_discovery_evidence(snapshot, cells, chunks)` accepts
+the ordered, read-back **private** cell chunks and binds each sanitized
+measurement to the saved float32 trace and logit bits, controls, case and
+model identities. It checks injection arithmetic, target-capture and ordered
+plan metadata, source/landing values, upstream and step-map controls through
+the shared saved-control validator. Plan trace references must identify the
+saved forward's run ID and site, and base references must use that run ID plus
+`/logits`. Clean/repeat trace IDs must identify the same model and input when
+reused; perturbed trace IDs must be distinct across discovery conditions. It
+also checks reuse of the clean target across strengths. Signed
+zeros are equivalent for the protocol's float32 comparisons; a nonzero
+subnormal is not equal to zero. Failures use generic messages and these private
+records, including their targets, never go to the selector. The helper checks
+the records it receives; the custodian must verify they are the exact durably
+published bytes and keep its inputs unchanged during validation.
+
 These checks establish consistency of supplied records, not that a forward
 occurred, that hidden-target injection integrity was checked, or that an
 observed boundary uniquely explains behavior. `PreparedSnapshot` can be

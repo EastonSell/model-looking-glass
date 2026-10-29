@@ -42,7 +42,7 @@ class ServicePreparationTests(unittest.TestCase):
         patch.object(service._owner_module, "FIXED_SERVICE_OWNER_CONTRACT",
                      service._REQUIRED_OWNER_CONTRACT, create=True).start()
         patch.object(service._owner_module, "__file__", str(self.package / "gpu_service.py")).start()
-        patch.object(service._supervisor_module, "REAPABLE_CHILD_SPAWN_CONTRACT",
+        patch.object(service._supervisor_module, "SUPERVISOR_LAUNCH_CUSTODY_CONTRACT",
                      service._REQUIRED_SPAWN_CONTRACT, create=True).start()
         patch.object(service._supervisor_module, "__file__", str(self.package / "supervisor.py")).start()
         self.addCleanup(patch.stopall)
@@ -113,17 +113,17 @@ class ServicePreparationTests(unittest.TestCase):
         prepared = self.prepare()
         with patch.object(service, "_start_owner_controller") as start:
             with patch.object(service._owner_module, "FIXED_SERVICE_OWNER_CONTRACT", "old"):
-                with self.assertRaisesRegex(RuntimeError, "reaping supervisor"):
+                with self.assertRaisesRegex(RuntimeError, "launch-custody supervisor"):
                     prepared.start()
-            with patch.object(service._supervisor_module, "REAPABLE_CHILD_SPAWN_CONTRACT", "old"):
-                with self.assertRaisesRegex(RuntimeError, "reaping supervisor"):
+            with patch.object(service._supervisor_module, "SUPERVISOR_LAUNCH_CUSTODY_CONTRACT", "old"):
+                with self.assertRaisesRegex(RuntimeError, "launch-custody supervisor"):
                     prepared.start()
             (self.package / "trusted_profile_collector.py").write_text(
                 "TRUSTED_SERVICE_COLLECTOR_CONTRACT = 'old'\n")
-            with self.assertRaisesRegex(RuntimeError, "reaping supervisor"):
+            with self.assertRaisesRegex(RuntimeError, "launch-custody supervisor"):
                 prepared.start()
             (self.package / "trusted_profile_collector.py").unlink()
-            with self.assertRaisesRegex(RuntimeError, "reaping supervisor"):
+            with self.assertRaisesRegex(RuntimeError, "launch-custody supervisor"):
                 prepared.start()
             start.assert_not_called()
 

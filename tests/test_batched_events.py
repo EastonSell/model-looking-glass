@@ -108,6 +108,23 @@ def test_explicit_observations_reconstruct_analyzer_windows_without_mutation():
     assert report['summaries']['grouped']['batch_rows']['max'] == 2
 
 
+def test_grouped_opaque_broker_job_ids_survive_adapter_unchanged():
+    p, digest, contexts, serial, grouped, values = _fixture()
+    ids = {'j1': 'grouped-broker-j-1', 'j2': 'grouped-broker-j-2'}
+    for event in grouped:
+        if event['kind'] == 'ready':
+            event.update(broker_id='grouped-broker', broker_job_id=ids[event['job_id']])
+        elif event['kind'] == 'forward_entry':
+            for member in event['members']:
+                member.update(broker_id='grouped-broker', broker_job_id=ids[member['job_id']])
+    left = _assemble(p, digest, contexts[0], serial)
+    right = _assemble(p, digest, contexts[1], grouped)
+    assert [row['broker_job_id'] for row in right['attempts']] == list(ids.values())
+    report = analyze_pair(p, left, right, expected_protocol_sha256=digest,
+                          serial_outputs=values, grouped_outputs=values)
+    assert report['measured_pair_consistent'] and not report['same_recorded_broker']
+
+
 @pytest.mark.parametrize('kind', ['window_start', 'window_end', 'owner_drain', 'returned',
                                   'selected', 'ready', 'forward_finished', 'broker_terminal'])
 def test_missing_observations_cannot_be_inferred(kind):
