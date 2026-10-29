@@ -37,6 +37,8 @@ source/runtime/model verifier, a private supervisor-to-parent startup channel,
 and separately reviewed measured model-load and forward profiles. None of the
 present test profiles is measured or approved. All real owners on this machine
 must use the same canonical project workspace root for device coordination.
+The generic test profile loader does not prove that its evidence used the
+specified token case and stage seeds; a production verifier must check both.
 The runtime UUID representation also requires verification against the actual
 device under supervision. A missing prerequisite must fail before launching an
 owner; an uncertain owner must exit with its sticky marker intact.

@@ -149,7 +149,9 @@ def _load_profile_registry(files, identity):
 
     These declared keys are used only to reject invalid configuration before a
     GPU owner starts. They are not live runtime identity: the child must build
-    and resolve independently verified live keys again under supervision.
+    and resolve independently verified live keys again under supervision. This
+    generic loader does not establish that evidence used the fixed token case
+    and prescribed stage seeds; production must verify those separately.
     """
     from .resource_profile import ProfileRegistry, load_profile
 
