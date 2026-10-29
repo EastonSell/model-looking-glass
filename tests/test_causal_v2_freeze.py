@@ -60,13 +60,22 @@ class FreezeTests(unittest.TestCase):
                                enumerate(("numeric", "source", "self_patch", "resource"), start=1)}
         source = {path: "f" * 64 for path in _REQUIRED_SOURCE_FILES}
         source["docs/CAUSAL_CONFIRMATION_V2.md"] = "a" * 64
+        public = json.loads(self.snapshot.public)
+        source["results/synthetic-v2-exclusions-20261028/inputs.json"] = public["development_exclusions_sha256"]
+        source["results/synthetic-v2-resource-pilot-20261028/artifacts/pilot_inputs.json"] = public["pilot_exclusions_sha256"]
         for name, label in (("numeric", "NUMERIC"), ("source", "SOURCE"),
                             ("self_patch", "SELF_PATCH"), ("resource", "RESOURCE")):
             source[f"docs/CAUSAL_CONFIRMATION_V2_{label}_CLARIFICATION.md"] = self.clarifications[name + "_clarification_sha256"]
         self.source = source
         self.runtime = {"python_version": "3.11.15", "torch_version": "2.8.0+cu128", "system": "Windows",
                         "machine": "AMD64", "byteorder": "little", "intraop_threads": 1,
-                        "denormal_preserved": True, "torch_build_sha256": "e" * 64}
+                        "denormal_preserved": True, "torch_build_sha256": "e" * 64,
+                        "interop_threads": 12, "float32_matmul_precision": "highest",
+                        "mkldnn_enabled": True, "mkldnn_deterministic": False,
+                        "deterministic_algorithms": False, "deterministic_warn_only": False,
+                        "cpu_capability": "AVX2", "thread_environment": {
+                            "OMP_NUM_THREADS": None, "MKL_NUM_THREADS": None, "OMP_DYNAMIC": None,
+                            "MKL_DYNAMIC": None, "OPENBLAS_NUM_THREADS": None, "NUMEXPR_NUM_THREADS": None}}
         self.manifest = public_pre_manifest(self.snapshot, source_sha256=source,
             clarification_sha256=self.clarifications, runtime=self.runtime, created_utc="2026-10-29T02:00:00+00:00")
         self.cells = [{"cell_id": row["cell_id"], "model_seed": seed, "selection": selection()}
@@ -131,6 +140,56 @@ class FreezeTests(unittest.TestCase):
         del malformed["settings"]
         with self.assertRaises(ValueError):
             build_freeze(self.snapshot, canonical_json(malformed), self.cells)
+        source = dict(self.source)
+        source["results/synthetic-v2-exclusions-20261028/inputs.json"] = "f" * 64
+        with self.assertRaisesRegex(ValueError, "exclusion hashes differ"):
+            public_pre_manifest(self.snapshot, source_sha256=source,
+                clarification_sha256=self.clarifications, runtime=self.runtime,
+                created_utc="2026-10-29T02:00:00+00:00")
+
+    def test_runtime_backend_settings_are_bound_and_strictly_validated(self):
+        def manifest(runtime):
+            return public_pre_manifest(self.snapshot, source_sha256=self.source,
+                clarification_sha256=self.clarifications, runtime=runtime,
+                created_utc="2026-10-29T02:00:00+00:00")
+
+        for key, value in (("interop_threads", 1), ("float32_matmul_precision", "high"),
+                           ("mkldnn_enabled", False), ("mkldnn_deterministic", True),
+                           ("deterministic_algorithms", True), ("deterministic_warn_only", True),
+                           ("cpu_capability", "AVX512")):
+            runtime = copy.deepcopy(self.runtime)
+            runtime[key] = value
+            with self.subTest(key=key):
+                self.assertNotEqual(manifest(runtime), self.manifest)
+        runtime = copy.deepcopy(self.runtime)
+        runtime["thread_environment"]["OMP_NUM_THREADS"] = "1,2"
+        self.assertNotEqual(manifest(runtime), self.manifest)
+        runtime["thread_environment"]["OMP_NUM_THREADS"] = ""
+        self.assertIsInstance(manifest(runtime), bytes)
+
+        bad = [("interop_threads", True), ("interop_threads", 0), ("interop_threads", 65537),
+               ("float32_matmul_precision", "unknown"), ("mkldnn_enabled", 1),
+               ("mkldnn_deterministic", None), ("deterministic_algorithms", 0),
+               ("deterministic_warn_only", "false"), ("cpu_capability", "bad/path")]
+        for key, value in bad:
+            runtime = copy.deepcopy(self.runtime)
+            runtime[key] = value
+            with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                manifest(runtime)
+        for value in ("C:/private/path", "two\nlines", "x" * 129, 1):
+            runtime = copy.deepcopy(self.runtime)
+            runtime["thread_environment"]["OMP_NUM_THREADS"] = value
+            with self.subTest(environment=value), self.assertRaises(ValueError):
+                manifest(runtime)
+        for key in ("cpu_capability", "thread_environment", "interop_threads"):
+            runtime = copy.deepcopy(self.runtime)
+            del runtime[key]
+            with self.subTest(missing=key), self.assertRaises(ValueError):
+                manifest(runtime)
+        runtime = copy.deepcopy(self.runtime)
+        del runtime["thread_environment"]["MKL_DYNAMIC"]
+        with self.assertRaises(ValueError):
+            manifest(runtime)
 
     def test_forged_snapshot_cannot_publish_private_fields_or_bad_commitment(self):
         from looking_glass.causal_v2_custody import canonical_json

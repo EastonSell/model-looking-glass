@@ -25,6 +25,14 @@ def fake_handoff(monkeypatch):
     random = v1._scale_outer(torch.randn(16, generator=generator), torch.randn(12, generator=generator),
                              0.01 * v1._norm(original))
     environment = {key: f"runtime-{key}" for key in edits.ENVIRONMENT_FIELDS}
+    environment.update(intraop_threads=1, interop_threads=1, deterministic_algorithms=True,
+                       mkldnn_enabled=True, cuda_initialized=False, omp_num_threads=None, mkl_num_threads=None)
+    runtime = {"float32_matmul_precision": "highest", "mkldnn_deterministic": False,
+               "deterministic_warn_only": False, "intraop_threads": 1, "interop_threads": 1,
+               "deterministic_algorithms": True, "mkldnn_enabled": True, "cpu_autocast_enabled": False,
+               "inference_mode_enabled": False, "cuda_initialized": False, "cuda_visibility": "",
+               "hf_hub_offline": "1", "transformers_offline": "1", "omp_num_threads": None,
+               "mkl_num_threads": None}
     model = {"model_id": "synthetic-only"}
     discovery = {"discovery_logit_sha256": "3" * 64, "weight_norm": v1._norm(original)}
     state = "4" * 64
@@ -38,6 +46,8 @@ def fake_handoff(monkeypatch):
             "model_state_sha256": state, "original": original, "v1_gradient": gradient,
             "v1_random": random, "discovery": discovery}
     compatibility = edits.verify_v1_compatibility(**args)
+    args["buffer_state_sha256"] = "f" * 64
+    args["runtime_settings"] = runtime
     grid = {name: edits.attest(original, edits.construct_dose(original, gradient, dose), dose)
             for name, dose in v2.GRID}
     updates, controls = edits.construct_controls(original, gradient, 0.001)
@@ -57,7 +67,12 @@ def fake_handoff(monkeypatch):
                 "manifest_sha256": "c" * 64, "source_commit": "a" * 40, "model": model,
                 "environment": environment, "exposure": public, "custody": custody,
                 "compatibility": compatibility,
-                "grid": grid, "controls": controls}
+                "grid": grid, "controls": controls, "buffer_state_sha256": "f" * 64, "runtime_settings": runtime,
+                "analysis_denormal_probe_before": copy.deepcopy(gate.evidence.DENORMAL_PROBE),
+                "analysis_denormal_probe_after": copy.deepcopy(gate.evidence.DENORMAL_PROBE),
+                "supervision": {"owner": {"run_id": "d" * 32, "pid": 123},
+                                "supervisor": {"run_id": "d" * 32, "pid": 123,
+                                               "exit_code": 0, "clean": True, "timed_out": False, "reaped": True}}}
     recorded = {"status": "matching_committed_selection", "source_commit": "a" * 40,
                 "manifest_sha256": "c" * 64, "started_utc": "2026-10-29T03:30:00+00:00",
                 "selection": selection, "metadata": metadata}
@@ -90,7 +105,8 @@ def test_snapshot_does_not_share_mutable_records_and_reconstructs_controls(fake_
 
 
 @pytest.mark.parametrize("mutation", ["status", "source", "manifest", "model", "runtime", "exposure", "custody",
-                                      "compatibility", "grid", "dose_norm", "selected", "control_norm"])
+                                      "compatibility", "grid", "dose_norm", "selected", "control_norm", "supervision",
+                                      "buffer_digest", "analysis_probe"])
 def test_handoff_rejects_inconsistent_committed_metadata(fake_handoff, mutation):
     record = fake_handoff["recorded"]
     metadata = record["metadata"]
@@ -116,8 +132,14 @@ def test_handoff_rejects_inconsistent_committed_metadata(fake_handoff, mutation)
         metadata["grid"]["dose-0004"]["planned_norm"] *= 2
     elif mutation == "selected":
         metadata["controls"]["selected"]["intended_delta_sha256"] = "0" * 64
-    else:
+    elif mutation == "control_norm":
         metadata["controls"]["random"]["realized_norm"] *= 2
+    elif mutation == "supervision":
+        metadata["supervision"]["supervisor"]["clean"] = False
+    elif mutation == "buffer_digest":
+        metadata["buffer_state_sha256"] = "invalid"
+    else:
+        metadata["analysis_denormal_probe_after"]["subnormal_times_one_bits"] = 0
     with pytest.raises(v1.StudyError):
         gate.prepare_committed_selection("repo", **fake_handoff["call"])
 
@@ -130,6 +152,21 @@ def test_fresh_reconstruction_rejects_changed_control_digest(fake_handoff):
                                      v1._canonical(metadata), snapshot.selection_commit, snapshot.terminal_sha256)
     with pytest.raises(v1.StudyError):
         gate.reconstruct_selected_controls(altered, **fake_handoff["args"])
+
+
+def test_fresh_reconstruction_rejects_changed_registered_buffers(fake_handoff):
+    snapshot = gate.prepare_committed_selection("repo", **fake_handoff["call"])
+    args = {**fake_handoff["args"], "buffer_state_sha256": "0" * 64}
+    with pytest.raises(v1.StudyError, match="buffer state differs"):
+        gate.reconstruct_selected_controls(snapshot, **args)
+
+
+def test_fresh_reconstruction_rejects_changed_supplemental_runtime(fake_handoff):
+    snapshot = gate.prepare_committed_selection("repo", **fake_handoff["call"])
+    settings = {**fake_handoff["args"]["runtime_settings"], "float32_matmul_precision": "medium"}
+    args = {**fake_handoff["args"], "runtime_settings": settings}
+    with pytest.raises(v1.StudyError, match="runtime settings differ"):
+        gate.reconstruct_selected_controls(snapshot, **args)
 
 
 def test_custody_commit_must_precede_selection_and_any_development_artifacts(fake_handoff, monkeypatch):

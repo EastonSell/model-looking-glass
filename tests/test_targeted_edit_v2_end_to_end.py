@@ -44,6 +44,9 @@ def fake_development(directory, *, source, manifest_sha, model, environment, pub
     common = {"version": v2.VERSION, "phase": "development", "run_id": run_id,
               "manifest_sha256": manifest_sha, "source_commit": source}
     write_json(directory / "started.json", {**common, "started_utc": "2026-10-29T03:30:00+00:00"})
+    owner = {"run_id": "b" * 32, "pid": 123}
+    supervisor = {**owner, "exit_code": 0, "clean": True, "timed_out": False, "reaped": True}
+    write_json(directory / "owner.json", {**common, "supervisor_run_id": owner["run_id"], "pid": owner["pid"]})
     baseline = np.zeros((len(v1.CASES), v1.VOCAB_SIZE), dtype="<f4")
     baseline[:5, v1.LONDON] = -1
     with open(ROOT / "results/targeted-edit-cpu-v1-20261028/reference/original.f32", "rb") as handle:
@@ -64,9 +67,17 @@ def fake_development(directory, *, source, manifest_sha, model, environment, pub
                      "discovery_logit_sha256": prior["discovery"]["discovery_logit_sha256"],
                      "gradient_delta_sha256": prior["candidates"]["gradient"]["intended_delta_sha256"],
                      "v1_random_delta_sha256": prior["candidates"]["random"]["intended_delta_sha256"]}
+    settings = {key: environment[key] for key in ("intraop_threads", "interop_threads", "deterministic_algorithms",
+                "mkldnn_enabled", "cuda_initialized", "omp_num_threads", "mkl_num_threads")}
+    settings.update(float32_matmul_precision="highest", mkldnn_deterministic=False,
+                    deterministic_warn_only=False, cpu_autocast_enabled=False, inference_mode_enabled=False,
+                    cuda_visibility="", hf_hub_offline="1", transformers_offline="1")
     write_json(directory / "metadata.json", {**common, "model": model, "environment": environment,
                 "exposure": public, "custody": custody_result, "compatibility": compatibility,
-                "grid": grid, "controls": controls})
+                "grid": grid, "controls": controls, "buffer_state_sha256": "c" * 64, "runtime_settings": settings,
+                "analysis_denormal_probe_before": evidence.DENORMAL_PROBE,
+                "analysis_denormal_probe_after": evidence.DENORMAL_PROBE,
+                "supervision": {"owner": owner, "supervisor": supervisor}})
     write_json(directory / "selection.json", {**common, "selection": selection})
     row_size = v1.VOCAB_SIZE * 4
     journal = bytearray()
@@ -77,7 +88,9 @@ def fake_development(directory, *, source, manifest_sha, model, environment, pub
                             "condition": name, "model_state_before_sha256": prior["model_state_sha256"],
                             "weight_before_sha256": prior["weight_sha256"], "applied_weight_sha256": applied,
                             "model_state_after_sha256": prior["model_state_sha256"],
-                            "weight_after_sha256": prior["weight_sha256"], "flags_restored": True,
+                            "weight_after_sha256": prior["weight_sha256"],
+                            "buffer_state_before_sha256": "c" * 64, "buffer_state_after_sha256": "c" * 64,
+                            "flags_restored": True,
                             "grads_cleared": True, "hooks_restored": True}))
         raw = arrays[name].tobytes()
         (directory / f"{name}.f32").write_bytes(raw)
