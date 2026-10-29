@@ -1,0 +1,33 @@
+{
+  "files": {
+    "cleanup_after_workspace.json": {
+      "bytes": 189,
+      "sha256": "5b3d0ba0f4f103e9ea1b79285a19321df1cef5d78c3d21418bb8b717636defa9"
+    },
+    "cleanup_before_workspace.json": {
+      "bytes": 203,
+      "sha256": "7607538464c2a674ddd672972189c878c44a79907de56936bdd2805a53aa88ac"
+    },
+    "cpu_preflight.json": {
+      "bytes": 8929,
+      "sha256": "126c8715461b7fed8baa84fb900f747466932bfe3fdf25e0a39cde7e2a438cce"
+    },
+    "observations.jsonl": {
+      "bytes": 31899,
+      "sha256": "d3dbb2c1043103d9df35b30324c723f87b6f6d6fbaf87b177b4c03ce960f07d5"
+    },
+    "screen.json": {
+      "bytes": 1103,
+      "sha256": "55cd9d0d5510120e0fd8bc1f3a3dd9acf17745371724213922d79320b97c675a"
+    },
+    "summary.json": {
+      "bytes": 3412,
+      "sha256": "ee5bee82ea3056ca5fce70ef4c38aa721b4c3555a39adf726cf258b2cc80074b"
+    },
+    "telemetry.json": {
+      "bytes": 1864,
+      "sha256": "82616c1bce7a99809de7de0be2fcdbe61e6dfb85f6e4e8d596230fb55992b7e6"
+    }
+  },
+  "scope": "This inventory covers only the public subset in this directory, not the full private run."
+}
