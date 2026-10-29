@@ -83,6 +83,28 @@ The caller must explicitly release it after completion is established. Callers
 can inspect `lease.released` and `lease.trace_bytes(location)` and must retain
 or recover the lease for cleanup.
 
+The active-lease set is the accounting authority. Device estimates and aggregate
+trace totals are derived from the active leases under the same lock. Earlier
+code updated membership and cached totals separately: an interruption between
+those writes could leave an active lease or trace undercounted, and retrying a
+lease release could drive the cached commitment negative. The current design
+publishes a membership change in one replacement and derives totals from the
+remaining leases; these aggregate reads scan active leases, and CPU
+fault-injection tests cover interrupted transitions. An
+interrupted admission may have committed before its result reached the caller;
+inspect `active_leases()` and reconcile ownership before admitting replacement
+work. This does not establish CUDA completion or persistence across processes.
+
+`reserve_trace` and `release_trace` use byte counts, not individual claim IDs.
+An interruption may arrive after a count change but before the caller observes
+the return. In particular, blindly retrying an uncertain `release_trace` can
+uncharge a different, still-live trace on the same lease. After an uncertain
+call, reconcile `trace_bytes()` against the actual owned buffers and their work;
+if exact ownership cannot be established, retain the lease and quarantine the
+worker/device. Do not retry by assumption. New grouped trace custody should use
+the separate handle-based `HostBudget` rather than treating these count calls as
+idempotent claim releases.
+
 The budget retains active lease objects, accessible through
 `budget.active_leases()`, even if a caller loses its own reference. The broker
 must associate each lease with its job and owner; the ledger cannot infer
@@ -96,6 +118,15 @@ The lock protects operations on one budget instance in one process only. It
 is not an interprocess lock or a reservation against unrelated applications.
 Multiple independent budget instances for the same GPU can over-admit. A single
 trusted broker must own the budget and route compatible jobs through it.
+Python cannot guarantee that a lock is released under an asynchronous exception
+at every interpreter bytecode. Adversarial interruption tests can strand the
+budget's `RLock` while leaving its accounting consistent; in that state another
+thread's normal budget operations may block, including `active_leases()` and
+`snapshot()`. Do not infer recovery from a reentrant read by the interrupted
+thread. An external supervisor must detect an unresponsive worker, quarantine its
+device work and use process-level replacement when lock liveness or device
+completion cannot be established. The tests do not claim universal liveness or
+recovery after arbitrary interruption.
 
 ## Proposed resident-load handoff (not implemented)
 
