@@ -58,6 +58,7 @@ class CudaAgreementCalibrator(CudaAgreementRunner):
                 expected_quartets=1, cancel_event=cancel_event)
             self._calibration_index = 0
             self._calibration_donors = None
+            self._calibration_in_callback = False
         except BaseException:
             self.quarantined = True
             raise
@@ -73,6 +74,21 @@ class CudaAgreementCalibrator(CudaAgreementRunner):
 
     def run(self, *args, **kwargs):
         raise StudyFailure('the provisional calibration owner cannot run a study')
+
+    def _execution_contract(self):
+        if not self._calibration_in_callback:
+            raise StudyFailure('the provisional calibration owner cannot run a study')
+        return super()._execution_contract()
+
+    def warmup(self):
+        if self._calibration_in_callback:
+            self.quarantined = True
+            raise StudyFailure('calibration callbacks cannot overlap')
+        self._calibration_in_callback = True
+        try:
+            return super().warmup()
+        finally:
+            self._calibration_in_callback = False
 
     def _runtime_metadata(self):
         return {'device': self.device, 'device_uuid': self._expected_key.device_uuid,
@@ -124,6 +140,17 @@ class CudaAgreementCalibrator(CudaAgreementRunner):
             raise
 
     def calibrate_action(self, kind):
+        """Run one fixed calibration case; never return model values."""
+        if self._calibration_in_callback:
+            self.quarantined = True
+            raise StudyFailure('calibration callbacks cannot overlap')
+        self._calibration_in_callback = True
+        try:
+            return self._calibrate_action(kind)
+        finally:
+            self._calibration_in_callback = False
+
+    def _calibrate_action(self, kind):
         """Execute one exact action; return plan metadata, never model values.
 
         The collector must synchronize/reset/sample around this entire call.

@@ -568,6 +568,7 @@ class CudaAgreementGuardTests(unittest.TestCase):
             runner._warmup_completed = runner._completed = False
             runner._device_drain_uncertain = False
             runner._calibration_index, runner._calibration_donors = 0, None
+            runner._calibration_in_callback = False
             runner._forward_roots = {name: None for name in
                 ('ids', 'mask', 'inputs', 'sources', 'source_fallback', 'steps', 'plan', 'output', 'captures', 'offload')}
             runner._execution_contract = lambda: _model_contract(model)
@@ -597,6 +598,24 @@ class CudaAgreementGuardTests(unittest.TestCase):
             self.assertEqual(len(events), 14)
             self.assertTrue(all(event['tensors'] == {} for event in events))
             self.assertTrue(all(event['event']['kind'] == 'gpu_calibration_action' for event in events[1:]))
+
+    def test_calibrator_rejects_unbound_base_study_before_forward(self):
+        from looking_glass.agreement_cuda_calibration import CudaAgreementCalibrator
+        from looking_glass.agreement_journal import AgreementJournal
+        spec = importlib.util.spec_from_file_location('toy_no_study_fixture',
+                    Path(__file__).with_name('test_agreement_patch_runner.py'))
+        fixture = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(fixture)
+        model = fixture.ToyModel().eval()
+        with tempfile.TemporaryDirectory() as temporary:
+            journal = AgreementJournal(Path(temporary) / 'attempt', {'test': 'synthetic-only'})
+            runner = object.__new__(CudaAgreementCalibrator)
+            NaturalAgreementRunner.__init__(runner, model, journal, expected_quartets=1)
+            runner._calibration_in_callback = False
+            runner._device_drain_uncertain = False
+            with self.assertRaisesRegex(StudyFailure, 'cannot run a study'):
+                NaturalAgreementRunner.run(runner, fixture.cases())
+            self.assertEqual(model.forward_calls, 0)
 
     def test_late_bad_length_is_rejected_before_any_study_forward(self):
         with tempfile.TemporaryDirectory() as temporary:
