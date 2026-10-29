@@ -1,10 +1,10 @@
-# Site-blind injection discovery scoring
+# Site-blind injection scoring
 
 `looking_glass.pretrained_number_selection` scores the eight **public**
 first-lemma singular/plural discovery prompts from
 `PRETRAINED_NUMBER_PATCH_V1.md`. It does not run a model, choose or accept the
-hidden injection layer, draw or inspect a held-out case, publish anything, or
-authorize a study. The caller supplies immutable `DiscoveryCase`,
+hidden injection layer, draw a held-out case, publish anything, or authorize a
+study. The caller supplies immutable `DiscoveryCase`,
 `Observation`, `Boundary`, `Action` and `Donor` records. The executor's public
 observation and action descriptors can be copied into these value types; raw
 vectors and logits remain immutable little-endian float32 bytes.
@@ -56,6 +56,48 @@ payload is present. The function does not write an artifact or enforce that the
 files, runtime record and aggregate were actually published before held-out
 allocation.
 
+## Evaluation after the prediction freeze
+
+The same reviewed source must be published before injection discovery begins.
+Only after the complete discovery prediction and aggregate are published may
+the custodian draw the held-out split, bind and publish its commitment, and
+execute the held-out forwards. `score_evaluation` is a pure scoring function:
+it generates no cases and runs no model. Its eight `EvaluationCase` records
+carry the custodian-supplied text and token tuple for the first lemma's
+singular/plural prompts in each of four committed families. It checks the same
+observation identities, action/donor coordinates, landing bits and public
+controls as discovery; it records raw-payload hashes and all per-case outcomes.
+It validates basic token shape and uniqueness but does not prove tokenizer
+alignment, the full four-prompt family, inventory exclusion or a commitment's
+preimage. The custodian must verify these against the committed held-out record
+and the current exposure inventory, verify actual inputs/masks and all private
+action/cleanup controls, and retain every raw payload and incomplete attempt.
+
+The function takes the exact immutable discovery JSON bytes and checks their
+SHA-256, canonical form, protocol/device identity, votes, rankings, means and
+predictions before reading the evaluation observations. It uses only the
+selections and site predictions in that record, including abstention; it never
+reselects from held-out outcomes. It reports each forward and reverse effect,
+the individual errors against the frozen and zero predictions, per-site MAE
+and RMSE, and the four two-prompt family groupings. These are descriptive
+measurements, not eight independent families or evidence of a natural circuit.
+For each site the full last-token vocabulary restoration uses one `math.fsum`
+over all squared decoded-logit differences across all cases and coordinates.
+The numerator and denominator are always retained; the value is JSON `null`
+when the denominator is at most `1e-8`, and negative values are preserved.
+
+`prediction_sha256`, `prediction_freeze_sha256` and
+`heldout_commitment_sha256` identify separate records. The caller must verify
+that the exact prediction digest appears in the published aggregate, that the
+aggregate predates the split draw, and that the published held-out commitment
+predates all held-out forwards. `custody_verified=True` asserts those facts and
+the correspondence of the supplied rows to the committed record; it is not
+cryptographic proof of publication order or truthful execution.
+`private_controls_verified=True` remains the separate attestation described
+above. Evaluation results and case material remain private until protocol
+reveal. `EvaluationInvalid` means no successful evaluation is produced; retain
+the incomplete attempt and evidence according to the protocol.
+
 Clean correctness uses the fixed present-tense sign rule. A zero margin is
 incorrect and is also included in the separately reported tie count; the tie
 count is therefore a subset of the incorrect count.
@@ -66,4 +108,4 @@ raw observations, failed controls and cleanup evidence; tracebacks and locals
 must remain in custody. This in-process helper does not enforce a global
 no-retry policy or prove that caller-supplied attestations are true. Its input
 and output bounds are not a host-memory peak or GPU admission limit. The
-fabricated tests do not run the model or create any held-out input.
+fabricated tests do not run the model or create any actual held-out input.

@@ -1,10 +1,11 @@
-"""Fabricated discovery records only; no model or held-out execution."""
+"""Fabricated records only; no model or actual held-out execution."""
 import functools
 import hashlib
 import json
+import math
 import struct
 import unittest
-from dataclasses import replace
+from dataclasses import fields, replace
 
 from looking_glass.pretrained_exposures_v2 import PUBLIC_DISCOVERY
 
@@ -35,12 +36,13 @@ def input_hash(ids):
                           b"".join(value.to_bytes(4, "big") for value in ids)).hexdigest()
 
 
-def fabricated_cases(changed=True):
+def fabricated_cases(changed=True, ids_rows=None):
     """Independent hand-sized effects; no model, private site, or generated split."""
     rows = []
     serial = 0
     for index in range(8):
-        ids = PUBLIC_DISCOVERY[(index // 2) * 4 + index % 2][1]
+        ids = (PUBLIC_DISCOVERY[(index // 2) * 4 + index % 2][1]
+               if ids_rows is None else ids_rows[index])
         trace = tuple(Boundary(
             module_path=path, capture_order=order, invocation=0, batch_index=0,
             token_index=len(ids) - 1, output_selector=selector,
@@ -93,6 +95,17 @@ def fabricated_cases(changed=True):
                                   upstream=obs("upstream", mlp="injected", layer=0, donor=clean),
                                   downstream=obs("downstream", donor=clean), verify_clean=obs("clean")))
     return tuple(rows)
+
+
+def fabricated_evaluation():
+    # These arbitrary token numbers are invented test data, not protocol inputs.
+    from looking_glass.pretrained_number_selection import EvaluationCase
+    ids_rows = tuple((1000 + index, 2000 + index, 3000 + index) for index in range(8))
+    rows = fabricated_cases(ids_rows=ids_rows)
+    return tuple(EvaluationCase(**{field.name: getattr(row, field.name)
+                                   for field in fields(DiscoveryCase)},
+                                text=f"fabricated case {index}", input_ids=ids_rows[index])
+                 for index, row in enumerate(rows))
 
 
 class NumberInjectionSelectionTests(unittest.TestCase):
@@ -230,6 +243,157 @@ class NumberInjectionSelectionTests(unittest.TestCase):
         self.assertIsNone(result["first_changed"])
         self.assertEqual(result["mean_l2"]["2"], 2.0 ** -152)
         self.assertEqual(result["magnitude"], 2)
+
+
+class NumberInjectionEvaluationTests(unittest.TestCase):
+    def setUp(self):
+        from looking_glass.pretrained_number_selection import score_evaluation
+        self.score = score_evaluation
+        self.discovery = freeze_discovery(fabricated_cases(), private_controls_verified=True,
+                                          execution_device="cpu")
+        self.options = {"discovery_bytes": self.discovery,
+                        "prediction_sha256": hashlib.sha256(self.discovery).hexdigest(),
+                        "prediction_freeze_sha256": "a" * 64,
+                        "heldout_commitment_sha256": "b" * 64,
+                        "custody_verified": True, "private_controls_verified": True,
+                        "execution_device": "cpu"}
+
+    @staticmethod
+    def with_logits(case, injected, patches):
+        return replace(case, injected=replace(case.injected, logits=injected),
+                       null=replace(case.null, logits=injected),
+                       self_patch=replace(case.self_patch, logits=injected),
+                       upstream=replace(case.upstream, logits=injected),
+                       forward=tuple(replace(obs, logits=raw)
+                                     for obs, raw in zip(case.forward, patches)))
+
+    def test_frozen_predictions_grouped_errors_and_full_vocabulary_restoration(self):
+        # Site 1's effects are -2..5; its discovery prediction is 1.0.
+        cases = tuple(self.with_logits(case, logits(2.0),
+                                       (logits(float(i)), logits(2.0), logits(3.0), logits(0.0)))
+                      for i, case in enumerate(fabricated_evaluation()))
+        result = json.loads(self.score(cases, **self.options))
+        self.assertEqual(result["selection"]["first_changed"], 2)
+        self.assertEqual(result["selection"]["magnitude"], 4)
+        self.assertEqual(result["prediction_sha256"], self.options["prediction_sha256"])
+        site = result["sites"]["1"]
+        self.assertEqual(site["effects"], [-2., -1., 0., 1., 2., 3., 4., 5.])
+        self.assertEqual(site["errors"], [-3., -2., -1., 0., 1., 2., 3., 4.])
+        self.assertEqual(site["mae"], 2.0)
+        self.assertEqual(site["rmse"], math.sqrt(5.5))
+        self.assertEqual(site["zero_mae"], 2.25)
+        self.assertEqual(site["zero_rmse"], math.sqrt(7.5))
+        self.assertEqual([family["errors"] for family in site["families"]],
+                         [[-3., -2.], [-1., 0.], [1., 2.], [3., 4.]])
+        self.assertEqual(site["restoration"], {"numerator": 140.0, "denominator": 32.0,
+                                               "value": -3.375})
+        self.assertEqual([result["sites"][str(s)]["restoration"]["value"] for s in range(2, 5)],
+                         [0.0, -1.25, 1.0])
+
+    def test_denominator_equal_to_threshold_is_undefined_and_nonzero_is_retained(self):
+        # Each term is exactly representable in float32 and the binary64 fsum
+        # is exactly 1e-8; odd exponents split into two squares.
+        numerator, denominator = (1e-8).as_integer_ratio()
+        denominator_power = denominator.bit_length() - 1
+        terms = []
+        for bit in range(numerator.bit_length()):
+            if (numerator >> bit) & 1:
+                exponent = bit - denominator_power
+                terms.extend([2.0 ** (exponent // 2)] * (1 if exponent % 2 == 0 else 2))
+        self.assertEqual(math.fsum(term * term for term in terms), 1e-8)
+        raw = bytearray(logits(0.0))
+        for index, term in enumerate(terms, start=1000):
+            struct.pack_into("<f", raw, index * 4, term)
+        cases = list(fabricated_evaluation())
+        cases[0] = self.with_logits(cases[0], bytes(raw), (logits(0.0),) * 4)
+        for index in range(1, 8):
+            cases[index] = self.with_logits(cases[index], logits(0.0), (logits(0.0),) * 4)
+        result = json.loads(self.score(tuple(cases), **self.options))
+        restoration = result["sites"]["1"]["restoration"]
+        self.assertEqual(restoration["denominator"], 1e-8)
+        self.assertEqual(restoration["numerator"], 0.0)
+        self.assertIsNone(restoration["value"])
+
+    def test_no_site_abstention_is_frozen_and_not_reselected(self):
+        discovery = freeze_discovery(fabricated_cases(changed=False),
+                                     private_controls_verified=True, execution_device="cpu")
+        options = {**self.options, "discovery_bytes": discovery,
+                   "prediction_sha256": hashlib.sha256(discovery).hexdigest()}
+        result = json.loads(self.score(fabricated_evaluation(), **options))
+        self.assertIsNone(result["selection"]["first_changed"])
+        self.assertEqual(result["selection"]["ranking"], [1, 2, 3, 4])
+        self.assertEqual(result["selection"]["magnitude"], 1)
+
+    def test_smallest_subnormal_restoration_denominator_is_retained(self):
+        raw = bytearray(logits(0.0))
+        struct.pack_into("<I", raw, 1000 * 4, 1)
+        cases = list(fabricated_evaluation())
+        cases[0] = self.with_logits(cases[0], bytes(raw), (logits(0.0),) * 4)
+        for index in range(1, 8):
+            cases[index] = self.with_logits(cases[index], logits(0.0), (logits(0.0),) * 4)
+        result = json.loads(self.score(tuple(cases), **self.options))
+        restoration = result["sites"]["1"]["restoration"]
+        self.assertEqual(restoration["denominator"], 2.0 ** -298)
+        self.assertIsNone(restoration["value"])
+
+    def test_self_consistent_digest_cannot_hide_inconsistent_frozen_mean(self):
+        from looking_glass.pretrained_number_selection import EvaluationInvalid
+        parsed = json.loads(self.discovery)
+        parsed["predictions"]["2"] = 123.0
+        forged = json.dumps(parsed, sort_keys=True, separators=(",", ":"),
+                            ensure_ascii=True, allow_nan=False).encode()
+        options = {**self.options, "discovery_bytes": forged,
+                   "prediction_sha256": hashlib.sha256(forged).hexdigest()}
+        with self.assertRaises(EvaluationInvalid):
+            self.score(fabricated_evaluation(), **options)
+
+    def test_rejects_noncanonical_frozen_bytes_even_with_matching_digest(self):
+        from looking_glass.pretrained_number_selection import EvaluationInvalid
+        invalid = self.discovery + b"\n"
+        options = {**self.options, "discovery_bytes": invalid,
+                   "prediction_sha256": hashlib.sha256(invalid).hexdigest()}
+        with self.assertRaises(EvaluationInvalid):
+            self.score(fabricated_evaluation(), **options)
+
+    def test_rejects_impossible_finite_predictions_without_overflow(self):
+        from looking_glass.pretrained_number_selection import EvaluationInvalid
+        parsed = json.loads(self.discovery)
+        for case in parsed["cases"]:
+            case["l2"][0] = 1e308
+        forged = json.dumps(parsed, sort_keys=True, separators=(",", ":"),
+                            ensure_ascii=True, allow_nan=False).encode()
+        options = {**self.options, "discovery_bytes": forged,
+                   "prediction_sha256": hashlib.sha256(forged).hexdigest()}
+        with self.assertRaises(EvaluationInvalid):
+            self.score(fabricated_evaluation(), **options)
+
+    def test_rejects_excessively_nested_prediction_json(self):
+        from looking_glass.pretrained_number_selection import EvaluationInvalid
+        malformed = b"[" * 5000 + b"]" * 5000
+        options = {**self.options, "discovery_bytes": malformed,
+                   "prediction_sha256": hashlib.sha256(malformed).hexdigest()}
+        with self.assertRaises(EvaluationInvalid):
+            self.score(fabricated_evaluation(), **options)
+
+    def test_rejects_tampering_failed_controls_nonfinite_and_bad_attestations(self):
+        from looking_glass.pretrained_number_selection import EvaluationInvalid
+        cases = fabricated_evaluation()
+        altered = self.discovery.replace(b'"earliest":1', b'"earliest":2', 1)
+        raw = bytearray(cases[0].forward[0].logits)
+        struct.pack_into("<I", raw, 50000 * 4, 0x7fc00000)
+        invalid = replace(cases[0], forward=(replace(cases[0].forward[0], logits=bytes(raw)),) +
+                          cases[0].forward[1:])
+        failed = replace(cases[0], null=replace(cases[0].null, logits=logits(2.0)))
+        bad_options = ({**self.options, "discovery_bytes": altered},
+                       {**self.options, "custody_verified": False},
+                       {**self.options, "private_controls_verified": False},
+                       {**self.options, "heldout_commitment_sha256": "c" * 63})
+        for options in bad_options:
+            with self.assertRaises(EvaluationInvalid):
+                self.score(cases, **options)
+        for first in (invalid, failed):
+            with self.assertRaises(EvaluationInvalid):
+                self.score((first,) + cases[1:], **self.options)
 
 
 if __name__ == "__main__":
