@@ -199,6 +199,17 @@ def test_bootstrap_checks_complete_source_before_any_project_import(tmp_path, mo
         bootstrap.verify_manifest(manifest_path)
 
 
+def test_bootstrap_verify_only_stops_before_owner(monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(bootstrap, "startup_gate", lambda: None)
+    monkeypatch.setattr(bootstrap, "verify_manifest", lambda _path: "a" * 64)
+    monkeypatch.setattr(bootstrap.runpy, "run_path", lambda *_args, **_kwargs: pytest.fail("owner imported"))
+    monkeypatch.setattr(sys, "argv", ["bootstrap", "--cache-dir", str(tmp_path), "--output-dir", str(tmp_path),
+                                     "--manifest", str(tmp_path / "manifest.json"), "--verify-only"])
+    bootstrap.main()
+    assert json.loads(capsys.readouterr().out) == {
+        "status": "source-manifest-verified", "manifest_sha256": "a" * 64, "model_forward_asserted": False}
+
+
 def test_reservation_checks_own_ids_status_and_exact_predecessor(monkeypatch):
     from looking_glass import pretrained_exposures_v30 as predecessor, pretrained_exposures_v31 as reservation
     cases = [{"case_id": f"case-{i}", "token_ids": [i], "target_id": i + 100, "text": f"text-{i}"}

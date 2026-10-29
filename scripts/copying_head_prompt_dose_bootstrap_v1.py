@@ -95,8 +95,14 @@ def main():
     parser.add_argument("--cache-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--verify-only", action="store_true",
+                        help="check the source/manifest without importing project or model code")
     args = parser.parse_args()
     manifest_hash = verify_manifest(args.manifest)
+    if args.verify_only:
+        print(json.dumps({"status": "source-manifest-verified", "manifest_sha256": manifest_hash,
+                          "model_forward_asserted": False}))
+        return
     os.environ["COPY_HEAD_PROMPT_BOOTSTRAP_SHA256"] = manifest_hash
     runpy.run_path(str(ROOT / OWNER), run_name="__main__")
 
