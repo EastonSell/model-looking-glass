@@ -9,6 +9,17 @@ data for this proposal. Publish and independently review this protocol before
 constructing its tokenizer-only case record. Publish and independently review
 the exact case record and owner before any new pretrained forward.
 
+After the first tokenizer-only draft (SHA-256
+`3938d487e98068b0d515edbb16ee34d6d8c590f248ad28c81e8cad60dbda5e52`), a
+named-public comparison at main `88666f1f0d4ad9c2f543983dea5efc6b22921b72`
+(report SHA-256 `81ae408e504afcbd2e8c5b472b2148c1cfd5aced0cf330473261dad94d39ab19`)
+found that `A violin is a musical [MASK].` was already a planned row in the
+earlier color study, referenced in two public snapshots. This pre-forward
+revision replaces only that unrelated locality with the trumpet sentence
+below and retains `{instrument}`. No antonym model forward occurred before
+the correction; publish and review this revision, rebuild the cases, and repeat
+the full named-public comparison before the screen.
+
 The question is whether a final-block parameter change can reverse one fixed
 masked-token antonym preference on public rephrasings, and how its locality
 compares with one deliberately global, efficacy-matched decoder-bias control.
@@ -95,7 +106,7 @@ The other seven localities, common to every candidate, are:
 | unrelated antonym | `The opposite of the direction left is [MASK].` | `{right}` |
 | unrelated antonym | `The opposite of open is [MASK].` | `{closed, shut}` |
 | unrelated relation | `A dolphin is a kind of [MASK].` | `{mammal}` |
-| unrelated relation | `A violin is a musical [MASK].` | `{instrument}` |
+| unrelated relation | `A trumpet is a musical [MASK].` | `{instrument}` |
 | unrelated relation | `A week has [MASK] days.` | `{seven}` |
 
 There are 12 candidate-specific inputs per candidate and seven common
