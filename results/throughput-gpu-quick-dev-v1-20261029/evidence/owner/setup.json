@@ -1,0 +1,108 @@
+{
+  "protocol": "shared-model-throughput-v1",
+  "status": "initializing",
+  "smoke_only": true,
+  "source": {
+    "source_commit": "c480e7e987ef7127ae61658ead3018e15ce9ae84",
+    "source_dirty": false,
+    "source_sha256": {
+      "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+      "looking_glass/throughput_benchmark.py": "601aa88f21a6b841bd576a83c7672a13720f304e685d532e81ccb0e5997ced8d",
+      "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+      "looking_glass/resident_worker.py": "4d2d9bb6c61ec904f337c8825934f95543f3a07d64f25887bf3fae03ea96d539",
+      "looking_glass/broker.py": "31bd59309ff0b6564085d0dcb00c36499d3bdfac32c0159321456cb38ba2e0da",
+      "looking_glass/fair_queue.py": "af9b1fdf9b8b86483ee446a9d13bce72ff844341266707b757807ea6265ad1fb",
+      "looking_glass/memory_budget.py": "27d7b1a352815b7a103e1d70a5f8f0a3ccffdd10dacb71a0744a47ad6f66e1b9",
+      "looking_glass/budgeted_worker.py": "31528b423f6b98dd2899a4e295190d6f2c72573b7ba2080db20cc6387bfcfc0a",
+      "looking_glass/device_lease.py": "6bb41af0ade9efff143aa1eb3cb0a25be1a801ad74a86d2f81ae36a0a9d05dfe",
+      "looking_glass/device_identity.py": "ad08eff6edbb1c94af9abec0d07d8a10944624488b8d723b10c75e8c67e10c45",
+      "looking_glass/supervisor.py": "d97a9b97384ea67eddd2f461003428aa0b8bd9b01c102b19b2bd2d6dd56c2537",
+      "docs/THROUGHPUT_PROTOCOL_V1.md": "e5dbc74d727719874b6442000cab28e96983d92914a94f842ac0cd62139821bd",
+      "scripts/throughput_bootstrap.py": "2fa3b02be7635c7cd6673bb1de6b6ae6a4f73a364b4a5cf03459dfdf1ffee46e"
+    }
+  },
+  "environment": {
+    "python": "3.11.15",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "torch": "2.8.0+cu128",
+    "transformers": "4.57.3",
+    "numpy": "2.4.6",
+    "cuda_runtime": "12.8",
+    "device": "cuda:0",
+    "torch_threads": 1,
+    "torch_interop_threads": 1,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": ":4096:8",
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": true,
+    "cudnn_allow_tf32": false,
+    "matmul_allow_tf32": false,
+    "nvidia_inventory": {
+      "error": "CalledProcessError: Command '['nvidia-smi', '--query-gpu=index,uuid,name,driver_version,memory.total,memory.free', '--format=csv,noheader,nounits']' returned non-zero exit status 255."
+    },
+    "runtime_gpu_uuid": "<GPU_UUID_REDACTED>",
+    "cuda_environment": {
+      "CUDA_VISIBLE_DEVICES": "<GPU_UUID_REDACTED>",
+      "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+      "CUDA_MODULE_LOADING": "LAZY",
+      "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+      "OMP_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "BLIS_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1"
+    },
+    "allocator_backend": "native",
+    "allocator_fraction": 0.25,
+    "bytecode_isolation": "empty_prefix_no_writes",
+    "python_no_site": true,
+    "python_ignores_environment": true,
+    "python_isolated": true,
+    "python_hash_randomization": true,
+    "device_name": "NVIDIA GeForce RTX 2070 SUPER",
+    "compute_capability": [
+      7,
+      5
+    ]
+  },
+  "admission_status": "development_unprofiled",
+  "owner_run_id": "8813b1c2a214455a97bc8492264af6fb",
+  "owner_pid": null,
+  "external_gpu_activity": "Not isolated; WDDM and other external GPU activity may be present.",
+  "model_id": "distilbert/distilgpt2",
+  "revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "expected_checkpoint_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+  "workload_replay": {
+    "public_prompts": [
+      "The small bird landed on",
+      "A bright light appeared in"
+    ],
+    "teams": [
+      "team-a",
+      "team-b"
+    ],
+    "seed_rule": "1000 + prompt index",
+    "batch": 1,
+    "tokenizer_add_special_tokens": false,
+    "padding": false,
+    "max_tokens": 128,
+    "capture_policy": "none",
+    "unit": "input tensor positions, including any padding"
+  },
+  "limits": {
+    "max_batch_size": 1,
+    "max_sequence_length": 128,
+    "max_input_bytes": 1048576,
+    "max_output_bytes": 8388608,
+    "max_gpu_trace_bytes": 0,
+    "max_host_trace_bytes": 0,
+    "gpu_model_load_estimate_bytes": 2147483648,
+    "gpu_per_forward_estimate_bytes": 1073741824,
+    "gpu_estimates_status": "provisional estimates; not measured hard limits",
+    "broker_max_pending": 4,
+    "broker_max_pending_per_team": 1
+  },
+  "protocol_seed": 0,
+  "repetitions": 1
+}
