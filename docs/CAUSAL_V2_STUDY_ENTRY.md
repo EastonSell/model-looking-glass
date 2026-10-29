@@ -38,6 +38,19 @@ path and phase-inventory integration. Supply a fresh absolute output path
 outside the checkout, an existing separate work directory, the venv root and
 its explicit dependency directory, and set `CUDA_VISIBLE_DEVICES=-1`.
 
+After the complete study job is verified drained, the parent loads the committed
+registry source under its still-held source lease and verifies both saved
+terminal registries, the exact required artifact names, and phase source
+inventories. It reports the integer counts recorded in those files only after
+checking the public/private outcome binding and pre-manifest source identity.
+The parent labels this `terminal_verified` with scope
+`terminals_counts_and_inventory`; this does not independently replay the
+scorer, intervention controls, or scientific conclusions. If a later cleanup
+fails, `recorded_success` separately indicates
+whether that committed success was verified; it is not overwritten by the
+cleanup status. The zero in a rehearsal report describes the no-forward
+rehearsal contract and is also exercised by a fatal-forward test fixture.
+
 The owner-composition tests use fabricated source trees, a stubbed custodian
 and a stubbed preparation function. The Windows launcher test additionally
 runs the real no-forward rehearsal from a temporary committed checkout whose

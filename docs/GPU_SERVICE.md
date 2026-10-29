@@ -84,8 +84,12 @@ at its decision boundary. CUDA RNG restoration is skipped after unsafe, and a
 final guarded synchronization follows successful restoration. An unsafe or
 failed drain keeps known buffers and both commitments through process exit;
 it cannot recover unknown device-internal temporaries or a newly allocated
-host tensor interrupted before Python assigns it to a custody slot. Such an
-interruption requires process quarantine; it is not proof of disposal. Host result, IPC and
+host tensor interrupted before Python assigns it to a custody slot. A later
+snapshot failure may also unwind earlier clones from a partial dictionary on
+the interpreter stack; retaining the exception does not recover those clones.
+Any producer retaining an alias of such a clone must account for and retain it
+independently. Such a failure requires process quarantine; it is not proof of
+disposal. Host result, IPC and
 consumer ownership require separate claims and disposal proofs. A fixed
 workspace or bounded output size alone does not establish aggregate host or
 native-device memory consumption.

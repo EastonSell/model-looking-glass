@@ -166,21 +166,42 @@ class TrustedProfileCollectorTests(unittest.TestCase):
                     collector._validated_hf_home(cache, selected_home)
 
     def test_missing_hf_home_stops_child_before_owner_or_lease(self):
-        import looking_glass.supervisor as supervisor
-        import looking_glass.trusted_profile_collector as collector
-        from looking_glass.device_lease import DeviceLease
-        from looking_glass.supervisor import OwnerSession
-        with tempfile.TemporaryDirectory() as folder:
-            config = {'run_dir': folder, 'run_id': 'a' * 32, 'cache_root': folder}
+        # Exercise the missing-home guard in a fresh owner-like interpreter.
+        # Earlier suite tests may have loaded Hub/Transformers, in which case
+        # the production preload guard must correctly take precedence. The
+        # failed owner's retained traceback belongs to that child as well.
+        driver = textwrap.dedent('''
+            import json, os, sys
+            from pathlib import Path
+            from unittest.mock import patch
+            sys.path.insert(0, sys.argv[1])
+            import looking_glass.supervisor as supervisor
+            import looking_glass.trusted_profile_collector as collector
+            from looking_glass.device_lease import DeviceLease
+            from looking_glass.supervisor import OwnerSession
+            root = Path(sys.argv[2])
+            config = {'run_dir': str(root), 'run_id': 'a' * 32, 'cache_root': str(root)}
             with (patch.object(supervisor, 'SUPERVISOR_LAUNCH_CUSTODY_CONTRACT',
                                'gated-rooted-child-v1', create=True),
                   patch.dict(os.environ, {'HF_HOME': ''}),
                   patch.object(OwnerSession, 'from_environment') as session,
                   patch.object(DeviceLease, 'acquire') as acquire):
-                self.assertEqual(collector._owner_main(config), 1)
+                status = collector._owner_main(config)
+            if status != 1:
+                raise AssertionError('missing HF_HOME did not fail')
             session.assert_not_called()
             acquire.assert_not_called()
-            self.assertEqual(json.loads((Path(folder) / 'failure.json').read_bytes())['error_type'], 'ValueError')
+            failure = json.loads((root / 'failure.json').read_bytes())
+            if failure.get('error_type') != 'ValueError':
+                raise AssertionError('missing HF_HOME did not reach its validation guard')
+        ''')
+        with tempfile.TemporaryDirectory() as folder:
+            result = subprocess.run(
+                [sys._base_executable, '-I', '-S', '-B', '-c', driver,
+                 str(Path(__file__).resolve().parents[1]), folder],
+                capture_output=True, text=True, timeout=15,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_preloaded_hub_with_stale_home_stops_before_owner(self):
         repo = str(Path(__file__).resolve().parents[1])
