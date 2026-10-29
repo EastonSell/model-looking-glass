@@ -33,9 +33,10 @@ all four outputs and direct/gradient captured values with `torch.equal` and no
 tolerance. This is numeric equality under that operator, not a bit-identity
 claim: signed zeros can compare equal. GPU subnormal behavior is not yet
 established for this workload. `torch.equal` also accepts matching infinities;
-a logits-finiteness conclusion requires a separate finite check on the baseline
-and every mode. Include the actual finite-logit reductions and synchronization
-in the profiled composite preflight when that check is integrated.
+the merged benchmark preflight separately checks finite logits for the
+baseline and every mode. Include those reductions and synchronization in the
+profiled composite preflight. Later timed outputs do not have the same finite
+check, so the preflight alone does not establish their finiteness.
 
 Record separate stages for model load, **persistent setup plus combined
 equivalence preflight**, and each of `none`, `id`, `direct` and `gradient`.
