@@ -49,6 +49,57 @@ def test_success_audits_after_reap_and_rejects_overwrite(tmp_path):
         supervisor.supervise_heldout(_child(output), output, os.environ.copy(), audit_result=_complete)
 
 
+def test_restricted_source_handles_are_inherited_by_the_gated_owner(tmp_path):
+    from scripts.v2_source_guards import InheritableHandles, SourceFileLease
+    source_root = tmp_path / 'source'
+    source_root.mkdir()
+    source = source_root / 'module.py'
+    source.write_text('fabricated source')
+    output = tmp_path / 'protected-run'
+    with SourceFileLease(source_root, [source]) as lease:
+        with InheritableHandles(lease.handles()) as inherited:
+            code = ("import ctypes,json,pathlib,sys; sys.path.insert(0,sys.argv[1]); "
+                    "from looking_glass.natural_agreement_controller import await_start; await_start(); "
+                    "k=ctypes.WinDLL('kernel32',use_last_error=True); "
+                    "k.GetHandleInformation.argtypes=(ctypes.c_void_p,ctypes.POINTER(ctypes.c_ulong)); "
+                    "flags=ctypes.c_ulong(); "
+                    "assert all(k.GetHandleInformation(int(h),ctypes.byref(flags)) for h in json.loads(sys.argv[3])); "
+                    "d=pathlib.Path(sys.argv[2])/'attempt'/'tensors'; d.mkdir(parents=True); "
+                    "(d/'payload').write_bytes(b'partial')")
+            root = Path(__file__).resolve().parents[1]
+            command = [sys._base_executable, '-I', '-c', code, str(root), str(output), json.dumps(inherited)]
+            result = supervisor.supervise_heldout(command, output, os.environ.copy(), audit_result=_complete,
+                                                   inherited_handles=inherited)
+            assert result['status'] == 'evidence_complete' and result['cleanup_verified'] is True
+            assert all(not os.get_handle_inheritable(handle) for handle in inherited)
+
+
+@pytest.mark.parametrize('kind', ['job', 'process', 'stream', 'pump'])
+def test_each_resource_is_rooted_before_its_initializer(kind, tmp_path, monkeypatch):
+    custody = {'job': None, 'child': None, 'streams': [], 'pumps': []}
+    created = []
+    class Interrupted:
+        def __init__(self, *args, **kwargs):
+            created.append(self)
+            raise KeyboardInterrupt()
+    with pytest.raises(KeyboardInterrupt):
+        if kind == 'job':
+            supervisor._new_job(custody, Interrupted)
+        elif kind == 'process':
+            monkeypatch.setattr(supervisor.subprocess, 'Popen', Interrupted)
+            supervisor._spawn(custody, ['fabricated'])
+        elif kind == 'stream':
+            monkeypatch.setattr(supervisor.io, 'FileIO', Interrupted)
+            supervisor._open_log(custody, tmp_path / 'log')
+        else:
+            monkeypatch.setattr(supervisor.threading, 'Thread', Interrupted)
+            supervisor._start_pump(custody, lambda: None, ())
+    stored = {'job': custody['job'], 'process': custody['child'],
+              'stream': custody['streams'][0] if custody['streams'] else None,
+              'pump': custody['pumps'][0] if custody['pumps'] else None}
+    assert stored[kind] is created[0]
+
+
 def test_nonzero_exit_retains_partial_and_never_audits(tmp_path):
     output = tmp_path / 'failed'
     audit = Mock()
@@ -58,6 +109,43 @@ def test_nonzero_exit_retains_partial_and_never_audits(tmp_path):
     assert result['status'] == 'incomplete' and result['exit_code'] == 7
     assert result['cleanup_verified'] is True and result['retained_tensor_files']['total_bytes'] == 7
     assert (output / 'attempt/tensors/payload').read_bytes() == b'partial'
+
+
+def test_live_descendant_after_owner_exit_is_drained_but_never_audited(tmp_path):
+    output = tmp_path / 'live-descendant'
+    tail = ("import subprocess; subprocess.Popen([sys._base_executable,'-c','import time; time.sleep(30)'], "
+            "stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL, "
+            "creationflags=subprocess.DETACHED_PROCESS)")
+    audit = Mock()
+    result = supervisor.supervise_heldout(_child(output, tail=tail), output, os.environ.copy(),
+                                          audit_result=audit)
+    audit.assert_not_called()
+    assert result['exit_code'] == 0 and result['postexit_active_processes'] >= 1
+    assert result['status'] == 'incomplete' and result['cleanup_verified'] is True
+    assert 'active Job members' in result['supervisor_error']
+
+
+def test_unreadable_postexit_job_count_never_audits(tmp_path, monkeypatch):
+    import scripts.v2_source_guards as guards
+    real_job = guards.WindowsJob
+    class UnreadableCount:
+        def __init__(self):
+            self.real = real_job()
+        def assign(self, child):
+            self.real.assign(child)
+        def _accounting(self):
+            raise OSError('fabricated count failure')
+        def terminate_and_wait(self):
+            self.real.terminate_and_wait()
+        def close(self):
+            self.real.close()
+    monkeypatch.setattr(guards, 'WindowsJob', UnreadableCount)
+    audit = Mock()
+    output = tmp_path / 'unknown-postexit-count'
+    result = supervisor.supervise_heldout(_child(output), output, os.environ.copy(), audit_result=audit)
+    audit.assert_not_called()
+    assert result['status'] == 'incomplete' and result['postexit_active_processes'] is None
+    assert result['cleanup_verified'] is True and 'post-exit Job count' in result['supervisor_error']
 
 
 def test_timeout_reaps_and_preserves_partial_without_audit(tmp_path):
@@ -125,31 +213,50 @@ def test_audit_failure_and_mismatched_inventory_fail_closed(tmp_path):
     assert result['status'] == 'incomplete' and 'accounting' in result['reason']
 
 
-def test_lost_child_handle_never_receives_start_or_becomes_complete(tmp_path, monkeypatch):
-    actual_popen = subprocess.Popen
+def test_interrupted_child_start_is_rooted_and_never_becomes_complete(tmp_path, monkeypatch):
+    actual_spawn = supervisor._spawn
     children = []
-    def lost(*args, **kwargs):
-        children.append(actual_popen(*args, **kwargs))
-        raise RuntimeError('simulated lost handle')
-    monkeypatch.setattr(supervisor.subprocess, 'Popen', lost)
+    def interrupted(custody, *args, **kwargs):
+        children.append(actual_spawn(custody, *args, **kwargs))
+        raise RuntimeError('simulated interrupted return')
+    monkeypatch.setattr(supervisor, '_spawn', interrupted)
     output = tmp_path / 'lost'
     audit = Mock()
     result = supervisor.supervise_heldout(_child(output), output, os.environ.copy(),
                                           audit_result=audit)
     audit.assert_not_called()
-    assert result['status'] == 'incomplete' and result['child_reaped'] is False
-    assert result['child_pid'] is None
+    assert result['status'] == 'incomplete' and result['child_reaped'] is True
+    assert result['child_pid'] == children[0].pid
     assert result['cleanup_verified'] is False and result['retry_safe'] is False
     child = children[0]
-    child.stdin.close()
-    assert child.wait(timeout=15) != 0
+    assert child.returncode != 0
     assert not (output / 'attempt').exists()
     child.stdout.close()
     child.stderr.close()
 
 
+def test_unknown_process_initializer_outcome_cannot_produce_a_complete_receipt(tmp_path, monkeypatch):
+    class PartialChild:
+        stdin = None
+        pid = None
+        def poll(self):
+            raise OSError('native process handle was not established')
+    partial = PartialChild()
+    def interrupted(custody, *args, **kwargs):
+        custody['child'] = partial
+        raise KeyboardInterrupt()
+    monkeypatch.setattr(supervisor, '_spawn', interrupted)
+    output = tmp_path / 'unknown-initializer'
+    audit = Mock()
+    result = supervisor.supervise_heldout(_child(output), output, os.environ.copy(), audit_result=audit)
+    audit.assert_not_called()
+    assert result['status'] == 'incomplete' and result['child_reaped'] is False
+    assert result['cleanup_verified'] is False and result['quarantined'] is True
+    assert supervisor._QUARANTINED[-1]['child'] is partial
+
+
 def test_pump_close_failure_prevents_structural_audit(tmp_path, monkeypatch):
-    actual_popen = subprocess.Popen
+    actual_spawn = supervisor._spawn
     failures = []
     class CloseFailure:
         def __init__(self, source):
@@ -159,11 +266,11 @@ def test_pump_close_failure_prevents_structural_audit(tmp_path, monkeypatch):
             return self.source.read1(size)
         def close(self):
             raise OSError('simulated pipe close failure')
-    def start(*args, **kwargs):
-        child = actual_popen(*args, **kwargs)
+    def start(custody, *args, **kwargs):
+        child = actual_spawn(custody, *args, **kwargs)
         child.stdout = CloseFailure(child.stdout)
         return child
-    monkeypatch.setattr(supervisor.subprocess, 'Popen', start)
+    monkeypatch.setattr(supervisor, '_spawn', start)
     audit = Mock()
     output = tmp_path / 'pipe-close'
     result = supervisor.supervise_heldout(_child(output), output, os.environ.copy(), audit_result=audit)
@@ -176,9 +283,9 @@ def test_pump_close_failure_prevents_structural_audit(tmp_path, monkeypatch):
 
 
 def test_cancellation_is_distinct_after_confirmed_cleanup(tmp_path, monkeypatch):
-    actual_popen = subprocess.Popen
-    def start(*args, **kwargs):
-        child = actual_popen(*args, **kwargs)
+    actual_spawn = supervisor._spawn
+    def start(custody, *args, **kwargs):
+        child = actual_spawn(custody, *args, **kwargs)
         wait = child.wait
         first = [True]
         def interrupted(*a, **k):
@@ -188,7 +295,7 @@ def test_cancellation_is_distinct_after_confirmed_cleanup(tmp_path, monkeypatch)
             return wait(*a, **k)
         child.wait = interrupted
         return child
-    monkeypatch.setattr(supervisor.subprocess, 'Popen', start)
+    monkeypatch.setattr(supervisor, '_spawn', start)
     audit = Mock()
     output = tmp_path / 'cancelled'
     result = supervisor.supervise_heldout(_child(output, tail='import time; time.sleep(30)'), output,
@@ -280,7 +387,7 @@ def test_interrupted_pump_join_keeps_streams_rooted_and_unread(tmp_path, monkeyp
 
 def test_job_and_log_close_double_failure_keeps_custody(tmp_path, monkeypatch):
     import scripts.v2_source_guards as guards
-    real_job, real_open = guards.WindowsJob, Path.open
+    real_job, real_open = guards.WindowsJob, supervisor._open_log
     jobs, wrappers = [], []
     class FailedJobClose:
         def __init__(self):
@@ -304,11 +411,15 @@ def test_job_and_log_close_double_failure_keeps_custody(tmp_path, monkeypatch):
             return self.stream.fileno()
         def close(self):
             raise OSError('injected stream close')
-    def open_with_failure(path, *args, **kwargs):
-        stream = real_open(path, *args, **kwargs)
-        return FailedStreamClose(stream) if path.name == 'stdout.txt' and args and args[0] == 'xb' else stream
+    def open_with_failure(custody, path):
+        stream = real_open(custody, path)
+        if path.name == 'stdout.txt':
+            wrapper = FailedStreamClose(stream)
+            custody['streams'][-1] = wrapper
+            return wrapper
+        return stream
     monkeypatch.setattr(guards, 'WindowsJob', FailedJobClose)
-    monkeypatch.setattr(Path, 'open', open_with_failure)
+    monkeypatch.setattr(supervisor, '_open_log', open_with_failure)
     output = tmp_path / 'double-fault'
     audit = Mock()
     try:

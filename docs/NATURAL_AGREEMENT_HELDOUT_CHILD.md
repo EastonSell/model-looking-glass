@@ -34,7 +34,11 @@ leases, validates the discovery binding and pinned tokenizer, and asks the
 custodian to verify the completed, supervisor-observed preparation. Only then
 does it write the exclusive owner-start marker and load the model. The loaded
 model state and tokenizer are checked before the frozen held-out runner and
-frozen predictions are used. The parent must retain its leases through verified
+frozen predictions are used. The child observes the official current exposure
+inventory immediately before the first forward and again after the run; an
+unavailable or changed snapshot makes the attempt incomplete. Those observations
+are not an atomic global lock, so other teams must still coordinate exposures.
+The parent must retain its leases through verified
 child cleanup; this cooperative process design is not protection against a
 hostile same-account process or independently launched native code.
 
