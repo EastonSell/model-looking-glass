@@ -141,6 +141,9 @@ class CustodyTests(unittest.TestCase):
                        self.public.wrapper_url: self.wrapper, self.public.deviation_url: self.deviation}
         self.remote.update({sources[name]['url']: data for name, data in source_data.items()})
         self.heldout = SimpleNamespace(load_frozen_natural_predictions=lambda data, freeze: None)
+        self.validation_root = self.root / ('natural-heldout-validation-' + hashlib.sha256(self.operation).hexdigest())
+        self.validation_root.mkdir()
+        (self.validation_root / 'validation-config.json').write_bytes(b'{"schema":"fabricated-validation"}')
 
     def reader(self, url, suffix):
         self.calls.append('published')
@@ -162,6 +165,7 @@ class CustodyTests(unittest.TestCase):
         options = {'commitments': commitments, 'heldout': self.heldout, 'tokenizer': FakeTokenizer(),
                    'wrapper_bytes': self.wrapper, 'claim_phase': self.ledger, 'reader': self.reader,
                    'nonce_source': self.nonce, 'observe_inventory': self.observe_inventory,
+                   'verify_validation': lambda path: path,
                    'config_bytes': self.config_bytes, 'config_path': self.config_path}
         options.update(changes)
         return custody.prepare_once(self.public, self.root, **options)
@@ -214,6 +218,60 @@ class CustodyTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'already claimed'):
             self.prepare()
         self.assertEqual(self.calls.count('nonce'), 1)
+
+    def test_unavailable_or_oversized_validation_fails_before_claim(self):
+        config = self.validation_root / 'validation-config.json'
+        config.unlink()
+        self.validation_root.rmdir()
+        with self.assertRaises(custody.CustodyError):
+            self.prepare()
+        self.assertNotIn('claim', self.calls)
+        self.assertNotIn('nonce', self.calls)
+        self.validation_root.mkdir()
+        with (self.validation_root / 'oversized').open('wb') as stream:
+            stream.seek(8 * 1024 * 1024)
+            stream.write(b'x')
+        with self.assertRaises(custody.CustodyError):
+            self.prepare()
+        self.assertNotIn('claim', self.calls)
+        self.assertNotIn('nonce', self.calls)
+
+    def test_failed_validation_verification_fails_before_claim(self):
+        def reject(_path):
+            raise custody.CustodyError('fabricated validation did not verify')
+        with self.assertRaises(custody.CustodyError):
+            self.prepare(verify_validation=reject)
+        self.assertNotIn('claim', self.calls)
+        self.assertNotIn('nonce', self.calls)
+
+    def test_validation_configuration_binds_public_bytes_urls_and_runtime(self):
+        fields = ('binding', 'prediction', 'aggregate', 'inventory', 'v7_inventory', 'inventory_source',
+                  'operational_binding', 'deviation_bytes')
+        urls = ('binding_url', 'prediction_url', 'aggregate_url', 'inventory_source_url',
+                'operational_binding_url', 'wrapper_url', 'deviation_url')
+        paths = {}
+        for name in fields:
+            path = self.root / ('validation-public-' + name)
+            path.write_bytes(getattr(self.public, name))
+            paths[name] = str(path)
+        config = {'frozen_root': str(self.root / 'frozen'), 'cache_dir': str(self.root / 'cache')}
+        value = dict(config, phase_dir=str(self.validation_root), public_files=paths,
+                     public_urls={name: getattr(self.public, name) for name in urls})
+        child = SimpleNamespace(_load_config=lambda _path: (b'fake', value))
+        self.assertEqual(custody._validation_configuration(self.validation_root, config, self.public, child), value)
+        path = Path(paths['inventory'])
+        original = path.read_bytes()
+        path.write_bytes(original + b'!')
+        with self.assertRaises(custody.CustodyError):
+            custody._validation_configuration(self.validation_root, config, self.public, child)
+        path.write_bytes(original)
+        value['public_urls']['binding_url'] = 'https://example.invalid/changed'
+        with self.assertRaises(custody.CustodyError):
+            custody._validation_configuration(self.validation_root, config, self.public, child)
+        value['public_urls']['binding_url'] = self.public.binding_url
+        value['cache_dir'] = str(self.root / 'different-cache')
+        with self.assertRaises(custody.CustodyError):
+            custody._validation_configuration(self.validation_root, config, self.public, child)
 
     def test_prepared_cases_require_exact_public_commitment_and_retokenization(self):
         attempt, _ = self.prepare()
@@ -425,6 +483,7 @@ class CustodyTests(unittest.TestCase):
                 return 0
         class Job:
             def assign(self, process): calls.append('assign')
+            def _accounting(self): return SimpleNamespace(active_processes=0)
             def terminate_and_wait(self): calls.append('drain')
             def close(self): calls.append('close')
         self_test = self
@@ -538,6 +597,34 @@ class CustodyTests(unittest.TestCase):
                 self.assertFalse(observation_path.exists())
         with self.assertRaisesRegex(RuntimeError, 'already claimed'):
             self.prepare()
+
+    def test_outer_preparation_observer_rejects_active_job_member(self):
+        attempt, _ = self.prepare()
+        supervisor = self.supervised(attempt)
+        observation = supervisor / 'supervisor-observation.json'
+        observation.unlink()
+        inner = json.loads((supervisor / 'supervisor.json').read_bytes())['command']
+        calls = []
+        class Process:
+            pid = 54321
+            stdin = io.BytesIO()
+            def wait(self, timeout): return 0
+        class Job:
+            def assign(self, process): pass
+            def _accounting(self): return SimpleNamespace(active_processes=1)
+            def terminate_and_wait(self): calls.append('drain')
+            def close(self): calls.append('close')
+        state = [None, None, False, False]
+        with mock.patch.object(custody.subprocess, 'Popen', return_value=Process()), \
+             mock.patch.object(custody, '_process_birth_100ns', return_value=123456789):
+            with self.assertRaises(custody.CustodyError):
+                self.observe_supervisor_process(outer_command(inner), attempt, supervisor, self.public,
+                    self.wrapper, config_path=self.config_path,
+                    config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
+                    job_factory=Job, custody_state=state)
+        self.assertEqual(calls, ['drain', 'close'])
+        self.assertEqual(state[2:], [True, False])
+        self.assertFalse(observation.exists())
 
     def test_lost_popen_return_cannot_open_the_outer_gate(self):
         attempt, _ = self.prepare()
@@ -731,6 +818,7 @@ class CustodyTests(unittest.TestCase):
             def wait(self, timeout): return 0
         class Job:
             def assign(self, process): pass
+            def _accounting(self): return SimpleNamespace(active_processes=0)
             def terminate_and_wait(self): pass
             def close(self): pass
         process, job, state = Process(), Job(), [None, None, False, False]
@@ -969,6 +1057,98 @@ class CustodyTests(unittest.TestCase):
         self.assertTrue(result['cleanup_verified'])
         self.assertEqual(seen, [(11, 22)])
 
+    def validation_observer_fixture(self):
+        root = self.validation_root
+        (root / 'owner').mkdir()
+        config = root / 'validation-config.json'
+        config.write_bytes(b'{"schema":"fabricated-validation"}')
+        (root / 'owner/owner-terminal.json').write_bytes(b'{"fake":"terminal"}')
+        (root / 'owner/supervisor.json').write_bytes(b'{"fake":"supervisor"}')
+        owner = self.root / 'fake-validation-owner.py'
+        owner.write_bytes(b'# fabricated owner')
+        command = [sys.executable, '-I', '-S', '-B', '-X',
+                   'pycache_prefix=' + str(self.root / 'unused-validation-pycache'),
+                   '-c', custody.OUTER_BOOTSTRAP, str(owner), '--validate-only', str(config)]
+        return root, config, owner, command
+
+    def test_validation_observer_binds_reaped_parent_and_exact_files(self):
+        root, config, owner, command = self.validation_observer_fixture()
+        calls = []
+        class Pipe(io.BytesIO):
+            def write(self, data): calls.append(('gate', data)); return super().write(data)
+        class Process:
+            pid = 54321
+            stdin = Pipe()
+            def wait(self, timeout): calls.append('wait'); return 0
+        class Job:
+            def assign(self, process): calls.append('assign')
+            def _accounting(self): return SimpleNamespace(active_processes=0)
+            def terminate_and_wait(self): calls.append('drain')
+            def close(self): calls.append('close')
+        def verify_inner(require_observation):
+            calls.append(('verify', require_observation))
+        with mock.patch.object(custody.subprocess, 'Popen', return_value=Process()), \
+             mock.patch.object(custody, '_process_birth_100ns', return_value=123456789):
+            result = custody.observe_validation_process(command, root, self.public, owner_path=owner,
+                config_path=config, config_sha256=hashlib.sha256(config.read_bytes()).hexdigest(),
+                verify_inner=verify_inner, job_factory=Job, protect_process=lambda _process: calls.append('protect'))
+        self.assertEqual(result['status'], 'observed_validation_exit')
+        self.assertEqual(calls, ['assign', 'protect', ('gate', b'MLG-natural-discovery-start-v1\n'),
+                                 'wait', 'drain', 'close', ('verify', False), ('verify', True)])
+        raw = (root / 'parent-observation.json').read_bytes()
+        observation = json.loads(raw)
+        self.assertEqual(observation['command'], command)
+        self.assertEqual(observation['parent_pid'], 54321)
+        self.assertEqual(observation['parent_birth_100ns'], 123456789)
+        self.assertEqual(observation['validation_config_sha256'], hashlib.sha256(config.read_bytes()).hexdigest())
+        self.assertEqual(observation['owner_terminal_sha256'],
+                         hashlib.sha256((root / 'owner/owner-terminal.json').read_bytes()).hexdigest())
+        self.assertEqual(observation['supervisor_sha256'],
+                         hashlib.sha256((root / 'owner/supervisor.json').read_bytes()).hexdigest())
+        self.assertEqual(observation['operational_binding_sha256'], hashlib.sha256(self.operation).hexdigest())
+        self.assertEqual(raw, custody._json_bytes(observation))
+
+    def test_validation_observer_rejects_and_drains_live_outer_member(self):
+        root, config, owner, command = self.validation_observer_fixture()
+        calls = []
+        class Process:
+            pid = 54321
+            stdin = io.BytesIO()
+            def wait(self, timeout): return 0
+        class Job:
+            def assign(self, process): pass
+            def _accounting(self): return SimpleNamespace(active_processes=1)
+            def terminate_and_wait(self): calls.append('drain')
+            def close(self): calls.append('close')
+        state = [None, None, False, False]
+        with mock.patch.object(custody.subprocess, 'Popen', return_value=Process()), \
+             mock.patch.object(custody, '_process_birth_100ns', return_value=123456789):
+            with self.assertRaises(custody.CustodyError):
+                custody.observe_validation_process(command, root, self.public, owner_path=owner,
+                    config_path=config, config_sha256=hashlib.sha256(config.read_bytes()).hexdigest(),
+                    verify_inner=lambda _: self.fail('active member cannot validate'), job_factory=Job,
+                    protect_process=lambda _: None, custody_state=state)
+        self.assertEqual(calls, ['drain', 'close'])
+        self.assertEqual(state[2:], [True, False])
+        self.assertFalse((root / 'parent-observation.json').exists())
+
+    def test_validation_observer_retains_unknown_spawn(self):
+        root, config, owner, command = self.validation_observer_fixture()
+        class Job:
+            def terminate_and_wait(self): pass
+            def close(self): pass
+        job, state = Job(), [None, None, False, False]
+        def lost(*_args, **_kwargs):
+            self.assertTrue(state[2])
+            raise OSError('synthetic lost spawn return')
+        with mock.patch.object(custody.subprocess, 'Popen', side_effect=lost):
+            with self.assertRaises(custody.CustodyError):
+                custody.observe_validation_process(command, root, self.public, owner_path=owner,
+                    config_path=config, config_sha256=hashlib.sha256(config.read_bytes()).hexdigest(),
+                    verify_inner=lambda _: None, job_factory=lambda: job, protect_process=lambda _: None,
+                    custody_state=state)
+        self.assertEqual(state, [job, None, True, False])
+
     @unittest.skipUnless(os.name == 'nt', 'requires real Windows Jobs and source leases')
     def test_real_supervisor_accepts_protected_fabricated_preparation(self):
         from looking_glass import natural_heldout_supervisor as supervisor
@@ -1028,6 +1208,7 @@ class CustodyTests(unittest.TestCase):
             def wait(self, timeout): return 0
         class Job:
             def assign(self, process): pass
+            def _accounting(self): return SimpleNamespace(active_processes=0)
             def terminate_and_wait(self): pass
             def close(self): pass
         original = custody._write_new
