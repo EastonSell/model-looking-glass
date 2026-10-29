@@ -33,7 +33,7 @@ def _finite(result):
 
 def execute_phase(model, cases, directory, *, phase, vocab_size=50257,
                   raw_cap=75 * 1024 * 1024, metadata_cap=8 * 1024 * 1024,
-                  minimum_free_bytes=1024 * 1024 * 1024):
+                  minimum_free_bytes=1024 * 1024 * 1024, additional_space_checks=()):
     if phase not in ('discovery', 'held-out') or not cases:
         raise ValueError('invalid phase')
     if metadata_cap <= 65536:
@@ -78,6 +78,9 @@ def execute_phase(model, cases, directory, *, phase, vocab_size=50257,
             raise ValueError('insufficient metadata budget before model forward')
         if shutil.disk_usage(Path(directory)).free < minimum_free_bytes + required_raw + 48 * 1024:
             raise ValueError('insufficient disk reserve before model forward')
+        for path, minimum in additional_space_checks:
+            if shutil.disk_usage(path).free < minimum:
+                raise ValueError('insufficient auxiliary volume reserve before model forward')
         writer.start(ordinal, case_id, kind, details)
         last_result = None
         if not _hook_free(model):

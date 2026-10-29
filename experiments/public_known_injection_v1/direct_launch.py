@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
@@ -50,6 +51,7 @@ def assess_receipt(receipt, summary):
     expected = {'events.jsonl', 'phase-summary.json'} | {f'known-injection-{i:02d}.f32' for i in ids}
     return (receipt['exit_code'] == 0 and receipt['interrupted'] is False
             and receipt['prefix_empty_after'] is True and receipt['stderr']['bytes'] == 0
+            and receipt['stage_empty_after'] is True
             and receipt['failure_file_present'] is False and set(receipt['run_files']) == expected
             and summary == {'phase': phase, 'cases': 8, 'completed_actions': 120,
                             'raw_bytes': summary.get('raw_bytes'),
@@ -79,13 +81,26 @@ def main():
     prefix = Path(private['prefixes'][args.phase])
     output = attempt / ('run-' + args.phase)
     cache, inventory = Path(private['cache_dir']), Path(private['inventory'])
+    stage, temp = Path(private['stage_dir']), Path(private['temp_dir'])
     if (not prefix.is_absolute() or prefix.is_symlink() or not prefix.is_dir() or any(prefix.iterdir())
             or not cache.is_absolute() or not cache.is_dir() or not inventory.is_absolute() or not inventory.is_file()
+            or not stage.is_absolute() or stage.is_symlink() or not stage.is_dir() or any(stage.iterdir())
+            or not temp.is_absolute() or temp.is_symlink() or not temp.is_dir()
             or output.exists()):
         raise ValueError('unexpected private cache, inventory, output or prefix state')
     prefix_hash = hashlib.sha256(os.path.normcase(str(prefix.resolve(strict=True))).encode()).hexdigest()
     if prefix_hash != pre['pycache_prefix_sha256'][args.phase]:
         raise ValueError('bytecode-cache prefix differs from pre-run')
+    stage_hash = hashlib.sha256(os.path.normcase(str(stage.resolve(strict=True))).encode()).hexdigest()
+    if stage_hash != pre['stage_dir_sha256']:
+        raise ValueError('checkpoint staging directory differs from pre-run')
+    if any(os.path.splitdrive(str(path.resolve()))[0].upper() != pre['output_drive']
+           for path in (attempt, prefix, stage, temp)):
+        raise ValueError('output, cache prefix, stage and temporary directories must use the declared volume')
+    if (shutil.disk_usage(attempt).free < 2 * 1024 ** 3
+            or shutil.disk_usage(stage).free < 2 * 1024 ** 3
+            or any(shutil.disk_usage(path).free < 256 * 1024 ** 2 for path in (source, cache))):
+        raise ValueError('insufficient free space before launching the child')
     stdout_path, stderr_path = attempt / (args.phase + '.stdout.txt'), attempt / (args.phase + '.stderr.txt')
     receipt_path = attempt / (args.phase + '.receipt.json')
     if any(path.exists() for path in (stdout_path, stderr_path, receipt_path)):
@@ -93,7 +108,7 @@ def main():
     command = [sys.executable, '-B', '-X', f'pycache_prefix={prefix}',
                str(source / 'experiments/public_known_injection_v1/run_phase.py'),
                '--phase', args.phase, '--source-root', str(source), '--inventory', str(inventory),
-               '--cache-dir', str(cache), '--pre-run', str(pre_path), '--pre-run-sha256', args.pre_run_sha256,
+               '--cache-dir', str(cache), '--stage-dir', str(stage), '--pre-run', str(pre_path), '--pre-run-sha256', args.pre_run_sha256,
                '--output-dir', str(output)]
     if args.phase == 'held-out':
         freeze = Path(private['discovery_freeze'])
@@ -105,7 +120,7 @@ def main():
         raise ValueError('discovery phase must not receive a freeze')
     env = os.environ.copy()
     env.update({'CUDA_VISIBLE_DEVICES': '-1', 'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
-                'OMP_NUM_THREADS': '1', 'PYTHONPATH': str(source)})
+                'OMP_NUM_THREADS': '1', 'PYTHONPATH': str(source), 'TEMP': str(temp), 'TMP': str(temp)})
     for key in ('MKL_CBWR', 'ATEN_CPU_CAPABILITY'):
         env.pop(key, None)
     with stdout_path.open('xb') as stdout, stderr_path.open('xb') as stderr:
@@ -121,6 +136,10 @@ def main():
                'source_revision': pre['source_revision'], 'source_tree': pre['source_tree'],
                'reservation_sha256': pre['reservation_sha256'], 'freeze_sha256': args.freeze_sha256,
                'prefix_sha256': prefix_hash, 'prefix_empty_after': not any(prefix.iterdir()),
+               'stage_dir_sha256': stage_hash, 'stage_empty_after': not any(stage.iterdir()),
+               'free_bytes_after': {'output': shutil.disk_usage(attempt).free,
+                                    'source': shutil.disk_usage(source).free,
+                                    'cache': shutil.disk_usage(cache).free},
                'stdout': {'bytes': stdout_path.stat().st_size, 'sha256': sha(stdout_path)},
                'stderr': {'bytes': stderr_path.stat().st_size, 'sha256': sha(stderr_path)},
                'failure_file_present': (output / 'failure.json').is_file(), 'run_files': files,
