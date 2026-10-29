@@ -5,11 +5,13 @@ receiver must dispose borrowed event storage before sending its release
 attestation. A disconnect does not prove that a peer disposed its copies.
 """
 from dataclasses import dataclass
+import hashlib
 import math
 import secrets
 import select
 import socket
 import struct
+import sys
 import threading
 import time
 from types import MappingProxyType
@@ -56,6 +58,31 @@ class TraceIPCCompletion:
     run_id: str
     event_count: int
     trace_bytes: int
+
+
+@dataclass(frozen=True, slots=True)
+class TraceIPCOutput:
+    broker_id: str
+    process_generation: str
+    job_id: int
+    generation: int
+    transfer_id: str
+    team_id: str
+    request_id: str
+    run_id: str
+    shape: tuple[int, int, int]
+    dtype: str
+    byte_order: str
+    payload_bytes: int
+    sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class TraceIPCOutputCompletion(TraceIPCCompletion):
+    output_shape: tuple[int, int, int]
+    output_bytes: int
+    output_byte_order: str
+    output_sha256: str
 
 
 def _hex(value):
@@ -150,6 +177,7 @@ class _Session:
         self.payload_guard = self.payload_claim = self.payload = None
         self.message = self.event = self.result = self.failure = None
         self.identity = None
+        self.output = None
         self.event_ids = set()
         self.event_count = self.trace_bytes = 0
         self.clean = self.finished = False
@@ -161,11 +189,18 @@ _EVENT_FIELDS = {'version', 'op', 'broker_id', 'process_generation', 'job_id',
                  'event', 'payload_bytes', 'byte_order'}
 _ACK_FIELDS = ('broker_id', 'process_generation', 'job_id', 'generation',
                'transfer_id', 'event_id', 'team_id', 'request_id')
+_OUTPUT_FIELDS = {'version', 'op', 'broker_id', 'process_generation', 'job_id',
+                  'generation', 'transfer_id', 'team_id', 'request_id', 'run_id',
+                  'shape', 'dtype', 'byte_order', 'payload_bytes', 'sha256'}
 
 
 def _ack(header, op):
     return {'version': 2, 'op': op, **{name: header[name] for name in _ACK_FIELDS},
             'sequence': header['event']['sequence']}
+
+
+def _output_ack(header, op):
+    return dict(header, op='output_' + op)
 
 
 def _same_wire(actual, expected):
@@ -188,18 +223,25 @@ class TraceIPCServer:
     """Serve two authenticated trusted clients through one CPU trace owner."""
 
     def __init__(self, service, *, max_control_bytes=8192, max_event_bytes,
-                 max_trace_bytes, timeout=30):
+                 max_trace_bytes, max_output_bytes=0, timeout=30):
         from .cpu_shared_trace_service import CpuSharedTraceService
         from .cpu_broker_trace_service import BrokeredCpuTraceService
         if type(service) not in (CpuSharedTraceService, BrokeredCpuTraceService):
             raise ValueError('an exact CPU shared trace service is required')
         _limits(max_control_bytes, max_event_bytes, max_trace_bytes, timeout)
+        if (type(max_output_bytes) is not int or not 0 <= max_output_bytes <= 2**26
+                or (max_output_bytes and type(service) is not BrokeredCpuTraceService)):
+            raise ValueError('invalid bounded brokered output configuration')
         # The wire schema and pre-forward byte calculation are float32 CPU.
         import torch
         model = service._owner._model
         if (model is None or any(p.device.type != 'cpu' or p.dtype != torch.float32
                                  for p in model.parameters())):
             raise ValueError('trace IPC requires a CPU float32 model')
+        vocab_size = model.lm_head.out_features if max_output_bytes else None
+        if (max_output_bytes and (type(vocab_size) is not int or vocab_size < 1
+                                  or model.config.vocab_size != vocab_size)):
+            raise ValueError('trace output requires a fixed vocabulary')
         teams = tuple(service._clients)
         if len(teams) != 2 or any(not _identifier(team) for team in teams):
             raise ValueError('two bounded IPC team identifiers are required')
@@ -208,6 +250,7 @@ class TraceIPCServer:
         self._control = max_control_bytes
         self._event = max_event_bytes
         self._trace = max_trace_bytes
+        self._output, self._vocab_size = max_output_bytes, vocab_size
         self._timeout = float(timeout)
         self._tokens = {team: secrets.token_hex(32) for team in teams}
         self._invalid_token = secrets.token_hex(32)
@@ -308,9 +351,12 @@ class TraceIPCServer:
     def _validate_request(self, message):
         fields = {'version', 'op', 'token', 'team_id', 'request_id', 'input_ids',
                   'sample_id', 'positions', 'sites'}
+        op = message.get('op') if type(message) is dict else None
+        if op == 'trace_output':
+            fields |= {'max_output_bytes', 'vocab_size'}
         if (type(message) is not dict or set(message) != fields
                 or type(message['version']) is not int or message['version'] != 2
-                or message['op'] != 'trace'):
+                or op not in ('trace', 'trace_output')):
             raise TraceIPCRejected('invalid_request')
         team, token = message['team_id'], message['token']
         expected = self._tokens.get(team, self._invalid_token) if type(team) is str else self._invalid_token
@@ -339,6 +385,19 @@ class TraceIPCServer:
         if (size > min(self._event, owner._max_event_bytes)
                 or size * len(sites) > min(self._trace, limits.max_trace_bytes)):
             raise TraceIPCRejected('trace_limit')
+        if op == 'trace_output':
+            if self._output == 0:
+                raise TraceIPCRejected('output_limit')
+            if (type(message['vocab_size']) is not int or message['vocab_size'] != self._vocab_size
+                    or type(message['max_output_bytes']) is not int
+                    or not 1 <= message['max_output_bytes'] <= 2**26):
+                raise TraceIPCRejected('invalid_request')
+            if (owner._model.lm_head.out_features != self._vocab_size
+                    or owner._model.config.vocab_size != self._vocab_size):
+                raise TraceIPCIncomplete('bound output vocabulary changed')
+            output_bytes = len(row) * self._vocab_size * 4
+            if output_bytes > min(self._output, message['max_output_bytes'], owner._worker.max_output_bytes):
+                raise TraceIPCRejected('output_limit')
 
     def _serve(self, key, session):
         try:
@@ -428,30 +487,74 @@ class TraceIPCServer:
             _exact_message(_receive(session.sock, self._control, deadline), _ack(header, 'released'))
             session.event_count += 1
             session.trace_bytes += len(payload)
+        def send_output(metadata, payload):
+            from .cpu_shared_trace_service import TraceOutput
+            with self._service._condition:
+                attempt = self._service._active
+                if (type(metadata) is not TraceOutput or attempt is None
+                        or attempt.team_id != team or attempt.request_id != request_id
+                        or metadata.broker_id != self.broker_id
+                        or metadata.process_generation != self.process_generation
+                        or metadata.job_id != attempt.job_id or metadata.generation != attempt.generation
+                        or metadata.team_id != team or metadata.request_id != request_id
+                        or metadata.run_id != attempt.run_id):
+                    raise TraceIPCIncomplete('trace output source identity changed')
+            current = (metadata.job_id, metadata.generation, metadata.run_id)
+            expected_shape = (1, len(message['input_ids']), self._vocab_size)
+            if (session.output is not None or session.event_count != 0
+                    or (session.identity is not None and session.identity != current)
+                    or metadata.shape != expected_shape or metadata.dtype != 'torch.float32'
+                    or metadata.byte_order != sys.byteorder or type(payload) is not bytearray
+                    or metadata.payload_bytes != len(payload)
+                    or len(payload) != math.prod(expected_shape) * 4
+                    or len(payload) > min(self._output, message['max_output_bytes'])
+                    or metadata.sha256 != hashlib.sha256(payload).hexdigest()):
+                raise TraceIPCIncomplete('trace output layout or digest changed')
+            session.identity = current
+            header = {'version': 2, 'op': 'output', 'broker_id': self.broker_id,
+                'process_generation': self.process_generation, 'job_id': metadata.job_id,
+                'generation': metadata.generation, 'transfer_id': transfer, 'team_id': team,
+                'request_id': request_id, 'run_id': metadata.run_id, 'shape': list(metadata.shape),
+                'dtype': metadata.dtype, 'byte_order': metadata.byte_order,
+                'payload_bytes': metadata.payload_bytes, 'sha256': metadata.sha256}
+            self._publish(session, header, deadline)
+            _exact_message(_receive(session.sock, self._control, deadline), _output_ack(header, 'ready'))
+            _send_bytes(session.sock, struct.pack('!I', len(payload)), deadline)
+            _send_bytes(session.sock, payload, deadline)
+            _exact_message(_receive(session.sock, self._control, deadline), _output_ack(header, 'received'))
+            _exact_message(_receive(session.sock, self._control, deadline), _output_ack(header, 'released'))
+            session.output = {'output_shape': list(metadata.shape), 'output_bytes': metadata.payload_bytes,
+                              'output_byte_order': metadata.byte_order, 'output_sha256': metadata.sha256}
         samples = (SampleTrace(message['sample_id'], tuple(message['positions'])),)
         sites = tuple(SiteTrace(site[0], site[1]) for site in message['sites'])
         capability = self._service.client(team)
-        session.result = capability.submit(request_id=request_id, inputs=session.inputs,
+        kwargs = dict(request_id=request_id, inputs=session.inputs,
             input_owner=session.request, input_claim=session.input_claim,
             samples=samples, sites=sites, on_event=send_event)
+        if message['op'] == 'trace_output':
+            kwargs.update(on_output=send_output, max_output_bytes=message['max_output_bytes'])
+        session.result = capability.submit(**kwargs)
         result = session.result
         if (session.identity != (result.job_id, result.generation, result.run_id)
                 or result.team_id != team or result.request_id != request_id
                 or result.broker_id != self.broker_id or result.process_generation != self.process_generation
-                or result.event_count != session.event_count or result.trace_bytes != session.trace_bytes):
+                or result.event_count != session.event_count or result.trace_bytes != session.trace_bytes
+                or (session.output is None) != (message['op'] == 'trace')):
             raise TraceIPCIncomplete('complete trace identity changed')
         complete = {'version': 2, 'op': 'complete', 'broker_id': self.broker_id,
             'process_generation': self.process_generation, 'job_id': result.job_id,
             'generation': result.generation, 'transfer_id': transfer, 'team_id': team,
             'request_id': request_id, 'run_id': result.run_id, 'event_count': result.event_count,
             'trace_bytes': result.trace_bytes}
+        if session.output is not None:
+            complete.update(session.output)
         self._publish(session, complete, deadline)
         confirmation = dict(complete, op='complete_received')
         _exact_message(_receive(session.sock, self._control, deadline), confirmation)
         capability.acknowledge(result)
         self._publish(session, dict(complete, op='closed'), deadline)
         _exact_message(_receive(session.sock, self._control, deadline), dict(complete, op='closed_received'))
-        message = samples = sites = result = capability = send_event = None
+        message = samples = sites = result = capability = send_event = send_output = kwargs = None
         _clean_control(session)
         session.clean = True
 
@@ -519,7 +622,8 @@ class TraceIPCClient:
                 raise TraceIPCIncomplete('no completed receipt is available')
             return self._completion
 
-    def trace(self, *, request_id, input_ids, sample_id, positions, sites, on_event):
+    def trace(self, *, request_id, input_ids, sample_id, positions, sites, on_event,
+              on_output=None, max_output_bytes=None, vocab_size=None):
         # Snapshot bounded slices before validating or serializing. The caller
         # may mutate its lists concurrently; never copy an unbounded list whole.
         if type(input_ids) is not list or type(positions) is not list or type(sites) is not list:
@@ -544,6 +648,12 @@ class TraceIPCClient:
                 or site[1] not in ('attn', 'mlp', 'block') for site in sites)
                 or len({tuple(site) for site in sites}) != len(sites)):
             raise ValueError('invalid bounded trace IPC sites')
+        wants_output = on_output is not None
+        if ((not wants_output and (max_output_bytes is not None or vocab_size is not None))
+                or (wants_output and (not callable(on_output) or type(max_output_bytes) is not int
+                    or not 1 <= max_output_bytes <= 2**26 or type(vocab_size) is not int
+                    or vocab_size < 1 or len(input_ids) * vocab_size * 4 > max_output_bytes))):
+            raise ValueError('invalid bounded trace output request')
         session = _Session()
         deadline = time.monotonic() + self._timeout
         try:
@@ -554,14 +664,16 @@ class TraceIPCClient:
             _control_request(self._budget, session, 'trace-ipc-client-' + uuid.uuid4().hex, self._control)
             session.sock = socket.create_connection(self.address, timeout=_remaining(deadline))
             session.sock.setblocking(False)
-            session.message = {'version': 2, 'op': 'trace', 'token': self._token,
+            session.message = {'version': 2, 'op': 'trace_output' if wants_output else 'trace', 'token': self._token,
                 'team_id': self.team_id, 'request_id': request_id, 'input_ids': input_ids,
                 'sample_id': sample_id, 'positions': positions, 'sites': sites}
+            if wants_output:
+                session.message.update(max_output_bytes=max_output_bytes, vocab_size=vocab_size)
             _send(session.sock, session.message, self._control, deadline)
             session.message = _receive(session.sock, self._control, deadline)
             if session.message.get('op') == 'rejected' and set(session.message) == {'version', 'op', 'code'} \
                     and type(session.message['version']) is int and session.message['version'] == 2 \
-                    and session.message['code'] in ('unauthorized', 'invalid_request', 'trace_limit'):
+                    and session.message['code'] in ('unauthorized', 'invalid_request', 'trace_limit', 'output_limit'):
                 code = session.message['code']
                 _clean_control(session)
                 session.clean = True
@@ -582,6 +694,57 @@ class TraceIPCClient:
                 if session.message.get('op') == 'complete':
                     break
                 header = session.message
+                if header.get('op') == 'output':
+                    if (not wants_output or session.output is not None or session.event_count != 0
+                            or set(header) != _OUTPUT_FIELDS or type(header['version']) is not int
+                            or header['version'] != 2 or header['broker_id'] != self.broker_id
+                            or header['process_generation'] != self.process_generation
+                            or header['transfer_id'] != transfer or header['team_id'] != self.team_id
+                            or header['request_id'] != request_id or type(header['job_id']) is not int
+                            or not 1 <= header['job_id'] < 2**63 or type(header['generation']) is not int
+                            or header['generation'] != header['job_id']
+                            or header['run_id'] != f'run-{self.broker_id}-{header["job_id"]}'
+                            or not _same_wire(header['shape'], [1, len(input_ids), vocab_size])
+                            or header['dtype'] != 'torch.float32' or header['byte_order'] not in ('little', 'big')
+                            or type(header['payload_bytes']) is not int
+                            or header['payload_bytes'] != len(input_ids) * vocab_size * 4
+                            or header['payload_bytes'] > max_output_bytes or type(header['sha256']) is not str
+                            or len(header['sha256']) != 64
+                            or any(char not in '0123456789abcdef' for char in header['sha256'])):
+                        raise TraceIPCIncomplete('invalid bounded trace output')
+                    current = (header['job_id'], header['generation'], header['run_id'])
+                    if session.identity is not None and session.identity != current:
+                        raise TraceIPCIncomplete('trace output identity changed')
+                    session.identity = current
+                    session.event = TraceIPCOutput(self.broker_id, self.process_generation,
+                        header['job_id'], header['generation'], transfer, self.team_id, request_id,
+                        header['run_id'], tuple(header['shape']), header['dtype'], header['byte_order'],
+                        header['payload_bytes'], header['sha256'])
+                    session.payload_guard = session.request.claim_guard(
+                        'trace-output-receiver', 'trace_output_receive', header['payload_bytes'], items=1)
+                    session.payload_guard.reserve()
+                    session.payload_claim = session.payload_guard.adopt()
+                    _send(session.sock, _output_ack(header, 'ready'), self._control, deadline)
+                    length = struct.unpack('!I', _read_exact(session.sock, 4, deadline))[0]
+                    if length != header['payload_bytes']:
+                        raise TraceIPCIncomplete('trace output length changed')
+                    session.payload = bytearray(length)
+                    _recv_into(session.sock, session.payload, deadline)
+                    if hashlib.sha256(session.payload).hexdigest() != header['sha256']:
+                        raise TraceIPCIncomplete('trace output digest changed')
+                    _send(session.sock, _output_ack(header, 'received'), self._control, deadline)
+                    session.result = on_output(session.event, session.payload)
+                    if session.result is not None:
+                        raise TraceIPCIncomplete('output receiver must finish synchronously and return None')
+                    session.output = session.event
+                    session.payload = session.event = session.result = None
+                    session.payload_claim.release()
+                    session.payload_claim = session.payload_guard = None
+                    _send(session.sock, _output_ack(header, 'released'), self._control, deadline)
+                    header = None
+                    continue
+                if wants_output and session.output is None:
+                    raise TraceIPCIncomplete('trace event preceded required output')
                 if (set(header) != _EVENT_FIELDS or type(header['version']) is not int
                         or header['version'] != 2 or header['op'] != 'event'
                         or header['broker_id'] != self.broker_id
@@ -649,6 +812,8 @@ class TraceIPCClient:
             complete = session.message
             required = {'version', 'op', 'broker_id', 'process_generation', 'job_id', 'generation',
                         'transfer_id', 'team_id', 'request_id', 'run_id', 'event_count', 'trace_bytes'}
+            if wants_output:
+                required |= {'output_shape', 'output_bytes', 'output_byte_order', 'output_sha256'}
             if (set(complete) != required or type(complete['version']) is not int
                     or complete['version'] != 2
                     or complete['broker_id'] != self.broker_id
@@ -659,15 +824,25 @@ class TraceIPCClient:
                     or type(complete['event_count']) is not int or type(complete['trace_bytes']) is not int
                     or session.identity != (complete['job_id'], complete['generation'], complete['run_id'])
                     or complete['event_count'] != session.event_count or session.event_count != len(expected_sites)
-                    or complete['trace_bytes'] != session.trace_bytes):
+                    or complete['trace_bytes'] != session.trace_bytes
+                    or (wants_output and (session.output is None
+                        or not _same_wire(complete['output_shape'], list(session.output.shape))
+                        or not _same_wire(complete['output_bytes'], session.output.payload_bytes)
+                        or complete['output_byte_order'] != session.output.byte_order
+                        or complete['output_sha256'] != session.output.sha256))):
                 raise TraceIPCIncomplete('incomplete or mismatched trace completion')
-            completion = TraceIPCCompletion(self.broker_id, self.process_generation, complete['job_id'],
+            completion_args = (self.broker_id, self.process_generation, complete['job_id'],
                 complete['generation'], transfer, self.team_id, request_id, complete['run_id'],
                 complete['event_count'], complete['trace_bytes'])
+            if wants_output:
+                completion = TraceIPCOutputCompletion(*completion_args, session.output.shape,
+                    session.output.payload_bytes, session.output.byte_order, session.output.sha256)
+            else:
+                completion = TraceIPCCompletion(*completion_args)
             _send(session.sock, dict(complete, op='complete_received'), self._control, deadline)
             _exact_message(_receive(session.sock, self._control, deadline), dict(complete, op='closed'))
             _send(session.sock, dict(complete, op='closed_received'), self._control, deadline)
-            complete = accepted = expected = expected_sites = on_event = None
+            complete = accepted = expected = expected_sites = on_event = on_output = None
             _clean_control(session)
             session.clean = True
             with self._lock:

@@ -32,9 +32,10 @@ _owners_lock = Lock()
 
 
 class _Attempt:
-    def __init__(self, team, request_id, token, samples, sites, on_event):
+    def __init__(self, team, request_id, token, samples, sites, on_event, on_output, max_output_bytes):
         self.team, self.request_id, self.token = team, request_id, token
         self.samples, self.sites, self.on_event = samples, sites, on_event
+        self.on_output, self.max_output_bytes = on_output, max_output_bytes
         self.guard = self.request = self.claim_guard = self.claim = None
         self.snapshot_ref = self.handle = self.receipt = self.failure = None
         self.completed = self.acknowledged = False
@@ -103,18 +104,27 @@ class _DispatchWorker:
                 if cancel_event is not None and cancel_event.is_set():
                     raise RequestCancelled('trace cancelled during delivery')
                 return result
+            def deliver_output(metadata, payload):
+                if cancel_event is not None and cancel_event.is_set():
+                    raise RequestCancelled('trace cancelled before output delivery')
+                result = attempt.on_output(metadata, payload)
+                if cancel_event is not None and cancel_event.is_set():
+                    raise RequestCancelled('trace cancelled during output delivery')
+                return result
             inputs = dict(request.inputs)
-            receipt = owner._inner.client(attempt.team).submit(
-                request_id=attempt.request_id, inputs=inputs,
+            kwargs = dict(request_id=attempt.request_id, inputs=inputs,
                 input_owner=attempt.request, input_claim=attempt.claim,
                 samples=attempt.samples, sites=attempt.sites, on_event=deliver)
+            if attempt.on_output is not None:
+                kwargs.update(on_output=deliver_output, max_output_bytes=attempt.max_output_bytes)
+            receipt = owner._inner.client(attempt.team).submit(**kwargs)
             attempt.receipt = receipt
             if (type(receipt) is not TraceReceipt or receipt.broker_id != owner._broker.broker_id
                     or receipt.job_id != job_id or receipt.generation != job_id
                     or receipt.team_id != attempt.team or receipt.request_id != attempt.request_id):
                 raise BrokerTraceIncomplete('trace receipt does not match the broker job')
             worker_id = request.request_id
-            inputs = request = deliver = receipt = None
+            inputs = request = deliver = deliver_output = receipt = kwargs = None
             return ForwardResult(worker_id, self._token)
         except BaseException as error:
             owner._fail(attempt, error)
@@ -208,7 +218,7 @@ class BrokeredCpuTraceService:
             self._faulted = True
 
     def _submit(self, team, *, request_id, inputs, input_owner, input_claim,
-                samples, sites, on_event):
+                samples, sites, on_event, on_output=None, max_output_bytes=None):
         if current_thread() is self._broker._thread:
             raise SharedTraceError('a trace callback cannot reenter its broker')
         if (type(request_id) is not str or not request_id or len(request_id) > 64
@@ -217,6 +227,10 @@ class BrokeredCpuTraceService:
                 or type(input_owner) is not HostRequest or type(input_claim) is not HostClaim
                 or input_owner._budget is not self._budget or input_claim._budget is not self._budget):
             raise ValueError('invalid brokered trace input custody')
+        if ((on_output is None and max_output_bytes is not None)
+                or (on_output is not None and (not callable(on_output)
+                    or type(max_output_bytes) is not int or not 1 <= max_output_bytes <= 2**26))):
+            raise ValueError('invalid bounded output sink')
         source = inputs['input_ids']
         info = input_claim.info()
         size = source.numel() * source.element_size()
@@ -230,7 +244,8 @@ class BrokeredCpuTraceService:
                         or team in self._attempts):
                     raise SharedTraceError('client or brokered trace service unavailable')
                 token = len(self._attempts) + 1
-                attempt = _Attempt(team, request_id, token, samples, sites, on_event)
+                attempt = _Attempt(team, request_id, token, samples, sites, on_event,
+                                   on_output, max_output_bytes)
                 self._registering = attempt
                 self._attempts[team] = attempt
                 self._tickets[token] = attempt
@@ -265,7 +280,7 @@ class BrokeredCpuTraceService:
                 if self.quarantined or self._closing:
                     raise BrokerTraceIncomplete('broker trace completion requires reconciliation')
                 attempt.completed = True
-                attempt.samples = attempt.sites = attempt.on_event = None
+                attempt.samples = attempt.sites = attempt.on_event = attempt.on_output = None
                 return receipt
         except BaseException as error:
             if attempt is not None:
@@ -278,7 +293,7 @@ class BrokeredCpuTraceService:
         finally:
             if attempt is not None and not registered:
                 self._faulted = True
-            source = inputs = input_owner = input_claim = on_event = None
+            source = inputs = input_owner = input_claim = on_event = on_output = None
 
     def _close_worker(self):
         if self.quarantined:
@@ -358,9 +373,11 @@ class _Client:
     def __init__(self, owner, team):
         self._owner, self._team = owner, team
 
-    def submit(self, *, request_id, inputs, input_owner, input_claim, samples, sites, on_event):
+    def submit(self, *, request_id, inputs, input_owner, input_claim, samples, sites, on_event,
+               on_output=None, max_output_bytes=None):
         return self._owner._submit(self._team, request_id=request_id, inputs=inputs,
-            input_owner=input_owner, input_claim=input_claim, samples=samples, sites=sites, on_event=on_event)
+            input_owner=input_owner, input_claim=input_claim, samples=samples, sites=sites, on_event=on_event,
+            on_output=on_output, max_output_bytes=max_output_bytes)
 
     def recover(self, request_id):
         with self._owner._lock:

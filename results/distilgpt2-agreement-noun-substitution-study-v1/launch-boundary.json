@@ -1,0 +1,21 @@
+{
+  "argument_vector_sha256": "fb42e0791b48aeb5949ea09b7b3daae0e45a2e275967b13059a2abcac30c50b9",
+  "cache_free_bytes": 2536693760,
+  "child_reconstructed_v35_sha256": "3a7ecf81eb7f04759ed5b8ffd0607c5955b634b938756e76eb52d2435aef9610",
+  "cross_model_comparison_sha256": "babcbba9176beff42532c5ec81878ed55eea3ec73973a24b8780b5ed33152962",
+  "exposure_observation_sha256": "785b0aedf00864d867c27a01eecba0aa1fd72d1327824358e15cd6f187fe6c7e",
+  "highest_exposure_blob": "e4c636dc772072656eea5855a0b9cc1b52951b55",
+  "highest_exposure_version": "distilgpt2-development-exposures-v36",
+  "injection_observation_sha256": "0c00c4531366bc7f08dff1050c5f8a5d863e297fe443b9f56684ef08a2d0c480",
+  "natural_observation_sha256": "8b1aea47b682670ef84b4b02d838d4359d78dea356b8949ee0f2a4ee1968cbbe",
+  "no_prior_attempt_directory": true,
+  "no_prior_case_claim": true,
+  "official_main_observed_revision": "d25a5fa9dbc9bd96b14faf01e0624977a054c65d",
+  "operator_inventory_sha256": "6f05f07a0fe6ed61ca00978ef4b225e43c9c71a4a8be05df33e8c7ed778d06b7",
+  "output_free_bytes": 396827402240,
+  "prelaunch_sha256": "2419e46d53c387a6861c77c3a0c42f9b4d62a2e76b30be3e25f82707ed590012",
+  "recorded_utc": "2026-10-29T11:52:29.757292+00:00",
+  "same_volume": false,
+  "schema": "agreement-substitution-launch-boundary-v1",
+  "scope": "Point-in-time operator observations and cooperative custodian reports; not authenticated execution, process-tree drain, or complete unknown exposure history."
+}

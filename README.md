@@ -101,6 +101,8 @@ On fixed public nonblind cases, both exploratory [agreement-direction rules](res
 
 The [subject-form sensitivity study](results/distilgpt2-agreement-subject-dependence-v1/RESULTS.md) found a larger signed response for the singular member in 31/32 public matched pairs, while subjectless fragments also responded. The cases are dependent and nonblind; morphology, lexical identity and context-dependent gain remain possible explanations.
 
+The [noun-substitution follow-up](results/distilgpt2-agreement-noun-substitution-study-v1/README.md) found a larger opposite-number than same-number different-noun response distance in 11 of 12 fixed cells, while all six subjectless fragments also responded. These public nonblind cases do not rule out surface morphology, lexical differences or context-dependent gain.
+
 The [two-attractor patch follow-up](results/public-two-attractor-patch-v1-20261029/README.md) found a near-zero pooled clean interaction that concealed opposite subject-specific means. Its donor displacements were unequal and some donors changed local lexical identity, so these descriptive results do not establish independent attractor channels or additivity.
 
 The [natural-agreement held-out attempt](results/distilgpt2-natural-agreement-v1-20261028/heldout-attempt-status-v1.md) stopped without an evaluable result. Its one-use claim and sealed split remain preserved; the recorded RuntimeError and a no-model startup reproduction support, but do not prove, a missing dependency-path diagnosis. An [independent held-out auditor](docs/INDEPENDENT_NATURAL_HELDOUT_AUDIT.md) is prepared for saved controls and frozen-prediction errors after a valid reveal.
@@ -118,6 +120,8 @@ The [matched-dose copying factorial](results/distilgpt2-copy-head-factorial-v1-2
 The [copying dose follow-up](results/distilgpt2-copy-head-pairs-dose-v1-20261028/README.md) found a mean high-dose contrast change of −0.138 nats for the H2+H10 pair on eight public families, with seven negative family effects and one positive. Target top-one status remained unchanged in all 480 intervention comparisons. Different total doses at matched per-head scale and output nonlinearities limit the interaction's interpretation; equal-total-dose singles and additive-logit comparators are also reported.
 
 The [per-prompt matched-dose copying follow-up](results/distilgpt2-copy-head-prompt-dose-v1-20261029/README.md) found the prespecified head-2 versus head-10 advantage in four of eight families, below the 75% criterion. The fixed head-7 control and full-vocabulary effects are reported; matching removed pre-projection norms did not equalize downstream effects.
+
+The [projection-output-matched copying follow-up](results/distilgpt2-copy-head-output-dose-v1-20261029/README.md) found its fixed H2-versus-H10 contrast positive in five of eight families, below the 75% criterion. The H7 control and full-vocabulary shifts are reported; equal projection-output norms do not equal directions or downstream effects.
 
 In a [recipient-name screen](results/distilgpt2-recipient-screen-v1-20261028/README.md), only three of 32 matched prompt pairs met the baseline rule, so the planned patches were not run. A separate [year-comparison screen](results/distilgpt2-greater-than-screen-v1-20261028/README.md) found a wording-dependent shift but a later-year preference even in all reverse and neutral prompts; it does not establish a general temporal comparator.
 

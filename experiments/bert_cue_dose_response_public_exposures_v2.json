@@ -1,0 +1,1279 @@
+{
+  "continuation_exit_sha256": "a932efaf2be7b8a8cf72456c73e9bbcb8dd4623e1fa370ef6fe56384dd38f042",
+  "continuation_result_sha256": "cce115669ca1a957428d000950aa36e04c8087a0a96a87dc78492cdff59662d5",
+  "continuation_source_commit": "cdc9630e24542fed84b0c9556bb7f37c60d722d1",
+  "journal_sha256": {
+    "continuation": "67c022d36d7427840334390602706e286aab60168c50c42dad72b7e711b2c87f",
+    "original_incomplete": "ef3d75a34903e8c2fae9f69cf3d3f71d9c77c59ec171d72cbf07c9e67e9d0e05"
+  },
+  "manifest_sha256": "6205dc2c1c2e779e98df2366410221c04845758549f9e79cd5fa15e51a8fb07a",
+  "model": "distilbert/distilbert-base-uncased",
+  "model_revision": "12040accade4e8a0f71eabdb258fecc2e7e948be",
+  "original_attempt": "incomplete",
+  "original_exit_sha256": "f5499d680cbd2ea1d2ebdfdb7268ce30598ad8aa7d6af9ad8ef0ff806ed54f34",
+  "original_failure_sha256_commitment": "12b861407be2e4050b7f5e7b792847867f7b7c588cf75857783fc36d1bb8317a",
+  "original_source_commit": "b75e5bcc3a866a9af56ac1ac3ba54c6abe1691a4",
+  "published_continuation_result_commit": "69018f04800b96f790bebe2d8077c0d4c8af1715",
+  "record_counts": {
+    "continuation": 16,
+    "observed_in_both": 4,
+    "original_incomplete": 20,
+    "rows": 32
+  },
+  "rows": [
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "exposed-calibration-prior",
+      "cue": "never",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        19785,
+        2038,
+        2196,
+        27129,
+        103,
+        1997,
+        1996,
+        4264,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "calibration",
+      "status": "observed-saved",
+      "text": "The gardener has never watered [MASK] of the plants."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "exposed-calibration-prior",
+      "cue": "rarely",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        19785,
+        2038,
+        6524,
+        27129,
+        103,
+        1997,
+        1996,
+        4264,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "calibration",
+      "status": "observed-saved",
+      "text": "The gardener has rarely watered [MASK] of the plants."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "exposed-calibration-prior",
+      "cue": "always",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        19785,
+        2038,
+        2467,
+        27129,
+        103,
+        1997,
+        1996,
+        4264,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "calibration",
+      "status": "observed-saved",
+      "text": "The gardener has always watered [MASK] of the plants."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "exposed-calibration-prior",
+      "cue": "often",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        19785,
+        2038,
+        2411,
+        27129,
+        103,
+        1997,
+        1996,
+        4264,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "calibration",
+      "status": "observed-saved",
+      "text": "The gardener has often watered [MASK] of the plants."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "exposed-calibration-new",
+      "cue": "not",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        19785,
+        2038,
+        2025,
+        27129,
+        103,
+        1997,
+        1996,
+        4264,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "calibration",
+      "status": "observed-saved",
+      "text": "The gardener has not watered [MASK] of the plants."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "exposed-calibration-new",
+      "cue": "hardly",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        19785,
+        2038,
+        6684,
+        27129,
+        103,
+        1997,
+        1996,
+        4264,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "calibration",
+      "status": "observed-saved",
+      "text": "The gardener has hardly watered [MASK] of the plants."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "exposed-calibration-new",
+      "cue": "really",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        19785,
+        2038,
+        2428,
+        27129,
+        103,
+        1997,
+        1996,
+        4264,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "calibration",
+      "status": "observed-saved",
+      "text": "The gardener has really watered [MASK] of the plants."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "exposed-calibration-new",
+      "cue": "certainly",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        19785,
+        2038,
+        5121,
+        27129,
+        103,
+        1997,
+        1996,
+        4264,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "calibration",
+      "status": "observed-saved",
+      "text": "The gardener has certainly watered [MASK] of the plants."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-01-prior",
+      "cue": "never",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        10026,
+        2038,
+        2196,
+        4810,
+        103,
+        1997,
+        1996,
+        12278,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The chef has never prepared [MASK] of the meals."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-01-prior",
+      "cue": "rarely",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        10026,
+        2038,
+        6524,
+        4810,
+        103,
+        1997,
+        1996,
+        12278,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The chef has rarely prepared [MASK] of the meals."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-01-prior",
+      "cue": "always",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        10026,
+        2038,
+        2467,
+        4810,
+        103,
+        1997,
+        1996,
+        12278,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The chef has always prepared [MASK] of the meals."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-01-prior",
+      "cue": "often",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        10026,
+        2038,
+        2411,
+        4810,
+        103,
+        1997,
+        1996,
+        12278,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The chef has often prepared [MASK] of the meals."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-01-new",
+      "cue": "not",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        10026,
+        2038,
+        2025,
+        4810,
+        103,
+        1997,
+        1996,
+        12278,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The chef has not prepared [MASK] of the meals."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-01-new",
+      "cue": "hardly",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        10026,
+        2038,
+        6684,
+        4810,
+        103,
+        1997,
+        1996,
+        12278,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The chef has hardly prepared [MASK] of the meals."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-01-new",
+      "cue": "really",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        10026,
+        2038,
+        2428,
+        4810,
+        103,
+        1997,
+        1996,
+        12278,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The chef has really prepared [MASK] of the meals."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-01-new",
+      "cue": "certainly",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        10026,
+        2038,
+        5121,
+        4810,
+        103,
+        1997,
+        1996,
+        12278,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The chef has certainly prepared [MASK] of the meals."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-02-prior",
+      "cue": "never",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        7500,
+        2038,
+        2196,
+        22629,
+        103,
+        1997,
+        1996,
+        8765,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete",
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The farmer has never harvested [MASK] of the crops."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-02-prior",
+      "cue": "rarely",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        7500,
+        2038,
+        6524,
+        22629,
+        103,
+        1997,
+        1996,
+        8765,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete",
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The farmer has rarely harvested [MASK] of the crops."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-02-prior",
+      "cue": "always",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        7500,
+        2038,
+        2467,
+        22629,
+        103,
+        1997,
+        1996,
+        8765,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete",
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The farmer has always harvested [MASK] of the crops."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-02-prior",
+      "cue": "often",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        7500,
+        2038,
+        2411,
+        22629,
+        103,
+        1997,
+        1996,
+        8765,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "original_incomplete",
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The farmer has often harvested [MASK] of the crops."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-02-new",
+      "cue": "not",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        7500,
+        2038,
+        2025,
+        22629,
+        103,
+        1997,
+        1996,
+        8765,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The farmer has not harvested [MASK] of the crops."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-02-new",
+      "cue": "hardly",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        7500,
+        2038,
+        6684,
+        22629,
+        103,
+        1997,
+        1996,
+        8765,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The farmer has hardly harvested [MASK] of the crops."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-02-new",
+      "cue": "really",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        7500,
+        2038,
+        2428,
+        22629,
+        103,
+        1997,
+        1996,
+        8765,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The farmer has really harvested [MASK] of the crops."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-02-new",
+      "cue": "certainly",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        7500,
+        2038,
+        5121,
+        22629,
+        103,
+        1997,
+        1996,
+        8765,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The farmer has certainly harvested [MASK] of the crops."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-03-prior",
+      "cue": "never",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        4405,
+        2038,
+        2196,
+        20456,
+        103,
+        1997,
+        1996,
+        5693,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The pilot has never inspected [MASK] of the instruments."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-03-prior",
+      "cue": "rarely",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        4405,
+        2038,
+        6524,
+        20456,
+        103,
+        1997,
+        1996,
+        5693,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The pilot has rarely inspected [MASK] of the instruments."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-03-prior",
+      "cue": "always",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        4405,
+        2038,
+        2467,
+        20456,
+        103,
+        1997,
+        1996,
+        5693,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The pilot has always inspected [MASK] of the instruments."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-03-prior",
+      "cue": "often",
+      "cue_set": "prior",
+      "input_ids": [
+        101,
+        1996,
+        4405,
+        2038,
+        2411,
+        20456,
+        103,
+        1997,
+        1996,
+        5693,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The pilot has often inspected [MASK] of the instruments."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-03-new",
+      "cue": "not",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        4405,
+        2038,
+        2025,
+        20456,
+        103,
+        1997,
+        1996,
+        5693,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The pilot has not inspected [MASK] of the instruments."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-03-new",
+      "cue": "hardly",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        4405,
+        2038,
+        6684,
+        20456,
+        103,
+        1997,
+        1996,
+        5693,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The pilot has hardly inspected [MASK] of the instruments."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-03-new",
+      "cue": "really",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        4405,
+        2038,
+        2428,
+        20456,
+        103,
+        1997,
+        1996,
+        5693,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The pilot has really inspected [MASK] of the instruments."
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "fresh-03-new",
+      "cue": "certainly",
+      "cue_set": "new",
+      "input_ids": [
+        101,
+        1996,
+        4405,
+        2038,
+        5121,
+        20456,
+        103,
+        1997,
+        1996,
+        5693,
+        1012,
+        102
+      ],
+      "observed_in": [
+        "continuation"
+      ],
+      "split": "evaluation",
+      "status": "observed-saved",
+      "text": "The pilot has certainly inspected [MASK] of the instruments."
+    }
+  ],
+  "schema": "bert-cue-dose-public-exposures-v2",
+  "scope": "Input IDs are checked against saved clean witnesses; text, split and all-one attention masks come from the fixed manifest. This is not an execution attestation or a claim of complete prior/pretraining exposure."
+}
