@@ -29,9 +29,13 @@ SOURCE_PATHS = (*v1.SOURCE_PATHS, "looking_glass/pretrained_exposures_v3.py",
                 "looking_glass/targeted_edit_v2_manifest.py", "looking_glass/targeted_edit_v2_gate.py",
                 "looking_glass/targeted_edit_v2_custody.py",
                 "docs/TARGETED_EDIT_V2_OWNER.md",
+                "docs/CPU_STUDY_SUPERVISION.md", "docs/SUPERVISOR.md",
                 "looking_glass/cpu_study_supervision.py", "looking_glass/supervisor.py",
                 "looking_glass/device_lease.py", "looking_glass/device_identity.py",
                 "looking_glass/targeted_edit_v2_owner.py",
+                "looking_glass/targeted_edit_v2_witness.py", "docs/TARGETED_EDIT_V2_REMOTE_WITNESS.md",
+                "looking_glass/targeted_edit_v2_evaluation_evidence.py", "docs/TARGETED_EDIT_V2_EVALUATION_EVIDENCE.md",
+                "looking_glass/targeted_edit_v2_evaluation_owner.py", "docs/TARGETED_EDIT_V2_EVALUATION_OWNER.md",
                 V1_MANIFEST, V1_PRECOMMIT)
 
 RULES = {

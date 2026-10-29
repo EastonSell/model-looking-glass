@@ -60,7 +60,7 @@ def make_development(directory, manifest_sha="1" * 64, source="2" * 40):
                    "mkl_num_threads": None}
     settings = {**environment, "float32_matmul_precision": "highest", "mkldnn_deterministic": False,
                 "deterministic_warn_only": False, "cpu_autocast_enabled": False,
-                "inference_mode_enabled": False, "cuda_visibility": "", "hf_hub_offline": "1",
+                "inference_mode_enabled": False, "cuda_visibility": "-1", "hf_hub_offline": "1",
                 "transformers_offline": "1"}
     write_json(directory / "metadata.json", {**common, "description": "synthetic-only",
                                              "compatibility": compatibility, "grid": grid, "buffer_state_sha256": "c" * 64,
@@ -170,6 +170,19 @@ def test_inconsistent_runtime_settings_are_rejected_after_rehash(tiny_vocab, tmp
     metadata["runtime_settings"][field] = {"float32_matmul_precision": "unknown", "deterministic_warn_only": True,
         "intraop_threads": True, "mkldnn_enabled": False, "cpu_autocast_enabled": True,
         "cuda_visibility": "0", "hf_hub_offline": "0"}[field]
+    write_json(path, metadata)
+    pin = refresh_terminal(directory)
+    with pytest.raises(v1.StudyError, match="runtime"):
+        evidence.audit_development(directory, manifest_sha256=manifest, terminal_sha256=pin)
+
+
+@pytest.mark.parametrize("mask", ["", "0", None])
+def test_v1_mask_must_be_literal_in_rehashed_evidence(tiny_vocab, tmp_path, mask):
+    directory = tmp_path / "development"
+    manifest, _ = make_development(directory)
+    path = directory / "metadata.json"
+    metadata = v1._decode_document(path.read_bytes())
+    metadata["runtime_settings"]["cuda_visibility"] = mask
     write_json(path, metadata)
     pin = refresh_terminal(directory)
     with pytest.raises(v1.StudyError, match="runtime"):

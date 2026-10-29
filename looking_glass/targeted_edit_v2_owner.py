@@ -396,7 +396,7 @@ def _read_development_arrays(output, v1, v2, evidence, np):
 def _development_work(repo, cache, output, identity, manifest_value, public, receipt, deps):
     """Run the already-gated private model; never called by the disabled entry point."""
     torch, np, pretrained, v1, v2, edits, evidence, _manifest, _custody, _exposure, _gate = deps
-    if (sys.byteorder != "little" or os.environ.get("CUDA_VISIBLE_DEVICES") != ""
+    if (sys.byteorder != "little" or os.environ.get("CUDA_VISIBLE_DEVICES") != "-1"
             or os.environ.get("HF_HUB_OFFLINE") != "1" or os.environ.get("TRANSFORMERS_OFFLINE") != "1"
             or torch.cuda.is_initialized() or torch.is_inference_mode_enabled()
             or torch.is_autocast_enabled("cpu")):
@@ -411,12 +411,20 @@ def _development_work(repo, cache, output, identity, manifest_value, public, rec
     previous = manifest_value["v1_compatibility"]
     if _canonical({key: environment[key] for key in edits.ENVIRONMENT_FIELDS}) != _canonical(previous["environment"]):
         raise Incompatible("execution-relevant runtime differs from v1")
+    runtime_before_load = _runtime_settings(torch)
+    evidence._check_runtime_settings(runtime_before_load, environment)
     loaded = pretrained.load_distilgpt2(cache_dir=cache, allow_download=False)
+    if _runtime_settings(torch) != runtime_before_load:
+        raise OwnerError("CPU runtime changed during checkpoint loading")
     model, module, weight = _check_checkpoint(loaded, manifest_value, torch, v1)
     _verify_tokenizer(loaded.tokenizer, v1, v2)
     guard = _ModelGuard(model, module, weight, torch, v1)
+    if guard.runtime_settings != runtime_before_load:
+        guard.poisoned = True
+        raise OwnerError("CPU runtime changed before discovery")
     if guard.state_sha != previous["model_state_sha256"] or guard.weight_sha != previous["weight_sha256"]:
         raise Incompatible("checkpoint state or projection digest differs from v1")
+    guard.verify()
     v1._denormal_probe()
     gradient, random, discovery = v1._candidate(model, module, v1.CASES[0][3], v1.LONDON, v1.PARIS,
                                                  expected_shape=v1.WEIGHT_SHAPE)

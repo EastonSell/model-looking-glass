@@ -18,6 +18,30 @@ an attestation and does not prove a model or exception graph was disposed.
 See [CPU study supervision](CPU_STUDY_SUPERVISION.md) for the cooperative
 process/root and CUDA-mask preconditions.
 
+For this v2 study, the child must first claim with the supervisor's literal
+empty `CUDA_VISIBLE_DEVICES` value and no model-capable dependency imported.
+Before importing those dependencies it must change the value to the exact v1
+literal `-1`, verify it, and keep checking it through the work and immediately
+before clean attestation. The saved supplemental runtime field records `-1`;
+the original v1 descriptive `disabled` field is not changed. The two literal
+settings produced different `torch.__config__.show()` hashes on the recorded
+host, so they are not interchangeable for v1 reproduction. These are
+cooperative CPU preconditions, not proof that arbitrary code cannot use CUDA.
+Before loading the checkpoint, the owner validates and snapshots all recorded
+v2 runtime settings; it rejects any changed setting after loading or tokenizer
+verification before running the discovery forward. The condition guard keeps
+checking that snapshot through the study. These checks still rely on trusted,
+exclusive code and cannot detect a change that is made and reversed between
+checks.
+
+The prospective source inventory includes the remote-witness and evaluation
+reader and writer modules and their protocols, as well as the CPU supervision and
+supervisor contracts. A static regression checks direct relative imports of
+the listed project modules; it cannot discover dynamic imports or establish
+where a running interpreter imported a module. Before any study run, the final
+controller and bootstrap must themselves be inventoried and an independent
+source-origin gate must verify the actual imported bytes.
+
 The inherited v1 environment helper calls `platform.platform()`, which can
 spawn a short-lived subprocess on Windows. Before enabling the owner, rehearse
 the full supervised import and environment path without loading or forwarding

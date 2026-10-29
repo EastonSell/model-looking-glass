@@ -1,5 +1,6 @@
 """Synthetic Git/source binding tests; no checkpoint/model is loaded."""
 
+import ast
 import shutil
 import subprocess
 from pathlib import Path
@@ -68,8 +69,31 @@ def test_fixed_manifest_binds_all_cases_doses_and_source_bytes(frozen_repo):
     assert value["exposure"]["private_split_check_performed"] is False
 
 
+def test_listed_project_sources_cover_static_local_imports():
+    # This catches direct relative imports only; dynamic imports and the future
+    # controller/bootstrap still require an independent source-origin gate.
+    paths = set(manifest.SOURCE_PATHS)
+    assert len(paths) == len(manifest.SOURCE_PATHS)
+    for relative in manifest.SOURCE_PATHS:
+        if not relative.startswith("looking_glass/") or not relative.endswith(".py"):
+            continue
+        tree = ast.parse((ROOT / relative).read_text(encoding="utf-8"), filename=relative)
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom) or node.level != 1:
+                continue
+            names = ([node.module.split(".", 1)[0]] if node.module else
+                     [alias.name.split(".", 1)[0] for alias in node.names])
+            for name in names:
+                candidate = "looking_glass/" + name + ".py"
+                if (ROOT / candidate).is_file():
+                    assert candidate in paths, f"{relative} imports unbound {candidate}"
+
+
 @pytest.mark.parametrize("relative", ["looking_glass/targeted_edit_cpu_v2.py",
-                                       "looking_glass/targeted_edit_v2_custody.py"])
+                                       "looking_glass/targeted_edit_v2_custody.py",
+                                       "looking_glass/targeted_edit_v2_witness.py",
+                                       "looking_glass/targeted_edit_v2_evaluation_evidence.py",
+                                       "looking_glass/targeted_edit_v2_evaluation_owner.py"])
 def test_working_source_edit_is_rejected(frozen_repo, relative):
     repo, _source, frozen_commit, sha = frozen_repo
     path = repo / relative
