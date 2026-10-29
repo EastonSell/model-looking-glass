@@ -71,6 +71,15 @@ the caller must stop and reconcile the journal and final publication; it must
 never blindly replay the completed condition. Rename/return reconciliation is
 best effort and requires the supervising controller to audit the exact saved
 destination independently after any lost or failed return.
+The destination must be lexically absent, including dangling links; an
+uninspectable path is rejected. This check relies on the trusted exclusive
+namespace and is not an atomic fence against a concurrent filesystem writer.
+Before the development terminal is assembled, each staged artifact must be a
+regular file within its declared byte bound, and every matrix must have the
+fixed size; a later independent reader still audits the saved content.
+The publication and reconciliation helpers set the calling thread's Torch
+denormal mode to preservation and do not restore its previous mode. Run them
+in a designated CPU context and account for this state change.
 
 These checks do not capture arbitrary Python attributes, monkeypatches, global
 hooks outside the listed registries, native library state, concurrent writers,

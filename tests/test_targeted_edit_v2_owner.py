@@ -546,6 +546,60 @@ def test_publication_requires_and_records_clean_reaped_child(staged_development)
     assert record["selection"] == published["selection"]
 
 
+@pytest.mark.parametrize("failure", ["oversized", "directory"])
+def test_development_prehash_rejects_unbounded_or_nonregular_artifact(staged_development, failure):
+    staging, destination, identity, candidate, result, manifest_value, public, receipt, deps = staged_development
+    path = staging / "observations.jsonl"
+    if failure == "oversized":
+        path.write_bytes(b"x" * (evidence.MAX_JOURNAL + 1))
+    else:
+        path.unlink()
+        path.mkdir()
+    with pytest.raises(v1.StudyError):
+        owner._publish_development(staging, destination, identity, candidate, result, manifest_value, public, receipt, deps)
+    assert staging.is_dir() and not destination.exists() and not (staging / "terminal.json").exists()
+
+
+def test_development_rejects_a_dangling_destination(staged_development):
+    staging, destination, identity, candidate, result, manifest_value, public, receipt, deps = staged_development
+    try:
+        destination.symlink_to(destination.parent / "missing-target", target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"creating a symlink is unavailable: {exc}")
+    assert destination.is_symlink() and not destination.exists()
+    with pytest.raises(owner.OwnerError, match="new destination"):
+        owner._publish_development(staging, destination, identity, candidate, result, manifest_value, public, receipt, deps)
+    assert destination.is_symlink() and staging.is_dir() and not (staging / "terminal.json").exists()
+
+
+def test_development_rejects_a_lexical_entry_even_when_exists_is_false(staged_development, monkeypatch):
+    staging, destination, identity, candidate, result, manifest_value, public, receipt, deps = staged_development
+    assert not destination.exists()
+    original = Path.lstat
+    seen = []
+    def lstat(path):
+        if path == destination:
+            seen.append(True)
+            return SimpleNamespace()
+        return original(path)
+    monkeypatch.setattr(Path, "lstat", lstat)
+    with pytest.raises(owner.OwnerError, match="new destination"):
+        owner._publish_development(staging, destination, identity, candidate, result, manifest_value, public, receipt, deps)
+    assert seen == [True] and staging.is_dir() and not (staging / "terminal.json").exists()
+
+
+def test_lexical_absence_fails_closed_on_inaccessible_path(monkeypatch, tmp_path):
+    target = tmp_path / "unknown"
+    original = Path.lstat
+    def lstat(path):
+        if path == target:
+            raise PermissionError("synthetic denied stat")
+        return original(path)
+    monkeypatch.setattr(Path, "lstat", lstat)
+    with pytest.raises(owner.OwnerError, match="could not be inspected"):
+        owner._path_absent(target)
+
+
 def test_publication_rename_success_then_interrupt_is_reconciled(staged_development, monkeypatch):
     staging, destination, identity, candidate, result, manifest_value, public, receipt, deps = staged_development
     actual_rename = owner.os.rename
