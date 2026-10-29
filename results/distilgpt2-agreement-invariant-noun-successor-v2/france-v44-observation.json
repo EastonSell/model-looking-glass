@@ -1,0 +1,9 @@
+{
+  "schema": "agreement-invariant-v2-post-start-public-input-observation-v1",
+  "recorded_utc": "2026-10-29T14:06:09.6723168+00:00",
+  "observer_start_utc": "2026-10-29T14:03:20.4091234+00:00",
+  "france_case_sha256": "c8dd418bea948c8ca2b4d1e39e696374a28bd2f911bb16707415c38170fbba82",
+  "operator_v44_sha256": "78d783dc37c1ace4c39300b62e67652d76f3323de79830628ecd64e46aa0bfa0",
+  "public_addendum_sha256": "b118ae05419245fe77a63187c5e1640bcdd648c770a538d7eab1e2dfd464bab8",
+  "scope": "Recorded after observer start; 73 named France sequences and 80 public v44 additions had zero public prefix relations. No protected or unknown history is certified."
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "agreement-invariant-v2-public-launch-boundary-v1",
+  "recorded_utc": "2026-10-29T14:02:00.1042780+00:00",
+  "source_revision": "ac35e97c250aeefa683d9fd4be7a3761d2fee3f9",
+  "source_tree": "b00804887c958ebe9c9b6cf3a2f72c6b81e6d4b7",
+  "prelaunch_sha256": "f0d219d8638a73dd42f825d2d8e8a45e5d08cc178794515a8e9d6657d661989b",
+  "reconstructed_reservation": "f2239d43d528366a6acc1a87a78c328a86124ad5",
+  "reconstructed_sha256": "61a80aafd9d4aea075774776d830b017f8e4c5e1a4fd0f2643963d2075a6e4ee",
+  "operator_inventory_revision": "4a4078d99d25eba4bbadff16b75e3728524f2c06",
+  "operator_inventory_sha256": "78d783dc37c1ace4c39300b62e67652d76f3323de79830628ecd64e46aa0bfa0",
+  "observed_public_main": "13b693fa69b690646a845baa45169a8844e8760b",
+  "comparison": "GitHub compare reports v44 ancestor and no pretrained_exposures path changes through observed main",
+  "c_free_bytes": 1996832768,
+  "e_free_bytes": 382440083456,
+  "disk_scope": "Point observations, not reserved capacity. Cache, temp, pycache and attempt writes are on E; owner and venv are read on C.",
+  "public_only_departure_sha256": "ae980f3fd2a0316d687e45d5038e12b1ecbfab017fe66872f27de9fc4618e749",
+  "protected_status": "unknown",
+  "protected_target_relation": "unknown",
+  "scope": "No protected metadata or split was queried; public and unknown history is not certified. The inherited fresh protected-custody requirement is unmet."
+}
