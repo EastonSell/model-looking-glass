@@ -1,7 +1,8 @@
 """CPU integration of trace provenance through private batch sealing.
 
-The inputs are fixed development fixtures. This test covers metadata sealing,
-not payload delivery, an authenticated service, GPU admission, or causality.
+The inputs are fixed development fixtures. The batch contract permits one
+invocation per selected site. This test covers metadata sealing, not payload
+delivery, an authenticated service, GPU admission, or causality.
 """
 
 from dataclasses import replace
@@ -84,7 +85,7 @@ class TraceBatchProvenanceTests(unittest.TestCase):
         worker = TracedGPT2Worker("batch-tiny", model, device="cpu",
                                   max_batch_size=2, max_sequence_length=5)
         published = []
-        for case, input_index in enumerate((0, 1, 0)):
+        for case, input_index in enumerate((0, 1, 0, 1)):
             item = inputs[input_index]
             identity = BrokerJobIdentity(broker_id, case + 7, "team", f"request-{case}")
             samples = tuple(SampleTrace(row_samples[input_index][row], row_tokens[input_index][row])
@@ -143,13 +144,14 @@ class TraceBatchProvenanceTests(unittest.TestCase):
                 # Arrival order does not identify a slot: validate each event.
                 job.stage(tuple(reversed(result.events)))
             else:
-                # Preserve the actual payload but mislabel one token order.
+                # Preserve the actual payload but mislabel one coordinate.
                 first = result.events[0]
-                bad = (replace(first, token_positions=tuple(reversed(first.token_positions))),
-                       *result.events[1:])
+                wrong = (replace(first, token_positions=tuple(reversed(first.token_positions)))
+                         if case == 2 else replace(first, invocation=1))
+                bad = (wrong, *result.events[1:])
                 with self.assertRaises(ValueError):
                     job.stage(bad)
-                bad = first = None
+                bad = first = wrong = None
             with self.assertRaises(BatchStateError):
                 job.manifest()
             event = result = reference = None
