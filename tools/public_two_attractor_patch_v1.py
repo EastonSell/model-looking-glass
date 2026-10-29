@@ -48,6 +48,49 @@ def _append(stream, value):
     os.fsync(stream.fileno())
 
 
+def _selected_bits(output):
+    logits = getattr(output, 'logits', None)
+    if (not isinstance(logits, torch.Tensor) or logits.dtype != torch.float32
+            or logits.device.type != 'cpu' or logits.ndim != 3 or logits.shape[0] != 1
+            or logits.shape[1] != 8 or logits.shape[2] <= 547):
+        return None
+    values = logits[0, -1, [318, 389, 373, 547]].detach().contiguous()
+    return values.numpy().tobytes(order='C').hex()
+
+
+def _incomplete(stream, evidence, plan, output, returned, context, error):
+    """Best-effort bounded post-return evidence; never replace the failure."""
+    refs, unavailable = {}, []
+    try:
+        captures = plan.captures
+    except BaseException:
+        captures = {}
+        unavailable.append('plan captures unavailable')
+    for name, tensor in captures.items():
+        try:
+            if (not isinstance(tensor, torch.Tensor) or tensor.dtype != torch.float32
+                    or tensor.device.type != 'cpu' or tensor.numel() * 4 > 1024 * 1024):
+                raise ValueError('unbounded capture')
+            raw = tensor.detach().contiguous().numpy().tobytes(order='C')
+            refs[name] = evidence.put(raw, tuple(tensor.shape))
+        except BaseException:
+            unavailable.append('capture ' + name)
+    try:
+        bits = _selected_bits(output) if output is not None else None
+    except BaseException:
+        bits = None
+        unavailable.append('selected logit bits')
+    try:
+        _append(stream, {'event': 'forward_incomplete', **context,
+                         'model_returned': returned, 'error_type': type(error).__name__,
+                         'selected_float32_le_hex': bits, 'captures': refs,
+                         'unavailable': unavailable})
+    except BaseException as evidence_error:
+        if hasattr(error, 'add_note'):
+            error.add_note('Incomplete-forward evidence could not be fully recorded: '
+                           + type(evidence_error).__name__)
+
+
 class Evidence:
     def __init__(self, directory):
         self.directory = directory
@@ -136,18 +179,27 @@ def execute(model, cases, directory, metadata):
             ids = torch.tensor([case['input_ids']], dtype=torch.long, device='cpu')
             plan = ActivationPlan(model, steps, max_tensor_bytes=1024 * 1024,
                                   max_capture_bytes=1024 * 1024, max_invocations=1)
-            with torch.inference_mode(), plan:
-                output = model(input_ids=ids, attention_mask=torch.ones_like(ids), use_cache=False)
-            scores = _scores(output)
-            refs = {}
-            for i, site in enumerate(SITES):
-                vector = plan.captures[f'site_{i}']
-                raw = _bytes(vector, (768,))
-                captures[(case['case_id'], site)] = vector.detach().clone()
-                refs[site] = evidence.put(raw, (768,))
-            clean_scores[case['case_id']] = scores
-            _append(stream, {'event': 'forward_result', 'kind': 'clean', 'case_id': case['case_id'],
-                             'scores': scores, 'vectors': refs, 'plan_metadata': plan.metadata})
+            context = {'kind': 'clean', 'case_id': case['case_id']}
+            output = None
+            returned = False
+            try:
+                with torch.inference_mode(), plan:
+                    output = model(input_ids=ids, attention_mask=torch.ones_like(ids), use_cache=False)
+                    returned = True
+                    _append(stream, {'event': 'model_returned', **context})
+                scores = _scores(output)
+                refs = {}
+                for i, site in enumerate(SITES):
+                    vector = plan.captures[f'site_{i}']
+                    raw = _bytes(vector, (768,))
+                    captures[(case['case_id'], site)] = vector.detach().clone()
+                    refs[site] = evidence.put(raw, (768,))
+                clean_scores[case['case_id']] = scores
+                _append(stream, {'event': 'forward_result', **context,
+                                 'scores': scores, 'vectors': refs, 'plan_metadata': plan.metadata})
+            except BaseException as error:
+                _incomplete(stream, evidence, plan, output, returned, context, error)
+                raise
         for key in sorted(units):
             subject, order, number = key
             cells = units[key]
@@ -175,36 +227,44 @@ def execute(model, cases, directory, metadata):
                     plan = ActivationPlan(model, steps, max_tensor_bytes=1024 * 1024,
                                           max_capture_bytes=1024 * 1024, max_source_bytes=128 * 1024,
                                           max_invocations=1)
-                    with torch.inference_mode(), plan:
-                        output = model(input_ids=ids, attention_mask=torch.ones_like(ids), use_cache=False)
-                    scores = _scores(output)
-                    values = plan.captures
-                    before = _bytes(values['before'], (768,))
-                    after = _bytes(values['after'], (768,))
-                    whole_before = _bytes(values['whole_before'], (1, 8, 768))
-                    whole_after = _bytes(values['whole_after'], (1, 8, 768))
-                    expected = _bytes(captures[(donor['case_id'], site)], (768,))
-                    target_clean = _bytes(captures[(target['case_id'], site)], (768,))
-                    offset = 7 * 768 * 4
-                    flags = {'target_matches_clean': before == target_clean,
-                             'landing_matches_donor': after == expected,
-                             'untouched_positions_equal': whole_before[:offset] == whole_after[:offset]
-                                 and whole_before[offset + 768 * 4:] == whole_after[offset + 768 * 4:],
-                             'selected_slice_consistent': whole_before[offset:offset + 768 * 4] == before
-                                 and whole_after[offset:offset + 768 * 4] == after,
-                             'control_logits_equal_clean': label not in ('null', 'self')
-                                 or scores['float32_le_hex'] == clean[(0, 0)]['float32_le_hex']}
-                    displacement = math.sqrt(math.fsum((float(x) - float(y)) ** 2 for x, y in
-                        zip(values['before'].tolist(), captures[(donor['case_id'], site)].tolist())))
-                    refs = {'whole_before': evidence.put(whole_before, (1, 8, 768)),
-                            'whole_after': evidence.put(whole_after, (1, 8, 768)),
-                            'donor': evidence.put(expected, (768,))}
-                    _append(stream, {'event': 'forward_result', 'kind': label, 'target': target['case_id'],
-                                     'donor': donor['case_id'], 'site': site, 'scores': scores,
-                                     'displacement_l2': displacement, 'checks': flags, 'tensors': refs,
-                                     'plan_metadata': plan.metadata})
-                    if not all(flags.values()):
-                        raise ValueError('an action control or landing check failed')
+                    context = {'kind': label, 'target': target['case_id'], 'donor': donor['case_id'], 'site': site}
+                    output = None
+                    returned = False
+                    try:
+                        with torch.inference_mode(), plan:
+                            output = model(input_ids=ids, attention_mask=torch.ones_like(ids), use_cache=False)
+                            returned = True
+                            _append(stream, {'event': 'model_returned', **context})
+                        scores = _scores(output)
+                        values = plan.captures
+                        before = _bytes(values['before'], (768,))
+                        after = _bytes(values['after'], (768,))
+                        whole_before = _bytes(values['whole_before'], (1, 8, 768))
+                        whole_after = _bytes(values['whole_after'], (1, 8, 768))
+                        expected = _bytes(captures[(donor['case_id'], site)], (768,))
+                        target_clean = _bytes(captures[(target['case_id'], site)], (768,))
+                        offset = 7 * 768 * 4
+                        flags = {'target_matches_clean': before == target_clean,
+                                 'landing_matches_donor': after == expected,
+                                 'untouched_positions_equal': whole_before[:offset] == whole_after[:offset]
+                                     and whole_before[offset + 768 * 4:] == whole_after[offset + 768 * 4:],
+                                 'selected_slice_consistent': whole_before[offset:offset + 768 * 4] == before
+                                     and whole_after[offset:offset + 768 * 4] == after,
+                                 'control_logits_equal_clean': label not in ('null', 'self')
+                                     or scores['float32_le_hex'] == clean[(0, 0)]['float32_le_hex']}
+                        displacement = math.sqrt(math.fsum((float(x) - float(y)) ** 2 for x, y in
+                            zip(values['before'].tolist(), captures[(donor['case_id'], site)].tolist())))
+                        refs = {'whole_before': evidence.put(whole_before, (1, 8, 768)),
+                                'whole_after': evidence.put(whole_after, (1, 8, 768)),
+                                'donor': evidence.put(expected, (768,))}
+                        _append(stream, {'event': 'forward_result', **context, 'scores': scores,
+                                         'displacement_l2': displacement, 'checks': flags, 'tensors': refs,
+                                         'plan_metadata': plan.metadata})
+                        if not all(flags.values()):
+                            raise ValueError('an action control or landing check failed')
+                    except BaseException as error:
+                        _incomplete(stream, evidence, plan, output, returned, context, error)
+                        raise
                     if label in ('near', 'beside', 'both'):
                         effects[label] = scores
                 contrast = {}

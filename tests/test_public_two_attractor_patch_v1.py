@@ -76,6 +76,7 @@ def test_real_plan_toy_schedule_and_saved_landing(tmp_path):
     starts = [r for r in records if r['event'] == 'forward_start']
     finished = [r for r in records if r['event'] == 'forward_result']
     assert len(starts) == len(finished) == result['forwards'] == 112
+    assert sum(r['event'] == 'model_returned' for r in records) == 112
     assert sum(r['kind'] == 'clean' for r in finished) == 32
     assert len(result['units']) == 16 and result['raw_tensor_bytes'] <= patch.RAW_LIMIT
     for record in finished:
@@ -108,3 +109,25 @@ def test_full_logits_must_be_finite_and_match_vocab():
         patch._scores(SimpleNamespace(logits=logits, past_key_values=None))
     with pytest.raises(ValueError, match='output'):
         patch._scores(SimpleNamespace(logits=torch.zeros((1, 8, 548)), past_key_values=None))
+
+
+def test_invalid_return_retains_available_evidence(tmp_path):
+    class InvalidToy(ToyModel):
+        def forward(self, *args, **kwargs):
+            output = super().forward(*args, **kwargs)
+            output.logits[0, 0, 1] = float('nan')
+            return output
+
+    output = tmp_path / 'invalid'
+    with pytest.raises(ValueError, match='output'):
+        patch.execute(InvalidToy().eval(), CASES, output, {'fake_model': True})
+    records = [json.loads(line) for line in (output / 'attempt.jsonl').read_text().splitlines()]
+    assert [r['event'] for r in records] == ['begin', 'forward_start', 'model_returned', 'forward_incomplete']
+    incomplete = records[-1]
+    assert incomplete['model_returned'] is True
+    assert len(incomplete['selected_float32_le_hex']) == 32
+    assert set(incomplete['captures']) == {'site_0', 'site_1'}
+    assert incomplete['unavailable'] == []
+    for ref in incomplete['captures'].values():
+        assert hashlib.sha256((output / ref['path']).read_bytes()).hexdigest() == ref['sha256']
+    assert not (output / 'result.json').exists()
