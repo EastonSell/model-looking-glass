@@ -1,0 +1,2977 @@
+{
+  "checks": {
+    "baseline_logit_dtype": "torch.float32",
+    "baseline_logit_sha256": [
+      "80dfa276abcf1fbf751bc27861a4442d31d581f94ffa1580c988424f43503886",
+      "80dfa276abcf1fbf751bc27861a4442d31d581f94ffa1580c988424f43503886"
+    ],
+    "baseline_logit_shape": [
+      1,
+      5,
+      50257
+    ],
+    "baseline_repeat_equal": true,
+    "direct_gradient_equal": true,
+    "modes": {
+      "direct": {
+        "event_count": 18,
+        "events": [
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "attn",
+              "module_path": "transformer.h.0.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 0,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "30ab2e772924c97393139f566f44755c7bf8195033cb2808d047c7200ff7fb53"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.0.mlp",
+              "output_path": [],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 1,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "4b69eedecef3875a5680d379aef7ac3202e20cd90968b8c2cf06e4377919ba5e"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "block",
+              "module_path": "transformer.h.0",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 2,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "194c3603fe5be831cc65fdf80164f9620fafb11254ded330bd1a70b942a6b65f"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "attn",
+              "module_path": "transformer.h.2.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 3,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "dd9e250cc91f39d3eeafee7d80d5170ea952cbcc8c5dbf8b464af3b5a1d7b653"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.2.mlp",
+              "output_path": [],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 4,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "bafdc5a42465abbfb89dfd966c0cc8881ad78496a57aca3fe21571928313515d"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "block",
+              "module_path": "transformer.h.2",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 5,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "c4fb3c9172d156f74299e6cae51d4b9712300953859658c27ec7f5779b504de1"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "attn",
+              "module_path": "transformer.h.5.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 6,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "b91a61e2b138d6e36f1df169766ce520dd61feb5f5290229c8d3d830fd496a73"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.5.mlp",
+              "output_path": [],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 7,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "62f7b37f087d314a74e7cac49249718fc9528b5229809b5ce795cc3d78a6ce6d"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "block",
+              "module_path": "transformer.h.5",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 8,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "91762ef5ed27dbf145d2a617e537a256b56d1f22d5995a255acf54307839431c"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "attn",
+              "module_path": "transformer.h.0.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 9,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "30ab2e772924c97393139f566f44755c7bf8195033cb2808d047c7200ff7fb53"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.0.mlp",
+              "output_path": [],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 10,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "4b69eedecef3875a5680d379aef7ac3202e20cd90968b8c2cf06e4377919ba5e"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "block",
+              "module_path": "transformer.h.0",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 11,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "194c3603fe5be831cc65fdf80164f9620fafb11254ded330bd1a70b942a6b65f"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "attn",
+              "module_path": "transformer.h.2.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 12,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "dd9e250cc91f39d3eeafee7d80d5170ea952cbcc8c5dbf8b464af3b5a1d7b653"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.2.mlp",
+              "output_path": [],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 13,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "bafdc5a42465abbfb89dfd966c0cc8881ad78496a57aca3fe21571928313515d"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "block",
+              "module_path": "transformer.h.2",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 14,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "c4fb3c9172d156f74299e6cae51d4b9712300953859658c27ec7f5779b504de1"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "attn",
+              "module_path": "transformer.h.5.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 15,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "b91a61e2b138d6e36f1df169766ce520dd61feb5f5290229c8d3d830fd496a73"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.5.mlp",
+              "output_path": [],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 16,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "62f7b37f087d314a74e7cac49249718fc9528b5229809b5ce795cc3d78a6ce6d"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "direct",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-direct",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "block",
+              "module_path": "transformer.h.5",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 17,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "91762ef5ed27dbf145d2a617e537a256b56d1f22d5995a255acf54307839431c"
+          }
+        ],
+        "logit_sha256": [
+          "80dfa276abcf1fbf751bc27861a4442d31d581f94ffa1580c988424f43503886",
+          "80dfa276abcf1fbf751bc27861a4442d31d581f94ffa1580c988424f43503886"
+        ],
+        "logits_equal_baseline": true,
+        "metadata_valid": true,
+        "tensor_bytes": 110592,
+        "values_equal_reference": true
+      },
+      "gradient": {
+        "event_count": 18,
+        "events": [
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "attn",
+              "module_path": "transformer.h.0.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 0,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "30ab2e772924c97393139f566f44755c7bf8195033cb2808d047c7200ff7fb53"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.0.mlp",
+              "output_path": [],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 1,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "4b69eedecef3875a5680d379aef7ac3202e20cd90968b8c2cf06e4377919ba5e"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "block",
+              "module_path": "transformer.h.0",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 2,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "194c3603fe5be831cc65fdf80164f9620fafb11254ded330bd1a70b942a6b65f"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "attn",
+              "module_path": "transformer.h.2.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 3,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "dd9e250cc91f39d3eeafee7d80d5170ea952cbcc8c5dbf8b464af3b5a1d7b653"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.2.mlp",
+              "output_path": [],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 4,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "bafdc5a42465abbfb89dfd966c0cc8881ad78496a57aca3fe21571928313515d"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "block",
+              "module_path": "transformer.h.2",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 5,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "c4fb3c9172d156f74299e6cae51d4b9712300953859658c27ec7f5779b504de1"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "attn",
+              "module_path": "transformer.h.5.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 6,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "b91a61e2b138d6e36f1df169766ce520dd61feb5f5290229c8d3d830fd496a73"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.5.mlp",
+              "output_path": [],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 7,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "62f7b37f087d314a74e7cac49249718fc9528b5229809b5ce795cc3d78a6ce6d"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "block",
+              "module_path": "transformer.h.5",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 8,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "91762ef5ed27dbf145d2a617e537a256b56d1f22d5995a255acf54307839431c"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "attn",
+              "module_path": "transformer.h.0.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 9,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "30ab2e772924c97393139f566f44755c7bf8195033cb2808d047c7200ff7fb53"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.0.mlp",
+              "output_path": [],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 10,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "4b69eedecef3875a5680d379aef7ac3202e20cd90968b8c2cf06e4377919ba5e"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "block",
+              "module_path": "transformer.h.0",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 11,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "194c3603fe5be831cc65fdf80164f9620fafb11254ded330bd1a70b942a6b65f"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "attn",
+              "module_path": "transformer.h.2.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 12,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "dd9e250cc91f39d3eeafee7d80d5170ea952cbcc8c5dbf8b464af3b5a1d7b653"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.2.mlp",
+              "output_path": [],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 13,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "bafdc5a42465abbfb89dfd966c0cc8881ad78496a57aca3fe21571928313515d"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "block",
+              "module_path": "transformer.h.2",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 14,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "c4fb3c9172d156f74299e6cae51d4b9712300953859658c27ec7f5779b504de1"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "attn",
+              "module_path": "transformer.h.5.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 15,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "b91a61e2b138d6e36f1df169766ce520dd61feb5f5290229c8d3d830fd496a73"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.5.mlp",
+              "output_path": [],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 16,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "62f7b37f087d314a74e7cac49249718fc9528b5229809b5ce795cc3d78a6ce6d"
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "gradient",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-gradient",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "block",
+              "module_path": "transformer.h.5",
+              "output_path": [
+                0
+              ],
+              "saved_device": "cpu",
+              "saved_dtype": "torch.float32",
+              "saved_shape": [
+                1,
+                2,
+                768
+              ],
+              "schema_version": "1.0",
+              "sequence": 17,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": "91762ef5ed27dbf145d2a617e537a256b56d1f22d5995a255acf54307839431c"
+          }
+        ],
+        "logit_sha256": [
+          "80dfa276abcf1fbf751bc27861a4442d31d581f94ffa1580c988424f43503886",
+          "80dfa276abcf1fbf751bc27861a4442d31d581f94ffa1580c988424f43503886"
+        ],
+        "logits_equal_baseline": true,
+        "metadata_valid": true,
+        "tensor_bytes": 110592,
+        "values_equal_reference": true
+      },
+      "id": {
+        "event_count": 18,
+        "events": [
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "attn",
+              "module_path": "transformer.h.0.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 0,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.0.mlp",
+              "output_path": [],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 1,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "block",
+              "module_path": "transformer.h.0",
+              "output_path": [
+                0
+              ],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 2,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "attn",
+              "module_path": "transformer.h.2.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 3,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.2.mlp",
+              "output_path": [],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 4,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "block",
+              "module_path": "transformer.h.2",
+              "output_path": [
+                0
+              ],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 5,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "attn",
+              "module_path": "transformer.h.5.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 6,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.5.mlp",
+              "output_path": [],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 7,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 0,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "block",
+              "module_path": "transformer.h.5",
+              "output_path": [
+                0
+              ],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 8,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "attn",
+              "module_path": "transformer.h.0.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 9,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.0.mlp",
+              "output_path": [],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 10,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 0,
+              "module_kind": "block",
+              "module_path": "transformer.h.0",
+              "output_path": [
+                0
+              ],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 11,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "attn",
+              "module_path": "transformer.h.2.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 12,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.2.mlp",
+              "output_path": [],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 13,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 2,
+              "module_kind": "block",
+              "module_path": "transformer.h.2",
+              "output_path": [
+                0
+              ],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 14,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "attn",
+              "module_path": "transformer.h.5.attn",
+              "output_path": [
+                0
+              ],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 15,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "mlp",
+              "module_path": "transformer.h.5.mlp",
+              "output_path": [],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 16,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          },
+          {
+            "metadata": {
+              "batch_axis": 0,
+              "batch_positions": [
+                0
+              ],
+              "capture_mode": "id",
+              "device": "cpu",
+              "dtype": "torch.float32",
+              "forward_index": 1,
+              "generation": {
+                "cache_length_after": null,
+                "cache_length_before": null,
+                "cache_position": null,
+                "generation_step": null,
+                "stage": "unknown",
+                "use_cache": null
+              },
+              "identity": {
+                "job_id": null,
+                "request_id": null,
+                "run_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900-id",
+                "sample_id": null
+              },
+              "invocation": 0,
+              "layer_index": 5,
+              "module_kind": "block",
+              "module_path": "transformer.h.5",
+              "output_path": [
+                0
+              ],
+              "saved_device": null,
+              "saved_dtype": null,
+              "saved_shape": null,
+              "schema_version": "1.0",
+              "sequence": 17,
+              "shape": [
+                1,
+                5,
+                768
+              ],
+              "token_axis": 1,
+              "token_positions": [
+                0,
+                1
+              ]
+            },
+            "value_sha256": null
+          }
+        ],
+        "logit_sha256": [
+          "80dfa276abcf1fbf751bc27861a4442d31d581f94ffa1580c988424f43503886",
+          "80dfa276abcf1fbf751bc27861a4442d31d581f94ffa1580c988424f43503886"
+        ],
+        "logits_equal_baseline": true,
+        "metadata_valid": true,
+        "tensor_bytes": 0,
+        "values_equal_reference": null
+      }
+    },
+    "passed": true,
+    "reference_logit_sha256": [
+      "80dfa276abcf1fbf751bc27861a4442d31d581f94ffa1580c988424f43503886",
+      "80dfa276abcf1fbf751bc27861a4442d31d581f94ffa1580c988424f43503886"
+    ],
+    "reference_logits_equal": true,
+    "reference_value_sha256": [
+      "30ab2e772924c97393139f566f44755c7bf8195033cb2808d047c7200ff7fb53",
+      "4b69eedecef3875a5680d379aef7ac3202e20cd90968b8c2cf06e4377919ba5e",
+      "194c3603fe5be831cc65fdf80164f9620fafb11254ded330bd1a70b942a6b65f",
+      "dd9e250cc91f39d3eeafee7d80d5170ea952cbcc8c5dbf8b464af3b5a1d7b653",
+      "bafdc5a42465abbfb89dfd966c0cc8881ad78496a57aca3fe21571928313515d",
+      "c4fb3c9172d156f74299e6cae51d4b9712300953859658c27ec7f5779b504de1",
+      "b91a61e2b138d6e36f1df169766ce520dd61feb5f5290229c8d3d830fd496a73",
+      "62f7b37f087d314a74e7cac49249718fc9528b5229809b5ce795cc3d78a6ce6d",
+      "91762ef5ed27dbf145d2a617e537a256b56d1f22d5995a255acf54307839431c",
+      "30ab2e772924c97393139f566f44755c7bf8195033cb2808d047c7200ff7fb53",
+      "4b69eedecef3875a5680d379aef7ac3202e20cd90968b8c2cf06e4377919ba5e",
+      "194c3603fe5be831cc65fdf80164f9620fafb11254ded330bd1a70b942a6b65f",
+      "dd9e250cc91f39d3eeafee7d80d5170ea952cbcc8c5dbf8b464af3b5a1d7b653",
+      "bafdc5a42465abbfb89dfd966c0cc8881ad78496a57aca3fe21571928313515d",
+      "c4fb3c9172d156f74299e6cae51d4b9712300953859658c27ec7f5779b504de1",
+      "b91a61e2b138d6e36f1df169766ce520dd61feb5f5290229c8d3d830fd496a73",
+      "62f7b37f087d314a74e7cac49249718fc9528b5229809b5ce795cc3d78a6ce6d",
+      "91762ef5ed27dbf145d2a617e537a256b56d1f22d5995a255acf54307839431c"
+    ]
+  },
+  "config": {
+    "attention_implementation": "eager",
+    "attention_mask": [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "batch_positions": [
+      0
+    ],
+    "capture_device": "cpu",
+    "dtype": "float32",
+    "forwards_per_cell": 2,
+    "grad_mode": "inference_mode",
+    "input_shape": [
+      1,
+      5
+    ],
+    "layers": [
+      0,
+      2,
+      5
+    ],
+    "max_events": 18,
+    "max_trace_bytes": 131072,
+    "model_mode": "eval",
+    "seed": 0,
+    "target_order": [
+      "attn",
+      "mlp",
+      "block"
+    ],
+    "tensor_hash_format": "contiguous C-order little-endian float32",
+    "token_hash_format": "contiguous C-order little-endian int64",
+    "token_positions": [
+      0,
+      1
+    ],
+    "token_sha256": "9fe078a66a5e29539f9a58f26052d5ccfe788163221b798692d8caa45047899c",
+    "tokenization": "none; fixed token IDs",
+    "tokens": [
+      464,
+      6766,
+      318,
+      4171,
+      13
+    ],
+    "use_cache": false
+  },
+  "environment": {
+    "cpu_subnormal_multiply_bits": 1,
+    "cublas_workspace_config": null,
+    "cuda_build": "12.8",
+    "cuda_matmul_allow_tf32": false,
+    "cuda_visible_devices_policy": "empty",
+    "cudnn_allow_tf32": false,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": false,
+    "cudnn_version": null,
+    "deterministic_algorithms": false,
+    "device": "cpu",
+    "gpu": null,
+    "huggingface_hub": "0.36.2",
+    "machine": "AMD64",
+    "mkl_num_threads": null,
+    "numpy": "2.4.6",
+    "omp_num_threads": null,
+    "package_origin_path_sha256": {
+      "huggingface_hub": "2676fd8d2f0c688e93b3b1a24cb4e251a287123a68ae71245d2d99fd1414c078",
+      "numpy": "69658197d6b944ab022444e90fbd7b76420578d94a73f6623f595304141323c3",
+      "safetensors": "c26282b9ce5b8ec052d5a5cc82b35c1b37933130dca84e81b369a89c17f07d6d",
+      "tokenizers": "e46722f30da09d1a1d47b00e07597804646b04dffd5d8f3e3d036c2b92536f3e",
+      "torch": "37f98df4acc490aa1ebdb45a17417d1bc09c1b6fc89e2349b8dcd91c6feb1cc1",
+      "transformers": "f2a856f97420166e372fd07000c9e5049adcbd78e0017658a9c20574beabfa16"
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 33 Stepping 2, AuthenticAMD",
+    "python": "3.11.15",
+    "python_base_prefix_path_sha256": "3e175ba782e8cfa2ca7e06fc39f5b57fbd688c47afa355a96d0aa5039927decc",
+    "python_executable_path_sha256": "473ed14dbd1e0e3fd99c8b39b57a63a9def5889c4513e3cbd8b499ff3a24a32d",
+    "python_prefix_path_sha256": "db793f9de227cfd6f87fbc0e15b71a60b55cfb4c2f084c248b4e2d2c913116e1",
+    "safetensors": "0.8.0",
+    "tokenizers": "0.22.2",
+    "torch": "2.8.0+cu128",
+    "torch_build_config_sha256": "10d58ae5d1f4aa4553d99f1809e0eef0fb742b24e1cf7e99c9cac1ae74320558",
+    "torch_cpu_capability": "AVX2",
+    "torch_interop_threads": 12,
+    "torch_intraop_threads": 1,
+    "transformers": "4.57.3"
+  },
+  "model": {
+    "asset_sha256": {
+      "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+      "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+      "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+      "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+      "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+      "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+    },
+    "attention_implementation": "eager",
+    "dtype": "float32",
+    "execution_device": "cpu",
+    "load_device": "cpu",
+    "model_class": "GPT2LMHeadModel",
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "parameter_count": 81912576,
+    "tokenizer_class": "GPT2TokenizerFast",
+    "tokenizer_id": "distilbert/distilgpt2",
+    "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "torch_version": "2.8.0+cu128",
+    "transformers_version": "4.57.3",
+    "use_cache": false,
+    "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+  },
+  "observations": {
+    "lease_id": null,
+    "memory": [],
+    "study_id": "4ca3dfe1-7a96-4d4f-9c8f-35ad3f61b900"
+  },
+  "protocol_version": "pretrained-trace-smoke-v1",
+  "source_hashes": {
+    "bytecode_attested": false,
+    "clean": true,
+    "files": {
+      "docs/PRETRAINED_SMOKE_V1.md": "957c70c9d41816e0a6dd70c408295e1e7a5cbed8568de79c249744d7c2299687",
+      "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+      "looking_glass/model_ownership.py": "174069f031256a6ff538d21122c6a28fe7624adf86532fec57d232c455e79da1",
+      "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+      "looking_glass/pretrained_smoke.py": "5b6b3f88f3d9dae001e826d2ec3c3658cd9a637d78c7a484e1e0f9c16ec7d59e",
+      "looking_glass/probes.py": "3ba99f7289bb2f12cc7e0c1e255c22a7c7aff3a48e1348ec5d503956e0c8e730",
+      "looking_glass/trace_schema.py": "4fc8e929794f55c09c80be07566d53d10c5893f6034d05b8a8deb83c2e7f44af",
+      "looking_glass/transformer_trace.py": "9120e1f59e5dfa8dc49e8f3b27b3c62ca3544bdff490abac91d45f200f6db1c0"
+    },
+    "git_commit": "170c7e5ab6caa995074701b20bb6affca29c3480",
+    "scope": "executed project files only"
+  }
+}

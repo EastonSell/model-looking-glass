@@ -229,9 +229,14 @@ class MemoryBudget:
                                     self._trace_limits['host'], available)
         return result
 
-    def acquire(self, estimated_incremental_bytes, *, max_gpu_trace_bytes,
-                max_host_trace_bytes):
-        """Admit an estimate, or raise without changing the current commitments."""
+    def try_acquire(self, estimated_incremental_bytes, *, max_gpu_trace_bytes,
+                    max_host_trace_bytes):
+        """Admit an estimate; return None only for an ordinary capacity rejection.
+
+        Other exceptions propagate, including exceptions that share the
+        AdmissionError type. An interrupted return can still leave a published
+        lease; use active_leases() to reconcile if the budget lock is responsive.
+        """
         _nonnegative_bytes(estimated_incremental_bytes, 'estimated_incremental_bytes')
         _nonnegative_bytes(max_gpu_trace_bytes, 'max_gpu_trace_bytes')
         _nonnegative_bytes(max_host_trace_bytes, 'max_host_trace_bytes')
@@ -246,9 +251,20 @@ class MemoryBudget:
             committed = self._committed_bytes() + estimated_incremental_bytes
             if (snapshot.process_reserved_bytes + committed + reserve > snapshot.device_total_bytes
                     or committed + reserve > snapshot.device_free_bytes):
-                raise AdmissionError('insufficient memory budget')
-            lease = MemoryLease(self, estimated_incremental_bytes, max_gpu_trace_bytes,
-                                max_host_trace_bytes)
-            lease._issued = True
-            self._leases = self._leases | {lease}
+                lease = None
+            else:
+                lease = MemoryLease(self, estimated_incremental_bytes, max_gpu_trace_bytes,
+                                    max_host_trace_bytes)
+                lease._issued = True
+                self._leases = self._leases | {lease}
+        return lease
+
+    def acquire(self, estimated_incremental_bytes, *, max_gpu_trace_bytes,
+                max_host_trace_bytes):
+        """Admit an estimate, or raise AdmissionError for a capacity rejection."""
+        lease = self.try_acquire(estimated_incremental_bytes,
+                                 max_gpu_trace_bytes=max_gpu_trace_bytes,
+                                 max_host_trace_bytes=max_host_trace_bytes)
+        if lease is None:
+            raise AdmissionError('insufficient memory budget')
         return lease

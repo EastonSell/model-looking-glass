@@ -28,6 +28,10 @@ _SUPERVISOR_BIRTH_ENV = "MLG_SUPERVISOR_BIRTH"
 _IDENTITY_ENV = "MLG_DEVICE_IDENTITY"
 _STARTUP_HANDLE_ENV = "MLG_STARTUP_CHANNEL_HANDLE"
 _STARTUP_LIMIT_ENV = "MLG_STARTUP_CHANNEL_LIMIT"
+_SUPERVISOR_ENV_KEYS = frozenset({
+    _RUN_ENV, _LEASE_ENV, _MARKER_ENV, _SUPERVISOR_ENV, _SUPERVISOR_BIRTH_ENV,
+    _IDENTITY_ENV, _STARTUP_HANDLE_ENV, _STARTUP_LIMIT_ENV,
+})
 _VERSION = 1
 _watchdog_lock = threading.Lock()
 _watchdogs = {}
@@ -686,7 +690,7 @@ def _stop_child(child, grace):
 
 def run_supervised(command, *, device_lease_path, marker_path, timeout,
                    lease_timeout=5, terminate_grace=5, cwd=None, env=None, identity=None,
-                   startup_channel=None):
+                   startup_channel=None, inherit_environment=True):
     """Run one trusted owner and clear the sticky marker only after clean exit."""
     if startup_channel is not None:
         if type(startup_channel) is not StartupChannel:
@@ -697,6 +701,7 @@ def run_supervised(command, *, device_lease_path, marker_path, timeout,
             command, device_lease_path=device_lease_path, marker_path=marker_path,
             timeout=timeout, lease_timeout=lease_timeout, terminate_grace=terminate_grace,
             cwd=cwd, env=env, identity=identity, startup_channel=startup_channel,
+            inherit_environment=inherit_environment,
         )
     except BaseException:
         if startup_channel is not None:
@@ -705,10 +710,13 @@ def run_supervised(command, *, device_lease_path, marker_path, timeout,
 
 
 def _run_supervised(command, *, device_lease_path, marker_path, timeout,
-                    lease_timeout, terminate_grace, cwd, env, identity, startup_channel):
+                    lease_timeout, terminate_grace, cwd, env, identity, startup_channel,
+                    inherit_environment):
     _finite_timeout(timeout, "timeout")
     _finite_timeout(lease_timeout, "lease_timeout")
     _finite_timeout(terminate_grace, "terminate_grace")
+    if type(inherit_environment) is not bool:
+        raise ValueError("inherit_environment must be a boolean")
     if isinstance(command, (str, bytes)) or not command:
         raise ValueError("command must be a nonempty argument sequence")
     device, marker, control, attestation = _paths(device_lease_path, marker_path)
@@ -734,16 +742,21 @@ def _run_supervised(command, *, device_lease_path, marker_path, timeout,
         finally:
             device_lease.release()
 
-        child_env = os.environ.copy()
+        child_env = os.environ.copy() if inherit_environment else {}
         if env is not None:
             child_env.update(env)
-        child_env.pop(_IDENTITY_ENV, None)
-        child_env.pop(_STARTUP_HANDLE_ENV, None)
-        child_env.pop(_STARTUP_LIMIT_ENV, None)
+        # Windows environment keys are case-insensitive. Remove every spelling
+        # of our reserved fields before assigning this run's trusted values.
+        for key in list(child_env):
+            if isinstance(key, str) and key.upper() in _SUPERVISOR_ENV_KEYS:
+                del child_env[key]
         if identity is not None:
             child_env[_IDENTITY_ENV] = json.dumps(_identity_spec(identity), separators=(",", ":"))
         else:
             # The identity-less mode exists only for CPU subprocess tests.
+            for key in list(child_env):
+                if isinstance(key, str) and key.upper() == "CUDA_VISIBLE_DEVICES":
+                    del child_env[key]
             child_env["CUDA_VISIBLE_DEVICES"] = ""
         child_env.update({_RUN_ENV: run_id, _LEASE_ENV: str(device), _MARKER_ENV: str(marker),
                           _SUPERVISOR_ENV: str(os.getpid()), _SUPERVISOR_BIRTH_ENV: _supervisor_birth()})

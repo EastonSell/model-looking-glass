@@ -1,0 +1,10 @@
+{
+  "reference_sha256": "7ef29dc5cb86f77fd55c1511da9af4290b819f97ec6017a9078a2ca3f416bd17",
+  "reference_source_commit": "170c7e5ab6caa995074701b20bb6affca29c3480",
+  "replay_source": {
+    "git_commit": "170c7e5ab6caa995074701b20bb6affca29c3480",
+    "sha256": "1db9a9b0e157e7987b49ab6d73ce9042d136379eeefcb1f3136a96038ced6a56"
+  },
+  "device": "cpu",
+  "lease_id": null
+}

@@ -12,13 +12,15 @@ The roadmap is a research plan, not a claim that its milestones are complete. Th
 ## Current building blocks
 
 - The [trace schema](docs/TRACE_SCHEMA.md) records execution coordinates separately from tensor values and hypotheses. Unknown coordinates remain unknown.
+- The [GPT-2 trace adapter](docs/TRANSFORMER_TRACE.md) captures selected layer, module, local token and invocation coordinates; generation and cache positions remain unknown unless established separately. The [ordered intervention plan](docs/INTERVENTION_PLANS.md) can capture, inject and patch at specified boundaries.
 - The [fair queue](docs/FAIR_QUEUE.md) rotates among admitted teams; it does not by itself guarantee admission fairness or equal GPU time.
 - The [memory budget](docs/MEMORY_BUDGET.md) and [resource profiles](docs/RESOURCE_PROFILE.md) track conservative leases, trace allowances and workload-specific measurements. Estimates and logical byte counts are not peak-memory guarantees or proof of device enforcement; no GPU profile has yet been recorded.
 - The [resident worker](docs/RESIDENT_WORKER.md) and [broker](docs/BROKER.md) reuse one trusted model for queued forwards. Their current execution is serial; GPU-wide admission and concurrent device throughput require separate integration and validation.
-- The [local CPU service](docs/SERVICE.md) exposes the pinned DistilGPT2 model to authenticated clients, with a two-token input limit and serial execution. A separate [microbatch primitive](docs/MICROBATCH.md) is not yet integrated into that service.
+- The [local CPU service](docs/SERVICE.md) exposes the pinned DistilGPT2 model to authenticated clients, with a two-token input limit and serial execution. A separate [microbatch primitive](docs/MICROBATCH.md) and [sampled batch validator](docs/BATCH_VALIDATION.md) are not yet integrated into that service.
 - The [device supervisor](docs/SUPERVISOR.md) coordinates a cooperative owner process, a device lease, and a sticky quarantine marker. It has CPU tests, but has not yet been integrated and validated as a shared GPU service.
 - The [local transport](docs/IPC.md) lets authenticated cooperating client processes submit bounded forwards over loopback. It does not by itself enforce GPU budgets or provide trace delivery.
 - The [trace delivery prototype](docs/TRACE_TRANSPORT.md) tests bounded, single-event custody on CPU. The service does not yet send traces through IPC or provide a complete multi-event publication protocol.
+- A [traced CPU worker](docs/TRACED_WORKER.md), [request plan](docs/TRACED_BROKER_WORKER.md), [producer envelope](docs/TRACE_PRODUCER.md) and [host custody ledger](docs/HOST_BUDGET.md) are separately tested building blocks; they do not yet form a live broker-to-IPC trace path or a physical memory limit.
 - The [experiment registry](docs/REGISTRY.md) records manifests, artifacts and terminal states. [Research cases](docs/RESEARCH_CASES.md), [localization](docs/LOCALIZATION.md), and [causal metrics](docs/CAUSAL_METRICS.md) support controlled evaluations; the public held-out cases are not a protected blind benchmark. [Transformer trace comparison](docs/TRANSFORMER_LOCALIZATION.md) requires independently verified pairing and execution context.
 
 These components have their own tests and limits; their presence alone does not establish supervised shared GPU execution, causal discovery, or measured GPU throughput.
@@ -62,6 +64,8 @@ Python 3.10+ and PyTorch 2.6+ are required. Use the [official PyTorch installati
 The optional `transformer` extra pins Transformers 4.57.3: install it with `python -m pip install -e ".[transformer]"` after selecting the appropriate PyTorch build. The [DistilGPT2 loader](docs/PRETRAINED_MODEL.md) is offline by default; downloading the pinned checkpoint requires an explicit opt-in and cache directory. Its CPU smoke test checks loading and execution, not causal explanations or performance. The original CPU experiment does not require this extra or a checkpoint download.
 
 The [recorded CPU shared-service checks](docs/PRETRAINED_SERVICE_SMOKE.md#recorded-cpu-checks) compare full DistilGPT2 logits for two clients against serial references with one model deserialization. They check correctness for the specified inputs and serial execution, not causal explanations or GPU performance.
+
+The [pretrained trace smoke](results/pretrained-trace-cpu-v1-20261028/README.md) records 18 events per channel on one fixed five-token input and two fresh-process replays on the same CPU host. It saves hashes and metadata rather than raw activations; it is a correctness check, not a causal study or benchmark.
 
 The recorded original experiment used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records its installed version inventory; it is not a cross-platform dependency lock. Other versions allowed by the package metadata have not been validated here. For the tested CPU version, install into an isolated environment with `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
 

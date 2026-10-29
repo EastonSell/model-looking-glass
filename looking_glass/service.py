@@ -178,7 +178,7 @@ def serve_owner(server, broker, worker, stop_event, *, announce, verify_drain,
     startup_deadline = monotonic() + shutdown_timeout
     while not startup_done.wait(poll_interval):
         try:
-            if worker.quarantined:
+            if worker.quarantined or broker.quarantined:
                 status = OwnerStatus.QUARANTINED
                 break
             if worker.poisoned or not broker.available:
@@ -198,7 +198,7 @@ def serve_owner(server, broker, worker, stop_event, *, announce, verify_drain,
     if status is None:
         while True:
             try:
-                if worker.quarantined:
+                if worker.quarantined or broker.quarantined:
                     status = OwnerStatus.QUARANTINED
                     break
                 if worker.poisoned or not broker.available:
@@ -236,11 +236,11 @@ def serve_owner(server, broker, worker, stop_event, *, announce, verify_drain,
                 server.drain(timeout=max(0, min(1.0, deadline - monotonic())))
             server_stopped = server.close(timeout=max(0, deadline - monotonic()))
             broker_stopped = broker.close(timeout=max(0, deadline - monotonic()))
-            if worker.quarantined:
+            if worker.quarantined or broker.quarantined:
                 result = OwnerResult(OwnerStatus.QUARANTINED)
             elif not server_stopped or not broker_stopped:
                 result = OwnerResult(OwnerStatus.SHUTDOWN_INCOMPLETE)
-            elif verify_drain() is not True or worker.quarantined:
+            elif verify_drain() is not True or worker.quarantined or broker.quarantined:
                 result = OwnerResult(OwnerStatus.QUARANTINED)
             else:
                 final_status = status or (OwnerStatus.WORKER_FAILED if worker.failed or broker.failed else OwnerStatus.CLEAN)
@@ -253,7 +253,7 @@ def serve_owner(server, broker, worker, stop_event, *, announce, verify_drain,
     Thread(target=finish, name='looking-glass-owner-shutdown', daemon=True).start()
     while True:
         try:
-            if worker.quarantined:
+            if worker.quarantined or broker.quarantined:
                 _request_quarantine_cleanup(server, broker)
                 return OwnerResult(OwnerStatus.QUARANTINED)
         except BaseException as exc:
@@ -262,7 +262,7 @@ def serve_owner(server, broker, worker, stop_event, *, announce, verify_drain,
         remaining = deadline - monotonic()
         if done.wait(max(0, min(poll_interval, remaining))):
             try:
-                if worker.quarantined:
+                if worker.quarantined or broker.quarantined:
                     return OwnerResult(OwnerStatus.QUARANTINED)
                 if results[0].status is OwnerStatus.CLEAN and (worker.failed or broker.failed):
                     return OwnerResult(OwnerStatus.WORKER_FAILED, teardown_verified=True)
