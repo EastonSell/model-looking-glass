@@ -45,7 +45,7 @@ class CommittedSuccessError(CustodianError):
 
 
 class ForwardBudget:
-    """Single-threaded submission and actual root-forward counter."""
+    """Single-threaded submission and pre-invocation root-attempt counters."""
     def __init__(self, limit=60000):
         if type(limit) is not int or not 0 < limit <= 60000:
             raise ValueError("invalid forward limit")
