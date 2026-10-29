@@ -33,7 +33,10 @@ An earlier attempt saved the same two separate reference outputs but its
 first trace plan was rejected: the harness had set a one-layer limit for a
 six-layer model. Its observed exit code was null, so it remains incomplete;
 the corrected run is a separate attempt. `incomplete-attempt.json` retains
-the relevant non-path metadata and hashes.
+the relevant non-path metadata and hashes of the private original observation
+and diagnostic files. `first-attempt-smoke.py` was reconstructed and matched
+to the original recorded source hash; its old label says "untraced" even though
+the separate reference calls installed direct capture hooks.
 
 The recorded source identities are before/after file readbacks under a trusted,
 quiescent checkout, and the process and queue facts are cooperative local
