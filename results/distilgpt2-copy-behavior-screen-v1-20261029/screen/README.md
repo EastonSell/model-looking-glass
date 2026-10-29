@@ -13,13 +13,13 @@ The [frozen protocol](../../../docs/DISTILGPT2_COPY_BEHAVIOR_SCREEN_V1.md), [cas
 The full 38,597,376-byte `screen.f32` matrix is published as [eight indexed, 24-row chunks](raw/index.json), in the exact fixed case order. Each chunk is little-endian float32 with 50,257 logits per row. The complete matrix SHA-256 is `7d54f4f40b9bcdf56dd6a34823ceb4da61098c0f2c6ed84c90396272bc7328aa`; the original also remains on E:. The [restore script](restore_run.py) verifies every chunk and reconstructs a new replayable run directory, including the uncompressed journal, manifest and result:
 
 ```text
-python results/distilgpt2-copy-behavior-screen-v1-20261029/screen/restore_run.py --package results/distilgpt2-copy-behavior-screen-v1-20261029/screen --out <new-run-dir>
+python results/distilgpt2-copy-behavior-screen-v1-20261029/screen/restore_run.py --package results/distilgpt2-copy-behavior-screen-v1-20261029/screen --out <restored-run-dir>
 ```
 
 Run the [independent reader](../../../audits/copy_behavior_screen/saved_independent_audit.py) against that restored directory from the repository root:
 
 ```text
-python -B audits/copy_behavior_screen/saved_independent_audit.py --run <closed-run-dir> --cases experiments/distilgpt2_copy_behavior_screen_cases_v1.json --manifest-sha256 4b920bd5f29b54c77914ec8fc402784ceb4b1219da386d900926727547442549 --journal-sha256 f5a7857dec21cdc21d855ed4c07686c8b976162e41beae8256c6ab4f0877ade0 --result-sha256 fcee5b994d9f8d70c0d9c35eae62da8827f5cb92008c9db709c8beb9a733aa99
+python -B audits/copy_behavior_screen/saved_independent_audit.py --run <restored-run-dir> --cases experiments/distilgpt2_copy_behavior_screen_cases_v1.json --manifest-sha256 4b920bd5f29b54c77914ec8fc402784ceb4b1219da386d900926727547442549 --journal-sha256 f5a7857dec21cdc21d855ed4c07686c8b976162e41beae8256c6ab4f0877ade0 --result-sha256 fcee5b994d9f8d70c0d9c35eae62da8827f5cb92008c9db709c8beb9a733aa99
 ```
 
 The [table builder](build_tables.py) accepts the fixed case JSON and uncompressed result JSON, writing into a new output directory. The [hash index](sha256s.json) records package file hashes and the uncompressed evidence identities. Full-vocabulary effects after interventions remain unmeasured at this stage.
