@@ -1,0 +1,5 @@
+# Copy-behavior public exposure reservation v41
+
+This planned-only successor preserves the 1,251 records in [v40](../looking_glass/pretrained_exposures_v40.py) and adds the 192 exact public prompt rows in the [fixed case bundle](../experiments/distilgpt2_copy_behavior_screen_cases_v1.json), each with its designated target continuation. It asserts no model forward. The source is [v41](../looking_glass/pretrained_exposures_v41.py); its canonical payload SHA-256 is `110ebcf674168e794544c257d158b3c3242f98bcf108375cdc073bb145e2bfad`, with 1,443 records and 9,011 distinct public input prefixes.
+
+The deterministic builder verifies unchanged predecessor bytes and record identities, then compares all proposed inputs and target continuations in both prefix directions with v40 public inputs, active forms of masked inputs, ordinary candidate continuations, and scored-prefix alternatives. The 128- and 256-row public support pools were checked separately at case construction. These are point-in-time public-record checks, not evidence about protected inputs, unrecorded exposures, or pretraining; repeat currentness checks at launch.
