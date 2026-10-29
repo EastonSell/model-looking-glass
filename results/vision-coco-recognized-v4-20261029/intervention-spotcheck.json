@@ -1,0 +1,136 @@
+{
+  "aggregate": {
+    "evaluable": 4,
+    "positive": 0,
+    "selected": 4,
+    "status": "negative"
+  },
+  "distinct_clean_images": 14,
+  "forward_count": 102,
+  "max_absolute_score_error": 1.7763568394002505e-15,
+  "pairs": [
+    {
+      "pair_id": "pair-00",
+      "sides": {
+        "cat": {
+          "donor_id": 69231,
+          "image_id": 405058,
+          "opposite": 0.002580139626353173,
+          "q_over_receiver_norm": 0.099,
+          "random": 0.02188873165031424,
+          "rule_pass": false,
+          "same_species": 0.01440647444811205
+        },
+        "dog": {
+          "donor_id": 142769,
+          "image_id": 196065,
+          "opposite": 0.03834340686975857,
+          "q_over_receiver_norm": 0.099,
+          "random": -0.01965456963829304,
+          "rule_pass": false,
+          "same_species": -0.1257957150167508
+        }
+      },
+      "status": "negative",
+      "tokens": [
+        90,
+        91,
+        104,
+        105
+      ]
+    },
+    {
+      "pair_id": "pair-01",
+      "sides": {
+        "cat": {
+          "donor_id": 69231,
+          "image_id": 135158,
+          "opposite": -0.07812803202859797,
+          "q_over_receiver_norm": 0.099,
+          "random": -0.0680750034082509,
+          "rule_pass": false,
+          "same_species": -0.1254700815181966
+        },
+        "dog": {
+          "donor_id": 369521,
+          "image_id": 48731,
+          "opposite": -0.1682477194603731,
+          "q_over_receiver_norm": 0.099,
+          "random": -0.07443071655844413,
+          "rule_pass": false,
+          "same_species": -0.22148549559852704
+        }
+      },
+      "status": "negative",
+      "tokens": [
+        108,
+        109,
+        122,
+        123
+      ]
+    },
+    {
+      "pair_id": "pair-02",
+      "sides": {
+        "cat": {
+          "donor_id": 341270,
+          "image_id": 228861,
+          "opposite": -0.0033627134004596826,
+          "q_over_receiver_norm": 0.099,
+          "random": -0.038871180530660965,
+          "rule_pass": false,
+          "same_species": 0.036027286300750916
+        },
+        "dog": {
+          "donor_id": 240902,
+          "image_id": 454818,
+          "opposite": 0.0713435989423239,
+          "q_over_receiver_norm": 0.099,
+          "random": -0.042488480026114495,
+          "rule_pass": true,
+          "same_species": 0.04210092207431426
+        }
+      },
+      "status": "negative",
+      "tokens": [
+        91,
+        92,
+        105,
+        106
+      ]
+    },
+    {
+      "pair_id": "pair-03",
+      "sides": {
+        "cat": {
+          "donor_id": 341270,
+          "image_id": 510349,
+          "opposite": 0.07551824062028878,
+          "q_over_receiver_norm": 0.099,
+          "random": 0.06574026445461101,
+          "rule_pass": false,
+          "same_species": 0.23979725022049259
+        },
+        "dog": {
+          "donor_id": 284658,
+          "image_id": 460995,
+          "opposite": -0.04110051717397667,
+          "q_over_receiver_norm": 0.099,
+          "random": 0.04218022266493193,
+          "rule_pass": false,
+          "same_species": 0.009409016493997058
+        }
+      },
+      "status": "negative",
+      "tokens": [
+        118,
+        119,
+        132,
+        133
+      ]
+    }
+  ],
+  "scope": "Closed saved bytes only; no execution, provenance, chronology or population attestation.",
+  "screen_result_sha256": "711894680eac6bed8e60b8acb4413775cce51f5630115e561ecbfe0504efa648",
+  "terminal_sha256": "479f1ea67efc001457427c7337313df31fa13f095ea2250ff6bfc9d99331fd1b"
+}
