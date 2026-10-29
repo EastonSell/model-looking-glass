@@ -1,9 +1,11 @@
 """Focused geometry and evidence checks for the occlusion study."""
 import importlib
 import hashlib
+import io
 import json
 import math
 from pathlib import Path
+from types import SimpleNamespace
 import zipfile
 
 import pytest
@@ -197,3 +199,134 @@ def test_tiny_donor_distance_is_retained_as_limited_or_ineligible():
     distant[0, background] += 1.0
     assert study.prepare_transfers(clean, small, distant, animal, background, 42)[0]['status'] == 'limited-dose'
     assert study.prepare_transfers(clean, clean, distant, animal, background, 42)[0]['status'] == 'dose-ineligible'
+
+
+def test_complete_fabricated_case_saves_all_controls_and_same_image_transfers(tmp_path):
+    study = _study()
+    assert study is not None
+    assert hasattr(study, 'run_case')
+    from looking_glass.vision_coco_study import Evidence
+
+    class Block(torch.nn.Module):
+        def forward(self, value):
+            return value + value.mean(dim=1, keepdim=True) * .01
+
+    class Encoder(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.layer = torch.nn.ModuleList([Block() for _ in range(12)])
+
+        def forward(self, value):
+            for block in self.layer:
+                value = block(value)
+            return value
+
+    class Fake(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.vit = torch.nn.Module()
+            self.vit.encoder = Encoder()
+
+        def forward(self, pixel_values):
+            spatial = torch.nn.functional.avg_pool2d(pixel_values, 16).mean(1).reshape(1, 196, 1)
+            state = torch.cat((spatial.mean(1, keepdim=True), spatial), 1).expand(-1, -1, 192).clone()
+            state = self.vit.encoder(state)
+            weights = torch.linspace(-1, 1, 1000, device=state.device).reshape(1, -1)
+            return SimpleNamespace(logits=state[:, :1, 0] * weights)
+
+    image = _image()
+    image['occlusion_geometry'] = _cases().choose_geometry(image)
+    pixels = torch.ones((1, 3, 224, 224), dtype=torch.float32)
+    evidence = Evidence(tmp_path / 'evidence', 20)
+    row = study.run_case(Fake().eval(), image, pixels, evidence)
+    assert row['image_id'] == 42
+    assert row['dose']['status'] == 'matchable'
+    assert evidence.submissions == len(evidence.records) == 18
+    assert set(row['conditions']) == {'animal_mask', 'background_mask', 'repeat',
+                                     'animal_null', 'background_null', 'animal_self',
+                                     'background_self', 'full_self', 'animal_full',
+                                     'background_full', 'animal_transfer', 'background_transfer',
+                                     'animal_random', 'background_random', 'animal_final',
+                                     'background_final', 'post_clean'}
+    assert (tmp_path / 'evidence/case-42.json').is_file()
+    assert all((tmp_path / f'evidence/input-42-{name}.bin').stat().st_size == 3 * 224 * 224 * 4
+               for name in ('clean', 'animal', 'background'))
+
+
+def test_screen_selection_uses_only_fixed_rank_recognition_and_geometry():
+    study = _study()
+    assert study is not None
+    assert hasattr(study, 'select_screened')
+    images = [{'image_id': category * 100 + rank, 'category_id': category, 'rank': rank,
+               'occlusion_geometry': None if rank == 1 else {'fixed': True}}
+              for category in (17, 18) for rank in range(6)]
+    observed = [{'image_id': row['image_id'], 'recognized': row['rank'] != 2}
+                for row in images]
+    selected, counts = study.select_screened(images, observed)
+    assert [row['image_id'] for row in selected] == [1700, 1703, 1704, 1705, 1800, 1803, 1804, 1805]
+    assert counts['cat'] == {'candidates': 6, 'geometry_qualified': 5, 'screened': 6,
+                             'recognized': 5, 'recognized_geometry': 4, 'selected': 4}
+    changed = list(observed)
+    changed[-1] = {**changed[-1], 'image_id': 9999}
+    with pytest.raises(ValueError, match='screen identity'):
+        study.select_screened(images, changed)
+
+
+def test_fabricated_screen_saves_all_logits_before_fixed_rank_selection(tmp_path):
+    study = _study()
+    assert study is not None
+    assert hasattr(study, 'run_screen')
+    from looking_glass.vision_coco_study import Evidence
+
+    class FakeClassifier(torch.nn.Module):
+        def forward(self, pixel_values):
+            logits = torch.zeros((1, 1000), dtype=torch.float32)
+            logits[0, 281 if pixel_values[0, 0, 0, 0] == 1 else 151] = 10.0
+            return SimpleNamespace(logits=logits)
+
+    images, pixels = [], {}
+    pixel_values = {17: torch.ones((1, 3, 224, 224)), 18: torch.full((1, 3, 224, 224), 2.0)}
+    for category in (17, 18):
+        for rank in range(32):
+            row = _image()
+            ident = category * 100 + rank
+            row.update(image_id=ident, category_id=category, rank=rank,
+                       role='donor' if rank % 4 == 0 else 'target', file_name=f'{ident:012d}.jpg',
+                       jpeg_bytes=1, jpeg_sha256=f'{ident:064x}', pixel_sha256=f'{ident + 10000:064x}')
+            row['occlusion_geometry'] = _cases().choose_geometry(row)
+            images.append(row)
+            pixels[ident] = pixel_values[category]
+    evidence = Evidence(tmp_path / 'screen', 64)
+    observed, selected, counts = study.run_screen(FakeClassifier().eval(), images, pixels, evidence)
+    assert len(observed) == evidence.submissions == len(evidence.records) == 64
+    assert [row['image_id'] for row in selected] == [1700, 1701, 1702, 1703, 1800, 1801, 1802, 1803]
+    assert counts['cat']['recognized'] == counts['dog']['recognized'] == 32
+    assert (tmp_path / 'screen/forward-064.bin').stat().st_size == 4000
+    assert hasattr(study, 'verify_saved_screen')
+    result = {'schema': 'vision-occlusion-v1-screen-result', 'manifest_sha256': 'a' * 64, 'screen': observed,
+              'selected_ids': [row['image_id'] for row in selected], 'counts': counts}
+    evidence.json('screen-result.json', result)
+    verified = study.verify_saved_screen(images, evidence.root, expected_manifest_sha256='a' * 64,
+                                         expected_result=(evidence.root / 'screen-result.json').read_bytes())
+    assert list(verified['raw_by_id']) == [row['image_id'] for row in images]
+    with pytest.raises(ValueError, match='manifest'):
+        study.verify_saved_screen(images, evidence.root, expected_manifest_sha256='b' * 64)
+    from tools.run_vision_coco_occlusion import verify_public_screen_archive
+    evidence.json('started.json', {'phase': 'fake'})
+    evidence.json('terminal.json', {'phase': 'fake'})
+    payload = io.BytesIO()
+    with zipfile.ZipFile(payload, 'w') as archive:
+        for path in sorted(evidence.root.iterdir()):
+            archive.writestr(path.name, path.read_bytes())
+    archived = payload.getvalue()
+    assert verify_public_screen_archive(evidence.root, archived) == hashlib.sha256(archived).hexdigest()
+    first = evidence.root / 'forward-001.bin'
+    original = first.read_bytes()
+    first.write_bytes(bytes([original[0] ^ 1]) + original[1:])
+    with pytest.raises(ValueError, match='archive member differs'):
+        verify_public_screen_archive(evidence.root, archived)
+    first.write_bytes(original)
+    corrupted = dict(result, selected_ids=result['selected_ids'][1:])
+    (evidence.root / 'screen-result.json').write_text(json.dumps(corrupted), encoding='utf-8')
+    with pytest.raises(ValueError, match='selected'):
+        study.verify_saved_screen(images, evidence.root)
