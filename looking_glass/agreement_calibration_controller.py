@@ -19,8 +19,9 @@ import traceback
 
 from .device_identity import resolve_device_identity
 from .device_lease import DeviceLease
+from .agreement_calibration_workspace import shared_workspace_root
 from .gpu_oneshot import _owner_presence_after_exit, _smi_snapshot
-from .supervisor import OwnerSession, run_supervised
+from .supervisor import OwnerSession, _resolve_child_identity, run_supervised
 
 
 # This fixed, supervised resource-only pilot is enabled for its reviewed source.
@@ -371,6 +372,16 @@ def _raise_controller_fatal(error):
         raise
 
 
+def _prelease_identity(repo, session, expected_uuid):
+    """Revalidate the serialized device namespace before touching its lease."""
+    workspace = shared_workspace_root(repo)
+    identity = _resolve_child_identity(session._identity_spec, session.device_lease_path,
+                                       session.marker_path)
+    if identity.workspace_root != workspace or identity.gpu_uuid != expected_uuid:
+        raise ValueError('supervised identity differs from the shared workspace or device')
+    return identity
+
+
 def owner_main(run_dir, cache_root, run_id, source_digest, directory_identity, run_manifest_sha256):
     """Run one child while retaining its device lease until process exit."""
     try:
@@ -398,13 +409,13 @@ def owner_main(run_dir, cache_root, run_id, source_digest, directory_identity, r
         _require_pristine_dependencies()
         session = OwnerSession.from_environment()
         _OWNER['session'] = session
+        prelease_identity = _prelease_identity(repo, session, run_manifest['device'].get('uuid'))
         lease = DeviceLease.acquire(session.device_lease_path, timeout=30)
         _OWNER['lease'] = lease
         OwnerSession.check(session, lease)
-        if session.identity is None:
-            raise RuntimeError('physical GPU identity is required')
-        if session.identity.gpu_uuid != run_manifest['device'].get('uuid'):
-            raise RuntimeError('supervised device differs from the prelaunch freeze')
+        if (session.identity != prelease_identity or session.identity is None
+                or session.identity.workspace_root != shared_workspace_root(repo)):
+            raise RuntimeError('supervised device identity changed after lease acquisition')
         _write_private(run_dir / 'owner.json', {'schema': 'agreement-calibration-owner-v1',
             'run_id': run_id, 'supervisor_run_id': session.run_id, 'pid': os.getpid(),
             'source_commit': manifest['commit'], 'source_sha256': digest})
@@ -485,6 +496,8 @@ def run_calibration(*, workspace_root, cache_root, output, smi):
     if not work.is_dir():
         raise ValueError('workspace work directory is required')
     repo = Path(__file__).resolve(strict=True).parents[1]
+    if root != shared_workspace_root(repo):
+        raise ValueError('agreement controller must use the checkout shared workspace root')
     # Both checks happen before supervising or importing CUDA-capable modules.
     if recheck(repo, git)[1] != digest:
         raise RuntimeError('source changed after the controller bootstrap')
@@ -580,7 +593,8 @@ def _run_with_protected_source(root, cache, work, repo, site, git, recheck,
         _CONTROLLER['launch_started'] = True
         supervision = run_supervised(command, device_lease_path=identity.lock_path,
             marker_path=identity.marker_path, identity=identity, timeout=900, lease_timeout=30,
-            cwd=repo, env=environment, inherit_environment=False, process_job=process_job)
+            cwd=repo, env=environment, inherit_environment=False, process_job=process_job,
+            require_zero_exit=True)
     except BaseException as error:
         _CONTROLLER['failure'] = error
         if not isinstance(error, Exception):
@@ -589,7 +603,7 @@ def _run_with_protected_source(root, cache, work, repo, site, git, recheck,
     outcome = {'schema': 'agreement-calibration-controller-v1', 'run_id': run_id,
         'source_commit': manifest['commit'], 'source_sha256': digest,
         'run_manifest_sha256': run_manifest_sha256, 'private_run_dir': str(run_dir),
-        'nvidia_smi_before': before, 'nvidia_smi_after': None,
+        'nvidia_smi_before': dict(before, uuid=gpu_uuid), 'nvidia_smi_after': None,
         'status': 'quarantined', 'supervisor_error_type': failure,
         'supervisor': None, 'owner_presence_after_exit': {'query': 'not_attempted', 'owner_pid_listed': None},
         'limitations': ['resource-only pilot; no behavioral or held-out result',
@@ -601,14 +615,16 @@ def _run_with_protected_source(root, cache, work, repo, site, git, recheck,
         outcome['supervisor'] = {'pid': supervision.pid, 'run_id': supervision.run_id,
             'exit_code': supervision.exit_code, 'clean': supervision.clean, 'timed_out': supervision.timed_out}
         outcome['owner_presence_after_exit'] = _owner_presence_after_exit(smi, supervision.pid)
-        _write_private(run_dir / 'supervision.json', {'run_id': run_id, **outcome['supervisor']})
+        _write_private(run_dir / 'supervision.json', {
+            'schema': 'agreement-calibration-supervision-v1',
+            'calibration_run_id': run_id, 'supervisor': outcome['supervisor']})
         try:
             after_uuid, after = _smi_snapshot(smi)
             if (after_uuid != gpu_uuid or after['driver_version'] != before['driver_version']
                     or after['device_name'] != before['device_name']
                     or after['total_bytes'] != before['total_bytes']):
                 raise ValueError('physical inventory changed after owner exit')
-            outcome['nvidia_smi_after'] = after
+            outcome['nvidia_smi_after'] = dict(after, uuid=after_uuid)
         except Exception as error:
             outcome['post_telemetry_error_type'] = type(error).__name__
         if supervision.clean and supervision.exit_code == 0 and not supervision.timed_out:

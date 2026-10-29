@@ -92,14 +92,13 @@ def _read_frozen_file(path):
 
 def _workspace_binding(repo, session):
     """Bind the supervised device to the checkout's shared lock namespace."""
+    from .agreement_calibration_workspace import shared_workspace_root
     from .device_identity import DeviceIdentity
     from .supervisor import _identity_spec
     identity = session.identity
     if type(identity) is not DeviceIdentity or type(session._identity_spec) is not dict:
         raise ValueError('a serialized supervised physical identity is required')
-    repo = Path(repo).resolve(strict=True)
-    work = [parent for parent in repo.parents if parent.name == 'work']
-    expected = work[0].parent if work else repo
+    expected = shared_workspace_root(repo)
     if (identity.workspace_root != expected or not (expected / 'work').is_dir()
             or _identity_spec(identity) != session._identity_spec):
         raise ValueError('device identity does not use the shared workspace root')

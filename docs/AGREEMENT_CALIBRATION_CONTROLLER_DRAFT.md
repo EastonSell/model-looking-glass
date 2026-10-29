@@ -45,7 +45,9 @@ weakref, PyTorch allocator, cuBLAS-cache and claim observations, matching
 private evidence hashes, and a matching supervisor attestation and reaped
 direct-child identity. When the Job is supplied, supervisor cleanliness also
 requires its complete observable lifetime inventory, confirmed drain, and
-handle close before removing the marker. Uncertain or failed cleanup keeps the
+handle close and a zero owner exit before removing the marker. An abnormal or
+unknown exit retains the marker even if a clean attestation was written earlier.
+Uncertain or failed cleanup keeps the
 Job and source/asset protections rooted until process replacement. These are
 cooperative observations, not proof that all CUDA context or native allocations
 have disappeared. The Job cannot certify escaped, breakaway, or unrelated
@@ -53,7 +55,14 @@ processes, and external applications remain outside the device lease. A
 successful post-exit
 device-process query must explicitly show that the owner PID is absent before
 the controller offers a candidate for audit; that query does not prove that a
-process tree was fully reaped.
+process tree was fully reaped. The private controller evidence preserves the
+queried UUID with each before/after device inventory so this comparison can be
+reconstructed. Any public summary must omit the physical UUID.
+Before device inventory or acquisition, the controller requires the checkout
+to have exactly one case-insensitive `work` ancestor, spelled `work`, and
+requires the supplied device workspace to be its parent. The child repeats
+that check against its supervised identity. A nested or differently cased
+workspace is rejected rather than selecting another lock namespace.
 Before launch, the controller durably freezes the exact source commit and hash,
 source-preflight digest, pinned asset identities, runtime versions, device
 inventory and UUID, seed and fixed public target/donor coordinates. The child
@@ -69,6 +78,8 @@ can replace and restore filesystem objects between observations.
 The owner writes 84 ordered private stage records and provisional cold/warm
 evidence. The controller verifies the run, PID, supervisor identity, source,
 cleanup and presence of those records, then reports `awaiting_independent_audit`.
+The supervision sidecar records `calibration_run_id` separately from the nested
+supervisor's own `run_id`.
 That status is deliberately **not** an approved profile or a successful causal
 study. A separate audit must recompute stage order and metadata, exact case and
 runtime provenance, headroom and both profile estimates before promotion.

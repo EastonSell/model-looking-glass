@@ -915,7 +915,8 @@ def _spawn_with_gate(command, *, cwd, child_env, custody, startup_fd=None):
 
 def run_supervised(command, *, device_lease_path, marker_path, timeout,
                    lease_timeout=5, terminate_grace=5, cwd=None, env=None, identity=None,
-                   startup_channel=None, inherit_environment=True, process_job=None):
+                   startup_channel=None, inherit_environment=True, process_job=None,
+                   require_zero_exit=False):
     """Run one trusted owner and clear the sticky marker only after clean exit.
 
     On Windows an optional trusted, single-run process-job capability provides
@@ -925,7 +926,14 @@ def run_supervised(command, *, device_lease_path, marker_path, timeout,
     keeps the job in recovery custody until its drain and close are confirmed.
     Process-tree guarantees depend on the supplied capability and do not cover
     processes that escape or are outside its job.
+
+    With ``require_zero_exit=True``, a nonzero or unknown owner exit preserves
+    the marker even when the owner wrote a clean attestation. This is useful
+    when a later owner failure can invalidate that attestation; it does not
+    itself establish that all fault-producing threads were quiescent.
     """
+    if type(require_zero_exit) is not bool:
+        raise ValueError("require_zero_exit must be a boolean")
     if startup_channel is not None:
         if type(startup_channel) is not StartupChannel:
             raise ValueError("startup_channel must be a StartupChannel")
@@ -936,6 +944,7 @@ def run_supervised(command, *, device_lease_path, marker_path, timeout,
             timeout=timeout, lease_timeout=lease_timeout, terminate_grace=terminate_grace,
             cwd=cwd, env=env, identity=identity, startup_channel=startup_channel,
             inherit_environment=inherit_environment, process_job=process_job,
+            require_zero_exit=require_zero_exit,
         )
     except BaseException as primary_error:
         if startup_channel is not None:
@@ -953,7 +962,7 @@ def run_supervised(command, *, device_lease_path, marker_path, timeout,
 
 def _run_supervised(command, *, device_lease_path, marker_path, timeout,
                     lease_timeout, terminate_grace, cwd, env, identity, startup_channel,
-                    inherit_environment, process_job):
+                    inherit_environment, process_job, require_zero_exit):
     _finite_timeout(timeout, "timeout")
     _finite_timeout(lease_timeout, "lease_timeout")
     _finite_timeout(terminate_grace, "terminate_grace")
@@ -1109,6 +1118,10 @@ def _run_supervised(command, *, device_lease_path, marker_path, timeout,
         if not job_quiescent:
             return SupervisionResult(run_id, child.pid, exit_code, False, False,
                                      "process job had live members after owner exit")
+
+        if require_zero_exit and (type(exit_code) is not int or exit_code != 0):
+            return SupervisionResult(run_id, child.pid, exit_code, False, False,
+                                     "owner exit was not zero")
 
         cleanup_lease = DeviceLease.acquire(device, timeout=lease_timeout)
         clean = False

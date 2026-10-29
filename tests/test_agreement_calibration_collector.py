@@ -141,11 +141,13 @@ class AgreementCalibrationSamplingTests(unittest.TestCase):
 
     def runner(self, failure=None):
         from test_agreement_cuda_runner import workload
+        from looking_glass.agreement_patch_runner import CancellationGate
         from looking_glass.agreement_cuda_calibration import CudaAgreementCalibrator
         from looking_glass.agreement_cuda_runner import WARMUP_POLICY_SHA256, calibration_case_sha256
         from looking_glass.memory_budget import CudaMemorySnapshot, MemoryBudget
         key = workload()
         runner = object.__new__(CudaAgreementCalibrator)
+        runner.cancel_event = CancellationGate()
         runner._expected_key, runner._warmup_completed, runner._calibration_index = key, False, 0
         runner._quarantine_latched = runner._device_drain_uncertain = False
         calls = []
@@ -206,6 +208,117 @@ class AgreementCalibrationSamplingTests(unittest.TestCase):
             self.collector.measure_calibration(runner, key, lambda value: None)
         self.assertEqual(calls, [])
 
+    def test_precancelled_owner_never_calls_device_measurement(self):
+        from looking_glass.agreement_patch_runner import StudyCancelled
+        runner, key, calls = self.runner()
+        runner.cancel_event.cancel()
+        records = []
+        with patch.object(self.collector, 'CALIBRATION_EXECUTION_READY', True):
+            with self.assertRaises(StudyCancelled):
+                self.collector.measure_calibration(runner, key, records.append)
+        self.assertEqual(calls, [])
+        self.assertTrue(runner.quarantined)
+        self.assertIs(self.collector._SAMPLING_CUSTODY[0], runner)
+        self.assertEqual(records[-1]['phase'], 'failed')
+
+    def test_cancellation_between_measurement_calls_stops_next_call(self):
+        from looking_glass.agreement_patch_runner import StudyCancelled
+        for point, forbidden in (('sync', 'reset'), ('reset', 'snapshot'), ('snapshot', 'warmup')):
+            with self.subTest(point=point):
+                # Each attempt needs a fresh rooted owner and cancellation gate.
+                self.collector._SAMPLING_CUSTODY[:] = [None] * 4
+                runner, key, calls = self.runner()
+                name = {'sync': 'synchronize_for_measurement', 'reset': 'reset_measurement_peak',
+                        'snapshot': 'measurement_snapshot'}[point]
+                original = getattr(runner, name)
+                def cancel_after(*args, **kwargs):
+                    result = original(*args, **kwargs)
+                    runner.cancel_event.cancel()
+                    return result
+                setattr(runner, name, cancel_after)
+                with patch.object(self.collector, 'CALIBRATION_EXECUTION_READY', True):
+                    with self.assertRaises(StudyCancelled):
+                        self.collector.measure_calibration(runner, key, lambda value: None)
+                self.assertIn(point, calls)
+                self.assertNotIn(forbidden, calls)
+                self.assertTrue(runner.quarantined)
+                self.assertFalse(runner._memory_lease.released)
+                self.assertFalse(runner._resident_lease.released)
+
+    def test_cancellation_after_callback_stops_post_callback_sync(self):
+        from looking_glass.agreement_patch_runner import StudyCancelled
+        runner, key, calls = self.runner()
+        original = runner.warmup
+        def cancel_after():
+            result = original()
+            runner.cancel_event.cancel()
+            return result
+        runner.warmup = cancel_after
+        records = []
+        with patch.object(self.collector, 'CALIBRATION_EXECUTION_READY', True):
+            with self.assertRaises(StudyCancelled):
+                self.collector.measure_calibration(runner, key, records.append)
+        self.assertEqual(calls.count('sync'), 2)
+        self.assertFalse(any(item['phase'] == 'completed' for item in records))
+        self.assertTrue(runner.quarantined)
+
+    def test_cancellation_during_postcheck_stops_peak_read_and_completion(self):
+        from looking_glass.agreement_patch_runner import StudyCancelled
+        runner, key, calls = self.runner()
+        records = []
+        def write(record):
+            records.append(record)
+            if record['phase'] == 'postcheck': runner.cancel_event.cancel()
+        with patch.object(self.collector, 'CALIBRATION_EXECUTION_READY', True):
+            with self.assertRaises(StudyCancelled):
+                self.collector.measure_calibration(runner, key, write)
+        self.assertNotIn('peaks', calls)
+        self.assertFalse(any(item['phase'] == 'completed' for item in records))
+        self.assertTrue(runner.quarantined)
+
+    def test_cancellation_during_completed_write_stops_next_sample(self):
+        from looking_glass.agreement_patch_runner import StudyCancelled
+        runner, key, calls = self.runner()
+        records = []
+        def write(record):
+            records.append(record)
+            if record['phase'] == 'completed': runner.cancel_event.cancel()
+        with patch.object(self.collector, 'CALIBRATION_EXECUTION_READY', True):
+            with self.assertRaises(StudyCancelled):
+                self.collector.measure_calibration(runner, key, write)
+        self.assertNotIn('clean_capture', calls)
+        self.assertEqual([r['kind'] for r in records if r['phase'] == 'completed'], ['warmup'])
+        self.assertTrue(runner.quarantined)
+
+    def test_cancellation_in_final_completed_write_does_not_return_samples(self):
+        from looking_glass.agreement_patch_runner import StudyCancelled
+        from looking_glass.agreement_cuda_runner import CALIBRATION_KINDS
+        runner, key, calls = self.runner()
+        records = []
+        def write(record):
+            records.append(record)
+            if record['phase'] == 'completed' and record['kind'] == CALIBRATION_KINDS[-1]:
+                runner.cancel_event.cancel()
+        with patch.object(self.collector, 'CALIBRATION_EXECUTION_READY', True):
+            with self.assertRaises(StudyCancelled):
+                self.collector.measure_calibration(runner, key, write)
+        self.assertEqual(len([r for r in records if r['phase'] == 'completed']), 14)
+        self.assertEqual(records[-1]['phase'], 'failed')
+        self.assertTrue(runner.quarantined)
+
+    def test_completion_and_cancellation_are_decided_by_the_same_gate(self):
+        from looking_glass.agreement_patch_runner import StudyCancelled
+        runner, key, calls = self.runner()
+        original_commit = runner.cancel_event.commit
+        def cancel_before_commit():
+            self.assertTrue(runner.cancel_event.cancel())
+            return original_commit()
+        runner.cancel_event.commit = cancel_before_commit
+        with patch.object(self.collector, 'CALIBRATION_EXECUTION_READY', True):
+            with self.assertRaises(StudyCancelled):
+                self.collector.measure_calibration(runner, key, lambda value: None)
+        self.assertTrue(runner.quarantined)
+
     def test_measures_cold_then_every_fixed_warm_case(self):
         from looking_glass.agreement_cuda_runner import CALIBRATION_KINDS, WARMUP_POLICY_SHA256
         runner, key, calls = self.runner()
@@ -228,6 +341,7 @@ class AgreementCalibrationSamplingTests(unittest.TestCase):
         baseline = calls.index('snapshot', second_sync + 1)
         self.assertLess(baseline, calls.index('warmup'))
         self.assertFalse(runner.quarantined)
+        self.assertFalse(runner.cancel_event.cancel())
 
     def test_uncertain_callback_quarantines_and_does_not_retry_sync(self):
         runner, key, calls = self.runner(failure='layer1_attn_cross_patch')

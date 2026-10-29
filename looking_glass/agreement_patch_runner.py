@@ -477,6 +477,10 @@ class NaturalAgreementRunner:
     def _seed_device_rng(self):
         return None
 
+    def _before_rng_cleanup(self, primary_error):
+        """Let a device backend quarantine before cleanup after a failure."""
+        pass
+
     def _restore_device_rng(self):
         pass
 
@@ -745,6 +749,7 @@ class NaturalAgreementRunner:
             rng_before = None
             try:
                 lease.acquire()
+                self._cancel_check()
                 self._baseline_contract = self._execution_contract()
                 groups = _validate_cases(cases, self.expected_quartets, model.config.vocab_size)
                 self._baseline_hooks = _hook_state(model)
@@ -953,6 +958,7 @@ class NaturalAgreementRunner:
                 result['secondary_past_metrics'] = past_metrics
             finally:
                 primary_error = sys.exc_info()[1]
+                self._before_rng_cleanup(primary_error)
                 try:
                     if rng_before is not None:
                         try:

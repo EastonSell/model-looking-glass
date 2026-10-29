@@ -279,6 +279,38 @@ class SupervisorTests(unittest.TestCase):
         self.assertFalse(self.marker.exists())
         self.assertTrue(self.run_owner().clean)
 
+    def test_strict_exit_retains_marker_after_attestation_and_nonzero_exit(self):
+        result = self.api.run_supervised(
+            [sys._base_executable, '-c', OWNER_CLEAN + '\nimport sys; sys.exit(17)\n'],
+            device_lease_path=self.device, marker_path=self.marker,
+            timeout=5, lease_timeout=3, require_zero_exit=True,
+        )
+        self.assertEqual(result.exit_code, 17)
+        self.assertFalse(result.clean)
+        self.assertTrue(self.marker.exists())
+        self.assertTrue(self.api._attestation_path(self.marker).exists())
+        with self.assertRaises(self.api.UnsafeOwnerError):
+            self.run_owner()
+
+    def test_strict_exit_clears_marker_after_zero_exit_and_attestation(self):
+        result = self.api.run_supervised(
+            [sys._base_executable, '-c', OWNER_CLEAN],
+            device_lease_path=self.device, marker_path=self.marker,
+            timeout=5, lease_timeout=3, require_zero_exit=True,
+        )
+        self.assertEqual(result.exit_code, 0)
+        self.assertTrue(result.clean)
+        self.assertFalse(self.marker.exists())
+
+    def test_strict_exit_requires_an_actual_boolean(self):
+        with self.assertRaises(ValueError):
+            self.api.run_supervised(
+                [sys._base_executable, '-c', OWNER_CLEAN],
+                device_lease_path=self.device, marker_path=self.marker,
+                timeout=5, lease_timeout=3, require_zero_exit=1,
+            )
+        self.assertFalse(self.marker.exists())
+
     def test_killed_supervisor_forces_owner_to_exit_without_attestation(self):
         from looking_glass.device_lease import DeviceLease
         supervisor, _, done = self.start_holding_supervisor()

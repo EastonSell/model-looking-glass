@@ -84,6 +84,13 @@ def measure_calibration(calibrator, key, write_stage):
     _SAMPLING_CUSTODY[0] = calibrator
     kind = 'preflight'
     try:
+        def check_ready():
+            # The cancellation gate and device owner are independent checks.
+            # They are point-in-time checks, not an atomic cancellation gate
+            # around a native CUDA call or a callback return.
+            calibrator._cancel_check()
+            calibrator._check_owner()
+
         _SAMPLING_CUSTODY[1] = key
         samples = []
         _SAMPLING_CUSTODY[2] = samples
@@ -95,28 +102,32 @@ def measure_calibration(calibrator, key, write_stage):
                 or not callable(write_stage)):
             raise ValueError('a fresh, matching calibration owner and stage writer are required')
         cold_key = replace(key, warmup_state='cold')
+        check_ready()
         _require_claims(calibrator)
         for index, kind in enumerate(('warmup', *CALIBRATION_KINDS)):
             stage_key = cold_key if index == 0 else key
             case = WARMUP_POLICY_SHA256 if index == 0 else calibration_case_sha256(kind)
-            calibrator._check_owner()
+            check_ready()
             write_stage({'phase': 'started', 'kind': kind, 'seed': 20261028, 'case_sha256': case})
-            calibrator._check_owner()
+            check_ready()
             calibrator.synchronize_for_measurement()
+            check_ready()
             calibrator.reset_measurement_peak()
+            check_ready()
             calibrator.synchronize_for_measurement()
+            check_ready()
             before = calibrator.measurement_snapshot()
-            calibrator._check_owner()
+            check_ready()
             write_stage({'phase': 'baseline', 'kind': kind, 'snapshot': asdict(before)})
-            calibrator._check_owner()
+            check_ready()
             budget = _require_claims(calibrator).snapshot()
-            calibrator._check_owner()
+            check_ready()
             write_stage({'phase': 'baseline_check', 'kind': kind, 'budget': asdict(budget)})
             _validate_headroom(key, before, budget)
             _require_claims(calibrator)
-            calibrator._check_owner()
+            check_ready()
             result = calibrator.warmup() if index == 0 else calibrator.calibrate_action(kind)
-            calibrator._check_owner()
+            check_ready()
             if index == 0:
                 if (type(result) is not dict or set(result) != {'sample_id', 'policy_sha256', 'seed',
                         'model_state_sha256', 'plan_metadata'} or result['sample_id'] != 'warmup'
@@ -132,26 +143,35 @@ def measure_calibration(calibrator, key, write_stage):
                     or type(calibrator._calibration_index) is not int or calibrator._calibration_index != index):
                 raise ValueError('calibration action returned inconsistent evidence')
             validate_plan_metadata(kind, result['plan_metadata'])
+            check_ready()
             calibrator.synchronize_for_measurement()
+            check_ready()
             after = calibrator.measurement_snapshot()
-            calibrator._check_owner()
+            check_ready()
             write_stage({'phase': 'after_observed', 'kind': kind, 'snapshot': asdict(after)})
-            calibrator._check_owner()
+            check_ready()
             budget = _require_claims(calibrator).snapshot()
-            calibrator._check_owner()
+            check_ready()
             write_stage({'phase': 'postcheck', 'kind': kind, 'budget': asdict(budget)})
             _validate_headroom(key, after, budget)
             _require_claims(calibrator)
+            check_ready()
             allocated, reserved = calibrator.measurement_peaks()
-            calibrator._check_owner()
+            check_ready()
             sample = MemorySample(stage_key.fingerprint(), kind, case, 20261028, 'completed',
                                   before, after, allocated, reserved)
             if sample.before.device_total_bytes != key.device_total_bytes:
                 raise ValueError('sample device total differs from the workload')
             write_stage({'phase': 'completed', 'kind': kind, 'sample': asdict(sample), 'callback': result})
-            calibrator._check_owner()
+            check_ready()
             _require_claims(calibrator)
             samples.append(sample)
+        # This decides completion versus cancellation under the gate's lock.
+        # The returned samples remain candidates until supervised cleanup and
+        # independent evidence review; the gate does not attest those steps.
+        if not calibrator.cancel_event.commit():
+            calibrator._cancel_check()
+            raise RuntimeError('calibration cancellation gate was already committed')
         return samples[0], tuple(samples[1:])
     except BaseException as error:
         _SAMPLING_CUSTODY[3] = error

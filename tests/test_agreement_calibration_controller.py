@@ -93,6 +93,85 @@ def test_controller_rejects_a_second_concurrent_attempt(tmp_path, monkeypatch):
     assert not thread.is_alive() and len(errors) == 1 and isinstance(errors[0], ValueError)
 
 
+def test_workspace_root_rejects_nested_or_case_aliased_work_ancestors(tmp_path):
+    root = tmp_path / 'workspace'
+    repo = root / 'work' / 'teams' / 'repo'
+    repo.mkdir(parents=True)
+    assert controller.shared_workspace_root(repo) == root.resolve()
+    for relative in ('other/repo', 'alternative/WORK/repo', 'work/nested-upper/WORK/repo',
+                     'work/nested-lower/work/repo'):
+        candidate = root / relative
+        candidate.mkdir(parents=True)
+        with pytest.raises(ValueError, match='canonical work ancestor'):
+            controller.shared_workspace_root(candidate)
+
+
+def test_wrong_workspace_is_rejected_before_source_or_device_preflight(tmp_path, monkeypatch):
+    root, cache, other = (tmp_path / name for name in ('root', 'cache', 'other'))
+    for path in (root, cache, other):
+        path.mkdir()
+    (root / 'work').mkdir()
+    monkeypatch.setattr(controller, 'CONTROLLER_EXECUTION_READY', True)
+    monkeypatch.setattr(controller, '_CONTROLLER', {'source_guard': None, 'asset_guard': None,
+                                                    'process_job': None, 'failure': None,
+                                                    'launch_started': False})
+    monkeypatch.setattr(controller, '_bootstrap_state', lambda: (
+        {'files': {}}, SHA, 'git', root, lambda *a: pytest.fail('source preflight ran')))
+    monkeypatch.setattr(controller, 'shared_workspace_root', lambda _: other)
+    monkeypatch.setattr(controller, 'resolve_device_identity', lambda *a, **k: pytest.fail('device preflight ran'))
+    with pytest.raises(ValueError, match='shared workspace root'):
+        controller.run_calibration(workspace_root=root, cache_root=cache,
+                                   output=tmp_path / 'result.json', smi='nvidia-smi')
+    assert not (tmp_path / 'result.json').exists()
+
+
+def test_prelease_identity_rejects_another_valid_device_namespace(tmp_path, monkeypatch):
+    from looking_glass.device_identity import resolve_device_identity
+    from looking_glass.supervisor import _identity_spec
+    uuid = 'GPU-00000000-0000-0000-0000-000000000001'
+    root, other = tmp_path / 'workspace', tmp_path / 'other'
+    repo = root / 'work' / 'teams' / 'repo'
+    repo.mkdir(parents=True)
+    other.mkdir()
+    monkeypatch.setenv('CUDA_VISIBLE_DEVICES', uuid)
+    def session_for(workspace):
+        identity = resolve_device_identity(workspace, uuid, physical_uuids=[uuid])
+        return SimpleNamespace(_identity_spec=_identity_spec(identity),
+                               device_lease_path=identity.lock_path, marker_path=identity.marker_path)
+    assert controller._prelease_identity(repo, session_for(root), uuid).workspace_root == root.resolve()
+    with pytest.raises(ValueError, match='shared workspace or device'):
+        controller._prelease_identity(repo, session_for(other), uuid)
+
+
+def test_owner_refuses_wrong_serialized_root_before_lease_or_collector(tmp_path, monkeypatch):
+    from looking_glass.device_identity import resolve_device_identity
+    from looking_glass.supervisor import _identity_spec
+    uuid = 'GPU-00000000-0000-0000-0000-000000000001'
+    run_dir, cache, other = (tmp_path / name for name in ('run', 'cache', 'other'))
+    for path in (run_dir, cache, other):
+        path.mkdir()
+    monkeypatch.setenv('CUDA_VISIBLE_DEVICES', uuid)
+    wrong = resolve_device_identity(other, uuid, physical_uuids=[uuid])
+    session = SimpleNamespace(_identity_spec=_identity_spec(wrong),
+                              device_lease_path=wrong.lock_path, marker_path=wrong.marker_path)
+    value, _ = freeze(run_dir, cache)
+    value['device']['uuid'] = uuid
+    (run_dir / 'run-manifest.json').unlink()
+    freeze_sha = controller._write_private(run_dir / 'run-manifest.json', value)
+    monkeypatch.setattr(controller, 'CONTROLLER_EXECUTION_READY', True)
+    monkeypatch.setattr(controller, '_OWNER', {'entered': False, 'session': None, 'lease': None,
+                                              'candidate': None, 'failure': None})
+    monkeypatch.setattr(controller, '_bootstrap_state', lambda: ({'commit': 'a' * 40}, SHA, None, None, None))
+    monkeypatch.setattr(controller, '_require_pristine_dependencies', lambda: None)
+    monkeypatch.setattr(controller.OwnerSession, 'from_environment', lambda: session)
+    monkeypatch.setattr(controller.DeviceLease, 'acquire', lambda *a, **k: pytest.fail('lease was acquired'))
+    monkeypatch.setattr(controller, '_load_collector', lambda: pytest.fail('collector was imported'))
+    directory = ':'.join(map(str, controller._directory_identity(run_dir)))
+    assert controller.owner_main(str(run_dir), str(cache), RUN_ID, SHA, directory, freeze_sha) == 1
+    assert isinstance(controller._OWNER['failure'], ValueError)
+    assert 'shared workspace or device' in str(controller._OWNER['failure'])
+
+
 @pytest.mark.parametrize(('observation', 'confirmed'), [
     ({'query': 'ok', 'owner_pid_listed': False}, True),
     ({'query': 'ok', 'owner_pid_listed': True}, False),
@@ -126,7 +205,7 @@ def test_owner_checks_lease_before_callback_and_attests_only_after_cleanup(tmp_p
     run_dir.mkdir()
     cache.mkdir()
     order = []
-    session = SimpleNamespace(device_lease_path='lease', identity=SimpleNamespace(gpu_uuid='GPU-example'), run_id='supervisor',
+    session = SimpleNamespace(device_lease_path='lease', identity=SimpleNamespace(gpu_uuid='GPU-example', workspace_root=tmp_path), run_id='supervisor',
                               _runtime_verified=True)
     lease = object()
     monkeypatch.setattr(controller, 'CONTROLLER_EXECUTION_READY', True)
@@ -135,6 +214,8 @@ def test_owner_checks_lease_before_callback_and_attests_only_after_cleanup(tmp_p
     monkeypatch.setattr(controller, '_bootstrap_state', lambda: ({'commit': 'a' * 40}, SHA, None, None, None))
     monkeypatch.setattr(controller, '_require_pristine_dependencies', lambda: order.append('pristine'))
     monkeypatch.setattr(controller.OwnerSession, 'from_environment', lambda: (order.append('session'), session)[1])
+    monkeypatch.setattr(controller, '_prelease_identity', lambda *a: (order.append('prelease'), session.identity)[1])
+    monkeypatch.setattr(controller, 'shared_workspace_root', lambda _: tmp_path)
     monkeypatch.setattr(controller.DeviceLease, 'acquire', lambda *a, **k: (order.append('lease'), lease)[1])
     monkeypatch.setattr(controller.OwnerSession, 'check', lambda *a: order.append('check'))
     monkeypatch.setattr(controller.OwnerSession, 'attest_clean', lambda *a: order.append('attest'))
@@ -148,7 +229,7 @@ def test_owner_checks_lease_before_callback_and_attests_only_after_cleanup(tmp_p
     _, freeze_sha = freeze(run_dir, cache)
     identity = ':'.join(map(str, controller._directory_identity(run_dir)))
     assert controller.owner_main(str(run_dir), str(cache), RUN_ID, SHA, identity, freeze_sha) == 0
-    assert order == ['pristine', 'session', 'lease', 'check', 'collect', 'evidence', 'check', 'attest']
+    assert order == ['pristine', 'session', 'prelease', 'lease', 'check', 'collect', 'evidence', 'check', 'attest']
     assert controller._OWNER['lease'] is lease
     record, _ = controller._read_private(run_dir / 'final.json')
     assert record['cleanup'] == controller._CLEANUP
@@ -158,7 +239,7 @@ def test_owner_failure_keeps_marker_path_and_never_attests(tmp_path, monkeypatch
     run_dir, cache = tmp_path / 'run', tmp_path / 'cache'
     run_dir.mkdir()
     cache.mkdir()
-    session = SimpleNamespace(device_lease_path='lease', identity=SimpleNamespace(gpu_uuid='GPU-example'), run_id='supervisor',
+    session = SimpleNamespace(device_lease_path='lease', identity=SimpleNamespace(gpu_uuid='GPU-example', workspace_root=tmp_path), run_id='supervisor',
                               _runtime_verified=True)
     error = MemoryError('partial allocation')
     attest = []
@@ -168,6 +249,8 @@ def test_owner_failure_keeps_marker_path_and_never_attests(tmp_path, monkeypatch
     monkeypatch.setattr(controller, '_bootstrap_state', lambda: ({'commit': 'a' * 40}, SHA, None, None, None))
     monkeypatch.setattr(controller, '_require_pristine_dependencies', lambda: None)
     monkeypatch.setattr(controller.OwnerSession, 'from_environment', lambda: session)
+    monkeypatch.setattr(controller, '_prelease_identity', lambda *a: session.identity)
+    monkeypatch.setattr(controller, 'shared_workspace_root', lambda _: tmp_path)
     monkeypatch.setattr(controller.DeviceLease, 'acquire', lambda *a, **k: object())
     monkeypatch.setattr(controller.OwnerSession, 'check', lambda *a: None)
     monkeypatch.setattr(controller.OwnerSession, 'attest_clean', lambda *a: attest.append(True))
@@ -181,6 +264,31 @@ def test_owner_failure_keeps_marker_path_and_never_attests(tmp_path, monkeypatch
     assert not attest
     record, _ = controller._read_private(run_dir / 'failure.json')
     assert record['status'] == 'quarantined' and record['error_type'] == 'MemoryError'
+
+
+def test_owner_rechecks_identity_after_lease_before_collector(tmp_path, monkeypatch):
+    run_dir, cache = tmp_path / 'run', tmp_path / 'cache'
+    run_dir.mkdir()
+    cache.mkdir()
+    original = SimpleNamespace(gpu_uuid='GPU-example', workspace_root=tmp_path)
+    session = SimpleNamespace(device_lease_path='lease', identity=original, run_id='supervisor')
+    monkeypatch.setattr(controller, 'CONTROLLER_EXECUTION_READY', True)
+    monkeypatch.setattr(controller, '_OWNER', {'entered': False, 'session': None, 'lease': None,
+                                              'candidate': None, 'failure': None})
+    monkeypatch.setattr(controller, '_bootstrap_state', lambda: ({'commit': 'a' * 40}, SHA, None, None, None))
+    monkeypatch.setattr(controller, '_require_pristine_dependencies', lambda: None)
+    monkeypatch.setattr(controller.OwnerSession, 'from_environment', lambda: session)
+    monkeypatch.setattr(controller, '_prelease_identity', lambda *a: original)
+    monkeypatch.setattr(controller, 'shared_workspace_root', lambda _: tmp_path)
+    monkeypatch.setattr(controller.DeviceLease, 'acquire', lambda *a, **k: object())
+    monkeypatch.setattr(controller.OwnerSession, 'check', lambda *a: setattr(
+        session, 'identity', SimpleNamespace(gpu_uuid='GPU-example', workspace_root=tmp_path / 'other')))
+    monkeypatch.setattr(controller, '_load_collector', lambda: pytest.fail('collector was imported'))
+    _, freeze_sha = freeze(run_dir, cache)
+    directory = ':'.join(map(str, controller._directory_identity(run_dir)))
+    assert controller.owner_main(str(run_dir), str(cache), RUN_ID, SHA, directory, freeze_sha) == 1
+    assert isinstance(controller._OWNER['failure'], RuntimeError)
+    assert 'identity changed after lease' in str(controller._OWNER['failure'])
 
 
 def test_evidence_parser_rejects_duplicate_keys_and_directory_substitution(tmp_path):
@@ -428,6 +536,7 @@ def test_source_and_asset_guards_stay_held_when_child_cleanup_is_unknown(tmp_pat
     monkeypatch.setattr(trusted_service_profile, 'prepare_trusted_source', lambda *a: preflight)
     monkeypatch.setattr(controller, '_bootstrap_state', lambda: (
         {'files': {'looking_glass/__init__.py': SHA}}, SHA, 'git', root, lambda *a: (None, SHA, None)))
+    monkeypatch.setattr(controller, 'shared_workspace_root', lambda _: root)
     def supervised(*args):
         assert all(guard.entered and not guard.closed for guard in guards)
         return {'status': 'awaiting_independent_audit' if child_clean else 'quarantined'}, child_clean, None
@@ -468,6 +577,7 @@ def test_controller_preserves_supervisor_fatal_and_retains_source_guards(tmp_pat
     monkeypatch.setattr(trusted_service_profile, 'prepare_trusted_source', lambda *a: preflight)
     monkeypatch.setattr(controller, '_bootstrap_state', lambda: (
         {'files': {'looking_glass/__init__.py': SHA}}, SHA, 'git', root, lambda *a: (None, SHA, None)))
+    monkeypatch.setattr(controller, 'shared_workspace_root', lambda _: root)
     private = error_type('original')
     def supervised(*args):
         controller._CONTROLLER['failure'] = private
@@ -513,6 +623,7 @@ def test_guard_close_interrupt_remains_fatal_and_roots_guards(tmp_path, monkeypa
     monkeypatch.setattr(trusted_service_profile, 'prepare_trusted_source', lambda *a: preflight)
     monkeypatch.setattr(controller, '_bootstrap_state', lambda: (
         {'files': {'looking_glass/__init__.py': SHA}}, SHA, 'git', root, lambda *a: (None, SHA, None)))
+    monkeypatch.setattr(controller, 'shared_workspace_root', lambda _: root)
     monkeypatch.setattr(controller, '_run_with_protected_source', lambda *a: (
         {'status': 'awaiting_independent_audit'}, True, None))
     with pytest.raises(error_type) as observed:
@@ -590,6 +701,7 @@ def test_exact_process_job_is_rooted_before_initialization_and_supervision(tmp_p
     def supervise(*args, **kwargs):
         assert kwargs['process_job'] is jobs[0] is controller._CONTROLLER['process_job']
         assert kwargs['inherit_environment'] is False
+        assert kwargs['require_zero_exit'] is True
         return SimpleNamespace(pid=123, run_id='f' * 32, exit_code=0,
                                clean=clean, timed_out=False)
     monkeypatch.setattr(controller, 'run_supervised', supervise)
@@ -597,6 +709,13 @@ def test_exact_process_job_is_rooted_before_initialization_and_supervision(tmp_p
         root, cache, work, repo, site, 'git', lambda *a: (None, SHA, None),
         {'commit': 'a' * 40, 'files': {}}, SHA, preflight, 'nvidia-smi')
     assert child_clean is clean and fatal is None
+    assert outcome['nvidia_smi_before']['uuid'] == 'GPU-test'
+    assert outcome['nvidia_smi_after']['uuid'] == 'GPU-test'
+    supervision = json.loads((Path(outcome['private_run_dir']) / 'supervision.json').read_bytes())
+    assert supervision == {'schema': 'agreement-calibration-supervision-v1',
+                           'calibration_run_id': outcome['run_id'], 'supervisor': outcome['supervisor']}
+    assert supervision['supervisor']['run_id'] == 'f' * 32
+    assert supervision['calibration_run_id'] != supervision['supervisor']['run_id']
     assert controller._CONTROLLER['process_job'] is (None if clean else jobs[0])
     assert outcome['status'] == ('incomplete' if clean else 'quarantined')
 

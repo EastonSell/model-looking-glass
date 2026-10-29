@@ -25,6 +25,16 @@ so the recorded admission arithmetic matches its protocol. Those provisional
 amounts are policy choices, not measured load
 or worst-case bounds. Observed headroom is only a point-in-time check.
 
+The sampler checks its cancellation gate before and between measurement,
+callback and evidence boundaries. Observed cancellation quarantines the
+owner and prevents later operations or profile completion. These checks are
+not atomic with a native CUDA call or a composite telemetry read. At the end,
+the sampler commits completion under the same gate used by cancellation; a
+later cancellation is refused. This decides only sample collection, not owner
+cleanup or profile approval. A concurrently arriving cancellation can race an
+individual native call, and an external owner must treat uncertain completion
+as terminal.
+
 The metadata validator checks every expected module, operation, invocation,
 coordinate, selector, shape, dtype, device, action order and logical source
 and capture byte count. It rejects extra fields, including behavioral payloads.
