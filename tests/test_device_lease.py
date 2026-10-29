@@ -75,6 +75,83 @@ def _ambiguous_release(path, result):
     result.close()
 
 
+def _interrupted_after_unlock(path, successor_holding, result):
+    """Keep an interrupted lease alive until a distinct process owns the lock."""
+    api = _lease_api()
+    lease = api.DeviceLease.acquire(path, timeout=5)
+    original_unlock = api._unlock
+
+    def unlock_then_interrupt(fd):
+        original_unlock(fd)
+        raise KeyboardInterrupt("interrupted after the OS unlock")
+
+    with mock.patch.object(api, "_unlock", side_effect=unlock_then_interrupt):
+        try:
+            lease.release()
+        except KeyboardInterrupt:
+            result.send("interrupted")
+        else:
+            result.send("missing-interrupt")
+            result.close()
+            return
+    if not successor_holding.wait(15):
+        result.send("successor-timeout")
+        result.close()
+        return
+    outcome = []
+    for action in (lease.check, lease.release):
+        try:
+            action()
+        except api.LeaseError:
+            outcome.append("rejected")
+        else:
+            outcome.append("accepted")
+    result.send(outcome)
+    result.close()
+
+
+def _interrupted_release_boundary(path, stage, result):
+    """Inject an interrupt in an isolated process, then discard the process."""
+    api = _lease_api()
+    lease = api.DeviceLease.acquire(path, timeout=5)
+    if stage == "before-unlock":
+        def interrupt(*args):
+            raise KeyboardInterrupt("before OS unlock")
+        patcher = mock.patch.object(api, "_unlock", side_effect=interrupt)
+    elif stage == "after-close":
+        original_close = api.os.close
+
+        def close_then_interrupt(fd):
+            original_close(fd)
+            raise KeyboardInterrupt("after descriptor close")
+        patcher = mock.patch.object(api.os, "close", side_effect=close_then_interrupt)
+    elif stage == "after-unregister":
+        class InterruptedRegistry(dict):
+            def pop(self, *args):
+                super().pop(*args)
+                raise KeyboardInterrupt("after registry removal")
+        patcher = mock.patch.object(api, "_active", InterruptedRegistry(api._active))
+    else:
+        raise ValueError("unknown test fault stage")
+    outcome = []
+    with patcher:
+        try:
+            lease.release()
+        except KeyboardInterrupt:
+            outcome.append("interrupted")
+        else:
+            outcome.append("missing-interrupt")
+    for action in (lease.check, lease.release):
+        try:
+            action()
+        except api.LeaseError:
+            outcome.append("rejected")
+        else:
+            outcome.append("accepted")
+    result.send(outcome)
+    result.close()
+
+
 def _owner_with_descendant(path, ready_file, stop_file, done_file, result):
     api = _lease_api()
     lease = api.DeviceLease.acquire(path, timeout=5)
@@ -275,6 +352,53 @@ class DeviceLeaseTests(unittest.TestCase):
                 proc.terminate()
                 proc.join(10)
             recv.close()
+
+    def test_interrupt_after_unlock_invalidates_lease_while_successor_holds_lock(self):
+        recv, send = self.ctx.Pipe(duplex=False)
+        successor_holding = self.ctx.Event()
+        interrupted = self.ctx.Process(target=_interrupted_after_unlock,
+                                       args=(str(self.path), successor_holding, send))
+        interrupted.start()
+        send.close()
+        try:
+            self.assertTrue(recv.poll(15), "owner did not reach the interrupted unlock")
+            self.assertEqual(recv.recv(), "interrupted")
+            successor, stop = self._start_owner()
+            successor_holding.set()
+            self.assertTrue(recv.poll(15), "interrupted owner did not finish its checks")
+            self.assertEqual(recv.recv(), ["rejected", "rejected"])
+            interrupted.join(10)
+            self.assertEqual(interrupted.exitcode, 0)
+            stop.set()
+            successor.join(10)
+            self.assertEqual(successor.exitcode, 0)
+        finally:
+            successor_holding.set()
+            interrupted.join(10)
+            if interrupted.is_alive():
+                interrupted.terminate()
+                interrupted.join(10)
+            recv.close()
+
+    def test_interrupt_at_release_boundaries_never_restores_python_ownership(self):
+        for stage in ("before-unlock", "after-close", "after-unregister"):
+            with self.subTest(stage=stage):
+                recv, send = self.ctx.Pipe(duplex=False)
+                proc = self.ctx.Process(target=_interrupted_release_boundary, args=(str(self.path), stage, send))
+                proc.start()
+                send.close()
+                try:
+                    self.assertTrue(recv.poll(15), "interrupted owner did not report")
+                    self.assertEqual(recv.recv(), ["interrupted", "rejected", "rejected"])
+                finally:
+                    proc.join(10)
+                    if proc.is_alive():
+                        proc.terminate()
+                        proc.join(10)
+                    recv.close()
+                self.assertEqual(proc.exitcode, 0)
+                successor = self.api.DeviceLease.acquire(self.path, timeout=5)
+                successor.release()
 
     def test_timeout_bounds_waiting_for_internal_mutex(self):
         outcomes = []

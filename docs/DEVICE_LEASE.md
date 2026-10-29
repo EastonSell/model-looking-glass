@@ -86,6 +86,16 @@ context-manager release on an exception: exception handlers and tracebacks may
 retain live CUDA objects. If file identity changes, release fails, or another
 lease operation reports ambiguous ownership, stop GPU work and terminate the
 owner process; do not retry release or treat `check()` as proof of ownership.
+Before attempting to unlock, `release()` invalidates the object's ownership
+claim. If it is interrupted before cleanup completes, that lease cannot pass
+`check()` or be retried, even if the OS has already admitted a successor. The
+interruption itself propagates; the descriptor and bookkeeping can remain in
+an uncertain state, so terminate the owner process without further device work
+or forking. In particular, interruption after closing the descriptor can leave
+its integer in the registry, and the OS can reuse that integer for another
+descriptor; the fork cleanup must not be treated as safe recovery in that
+state. This does not prevent a separate process from acquiring a lock that the
+OS has already released.
 `check()` only checks process ownership and the named file's identity; it is
 not a hardware status check and cannot stop external processes or file
 replacement between checks.
