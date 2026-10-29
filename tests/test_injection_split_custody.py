@@ -645,6 +645,191 @@ class InjectionCustodyTests(unittest.TestCase):
                 self.prepare(tokenizer=BadTokenizer())
         self.assertTrue(self.claim.claimed)
 
+    def _preparation_wiring(self, *, claimant_exit=True, replay_ok=True, change_after_gate=None,
+                            wrong_claim_row=False):
+        operation = importlib.import_module('tools.injection_preparation_operation')
+        from looking_glass import injection_preclaim_guard as real_guard
+        from looking_glass import injection_phase_accounting as real_accounting
+        public = self.v3_public()
+        phase = self.root / ('injection-heldout-' + self.freeze.sha256)
+        ledger = self.root / 'fake-ledger'
+        pilot = self.root / 'pilot'
+        pilot.mkdir()
+        rehearsal = tempfile.TemporaryDirectory()
+        self.addCleanup(rehearsal.cleanup)
+        rehearsal_path = Path(rehearsal.name)
+        parent_info, pilot_info, rehearsal_info = self.root.stat(), pilot.stat(), rehearsal_path.stat()
+        roots = real_accounting.PhaseRoots(str(self.root), parent_info.st_dev, parent_info.st_ino,
+            str(phase), str(pilot), pilot_info.st_dev, pilot_info.st_ino,
+            str(rehearsal_path), rehearsal_info.st_dev, rehearsal_info.st_ino)
+        anchor = real_guard.ClaimAnchor(str(ledger), 1, 2, str(phase), '1' * 64, '2' * 64,
+                                        '3' * 64, '4' * 64, '5' * 64)
+        handoff = operation.ClaimHandoff(str(self.root), b'{}', digest(public.runtime_replay_plan_bytes),
+            '6' * 64, (parent_info.st_dev, parent_info.st_ino), (1, 2))
+        state = {'locked': False, 'valid': True, 'gate': False, 'replay_valid': True, 'config_valid': True}
+
+        class Guard:
+            ClaimAnchor = real_guard.ClaimAnchor
+
+            @staticmethod
+            def verify_existing_claim(path, name, *, output_path, anchor):
+                return state['valid'] and path == ledger and name == 'injection_heldout' and output_path == phase
+
+            @staticmethod
+            @contextmanager
+            def hold_existing_claim(path, name, *, output_path, anchor):
+                if not state['valid']:
+                    raise ValueError('fabricated row changed')
+                state['locked'] = True
+                try:
+                    yield True
+                finally:
+                    state['locked'] = False
+
+        class Accounting:
+            PhaseRoots = real_accounting.PhaseRoots
+
+            @staticmethod
+            def reconcile_phase_files(actual_roots, *, stage, replay_tensor_bytes):
+                marker = self.root / (phase.name + '.preparation-started.json')
+                if (actual_roots != roots or replay_tensor_bytes != 1024 or not marker.exists()
+                        or (stage == 'before_phase_creation' and phase.exists())
+                        or (stage == 'before_nonce' and not (phase / 'claim.json').exists())):
+                    raise ValueError('fabricated accounting differs')
+                return {'status': 'bounded', 'stage': stage}
+
+        class ReplayOwner:
+            @staticmethod
+            def verify_preclaim_handoff(**kwargs):
+                return {'status': 'row_and_receipt_consistent_awaiting_observed_exit',
+                        'receipt_sha256': handoff.receipt_sha256, 'intent_sha256': '7' * 64,
+                        'claim_row_sha256': '8' * 64 if wrong_claim_row else anchor.heldout_claim_sha256}
+
+        def gate(freeze):
+            state['gate'] = True
+            if change_after_gate == 'claim_after_gate':
+                state['valid'] = False
+            elif change_after_gate == 'replay_after_gate':
+                state['replay_valid'] = False
+            elif change_after_gate == 'config_after_gate':
+                state['config_valid'] = False
+            return freeze == self.freeze.sha256
+
+        options = dict(custody=custody, guard=Guard, accounting=Accounting, replay_owner=ReplayOwner,
+            replay_child=object(), replay_claim=object(), public=public, private_parent=self.root,
+            ledger_path=ledger, anchor=anchor, roots=roots, handoff=handoff, replay_tensor_bytes=1024,
+            config_bytes=b'fabricated-config', site_nonce=SITE_NONCE, site_record_bytes=self.site.record_bytes,
+            tokenizer=FakeTokenizer(), observe_claimant_exit=lambda receipt: claimant_exit,
+            observe_replay_config=lambda: b'{}' if state['config_valid'] else b'{"changed":true}',
+            verify_replay_evidence=lambda plan, result, size: replay_ok and state['replay_valid'],
+            publication_check=lambda name, raw: True, source_check=lambda binding: True,
+            prediction_check=lambda raw, sha: True, gate_allocation=gate,
+            observe_inventory=lambda: self.inventory_sha,
+            runtime_check=lambda runtime, deviation, plan, replay, binding: True)
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
+                '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        return operation, options, state, pins, phase
+
+    def test_wired_preclaim_draws_only_inside_the_guard_after_the_gate(self):
+        operation, options, state, pins, phase = self._preparation_wiring()
+        def draw(size):
+            self.assertTrue(state['locked'])
+            self.assertTrue(state['gate'])
+            self.assertEqual(size, 32)
+            return SPLIT_NONCE
+        with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes', side_effect=draw):
+            result = operation.prepare_from_handoff(**options)
+        self.assertEqual(result.phase_root, phase)
+        self.assertEqual((phase / 'nonce.bin').read_bytes(), SPLIT_NONCE)
+        self.assertTrue((phase / 'preparation-complete.json').exists())
+        self.assertFalse(state['locked'])
+
+    def test_wired_preparation_stops_before_draw_on_missing_evidence_or_changed_claim(self):
+        for failure in ('claimant_exit', 'replay', 'wrong_claim_row', 'claim_after_gate',
+                        'replay_after_gate', 'config_after_gate'):
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory(dir=self.root) as temp:
+                original = self.root
+                self.root = Path(temp)
+                try:
+                    operation, options, _, pins, phase = self._preparation_wiring(
+                        claimant_exit=failure != 'claimant_exit', replay_ok=failure != 'replay',
+                        change_after_gate=failure, wrong_claim_row=failure == 'wrong_claim_row')
+                    with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes') as draw:
+                        with self.assertRaises(ValueError):
+                            operation.prepare_from_handoff(**options)
+                        draw.assert_not_called()
+                    self.assertFalse((phase / 'nonce.bin').exists())
+                    marker = self.root / (phase.name + '.preparation-started.json')
+                    self.assertEqual(marker.exists(), failure.endswith('_after_gate'))
+                finally:
+                    self.root = original
+
+    def test_wiring_uses_real_sqlite_guard_and_phase_accounting(self):
+        import sqlite3
+        from contextlib import closing
+        from looking_glass import injection_preclaim_guard as guard
+        from looking_glass import injection_phase_accounting as accounting
+        operation, options, _, pins, phase = self._preparation_wiring()
+        ledger = options['ledger_path']
+        roots = options['roots']
+        (Path(roots.pilot_path) / 'replay.bin').write_bytes(b'fabricated replay')
+        (Path(roots.rehearsal_path) / 'diagnostic.bin').write_bytes(b'fabricated diagnostic')
+        original_rows = [
+            ('natural_discovery', str(self.root / 'natural-discovery'), 128 * 1024**2, 4096 * 1024**2, 0),
+            ('injection_discovery', str(self.root / 'injection-discovery'), 48 * 1024**2, 128 * 1024**2, 13 * 1024**3),
+        ]
+        row = ('injection_heldout', str(phase), 72 * 1024**2, 192 * 1024**2, 13 * 1024**3)
+        history = digest(b'reconciliations:present\nretired_evidence:present\n')
+        scope = '1' * 64
+        meta = canonical({'schema': 'mlg-agreement-phase-ledger-v6',
+                          'current_history_sha256': history,
+                          'evidence_scope_amendment_sha256': scope}).decode()
+        inventory = '{"prior":{},"natural":{}}'
+        with closing(sqlite3.connect(ledger)) as db:
+            db.execute('CREATE TABLE meta (id INTEGER PRIMARY KEY, data TEXT NOT NULL, inventory TEXT NOT NULL)')
+            db.execute('CREATE TABLE claims (phase TEXT PRIMARY KEY, output TEXT NOT NULL, logical INTEGER NOT NULL, disk INTEGER NOT NULL, free INTEGER NOT NULL)')
+            db.execute('CREATE TABLE reconciliations (seq INTEGER, manifest_sha TEXT, gap_sha TEXT, claims_sha TEXT, previous_meta TEXT, previous_inventory TEXT)')
+            db.execute('CREATE TABLE retired_evidence (side TEXT, path_sha TEXT, size INTEGER, content_sha TEXT)')
+            db.execute('INSERT INTO meta VALUES(1, ?, ?)', (meta, inventory))
+            db.executemany('INSERT INTO claims VALUES(?, ?, ?, ?, ?)', original_rows + [row])
+            db.commit()
+        state = hashlib.sha256()
+        for item in (meta.encode(), inventory.encode()):
+            state.update(len(item).to_bytes(8, 'big'))
+            state.update(item)
+        identity = ledger.stat()
+        anchor = guard.ClaimAnchor(str(ledger), identity.st_dev, identity.st_ino, str(phase),
+            state.hexdigest(), history, scope,
+            digest(json.dumps(sorted(original_rows), ensure_ascii=True, separators=(',', ':')).encode()),
+            digest(json.dumps(row, ensure_ascii=True, separators=(',', ':')).encode('ascii')))
+        handoff = replace(options['handoff'], ledger_identity=(identity.st_dev, identity.st_ino))
+
+        class ReplayOwner:
+            @staticmethod
+            def verify_preclaim_handoff(**kwargs):
+                self.assertTrue(guard.verify_existing_claim(ledger, 'injection_heldout',
+                                                           output_path=phase, anchor=anchor))
+                return {'status': 'row_and_receipt_consistent_awaiting_observed_exit',
+                        'receipt_sha256': handoff.receipt_sha256, 'intent_sha256': '7' * 64,
+                        'claim_row_sha256': anchor.heldout_claim_sha256}
+
+        options.update(guard=guard, accounting=accounting, replay_owner=ReplayOwner,
+                       anchor=anchor, handoff=handoff)
+
+        def draw(size):
+            with closing(sqlite3.connect(ledger, timeout=0, isolation_level=None)) as other:
+                with self.assertRaises(sqlite3.OperationalError):
+                    other.execute('BEGIN IMMEDIATE')
+            return SPLIT_NONCE
+
+        with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes', side_effect=draw):
+            result = operation.prepare_from_handoff(**options)
+        self.assertTrue((result.phase_root / 'preparation-complete.json').is_file())
+        with closing(sqlite3.connect(ledger, timeout=0, isolation_level=None)) as other:
+            other.execute('BEGIN IMMEDIATE')
+            other.rollback()
+
     def natural_split(self, nonce):
         freeze = commitments.make_prediction_freeze({'natural': {
             'source_commit': 'a' * 40, 'runtime_sha256': 'b' * 64, 'prediction_sha256': 'c' * 64}})
