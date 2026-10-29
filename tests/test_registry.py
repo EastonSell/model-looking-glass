@@ -153,6 +153,79 @@ class RegistryTests(unittest.TestCase):
             self.assertEqual(run.status()["state"], "incomplete")
             run.write_artifact("predictions.json", b"frozen")
 
+    def test_published_terminal_outcome_survives_pending_cleanup_error(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = self.make_run(Path(directory) / "run", required_artifacts=[])
+            original_unlink = Path.unlink
+
+            def fail_after_outcome(path, *args, **kwargs):
+                if path.name == ".pending" and (run.path / "outcome.json").exists():
+                    raise PermissionError("injected cleanup failure")
+                return original_unlink(path, *args, **kwargs)
+
+            with patch.object(Path, "unlink", new=fail_after_outcome):
+                run.finalize("succeeded", {"completed": True})
+                result = run.status()
+                self.assertEqual(result["state"], "succeeded")
+                self.assertTrue(result["pending_write"])
+                self.assertEqual(result["outcome"]["details"], {"completed": True})
+            with self.assertRaisesRegex(RuntimeError, "terminal"):
+                run.finalize("failed", {})
+            self.assertFalse(run.status()["pending_write"])
+            self.assertEqual(run.status()["state"], "succeeded")
+
+    def test_manifest_and_artifact_publication_survive_pending_cleanup_error(self):
+        for kind in ("manifest", "artifact"):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "run"
+                target = (path / "manifest.json" if kind == "manifest" else
+                          path / "artifacts" / "predictions.json")
+                run = None if kind == "manifest" else self.make_run(path)
+                original_unlink = Path.unlink
+
+                def fail_after_publication(candidate, *args, **kwargs):
+                    if candidate.name == ".pending" and target.exists():
+                        raise PermissionError("injected cleanup failure")
+                    return original_unlink(candidate, *args, **kwargs)
+
+                with patch.object(Path, "unlink", new=fail_after_publication):
+                    if kind == "manifest":
+                        run = self.make_run(path)
+                    else:
+                        run.write_artifact("predictions.json", b"frozen")
+                    self.assertTrue(run.status()["pending_write"])
+                    self.assertEqual(run.status()["state"], "incomplete")
+                if kind == "manifest":
+                    run.write_artifact("predictions.json", b"frozen")
+                else:
+                    with self.assertRaises(FileExistsError):
+                        run.write_artifact("predictions.json", b"replacement")
+                self.assertFalse(run.status()["pending_write"])
+                self.assertEqual((path / "artifacts" / "predictions.json").read_bytes(), b"frozen")
+
+    def test_cleanup_failure_does_not_mask_failed_publication(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = self.make_run(Path(directory) / "run")
+            original_unlink = Path.unlink
+            publication_error = OSError("injected link failure")
+            cleanup_error = PermissionError("injected cleanup failure")
+
+            def fail_if_pending_exists(path, *args, **kwargs):
+                if path.name == ".pending" and path.exists():
+                    raise cleanup_error
+                return original_unlink(path, *args, **kwargs)
+
+            with patch.object(Path, "unlink", new=fail_if_pending_exists), \
+                    patch("looking_glass.registry.os.link", side_effect=publication_error):
+                with self.assertRaises(OSError) as caught:
+                    run.write_artifact("predictions.json", b"frozen")
+            self.assertIs(caught.exception, publication_error)
+            self.assertIs(caught.exception.__cause__, cleanup_error)
+            self.assertEqual(run.status()["state"], "incomplete")
+            self.assertTrue(run.status()["pending_write"])
+            run.write_artifact("predictions.json", b"frozen")
+            self.assertFalse(run.status()["pending_write"])
+
     def test_tampered_artifact_or_manifest_fails_verification(self):
         from looking_glass.registry import RegistryIntegrityError, verify_run
 
