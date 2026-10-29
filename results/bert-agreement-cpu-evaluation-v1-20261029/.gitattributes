@@ -1,0 +1,3 @@
+# Preserve the independent review's original CRLF bytes and recognize them as line endings.
+evidence/independent-science-review.json -text whitespace=cr-at-eol
+independent-science-check.py -text whitespace=cr-at-eol

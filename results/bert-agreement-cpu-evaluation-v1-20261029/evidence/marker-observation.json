@@ -1,0 +1,16 @@
+{
+  "recorded_utc": "2026-10-29T05:01:57.493549+00:00",
+  "roots": [
+    {
+      "attestation_present": false,
+      "scope": "owner",
+      "unsafe_marker_present": false
+    },
+    {
+      "attestation_present": false,
+      "scope": "controller",
+      "unsafe_marker_present": false
+    }
+  ],
+  "scope": "point-in-time local cooperative-custody observation; not system-wide attestation"
+}
