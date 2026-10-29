@@ -11,7 +11,7 @@ import json
 import os
 import platform
 from threading import Lock
-from weakref import WeakSet
+from weakref import WeakKeyDictionary, ref
 
 import torch
 from transformers import T5ForConditionalGeneration
@@ -25,7 +25,7 @@ from .supervisor import OwnerSession
 GPU_TRACE_CLAIM = 512 * 1024
 HOST_TRACE_CLAIM = 2 * 1024 * 1024
 _CUDA_PERMIT = object()
-_CONSUMED_CLAIMS = WeakSet()
+_CONSUMED_CLAIMS = WeakKeyDictionary()
 _CLAIM_LOCK = Lock()
 
 
@@ -34,6 +34,7 @@ class ObservationCustody:
 
     def __init__(self):
         self.entered = False
+        self.consumed_lease = None
         self.input_ids = self.attention_mask = None
         self.decoder_ids = self.decoder_mask = None
         self.source_bits = self.source = self.plan = None
@@ -160,14 +161,27 @@ def _cuda_owner_check(session, device_lease, memory_lease):
     OwnerSession.check(session, device_lease)
 
 
-def _consume_observation_claim(memory_lease):
+def _consume_observation_claim(memory_lease, custody):
     """Permanently bind a lease object to at most one observation attempt."""
-    if type(memory_lease) is not MemoryLease:
-        raise ValueError('a dedicated observation memory lease is required')
+    if type(memory_lease) is not MemoryLease or type(custody) is not ObservationCustody:
+        raise ValueError('a dedicated observation memory lease and custody are required')
     with _CLAIM_LOCK:
         if memory_lease in _CONSUMED_CLAIMS:
             raise RuntimeError('observation memory lease was already used')
-        _CONSUMED_CLAIMS.add(memory_lease)
+        if custody.entered or custody.consumed_lease is not None:
+            raise RuntimeError('observation custody was already used')
+        # The owner retains this exact association even if later work fails.
+        custody.consumed_lease = memory_lease
+        _CONSUMED_CLAIMS[memory_lease] = ref(custody)
+
+
+def _observation_claim_is_bound(memory_lease, custody):
+    """Check the producer's exact lease/custody association in this process."""
+    if type(memory_lease) is not MemoryLease or type(custody) is not ObservationCustody:
+        return False
+    with _CLAIM_LOCK:
+        recorded = _CONSUMED_CLAIMS.get(memory_lease)
+        return custody.consumed_lease is memory_lease and recorded is not None and recorded() is custody
 
 
 def _cuda_numeric_state():
@@ -271,7 +285,7 @@ def observe_cuda_owned(model, source, target, *, action, token_index=None, value
     check_owner()
     _cuda_numerics()
     _validate_flan_checkpoint_model(model)
-    _consume_observation_claim(memory_lease)
+    _consume_observation_claim(memory_lease, custody)
     check_owner()
     def synchronize(stage):
         _record_cuda_stage(torch.cuda, check_owner, stage, record_stage)

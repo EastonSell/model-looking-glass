@@ -495,7 +495,7 @@ def test_one_observation_claim_cannot_be_reused_concurrently_or_sequentially():
     def attempt():
         barrier.wait(timeout=5)
         try:
-            api._consume_observation_claim(memory)
+            api._consume_observation_claim(memory, api.ObservationCustody())
             return 'accepted'
         except RuntimeError:
             return 'rejected'
@@ -503,7 +503,7 @@ def test_one_observation_claim_cannot_be_reused_concurrently_or_sequentially():
         outcomes = list(pool.map(lambda _: attempt(), range(2)))
     assert sorted(outcomes) == ['accepted', 'rejected']
     with pytest.raises(RuntimeError, match='already'):
-        api._consume_observation_claim(memory)
+        api._consume_observation_claim(memory, api.ObservationCustody())
     memory.release_trace('gpu', api.GPU_TRACE_CLAIM)
     memory.release_trace('host', api.HOST_TRACE_CLAIM)
     memory.release()
@@ -527,7 +527,9 @@ def test_cuda_entry_consumes_its_claim_even_if_forward_is_skipped(monkeypatch):
     monkeypatch.setattr(api, '_observe', lambda *args, **kwargs: 'synthetic observation')
     options = dict(action='capture', session=object(), device_lease=object(), memory_lease=memory,
                    record_stage=lambda stage, data: None)
-    assert api.observe_cuda_owned(model, {}, {}, custody=api.ObservationCustody(), **options) == 'synthetic observation'
+    custody = api.ObservationCustody()
+    assert api.observe_cuda_owned(model, {}, {}, custody=custody, **options) == 'synthetic observation'
+    assert custody.consumed_lease is memory
     with pytest.raises(RuntimeError, match='already'):
         api.observe_cuda_owned(model, {}, {}, custody=api.ObservationCustody(), **options)
     memory.release_trace('gpu', api.GPU_TRACE_CLAIM)
@@ -562,3 +564,22 @@ def test_pinned_flan_requires_eight_layers_and_an_untied_output_head():
     assert model.lm_head.weight.untyped_storage() is model.shared.weight.untyped_storage()
     with pytest.raises(ValueError, match='pinned'):
         api._validate_flan_checkpoint_model(model)
+
+
+def test_one_custody_cannot_bind_a_second_observation_lease():
+    api = subject()
+    from looking_glass.memory_budget import CudaMemorySnapshot, MemoryBudget
+    gib = 1024 ** 3
+    budget = MemoryBudget(lambda: CudaMemorySnapshot(6 * gib, 8 * gib, 0, 0),
+                          max_gpu_trace_bytes=2 * api.GPU_TRACE_CLAIM,
+                          max_host_trace_bytes=2 * api.HOST_TRACE_CLAIM)
+    leases = [budget.acquire(api.GPU_TRACE_CLAIM, max_gpu_trace_bytes=api.GPU_TRACE_CLAIM,
+                             max_host_trace_bytes=api.HOST_TRACE_CLAIM) for _ in range(2)]
+    custody = api.ObservationCustody()
+    api._consume_observation_claim(leases[0], custody)
+    with pytest.raises(RuntimeError, match='custody'):
+        api._consume_observation_claim(leases[1], custody)
+    assert api._observation_claim_is_bound(leases[0], custody)
+    assert not api._observation_claim_is_bound(leases[1], custody)
+    for lease in leases:
+        lease.release()

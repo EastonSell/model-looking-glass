@@ -36,7 +36,9 @@ trace claims. Each memory-lease object is consumed for at most one observation
 attempt, including under concurrent calls. The observation claim must remain
 held until all returned host storage, its aliases and any device objects have
 actually been disposed; on uncertainty, retain the claim and quarantine the
-owner. These are logical trace claims, not bounds on process RSS or all CUDA
+owner. The consumed lease is also bound by identity to the retained custody,
+so a later owner cannot substitute a different live lease when retiring this
+observation. These are logical trace claims, not bounds on process RSS or all CUDA
 allocations. The one-use registry assumes a single trusted import of this
 module in a cooperative owner; it is not protection against arbitrary code in
 the same process. The separately owned model and forward temporaries require
