@@ -17,7 +17,7 @@ from .intervention_plan import ActivationPlan
 
 @dataclass(frozen=True)
 class T5InterventionResult:
-    """JSON-compatible report and bounded mutable CPU tensor witnesses."""
+    """JSON-compatible report and bounded, detached CPU tensor witnesses."""
 
     report: dict
     witnesses: dict = field(repr=False)

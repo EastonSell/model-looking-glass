@@ -58,7 +58,9 @@ of a teacher-forced forward; it is not a generated token. If donor and receiver
 decoder prefixes differ, their readout logits have different conditioning and
 should not be treated as directly paired without further justification.
 
-The result contains a JSON-compatible report and mutable CPU tensor witnesses.
+The result contains a JSON-compatible report and detached CPU tensor witnesses.
+Some witnesses are inference-mode tensors; clone them outside inference mode
+before editing their values.
 It records exact IDs and masks, trace events, plan action metadata, tensor shapes,
 input-state L2 displacements and readout summaries. It uses retained binary32
 bits to calculate distances, including subnormals. Limits bound selected module
