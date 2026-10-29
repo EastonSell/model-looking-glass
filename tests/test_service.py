@@ -34,6 +34,7 @@ class TestBroker:
     def __init__(self):
         self.available = True
         self.failed = False
+        self.quarantined = False
         self.waited = None
 
     def close(self, *, wait=True, timeout=None):
@@ -53,6 +54,19 @@ class TestWorker:
 
 
 class OwnerTests(unittest.TestCase):
+    def test_broker_quarantine_takes_precedence_over_verified_shutdown(self):
+        broker = TestBroker()
+        broker.quarantined = True
+        drain = []
+        stop = threading.Event()
+        stop.set()
+        result = serve_owner(TestServer(), broker, TestWorker(), stop,
+                             announce=lambda _: None, verify_drain=lambda: drain.append(True) or True,
+                             poll_interval=0.001, shutdown_timeout=1)
+        self.assertEqual(result.status, OwnerStatus.QUARANTINED)
+        self.assertFalse(result.teardown_verified)
+        self.assertEqual(drain, [])
+
     def test_cpu_cli_announces_private_endpoint_and_handles_shutdown(self):
         from looking_glass.cpu_service import main
         import torch

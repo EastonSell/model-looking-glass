@@ -100,16 +100,23 @@ SUPERVISOR = textwrap.dedent("""
 
 
 # Exercise the real service, IPC transport, and broker using a CPU-only fake
-# worker and drain callback. Nothing in this child imports torch or CUDA.
+# worker and drain callback. The child's real CUDA entry points are blocked.
 SERVICE_OWNER = textwrap.dedent("""
     import json, sys
     from concurrent.futures import ThreadPoolExecutor
-    from dataclasses import dataclass
     from pathlib import Path
     from threading import Event, Lock
+    import torch
+    assert not torch.cuda.is_initialized()
+    def forbidden_cuda(*args, **kwargs):
+        raise RuntimeError('real CUDA access is disabled in this test')
+    torch.cuda._lazy_init = forbidden_cuda
+    torch._C._cuda_init = forbidden_cuda
+    torch._C._cuda_getDeviceCount = forbidden_cuda
     from looking_glass.broker import Broker
     from looking_glass.device_lease import DeviceLease
     from looking_glass.ipc import IPCClient, IPCServer
+    from looking_glass.resident_worker import ForwardRequest, ForwardResult
     from looking_glass.service import serve_owner
     from looking_glass.supervisor import OwnerSession
 
@@ -119,14 +126,6 @@ SERVICE_OWNER = textwrap.dedent("""
     session.check(lease)
     session.verify_runtime_binding(
         lease, runtime_uuid='GPU-12345678-1234-5678-9abc-1234567890ab', device_count=1)
-
-    @dataclass(frozen=True)
-    class Request:
-        request_id: str
-
-    @dataclass(frozen=True)
-    class Result:
-        request_id: str
 
     class Cancelled(Exception):
         pass
@@ -152,7 +151,7 @@ SERVICE_OWNER = textwrap.dedent("""
                 raise TimeoutError('both teams did not obtain handles while work was active')
             if action == 'science_failure':
                 raise RuntimeError('synthetic scientific failure')
-            return Result(request.request_id)
+            return ForwardResult(request.request_id, torch.tensor([[0.0]], device='cpu'))
 
         def close(self):
             self.closed = True
@@ -167,7 +166,9 @@ SERVICE_OWNER = textwrap.dedent("""
     worker = Worker()
     broker = Broker(worker, max_pending=4, max_pending_per_team=2)
     server = Server(broker, team_ids=('team-a', 'team-b'),
-                    request_factory=lambda request_id, inputs, seed: Request(request_id),
+                    request_factory=lambda request_id, inputs, seed: ForwardRequest(
+                        request_id, {'input_ids': torch.tensor(inputs['input_ids'], dtype=torch.int64,
+                                                               device='cpu')}, seed),
                     result_encoder=lambda result: {'ok': True}, io_timeout=5, job_timeout=10)
     stop = Event()
     outcomes = []
@@ -208,6 +209,7 @@ SERVICE_OWNER = textwrap.dedent("""
     }), encoding='utf-8')
     if result.teardown_verified:
         session.attest_clean(lease)
+    assert not torch.cuda.is_initialized()
     if action == 'science_failure':
         raise SystemExit(31)
     if not result.teardown_verified:
@@ -261,7 +263,7 @@ class GPUOwnershipIntegrationTests(unittest.TestCase):
             device_lease_path=self.identity.lock_path,
             marker_path=self.identity.marker_path,
             identity=self.identity,
-            timeout=25, lease_timeout=3, terminate_grace=3,
+            timeout=40, lease_timeout=3, terminate_grace=3,
             cwd=self.package_root, env=self.env,
         )
 
