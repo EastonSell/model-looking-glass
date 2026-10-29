@@ -162,7 +162,6 @@ class CpuEvaluationIntegrationTest(unittest.TestCase):
 
     def test_known_inner_quarantine_rejects_before_reservation_and_attests_no_start(self):
         output = self.ledger_root / ('7' * 32)
-        (self.custody / 'cpu-study.unsafe.json').write_bytes(b'{}\n')
         attestations, lease = [], object()
         session = SimpleNamespace(run_id='f' * 32, check=lambda value: None,
                                   attest_clean=lambda value: attestations.append(value))
@@ -172,13 +171,19 @@ class CpuEvaluationIntegrationTest(unittest.TestCase):
              patch.object(study, '_run_cpu_controller') as run, \
              patch('looking_glass.cpu_study_supervision.claim_cpu_study', return_value=(session, lease)), \
              patch('shutil.which', return_value='git'):
-            with self.assertRaisesRegex(RuntimeError, 'no evaluation attempt was reserved'):
-                study.run_cpu_controller(repo=self.repo, cache=self.cache, output_dir=output, commit='a' * 40,
-                                         split='evaluation', custody_root=self.custody, ledger_root=self.ledger_root,
-                                         controller_custody_root=self.controller_custody)
+            for name in ('cpu-study.unsafe.json', 'cpu-study.unsafe.json.attestation'):
+                with self.subTest(name=name):
+                    path = self.custody / name
+                    path.write_bytes(b'{}\n')
+                    with self.assertRaisesRegex(RuntimeError, 'no evaluation attempt was reserved'):
+                        study.run_cpu_controller(repo=self.repo, cache=self.cache, output_dir=output, commit='a' * 40,
+                                                 split='evaluation', custody_root=self.custody,
+                                                 ledger_root=self.ledger_root,
+                                                 controller_custody_root=self.controller_custody)
+                    path.unlink()
             run.assert_not_called()
         self.assertFalse(output.exists())
-        self.assertEqual(attestations, [lease])
+        self.assertEqual(attestations, [lease, lease])
         binding = self.binding()
         ledger = EvaluationLedger.acquire(self.ledger_root, binding['ledger_root_sha256'], binding)
         self.assertEqual(ledger.prior_attempts(), ([], False))
