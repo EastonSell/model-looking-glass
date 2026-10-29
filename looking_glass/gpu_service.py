@@ -6,8 +6,11 @@ the owner in a supervised child. No profile or device is assumed here.
 """
 
 from dataclasses import dataclass, replace
+import os
 from pathlib import Path
 import re
+import stat
+import sys
 from threading import Event
 
 from .memory_budget import MemoryBudget
@@ -20,6 +23,209 @@ _QUARANTINED = Event()
 _QUARANTINE_HOLDS = []
 _LIFETIME_HOLDS = []
 _RAW_RUNTIME_UUID = re.compile(r'[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\Z', re.ASCII)
+_WARMUP_PROTOCOL_SHA256 = '84b21a9ba63413bb9394dbac6d31dbc08ce3171508a25477f44e596be579760c'
+_NO_CAPTURE_POLICY_SHA256 = '1ec2c8752f73cab7403fa9012e0796de77fdd87eb395a7cbc796044bf1643250'
+_CONTROL_PREFIXES = ('CUDA_', 'PYTORCH_', 'TORCH_', 'CUBLAS_', 'HF_',
+                     'TRANSFORMERS_', 'OMP_', 'MKL_', 'OPENBLAS_', 'PYTHON',
+                     'LD_', 'DYLD_')
+_DIRECT_BOOTSTRAP = r'''
+import hashlib, importlib.machinery, json, re, runpy, sys
+from pathlib import Path, PurePosixPath
+
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError('duplicate source manifest key')
+        result[key] = value
+    return result
+
+def checked_bytes(path, size, digest, *, source=False):
+    if (type(size) is not int or not 0 <= size <= 8 * 1024 * 1024 * 1024
+            or type(digest) is not str or not re.fullmatch(r'[0-9a-f]{64}', digest)):
+        raise ValueError('invalid source identity record')
+    if source and size > 32 * 1024 * 1024:
+        raise ValueError('Python source exceeds bootstrap size limit')
+    total, hasher, chunks = 0, hashlib.sha256(), []
+    with path.open('rb') as stream:
+        while True:
+            block = stream.read(min(1024 * 1024, size - total + 1))
+            if not block:
+                break
+            total += len(block)
+            if total > size:
+                raise ImportError('source identity does not match the approved manifest')
+            hasher.update(block)
+            if source:
+                chunks.append(block)
+    if total != size or hasher.hexdigest() != digest:
+        raise ImportError('source identity does not match the approved manifest')
+    return b''.join(chunks) if source else None
+
+repo, site, environment, manifest_path = (Path(value) for value in sys.argv[1:5])
+expected_sha = sys.argv[5]
+if any(not path.is_absolute() for path in (repo, site, environment, manifest_path)):
+    raise RuntimeError('bootstrap paths must be absolute')
+repo, site, environment = (path.resolve(strict=True) for path in (repo, site, environment))
+if not (repo / 'looking_glass').is_dir() or not site.is_dir() or not site.is_relative_to(environment):
+    raise RuntimeError('bootstrap import paths are unavailable')
+if not re.fullmatch(r'[0-9a-f]{64}', expected_sha):
+    raise ValueError('source manifest digest is invalid')
+with manifest_path.open('rb') as stream:
+    raw = stream.read(64 * 1024 * 1024 + 1)
+if len(raw) > 64 * 1024 * 1024 or hashlib.sha256(raw).hexdigest() != expected_sha:
+    raise ValueError('source manifest digest mismatch')
+manifest = json.loads(raw.decode('utf-8'), object_pairs_hook=unique_object)
+if (type(manifest) is not dict or set(manifest) != {'schema', 'git_commit', 'git_tree',
+        'python_executable', 'repository_files', 'distributions'}
+        or manifest['schema'] != 'resource-bootstrap-source-v1'
+        or json.dumps(manifest, sort_keys=True, ensure_ascii=False, separators=(',', ':'),
+                      allow_nan=False).encode('utf-8') != raw):
+    raise ValueError('invalid canonical source manifest')
+interpreter = manifest['python_executable']
+if type(interpreter) is not dict or set(interpreter) != {'size', 'sha256'}:
+    raise ValueError('invalid interpreter source identity')
+checked_bytes(Path(sys._base_executable).resolve(strict=True), interpreter['size'], interpreter['sha256'])
+allowed = {}
+
+def add_records(root, records):
+    if type(records) is not list:
+        raise ValueError('invalid source manifest file list')
+    for entry in records:
+        if type(entry) is not dict or set(entry) != {'path', 'size', 'sha256'}:
+            raise ValueError('invalid source identity record')
+        name = entry['path']
+        if (type(name) is not str or not name or '\\' in name or ':' in name
+                or PurePosixPath(name).is_absolute() or str(PurePosixPath(name)) != name
+                or any(part in ('.', '..') for part in PurePosixPath(name).parts)):
+            raise ValueError('invalid source identity path')
+        file = root.joinpath(*PurePosixPath(name).parts).resolve(strict=False)
+        if not file.is_relative_to(root) or file in allowed:
+            raise ValueError('duplicate or escaping source identity path')
+        allowed[file] = (entry['size'], entry['sha256'])
+
+add_records(repo, manifest['repository_files'])
+if type(manifest['distributions']) is not list:
+    raise ValueError('invalid distribution source inventory')
+for package in manifest['distributions']:
+    if type(package) is not dict or set(package) != {'name', 'version', 'files'}:
+        raise ValueError('invalid distribution source record')
+    add_records(environment, package['files'])
+baseline_paths = tuple(Path(path).resolve(strict=False) for path in sys.path if path and Path(path).is_absolute())
+
+class VerifiedSource(importlib.machinery.SourceFileLoader):
+    def __init__(self, fullname, path, record):
+        super().__init__(fullname, str(path))
+        self.record = record
+
+    def get_code(self, fullname):
+        if fullname != self.name:
+            raise ImportError('source identity module name changed')
+        source = checked_bytes(Path(self.path), *self.record, source=True)
+        return compile(source, self.path, 'exec', dont_inherit=True)
+
+class VerifiedImports:
+    def find_spec(self, fullname, path=None, target=None):
+        spec = importlib.machinery.PathFinder.find_spec(fullname, path, target)
+        if spec is None:
+            return None
+        if isinstance(spec.loader, importlib.machinery.SourcelessFileLoader):
+            raise ImportError('sourceless bytecode is not allowed by the owner bootstrap')
+        if spec.origin is None:
+            locations = spec.submodule_search_locations or ()
+            for location in locations:
+                resolved = Path(location).resolve(strict=False)
+                if not any(resolved.is_relative_to(root) for root in (*baseline_paths, repo, environment)):
+                    raise ImportError('unreviewed namespace import origin')
+            return spec
+        origin = Path(spec.origin).resolve(strict=False)
+        if origin.is_relative_to(repo) or origin.is_relative_to(environment):
+            record = allowed.get(origin)
+            if record is None:
+                raise ImportError(f'source identity is absent from the approved manifest: {origin}')
+            if isinstance(spec.loader, importlib.machinery.SourceFileLoader):
+                spec.loader = VerifiedSource(fullname, origin, record)
+            elif isinstance(spec.loader, importlib.machinery.ExtensionFileLoader):
+                checked_bytes(origin, *record)
+            else:
+                raise ImportError('unreviewed source identity loader')
+        elif not any(origin.is_relative_to(root) for root in baseline_paths):
+            raise ImportError('unreviewed import origin')
+        return spec
+
+sys.meta_path.insert(sys.meta_path.index(importlib.machinery.PathFinder), VerifiedImports())
+sys.path.extend((str(repo), str(site)))
+sys.argv = ['looking_glass.gpu_service', *sys.argv[6:]]
+runpy.run_module('looking_glass.gpu_service', run_name='__main__', alter_sys=True)
+'''
+
+
+def _base_interpreter():
+    """Use the direct interpreter rather than a Windows venv launcher shim."""
+    value = getattr(sys, '_base_executable', None)
+    if type(value) is not str or not Path(value).is_absolute() or not Path(value).is_file():
+        raise RuntimeError('the direct base Python interpreter is unavailable')
+    return str(Path(value).resolve(strict=True))
+
+
+def _direct_command(repo_root, site_packages, environment_root, manifest_path,
+                    manifest_sha256, args):
+    """Construct an explicit direct child with stdlib ahead of project code."""
+    if type(args) is not tuple or any(type(arg) is not str for arg in args):
+        raise TypeError('child arguments must be an immutable tuple of strings')
+    repo, site, environment, manifest = (Path(value) for value in
+                                          (repo_root, site_packages, environment_root, manifest_path))
+    if any(not path.is_absolute() for path in (repo, site, environment, manifest)):
+        raise ValueError('child import paths must be absolute')
+    if type(manifest_sha256) is not str or not re.fullmatch(r'[0-9a-f]{64}', manifest_sha256):
+        raise ValueError('source manifest digest must be a lowercase SHA-256')
+    return [_base_interpreter(), '-S', '-P', '-c', _DIRECT_BOOTSTRAP,
+            str(repo.resolve(strict=True)), str(site.resolve(strict=True)),
+            str(environment.resolve(strict=True)), str(manifest.resolve(strict=True)),
+            manifest_sha256, *args]
+
+
+def _child_environment(repo_root, site_packages, bytecode_prefix, gpu_uuid,
+                       inherited, *, cpu_preflight):
+    """Build the fixed bootstrap environment before starting either child."""
+    from .device_identity import normalize_gpu_uuid
+
+    if type(cpu_preflight) is not bool or type(inherited) is not dict:
+        raise TypeError('invalid child environment configuration')
+    if normalize_gpu_uuid(gpu_uuid) != gpu_uuid:
+        raise ValueError('GPU UUID must be canonical')
+    paths = [Path(value) for value in (repo_root, site_packages, bytecode_prefix)]
+    if any(not path.is_absolute() for path in paths):
+        raise ValueError('child import paths must be absolute')
+    repo, site, prefix = paths
+    if not (repo / 'looking_glass').is_dir() or not site.is_dir():
+        raise ValueError('repository or site-packages path is unavailable')
+    try:
+        info = prefix.lstat()
+        if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                or getattr(info, 'st_file_attributes', 0) & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)):
+            raise ValueError('import cache must be a private ordinary directory')
+        if any(prefix.iterdir()):
+            raise ValueError('import cache must be empty')
+        repo, site, prefix = (path.resolve(strict=True) for path in paths)
+    except OSError as exc:
+        raise ValueError('child import path is unavailable') from exc
+    if any(type(key) is not str or type(value) is not str for key, value in inherited.items()):
+        raise TypeError('environment entries must be plain strings')
+    result = {key: value for key, value in inherited.items()
+              if not key.upper().startswith(_CONTROL_PREFIXES)}
+    result.update({
+        'CUDA_VISIBLE_DEVICES': '' if cpu_preflight else gpu_uuid,
+        'CUDA_DEVICE_ORDER': 'PCI_BUS_ID',
+        'PYTORCH_CUDA_ALLOC_CONF': 'backend:native',
+        'CUBLAS_WORKSPACE_CONFIG': ':4096:8',
+        'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
+        'HF_HUB_DISABLE_TELEMETRY': '1', 'PYTHONHASHSEED': '17',
+        'PYTHONNOUSERSITE': '1', 'PYTHONDONTWRITEBYTECODE': '1',
+        'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1',
+        'PYTHONPYCACHEPREFIX': str(prefix),
+    })
+    return result
 
 
 def _canonical_runtime_uuid(value, expected_type):
@@ -53,7 +259,9 @@ def _validate_service_keys(identity, keys):
             or key.grad_mode != 'inference' or key.autocast != 'disabled'
             or key.use_cache is not False or key.compiled is not False
             or key.capture_mode != 'none' or key.max_gpu_trace_bytes != 0
-            or key.max_host_trace_bytes != 0 for key in keys
+            or key.max_host_trace_bytes != 0
+            or key.warmup_protocol_sha256 != _WARMUP_PROTOCOL_SHA256
+            or key.capture_policy_sha256 != _NO_CAPTURE_POLICY_SHA256 for key in keys
         ):
             raise ValueError('live keys do not match the supported model or execution mode')
         if (load.operation != 'model_load' or load.warmup_state != 'cold'
@@ -89,6 +297,59 @@ class GpuOwnerResult:
     teardown_verified: bool
     error_type: str | None = None
     error_message: str | None = None
+
+
+@dataclass(frozen=True)
+class ProfileFiles:
+    """Locally configured evidence files and an independently approved pin."""
+
+    document: Path
+    evidence: Path
+    source_manifest: Path
+    approved_profile_id: str
+
+
+def _read_bounded_profile_file(path, limit):
+    path = Path(path)
+    if not path.is_absolute():
+        raise ValueError('profile files must use absolute paths')
+    with path.open('rb') as stream:
+        data = stream.read(limit + 1)
+    if len(data) > limit:
+        raise ValueError('profile evidence file exceeds its size limit')
+    return data
+
+
+def _load_profile_registry(files, identity):
+    """CPU-only validation of saved evidence against separately approved IDs.
+
+    These declared keys are used only to reject invalid configuration before a
+    GPU owner starts. They are not live runtime identity: the child must build
+    and resolve independently verified live keys again under supervision.
+    """
+    from .resource_profile import ProfileRegistry, load_profile
+
+    if type(files) is not tuple or len(files) != 3 or any(type(item) is not ProfileFiles for item in files):
+        raise ValueError('exactly three trusted load/cold/warm profile files are required')
+    profiles = []
+    manifests = []
+    for item in files:
+        document = _read_bounded_profile_file(item.document, 16 * 1024 * 1024)
+        evidence = _read_bounded_profile_file(item.evidence, 16 * 1024 * 1024)
+        manifest = _read_bounded_profile_file(item.source_manifest, 64 * 1024 * 1024)
+        profile = load_profile(document, evidence=evidence, source_manifest=manifest,
+                               expected_profile_id=item.approved_profile_id)
+        if profile.key.source_sha256 != profile.provenance.source_manifest_sha256:
+            raise ValueError('profile workload source does not match its source manifest')
+        profiles.append(profile)
+        manifests.append(manifest)
+    if not manifests[0] == manifests[1] == manifests[2]:
+        raise ValueError('profile source manifests do not match')
+    declared_keys = tuple(profile.key for profile in profiles)
+    _validate_service_keys(identity, declared_keys)
+    registry = ProfileRegistry(tuple(profiles),
+        approved_profile_ids=tuple(item.approved_profile_id for item in files))
+    return registry, declared_keys
 
 
 class _TorchServiceBackend:
@@ -202,6 +463,11 @@ class _TorchServiceBackend:
         snapshot = budget.snapshot()
         memory = snapshot.telemetry
         committed = snapshot.committed_incremental_bytes + snapshot.reserve_bytes
+        if (snapshot.active_leases != 1
+                or snapshot.committed_incremental_bytes != resident_lease.estimated_incremental_bytes
+                or budget.active_leases() != (resident_lease,)
+                or resident_lease.released):
+            raise RuntimeError('resident reservation changed before the model copy')
         if (committed > memory.device_free_bytes
                 or memory.process_reserved_bytes + committed > memory.device_total_bytes):
             from .memory_budget import AdmissionError
@@ -326,7 +592,7 @@ def _run_bound_owner_inner(session, device_lease, *, backend, registry,
 
     def verify_drain():
         try:
-            if worker.quarantined:
+            if worker.quarantined or broker.quarantined:
                 return False
             active = budget.active_leases()
             if (len(active) != 1 or active[0] is not resident_lease
@@ -338,7 +604,7 @@ def _run_bound_owner_inner(session, device_lease, *, backend, registry,
             backend.synchronize()
             verify_binding()
             active = budget.active_leases()
-            return (not worker.quarantined and len(active) == 1
+            return (not worker.quarantined and not broker.quarantined and len(active) == 1
                     and active[0] is resident_lease and not resident_lease.released
                     and not resident_lease.trace_bytes('gpu')
                     and not resident_lease.trace_bytes('host'))

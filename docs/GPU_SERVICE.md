@@ -15,7 +15,9 @@ constructed live keys, retains the model-load reservation until process exit,
 and repeats the lease, runtime, and headroom checks before copying weights.
 The actual CPU model must pass an explicit verifier before that copy. At
 shutdown, the owner distinguishes workload failure from verified device drain;
-unverified state latches process quarantine and retains reachable resources.
+worker or broker quarantine prevents attestation, including a quarantine
+observed after synchronization. Unverified state latches process quarantine
+and retains reachable resources.
 These ordering checks are CPU-tested with fakes, including real supervisor
 subprocesses and an authenticated two-team CPU service. They do not establish
 that the GPU path works on this machine.
@@ -28,6 +30,19 @@ must use the same canonical project workspace root for device coordination.
 The runtime UUID representation also requires verification against the actual
 device under supervision. A missing prerequisite must fail before launching an
 owner; an uncertain owner must exit with its sticky marker intact.
+
+The in-progress direct-child bootstrap suppresses site initialization and
+pre-execution `PYTHONPATH`, keeps the standard library before project paths,
+and rejects sourceless bytecode and origins absent from its source manifest.
+It compiles project and environment Python code from the same bytes it hashes.
+For native extensions it checks bytes before the OS opens the path; that is not
+an atomic native-load verification. The frozen checkout, environment and
+private cache directory must remain trusted and unchanged for the owner
+lifetime. The source manifest also does not hash every OS or driver component.
+These checks do not create a sandbox against arbitrary native code.
+The direct-child import guard has also been exercised on CPU against the
+installed PyTorch and transformer dependency imports using a synthetic
+dry-run inventory; this is not a production source manifest or profile.
 
 ## Development incident: unintended CUDA query
 

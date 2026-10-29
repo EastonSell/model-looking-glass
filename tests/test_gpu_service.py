@@ -13,17 +13,20 @@ import os
 from pathlib import Path
 import sys
 import subprocess
+import py_compile
 import tempfile
 import weakref
 from dataclasses import asdict, dataclass, replace
 import hashlib
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from looking_glass.memory_budget import AdmissionError, CudaMemorySnapshot
 from looking_glass import gpu_service
 from looking_glass.gpu_service import (_canonical_runtime_uuid, _run_bound_owner,
-                                       _TorchServiceBackend, _validate_service_keys)
+    _TorchServiceBackend, _validate_service_keys, ProfileFiles, _load_profile_registry,
+    _child_environment, _base_interpreter, _direct_command)
 
 
 GIB = 1024 ** 3
@@ -142,6 +145,10 @@ class FakeWorker:
     quarantined = False
 
 
+class FakeBroker:
+    quarantined = False
+
+
 class UuidRendering:
     def __init__(self, value):
         self.value = value
@@ -197,6 +204,8 @@ class FakeKey:
     sequence_length: int = 2
     input_dtypes: tuple = (('input_ids', 'torch.int64'),)
     output_limit_bytes: int = 512 * 1024
+    warmup_protocol_sha256: str = '84b21a9ba63413bb9394dbac6d31dbc08ce3171508a25477f44e596be579760c'
+    capture_policy_sha256: str = '1ec2c8752f73cab7403fa9012e0796de77fdd87eb395a7cbc796044bf1643250'
 
 
 def service_keys():
@@ -219,6 +228,9 @@ class KeyContractTests(unittest.TestCase):
             (load, replace(cold, attention_backend='sdpa'), replace(warm, attention_backend='sdpa')),
             (load, replace(cold, use_cache=True), replace(warm, use_cache=True)),
             (load, replace(cold, capture_mode='direct'), replace(warm, capture_mode='direct')),
+            (load, replace(cold, warmup_protocol_sha256='f' * 64),
+             replace(warm, warmup_protocol_sha256='f' * 64)),
+            (replace(load, capture_policy_sha256='f' * 64), cold, warm),
             (load, replace(cold, output_limit_bytes=2 * 1024 * 1024),
              replace(warm, output_limit_bytes=2 * 1024 * 1024)),
         ]
@@ -228,19 +240,19 @@ class KeyContractTests(unittest.TestCase):
                     _validate_service_keys(identity, keys)
 
 
-def measured_keys_and_registry():
+def measured_keys_and_registry(*, source_sha=None):
     from looking_glass.resource_profile import (WorkloadKey, MemorySample,
         ProfileProvenance, MeasuredResourceProfile, ProfileRegistry,
         encode_evidence, model_runtime_fingerprint)
     keys = []
     for template in service_keys():
         fields = asdict(template)
-        fields.update(source_sha256='1' * 64, runtime_settings_sha256='2' * 64,
+        fields.update(source_sha256=source_sha or hashlib.sha256(b'fake-source-manifest').hexdigest(),
+                      runtime_settings_sha256='2' * 64,
                       torch_version='2.8.0+cu128', transformers_version='4.57.3',
                       cuda_runtime_version='12.8', driver_version='570.0',
                       python_version='3.11.15', device_name='fake CPU-test device',
-                      compute_capability=(7, 5), device_total_bytes=8 * GIB,
-                      warmup_protocol_sha256='3' * 64, capture_policy_sha256='4' * 64)
+                      compute_capability=(7, 5), device_total_bytes=8 * GIB)
         fields['model_id'] = model_runtime_fingerprint(fields)
         keys.append(WorkloadKey(**fields))
     records = []
@@ -250,13 +262,308 @@ def measured_keys_and_registry():
         sample = MemorySample(key.fingerprint(), f'fake-{index}', '5' * 64, 17,
                               'completed', before, after, 1024, 2048)
         evidence = encode_evidence(key, (sample,))
-        provenance = ProfileProvenance('resource-profile-v1', '6' * 64,
+        provenance = ProfileProvenance('resource-profile-v1', hashlib.sha256(b'fake-source-manifest').hexdigest(),
             hashlib.sha256(evidence).hexdigest(), '2026-10-28T00:00:00Z',
             'cooperative-exclusive', 'synchronize-reset-synchronize')
         records.append(MeasuredResourceProfile.build(key, (sample,), provenance,
                                                        margin_bytes=1024, margin_bps=0))
     registry = ProfileRegistry(tuple(records), approved_profile_ids=tuple(p.profile_id for p in records))
     return tuple(keys), registry
+
+
+def write_profile_files(directory, *, source_sha=None):
+    from looking_glass.resource_profile import encode_evidence
+    keys, registry = measured_keys_and_registry(source_sha=source_sha)
+    records = []
+    for index, key in enumerate(keys):
+        profile = registry.resolve(key)
+        document = Path(directory) / f'profile-{index}.json'
+        evidence = Path(directory) / f'evidence-{index}.json'
+        manifest = Path(directory) / f'manifest-{index}.json'
+        document.write_text(profile.to_json(), encoding='utf-8')
+        evidence.write_bytes(encode_evidence(key, profile.samples))
+        manifest.write_bytes(b'fake-source-manifest')
+        records.append(ProfileFiles(document, evidence, manifest, profile.profile_id))
+    return tuple(records), keys
+
+
+class CpuProfilePreflightTests(unittest.TestCase):
+    def test_profile_source_key_must_match_the_saved_manifest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            files, _ = write_profile_files(directory, source_sha='1' * 64)
+            with self.assertRaisesRegex(ValueError, 'source manifest'):
+                _load_profile_registry(files, SimpleNamespace(gpu_uuid=UUID))
+    def test_only_independently_pinned_untampered_profiles_form_registry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            files, keys = write_profile_files(directory)
+            identity = SimpleNamespace(gpu_uuid=UUID)
+            registry, declared = _load_profile_registry(files, identity)
+            self.assertEqual(declared, keys)
+            self.assertEqual(registry.resolve(keys[0]).profile_id, files[0].approved_profile_id)
+            files[1].evidence.write_bytes(b'tampered')
+            with self.assertRaisesRegex(ValueError, 'evidence'):
+                _load_profile_registry(files, identity)
+
+    def test_missing_profile_or_untrusted_pin_fails_before_any_owner_start(self):
+        with tempfile.TemporaryDirectory() as directory:
+            files, _ = write_profile_files(directory)
+            identity = SimpleNamespace(gpu_uuid=UUID)
+            with self.assertRaises(ValueError):
+                _load_profile_registry(files[:2], identity)
+            changed_pin = replace(files[0], approved_profile_id='f' * 64)
+            with self.assertRaisesRegex(ValueError, 'approved'):
+                _load_profile_registry((changed_pin,) + files[1:], identity)
+            files[2].document.unlink()
+            with self.assertRaises(FileNotFoundError):
+                _load_profile_registry(files, identity)
+
+
+class ChildEnvironmentTests(unittest.TestCase):
+    def make_manifest(self, root, repo, site, *, included=None):
+        included = included or ('looking_glass/__init__.py', 'looking_glass/gpu_service.py')
+        records = []
+        for name in included:
+            content = (repo / name).read_bytes()
+            records.append({'path': name, 'size': len(content),
+                            'sha256': hashlib.sha256(content).hexdigest()})
+        python_bytes = Path(_base_interpreter()).read_bytes()
+        manifest = {'schema': 'resource-bootstrap-source-v1',
+                    'git_commit': '0' * 40, 'git_tree': '1' * 40,
+                    'python_executable': {'size': len(python_bytes),
+                        'sha256': hashlib.sha256(python_bytes).hexdigest()},
+                    'repository_files': sorted(records, key=lambda item: item['path']),
+                    'distributions': []}
+        encoded = json.dumps(manifest, sort_keys=True, ensure_ascii=False,
+                             separators=(',', ':')).encode('utf-8')
+        path = root / 'source.json'
+        path.write_bytes(encoded)
+        return path, hashlib.sha256(encoded).hexdigest()
+
+    def test_only_reviewed_controls_are_inherited_for_preflight_and_owner(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, site, cache = (root / name for name in ('repo', 'site', 'empty-cache'))
+            for path in (repo, site, cache):
+                path.mkdir()
+            (repo / 'looking_glass').mkdir()
+            inherited = {'PATH': 'trusted-system-path', 'PYTHONHOME': 'unsafe',
+                         'CUDA_LAUNCH_BLOCKING': '1', 'TORCH_EXTRA': 'unsafe',
+                         'HF_TOKEN': 'secret-should-not-be-in-owner',
+                         'LD_PRELOAD': 'unsafe', 'DYLD_INSERT_LIBRARIES': 'unsafe',
+                         'UNRELATED': 'kept'}
+            owner = _child_environment(repo, site, cache, UUID, inherited, cpu_preflight=False)
+            cpu = _child_environment(repo, site, cache, UUID, inherited, cpu_preflight=True)
+            self.assertEqual(owner['CUDA_VISIBLE_DEVICES'], UUID)
+            self.assertEqual(cpu['CUDA_VISIBLE_DEVICES'], '')
+            self.assertNotIn('PYTHONPATH', owner)
+            self.assertEqual(owner['PYTHONPYCACHEPREFIX'], str(cache))
+            self.assertEqual(owner['PYTHONDONTWRITEBYTECODE'], '1')
+            self.assertEqual(owner['PYTORCH_CUDA_ALLOC_CONF'], 'backend:native')
+            self.assertEqual(owner['PATH'], 'trusted-system-path')
+            self.assertEqual(owner['UNRELATED'], 'kept')
+            for name in ('PYTHONHOME', 'CUDA_LAUNCH_BLOCKING', 'TORCH_EXTRA', 'HF_TOKEN',
+                         'LD_PRELOAD', 'DYLD_INSERT_LIBRARIES'):
+                self.assertNotIn(name, owner)
+
+    def test_nonempty_or_ambiguous_import_cache_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, site, cache = (root / name for name in ('repo', 'site', 'cache'))
+            for path in (repo, site, cache):
+                path.mkdir()
+            (repo / 'looking_glass').mkdir()
+            (cache / 'stale.pyc').write_bytes(b'not-empty')
+            with self.assertRaisesRegex(ValueError, 'empty'):
+                _child_environment(repo, site, cache, UUID, {}, cpu_preflight=False)
+
+    def test_direct_interpreter_is_absolute_and_exists(self):
+        path = _base_interpreter()
+        self.assertTrue(Path(path).is_absolute())
+        self.assertTrue(Path(path).is_file())
+
+    def test_direct_bootstrap_disables_site_and_keeps_stdlib_first(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, site, cache = (root / name for name in ('repo', 'site', 'cache'))
+            for path in (repo, site, cache):
+                path.mkdir()
+            package = repo / 'looking_glass'
+            package.mkdir()
+            (package / '__init__.py').write_text('', encoding='utf-8')
+            (repo / 'random.py').write_text("raise RuntimeError('shadowed random')", encoding='utf-8')
+            (repo / '_tracemalloc.py').write_text("raise RuntimeError('shadowed builtin')", encoding='utf-8')
+            (site / 'email').mkdir()
+            (site / 'email' / '__init__.py').write_text("raise RuntimeError('shadowed email')", encoding='utf-8')
+            (package / 'gpu_service.py').write_text(
+                'import json, sys, random, email, _tracemalloc\n'
+                "print(json.dumps({'path': sys.path, 'random': random.__file__, 'email': email.__file__, 'builtin': _tracemalloc.__spec__.origin}))\n",
+                encoding='utf-8')
+            manifest, digest = self.make_manifest(root, repo, site)
+            env = _child_environment(repo, site, cache, UUID, dict(os.environ), cpu_preflight=True)
+            base = _base_interpreter()
+            baseline = subprocess.run([base, '-S', '-P', '-c',
+                'import json,sys; print(json.dumps(sys.path))'], env=env, cwd=str(root),
+                check=True, capture_output=True, text=True, timeout=20)
+            child = subprocess.run(_direct_command(repo, site, site, manifest, digest, ()), env=env, cwd=str(root),
+                check=True, capture_output=True, text=True, timeout=20)
+            observed = json.loads(child.stdout)
+            expected = json.loads(baseline.stdout) + [str(repo), str(site)]
+            self.assertEqual(observed['path'], expected)
+            self.assertNotEqual(Path(observed['random']), repo / 'random.py')
+            self.assertNotEqual(Path(observed['email']), site / 'email' / '__init__.py')
+            self.assertEqual(observed['builtin'], 'built-in')
+            self.assertFalse(any(cache.iterdir()))
+
+    def test_direct_bootstrap_rejects_untracked_sourceless_bytecode(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, site, cache = (root / name for name in ('repo', 'site', 'cache'))
+            for path in (repo, site, cache):
+                path.mkdir()
+            package = repo / 'looking_glass'
+            package.mkdir()
+            (package / '__init__.py').write_text('', encoding='utf-8')
+            marker = root / 'executed.txt'
+            source = package / 'sourceless.py'
+            source.write_text(f'from pathlib import Path\nPath({str(marker)!r}).write_text("executed")\n',
+                              encoding='utf-8')
+            py_compile.compile(str(source), cfile=str(package / 'sourceless.pyc'), doraise=True)
+            source.unlink()
+            (package / 'gpu_service.py').write_text('from . import sourceless\n', encoding='utf-8')
+            manifest, digest = self.make_manifest(root, repo, site)
+            env = _child_environment(repo, site, cache, UUID, dict(os.environ), cpu_preflight=True)
+            child = subprocess.run(_direct_command(repo, site, site, manifest, digest, ()), env=env, cwd=str(root),
+                                   capture_output=True, text=True, timeout=20)
+            self.assertNotEqual(child.returncode, 0)
+            self.assertIn('sourceless bytecode', child.stderr)
+            self.assertFalse(marker.exists())
+
+    def test_direct_bootstrap_rejects_unlisted_or_modified_source_before_execution(self):
+        for modified in (False, True):
+            with self.subTest(modified=modified), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                repo, site, cache = (root / name for name in ('repo', 'site', 'cache'))
+                for path in (repo, site, cache):
+                    path.mkdir()
+                package = repo / 'looking_glass'
+                package.mkdir()
+                (package / '__init__.py').write_text('', encoding='utf-8')
+                target = package / 'sneaky.py'
+                marker = root / 'executed.txt'
+                target.write_text(f'from pathlib import Path\nPath({str(marker)!r}).write_text("executed")\n',
+                                  encoding='utf-8')
+                (package / 'gpu_service.py').write_text('from . import sneaky\n', encoding='utf-8')
+                included = ('looking_glass/__init__.py', 'looking_glass/gpu_service.py')
+                if modified:
+                    included += ('looking_glass/sneaky.py',)
+                manifest, digest = self.make_manifest(root, repo, site, included=included)
+                if modified:
+                    target.write_text(target.read_text(encoding='utf-8') + '\n# changed\n', encoding='utf-8')
+                env = _child_environment(repo, site, cache, UUID, dict(os.environ), cpu_preflight=True)
+                child = subprocess.run(_direct_command(repo, site, site, manifest, digest, ()),
+                                       env=env, cwd=str(root), capture_output=True, text=True, timeout=20)
+                self.assertNotEqual(child.returncode, 0)
+                self.assertIn('source identity', child.stderr)
+                self.assertFalse(marker.exists())
+
+    def test_direct_bootstrap_rejects_unlisted_native_extension_before_load(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, site, cache = (root / name for name in ('repo', 'site', 'cache'))
+            for path in (repo, site, cache):
+                path.mkdir()
+            package = repo / 'looking_glass'
+            package.mkdir()
+            (package / '__init__.py').write_text('', encoding='utf-8')
+            (package / 'gpu_service.py').write_text('from . import fake_extension\n', encoding='utf-8')
+            # The file is intentionally not a valid library. A source-identity
+            # rejection proves the OS loader was not allowed to open it.
+            import importlib.machinery
+            suffix = importlib.machinery.EXTENSION_SUFFIXES[-1]
+            (package / ('fake_extension' + suffix)).write_bytes(b'unapproved native library')
+            manifest, digest = self.make_manifest(root, repo, site)
+            env = _child_environment(repo, site, cache, UUID, dict(os.environ), cpu_preflight=True)
+            child = subprocess.run(_direct_command(repo, site, site, manifest, digest, ()),
+                env=env, cwd=str(root), capture_output=True, text=True, timeout=20)
+            self.assertNotEqual(child.returncode, 0)
+            self.assertIn('source identity', child.stderr)
+
+    def test_real_cpu_dependency_imports_work_with_recorded_origins(self):
+        """Exercise the actual installed stack, while explicitly hiding CUDA.
+
+        This fixture records resolved import candidates in a separate CPU-only
+        dry run, including failed or transient imports; it is not an approved
+        resource/source manifest or a GPU profile.
+        """
+        site = Path(sys.prefix) / 'Lib' / 'site-packages'
+        environment = Path(sys.prefix).resolve()
+        if not site.is_dir():
+            self.skipTest('the shared Windows venv is unavailable')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, cache = root / 'repo', root / 'cache'
+            repo.mkdir()
+            cache.mkdir()
+            package = repo / 'looking_glass'
+            package.mkdir()
+            (package / '__init__.py').write_text('', encoding='utf-8')
+            (package / 'gpu_service.py').write_text(
+                'import torch\n'
+                'def deny(*a, **k): raise RuntimeError("CPU guarded run reached CUDA")\n'
+                'torch.cuda.device_count = deny\n'
+                'torch.cuda.get_device_properties = deny\n'
+                'torch.cuda.is_available = deny\n'
+                'torch.cuda._lazy_init = deny\n'
+                'import transformers, safetensors, tokenizers, huggingface_hub, numpy\n'
+                "print('verified-cpu-imports')\n", encoding='utf-8')
+            env = _child_environment(repo, site, cache, UUID, dict(os.environ), cpu_preflight=True)
+            dry_source = (
+                'import sys,json,importlib.machinery\n'
+                f'sys.path.extend([{str(repo)!r}, {str(site)!r}])\n'
+                'found = set()\n'
+                'class RecordingFinder:\n'
+                ' def find_spec(self, fullname, path=None, target=None):\n'
+                '  spec = importlib.machinery.PathFinder.find_spec(fullname, path, target)\n'
+                '  if spec is not None and spec.origin: found.add(spec.origin)\n'
+                '  return spec\n'
+                'sys.meta_path.insert(sys.meta_path.index(importlib.machinery.PathFinder), RecordingFinder())\n'
+                'import torch\n'
+                'def deny(*a, **k): raise RuntimeError("CPU dry run reached CUDA")\n'
+                'torch.cuda.device_count = deny\n'
+                'torch.cuda.get_device_properties = deny\n'
+                'torch.cuda.is_available = deny\n'
+                'torch.cuda._lazy_init = deny\n'
+                'import transformers,safetensors,tokenizers,huggingface_hub,numpy\n'
+                'found.update(str(getattr(m,"__file__","")) for m in '
+                'list(sys.modules.values()) if getattr(m,"__file__",None))\n'
+                'print(json.dumps(sorted(found)))\n'
+            )
+            dry = subprocess.run([_base_interpreter(), '-S', '-P', '-c', dry_source],
+                                 env=env, cwd=str(root), capture_output=True, text=True,
+                                 check=True, timeout=60)
+            module_paths = json.loads(dry.stdout.splitlines()[-1])
+            files = []
+            for name in module_paths:
+                path = Path(name).resolve()
+                if path.is_file() and path.is_relative_to(environment):
+                    data = path.read_bytes()
+                    files.append({'path': path.relative_to(environment).as_posix(),
+                                  'size': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
+            self.assertTrue(files)
+            manifest, _ = self.make_manifest(root, repo, site)
+            document = json.loads(manifest.read_text(encoding='utf-8'))
+            document['distributions'] = [{'name': 'test-dry-run', 'version': '0',
+                                           'files': sorted(files, key=lambda item: item['path'])}]
+            encoded = json.dumps(document, sort_keys=True, ensure_ascii=False,
+                                 separators=(',', ':')).encode('utf-8')
+            manifest.write_bytes(encoded)
+            digest = hashlib.sha256(encoded).hexdigest()
+            verified = subprocess.run(_direct_command(repo, site, environment, manifest, digest, ()),
+                                      env=env, cwd=str(root), capture_output=True, text=True,
+                                      timeout=60)
+            self.assertEqual(verified.returncode, 0, verified.stderr)
+            self.assertIn('verified-cpu-imports', verified.stdout)
+            self.assertFalse(any(cache.iterdir()))
 
 
 class ConcreteBackendContractTests(unittest.TestCase):
@@ -402,7 +709,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
 
 class FakeBackend:
     def __init__(self, events, *, free=7 * GIB, missing=False,
-                 quarantined=False, dangling=False, failure=False):
+                 quarantined=False, broker_quarantined=False, dangling=False, failure=False):
         self.events = events
         self.free = free
         self.missing = missing
@@ -410,6 +717,8 @@ class FakeBackend:
         self.failure = failure
         self.worker = FakeWorker()
         self.worker.quarantined = quarantined
+        self.broker = FakeBroker()
+        self.broker.quarantined = broker_quarantined
         self.budget = None
         self.load_lease = None
         self.keys = service_keys()
@@ -438,7 +747,7 @@ class FakeBackend:
         assert load_lease in budget.active_leases()
         if self.dangling:
             budget.acquire(1, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
-        return self.worker, object(), object()
+        return self.worker, self.broker, object()
 
     def synchronize(self):
         self.events.append('synchronize')
@@ -565,7 +874,7 @@ class OwnerOrderTests(unittest.TestCase):
         self.assertIn('attest', events)
 
     def test_quarantine_or_extra_lease_prevents_attestation(self):
-        for kwargs in ({'quarantined': True}, {'dangling': True}):
+        for kwargs in ({'quarantined': True}, {'broker_quarantined': True}, {'dangling': True}):
             with self.subTest(kwargs=kwargs):
                 gpu_service._QUARANTINE_HOLDS.clear()
                 gpu_service._QUARANTINED.clear()
@@ -573,6 +882,18 @@ class OwnerOrderTests(unittest.TestCase):
                 result = self.run_owner(session, backend)
                 self.assertFalse(result.teardown_verified)
                 self.assertNotIn('attest', events)
+
+    def test_broker_quarantine_during_sync_prevents_attestation(self):
+        events, session, backend = self.setup_run()
+        def quarantine_during_sync():
+            events.append('synchronize')
+            backend.broker.quarantined = True
+        backend.synchronize = quarantine_during_sync
+        result = self.run_owner(session, backend)
+        self.assertEqual(result.status, 'quarantined')
+        self.assertFalse(result.teardown_verified)
+        self.assertTrue(gpu_service._QUARANTINED.is_set())
+        self.assertNotIn('attest', events)
 
     def test_synchronization_failure_prevents_attestation(self):
         events, session, backend = self.setup_run()
