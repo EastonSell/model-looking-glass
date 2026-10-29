@@ -21,15 +21,15 @@ class HandoffProtocolError(RuntimeError):
 
 
 class HandoffFailure(RuntimeError):
-    """A target failed after claiming a ticket; its owner must record failure."""
+    """A handoff ended after claim; the owner must reconcile its outcome."""
 
     def __init__(self, ticket):
-        super().__init__('handoff failed after a waiter was claimed')
+        super().__init__('handoff ended after a waiter was claimed; reconcile its outcome')
         self.ticket = ticket
 
 
 class FatalHandoffFailure(BaseException):
-    """A fatal target error after claim; supervisors must terminally fail it."""
+    """A fatal handoff error after claim; the owner must reconcile it."""
 
     def __init__(self, ticket):
         super().__init__('fatal handoff error after a waiter was claimed')
@@ -84,6 +84,7 @@ class ExperimentalFairAdapter:
         self._sizes = {}
         self._tickets = {}
         self._closed = False
+        self._indeterminate = False
         # A concrete broker target can reserve itself for exactly one waiting
         # adapter and validate the canonical team set. This hook is trusted,
         # like the target's atomic handoff implementation itself.
@@ -126,12 +127,11 @@ class ExperimentalFairAdapter:
 
     def cancel(self, credential, ticket):
         principal = self._verify(credential)
-        if (type(ticket) is not WaitingTicket or type(ticket.namespace) is not str or
-                type(ticket.sequence) is not int or ticket.sequence <= 0):
-            raise ValueError('invalid waiting ticket')
-        if ticket.namespace != self._namespace:
+        if not self._owns_ticket_namespace(ticket):
             return False
         with self._lock:
+            if self._indeterminate:
+                raise AdapterClosed('claim state is unknown; close and reconcile outstanding tickets')
             owner = self._owners.get(ticket.sequence)
             if owner is None:
                 return False
@@ -144,8 +144,34 @@ class ExperimentalFairAdapter:
             del self._tickets[ticket.sequence]
             return True
 
+    def _owns_ticket_namespace(self, ticket):
+        if (type(ticket) is not WaitingTicket or type(ticket.namespace) is not str or
+                type(ticket.sequence) is not int or ticket.sequence <= 0):
+            raise ValueError('invalid waiting ticket')
+        return ticket.namespace == self._namespace
+
+    def recover_receipt(self, ticket):
+        """Trusted service owner lookup after an interrupted handoff."""
+        if not self._owns_ticket_namespace(ticket):
+            return None
+        recover = getattr(self._target, 'recover_receipt', None)
+        if not callable(recover):
+            raise TypeError('target does not support recoverable receipts')
+        return recover(ticket.sequence)
+
+    def acknowledge_receipt(self, ticket, handle):
+        """Trusted owner confirms it has separately budgeted result custody."""
+        if not self._owns_ticket_namespace(ticket):
+            return False
+        acknowledge = getattr(self._target, 'acknowledge_receipt', None)
+        if not callable(acknowledge):
+            raise TypeError('target does not support recoverable receipts')
+        return acknowledge(ticket.sequence, handle)
+
     def transfer_next(self):
         with self._lock:
+            if self._indeterminate:
+                raise AdapterClosed('claim state is unknown; close and reconcile outstanding tickets')
             if self._closed:
                 return None
         state_lock = Lock()
@@ -167,13 +193,21 @@ class ExperimentalFairAdapter:
                         return None
                     try:
                         request = self._queue.claim_next(eligible)
+                        claimed = self._tickets[request.ticket_id]
+                        del self._sizes[request.ticket_id]
+                        del self._owners[request.ticket_id]
+                        del self._tickets[request.ticket_id]
+                        return request
                     except AdmissionEmpty:
                         return None
-                    claimed = self._tickets[request.ticket_id]
-                    del self._sizes[request.ticket_id]
-                    del self._owners[request.ticket_id]
-                    del self._tickets[request.ticket_id]
-                    return request
+                    except BaseException:
+                        # The queue might have removed a waiter before an
+                        # asynchronous interruption or failed allocation. Do
+                        # not offer more work or guess which ticket moved. The
+                        # owner must close and reconcile all outstanding IDs.
+                        self._indeterminate = True
+                        self._closed = True
+                        raise
 
         try:
             receipt = self._target.accept_next(claim)
@@ -208,6 +242,7 @@ class ExperimentalFairAdapter:
             tickets = tuple(self._tickets.values())
             removed = self._queue.drain()
             self._closed = True
+            self._indeterminate = False
             self._owners.clear()
             self._sizes.clear()
             self._tickets.clear()

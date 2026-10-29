@@ -7,6 +7,7 @@ from unittest import mock
 import unittest
 
 from looking_glass import pretrained_exposures_v3 as exposures
+from looking_glass import pretrained_exposures_v4 as later_exposures
 from looking_glass import pretrained_number_commitments as study
 
 
@@ -149,6 +150,19 @@ class NumberCommitmentTests(unittest.TestCase):
         for nonce in (b"", b"x" * 31, b"x" * 33, bytearray(32), "0" * 64):
             with self.subTest(nonce_type=type(nonce)), self.assertRaises(ValueError):
                 study.sample_families(self.freeze, nonce, **self.inventory_kwargs, **self.site_kwargs)
+
+    def test_reviewed_v4_snapshot_binds_fabricated_seal_and_reveal(self):
+        snapshot = study.load_inventory_snapshot(later_exposures.canonical_inventory_bytes(),
+                                                 later_exposures.INVENTORY_SHA256)
+        options = {"inventory_snapshot": snapshot, "current_inventory_sha256": snapshot.sha256}
+        allocation = study.sample_families(self.freeze, FAKE_NONCE, **options, **self.site_kwargs)
+        self.assertEqual(allocation.families, self.allocation.families)
+        sealed = study.seal_heldout(self.freeze, FAKE_NONCE, self.fake_cases(), allocation=allocation,
+                                    **options, **self.site_kwargs)
+        self.assertEqual(json.loads(sealed.record_bytes)["exposure_inventory_sha256"], snapshot.sha256)
+        self.assertTrue(study.verify_heldout_reveal(self.freeze, FAKE_NONCE, sealed.record_bytes,
+                                                    sealed.commitment_sha256, inventory_snapshot=snapshot,
+                                                    **self.site_kwargs))
 
     def test_site_commitment_and_reveal_follow_exact_domains(self):
         sealed = study.seal_site(FAKE_NONCE, "d" * 40)
