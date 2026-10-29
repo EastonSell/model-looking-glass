@@ -94,6 +94,8 @@ The [grouped DistilGPT2 GPU pilot](results/grouped-gpu-resource-v3-20261029/READ
 
 The [two-client GPU bootstrap](results/serial-two-client-gpu-bootstrap-v1-20261029/README.md) completed two fixed requests with overlapping outstanding client work but serial broker service. It did not retain serving-time GPU memory, independent full-logit correctness checks, or a matched throughput baseline. Its source-specific, zero-trace results do not establish sustained fairness, batching performance, or a general memory bound.
 
+A [later two-client serving-memory observation](results/serial-two-client-serving-memory-v1-20261029/README.md) recorded six device-wide free-memory points and process-local allocator peaks for the same fixed input shape. It is not a throughput benchmark or a general memory bound.
+
 The [DistilGPT2 agreement preflight](results/distilgpt2-agreement-preflight-v1-20261028/README.md) found the grammatical verb preferred on all 16 fixed public development prompts; it establishes a small behavior to investigate, not a held-out or causal result.
 
 The independently audited [agreement discovery](results/distilgpt2-natural-agreement-v1-20261028/README.md) selected the layer 3 attention output at the final token. Across four public families, opposite-number donors caused a mean 3.095-logit greater shift away from the target's present-tense agreement margin than same-number donors. They reversed the margin in 10 of 32 donor–target pairs involving six distinct targets, versus none of 32 same-number pairs. These are development results, and a shift can reflect weakening rather than transfer of number information; held-out prediction remains to be tested.
