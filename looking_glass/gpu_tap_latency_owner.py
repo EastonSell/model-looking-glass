@@ -76,14 +76,28 @@ def _activity_interpretation(screen, exploratory_desktop):
     raise RuntimeError("activity screen is " + str(screen.get("status")))
 
 
+def _valid_process_query(query, phase, gpu_uuid):
+    """Check the private process rows and PID projection before classifying."""
+    if (type(gpu_uuid) is not str or not gpu_uuid
+            or type(query) is not dict or query.get("phase") != phase or query.get("ok") is not True
+            or query.get("other_gpu_uuids") != [] or type(query.get("pids")) is not list
+            or type(query.get("processes")) is not list):
+        return False
+    processes = query["processes"]
+    if any(type(row) is not dict or set(row) != {"gpu_uuid", "pid", "name"}
+           or type(row["gpu_uuid"]) is not str or row["gpu_uuid"].casefold() != gpu_uuid.casefold()
+           or type(row["pid"]) is not int or row["pid"] <= 0
+           or type(row["name"]) is not str or not row["name"].strip() for row in processes):
+        return False
+    return (all(type(pid) is int and pid > 0 for pid in query["pids"])
+            and [row["pid"] for row in processes] == query["pids"])
+
+
 def _initial_monitor_issue(observations, errors, process_query, gpu_uuid, now_ns=None):
     """Require available, time-bounded telemetry before beginning a workload."""
     if errors:
         return "telemetry query failed before the workload"
-    if (type(process_query) is not dict or process_query.get("phase") != "before"
-            or process_query.get("ok") is not True or process_query.get("other_gpu_uuids") != []
-            or type(process_query.get("pids")) is not list
-            or any(type(pid) is not int or pid <= 0 for pid in process_query["pids"])):
+    if not _valid_process_query(process_query, "before", gpu_uuid):
         return "compute process query was unavailable before the workload"
     start, end = (process_query.get(key) for key in
                   ("query_started_monotonic_ns", "query_ended_monotonic_ns"))
@@ -810,14 +824,13 @@ def run_controller(*, output, workspace_root, cache_dir, smi, exclusive=False,
         if (type(started_ns) is not int or type(ended_ns) is not int or not 0 <= started_ns < ended_ns
                 or not isinstance(queries, list) or len(queries) != 2
                 or queries[0].get("phase") != "before" or queries[1].get("phase") != "after"
-                or any(query.get("ok") is not True or query.get("other_gpu_uuids") != []
+                or any(not _valid_process_query(query, phase, inventory["uuid"])
                     or type(query.get("observed_monotonic_ns")) is not int
                     or type(query.get("query_started_monotonic_ns")) is not int
                     or type(query.get("query_ended_monotonic_ns")) is not int
                     or not 0 <= query["query_started_monotonic_ns"] <= query["query_ended_monotonic_ns"]
                     or query["observed_monotonic_ns"] != query["query_started_monotonic_ns"]
-                    or type(query.get("pids")) is not list or any(type(pid) is not int or pid <= 0
-                    for pid in query["pids"]) for query in queries)
+                    for query, phase in zip(queries, ("before", "after")))
                 or queries[0]["query_ended_monotonic_ns"] > started_ns
                 or started_ns - queries[0]["query_started_monotonic_ns"] > 2_000_000_000
                 or queries[1]["query_started_monotonic_ns"] < ended_ns):

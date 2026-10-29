@@ -371,6 +371,7 @@ class EvidenceBoundaryTests(unittest.TestCase):
                  "query_ended_monotonic_ns": n * 100 + 1, "observed_monotonic_ns": n * 100 + 1}
                 for n in range(3)]
         query = {"phase": "before", "ok": True, "pids": [123], "other_gpu_uuids": [],
+                 "processes": [{"gpu_uuid": "GPU-test", "pid": 123, "name": "python.exe"}],
                  "observed_monotonic_ns": 100, "query_started_monotonic_ns": 100,
                  "query_ended_monotonic_ns": 150}
         self.assertIsNone(owner._initial_monitor_issue(rows, [], query, "GPU-test"))
@@ -393,6 +394,12 @@ class EvidenceBoundaryTests(unittest.TestCase):
         self.assertIn("invalid timestamps", owner._initial_monitor_issue(rows, [], future_query, "GPU-test", 300))
         foreign_device = dict(query, other_gpu_uuids=["GPU-other"])
         self.assertIn("unavailable", owner._initial_monitor_issue(rows, [], foreign_device, "GPU-test", 300))
+        mismatched_pid = dict(query, processes=[{"gpu_uuid": "GPU-test", "pid": 999, "name": "other.exe"}])
+        self.assertIn("unavailable", owner._initial_monitor_issue(rows, [], mismatched_pid, "GPU-test", 300))
+        mismatched_gpu = dict(query, processes=[{"gpu_uuid": "GPU-other", "pid": 123, "name": "python.exe"}])
+        self.assertIn("unavailable", owner._initial_monitor_issue(rows, [], mismatched_gpu, "GPU-test", 300))
+        invalid_name = dict(query, processes=[{"gpu_uuid": "GPU-test", "pid": 123, "name": " "}])
+        self.assertIn("unavailable", owner._initial_monitor_issue(rows, [], invalid_name, "GPU-test", 300))
 
     def test_compute_process_query_validates_all_rows_and_records_bounds(self):
         uuid = "GPU-12345678-1234-1234-1234-123456789abc"

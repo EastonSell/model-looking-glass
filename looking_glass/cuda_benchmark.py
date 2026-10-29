@@ -398,7 +398,7 @@ def _query_compute_processes(smi, gpu_uuid, phase):
             uuid, pid, name = _parse_compute_process_row(row)
             if uuid.casefold() == gpu_uuid.casefold():
                 result["pids"].append(pid)
-                result["processes"].append({"pid": pid, "name": name})
+                result["processes"].append({"gpu_uuid": uuid, "pid": pid, "name": name})
             else:
                 result["other_gpu_uuids"].append(uuid)
         result["ok"] = True
