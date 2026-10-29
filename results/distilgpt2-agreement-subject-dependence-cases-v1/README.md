@@ -34,8 +34,8 @@ the full 128-row reconstructed original support and 256-row public successor
 pool; its [digest-only receipt](natural-support-comparison.json) reports no
 complete-row-prefix relation. Coverage of the old sealed split is conditional
 on the recorded source-bound sampler and tokenizer preparation; this is not
-an inspection of private membership. At that observation no successor split
-or nonce existed. The injection custodian reported no protected rows and a
+an inspection of private membership. The custodian separately reported that no successor split or nonce existed
+at that observation. The injection custodian reported no protected rows and a
 scoped no-direct-target-conflict assessment for the fixed L3-final attention
 site. Refresh the applicable custody and latest reviewed inventory before any
 forward, and publish a separately reviewed planned reservation first.
