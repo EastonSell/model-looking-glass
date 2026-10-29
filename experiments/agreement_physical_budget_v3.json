@@ -1,0 +1,40 @@
+{
+  "schema": "mlg-agreement-physical-budget-amendment-v3",
+  "status": "prospective storage-only revision after natural discovery",
+  "natural_claim_sha256": "65a7baaa955150e25376de34b7c044b078be240488c9c83626ec160e3c40d6cf",
+  "natural_binding_sha256": "23575704f3e55d741123d3c1024accfb15aa0a048a84ce415bc765573d913ba0",
+  "previous_physical_amendment_sha256": "38cf6448601b7ee967e43b25e39015cbca69234cb0b949297038df4a4a78c4c3",
+  "original_host_disk_allowance_bytes": 1073741824,
+  "host_disk_allowance_bytes": 8589934592,
+  "required_free_disk_bytes": 12884901888,
+  "study_limit_bytes": 536870912,
+  "metadata_max_bytes": 16777216,
+  "ledger_disk_reserve_bytes": 134217728,
+  "max_files_per_inventory": 32768,
+  "phase_reservations_bytes": {
+    "natural_discovery": 134217728,
+    "natural_heldout": 167772160,
+    "injection_discovery": 50331648,
+    "injection_heldout": 75497472
+  },
+  "host_disk_phase_reservations_bytes": {
+    "natural_discovery": 4294967296,
+    "natural_heldout": 234881024,
+    "injection_discovery": 134217728,
+    "injection_heldout": 201326592
+  },
+  "observation": {
+    "candidate_inventory_sha256": "0cae21950a4b93565e4c374e3b4628a7697c7ef0517d1135f52e68528780bcb1",
+    "candidate_inventory_custody": "Retained locally as work/agreement-ledger-inventory-observed-v3.json with generator snapshot work/agreement_ledger_inventory_observed_v3.py; absolute local paths are private. This is a historical candidate, not a complete current inventory or phase authorization.",
+    "natural_apparent_file_bytes": 860777090,
+    "natural_archive_checkout_copies": 63,
+    "natural_inventoried_files": 1928,
+    "prior_apparent_file_bytes": 821583110,
+    "prior_inventoried_files": 6281,
+    "serialized_candidate_inventory_bytes": 2285756,
+    "free_disk_observed_utc": "2026-10-29T05:23:54Z",
+    "free_disk_bytes": 128697253888,
+    "scope": "A conservative incomplete candidate counts known study originals, evidence copies, support files and orphans, including copies in checkouts whose ownership has not been classified. Unrelated developer checkout files are separate workspace overhead when their classification is clear; do not delete them. A shared Git pack containing evidence blobs is charged once. File lengths are not allocated-cluster measurements. The file bound applies independently to each inventory traversal; the metadata bound is combined."
+  },
+  "limitations": "Host evidence-file and point-in-time free-space limits only, not VRAM or peak host-memory limits. Original claim, binding, earlier storage amendments, logical tensor caps, cases, analyses, predictions and results remain unchanged. A fresh free-space check and independently reviewed complete inventory are required before any future claim; existing consumed claims must never be reset."
+}
