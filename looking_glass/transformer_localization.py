@@ -12,6 +12,7 @@ import torch
 from .localization import compare_traces
 from .trace_schema import GenerationContext, TraceEvent
 from .encoder_forward import check_encoder_pair
+from .t5_forward import check_t5_pair
 
 
 @dataclass(frozen=True)
@@ -199,7 +200,9 @@ def _source_metadata_consistent(observations):
 def compare_transformer_traces(reference, candidate, *, rtol=0.0, atol=0.0,
                                reference_complete=False, candidate_complete=False,
                                pairing_verified=False, execution_order_verified=False,
-                               encoder_contexts=None, expected_input_differences=None):
+                               encoder_contexts=None, expected_input_differences=None,
+                               t5_contexts=None, expected_t5_encoder_differences=None,
+                               expected_t5_decoder_differences=None):
     """Compare schema-backed slices, conditional on external pairing evidence.
 
     Pairing means the caller has verified the model, inputs, tap policy and
@@ -208,6 +211,8 @@ def compare_transformer_traces(reference, candidate, *, rtol=0.0, atol=0.0,
     that policy; it does not imply exhaustive model coverage. The optional
     encoder contexts provide a narrow, separately validated alternative to
     generation metadata; they do not prove model identity or actual execution.
+    T5 traces require both stack-specific contexts and explicit difference
+    coordinates; that contract does not establish semantic token alignment.
     """
     if any(type(value) is not bool for value in
            (reference_complete, candidate_complete, pairing_verified, execution_order_verified)):
@@ -220,6 +225,24 @@ def compare_transformer_traces(reference, candidate, *, rtol=0.0, atol=0.0,
                       if encoder_requested else None)
     encoder_ok = not encoder_requested or encoder_report["verified"]
     verified_encoder_forward = bool(encoder_report and encoder_report["verified"])
+    # A normalized T5 forward must not silently use the generic generation
+    # metadata path to bypass the two-stack input/mask pairing contract.
+    def is_t5(observation):
+        event = getattr(observation, "event", None)
+        return (isinstance(event, TraceEvent) and
+                ((event.module_kind or "").startswith("t5_") or
+                 event.module_path.startswith(("encoder.block.", "decoder.block."))))
+
+    t5_requested = (t5_contexts is not None or expected_t5_encoder_differences is not None
+                    or expected_t5_decoder_differences is not None
+                    or any(is_t5(observation) for observation in reference + candidate))
+    t5_report = (check_t5_pair(t5_contexts, reference, candidate,
+                               expected_t5_encoder_differences, expected_t5_decoder_differences)
+                 if t5_requested else None)
+    if encoder_requested and t5_requested:
+        t5_report["verified"] = False
+        t5_report["issues"].append("encoder and T5 comparison contracts cannot be combined")
+    t5_ok = not t5_requested or t5_report["verified"]
     left, right, left_issues, right_issues = [], [], [], []
     for index, observation in enumerate(reference):
         item, issues = _proxy(observation, index, verified_encoder_forward=verified_encoder_forward)
@@ -242,10 +265,10 @@ def compare_transformer_traces(reference, candidate, *, rtol=0.0, atol=0.0,
     # enforce a conservative result even if every supplied tensor is equal.
     result = compare_traces(
         left, right, rtol=rtol, atol=atol,
-        reference_complete=(reference_complete and pairing_verified and execution_order_verified and encoder_ok
+        reference_complete=(reference_complete and pairing_verified and execution_order_verified and encoder_ok and t5_ok
                             and reference_forwards_complete and reference_invocations_complete
                             and reference_source_metadata_consistent and run_ids_disjoint),
-        candidate_complete=(candidate_complete and pairing_verified and execution_order_verified and encoder_ok
+        candidate_complete=(candidate_complete and pairing_verified and execution_order_verified and encoder_ok and t5_ok
                             and candidate_forwards_complete and candidate_invocations_complete
                             and candidate_source_metadata_consistent and run_ids_disjoint),
     )
@@ -266,6 +289,8 @@ def compare_transformer_traces(reference, candidate, *, rtol=0.0, atol=0.0,
     }
     if encoder_requested:
         result["schema_coverage"]["encoder_forward_context"] = encoder_report
+    if t5_requested:
+        result["schema_coverage"]["t5_forward_context"] = t5_report
     result["first_compared_difference"] = _coordinate(result["first_compared_difference"])
     interval = result["first_observed_interval"]
     if interval is not None:
@@ -291,7 +316,10 @@ def compare_transformer_traces(reference, candidate, *, rtol=0.0, atol=0.0,
             if item["result"] == "different":
                 break
             if item["result"] == "equal" and all(
-                    item["coordinate"][name] == changed[name] for name in context_fields):
+                    item["coordinate"][name] == changed[name] for name in context_fields) and (
+                    not t5_ok or not t5_requested or
+                    item["coordinate"]["module_path"].split(".", 1)[0] ==
+                    changed["module_path"].split(".", 1)[0]):
                 preceding.append(item["coordinate"])
         interval["last_equal"] = preceding[-1] if preceding else None
     return result
