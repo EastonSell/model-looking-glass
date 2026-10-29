@@ -59,6 +59,7 @@ def main():
     parser.add_argument('--source-root', type=Path, required=True)
     parser.add_argument('--inventory', type=Path, required=True)
     parser.add_argument('--cache-dir', type=Path, required=True)
+    parser.add_argument('--stage-dir', type=Path, required=True)
     parser.add_argument('--pre-run', type=Path, required=True)
     parser.add_argument('--pre-run-sha256', required=True)
     parser.add_argument('--output-dir', type=Path, required=True)
@@ -93,10 +94,20 @@ def main():
         raise ValueError('fixed case order or split differs')
     if args.output_dir.exists() or not args.output_dir.parent.is_dir():
         raise ValueError('output must be a fresh path under an existing attempt')
-    if shutil.disk_usage(args.output_dir.parent).free < 2 * 1024 ** 3:
+    stage = args.stage_dir
+    if (not stage.is_absolute() or stage.is_symlink() or not stage.is_dir() or any(stage.iterdir())
+            or hashlib.sha256(os.path.normcase(str(stage.resolve(strict=True))).encode()).hexdigest() != pre['stage_dir_sha256']):
+        raise ValueError('checkpoint staging directory differs or is not empty')
+    if any(os.path.splitdrive(str(path.resolve()))[0].upper() != pre['output_drive']
+           for path in (args.output_dir.parent, prefix, stage)):
+        raise ValueError('output, cache prefix and staging must use the declared volume')
+    if (shutil.disk_usage(args.output_dir.parent).free < 2 * 1024 ** 3
+            or shutil.disk_usage(stage).free < 2 * 1024 ** 3):
         raise ValueError('insufficient disk for checkpoint staging and bounded evidence')
     if not args.cache_dir.is_dir() or not args.inventory.is_file():
         raise ValueError('offline checkpoint cache or inventory is unavailable')
+    if any(shutil.disk_usage(path).free < 256 * 1024 ** 2 for path in (root, args.cache_dir)):
+        raise ValueError('insufficient source/cache volume reserve')
     # Only after checking a fresh prefix and all source bytes, import study code.
     sys.path.insert(0, str(root))
     import admission as admission_module
@@ -140,7 +151,9 @@ def main():
     if not torch.set_flush_denormal(False):
         raise RuntimeError('could not disable CPU subnormal flushing')
     torch.manual_seed(0)
-    loaded = pretrained_module.load_distilgpt2(cache_dir=args.cache_dir, allow_download=False)
+    loaded = pretrained_module.load_distilgpt2(cache_dir=args.cache_dir, allow_download=False, stage_dir=stage)
+    if any(stage.iterdir()):
+        raise RuntimeError('temporary verified checkpoint staging was not removed')
     if (loaded.metadata['model_revision'] != '2290a62682d06624634c1f46a6ad5be0f47f38aa'
             or loaded.metadata['weights_sha256'] != 'e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b'
             or loaded.metadata['asset_sha256']['tokenizer.json'] != '8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6'):
@@ -153,8 +166,9 @@ def main():
                for token, suffix in ((318, ' is'), (389, ' are'))):
             raise ValueError('loaded tokenizer continuation differs')
     chosen = cases[:8] if args.phase == 'discovery' else cases[8:]
-    result = execution_module.execute_phase(loaded.model, chosen, args.output_dir, phase=args.phase)
-    if result['completed_actions'] != 120 or any(prefix.iterdir()):
+    result = execution_module.execute_phase(loaded.model, chosen, args.output_dir, phase=args.phase,
+        additional_space_checks=((root, 256 * 1024 ** 2), (args.cache_dir, 256 * 1024 ** 2)))
+    if result['completed_actions'] != 120 or any(prefix.iterdir()) or any(stage.iterdir()):
         raise RuntimeError('phase action count or bytecode prefix differs')
     print(json.dumps({'event': 'phase-complete', 'phase': args.phase,
                       'actions': result['completed_actions'], 'raw_bytes': result['raw_bytes'],
