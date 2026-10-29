@@ -31,7 +31,7 @@ def require(condition, message):
 def git_bytes(repo, revision, path):
     env = {k: v for k, v in os.environ.items() if not k.upper().startswith('GIT_')}
     env.update({'GIT_NO_REPLACE_OBJECTS': '1', 'GIT_CONFIG_NOSYSTEM': '1',
-                'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_OPTIONAL_LOCKS': '0'})
+                'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_OPTIONAL_LOCKS': '0', 'GIT_NO_LAZY_FETCH': '1'})
     command = ['git.exe' if os.name == 'nt' else 'git', '--no-replace-objects', '-C', str(repo)]
     kind = subprocess.check_output(command + ['cat-file', '-t', revision], env=env, timeout=30).strip()
     require(kind == b'commit', 'source revision is not a commit')
@@ -126,10 +126,28 @@ def main():
     import tokenizers
     import transformers
     from transformers import AutoTokenizer
-    recorded = reader.strict_json((args.evidence / 'process/select-stage-runtime.json').read_bytes())
+    replay = reader.strict_json((custody / 'independent-selection-replay.json').read_bytes())
+    stage_raw = (args.evidence / 'process/select-stage-runtime.json').read_bytes()
+    exit_raw = (args.evidence / 'process/select-stage-exit.json').read_bytes()
+    recorded = reader.strict_json(stage_raw)
+    exit_record = reader.strict_json(exit_raw)
+    require(hashlib.sha256(stage_raw).hexdigest() == replay['screen_runtime_receipt_sha256']
+            and hashlib.sha256(exit_raw).hexdigest() == replay['screen_exit_receipt_sha256'],
+            'recorded stage receipt hashes differ')
+    require(recorded['schema'] == 'flan-t5-sentiment-selector-stage-runtime-v1'
+            and recorded['stage'] == 'select' and recorded['status'] == 'completed'
+            and recorded['selector_revision'] == RUNNER_REV
+            and set(recorded['source_sha256']) == reader.STAGE_SOURCES, 'stage identity mismatch')
+    for path, digest in recorded['source_sha256'].items():
+        require(hashlib.sha256(git_bytes(repo, RUNNER_REV, path)).hexdigest() == digest,
+                'stage source Git blob mismatch')
+    require(exit_record['stage_receipt_sha256'] == hashlib.sha256(stage_raw).hexdigest()
+            and exit_record['status'] == 'completed' and exit_record['reaped'] is True
+            and type(exit_record['exit_code']) is int and exit_record['exit_code'] == 0
+            and exit_record['timed_out'] is False, 'recorded stage exit mismatch')
     versions = {'python': platform.python_version(), 'transformers': transformers.__version__,
                 'tokenizers': tokenizers.__version__}
-    require(versions == recorded['versions'], 'tokenizer runtime versions differ')
+    require(versions == recorded['versions'] == replay['screen_runtime'], 'tokenizer runtime versions differ')
     tokenizer = AutoTokenizer.from_pretrained(str(args.asset_dir), local_files_only=True,
                                               use_fast=True, trust_remote_code=False)
     require(type(tokenizer).__name__ == 'T5TokenizerFast', 'unexpected tokenizer class')
@@ -138,7 +156,7 @@ def main():
                                 selection_raw, salt_bytes(custody / 'selection-salt.hex'),
                                 compare_card(reader, repo, custody, 'selection', SELECTION_REV),
                                 exposures, tokenizer, RUNNER_REV)
-    replay = reader.strict_json((custody / 'independent-selection-replay.json').read_bytes())
+    reader.bind_stage_commitments(result, recorded)
     for key in ('status', 'unit_count', 'token_rows', 'selection_count', 'source_count', 'source_rows',
                 'enough_selected', 'pool_commitment', 'selection_commitment', 'protocol_sha256',
                 'runner_revision', 'asset_manifest_sha256'):
