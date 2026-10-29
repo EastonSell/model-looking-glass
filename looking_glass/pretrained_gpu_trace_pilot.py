@@ -25,20 +25,22 @@ from .supervisor import OwnerSession, run_supervised
 from .vision_coco_cls_exposed_gpu import _capacity, _host_memory, _validate_runtime_dirs
 
 MIB, GIB = 1024 ** 2, 1024 ** 3
-RESIDENT, JOB, GPU_TRACE, HOST_TRACE = 512 * MIB, GIB, 131072, 3 * 131072
+RESIDENT, JOB, GPU_TRACE, HOST_TRACE = 512 * MIB, GIB, 131072, 4 * MIB
 CAP = RESIDENT + JOB
 TOKENS = (464, 6766, 318, 4171, 13)
 PHASES = ('load', 'baseline_cold', 'baseline_warm', 'reference', 'direct', 'gradient', 'id')
 _PREFIX = 'LOOKING_GLASS_TRACE_PILOT_'
 _SOURCE_PATHS = ('looking_glass/__init__.py', 'looking_glass/pretrained_gpu_trace_pilot.py',
     'looking_glass/pretrained_gpu_trace_pilot_core.py', 'looking_glass/pretrained_gpu_trace_pilot_runtime.py',
+    'looking_glass/pretrained_gpu_trace_evidence_v2.py',
     'looking_glass/pretrained.py', 'looking_glass/transformer_trace.py', 'looking_glass/model_ownership.py',
     'looking_glass/probes.py', 'looking_glass/trace_schema.py', 'looking_glass/memory_budget.py',
     'looking_glass/bert_gpu_evidence.py', 'looking_glass/bert_gpu_exposed_pair.py',
     'looking_glass/vision_coco_cls_exposed_gpu.py', 'looking_glass/gpu_oneshot.py',
     'looking_glass/device_identity.py', 'looking_glass/device_lease.py', 'looking_glass/supervisor.py',
     'docs/PRETRAINED_SMOKE_V1.md', 'docs/PRETRAINED_GPU_TRACE_V1.md',
-    'docs/PRETRAINED_GPU_TRACE_PILOT_V1.md', 'scripts/pretrained_gpu_trace_pilot_bootstrap.py',
+    'docs/PRETRAINED_GPU_TRACE_PILOT_V1.md', 'docs/PRETRAINED_GPU_TRACE_EVIDENCE_V2.md',
+    'scripts/pretrained_gpu_trace_pilot_bootstrap.py',
     'tools/observe_pretrained_gpu_trace_pilot.py')
 
 _ROOT = {'entered': False, 'stage': 'entry', 'session': None, 'lease': None, 'budget': None,
@@ -143,6 +145,7 @@ def _measure(session, lease, torch, cache, directory):
     from .pretrained import load_distilgpt2
     from .pretrained_gpu_trace_pilot_core import run_fixed_trace
     from .pretrained_gpu_trace_pilot_runtime import PilotExecutor
+    from .pretrained_gpu_trace_evidence_v2 import TensorEvidence
     import transformers
 
     if (str(torch.__version__) != '2.8.0+cu128' or torch.version.cuda != '12.8'
@@ -300,10 +303,13 @@ def _measure(session, lease, torch, cache, directory):
         'memory': snapshot()})
     if _unexpected_hooks(model):
         raise RuntimeError('unexpected hooks before the fixed trace')
+    executor.bind_evidence(TensorEvidence(Path(directory) / 'raw', torch=torch,
+                                          hidden=model.config.n_embd, vocab=model.config.vocab_size))
     _ROOT['stage'] = 'trace'
     result = run_fixed_trace(model, input_ids, attention_mask, executor, study_id='pretrained-gpu-trace-pilot-v1')
     if (executor.index != len(PHASES) or executor.forward_count != 10 or _unexpected_hooks(model)):
         raise RuntimeError('fixed trace inventory or hook cleanup differs')
+    tensor_evidence = executor.finish_evidence()
     sync()
     check()
     references = _weakrefs_for_disposal(_ROOT)
@@ -339,6 +345,7 @@ def _measure(session, lease, torch, cache, directory):
         raise RuntimeError('logical memory leases remain')
     check()
     return {'runtime': runtime, 'model': metadata, 'result': result, 'phases': executor.phases,
+            'tensor_evidence': tensor_evidence,
             'forward_count': executor.forward_count, 'cleanup': cleanup,
             'model_input_trace_weakrefs_dead': True, 'active_memory_leases': 0,
             'runtime_binding_rechecked': binding_rechecked,
@@ -505,12 +512,14 @@ def _validate_saved(directory, measurement, *, hidden=768, vocab=50257,
                 raise ValueError('event metadata or capture digest differs')
     order = ('baseline_cold', 'baseline_warm', 'reference', 'reference', 'direct', 'direct',
              'gradient', 'gradient', 'id', 'id')
+    logit_hashes = []
     for index, phase in enumerate(order, 1):
         record = _read_json(directory / f'forward-{index:03d}.json')
         if (type(record.get('index')) is not int or not exact_ints(record.get('shape'), [1, 5, vocab])
                 or record != {'schema': 'pretrained-gpu-trace-forward-v1', 'phase': phase, 'index': index,
                       'logit_sha256': baseline[(index - 1) % 2], 'shape': [1, 5, vocab], 'dtype': 'float32'}):
             raise ValueError('saved forward differs')
+        logit_hashes.append(record['logit_sha256'])
     if (measurement.get('model_input_trace_weakrefs_dead') is not True
             or measurement.get('runtime_binding_rechecked') is not True
             or type(measurement.get('active_memory_leases')) is not int
@@ -519,6 +528,9 @@ def _validate_saved(directory, measurement, *, hidden=768, vocab=50257,
             or measurement.get('cleanup', {}).get('reserved_bytes') != 0):
         raise ValueError('saved local cleanup differs')
     check_memory(measurement['cleanup'])
+    from .pretrained_gpu_trace_evidence_v2 import validate_tensor_evidence
+    validate_tensor_evidence(directory / 'raw', measurement.get('tensor_evidence'), logit_hashes,
+                             result, hidden=hidden, vocab=vocab)
     return 10
 
 
@@ -528,6 +540,14 @@ def _cache_path(root, value):
     if not supplied.is_absolute() or supplied.resolve(strict=True) != expected or not expected.is_dir():
         raise ValueError('the fixed offline cache differs')
     return expected
+
+
+def _validate_raw_directory(run_dir):
+    root = Path(run_dir).resolve(strict=True)
+    raw = root / 'raw'
+    if not raw.is_dir() or raw.resolve(strict=True) != raw or any(raw.iterdir()):
+        raise ValueError('a fresh local raw evidence directory is required')
+    return raw
 
 
 def owner_main(run_dir, cache, run_id, commit, git):
@@ -545,6 +565,7 @@ def owner_main(run_dir, cache, run_id, commit, git):
         OwnerSession.check(session, lease)
         _validate_workspace_binding(session)
         _validate_runtime_dirs(run_dir)
+        _validate_raw_directory(run_dir)
         repo = Path(__file__).resolve().parents[1]
         root = _workspace_root(repo, session.identity.workspace_root)
         cache = _cache_path(root, cache)
@@ -625,7 +646,7 @@ def controller_main(workspace_root, cache, output, site, smi):
     identity = resolve_device_identity(root, gpu_uuid, physical_uuids=[gpu_uuid], environ=environment)
     capacity = _capacity(destination.parent, root)
     destination.mkdir(exist_ok=False)
-    for name in ('temp', 'hf-cache', 'cuda-cache', 'stage'):
+    for name in ('temp', 'hf-cache', 'cuda-cache', 'stage', 'raw'):
         (destination / name).mkdir(exist_ok=False)
     environment.update({'TEMP': str(destination / 'temp'), 'TMP': str(destination / 'temp'),
                         'HF_HOME': str(destination / 'hf-cache'),

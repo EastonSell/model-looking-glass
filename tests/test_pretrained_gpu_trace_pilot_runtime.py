@@ -131,6 +131,7 @@ def test_real_tiny_model_composes_all_seven_phases_and_ten_forward_records(tmp_p
     from looking_glass.bert_gpu_evidence import write_json_new
     from looking_glass.pretrained_gpu_trace_pilot import _validate_saved, _weakrefs_for_disposal
     from looking_glass.pretrained_gpu_trace_pilot_core import run_fixed_trace
+    from looking_glass.pretrained_gpu_trace_evidence_v2 import TensorEvidence
     from looking_glass.pretrained import ASSETS, MODEL_ID, REVISION
     torch.set_num_threads(1)
     torch.manual_seed(0)
@@ -145,7 +146,10 @@ def test_real_tiny_model_composes_all_seven_phases_and_ten_forward_records(tmp_p
     executor.end('load', {'parameter_count': 81912576, 'weights_sha256': ASSETS['model.safetensors'][1],
                           'before_transfer': memory()})
     executor.verify_inputs(ids, mask)
+    (tmp_path / 'raw').mkdir()
+    executor.bind_evidence(TensorEvidence(tmp_path / 'raw', torch=torch, hidden=8, vocab=6767))
     result = run_fixed_trace(model, ids, mask, executor, study_id='cpu-composition')
+    evidence = executor.finish_evidence()
     assert executor.index == 7 and executor.forward_count == 10
     assert len(list(tmp_path.glob('phase-??.json'))) == 7
     assert len(list(tmp_path.glob('forward-???.json'))) == 10
@@ -154,7 +158,7 @@ def test_real_tiny_model_composes_all_seven_phases_and_ten_forward_records(tmp_p
     write_json_new(tmp_path / 'input-setup.json', {'schema': 'pretrained-gpu-trace-input-v1',
         'input_ids': [464, 6766, 318, 4171, 13], 'attention_mask': [1] * 5,
         'shape': [1, 5], 'dtype': 'int64', 'memory': memory()})
-    measurement = {'forward_count': 10, 'phases': executor.phases, 'result': result,
+    measurement = {'forward_count': 10, 'phases': executor.phases, 'result': result, 'tensor_evidence': evidence,
         'runtime': {'device_total_bytes': 8 * GIB, 'nvidia_total_bytes': 8 * GIB,
                     'allocator_cap_bytes': 1536 * 1024 ** 2, 'allocator_fraction': 0.1875,
                     'reserve_bytes': (8 * GIB * 15 + 99) // 100, 'allocator_backend': 'native',
@@ -166,7 +170,7 @@ def test_real_tiny_model_composes_all_seven_phases_and_ten_forward_records(tmp_p
                     'cudnn_tf32': False, 'threads': 1, 'interop_threads': 1,
                     'deterministic_algorithms': False, 'cudnn_benchmark': False, 'cudnn_deterministic': False,
                     'resident_commitment_bytes': 512 * 1024 ** 2, 'job_commitment_bytes': GIB,
-                    'gpu_trace_claim_bytes': 131072, 'host_trace_claim_bytes': 393216},
+                    'gpu_trace_claim_bytes': 131072, 'host_trace_claim_bytes': 4 * 1024 ** 2},
         'model': {'model_id': MODEL_ID, 'model_revision': REVISION, 'tokenizer_id': MODEL_ID,
                   'tokenizer_revision': REVISION, 'parameter_count': 81912576,
                   'weights_sha256': ASSETS['model.safetensors'][1],
@@ -177,6 +181,13 @@ def test_real_tiny_model_composes_all_seven_phases_and_ten_forward_records(tmp_p
         'runtime_binding_rechecked': True}
     assert _validate_saved(tmp_path, measurement, hidden=8, vocab=6767, device='cpu',
                            study_id='cpu-composition') == 10
+    raw_path = tmp_path / 'raw' / 'gradient-2.f32'
+    original_raw = raw_path.read_bytes()
+    raw_path.write_bytes(original_raw[:-1])
+    with pytest.raises(ValueError, match='length'):
+        _validate_saved(tmp_path, measurement, hidden=8, vocab=6767, device='cpu',
+                        study_id='cpu-composition')
+    raw_path.write_bytes(original_raw)
     for field, value in (('seed', 1), ('dtype', 'float16'), ('use_cache', True),
                          ('matmul_tf32', True), ('host_trace_claim_bytes', 0)):
         bad = deepcopy(measurement)
@@ -219,3 +230,36 @@ def test_real_tiny_model_composes_all_seven_phases_and_ten_forward_records(tmp_p
     finally:
         if was_enabled:
             gc.enable()
+
+
+def test_partial_reference_evidence_failure_stops_before_the_next_forward(tmp_path, monkeypatch):
+    from transformers import GPT2Config, GPT2LMHeadModel
+    from looking_glass import pretrained_gpu_trace_evidence_v2 as evidence_module
+    from looking_glass.pretrained_gpu_trace_pilot_core import run_fixed_trace
+    torch.set_num_threads(1)
+    model = GPT2LMHeadModel(GPT2Config(vocab_size=6767, n_positions=16, n_embd=8, n_layer=6,
+                                      n_head=2, use_cache=False, _attn_implementation='eager')).eval()
+    ids = torch.tensor([[464, 6766, 318, 4171, 13]], dtype=torch.int64)
+    mask = torch.ones_like(ids)
+    executor, roots, _ = make_executor(tmp_path)
+    executor.vocab_size = 6767
+    executor.begin('load')
+    executor.end('load', {'model_loaded': True})
+    executor.verify_inputs(ids, mask)
+    raw = tmp_path / 'raw'
+    raw.mkdir()
+    writer = evidence_module.TensorEvidence(raw, torch=torch, hidden=8, vocab=6767)
+    executor.bind_evidence(writer)
+    original = evidence_module._publish_new
+    def fail_after_partial(path, data):
+        if path.name == 'reference-1.f32':
+            path.with_name(path.name + '.partial').write_bytes(data[:16])
+            raise OSError('fabricated partial write')
+        return original(path, data)
+    monkeypatch.setattr(evidence_module, '_publish_new', fail_after_partial)
+    with pytest.raises(OSError, match='partial write'):
+        run_fixed_trace(model, ids, mask, executor, study_id='partial-cpu')
+    assert executor.forward_count == 3 and executor.current == 'reference' and writer.failed
+    assert len(roots['reference']) == 9
+    assert (raw / 'reference-1.f32.partial').read_bytes()
+    assert not (raw / 'manifest.json').exists() and not (tmp_path / 'forward-004.json').exists()

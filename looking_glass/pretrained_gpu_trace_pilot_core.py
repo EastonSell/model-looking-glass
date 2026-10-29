@@ -194,6 +194,12 @@ def run_fixed_trace(model, input_ids, attention_mask, executor, *, study_id):
                 lease.verify_tree()
                 if reference_failed:
                     raise RuntimeError('reference capture failed')
+                segment = reference[forward_index * 9:(forward_index + 1) * 9]
+                if (len(reference) != (forward_index + 1) * 9
+                        or [(f, p, k, l) for f, p, k, l, _, _ in segment]
+                        != expected[forward_index * 9:(forward_index + 1) * 9]):
+                    raise ValueError('reference capture order differs')
+                executor.save_capture('reference', forward_index, [item[5] for item in segment])
         except BaseException as error:
             primary = error
             raise
@@ -240,8 +246,15 @@ def run_fixed_trace(model, input_ids, attention_mask, executor, *, study_id):
             outputs = []
             try:
                 with trace:
-                    for _ in range(2):
+                    for forward_index in range(2):
                         outputs.append(forward(mode))
+                        if mode != 'id':
+                            segment = trace.events[forward_index * 9:(forward_index + 1) * 9]
+                            if (len(trace.events) != (forward_index + 1) * 9
+                                    or [(event.forward_index, event.module_path, event.module_kind, event.layer_index)
+                                        for event in segment] != expected[forward_index * 9:(forward_index + 1) * 9]):
+                                raise ValueError('trace capture order differs')
+                            executor.save_capture(mode, forward_index, [event.value for event in segment])
             except BaseException as primary:
                 cleanup = trace.pilot_close_failure
                 if (isinstance(cleanup, (KeyboardInterrupt, SystemExit))

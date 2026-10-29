@@ -14,6 +14,8 @@ def test_pinned_checkpoint_ten_forward_composition_and_disposal_without_gc(tmp_p
     from looking_glass.pretrained_gpu_trace_pilot import _verify_model, _weakrefs_for_disposal
     from looking_glass.pretrained_gpu_trace_pilot_core import TOKENS, run_fixed_trace
     from looking_glass.pretrained_gpu_trace_pilot_runtime import PilotExecutor
+    from looking_glass.pretrained_gpu_trace_evidence_v2 import TensorEvidence, validate_tensor_evidence
+    import json
 
     assert not torch.cuda.is_initialized()
     torch.set_num_threads(1)
@@ -39,7 +41,15 @@ def test_pinned_checkpoint_ten_forward_composition_and_disposal_without_gc(tmp_p
         executor.begin('load')
         executor.end('load', {'model_loaded': True})
         executor.verify_inputs(ids, mask)
+        raw = tmp_path / 'raw'
+        raw.mkdir()
+        executor.bind_evidence(TensorEvidence(raw, torch=torch, hidden=768, vocab=50257))
         result = run_fixed_trace(model, ids, mask, executor, study_id='pinned-cpu-test')
+        binding = executor.finish_evidence()
+        hashes = [json.loads((tmp_path / f'forward-{index:03d}.json').read_bytes())['logit_sha256']
+                  for index in range(1, 11)]
+        report = validate_tensor_evidence(raw, binding, hashes, result)
+        assert report['payload_bytes'] == 10_383_176 and report['capture_bit_comparisons'] == 36
         assert executor.index == 7 and executor.forward_count == 10 and result['direct_gradient_equal'] is True
         assert all(result['modes'][mode]['tensor_bytes'] == 110592 for mode in ('direct', 'gradient'))
         refs = _weakrefs_for_disposal(roots)
