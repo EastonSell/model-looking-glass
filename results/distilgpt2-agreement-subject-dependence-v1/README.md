@@ -44,9 +44,9 @@ The operator checks the published observer and support hashes, isolated base
 interpreter, clean exact owner source, current reviewed exposure and both
 custodians before the one-shot launch. The unchanged reviewed rooted gated
 observer compares the supervised direct child's run ID and PID with the child
-custody record. A `complete_candidate` also requires the observed zero parent
-exit and an independent scientific saved-byte replay; it is not itself a
-result. The observer does not authenticate execution or prove descendant
+custody record. Treating a `complete_candidate` as a study result also requires
+the observed zero parent exit and an independent scientific saved-byte replay;
+the marker itself is not a result. The observer does not authenticate execution or prove descendant
 drain. Output is inherited, and physical file accounting is a cooperative
 post-run check rather than an operating-system quota. An incomplete or
 uncertain attempt must be preserved and not retried.
