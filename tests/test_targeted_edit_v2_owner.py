@@ -39,7 +39,8 @@ def test_development_rejects_mask_drift_before_model_work(monkeypatch, mask):
         owner._development_work(None, None, None, None, None, None, None, (torch,) + (None,) * 10)
 
 
-@pytest.mark.parametrize("point", ["load_mask", "load_setting", "tokenizer_setting", "unchanged", "discovery_interrupt"])
+@pytest.mark.parametrize("point", ["load_mask", "load_setting", "tokenizer_setting", "unchanged",
+                                  "discovery_interrupt", "ambient_exception", "missing_exception_api"])
 def test_development_binds_full_runtime_before_discovery(monkeypatch, point):
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "-1")
     monkeypatch.setenv("HF_HUB_OFFLINE", "1")
@@ -52,7 +53,9 @@ def test_development_binds_full_runtime_before_discovery(monkeypatch, point):
     def runtime(_torch):
         return {"cuda_visibility": __import__("os").environ.get("CUDA_VISIBLE_DEVICES"), **settings}
     monkeypatch.setattr(owner, "_runtime_settings", runtime)
+    load_calls = []
     def load(**_kwargs):
+        load_calls.append(True)
         if point == "load_mask":
             monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "")
         elif point == "load_setting":
@@ -80,7 +83,20 @@ def test_development_binds_full_runtime_before_discovery(monkeypatch, point):
     deps = (fake_torch, None, SimpleNamespace(load_distilgpt2=load), fake_v1, None,
             SimpleNamespace(ENVIRONMENT_FIELDS=()), fake_evidence, None, None, None, None)
     manifest = {"v1_compatibility": {"environment": {}, "model_state_sha256": "state", "weight_sha256": "weight"}}
-    if point in ("unchanged", "discovery_interrupt"):
+    if point == "missing_exception_api":
+        with monkeypatch.context() as patch:
+            patch.delattr(sys, "exception", raising=False)
+            with pytest.raises(owner.OwnerError, match="exception"):
+                owner._development_work(None, None, None, None, manifest, None, None, deps)
+        assert load_calls == [] and calls == []
+    elif point == "ambient_exception":
+        try:
+            raise ValueError("caller is handling an unrelated error")
+        except ValueError:
+            with pytest.raises(owner.OwnerError, match="exception"):
+                owner._development_work(None, None, None, None, manifest, None, None, deps)
+        assert load_calls == [] and calls == []
+    elif point in ("unchanged", "discovery_interrupt"):
         expected = KeyboardInterrupt if point == "discovery_interrupt" else LookupError
         with pytest.raises(expected):
             owner._development_work(None, None, None, None, manifest, None, None, deps)
