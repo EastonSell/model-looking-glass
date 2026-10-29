@@ -1,0 +1,7 @@
+{
+  "observation": "The local command tool returned exit code 0 and printed launcher_exit=0.",
+  "observed_exit_code": 0,
+  "recorded_after_process_exit": true,
+  "recorded_utc": "2026-10-29T05:01:57.493549+00:00",
+  "scope": "Retrospective in-session observation; no original separate launcher-exit file was saved."
+}
