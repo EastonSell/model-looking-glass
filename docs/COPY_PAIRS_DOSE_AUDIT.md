@@ -44,7 +44,8 @@ these payload sizes, so they are not a peak-memory limit.
 The frozen protocol currently spells norm squares with `** 2`; the replay
 uses that literal operation. On the tested Windows CPython runtime a binary64
 halfway example shows `x ** 2` and `x * x` can differ by one ULP, and the
-former may choose the odd neighbor. The protocol's blanket nearest-even
-wording therefore requires a public clarification before execution. A runtime
-or library change can also affect exact transcendental results, so cross-runtime
-bit equality must not be assumed.
+former may choose the odd neighbor. A [public pre-forward clarification](DISTILGPT2_COPY_PAIRS_DOSE_NUMERIC_CLARIFICATION_V1.md) preserves the literal
+operation and narrows the earlier blanket nearest-even wording; the cases had
+already been assembled, and no pair/dose model forward had occurred at its
+publication. A runtime or library change can also affect exact transcendental
+results, so cross-runtime bit equality must not be assumed.

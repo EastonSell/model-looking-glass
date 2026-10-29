@@ -1,5 +1,6 @@
 import math
 import hashlib
+from fractions import Fraction
 import struct
 
 import pytest
@@ -101,6 +102,17 @@ def test_norm_uses_written_square_operation_instead_of_multiplication():
     values = [float.fromhex("-0x1.8198ccc000000p+0"), float.fromhex("-0x1.d332fb951230cp-1")]
     expected = math.sqrt(math.fsum(value ** 2 for value in values))
     assert _audit()._norm(values) == expected
+
+
+def test_documented_square_midpoint_has_an_even_and_odd_neighbor():
+    value = float.fromhex("-0x1.8198ccc000000p+0")
+    even = float.fromhex("0x1.22667986a3e14p+1")
+    odd = float.fromhex("0x1.22667986a3e15p+1")
+    exact = Fraction.from_float(value) ** 2
+    assert exact - Fraction.from_float(even) == Fraction.from_float(odd) - exact
+    assert struct.unpack("<Q", struct.pack("<d", even))[0] % 2 == 0
+    assert struct.unpack("<Q", struct.pack("<d", odd))[0] % 2 == 1
+    assert _audit()._norm([value, -value]) == math.sqrt(math.fsum(x ** 2 for x in (value, -value)))
 
 
 def _saved_family_fixture(family_index=0):
