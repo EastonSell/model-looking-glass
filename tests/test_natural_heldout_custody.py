@@ -735,13 +735,53 @@ class CustodyTests(unittest.TestCase):
                     return {'cleanup_verified': False}
                 supervisor.supervise_heldout = run
                 def release(inner): inner._QUARANTINED.clear()
-                with mock.patch.object(custody, '_hold_unverified_process', side_effect=release) as hold:
+                with mock.patch.object(custody, '_hold_persistently', side_effect=release) as hold:
                     if outcome == 'raise':
                         with self.assertRaises(OSError):
                             custody._supervise_preparation(supervisor, ['fake'], self.root, lambda *_: {})
                     else:
                         custody._supervise_preparation(supervisor, ['fake'], self.root, lambda *_: {})
                     hold.assert_called_with(supervisor)
+
+    @unittest.skipUnless(os.name == 'nt', 'requires a real Windows source lease')
+    def test_interruption_at_enclosing_conditions_preserves_source_lease(self):
+        from scripts import v2_source_guards as guards
+        source = self.root / 'protected-outer-source.py'
+        source.write_bytes(b'original')
+        supervisor = SimpleNamespace(_QUARANTINED=[object()])
+        for function, argument, needle in (
+                (custody._quarantine_state_if_needed, [None, None, True, False], 'if custody_state[2]'),
+                (custody._quarantine_supervisor_if_needed, supervisor, 'if supervisor._QUARANTINED')):
+            lines, start = inspect.getsourcelines(function)
+            target = next(start + index for index, line in enumerate(lines) if needle in line)
+            fired, locked = [], []
+            def tracer(frame, event, arg):
+                if frame.f_code is function.__code__ and event == 'line' and frame.f_lineno == target and not fired:
+                    fired.append(True)
+                    raise KeyboardInterrupt()
+                return tracer
+            def hold(_state):
+                try: source.write_bytes(b'changed')
+                except PermissionError: locked.append(True)
+            with self.subTest(function=function.__name__), guards.SourceFileLease(self.root, [source]), \
+                 mock.patch.object(custody, '_hold_persistently', side_effect=hold):
+                sys.settrace(tracer)
+                try: function(argument)
+                finally: sys.settrace(None)
+                self.assertEqual(fired, [True])
+                self.assertEqual(locked, [True])
+
+    def test_console_interrupts_are_ignored_for_supervisor_custody(self):
+        kinds = [getattr(custody.signal, name) for name in ('SIGINT', 'SIGBREAK')
+                 if hasattr(custody.signal, name)]
+        original = {kind: custody.signal.getsignal(kind) for kind in kinds}
+        try:
+            custody._ignore_console_interrupts()
+            self.assertTrue(all(custody.signal.getsignal(kind) == custody.signal.SIG_IGN for kind in kinds))
+            custody.signal.raise_signal(custody.signal.SIGINT)
+        finally:
+            for kind, handler in original.items():
+                custody.signal.signal(kind, handler)
 
     @unittest.skipUnless(os.name == 'nt', 'requires a real Windows source lease')
     def test_interruption_after_sleep_keeps_real_source_lease(self):
