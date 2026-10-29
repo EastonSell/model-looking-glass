@@ -19,8 +19,9 @@ settings in `FLAN_T5_DEVICE_OBSERVATION_V1.md`. The fixed input is public pair
 
 Execute six one-item forwards in this order: capture source A, capture source
 B, repeat capture A, patch A with its own captured token 6, patch A with B's
-captured token 6, and null token 6 in A. All use the final encoder layer norm,
-invocation zero, output selector `[]`, float32, no cache and explicit masks.
+captured token 6, and run a null/no-op action at token 6 in A. All use the final
+encoder layer norm, invocation zero, output selector `[]`, float32, no cache
+and explicit masks.
 Keep both original captures and one current observation under separate active
 trace claims. Save complete CPU float32 bit encodings for logits, encoder state,
 and available before/after captures, along with exact input IDs, masks, shapes,
@@ -52,8 +53,41 @@ cleanup require quarantine and separately reviewed process recovery.
 The 16 MiB observation-record limit excludes the separately staged checkpoint,
 the manifest and any controller or operator logs. The owner rechecks the
 staged assets and records their manifest and payload byte counts separately.
-The future controller must check available disk before launch and reconcile
-complete or partial staged files and logs; a free-space check is a point-in-time
-observation, not a reservation against other writers. A diagnostic-write
+The disabled controller checks available disk before launch and inventories
+complete or partial staged files and private records separately. Its 512 MiB
+attempt budget and additional 64 MiB free-space margin are point-in-time
+checks, not reservations or an operating-system quota against other writers.
+The existing supervisor inherits stdout and stderr; the operator must retain
+and account for those logs separately before an independent audit. A diagnostic-write
 interruption leaves both exceptions rooted, and a cancellation is reflected in
 the owner exit even when it arrives while recording an earlier failure.
+
+The controller is disabled in this source revision. A separately reviewed
+enablement and explicit device coordination are required before use. When
+enabled, it checks the exact Git source inventory before creating a child,
+holds Windows read-sharing protections over those files and the source assets
+through the supervised attempt, and rechecks both after a confirmed clean exit.
+The protections rely on the controller staying alive and do not attest all
+third-party or native code. A source revision and run identity observed only by
+the controller are recorded as controller-reported chronology, not an
+independent prelaunch witness.
+
+Only an exact zero-exit, reaped owner with the supervisor's clean receipt can
+reach saved-record validation. The controller checks all six ordered starts,
+tensor hashes, exact coordinates and controls, 37 synchronized memory stages,
+the staged checkpoint, and the final allocator-cleanup record. Its strongest
+outcome is `awaiting-independent-audit`; a separate audit must examine the raw
+records, supervisor and external observations. After the owner exits, the
+controller enumerates the bounded owner evidence, protects the existing files,
+validates and hashes them, and rechecks the inventory before writing its
+provisional final record. The protections do not prevent a new directory
+entry, and the recheck cannot detect an entry added and removed between checks.
+The independent audit must re-enumerate the evidence and reject unexpected or
+changed files; these hashes bind the bytes the controller observed, not the
+code or data actually executed. The controller writes a separate closure record
+after releasing its guards. A complete-looking final or closure record alone is
+insufficient: an external observer must also retain the controller's actual
+zero exit and evaluate the supervisor and device observations. An unavailable
+or inconclusive GPU-process query is not proof that the owner was absent.
+Timed-out, interrupted, ambiguous or failed attempts stay incomplete or
+quarantined and are never combined with a later run.
