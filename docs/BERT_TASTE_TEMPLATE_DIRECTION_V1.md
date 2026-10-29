@@ -21,6 +21,16 @@ use and pretraining exposure are not certified. These are new frames held out
 from the previous taste experiments, not secret cases or a blind confirmation;
 the cases will be public before any model forward.
 
+For a study launch, a trusted outer operator must exclusively create a new
+absolute bytecode-prefix directory, confirm that it is empty before starting
+the child and keep it quiescent until the child exits. The child runs with
+`-I -B -X pycache_prefix=<that directory>` and rejects a missing, symlinked or
+nonempty prefix before importing project modules. The operator checks the
+prefix again after exit; any uncertainty makes the attempt incomplete. The
+interpreter, its startup/site machinery, installed dependencies and the host
+remain trusted: the child check cannot undo imports made before its script
+starts, and it is not an attestation against concurrent interference.
+
 ## New frames and selection
 
 After this protocol and the case-selection source are public, rank this fixed
@@ -126,8 +136,13 @@ For each stem, eight clean captures precede the 36 intervention forwards;
 four fresh clean checks follow. Separately capture the four final-block
 ingredient vectors and perform four full donor replacements there as an
 architectural no-later-attention control. This is 56 forwards per stem and
-336 overall. Record every start/completion and all failures; no automatic
-retry or replacement frame is allowed.
+336 overall. Record starts and validated completions. If the observation
+adapter returns but a later check or completion write fails, try to retain a
+bounded invalid-return event with the model-entry IDs, mask-logit bits and
+selected activation bits, then leave the attempt incomplete. A failed write,
+interruption at the return boundary, or an exception within the adapter may
+leave only a start, so a start alone does not establish whether the model
+returned. No automatic retry or replacement frame is allowed.
 
 ## Prespecified readout
 

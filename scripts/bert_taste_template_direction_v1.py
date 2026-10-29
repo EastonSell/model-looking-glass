@@ -4,6 +4,15 @@ import os
 
 if __name__ == '__main__' and (not sys.flags.isolated or not sys.dont_write_bytecode or not sys.pycache_prefix):
     raise RuntimeError('isolated no-bytecode child with a fresh prefix is required')
+if __name__ == '__main__':
+    try:
+        if not os.path.isabs(sys.pycache_prefix) or os.path.islink(sys.pycache_prefix):
+            raise RuntimeError('fresh empty bytecode prefix is required')
+        with os.scandir(sys.pycache_prefix) as entries:
+            if next(entries, None) is not None:
+                raise RuntimeError('fresh empty bytecode prefix is required')
+    except OSError as exc:
+        raise RuntimeError('fresh empty bytecode prefix is required') from exc
 if __name__ == '__main__' and (os.environ.get('CUDA_VISIBLE_DEVICES') not in ('', '-1')
                                or os.environ.get('OMP_NUM_THREADS') != '1'
                                or os.environ.get('MKL_NUM_THREADS') != '1'
@@ -170,30 +179,46 @@ def run_cases(model, rows, *, sweet_id, sour_id, tokenizer, emit):
         observed, entry = previous.observe_entry(model, tuple(row['input_ids']), layer=layer,
                                                  position=position, mask_index=4,
                                                  source=patch, self_patch=self_patch)
-        post_probe = previous.previous.denormal_probe()
-        if expected_before is not None and not previous._same(observed.before, expected_before):
-            raise RuntimeError('same-invocation pre-action differs from its clean capture')
-        actual_norm = actual_cosine = None
-        if dose is not None:
-            actual_norm = geometry.norm(geometry.displacement(previous._values(observed.after),
-                                                               previous._values(observed.before)))
-            actual_cosine = _actual_cosine(observed.after, observed.before, donor_clean)
-            if actual_norm != dose['delivered_norm'] or actual_cosine != dose['cosine_with_donor_direction']:
-                raise RuntimeError('actual delivered geometry differs from the plan')
-        summary = previous._summary(observed.mask_logits, sweet_id, sour_id, tokenizer)
-        post_score = previous.previous.denormal_probe()
-        emit({'event': 'forward_complete', **identity, 'model_entry': entry, 'summary': summary,
-              'denormal_before': pre_probe, 'denormal_after': post_probe, 'denormal_after_scoring': post_score,
-              'baseline_mask_logits_float32_le_base64': previous._bits(observed.mask_logits) if baseline else None,
-              'before_float32_le_base64': previous._bits(observed.before),
-              'after_float32_le_base64': None if observed.after is None else previous._bits(observed.after),
-              'source_float32_le_base64': None if patch is None else previous._bits(patch),
-              'donor_clean_float32_le_base64': None if donor_clean is None else previous._bits(donor_clean),
-              'full_before_sha256': observed.full_before_sha256, 'full_after_sha256': observed.full_after_sha256,
-              'untouched_positions_equal': observed.untouched_positions_equal,
-              'actual_pre_post_norm': actual_norm, 'actual_donor_cosine': actual_cosine,
-              'dose': None if dose is None else {k: v for k, v in dose.items() if k != 'raw'},
-              'events': list(observed.events)})
+        try:
+            post_probe = previous.previous.denormal_probe()
+            if expected_before is not None and not previous._same(observed.before, expected_before):
+                raise RuntimeError('same-invocation pre-action differs from its clean capture')
+            actual_norm = actual_cosine = None
+            if dose is not None:
+                actual_norm = geometry.norm(geometry.displacement(previous._values(observed.after),
+                                                                   previous._values(observed.before)))
+                actual_cosine = _actual_cosine(observed.after, observed.before, donor_clean)
+                if actual_norm != dose['delivered_norm'] or actual_cosine != dose['cosine_with_donor_direction']:
+                    raise RuntimeError('actual delivered geometry differs from the plan')
+            summary = previous._summary(observed.mask_logits, sweet_id, sour_id, tokenizer)
+            post_score = previous.previous.denormal_probe()
+            emit({'event': 'forward_complete', **identity, 'model_entry': entry, 'summary': summary,
+                  'denormal_before': pre_probe, 'denormal_after': post_probe, 'denormal_after_scoring': post_score,
+                  'baseline_mask_logits_float32_le_base64': previous._bits(observed.mask_logits) if baseline else None,
+                  'before_float32_le_base64': previous._bits(observed.before),
+                  'after_float32_le_base64': None if observed.after is None else previous._bits(observed.after),
+                  'source_float32_le_base64': None if patch is None else previous._bits(patch),
+                  'donor_clean_float32_le_base64': None if donor_clean is None else previous._bits(donor_clean),
+                  'full_before_sha256': observed.full_before_sha256, 'full_after_sha256': observed.full_after_sha256,
+                  'untouched_positions_equal': observed.untouched_positions_equal,
+                  'actual_pre_post_norm': actual_norm, 'actual_donor_cosine': actual_cosine,
+                  'dose': None if dose is None else {k: v for k, v in dose.items() if k != 'raw'},
+                  'events': list(observed.events)})
+        except BaseException as original:
+            try:
+                emit({'event': 'forward_returned_invalid', **identity, 'model_entry': entry,
+                      'exception_type': type(original).__name__,
+                      'mask_logits_float32_le_base64': previous._bits(observed.mask_logits),
+                      'before_float32_le_base64': previous._bits(observed.before),
+                      'after_float32_le_base64': None if observed.after is None else previous._bits(observed.after),
+                      'source_float32_le_base64': None if patch is None else previous._bits(patch),
+                      'donor_clean_float32_le_base64': None if donor_clean is None else previous._bits(donor_clean)})
+            except BaseException as recording_error:
+                if (isinstance(recording_error, (KeyboardInterrupt, SystemExit))
+                        and not isinstance(original, (KeyboardInterrupt, SystemExit))):
+                    raise recording_error from original
+                raise original from recording_error
+            raise
         completed += 1
         return observed, summary
 
