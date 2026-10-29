@@ -93,6 +93,47 @@ def test_raising_output_attribute_salvages_other_tensor_and_action_witnesses(tmp
     assert (evidence.path / 'forward-000-observed.json').is_file()
 
 
+@pytest.mark.parametrize('metadata_fails_first', [False, True])
+def test_output_cancellation_wins_over_an_earlier_ordinary_getter_failure(tmp_path, monkeypatch,
+                                                                              metadata_fails_first):
+    from looking_glass.intervention_plan import ActivationPlan
+    class BrokenOutput:
+        @property
+        def logits(self):
+            raise RuntimeError('ordinary failure')
+
+        @property
+        def encoder_last_hidden_state(self):
+            raise KeyboardInterrupt()
+
+    class FakeModel(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.encoder = torch.nn.Module()
+            self.encoder.final_layer_norm = torch.nn.Identity()
+
+        def forward(self, input_ids, **kwargs):
+            self.encoder.final_layer_norm(input_ids.float().unsqueeze(-1).expand(-1, -1, 512).clone())
+            return BrokenOutput()
+
+    evidence, records, active = Evidence(tmp_path / 'attempt'), [], {'case_id': 'fabricated'}
+    source = {'input_ids': [2, 3, 1], 'attention_mask': [1, 1, 1]}
+    target = {'input_ids': [7, 1]}
+    with monkeypatch.context() as local:
+        if metadata_fails_first:
+            def bad_metadata(_self):
+                raise RuntimeError('metadata failure')
+            local.setattr(ActivationPlan, 'metadata', property(bad_metadata))
+        with pytest.raises(KeyboardInterrupt):
+            run_forward(FakeModel().eval(), evidence, records, active, source, target, 'cancel',
+                        'patch', torch.full((512,), 7.0), 1)
+    layout = active['tensor_layout']
+    assert layout['logits']['error_type'] == 'RuntimeError'
+    assert layout['encoder']['error_type'] == 'KeyboardInterrupt'
+    assert layout['before']['bytes'] == layout['after']['bytes'] == 2048
+    assert (evidence.path / active['saved_file']).is_file()
+
+
 def test_smallest_level_must_be_positive_and_rounding_unmatchable_is_not_negative():
     positions = {'word': 0, 'instruction': 1, 'punctuation': 2}
     states = [torch.zeros((1, 3, 512), dtype=torch.float32) for _ in range(2)]

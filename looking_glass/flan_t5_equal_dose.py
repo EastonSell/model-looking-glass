@@ -412,7 +412,10 @@ def run_forward(model, evidence, records, active, source, target, name, action='
             filename = f'forward-{len(records):03d}' + ('-failed.bin' if failed else '.bin')
             sha = evidence.write(filename, packed)
             active.update(saved_file=filename, saved_sha256=sha)
-        return [item[0] for item in items], layout, next(iter(errors.values()), None)
+        # Cancellation wins over an earlier ordinary component error after salvage.
+        cancellation = next((error for error in errors.values() if not isinstance(error, Exception)), None)
+        return [item[0] for item in items], layout, (cancellation if cancellation is not None
+                                                     else next(iter(errors.values()), None))
 
     try:
         with torch.no_grad():
@@ -440,14 +443,19 @@ def run_forward(model, evidence, records, active, source, target, name, action='
                 snapshots = session.captures
                 before, after = snapshots['before'], snapshots['after']
                 metadata = session.metadata
-    except BaseException:
+    except BaseException as original_error:
         # The model may have returned successfully before session validation failed.
+        component_error = None
         try:
-            persist_return(failed=True)
+            _, _, component_error = persist_return(failed=True)
             evidence.json(f'forward-{len(records):03d}-failed.json',
                           dict(active, status='forward-failed', session_metadata=metadata))
-        except BaseException:
-            pass
+        except BaseException as salvage_error:
+            if not isinstance(salvage_error, Exception) and isinstance(original_error, Exception):
+                raise
+        if (component_error is not None and not isinstance(component_error, Exception)
+                and isinstance(original_error, Exception)):
+            raise component_error
         raise
 
     (logits, state, before, after, capture), layout, component_error = persist_return(failed=False)
