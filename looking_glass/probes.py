@@ -72,20 +72,37 @@ class TraceSession:
     """Record labeled identity outputs, without replacing values or gradients.
 
     max_events is an explicit bound; exceeding it raises rather than silently
-    dropping events. Tensor bytes count persistent value snapshots only.
+    dropping events. max_tensor_bytes, when set, is a cumulative allowance for
+    the logical payload bytes of successfully captured tensor snapshots. The
+    configured limit is read-only for the session. The allowance
+    does not replenish if the caller removes or modifies events, and it does
+    not account for tensors inserted or resized by the caller. ID-only events
+    consume no tensor bytes. Bounded value capture requires non-nested strided
+    tensors, whose logical payload can be estimated before copying.
+
+    The allowance is not a RAM or VRAM peak bound: it excludes metadata,
+    allocator rounding and reservations, model state and activations, finite
+    validation temporaries, and gradient-readout intermediates. tensor_bytes
+    reports the current logical payload bytes in the public events list.
     """
     def __init__(self, model: nn.Module, mode="direct", placement="dense",
-                 run_id="run", max_events=10000):
+                 run_id="run", max_events=10000, max_tensor_bytes=None):
         if mode not in ("direct", "gradient", "id"):
             raise ValueError("mode must be direct, gradient, or id")
         if placement not in ("sparse", "dense"):
             raise ValueError("placement must be sparse or dense")
         if type(max_events) is not int or max_events <= 0:
             raise ValueError("max_events must be a positive integer")
+        if max_tensor_bytes is not None and (
+            type(max_tensor_bytes) is not int or max_tensor_bytes < 0
+        ):
+            raise ValueError("max_tensor_bytes must be a nonnegative integer or None")
         if not isinstance(run_id, str) or not run_id:
             raise ValueError("run_id must be a nonempty string")
         self.model, self.mode, self.placement = model, mode, placement
         self.run_id, self.max_events = run_id, max_events
+        self._max_tensor_bytes = max_tensor_bytes
+        self._captured_tensor_bytes = 0
         self.events = []
         self._handles = []
         self._counts = defaultdict(int)
@@ -94,6 +111,10 @@ class TraceSession:
     @property
     def tensor_bytes(self):
         return sum(e.tensor_bytes for e in self.events)
+
+    @property
+    def max_tensor_bytes(self):
+        return self._max_tensor_bytes
 
     def __enter__(self):
         if self._used:
@@ -117,6 +138,19 @@ class TraceSession:
             raise RuntimeError("trace capacity exceeded; increase max_events explicitly")
         if not isinstance(output, torch.Tensor):
             raise TypeError("tap output must be one tensor")
+        value_bytes = 0
+        if self.mode != "id" and self.max_tensor_bytes is not None:
+            if not output.is_floating_point():
+                raise TypeError("capture requires one floating-point tensor")
+            if output.layout != torch.strided or output.is_nested:
+                raise ValueError("bounded value capture requires non-nested strided tensors")
+            value_bytes = output.numel() * output.element_size()
+            if self._captured_tensor_bytes + value_bytes > self.max_tensor_bytes:
+                raise RuntimeError(
+                    "trace tensor capacity exceeded: "
+                    f"{self._captured_tensor_bytes} captured + {value_bytes} requested "
+                    f"exceeds max_tensor_bytes={self.max_tensor_bytes}"
+                )
         if self.mode == "id":
             value = None
         elif self.mode == "gradient":
@@ -129,6 +163,8 @@ class TraceSession:
         self.events.append(TraceEvent(self.run_id, module.node_id,
             len(self.events), count, tuple(output.shape), str(output.dtype),
             str(output.device), value))
+        if self.max_tensor_bytes is not None:
+            self._captured_tensor_bytes += value_bytes
         return None
 
     def close(self):
