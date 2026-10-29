@@ -42,6 +42,8 @@ class ServicePreparationTests(unittest.TestCase):
         self.registry_mock = patch.object(service, "_load_profile_registry", return_value=(None, None)).start()
         patch.object(service._owner_module, "FIXED_SERVICE_OWNER_CONTRACT",
                      service._REQUIRED_OWNER_CONTRACT, create=True).start()
+        patch.object(service._owner_module, "OWNER_COMPLETION_CUSTODY_CONTRACT",
+                     service._REQUIRED_COMPLETION_CONTRACT, create=True).start()
         patch.object(service._owner_module, "__file__", str(self.package / "gpu_service.py")).start()
         patch.object(service._supervisor_module, "SUPERVISOR_LAUNCH_CUSTODY_CONTRACT",
                      service._REQUIRED_SPAWN_CONTRACT, create=True).start()
@@ -116,6 +118,12 @@ class ServicePreparationTests(unittest.TestCase):
         with patch.object(service, "_start_owner_controller") as start:
             with patch.object(service._owner_module, "FIXED_SERVICE_OWNER_CONTRACT", "old"):
                 with self.assertRaisesRegex(RuntimeError, "launch-custody supervisor"):
+                    prepared.start()
+            with patch.object(service._owner_module, "OWNER_COMPLETION_CUSTODY_CONTRACT", None):
+                with self.assertRaisesRegex(RuntimeError, "completion custody"):
+                    prepared.start()
+            with patch.object(service._owner_module, "OWNER_COMPLETION_CUSTODY_CONTRACT", "old"):
+                with self.assertRaisesRegex(RuntimeError, "completion custody"):
                     prepared.start()
             with patch.object(service._supervisor_module, "SUPERVISOR_LAUNCH_CUSTODY_CONTRACT", "old"):
                 with self.assertRaisesRegex(RuntimeError, "launch-custody supervisor"):
