@@ -30,7 +30,8 @@ pretrained development run.
 
 This is an independent reconstruction of saved evidence, not proof that a
 model actually executed, that its reported runtime or state was authentic, or
-that source publication preceded execution. The controller and custodian
-verify those separate bindings and retain their limits. Success concerns the
-fixed public development cases; it does not establish a mechanism, held-out
+that source publication preceded execution. Those bindings require separate
+controller and custodian checks; publication timing requires independent
+publication evidence and still may be uncertain. Success concerns the fixed
+public development cases; it does not establish a mechanism, held-out
 performance or general behavior on other inputs.
