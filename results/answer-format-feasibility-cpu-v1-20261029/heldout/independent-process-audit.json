@@ -1,0 +1,22 @@
+{
+  "asset_count": 7,
+  "checkout_commit": "a8acc76aa64332dfb96964284c7d78ccf2c51b5e",
+  "finite_full_vocabulary_rows": 32,
+  "journal_rows": 32,
+  "manifest_sha256": "6767fc7c95ffc89809d45df0991dce526d23aadd4c93536cc71e316d5c08bd78",
+  "matrix_sha256": "42ff684b479fee277005106d65ebdc946648411f87a098d086665be77dcd7f46",
+  "phase_sha256": "d6e1cdb4fb724d38105c6bd80cd73cab50cee513515783a2ad316f9421742a69",
+  "result_sha256": "3846f6298f3180c24372284d2c148ad5055c7bfe88b8b1e60a303d212bc99eb8",
+  "review_completed_utc": "2026-10-29T10:59:53.344207+00:00",
+  "robust_facts": {
+    "question": [],
+    "statement": []
+  },
+  "schema": "independent-answer-format-heldout-process-v1",
+  "scope": "Saved-byte, row and cooperative process/report consistency; not authenticated execution, timing, private disjointness or unknown history.",
+  "selected_family": null,
+  "selection_status": "ineligible",
+  "source_commit": "266b8c72a4fb1065a078ffbf033a65216c5f79ef",
+  "source_files_verified": 341,
+  "status": "passed"
+}
