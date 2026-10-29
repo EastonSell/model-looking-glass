@@ -55,7 +55,10 @@ embedding geometry, exact configured input dimensions, eval mode, no gradient
 checkpointing, CPU float32 parameters and buffers on CPU, no autocast or
 compiled execution, and no existing local or global forward hooks. It disables
 attention/hidden-state collection and positional interpolation for its single
-forward. Caller-owned exclusive model access is required across the call;
+forward. The boundary meanings above were verified with the project's pinned
+Transformers 4.57.3. Preflight does not authenticate checkpoint or library
+bytes or arbitrary changes to internal forwards; callers must establish those
+assumptions. Caller-owned exclusive model access is required across the call;
 the process-local lease is cooperative and cannot stop foreign hooks or another
 process. If `KeyboardInterrupt` or `SystemExit` interrupts a forward, PyTorch
 may skip completion hooks and leave a lease/hook installed: discard the model
