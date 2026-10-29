@@ -43,6 +43,12 @@ A previous equal encoder event is not used as the preceding boundary for a
 decoder difference. Within a stack, an observed interval concerns only the
 selected points and is not proof of a causal origin.
 
+The comparator conservatively treats any `t5_` module kind or module path
+beginning `encoder.block.` or `decoder.block.` as requiring this T5 context.
+Other producers that use those path prefixes will therefore be inconclusive
+unless they satisfy this narrow contract; existing BERT and GPT-2 paths do not
+use those prefixes.
+
 The producer records immutable copies of the IDs and masks but retains caller-owned
 mutable tensor values. It first clones the supplied CPU int64 input tensors and
 checks their device, dtype, shape and values and the model dimensions after the forward; transient mutations
