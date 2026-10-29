@@ -7,6 +7,11 @@ pool, batching service, or proof that concurrent model execution is safe.
 The existing worker must not accept arbitrary client-supplied hooks or code.
 Integration must be done by its trusted model owner under an exclusive model
 lease and validated separately.
+The dispatcher does not receive a model identity and cannot acquire that
+lease itself. Its process-local lock serializes dispatcher calls only, not
+other tracing or intervention APIs. The owner must coordinate the same model
+and all its modules with those APIs, and hold the lease through registration,
+forward execution, device synchronization, hook removal and finalization.
 
 ## Ownership contract
 

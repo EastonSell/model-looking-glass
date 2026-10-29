@@ -1,9 +1,11 @@
 """Request boundaries and failure semantics of batched trace capture."""
 import asyncio
-from concurrent.futures import Future
+from concurrent.futures import CancelledError, Future
+import gc
 import threading
 import unittest
 from unittest import mock
+import weakref
 
 import torch
 from torch import nn
@@ -212,6 +214,61 @@ class CaptureDispatcherTests(unittest.TestCase):
             h.remove()
         self.assertEqual([e.request_id for e in events], ["b", "b"])
         self.assertEqual([e.value.item() for e in events], [22., 122.])
+
+    def test_cancellation_and_oom_release_owned_slices_and_execution_lock(self):
+        """Simulated failures exercise cleanup; no CUDA allocation is made."""
+        original_select = torch.Tensor.index_select
+        for failure_type in (CancelledError, torch.OutOfMemoryError, KeyboardInterrupt):
+            with self.subTest(failure_type=failure_type):
+                refs = []
+                def track_select(tensor, *args, **kwargs):
+                    value = original_select(tensor, *args, **kwargs)
+                    refs.append(weakref.ref(value))
+                    return value
+                r = request("a", [SampleSelection(0, "s", (0,))])
+                d = make_dispatcher((r,), batch_size=1, sequence_length=1,
+                                    max_events=2, max_trace_bytes=64)
+                def forward():
+                    d.record("tap", layer_index=0, module_kind="block",
+                             output=torch.ones(1, 1, 1))
+                    raise failure_type("simulated")
+                with mock.patch.object(torch.Tensor, "index_select", track_select):
+                    with self.assertRaises(failure_type):
+                        d.run(forward)
+                gc.collect()
+                self.assertEqual(len(refs), 1)
+                self.assertIsNone(refs[0]())
+                self.assertEqual(d.retained_bytes, 0)
+                # A failed or cancelled call must release the process-local guard.
+                later = make_dispatcher((r,), batch_size=1, sequence_length=1,
+                                        max_events=2, max_trace_bytes=64)
+                output, events = later.run(lambda: 42)
+                self.assertEqual((output, events), (42, ()))
+
+    def test_caught_limit_failure_releases_previously_owned_slices(self):
+        original_select = torch.Tensor.index_select
+        refs = []
+        def track_select(tensor, *args, **kwargs):
+            value = original_select(tensor, *args, **kwargs)
+            refs.append(weakref.ref(value))
+            return value
+        r = request("a", [SampleSelection(0, "s", (0,))], max_events=1)
+        d = make_dispatcher((r,), batch_size=1, sequence_length=1,
+                            max_events=2, max_trace_bytes=64)
+        def forward():
+            value = torch.ones(1, 1, 1)
+            d.record("tap", layer_index=0, module_kind="block", output=value)
+            try:
+                d.record("tap", layer_index=0, module_kind="block", output=value)
+            except CaptureLimitError:
+                pass
+        with mock.patch.object(torch.Tensor, "index_select", track_select):
+            with self.assertRaises(CaptureAbortedError):
+                d.run(forward)
+        gc.collect()
+        self.assertEqual(len(refs), 1)
+        self.assertIsNone(refs[0]())
+        self.assertEqual(d.retained_bytes, 0)
 
     def test_forward_and_input_gradients_match_uninstrumented_reference(self):
         model = RepeatedTap()
