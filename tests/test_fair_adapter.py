@@ -371,6 +371,27 @@ class FairAdapterTests(unittest.TestCase):
         self.assertEqual(adapter.waiting_bytes, 4)
         self.assertEqual(adapter.close(), (ticket,))
 
+    def test_interrupted_claim_closes_adapter_for_owner_reconciliation(self):
+        adapter = self.make_adapter()
+        ticket = adapter.submit(b'alice-key', b'data')
+        original = adapter._queue.claim_next
+
+        def remove_then_interrupt(eligible):
+            original(eligible)
+            raise KeyboardInterrupt()
+
+        with patch.object(adapter._queue, 'claim_next', side_effect=remove_then_interrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                adapter.transfer_next()
+        with self.assertRaises(AdapterClosed):
+            adapter.submit(b'alice-key', b'new')
+        with self.assertRaises(AdapterClosed):
+            adapter.cancel(b'alice-key', ticket)
+        with self.assertRaises(AdapterClosed):
+            adapter.transfer_next()
+        self.assertEqual(adapter.close(), (ticket,))
+        self.assertFalse(adapter.cancel(b'alice-key', ticket))
+
     def test_cancel_and_transfer_race_has_one_winner(self):
         for _ in range(20):
             target = InMemoryHandoff()
