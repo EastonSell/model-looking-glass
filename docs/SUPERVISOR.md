@@ -377,3 +377,31 @@ termination. Directory-entry durability across OS crashes or sudden power loss
 has not been established, particularly on Windows, and is not guaranteed by
 this implementation. Following such failures, require an explicit external
 device-safety assessment before reuse; there is no automatic marker reset API.
+
+## Read-only inspection of an active Windows child
+
+`inspect_live_child(run_id)` duplicates the registered direct child's Windows
+process handle under the spawn-custody lock, checks its actual PID and creation
+time, and returns a capability with Windows `SYNCHRONIZE` and
+`PROCESS_QUERY_LIMITED_INFORMATION` rights. `check_live()` rejects a retired or
+replaced spawn record, a changed PID or birth time, and an exited process.
+Keep the capability through identity-sensitive observations, compare its run
+ID and PID to the eventual `SupervisionResult`, then close it. This inspection
+does not wait for, signal, recover or change the child or its marker. It does
+not cover escaped or unrelated processes, authenticate a hostile owner, or
+prove physical GPU exclusivity or CUDA cleanup.
+
+Capabilities are rooted before native handle duplication, including when a
+Python interruption occurs before the caller receives the result. They are
+listed by `pending_live_child_inspections()`; close only capabilities you own
+or whose user is known to be quiescent. If native close is interrupted or
+fails, its outcome may be uncertain and the capability stays rooted; do not
+retry that handle number because it may have been recycled. Recycle the
+dedicated launcher if this leaves resource custody uncertain. This mechanism is
+distinct from `pending_supervised_children()` and its quiescent recovery API.
+
+The duplication and Windows identity/liveness calls occur while the spawn
+registry lock is held. If a native call stalls, supervisor retirement can
+also stall; the in-process API supplies no hard deadline. Use a separate
+launcher-process watchdog and preserve the marker whenever its outcome is
+uncertain. Do not infer successful retirement from a timed-out caller.

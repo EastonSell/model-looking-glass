@@ -43,6 +43,8 @@ _LAUNCH_TIMEOUT = 30.0
 _MAX_SPAWN_CUSTODIES = 64
 _spawn_custody_lock = threading.Lock()
 _spawn_custodies = {}
+_live_inspection_lock = threading.Lock()
+_live_inspections = set()
 
 # This identifies a cooperative compatibility contract, not a security proof.
 SUPERVISOR_LAUNCH_CUSTODY_CONTRACT = "gated-rooted-child-v1"
@@ -891,6 +893,114 @@ def pending_supervised_children():
     """Return rooted recovery records; caller must establish launcher quiescence."""
     with _spawn_custody_lock:
         return tuple(_spawn_custodies.values())
+
+
+class _LiveChildInspection:
+    """Read-only duplicate of a registered Windows child's process handle."""
+
+    def __init__(self, kernel, record, run_id, pid):
+        from ctypes import wintypes
+        self._kernel = kernel
+        self._record = record
+        self._handle = wintypes.HANDLE()
+        self._lock = threading.Lock()
+        self._closing = False
+        self._closed = False
+        self.run_id, self.pid, self.birth = run_id, pid, None
+
+    def check_live(self):
+        with self._lock:
+            if self._closing or self._closed or not self._handle.value:
+                raise SupervisorError('live child inspection is unavailable')
+            with _spawn_custody_lock:
+                if (_spawn_custodies.get(self.run_id) is not self._record
+                        or not self._record._known_child()
+                        or self._record._child.pid != self.pid
+                        or self._kernel.GetProcessId(self._handle) != self.pid
+                        or _windows_birth(self._kernel, self._handle) != self.birth
+                        or self._kernel.WaitForSingleObject(self._handle, 0) != 0x102):
+                    raise SupervisorError('registered child identity or liveness changed')
+
+    def close(self):
+        with self._lock:
+            if not self._closed:
+                if self._closing:
+                    raise SupervisorError('live child handle close is uncertain')
+                # Never retry a close whose native outcome was interrupted: the
+                # numeric handle may already have been recycled by the process.
+                self._closing = True
+                if self._handle.value and not self._kernel.CloseHandle(self._handle):
+                    raise SupervisorError('live child handle could not be closed')
+                self._closed = True
+                self._handle.value = None
+        with _live_inspection_lock:
+            _live_inspections.discard(self)
+
+
+def pending_live_child_inspections():
+    """Return rooted inspection capabilities, including uncertain closes.
+
+    A caller may close only a capability it owns or one whose user is known to
+    be quiescent. This is separate from child recovery and cannot clear a
+    device marker or establish CUDA teardown.
+    """
+    with _live_inspection_lock:
+        return tuple(_live_inspections)
+
+
+def inspect_live_child(run_id):
+    """Duplicate the exact registered live Windows child for read-only checks.
+
+    This does not mutate, wait for or recover the supervisor's child. The
+    returned capability stays bound to the registered spawn generation and
+    must be checked again at each identity-sensitive boundary. Hold it through
+    endpoint queries and compare the eventual SupervisionResult after reap.
+    """
+    if (os.name != 'nt' or type(run_id) is not str or len(run_id) != 32
+            or any(char not in '0123456789abcdef' for char in run_id)):
+        raise SupervisorError('a Windows supervisor run ID is required')
+    import ctypes
+    from ctypes import wintypes
+    kernel = _windows_kernel()
+    kernel.DuplicateHandle.argtypes = (wintypes.HANDLE, wintypes.HANDLE, wintypes.HANDLE,
+                                       ctypes.POINTER(wintypes.HANDLE), wintypes.DWORD,
+                                       wintypes.BOOL, wintypes.DWORD)
+    kernel.DuplicateHandle.restype = wintypes.BOOL
+    kernel.GetProcessId.argtypes = (wintypes.HANDLE,)
+    kernel.GetProcessId.restype = wintypes.DWORD
+    cap = None
+    try:
+        with _spawn_custody_lock:
+            record = _spawn_custodies.get(run_id)
+            if type(record) is not _SpawnCustody or not record._known_child():
+                raise SupervisorError('registered live child is unavailable')
+            child = record._child
+            pid = child.pid
+            cap = _LiveChildInspection(kernel, record, run_id, pid)
+            with _live_inspection_lock:
+                if len(_live_inspections) >= _MAX_SPAWN_CUSTODIES:
+                    raise SupervisorError('live inspection capacity is exhausted')
+                _live_inspections.add(cap)
+            process = kernel.GetCurrentProcess()
+            if not kernel.DuplicateHandle(process, int(child._handle), process,
+                                          ctypes.byref(cap._handle), 0x00100000 | 0x1000, False, 0):
+                raise SupervisorError('cannot duplicate the rooted child handle')
+            if (not cap._handle.value or kernel.GetProcessId(cap._handle) != pid
+                    or kernel.WaitForSingleObject(cap._handle, 0) != 0x102):
+                raise SupervisorError('rooted child is not live or its PID differs')
+            cap.birth = _windows_birth(kernel, cap._handle)
+            if _spawn_custodies.get(run_id) is not record:
+                raise SupervisorError('registered child changed during inspection')
+        return cap
+    except BaseException as primary:
+        if cap is not None:
+            try:
+                cap.close()
+            except BaseException as cleanup:
+                if (isinstance(cleanup, (KeyboardInterrupt, SystemExit))
+                        and not isinstance(primary, (KeyboardInterrupt, SystemExit))):
+                    raise cleanup from primary
+        raise
 
 
 def _spawn_with_gate(command, *, cwd, child_env, custody, startup_fd=None):
