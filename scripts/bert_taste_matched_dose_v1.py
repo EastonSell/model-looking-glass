@@ -1,10 +1,17 @@
 """Public CPU matched-dose taste-context follow-up; no downloads."""
 
+import sys
+
+if __name__ in ("__main__", "<run_path>") and (
+        not sys.flags.isolated or not sys.dont_write_bytecode or not sys.pycache_prefix):
+    raise RuntimeError("isolated no-bytecode child with a fresh prefix is required")
+
 import argparse
 import base64
 from contextlib import ExitStack
 import hashlib
 import heapq
+import importlib.machinery
 import json
 import math
 import os
@@ -12,18 +19,8 @@ from pathlib import Path
 import platform
 import random
 import struct
-import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-import torch
-
-from scripts import bert_taste_patch_v1 as previous
-
-MODEL = previous.MODEL
-REVISION = previous.REVISION
 SEED = 20261030
 CASES_PATH = "experiments/bert_taste_matched_dose_public_cases_v1.json"
 FRAMES = ("coffee", "milk", "soup", "cake", "pudding", "cocoa")
@@ -34,6 +31,7 @@ PRIOR_INVENTORIES = {
 }
 SOURCE_PATHS = (
     "scripts/bert_taste_matched_dose_v1.py", "scripts/bert_taste_matched_parent_v1.py",
+    "scripts/bert_taste_matched_independent.py",
     "docs/BERT_TASTE_MATCHED_DOSE_V1.md", "experiments/bert_taste_matched_dose_public_cases_v1.json",
     "experiments/bert_agreement_exposures_v6.json", "experiments/bert_matched_public_cases_v1.json",
     "experiments/bert_taste_public_exposures_v2.json", "scripts/bert_taste_patch_v1.py",
@@ -41,6 +39,68 @@ SOURCE_PATHS = (
     "looking_glass/bert_agreement_runner.py", "looking_glass/intervention_plan.py",
     "looking_glass/interventions.py", "looking_glass/model_ownership.py",
 )
+
+
+class _CheckoutImportGuard:
+    """Allow only declared checkout Python source through ordinary import."""
+    def find_spec(self, fullname, path=None, target=None):
+        spec = importlib.machinery.PathFinder.find_spec(fullname, path, target)
+        project = fullname == "scripts" or fullname.startswith("scripts.") or fullname == "looking_glass" or fullname.startswith("looking_glass.")
+        if spec is None:
+            if project:
+                raise ImportError("declared project module cannot be resolved")
+            return None
+        if spec.origin not in (None, "built-in", "frozen"):
+            lexical = Path(spec.origin).absolute()
+            resolved = lexical.resolve()
+            in_checkout = lexical.is_relative_to(ROOT) or resolved.is_relative_to(ROOT)
+            if in_checkout:
+                allowed = {ROOT / name for name in SOURCE_PATHS if name.endswith(".py")}
+                if (resolved not in allowed or not isinstance(spec.loader, importlib.machinery.SourceFileLoader)):
+                    raise ImportError("checkout import is not an allowed source file")
+                return spec
+            if project:
+                raise ImportError("project module resolved outside the checkout")
+        elif spec.submodule_search_locations is not None:
+            allowed_dirs = {ROOT / "scripts", ROOT / "looking_glass"}
+            for item in spec.submodule_search_locations:
+                location = Path(item).resolve()
+                if location.is_relative_to(ROOT) and location not in allowed_dirs:
+                    raise ImportError("checkout namespace is not allowed")
+            if project:
+                if fullname != "scripts" or [Path(item).resolve() for item in spec.submodule_search_locations] != [ROOT / "scripts"]:
+                    raise ImportError("project namespace differs")
+                return spec
+        elif project:
+            raise ImportError("project import has no source origin")
+        return None
+
+
+# Guard the one-shot child only; normal library imports must not change the
+# host process's import policy. The prior module sees this exact root already
+# present in the child and therefore does not prepend it.
+if __name__ in ("__main__", "<run_path>"):
+    sys.path[:] = [entry for entry in sys.path
+                   if not Path(entry or os.getcwd()).resolve().is_relative_to(ROOT)]
+    sys.path.append(str(ROOT))
+    if any(name == "scripts" or name.startswith("scripts.") or name == "looking_glass" or name.startswith("looking_glass.")
+           for name in sys.modules):
+        raise ImportError("project modules were loaded before the checkout guard")
+    sys.meta_path.insert(0, _CheckoutImportGuard())
+
+import torch
+
+from scripts import bert_taste_patch_v1 as previous
+
+if Path(previous.__file__).resolve() != ROOT / "scripts/bert_taste_patch_v1.py":
+    raise ImportError("prior taste source origin differs")
+for _name in ("bert_agreement_runner", "intervention_plan", "interventions", "model_ownership"):
+    _module = sys.modules.get("looking_glass." + _name)
+    if _module is None or Path(_module.__file__).resolve() != ROOT / "looking_glass" / (_name + ".py"):
+        raise ImportError("loaded project source origin differs")
+
+MODEL = previous.MODEL
+REVISION = previous.REVISION
 
 
 def _values(vector):
