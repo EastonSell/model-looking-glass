@@ -1357,12 +1357,22 @@ def run_distilgpt2_benchmark(output_dir, *, cache_dir, device='cpu', gpu_activit
             raise publication_errors[0]
 
 
+def _pytorch_already_imported():
+    import sys
+    return 'torch' in sys.modules
+
+
 def _preflight_distilgpt2(cache_dir, *, quick):
     """Verify cached assets and freeze the CPU workload before starting an owner."""
+    if _pytorch_already_imported():
+        raise RuntimeError('PyTorch is already imported; start a fresh CPU preflight process')
     visible = os.environ.get('CUDA_VISIBLE_DEVICES')
     was_set = 'CUDA_VISIBLE_DEVICES' in os.environ
     os.environ['CUDA_VISIBLE_DEVICES'] = ''
     try:
+        import torch
+        if torch.cuda.is_initialized() is not False:
+            raise RuntimeError('PyTorch CUDA was initialized during CPU preflight')
         from .pretrained import load_distilgpt2
         bundle = load_distilgpt2(cache_dir=cache_dir, allow_download=False)
         prompts = DISTILGPT2_PROMPTS[:2] if quick else DISTILGPT2_PROMPTS
@@ -1370,8 +1380,11 @@ def _preflight_distilgpt2(cache_dir, *, quick):
         metadata = _normalized_model_metadata(bundle.metadata)
         manifest, _ = workload_manifest(jobs, canonical_digest, model_spec=metadata,
                                         unit_name='input_positions_including_padding')
+        if torch.cuda.is_initialized() is not False:
+            raise RuntimeError('PyTorch CUDA was initialized during CPU preflight')
         return {'model_metadata': metadata, 'manifest_jobs': manifest['jobs'],
-                'source': _source_metadata(), 'public_prompts': list(prompts)}
+                'source': _source_metadata(), 'public_prompts': list(prompts),
+                'pytorch_cuda_initialized': False}
     finally:
         if was_set:
             os.environ['CUDA_VISIBLE_DEVICES'] = visible
@@ -1396,6 +1409,8 @@ def _verify_source_commit(source, *, root=None):
 def _validate_preflight(preflight, *, quick):
     """Require reconstructible source, pinned assets and the fixed job set."""
     from .pretrained import ASSETS, MODEL_ID, REVISION
+    if preflight.get('pytorch_cuda_initialized') is not False:
+        raise ValueError('CPU preflight did not verify uninitialized PyTorch CUDA state')
     cuda_environment = preflight.get('cuda_environment')
     if (type(cuda_environment) is not dict
             or any(type(key) is not str or type(value) is not str for key, value in cuda_environment.items())

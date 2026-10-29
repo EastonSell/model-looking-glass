@@ -184,7 +184,10 @@ identity. Do not modify the checkout or those directories while a run is startin
 or active: filesystem hashes are observations, not in-memory code attestation.
 The same bootstrap can launch a CPU run; its setup records the validated startup
 status. A normal `python -m` CPU run records bytecode isolation as unverified.
-CPU preflight temporarily masks all visible GPUs. The controller identifies the physical GPU from a
+CPU preflight rejects a previously imported PyTorch process, temporarily masks
+all visible GPUs before importing it, and records that PyTorch reports CUDA
+uninitialized before and after loading. This records PyTorch process state; it
+does not attest to all native CUDA activity. The controller identifies the physical GPU from a
 trusted `nvidia-smi` UUID inventory and launches the real Python interpreter as
 the supervisor's direct child, including on Windows virtual environments. All
 cooperating owners must use the same absolute device coordination root. Select a

@@ -1465,6 +1465,7 @@ class SupervisedIdentityTests(unittest.TestCase):
             seen.append(os.environ.get('CUDA_VISIBLE_DEVICES'))
             return bundle
         with patch.dict(os.environ, {'CUDA_VISIBLE_DEVICES': 'GPU-original'}), \
+             patch.object(benchmark, '_pytorch_already_imported', return_value=False), \
              patch('looking_glass.pretrained.load_distilgpt2', side_effect=load), \
              patch.object(benchmark, 'make_distilgpt2_workload', return_value=['job']), \
              patch.object(benchmark, 'workload_manifest', return_value=({'jobs': []}, 'digest')), \
@@ -1472,11 +1473,42 @@ class SupervisedIdentityTests(unittest.TestCase):
             result = benchmark._preflight_distilgpt2('unused', quick=True)
             self.assertEqual(os.environ['CUDA_VISIBLE_DEVICES'], 'GPU-original')
         self.assertEqual(seen, [''])
+        self.assertIs(result['pytorch_cuda_initialized'], False)
         self.assertEqual(result['model_metadata'], {'id': 'fake', 'torch_version': '2.8',
                                                      'transformers_version': '4.57'})
         self.assertIs(type(result['model_metadata']['torch_version']), str)
         self.assertIs(type(result['model_metadata']['transformers_version']), str)
         self.assertIs(type(bundle.metadata['torch_version']), Version)
+
+    def test_cpu_preflight_rejects_preimported_or_initialized_pytorch(self):
+        import os
+        import torch
+        from unittest.mock import patch
+        with patch.dict(os.environ, {'CUDA_VISIBLE_DEVICES': 'GPU-original'}), \
+             patch.object(benchmark, '_pytorch_already_imported', return_value=True), \
+             patch('looking_glass.pretrained.load_distilgpt2') as load:
+            with self.assertRaisesRegex(RuntimeError, 'already imported'):
+                benchmark._preflight_distilgpt2('unused', quick=True)
+            self.assertEqual(os.environ['CUDA_VISIBLE_DEVICES'], 'GPU-original')
+            load.assert_not_called()
+        with patch.dict(os.environ, {'CUDA_VISIBLE_DEVICES': 'GPU-original'}), \
+             patch.object(benchmark, '_pytorch_already_imported', return_value=False), \
+             patch.object(torch.cuda, 'is_initialized', return_value=True), \
+             patch('looking_glass.pretrained.load_distilgpt2') as load:
+            with self.assertRaisesRegex(RuntimeError, 'CUDA was initialized'):
+                benchmark._preflight_distilgpt2('unused', quick=True)
+            self.assertEqual(os.environ['CUDA_VISIBLE_DEVICES'], 'GPU-original')
+            load.assert_not_called()
+        from types import SimpleNamespace
+        with patch.dict(os.environ, {'CUDA_VISIBLE_DEVICES': 'GPU-original'}), \
+             patch.object(benchmark, '_pytorch_already_imported', return_value=False), \
+             patch.object(torch.cuda, 'is_initialized', side_effect=[False, True]), \
+             patch('looking_glass.pretrained.load_distilgpt2', return_value=SimpleNamespace(metadata={})), \
+             patch.object(benchmark, 'make_distilgpt2_workload', return_value=['job']), \
+             patch.object(benchmark, 'workload_manifest', return_value=({'jobs': []}, 'digest')):
+            with self.assertRaisesRegex(RuntimeError, 'CUDA was initialized'):
+                benchmark._preflight_distilgpt2('unused', quick=True)
+            self.assertEqual(os.environ['CUDA_VISIBLE_DEVICES'], 'GPU-original')
 
     def test_cpu_bootstrap_status_requires_successful_startup_validation(self):
         import os
@@ -2066,12 +2098,17 @@ class SupervisedIdentityTests(unittest.TestCase):
                  'input_digest': 'c' * 64, 'request_sha256': 'c' * 64}
                 for team in ('team-a', 'team-b') for index in range(2)]
         preflight = {'model_metadata': metadata, 'manifest_jobs': jobs, 'public_prompts': list(prompts),
+            'pytorch_cuda_initialized': False,
             'cuda_environment': benchmark._configure_cuda_environment({}),
             'source': {'source_commit': 'a' * 40, 'source_dirty': False,
                        'source_sha256': {name: 'b' * 64 for name in benchmark._SOURCE_FILES}}}
         with patch.object(benchmark, '_verify_source_commit') as verify:
             benchmark._validate_preflight(preflight, quick=True)
         verify.assert_called_once_with(preflight['source'])
+        invalid = copy.deepcopy(preflight)
+        invalid['pytorch_cuda_initialized'] = True
+        with self.assertRaisesRegex(ValueError, 'uninitialized PyTorch CUDA'):
+            benchmark._validate_preflight(invalid, quick=True)
         invalid = copy.deepcopy(preflight)
         invalid['source']['source_dirty'] = True
         with self.assertRaisesRegex(ValueError, 'clean source'):
