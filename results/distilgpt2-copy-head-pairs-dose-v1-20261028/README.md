@@ -100,6 +100,12 @@ The original attempt's 40 retained files occupy 169,593,335 bytes by file length
 
 Independent reviewers replayed all 576 saved action records, all 1,769 journal events, scores, recorded controls, delivered/untouched bits, dose and projection diagnostics, family comparisons and full-vocabulary additive references. They also compared the 56 recorded source hashes to the reviewed source tree. The [numerical replay](independent-numeric-replay.json) and [source/journal replay](independent-source-journal-replay.json) retain full details. These establish saved-data and receipt consistency; they do not independently execute the model, authenticate the receipt or custody reports, establish a complete exposure history, or prove private disjointness. Both custodians reported that no private held-out rows existed for comparison during this attempt.
 
+A subsequent [receipt-bound evidence audit](independent-complete-audit.json) compared the saved identities with separately supplied [source and asset pins](independent-audit-pins.json). When preparing those pins, the reviewer checked fetched source bytes and local checkpoint assets; neither check authenticates the earlier execution. The [reader](https://github.com/EastonSell/model-looking-glass/blob/63f2798d27aa849fbdd3358cdc2931eed90c9400/scripts/audit_copy_pairs_dose_v1.py) was finalized and published after the run; this is a post-run audit binding, not a preregistration. To replay it, first make a separate `pair-dose-attempt` directory containing exactly the `run/` directory and the five original files `pre-run.json`, `execution-context.json`, `supervisor.json`, `stdout.bin` and `stderr.bin` copied verbatim from this result. The reader intentionally rejects the extra report and CSV files in this result directory. Use a checkout whose three reader files match revision `63f2798d27aa849fbdd3358cdc2931eed90c9400` and whose Git object store contains that commit. From the repository root, use a fresh output path:
+
+```sh
+python -B scripts/audit_copy_pairs_dose_v1.py --attempt pair-dose-attempt --cases experiments/distilgpt2_copy_head_pairs_dose_v1.json --pins results/distilgpt2-copy-head-pairs-dose-v1-20261028/independent-audit-pins.json --output pair-dose-replay.json
+```
+
 - [All family/arm effects and four prompt components](family-arm-effects.csv).
 - [All family pair interactions and additive references](family-pair-interactions.csv).
 - [All 480 prompt/arm scores, ranks and target top-one statuses](prompt-results.csv).
