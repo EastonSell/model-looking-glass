@@ -1,0 +1,43 @@
+{
+  "files": {
+    "README.md": "16d0d999da662457259a1ff5eadc08fc6da17f4c3555260a7e83a3c67167e7d5",
+    "attempt.jsonl.gz": "ff98f604345419844d07e119c093136db670c2b4a94883df5e24ae29fcf87bd4",
+    "build_tables.py": "8d40f182eed813f968bba398bbbe232487ae68dfda1717bae47441c223cd226c",
+    "cases.csv": "5f609643c3e26641006edac12f93074c31b66d8084c4b1d4ab68967c6449fe45",
+    "families.csv": "e899dfddca196b38d7b76fc3efa4eb392402e98647f758ace45fa5ba970ed565",
+    "independent-replay.json.gz": "ea777163f7fb18c01843ea8a2d2264b96b6a6e1da0efdd1eeac89a4e66d0c562",
+    "process-observation.json": "b8e6cdfc3b15ad24c017755852ddfb92da7d86efcd8113e30d77f117eee7f8fe",
+    "raw/index.json": "13fbfb076810ab52f1dc21305bda7cdd9a6afbe7a626540ffc74c9b088a2de8f",
+    "raw/rows-000-023.f32": "aae8bcdd1da580dcba88ddaa09a1fb1316965d6b661dbb13db80e0b94b3b060a",
+    "raw/rows-024-047.f32": "15e946e3872d42022166ffc42e119aa679193fa552f002eacdb8e67a5a3092d2",
+    "raw/rows-048-071.f32": "77159acbbb99f1e8af809a54db514e813e05143fd385306b5ed16629324dc06f",
+    "raw/rows-072-095.f32": "f30fcb3ea791553cb7cc24100d6f9c8dd881bc7e5d6f741f6a4242ad1fe5a47f",
+    "raw/rows-096-119.f32": "7e1504cb24245f17f0637ab30fb55d7e90911acd38e0ac39a263be3dea491903",
+    "raw/rows-120-143.f32": "31dc93b6101970b461c4ff9d6f036141ed79003220e86636d8b5bef85e9e4ea2",
+    "raw/rows-144-167.f32": "036e7994ad68b20e66430959e8252d99852c8fb494000e8b6da54b9febbeee90",
+    "raw/rows-168-191.f32": "72762333394151093798b1067f57676d09e341c39f9dbbcca9aa63903c880056",
+    "reconstruct_screen.py": "8456796e968a1f7477b632fa398f2bbb4fb12d00f0428aabff1e2c8e7ccd29c9",
+    "restore_run.py": "fe1ed9ed91e1ee616997e9c6cde4d4fa0f16c16e50b9e5e6038a919b1192c4d1",
+    "result.json.gz": "05d6aca89038d52d9525bb8976241b1226a468a393f57a4466636df4e609ff7b",
+    "run-manifest.json": "4b920bd5f29b54c77914ec8fc402784ceb4b1219da386d900926727547442549"
+  },
+  "original_uncompressed": {
+    "attempt.jsonl": {
+      "bytes": 94280,
+      "sha256": "f5a7857dec21cdc21d855ed4c07686c8b976162e41beae8256c6ab4f0877ade0"
+    },
+    "independent-replay.json": {
+      "sha256": "584c0ccf1ad11c5ad4d857bfe73c3a5d70b138fd1c85b5bee6aac6152ba6b186"
+    },
+    "result.json": {
+      "bytes": 130275,
+      "sha256": "fcee5b994d9f8d70c0d9c35eae62da8827f5cb92008c9db709c8beb9a733aa99"
+    },
+    "screen.f32": {
+      "bytes": 38597376,
+      "included_as_chunks": true,
+      "sha256": "7d54f4f40b9bcdf56dd6a34823ceb4da61098c0f2c6ed84c90396272bc7328aa"
+    }
+  },
+  "schema": "copy-behavior-screen-package-sha256-v1"
+}
