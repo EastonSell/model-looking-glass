@@ -47,7 +47,8 @@ def _clone_tensor(value):
     try:
         if value is None:
             return None
-        return value.detach().clone(memory_format=torch.contiguous_format)
+        with torch.inference_mode(False), torch.no_grad():
+            return value.detach().clone(memory_format=torch.contiguous_format)
     finally:
         # Avoid retaining the input in this helper's exception traceback.
         value = None

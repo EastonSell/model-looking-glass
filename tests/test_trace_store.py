@@ -49,6 +49,18 @@ class HostTraceStoreTests(unittest.TestCase):
         self.assertEqual(empty.take().numel(), 0)
         self.assertEqual(store.usage().claimed_items, 0)
 
+    def test_inference_mode_copies_remain_mutable_after_context(self):
+        store = HostTraceStore(max_tensor_bytes=4, max_items=1)
+        request = store.request("run")
+        with torch.inference_mode():
+            handle = request.put(0, torch.tensor([1.0]))
+            preview = handle.read()
+        taken = handle.take()
+        preview.add_(1)
+        taken.add_(2)
+        self.assertTrue(torch.equal(preview, torch.tensor([2.0])))
+        self.assertTrue(torch.equal(taken, torch.tensor([3.0])))
+
     def test_invalid_limits_and_unsupported_inputs_do_not_claim(self):
         for kwargs in ({"max_tensor_bytes": -1, "max_items": 1},
                        {"max_tensor_bytes": True, "max_items": 1},

@@ -37,7 +37,8 @@ request.cancel()         # close request and discard any remaining items
 `put()` takes only a plain, dense strided, non-quantized CPU tensor or `None`.
 It detaches and clones each tensor to independent contiguous storage; two
 aliased inputs produce two separately charged snapshots. It never moves a
-tensor from a GPU. Unsupported tensor subclasses and layouts are rejected
+tensor from a GPU. Copies are ordinary tensors even under inference mode.
+Unsupported tensor subclasses and layouts are rejected
 before copying. Callers must not mutate or resize an input during `put()` or
 `commit()`; a post-copy check rejects an unexpected shape, dtype, storage size
 or alias but cannot make concurrent mutation of a source safe or atomic.
