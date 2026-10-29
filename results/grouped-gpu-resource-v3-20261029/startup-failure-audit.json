@@ -1,0 +1,24 @@
+{
+  "controller_exit": 1,
+  "failure_stage": "startup-record-publication-before-owner-supervision",
+  "independent_windows_probe": {
+    "guarded_hard_link_winerror": 32,
+    "guarded_partial_retained": true,
+    "unguarded_publications_succeeded": true
+  },
+  "limitations": [
+    "record hashes are commitments to withheld private evidence",
+    "saved records and source order do not independently attest all process activity",
+    "no model forward, device memory profile, or native cleanup is established by this audit"
+  ],
+  "record_sha256": {
+    "controller_exit_observation": "038f3c8e019709166322ce841437a7d955179b2cf7c2341c6719ea55d1eca96e",
+    "controller_stderr": "5ca2469833041cf617fd7481e6181ccf06ba4ff8bc349118146d6b1f467e0957",
+    "source_manifest": "c182c22bcaeae059d3018a5beb12aa6431b3993f11fa6daeabbbb254c8fa6f69",
+    "startup_partial": "3bf105860559be711b5feb73de82c1b9d18d9dbfb2d68c18c1f22bf1b39c9ffa"
+  },
+  "saved_owner_records_present": false,
+  "source_commit": "f112060375e9b107277ac41bbfec6779abe4ae2a",
+  "startup_final_present": false,
+  "status": "passed"
+}
