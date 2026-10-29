@@ -28,10 +28,10 @@ BINDING_SHA256 = '23575704f3e55d741123d3c1024accfb15aa0a048a84ce415bc765573d913b
 PREDICTION_SHA256 = 'eaac12d7229b2ae5615832bc9b58c7e5b2404c5866b5079295e72b0a54a4c545'
 AGGREGATE_SHA256 = '35138307572410466d7cd1e1632bdfdfb9474562e9916fb48a0669a3478c6eeb'
 V7_INVENTORY_SHA256 = 'e5feaccfeaed288bd53509ee4d68675d6b00ddb1a876279d5c42465010c63344'
-# Reviewed v11 marks the completed copying rows observed and preserves v10.
-CURRENT_INVENTORY_VERSION = 11
-CURRENT_INVENTORY_SHA256 = '84b1a95a41670798ff55c9f08272890c00a939a74a4cad7ad9b95fbf4bcdaa25'
-CURRENT_INVENTORY_SOURCE_SHA256 = '0de7c61f6f3e1eabb58bd990158fd755feda807db5c968b5b0b6d876cab28603'
+# Reviewed v12 reserves the public factorial inputs and preserves v11.
+CURRENT_INVENTORY_VERSION = 12
+CURRENT_INVENTORY_SHA256 = 'af374aaceb708b3b38e06b3955ca975467b048162ee105cbfcc9452a8a600e49'
+CURRENT_INVENTORY_SOURCE_SHA256 = '6f8d3058fba976f21e70e519be563f61285b5035415373bafd3a496564acaac5'
 CHECKPOINT = '2290a62682d06624634c1f46a6ad5be0f47f38aa'
 TARGETS = {' is': 318, ' are': 389, ' was': 373, ' were': 547}
 LOGICAL_LIMIT = 160 * 1024 * 1024
@@ -50,9 +50,10 @@ SOURCE_SUFFIXES = {
 REQUIRED_FREE_BYTES = 3 * 1024 * 1024 * 1024
 BOOTSTRAP = ("import os,runpy,sys; sys.path.append(os.environ['MLG_NATURAL_SITE']); "
              "script=sys.argv.pop(1); sys.argv[0]=script; runpy.run_path(script,run_name='__main__')")
-OBSERVER_ENTRY_BOOTSTRAP = ("import hashlib,sys; p=sys.argv.pop(1); h=sys.argv.pop(1); "
-                            "data=open(p,'rb').read(8388609); "
-                            "assert len(data)<=8388608 and hashlib.sha256(data).hexdigest()==h; "
+OBSERVER_ENTRY_BOOTSTRAP = ("import hashlib,sys\n"
+                            "p=sys.argv.pop(1); h=sys.argv.pop(1); data=open(p,'rb').read(8388609)\n"
+                            "if len(data)>8388608 or hashlib.sha256(data).hexdigest()!=h:\n"
+                            "    raise SystemExit(1)\n"
                             "sys.argv[0]=p; exec(compile(data,p,'exec',dont_inherit=True),"
                             "{'__name__':'__main__','__file__':p})")
 OUTER_BOOTSTRAP = '''import ctypes, msvcrt, os, runpy, sys, time
@@ -699,7 +700,7 @@ def _outer_supervisor_job(guards):
 
 
 def observe_supervisor_process(command, attempt, supervisor_dir, public, wrapper_bytes, *,
-                               config_path, config_sha256, job_factory, timeout=7200):
+                               config_path, config_sha256, job_factory, custody_state=None, timeout=7200):
     """Observe and reap the actual preparation supervisor before recording success.
 
     The process owns its own Windows Job and private child logs. On an
@@ -720,23 +721,28 @@ def observe_supervisor_process(command, attempt, supervisor_dir, public, wrapper
             or command[9:11] != ['supervise-prepare', '--config']
             or command[11] != str(config_path) or command[12:] != ['--config-sha', config_sha256]):
         raise CustodyError('outer supervisor command or configuration differs before spawn')
+    if custody_state is None:
+        custody_state = [None, None, False, False]
+    if type(custody_state) is not list or len(custody_state) != 4 or custody_state != [None, None, False, False]:
+        raise CustodyError('outer process custody state is invalid')
     process = None
     job = None
     reaped = False
     drained = False
     closed = False
-    gate_attempted = False
     try:
         job = job_factory()
+        custody_state[0] = job
         process = subprocess.Popen(command, env=os.environ.copy(), stdin=subprocess.PIPE,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                    creationflags=subprocess.DETACHED_PROCESS)
+        custody_state[1] = process
         if type(process.pid) is not int or not 0 < process.pid <= 0xffffffff:
             raise CustodyError('invalid outer supervisor PID')
         job.assign(process)
         birth = _process_birth_100ns(process)
         start = b'MLG-natural-discovery-start-v1\n'
-        gate_attempted = True
+        custody_state[2] = True
         if process.stdin.write(start + start) != len(start) * 2:
             raise CustodyError('outer supervisor start gate failed')
         process.stdin.close()
@@ -757,6 +763,7 @@ def observe_supervisor_process(command, attempt, supervisor_dir, public, wrapper
                             + ['supervise-prepare'] + receipt['command'][10:])
         if command != expected_command or process.pid == receipt['child_pid']:
             raise CustodyError('observed process differs from the bound preparation supervisor')
+        custody_state[3] = True
         observation = {'schema': 'mlg-natural-heldout-preparation-outer-observation-v1',
                        'status': 'completed', 'exit_code': 0, 'supervisor_reaped': True,
                        'outer_job_drained': True, 'outer_job_closed': True,
@@ -772,53 +779,76 @@ def observe_supervisor_process(command, attempt, supervisor_dir, public, wrapper
                 'preparation_config_sha256': claim['preparation_config_sha256'],
                 'operational_binding_sha256': _digest(public.operational_binding)}
     except BaseException as primary_error:
-        cleanup_error = None
+        if custody_state[2] and not custody_state[3]:
+            # Do not kill an outer supervisor that may own the only live
+            # handles for its breakaway inner Job. The enclosing source-lease
+            # scope sees this preallocated state and holds it for recovery.
+            raise
+        cleanup_errors = []
         if job is not None and not drained:
             try:
                 job.terminate_and_wait()
                 drained = True
             except BaseException as error:
-                cleanup_error = error
+                cleanup_errors.append(error)
         if job is not None and not closed:
             try:
                 job.close()
                 closed = True
             except BaseException as error:
-                cleanup_error = cleanup_error or error
+                cleanup_errors.append(error)
         if process is not None and not reaped:
             try:
                 if process.poll() is None:
                     process.kill()
                 process.wait(timeout=10)
             except BaseException as error:
-                cleanup_error = cleanup_error or error
-        if cleanup_error is not None:
-            selected = cleanup_error if isinstance(cleanup_error, (KeyboardInterrupt, SystemExit)) else primary_error
-            if gate_attempted:
-                selected._mlg_quarantined_process = {'process': process, 'job': job,
-                                                      'cleanup_error': cleanup_error}
-            if isinstance(cleanup_error, (KeyboardInterrupt, SystemExit)):
-                raise cleanup_error from primary_error
-            if hasattr(primary_error, 'add_note'):
-                primary_error.add_note('outer supervisor cleanup is unverified; stop and reconcile')
-            raise primary_error from cleanup_error
+                cleanup_errors.append(error)
+        if cleanup_errors:
+            cleanup_error = next((error for error in cleanup_errors
+                                  if isinstance(error, (KeyboardInterrupt, SystemExit))), cleanup_errors[0])
+            selected = (primary_error if isinstance(primary_error, (KeyboardInterrupt, SystemExit))
+                        else cleanup_error if isinstance(cleanup_error, (KeyboardInterrupt, SystemExit))
+                        else primary_error)
+            if hasattr(selected, 'add_note'):
+                selected.add_note('outer supervisor cleanup is unverified; stop and reconcile')
+            if selected is primary_error:
+                raise primary_error from cleanup_errors[0]
+            raise selected from primary_error
         if process is None and job is not None and not isinstance(primary_error, (KeyboardInterrupt, SystemExit)):
             raise CustodyError('outer supervisor spawn return is unverified; stop and reconcile') from primary_error
         raise
 
 
-def _hold_unverified_process(error):
+def _hold_unverified_process(custody, *, _test_release=None):
     """Keep source leases and unknown process/job handles rooted for recovery."""
-    custody = getattr(error, '_mlg_quarantined_process', None)
-    if type(custody) is not dict:
-        raise CustodyError('quarantine has no retained process custody')
-    print(json.dumps({'status': 'quarantined', 'reason': 'process cleanup unverified'}),
-          file=sys.stderr, flush=True)
+    try:
+        print(json.dumps({'status': 'quarantined', 'reason': 'process cleanup unverified'}),
+              file=sys.stderr, flush=True)
+    except BaseException:
+        pass
     # The enclosing production stack keeps both SourceFileLease instances and
     # these strong references alive. A trusted operator must independently
     # establish process-tree termination before explicitly ending quarantine.
     while True:
-        time.sleep(30)
+        try:
+            time.sleep(30)
+        except BaseException:
+            continue
+        if _test_release is not None and _test_release(custody):
+            return
+
+
+def _supervise_preparation(supervisor, command, directory, audit_result):
+    """Keep the inner supervisor rooted when its own cleanup is uncertain."""
+    try:
+        verdict = supervisor.supervise_heldout(command, directory, os.environ.copy(), audit_result=audit_result)
+    finally:
+        if supervisor._QUARANTINED:
+            _hold_unverified_process(supervisor)
+    if type(verdict) is not dict or verdict.get('cleanup_verified') is not True:
+        _hold_unverified_process(supervisor)
+    return verdict
 
 
 def verify_prepared(attempt, public, commitment_url, *, commitments, heldout,
@@ -1048,7 +1078,7 @@ def production_prepare(config_path, *, mode='validate', expected_config_sha=None
     """Production path: fixed ledger, OS nonce, official observer and frozen code."""
     if mode not in ('validate', 'prepare', 'supervise-prepare', 'observe-prepare'):
         raise CustodyError('unknown preparation mode')
-    if (not sys.flags.isolated or not sys.flags.no_site or not sys.dont_write_bytecode
+    if (not sys.flags.isolated or not sys.flags.no_site or sys.flags.optimize != 0 or not sys.dont_write_bytecode
             or not sys.pycache_prefix or not Path(sys.pycache_prefix).is_absolute()
             or os.path.lexists(sys.pycache_prefix) or os.environ.get('CUDA_VISIBLE_DEVICES') != '-1'
             or os.environ.get('OMP_NUM_THREADS') != '1'
@@ -1126,14 +1156,15 @@ def production_prepare(config_path, *, mode='validate', expected_config_sha=None
                 outer_command = [sys.executable, '-I', '-S', '-B', '-X', 'pycache_prefix=' + sys.pycache_prefix,
                                  '-c', OUTER_BOOTSTRAP, str(wrapper_path), 'supervise-prepare',
                                  '--config', str(config_path), '--config-sha', config_sha]
+                custody_state = [None, None, False, False]
                 try:
                     return observe_supervisor_process(outer_command, attempt, supervisor_dir, public, wrapper_bytes,
                                                       config_path=config_path, config_sha256=config_sha,
-                                                      job_factory=lambda: _outer_supervisor_job(guards))
-                except BaseException as error:
-                    if hasattr(error, '_mlg_quarantined_process'):
-                        _hold_unverified_process(error)
-                    raise
+                                                      job_factory=lambda: _outer_supervisor_job(guards),
+                                                      custody_state=custody_state)
+                finally:
+                    if custody_state[2] and not custody_state[3]:
+                        _hold_unverified_process(custody_state)
             supervisor = _load_file_module('_mlg_natural_heldout_supervisor',
                                            custody_root / SOURCE_SUFFIXES['supervisor'],
                                            operational['sources']['supervisor']['sha256'])
@@ -1142,7 +1173,7 @@ def production_prepare(config_path, *, mode='validate', expected_config_sha=None
                        '--config-sha', config_sha]
             def audit_result(_directory, _exit_code, _reaped):
                 return audit_preparation(attempt, public, wrapper_bytes)
-            supervisor.supervise_heldout(command, supervisor_dir, os.environ.copy(), audit_result=audit_result)
+            _supervise_preparation(supervisor, command, supervisor_dir, audit_result)
             verify_preparation_supervisor(attempt, supervisor_dir, public, wrapper_bytes,
                                           require_outer_observation=False)
             commitment = json.loads(_read_private(attempt / 'commitment.json', 8192))
