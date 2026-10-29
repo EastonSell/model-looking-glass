@@ -6,7 +6,9 @@ reported bitwise-equal full float32 logits for the two uninstrumented calls,
 two independent-hook calls, and two calls each in direct, auxiliary-gradient,
 and ID modes. The 18 direct and 18 auxiliary-gradient snapshots each matched
 the corresponding independent-hook snapshots bit for bit and matched each
-other. ID mode recorded 18 events with no retained tensor values.
+other. ID mode recorded 18 events with no retained tensor values. Each set
+covers two forwards at layers 0, 2 and 5, with attention, MLP and block
+boundaries for token positions 0 and 1. Full logits have shape [1, 5, 50257].
 
 This is one fixed public input on one device, not a latency benchmark, a
 causal result, or a reusable GPU capacity profile. The auxiliary-gradient
