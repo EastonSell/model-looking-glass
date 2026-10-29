@@ -79,6 +79,8 @@ class FairAdmissionQueue:
                 if new_team:
                     self._teams[team_id] = team
                     self._rotation.append(team_id)
+                self._next_ticket = next_ticket
+                self._size = next_size
             except BaseException:
                 if new_team:
                     if self._rotation and self._rotation[-1] == team_id:
@@ -86,9 +88,9 @@ class FairAdmissionQueue:
                     self._teams.pop(team_id, None)
                 self._ticket_teams.pop(ticket_id, None)
                 team.pop(ticket_id, None)
+                self._next_ticket = ticket_id
+                self._size = next_size - 1
                 raise
-            self._next_ticket = next_ticket
-            self._size = next_size
             return ticket_id
 
     def claim_next(self, eligible_teams=None) -> AdmissionRequest:
