@@ -8,7 +8,9 @@ The past-tense ` was` minus ` were` margins are descriptive secondary data.
 This is one small exploratory discovery set, not a population accuracy,
 held-out evaluation, causal explanation or GPU performance measurement.
 
-The protocol and the complete inputs were published before the model run:
+The operator observed the protocol and the complete inputs published before
+the model run. Git commits and local event timestamps are not an independent
+attestation of that sequence. The recorded references are:
 source commit `e39fafa0a84843cf6413946a77c19ef09cbf025e` and frozen-manifest
 commit `0e5e3ae68d8dc4fba51e4aadf378e4c3dac27e96`. The manifest SHA-256 is
 `1b1adf4d72163bfa3e0399ed8ee92eba6b5c0eb82a47edf28cecde5ffb1deafe`.
