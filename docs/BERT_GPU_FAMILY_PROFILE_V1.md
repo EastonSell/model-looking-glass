@@ -48,6 +48,9 @@ owner's bytewise comparison from this evidence alone.
 
 Before CUDA-capable imports, the supervisor establishes child/marker
 coordination and the direct child acquires the common physical-device lease.
+Both parent and child bind the device identity to the checkout-derived common
+workspace; the child checks the declared root before acquiring a lease and
+the revalidated identity before importing CUDA-capable libraries.
 After verifying UUID/device count and native allocator,
 set the per-process allocator cap to 25% of the reported device total. Hold a
 whole-owner GPU commitment of the allocator cap plus 256 MiB, alongside a

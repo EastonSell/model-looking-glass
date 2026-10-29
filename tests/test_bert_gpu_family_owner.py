@@ -17,6 +17,18 @@ from looking_glass.bert_gpu_family_owner import (_capture_state, _reserve_family
 from looking_glass.memory_budget import CudaMemorySnapshot
 
 
+def _workspace():
+    repo = Path(__file__).resolve().parents[1]
+    work = [parent for parent in repo.parents if parent.name == 'work']
+    return work[0].parent if work else repo
+
+
+def _session_stub():
+    root = _workspace()
+    return SimpleNamespace(device_lease_path='lease', run_id='supervised',
+        identity=SimpleNamespace(workspace_root=root), _identity_spec={'workspace_root': str(root)})
+
+
 class FamilyOwnerPrimitiveTests(unittest.TestCase):
     def test_shared_disabled_gate_stops_direct_owner_before_session_or_device(self):
         import looking_glass.bert_gpu_family_owner as subject
@@ -34,6 +46,41 @@ class FamilyOwnerPrimitiveTests(unittest.TestCase):
             session.assert_not_called()
             lease.assert_not_called()
             load_torch.assert_not_called()
+
+    def test_direct_owner_rejects_wrong_workspace_before_device_and_import(self):
+        import looking_glass.bert_gpu_family_owner as subject
+        with tempfile.TemporaryDirectory() as directory:
+            prior = dict(subject._CUSTODY)
+            try:
+                for mismatch in ('spec', 'actual'):
+                    with self.subTest(mismatch=mismatch):
+                        subject._CUSTODY.update({key: False if key == 'entered' else None for key in prior})
+                        session = _session_stub()
+                        if mismatch == 'spec':
+                            session._identity_spec['workspace_root'] = directory
+                        else:
+                            session.identity.workspace_root = Path(directory)
+                        run_dir = Path(directory) / mismatch
+                        run_dir.mkdir()
+                        with patch.object(subject, '_verify_startup'), \
+                             patch.object(subject, '_require_pristine_dependencies'), \
+                             patch.object(subject.OwnerSession, 'from_environment', return_value=session), \
+                             patch.object(subject.OwnerSession, 'check'), \
+                             patch.object(subject.DeviceLease, 'acquire', return_value=object()) as acquire, \
+                             patch.object(subject, '_import_torch') as load_torch:
+                            self.assertEqual(subject.owner_main(run_dir, directory, '1'*32, '2'*40, 'unused'), 1)
+                        self.assertEqual(acquire.call_count, 0 if mismatch == 'spec' else 1)
+                        load_torch.assert_not_called()
+                session = object.__new__(subject.OwnerSession)
+                session._identity = SimpleNamespace(workspace_root=Path(directory))
+                lease = object.__new__(subject.DeviceLease)
+                fake_cuda = SimpleNamespace(is_initialized=lambda: self.fail('CUDA was touched'))
+                with patch.object(subject.OwnerSession, 'check'):
+                    with self.assertRaisesRegex(ValueError, 'workspace root'):
+                        subject.measure_family_owned(session, lease, SimpleNamespace(cuda=fake_cuda), directory,
+                            {'rows': []}, journal_path='unused', record_memory=lambda *args: None)
+            finally:
+                subject._CUSTODY.update(prior)
 
     def test_family_claims_cover_gpu_and_host_until_explicit_release(self):
         gib = 1024 ** 3
@@ -91,6 +138,7 @@ class FamilyOwnerPrimitiveTests(unittest.TestCase):
             def get_per_process_memory_fraction(self, index): return .25
             def reset_peak_memory_stats(self, index): pass
         session, lease = object.__new__(subject.OwnerSession), object.__new__(subject.DeviceLease)
+        session._identity = SimpleNamespace(workspace_root=_workspace())
         snapshot = {'device_free_bytes': 6 * gib, 'device_total_bytes': 9 * gib,
                     'allocated_bytes': 0, 'reserved_bytes': 0, 'peak_allocated_bytes': 0,
                     'peak_reserved_bytes': 0}
@@ -109,7 +157,7 @@ class FamilyOwnerPrimitiveTests(unittest.TestCase):
     def test_child_roots_first_failure_and_does_not_attest_clean(self):
         import looking_glass.bert_gpu_family_owner as subject
         with tempfile.TemporaryDirectory() as directory:
-            session = SimpleNamespace(device_lease_path='lease', run_id='supervised', identity=object())
+            session = _session_stub()
             device_lease = object()
             prior = dict(subject._CUSTODY)
             subject._CUSTODY.update({key: False if key == 'entered' else None for key in prior})
@@ -161,7 +209,7 @@ class FamilyOwnerPrimitiveTests(unittest.TestCase):
     def test_child_writes_final_only_after_candidate_and_budget_release(self):
         import looking_glass.bert_gpu_family_owner as subject
         with tempfile.TemporaryDirectory() as directory:
-            session = SimpleNamespace(device_lease_path='lease', run_id='supervised', identity=object())
+            session = _session_stub()
             device_lease = object()
             prior = dict(subject._CUSTODY)
             subject._CUSTODY.update({key: False if key == 'entered' else None for key in prior})
@@ -199,7 +247,7 @@ class FamilyOwnerPrimitiveTests(unittest.TestCase):
         import looking_glass.bert_gpu_family_owner as subject
         gib = 1024 ** 3
         with tempfile.TemporaryDirectory() as directory:
-            session = SimpleNamespace(device_lease_path='lease', run_id='supervised', identity=object())
+            session = _session_stub()
             device_lease = object()
             prior = dict(subject._CUSTODY)
             subject._CUSTODY.update({key: False if key == 'entered' else None for key in prior})
@@ -329,6 +377,7 @@ class FamilyOwnerPrimitiveTests(unittest.TestCase):
             are_deterministic_algorithms_enabled=lambda: True,
             _C=SimpleNamespace(_cuda_clearCublasWorkspaces=lambda: None))
         session, lease = object.__new__(subject.OwnerSession), object.__new__(subject.DeviceLease)
+        session._identity = SimpleNamespace(workspace_root=_workspace())
         prior = dict(subject._CUSTODY)
         subject._CUSTODY.update({key: False if key == 'entered' else None for key in prior})
         subject._CUSTODY.update(session=session, device_lease=lease)

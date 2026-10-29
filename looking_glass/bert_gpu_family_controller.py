@@ -21,7 +21,7 @@ from .bert_gpu_calibration import (ASSETS, MODEL_ID, REVISION, _file_identity,
     _require_pristine_dependencies, _verify_offline_cache, _verify_startup, check_memory)
 from .bert_gpu_evidence import write_json_new
 from . import bert_gpu_family_owner as _family_owner
-from .bert_gpu_family_owner import SOURCE_PATHS, _load_manifest, _verify_source
+from .bert_gpu_family_owner import SOURCE_PATHS, _load_manifest, _verify_source, _workspace_root
 from .bert_gpu_family_profile import _read_profile_journal
 from .device_identity import resolve_device_identity
 from .gpu_oneshot import _owner_presence_after_exit, _smi_snapshot
@@ -246,19 +246,6 @@ def _public_measurement(value):
                       'live_cases', 'audited_cases', 'site_means', 'control_count')
     result['profile'] = {key: value['profile'][key] for key in profile_fields}
     return result
-
-
-def _workspace_root(repo, requested):
-    """Bind this research worktree layout to the common coordination root."""
-    repo, requested = Path(repo).resolve(strict=True), Path(requested)
-    if not requested.is_absolute():
-        raise ValueError('the workspace root must be absolute')
-    requested = requested.resolve(strict=True)
-    work_parents = [parent for parent in repo.parents if parent.name == 'work']
-    expected = work_parents[0].parent if work_parents else repo
-    if requested != expected or not (expected / 'work').is_dir():
-        raise ValueError('workspace root does not match the shared checkout layout')
-    return expected
 
 
 def _inventory(run_dir):

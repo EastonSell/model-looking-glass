@@ -52,6 +52,33 @@ SOURCE_PATHS = (
     'looking_glass/model_ownership.py')
 
 
+def _workspace_root(repo, requested):
+    """Bind all family entry points to the shared physical-device namespace."""
+    repo, requested = Path(repo).resolve(strict=True), Path(requested)
+    if not requested.is_absolute():
+        raise ValueError('the workspace root must be absolute')
+    requested = requested.resolve(strict=True)
+    work_parents = [parent for parent in repo.parents if parent.name == 'work']
+    expected = work_parents[0].parent if work_parents else repo
+    if requested != expected or not (expected / 'work').is_dir():
+        raise ValueError('workspace root does not match the shared checkout layout')
+    return expected
+
+
+def _validate_workspace_binding(session):
+    identity = session.identity
+    if identity is None:
+        raise RuntimeError('a physical GPU identity is required')
+    _workspace_root(Path(__file__).resolve().parents[1], identity.workspace_root)
+
+
+def _validate_workspace_spec(session):
+    spec = getattr(session, '_identity_spec', None)
+    if type(spec) is not dict or type(spec.get('workspace_root')) is not str:
+        raise RuntimeError('a supervised physical GPU identity is required')
+    _workspace_root(Path(__file__).resolve().parents[1], spec['workspace_root'])
+
+
 def _verify_source(repo, source_commit, git_exe):
     """Bind all project source paths to one clean, committed checkout."""
     root = Path(repo).resolve(strict=True)
@@ -259,6 +286,7 @@ def measure_family_owned(session, lease, torch, cache_dir, manifest, *, journal_
     if type(session) is not OwnerSession or type(lease) is not DeviceLease or not callable(record_memory):
         raise ValueError('an actual supervised owner, device lease and recorder are required')
     OwnerSession.check(session, lease)
+    _validate_workspace_binding(session)
     runtime_versions = _runtime_versions(torch)
     if torch.cuda.is_initialized() is not False:
         raise RuntimeError('CUDA was initialized before the owner check')
@@ -453,11 +481,11 @@ def owner_main(run_dir, cache_dir, run_id, source_commit, git_exe):
         _require_pristine_dependencies()
         session = OwnerSession.from_environment()
         _CUSTODY['session'] = session
+        _validate_workspace_spec(session)
         lease = DeviceLease.acquire(session.device_lease_path, timeout=30)
         _CUSTODY['device_lease'] = lease
         OwnerSession.check(session, lease)
-        if session.identity is None:
-            raise RuntimeError('a physical GPU identity is required')
+        _validate_workspace_binding(session)
         if type(run_id) is not str or re.fullmatch('[0-9a-f]{32}', run_id) is None:
             raise ValueError('invalid family profile run ID')
         repo = Path(__file__).resolve().parents[1]
