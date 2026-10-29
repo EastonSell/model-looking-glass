@@ -3,6 +3,7 @@ import hashlib
 import inspect
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import sys
 from types import SimpleNamespace
@@ -293,6 +294,53 @@ class CustodianRunTests(unittest.TestCase):
         self.assertTrue((self.root / "public" / "artifacts" / "prediction_commitment.json").exists())
         self.assertEqual(registry.verify_run(self.root / "public")["state"], "incomplete")
         self.assertFalse((self.root / "public" / "artifacts" / "failure.json").exists())
+
+    def test_process_death_after_commitment_leaves_both_runs_incomplete(self):
+        child = r'''import os, sys
+from pathlib import Path
+from unittest.mock import patch
+sys.path.insert(0, str(Path.cwd() / "tests"))
+from test_causal_v2_custodian_run import FakeExecutor, fake_snapshot, fake_freeze
+from looking_glass import registry
+from looking_glass.causal_v2_custody import canonical_json
+from looking_glass.causal_v2_custodian_run import run_study_once
+root = Path(sys.argv[1])
+original = registry.ExperimentRun.write_artifact
+def exit_after_commitment(run, name, data):
+    original(run, name, data)
+    if name == "prediction_commitment.json":
+        os._exit(71)
+class WatchedExecutor(FakeExecutor):
+    def run_heldout(self, *args):
+        (root.parent / "heldout-started").touch()
+        return super().run_heldout(*args)
+with patch("looking_glass.causal_v2_custodian_run._checked_preparation",
+           return_value=(fake_snapshot(), canonical_json({"schema": "fake-public-pre-manifest"}))), \
+     patch("looking_glass.causal_v2_custodian_run._build_freeze", side_effect=fake_freeze), \
+     patch("looking_glass.causal_v2_custodian_run._verify_discovery",
+           side_effect=lambda snapshot, cells, chunks: list(chunks)), \
+     patch("looking_glass.causal_v2_custodian_run._MODEL_SEEDS", (17,)), \
+     patch("looking_glass.causal_v2_custodian_run._CELLS_PER_MODEL", 1), \
+     patch("looking_glass.causal_v2_custodian_run._EXPECTED_FORWARDS", 64), \
+     patch.object(registry.ExperimentRun, "write_artifact", new=exit_after_commitment):
+    run_study_once(root, prepared=None, expected_context={}, exclusion_bytes=b"", pilot_bytes=b"",
+        historical_cases=[], source_sha256={}, clarification_sha256={}, runtime={}, created_utc="fake",
+        executor=WatchedExecutor(root), score=lambda *args, **kwargs: b"{}",
+        classify_exposure=lambda: {"schema": "synthetic-v2-exposure-v1",
+            "classification": "unknown", "basis": "fabricated crash test"})
+raise AssertionError("child unexpectedly continued")
+'''
+        result = subprocess.run([sys.executable, "-c", child, str(self.root)],
+                                cwd=Path(__file__).resolve().parent.parent,
+                                capture_output=True, timeout=30)
+        self.assertEqual(result.returncode, 71, result.stderr.decode("utf-8", errors="replace"))
+        self.assertFalse((self.root.parent / "heldout-started").exists())
+        self.assertEqual(registry.verify_run(self.root / "private")["state"], "incomplete")
+        self.assertEqual(registry.verify_run(self.root / "public")["state"], "incomplete")
+        self.assertTrue((self.root / "public" / "artifacts" / "prediction_commitment.json").exists())
+        self.assertTrue((self.root / "private" / "artifacts" / "prediction_record.json").exists())
+        self.assertFalse((self.root / "private" / "artifacts" / "cell-00-h.json").exists())
+        self.assertFalse((self.root / "public" / "artifacts" / "results.json").exists())
 
     def test_forward_budget_rejects_duplicate_and_unreserved_roots(self):
         budget = ForwardBudget(1)
