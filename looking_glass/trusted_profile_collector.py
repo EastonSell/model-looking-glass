@@ -50,6 +50,19 @@ def _require_gated_supervisor():
         raise CollectorError('the reviewed gated child-launch supervisor is required')
 
 
+def _validated_hf_home(cache_root, hf_home):
+    """Bind the offline checkpoint cache to an explicit existing HF home."""
+    if not isinstance(cache_root, (str, os.PathLike)) or not isinstance(hf_home, (str, os.PathLike)):
+        raise ValueError('explicit cache and Hugging Face home paths are required')
+    cache, home = Path(cache_root), Path(hf_home)
+    if not cache.is_absolute() or not home.is_absolute():
+        raise ValueError('cache and Hugging Face home must be absolute')
+    cache, home = cache.resolve(strict=True), home.resolve(strict=True)
+    if not cache.is_dir() or not home.is_dir() or cache == home or not cache.is_relative_to(home):
+        raise ValueError('offline checkpoint cache must be inside the Hugging Face home')
+    return home
+
+
 # These slots exist before any admission or CUDA work. The dedicated owner
 # process keeps its budget, leases, model and failure traceback until exit.
 _OWNER_CUSTODY = [None] * 9
@@ -64,6 +77,28 @@ def _owner_unsafe(state):
     worker = state['worker']
     return (state['unsafe'] or (process_check is not None and process_check())
             or (worker is not None and worker.quarantined))
+
+
+def _check_retained_owner(session, lease):
+    """Check the dedicated owner's state and both process-lifetime claims."""
+    from .supervisor import OwnerSession
+    state, budget, resident, forward = (_OWNER_CUSTODY[i] for i in (3, 5, 6, 7))
+    if state is None or _owner_unsafe(state):
+        raise CollectorError('device completion is unsafe or unverified')
+    OwnerSession.check(session, lease)
+    if (budget is None or resident is None or forward is None
+            or resident is forward or resident.released or forward.released
+            or resident.estimated_incremental_bytes != LOAD_COMMITMENT
+            or forward.estimated_incremental_bytes != JOB_COMMITMENT):
+        raise CollectorError('the process-lifetime memory commitments are unavailable')
+    active = budget.active_leases()
+    if (len(active) != 2 or resident not in active or forward not in active
+            or any(claim.trace_bytes(location) for claim in active for location in ('gpu', 'host'))):
+        raise CollectorError('the process-lifetime memory commitments changed')
+    return {'active_leases': 2, 'resident_bytes': LOAD_COMMITMENT,
+            'forward_bytes': JOB_COMMITMENT,
+            'committed_incremental_bytes': LOAD_COMMITMENT + JOB_COMMITMENT,
+            'retained_until_exit': True}
 
 
 class _GuardedProbe:
@@ -352,7 +387,14 @@ def _owner_main(config):
     session = lease = None
     run_dir = Path(config['run_dir'])
     try:
+        # The hub caches HF_HOME at import time, and Transformers may load it.
+        # Reject either package or any retained submodule before acquisition;
+        # the controlled child environment must precede their first import.
+        if any(name == package or name.startswith(package + '.')
+               for name in tuple(sys.modules) for package in ('huggingface_hub', 'transformers')):
+            raise CollectorError('model dependencies were imported before owner startup')
         _require_gated_supervisor()
+        _validated_hf_home(config['cache_root'], os.environ.get('HF_HOME'))
         session = OwnerSession.from_environment()
         _PROCESS_CUSTODY[0] = session
         lease = DeviceLease.acquire(session.device_lease_path, timeout=30)
@@ -369,12 +411,16 @@ def _owner_main(config):
                 or hashlib.sha256(source.asset_manifest).hexdigest() != config['asset_sha256']):
             raise CollectorError('source or assets changed after parent preflight')
         summary = collect_owned(source, session, lease, run_dir, config['run_id'])
+        if _check_retained_owner(session, lease) != summary['cleanup']['owner_commitments']:
+            raise CollectorError('saved commitments differ from the active owner claims')
         files = {name: hashlib.sha256(_bounded_read(run_dir / name)).hexdigest()
                  for name in _ARTIFACT_NAMES}
         candidate = {'schema': 'trusted-profile-candidate-v1', 'run_id': config['run_id'],
                      'supervisor_run_id': session.run_id, 'pid': os.getpid(),
                      'summary': summary, 'artifact_sha256': files}
         _write_json(run_dir / 'candidate.json', candidate)
+        if _check_retained_owner(session, lease) != summary['cleanup']['owner_commitments']:
+            raise CollectorError('saved commitments differ from the active owner claims')
         OwnerSession.attest_clean(session, lease)
         return 0
     except BaseException as exc:
@@ -481,7 +527,10 @@ def _validate_candidate(run_dir, run_id, supervision):
             raise CollectorError('output evidence differs from its measured sample')
     cleanup = json.loads(artifacts['cleanup.json'])
     if (not _same_json_value(cleanup, summary.get('cleanup')) or cleanup.get('model_weakref_dead') is not True
-            or not _same_json_value(cleanup.get('after'), {'allocated_bytes': 0, 'reserved_bytes': 0})):
+            or not _same_json_value(cleanup.get('after'), {'allocated_bytes': 0, 'reserved_bytes': 0})
+            or not _same_json_value(cleanup.get('owner_commitments'), {
+                'active_leases': 2, 'resident_bytes': LOAD_COMMITMENT, 'forward_bytes': JOB_COMMITMENT,
+                'committed_incremental_bytes': LOAD_COMMITMENT + JOB_COMMITMENT, 'retained_until_exit': True})):
         raise CollectorError('clean allocator evidence is absent')
     if (summary.get('source_sha256') != hashlib.sha256(source).hexdigest()
             or summary.get('runtime_sha256') != hashlib.sha256(artifacts['runtime-manifest.json']).hexdigest()
@@ -551,7 +600,7 @@ def _read_owner_config(path, identity_text, expected_sha256):
     return config
 
 
-def run_supervised_collector(*, workspace_root, cache_root, site_packages, environment_root,
+def run_supervised_collector(*, workspace_root, cache_root, hf_home, site_packages, environment_root,
                              private_parent, trusted_path, timeout=600):
     """Run one fixed collector in a dedicated supervised process.
 
@@ -568,6 +617,7 @@ def run_supervised_collector(*, workspace_root, cache_root, site_packages, envir
     repo = Path(__file__).resolve().parents[1]
     root = Path(workspace_root).resolve(strict=True)
     cache = Path(cache_root).resolve(strict=True)
+    home = _validated_hf_home(cache, hf_home)
     private = Path(private_parent).resolve(strict=True)
     if private.is_relative_to(repo):
         raise ValueError('private evidence must be outside the frozen source checkout')
@@ -598,7 +648,7 @@ def run_supervised_collector(*, workspace_root, cache_root, site_packages, envir
         launch = prepare_trusted_launch(repo_root=str(repo), site_packages=str(site_packages),
             environment_root=str(environment_root), private_parent=str(private), gpu_uuid=gpu_uuid,
             module='looking_glass.trusted_profile_collector', config_path=str(config_path),
-            trusted_path=str(trusted_path))
+            trusted_path=str(trusted_path), hf_home=str(home))
         identity = resolve_device_identity(root, gpu_uuid, physical_uuids=[gpu_uuid], environ=launch.environment)
         launch.verify_ready()
         if prepare_trusted_source(str(repo), str(cache)) != source:
@@ -833,28 +883,28 @@ def _collect_owned_inner(source, session, lease, run_dir, run_id, state):
         _validate_headroom(asdict(sample.after), expected, after_budget['reserve_bytes'])
         if memory_lease.released or memory_lease not in budget.active_leases():
             raise CollectorError('memory lease changed before post-stage validation')
+        check_owner_safe()
         _write_json(run_dir / (label + '-sample.json'), asdict(sample))
         return sample
 
     samples = [measure(live.keys[0], load_operation, label='load-17',
                        case_sha256=actual_load_case, seed=17, memory_lease=resident_lease)]
+    # No per-sample retirement: the fixed forward claim covers every serialized
+    # observation and stays rooted, with the resident claim, until process exit.
+    job_lease = budget.acquire(JOB_COMMITMENT, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+    _OWNER_CUSTODY[7] = job_lease
     for key, seed, cold in ((live.keys[1], 17, True), (live.keys[2], 29, False),
                             (live.keys[2], 43, False), (live.keys[2], 71, False)):
         label = ('cold-' if cold else 'warm-') + str(seed)
-        job_lease = budget.acquire(JOB_COMMITMENT, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
-        _OWNER_CUSTODY[7] = job_lease
         def operation(seed=seed, cold=cold, label=label):
             observation = run_fixed_forward(state['worker'], seed, cold=cold)
+            check_owner_safe()
             _write_json(run_dir / (label + '-output.json'), observation)
             return None
         sample = measure(key, operation, label=label, case_sha256=FORWARD_CASE_SHA256,
                          seed=seed, memory_lease=job_lease)
-        if state['worker'].quarantined:
-            raise CollectorError('worker execution became quarantined')
-        job_lease.release()
-        if job_lease.released is not True or budget.active_leases() != (resident_lease,):
-            raise CollectorError('job lease did not release after the synchronized result')
-        _OWNER_CUSTODY[7] = None
+        check_owner_safe()
+        _check_retained_owner(session, lease)
         samples.append(sample)
 
     profiles, evidence = assemble_profiles(live, tuple(samples), collected_utc=utc_now())
@@ -876,13 +926,11 @@ def _collect_owned_inner(source, session, lease, run_dir, run_id, state):
     check_owner_safe()
     cleanup = clear_cublas_after_drain(session=session, lease=lease, torch=torch)
     cleanup['model_weakref_dead'] = True
+    cleanup['owner_commitments'] = _check_retained_owner(session, lease)
     _write_json(run_dir / 'cleanup.json', cleanup)
     if cleanup['after'] != {'allocated_bytes': 0, 'reserved_bytes': 0}:
         raise CollectorError('the allocator still owns bytes after worker cleanup')
-    resident_lease.release()
-    if budget.active_leases():
-        raise CollectorError('memory commitments remain after verified cleanup')
-    OwnerSession.check(session, lease)
+    _check_retained_owner(session, lease)
     return {'profile_ids': [profile.profile_id for profile in profiles],
             'estimates_bytes': [profile.estimated_incremental_bytes for profile in profiles],
             'source_sha256': hashlib.sha256(live.source_manifest).hexdigest(),

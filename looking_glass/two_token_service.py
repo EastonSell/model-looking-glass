@@ -134,7 +134,7 @@ class _PreparedService:
 
 def prepare_two_token_service(*, repo_root, cache_root, workspace_root,
                               private_parent, site_packages, environment_root,
-                              gpu_uuid, physical_uuids, profiles, teams,
+                              hf_home, gpu_uuid, physical_uuids, profiles, teams,
                               trusted_path):
     """Prepare the fixed owner without initializing CUDA or starting a process.
 
@@ -157,6 +157,13 @@ def prepare_two_token_service(*, repo_root, cache_root, workspace_root,
     if type(identity) is not DeviceIdentity:
         raise RuntimeError("canonical device identity is required")
     source = prepare_trusted_source(repo_root, cache_root)
+    home = Path(hf_home)
+    if not home.is_absolute():
+        raise ValueError("HF_HOME must be an absolute directory")
+    home = home.resolve(strict=True)
+    cache = Path(source.cache_root)
+    if not home.is_dir() or cache == home or not cache.is_relative_to(home):
+        raise ValueError("checkpoint cache must be inside HF_HOME")
     _load_profile_registry(profiles, identity)
 
     parent = Path(private_parent)
@@ -187,7 +194,7 @@ def prepare_two_token_service(*, repo_root, cache_root, workspace_root,
         os.fsync(stream.fileno())
     launch = prepare_trusted_launch(
         repo_root=source.repo_root, site_packages=site_packages, environment_root=environment_root,
-        private_parent=launch_dir, gpu_uuid=uuid, module="looking_glass.gpu_service_process",
+        private_parent=launch_dir, hf_home=home, gpu_uuid=uuid, module="looking_glass.gpu_service_process",
         config_path=config_path, trusted_path=trusted_path)
     controller = _prepare_owner_controller(stop)
     return _PreparedService(controller=controller, launch=launch, identity=identity,

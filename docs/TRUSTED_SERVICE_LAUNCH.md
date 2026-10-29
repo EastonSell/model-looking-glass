@@ -14,7 +14,10 @@ SHA-256 to an allowlisted owner module. Each owner must call
 `read_trusted_config` and parse the returned captured bytes before GPU activity;
 this detects a config replacement or byte change after the parent preflight.
 It fixes the selected full physical GPU UUID, native allocator,
-cuBLAS, thread and offline settings, and omits inherited Python paths and
+cuBLAS, thread and offline settings, and requires an explicit existing
+`HF_HOME` directory rather than inheriting the user's default cache location.
+The service and collector must put their offline checkpoint cache beneath that
+directory and use the same path. It omits inherited Python paths and
 unreviewed CUDA/numerical knobs. Use the returned mapping as a **replacement**
 environment with the identity-aware `run_supervised`, and call
 `verify_ready()` immediately before spawning. The config is an ordinary,

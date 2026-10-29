@@ -31,7 +31,8 @@ and approved pins are trusted operator inputs.
 A source or runtime change requires new matching profiles. Measured estimates
 and the 2 GiB resident / 512 MiB job commitments are not OOM guarantees.
 
-Call `prepare_two_token_service` with absolute repository, offline cache,
+Call `prepare_two_token_service` with absolute repository, offline cache and
+`HF_HOME` directories (the cache must be a strict descendant of `HF_HOME`),
 workspace, private launch parent, environment and site-packages directories;
 a controlled executable search path; distinct team IDs; the selected full GPU
 UUID; and a **current trusted physical UUID inventory tuple**. The inventory
