@@ -411,7 +411,7 @@ def _check_source(source, started):
              "source and start revisions disagree")
     names = _file_entries(source["repository_files"])
     protocol = "docs/RESOURCE_PROFILE_BOOTSTRAP_V1.md"
-    _require({protocol, "looking_glass/__init__.py", "looking_glass/gpu_service.py",
+    _require({protocol, "looking_glass/__init__.py", "looking_glass/gpu_bootstrap.py", "looking_glass/gpu_service.py",
               "looking_glass/live_profile.py", "looking_glass/pretrained.py"}.issubset(names)
              and all(name.startswith("looking_glass/") or name == protocol for name in names),
              "source manifest lacks required tracked code or protocol")

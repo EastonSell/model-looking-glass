@@ -24,22 +24,38 @@ def try_acquire(budget, estimate=100):
 
 def opcode_count(code, call):
     count = 0
+    saw_call = False
     old_trace = sys.gettrace()
 
+    def warmup():
+        return None
+
     def tracer(frame, event, arg):
-        nonlocal count
-        if frame.f_code is code:
+        nonlocal count, saw_call
+        if frame.f_code is warmup.__code__ and event == "call":
+            frame.f_trace_opcodes = True
+        elif frame.f_code is code:
             if event == "call":
+                saw_call = True
                 frame.f_trace_opcodes = True
             elif event == "opcode":
                 count += 1
         return tracer
 
     try:
+        # CPython 3.12 can begin emitting opcode events only in a subsequent
+        # trace session after a frame has first requested them.
+        sys.settrace(tracer)
+        warmup()
+        sys.settrace(old_trace)
         sys.settrace(tracer)
         call()
     finally:
         sys.settrace(old_trace)
+    if not saw_call:
+        raise AssertionError("target function was not traced")
+    if not count:
+        raise unittest.SkipTest("interpreter did not emit opcode trace events")
     return count
 
 
