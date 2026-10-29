@@ -73,6 +73,9 @@ releasing its execution lock, refuses further
 worker forwards, and tries to retain known model, request, and output
 references until process teardown. Retention itself may fail under memory
 exhaustion; the quarantine remains in force. Before launching work the worker
+sets a pending-drain marker, cleared only after successful synchronization.
+If failure handling is interrupted, cleanup retries quarantine while holding
+the shared execution lock, retaining its model and known buffers. The worker
 also keeps fixed, preallocated custody slots for its request, successfully
 stored device inputs, model output, logits, and CPU offload. On a failed drain,
 it also attempts to move available local references into these slots before
