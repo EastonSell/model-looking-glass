@@ -1,10 +1,10 @@
 # Crossed-template taste-context follow-up: public CPU result
 
-The fixed public follow-up completed 336 recorded forwards on the pinned CPU DistilBERT checkpoint. For all six stems, the mean donor-signed ingredient-versus-`the` toward contrast was +0.084965 in `after adding` and +0.067577 in `with some`; the paired `after` minus `with` mean was +0.017388. Five stem differences were positive; syrup was slightly negative (−0.000061). These are descriptive, correlated observations on six public convenience stems, not independent trials or a population claim.
+The fixed public follow-up completed 336 recorded forwards on the pinned CPU DistilBERT checkpoint. Across the six stems, the mean donor-signed ingredient-versus-`the` toward contrast was +0.084965 in `after adding` and +0.067577 in `with some`; the paired `after` minus `with` mean was +0.017388. Five stem differences were positive; syrup was slightly negative (−0.000061). These are descriptive, correlated observations on six public convenience stems, not independent trials or a population claim.
 
 The `the` comparison was active: its donor-signed toward response was negative in all 24 stem/template/direction cells, with means −0.022960 (`after`) and −0.014753 (`with`). The corresponding ingredient means were +0.062005 and +0.052824. Subtracting the active `the` response contributes to the positive position contrast; it is not a no-effect null.
 
-The directional odd ingredient response minus the absolute odd orthogonal response averaged +0.040383 (`after`) and +0.036340 (`with`), with paired mean +0.004043. Chocolate, syrup and cream had negative paired differences for this quantity. Mean absolute orthogonal odd responses were 0.018684 and 0.016776 respectively; a single artificial orthogonal direction is not a generic null, and both ± perturbations may be off-manifold.
+The donor-signed odd ingredient response minus the absolute odd orthogonal response averaged +0.040383 (`after`) and +0.036340 (`with`), with paired mean +0.004043. Chocolate, syrup and cream had negative paired differences for this quantity. Mean absolute orthogonal odd responses were 0.018684 and 0.016776 respectively; a single artificial orthogonal direction is not a generic null, and both ± perturbations may be off-manifold.
 
 The prespecified direction main contrast was +0.011770 and the template-by-direction interaction was +0.016392. Block 3 was chosen after the earlier study. No significance or general taste-concept claim is made.
 
