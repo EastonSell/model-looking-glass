@@ -1,5 +1,11 @@
 # DistilGPT-2 agreement-head fresh-context cases
 
+> **Superseded before model forwarding.** Three subject lemmas in these
+> cases appeared in earlier exposed head-development cases. The corrected
+> [v4.1 protocol](../../docs/DISTILGPT2_AGREEMENT_HEADS_FRESH_CONTEXT_V4_1.md)
+> fixes a replacement case set; the original manifest and receipts are kept
+> here as historical evidence and were not reserved or forwarded.
+
 These are the 16 public, nonblind cases fixed by the [v4 protocol](../../docs/DISTILGPT2_AGREEMENT_HEADS_FRESH_CONTEXT_V4.md). They cross four sentence frames with four subject lemmas in the protocol's fixed quartet order. Case preparation used only the pinned tokenizer; no model forward on these cases is asserted. The manifest is a case inventory, not an execution result or an exposure reservation.
 
 The four answer continuations are included for public overlap checking and are read from final-position logits if the study runs. The proposed model inputs are the 16 base rows, not base-plus-answer forwards. L3H4 and L3H8 were selected on previously exposed development evidence; the data-informed fixed-dose design, singular/plural token differences, repeated frames and lemmas, and other limits are specified in the protocol.
