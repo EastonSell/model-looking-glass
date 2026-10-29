@@ -81,14 +81,17 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
         self.claim = self.root / 'natural.claim'
         _write(self.claim, {'schema': 'mlg-natural-study-claim-v1', 'budget': self.budget,
                             'binding_sha256': hashlib.sha256(b).hexdigest(), 'output': str(self.out)})
-        self.previous_amendment = self.root / 'physical-amendment-v1.json'
-        self.amendment = self.root / 'physical-amendment-v2.json'
+        self.original_amendment = self.root / 'physical-amendment-v1.json'
+        self.previous_amendment = self.root / 'physical-amendment-v2.json'
+        self.amendment = self.root / 'physical-amendment-v3.json'
         self.write_amendment()
         self.db = self.root / 'study.sqlite3'
         self.args = {'natural_claim_path': self.claim, 'natural_binding_path': self.binding,
                      'prior_paths': (self.preflight,), 'natural_extra_paths': (self.extra,),
                      'prior_unique_tensor_bytes': len(payload), 'natural_unique_tensor_bytes': 1,
                      'natural_audit_path': self.audit, 'expected_natural_audit_sha256': hashlib.sha256(self.audit.read_bytes()).hexdigest(),
+                     'original_physical_amendment_path': self.original_amendment,
+                     'expected_original_physical_amendment_sha256': hashlib.sha256(self.original_amendment.read_bytes()).hexdigest(),
                      'previous_physical_amendment_path': self.previous_amendment,
                      'expected_previous_physical_amendment_sha256': hashlib.sha256(self.previous_amendment.read_bytes()).hexdigest(),
                      'physical_amendment_path': self.amendment,
@@ -98,7 +101,7 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
                      'expected_natural_binding_sha256': hashlib.sha256(self.binding.read_bytes()).hexdigest()}
 
     def write_amendment(self):
-        _write(self.previous_amendment, {
+        _write(self.original_amendment, {
             'schema': 'mlg-agreement-physical-budget-amendment-v1',
             'natural_claim_sha256': hashlib.sha256(self.claim.read_bytes()).hexdigest(),
             'natural_binding_sha256': hashlib.sha256(self.binding.read_bytes()).hexdigest(),
@@ -109,8 +112,22 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
             'phase_reservations_bytes': {p: v[0] for p, v in ledger.PHASE_LIMITS.items()},
             'host_disk_phase_reservations_bytes': dict(ledger.PREVIOUS_PHASE_DISK),
         })
-        _write(self.amendment, {
+        _write(self.previous_amendment, {
             'schema': 'mlg-agreement-physical-budget-amendment-v2',
+            'natural_claim_sha256': hashlib.sha256(self.claim.read_bytes()).hexdigest(),
+            'natural_binding_sha256': hashlib.sha256(self.binding.read_bytes()).hexdigest(),
+            'previous_physical_amendment_sha256': hashlib.sha256(self.original_amendment.read_bytes()).hexdigest(),
+            'original_host_disk_allowance_bytes': ledger.ORIGINAL_DISK_LIMIT,
+            'host_disk_allowance_bytes': ledger.V2_DISK_LIMIT,
+            'required_free_disk_bytes': ledger.V2_FREE_DISK_BYTES,
+            'metadata_max_bytes': ledger.V2_METADATA_MAX,
+            'ledger_disk_reserve_bytes': ledger.V2_LEDGER_RESERVE,
+            'study_limit_bytes': ledger.STUDY_LOGICAL_LIMIT,
+            'phase_reservations_bytes': {p: v[0] for p, v in ledger.PHASE_LIMITS.items()},
+            'host_disk_phase_reservations_bytes': dict(ledger.V2_PHASE_DISK),
+        })
+        _write(self.amendment, {
+            'schema': 'mlg-agreement-physical-budget-amendment-v3',
             'natural_claim_sha256': hashlib.sha256(self.claim.read_bytes()).hexdigest(),
             'natural_binding_sha256': hashlib.sha256(self.binding.read_bytes()).hexdigest(),
             'previous_physical_amendment_sha256': hashlib.sha256(self.previous_amendment.read_bytes()).hexdigest(),
@@ -119,6 +136,7 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
             'required_free_disk_bytes': ledger.REQUIRED_FREE_DISK_BYTES,
             'metadata_max_bytes': ledger._MAX_INVENTORY,
             'ledger_disk_reserve_bytes': ledger.LEDGER_DISK_RESERVE,
+            'max_files_per_inventory': ledger._MAX_FILES,
             'study_limit_bytes': ledger.STUDY_LOGICAL_LIMIT,
             'phase_reservations_bytes': {p: v[0] for p, v in ledger.PHASE_LIMITS.items()},
             'host_disk_phase_reservations_bytes': {p: v[1] for p, v in ledger.PHASE_LIMITS.items()},
@@ -144,11 +162,12 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
         self.assertEqual(meta['natural_physical_bytes'], sum(v[0] for v in inv['natural'].values()))
         self.assertEqual(meta['prior_physical_bytes'], sum(v[0] for v in inv['prior'].values()))
         self.assertEqual(meta['prior_unique_tensor_bytes'], len(self.preflight.read_bytes()))
-        self.assertEqual(meta['study_disk_limit'], 4 * 1024**3)
-        self.assertEqual(meta['required_free_disk_bytes'], 6 * 1024**3)
-        self.assertEqual(claims[0][2], 1024 * 1024**2)
-        self.assertEqual(meta['metadata_max_bytes'], 8 * 1024**2)
-        self.assertEqual(meta['ledger_disk_reserve_bytes'], 64 * 1024**2)
+        self.assertEqual(meta['study_disk_limit'], 8 * 1024**3)
+        self.assertEqual(meta['required_free_disk_bytes'], 12 * 1024**3)
+        self.assertEqual(claims[0][2], 4 * 1024**3)
+        self.assertEqual(meta['metadata_max_bytes'], 16 * 1024**2)
+        self.assertEqual(meta['ledger_disk_reserve_bytes'], 128 * 1024**2)
+        self.assertEqual(meta['max_files_per_inventory'], 32768)
         self.assertIn(os.path.normcase(str(self.extra)), inv['natural'])
         self.assertIn(os.path.normcase(str(self.out / 'unreferenced.partial')), inv['natural'])
         grant = self.claim_phase()
@@ -221,6 +240,10 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
         with self.assertRaises(ledger.LedgerError):
             self.initialize()
         self.args['expected_natural_audit_sha256'] = hashlib.sha256(self.audit.read_bytes()).hexdigest()
+        self.args['expected_original_physical_amendment_sha256'] = '0' * 64
+        with self.assertRaises(ledger.LedgerError):
+            self.initialize()
+        self.args['expected_original_physical_amendment_sha256'] = hashlib.sha256(self.original_amendment.read_bytes()).hexdigest()
         self.args['expected_previous_physical_amendment_sha256'] = '0' * 64
         with self.assertRaises(ledger.LedgerError):
             self.initialize()
@@ -248,6 +271,7 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
             ('required_free_disk_bytes', ledger.REQUIRED_FREE_DISK_BYTES - 1),
             ('metadata_max_bytes', ledger._MAX_INVENTORY + 1),
             ('ledger_disk_reserve_bytes', ledger.LEDGER_DISK_RESERVE - 1),
+            ('max_files_per_inventory', ledger._MAX_FILES + 1),
         ):
             with self.subTest(field=field):
                 self.write_amendment()
@@ -274,12 +298,18 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
     def test_published_amendments_bind_the_same_original_and_each_other(self):
         experiment = Path(__file__).resolve().parents[1] / 'experiments'
         previous_raw, previous = ledger._read_json(experiment / 'agreement_physical_budget_v1.json')
-        _, current = ledger._read_json(experiment / 'agreement_physical_budget_v2.json')
+        middle_raw, middle = ledger._read_json(experiment / 'agreement_physical_budget_v2.json')
+        _, current = ledger._read_json(experiment / 'agreement_physical_budget_v3.json')
         claim = previous['natural_claim_sha256']
         binding = previous['natural_binding_sha256']
-        ledger._physical_amendment(previous, claim, binding)
-        ledger._physical_amendment(current, claim, binding,
+        ledger._physical_amendment(previous, claim, binding, expected_version=1)
+        ledger._physical_amendment(middle, claim, binding, expected_version=2,
                                    previous_hash=hashlib.sha256(previous_raw).hexdigest())
+        ledger._physical_amendment(current, claim, binding, expected_version=3,
+                                   previous_hash=hashlib.sha256(middle_raw).hexdigest())
+        with self.assertRaises(ledger.LedgerError):
+            ledger._physical_amendment(current, claim, binding, expected_version=2,
+                                       previous_hash=hashlib.sha256(middle_raw).hexdigest())
 
     def test_combined_metadata_bound_exact_and_one_byte_over(self):
         # Include non-ASCII text to verify the bound measures encoded bytes.
@@ -299,7 +329,7 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
         self.assertFalse(self.db.exists())
 
     def test_reserved_space_covers_bounded_sqlite_record_and_rollback_journal(self):
-        # Exercise an intentionally worst-case rewrite of an 8 MiB record.
+        # Exercise an intentionally worst-case rewrite of a 16 MiB record.
         # This covers SQLite apparent file lengths, not NTFS allocation units.
         db = ledger._connect(self.db)
         try:
@@ -402,7 +432,7 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
         # the natural originals and copies exceed it physically but contain
         # one unique tensor, so check copies against the physical share.
         limits = dict(ledger.PHASE_LIMITS)
-        limits['natural_discovery'] = (1, 1024 * 1024**2)
+        limits['natural_discovery'] = (1, 4096 * 1024**2)
         with patch.object(ledger, 'PHASE_LIMITS', limits):
             self.budget['phase_reservations_bytes']['natural_discovery'] = 1
             binding_bytes = _write(self.binding, {'study_budget': self.budget, 'independent_natural_audit_source_sha256': self.audit_source_hash})
@@ -412,6 +442,7 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
             self.args['expected_natural_claim_sha256'] = hashlib.sha256(claim_bytes).hexdigest()
             self.args['expected_natural_binding_sha256'] = hashlib.sha256(binding_bytes).hexdigest()
             self.write_amendment()
+            self.args['expected_original_physical_amendment_sha256'] = hashlib.sha256(self.original_amendment.read_bytes()).hexdigest()
             self.args['expected_previous_physical_amendment_sha256'] = hashlib.sha256(self.previous_amendment.read_bytes()).hexdigest()
             self.args['expected_physical_amendment_sha256'] = hashlib.sha256(self.amendment.read_bytes()).hexdigest()
             self.initialize()
@@ -448,7 +479,7 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
 
     def test_old_ledger_schema_is_not_silently_upgraded(self):
         self.initialize()
-        for version in ('v1', 'v2', 'v3'):
+        for version in ('v1', 'v2', 'v3', 'v4'):
             with closing(sqlite3.connect(self.db)) as db:
                 meta = json.loads(db.execute('SELECT data FROM meta').fetchone()[0])
                 meta['schema'] = 'mlg-agreement-phase-ledger-' + version
@@ -482,6 +513,18 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
         with patch.object(Path, 'open', return_value=io.BytesIO(b'ab')):
             with self.assertRaises(ledger.LedgerError):
                 ledger._files([short])
+
+    def test_file_traversal_bound_is_separate_for_each_inventory(self):
+        roots = [self.root / 'first', self.root / 'second']
+        for root in roots:
+            root.mkdir()
+            (root / 'a').write_bytes(b'a')
+            (root / 'b').write_bytes(b'b')
+        with patch.object(ledger, '_MAX_FILES', 3):
+            self.assertEqual(len(ledger._files([roots[0]])), 2)
+            self.assertEqual(len(ledger._files([roots[1]])), 2)
+            with self.assertRaises(ledger.LedgerError):
+                ledger._files(roots)
 
 
 if __name__ == '__main__':
