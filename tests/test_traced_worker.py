@@ -521,6 +521,34 @@ class TracedWorkerTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             ModelLease(self.model).acquire()
 
+    def test_interrupt_during_forward_clears_partial_trace_and_hooks(self):
+        from looking_glass.capture_dispatcher import CaptureDispatcher
+        from looking_glass.model_ownership import ModelLease
+        worker, references, errors = self.make_worker(), [], []
+        record = CaptureDispatcher.record
+
+        def track(dispatcher, *args, **kwargs):
+            record(dispatcher, *args, **kwargs)
+            references.extend(weakref.ref(item.value) for item in dispatcher._events)
+
+        with patch.object(CaptureDispatcher, "record", track), \
+                patch.object(self.model.transformer.h[0].mlp, "forward",
+                             side_effect=KeyboardInterrupt("TEST forward interrupted")):
+            try:
+                self.traced(worker)
+            except KeyboardInterrupt as exc:
+                errors.append(exc)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("TEST forward interrupted", str(errors[0]))
+        self.assertTrue(references)
+        gc.collect()
+        self.assertTrue(all(ref() is None for ref in references))
+        self.assertTrue(worker.poisoned)
+        self.assert_no_hooks()
+        # The synchronous forward has unwound; no external accesses are in
+        # flight under this trusted-owner contract.
+        ModelLease(self.model).acquire().release()
+
     def test_forward_failure_survives_interrupted_poison_for_both_apis(self):
         from looking_glass.model_ownership import ModelLease
         for traced in (False, True):

@@ -55,8 +55,11 @@ worker execution and held through hook registration, forward/device
 completion, hook removal, state checks, and cancellation checks. The ordering
 is outer gate, model lease, resident worker lock, dispatcher execution lock,
 and worker RNG lock. The model lease is not an interprocess lock and cannot
-guard code that ignores it. Model construction and external mutation remain
-trusted, as in the resident worker's existing contract.
+guard code that ignores it. The owner must ensure that external model forwards
+have quiesced before worker execution and do not overlap it; a removed hook
+may already have been selected by an uncooperative concurrent forward. Model
+construction and external mutation remain trusted, as in the resident worker's
+existing contract.
 
 Hooks are installed inside the resident worker lock and removed in `finally`,
 including partial registration failures. Capture output stays private until
