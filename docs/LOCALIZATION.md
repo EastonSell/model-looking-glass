@@ -47,8 +47,9 @@ previously implemented rounded binary64 computation. Signed zeros compare equal.
 Both tolerances must be finite, nonnegative built-in Python `int` or `float`
 values; integers are converted to binary64 first. Other numeric types must be
 explicitly converted by the caller before use. Restricting the conversion avoids
-silently flushing a subnormal in an implicit conversion. Zero tolerance is the
-default. Subnormal bits are preserved during comparison even if the calling
+silently flushing a subnormal in an implicit conversion; integers that are not
+exactly representable as binary64 are rejected instead of rounded. Zero
+tolerance is the default. Subnormal bits are preserved during comparison even if the calling
 CPU thread flushes denormals; this does not establish the numerical mode used
 when the model produced the retained values.
 

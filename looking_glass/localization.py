@@ -20,6 +20,8 @@ def _tolerance(name, value):
         converted = float(value)
     except (OverflowError, ValueError):
         raise ValueError(f"{name} must be a finite nonnegative built-in int or float") from None
+    if type(value) is int and int(converted) != value:
+        raise ValueError(f"{name} integer must be exactly representable in binary64")
     bits = _float64_bits(converted)
     magnitude = bits & ((1 << 63) - 1)
     if (magnitude >> 52) == 0x7ff or (bits >> 63 and magnitude != 0):
