@@ -161,6 +161,99 @@ current process and requires external intervention. This protocol assumes the
 state directory is protected from unrelated modification. If the storage or
 machine is unreliable, do not infer that a missing file establishes safety.
 
+## Private startup delivery
+
+For a trusted service that must return an address and short-lived credentials
+to its trusted launching process, `StartupChannel` provides one anonymous
+child-to-parent frame. The caller chooses `max_bytes` from 1 to 65,536; the
+transport accepts one nonempty `bytes` value and bounds the announced length
+before allocating its body. It does not use pickle, print the payload, or save
+it in the marker, command arguments, or environment. The inherited endpoint
+number and size bound are not credentials. The caller must validate the
+decoded schema and arrange separate trusted delivery to each recipient.
+
+```python
+from concurrent.futures import ThreadPoolExecutor
+import os
+from looking_glass.supervisor import StartupChannel, run_supervised
+
+channel = StartupChannel(max_bytes=65536)
+pool = ThreadPoolExecutor(max_workers=1)
+owner = pool.submit(
+    run_supervised, direct_owner_command,
+    device_lease_path=identity.lock_path, marker_path=identity.marker_path,
+    identity=identity, startup_channel=channel, timeout=600,
+)
+try:
+    message = channel.receive(timeout=30)
+    if not channel.wait_closed(timeout=5):
+        raise RuntimeError("startup reader teardown is uncertain")
+    # Decode and validate message, then deliver team-specific credentials
+    # over a separately protected channel. Do not print or persist message.
+except BaseException:
+    channel.abort()  # also use this if schema validation rejects a frame
+    try:
+        owner.result(timeout=20)
+    except BaseException:
+        os._exit(70)      # uncertain launch: do not reuse this dedicated launcher
+    if not channel.wait_closed(timeout=5):
+        os._exit(70)      # a retained writer left a reader pending
+    pool.shutdown(wait=True)
+    raise
+# After requesting service shutdown through an independent control channel,
+# wait for owner.result(), require clean=True and exit_code == 0, and close
+# the executor. A delivered frame does not establish a successful workload.
+```
+
+In the validated direct owner, after the device binding and after the service
+is ready, call `session.send_startup(lease, message_bytes)`. It checks the
+same live lease and, for GPU identity mode, requires the runtime binding to
+have succeeded. The endpoint becomes non-inheritable when
+`OwnerSession.from_environment()` takes ownership of it. The sender can use
+the channel once and then its write endpoint is closed. Do not send until the
+server is actually ready. The parent must call `receive` with a finite deadline
+and call `abort` if the application rejects the returned bytes; on a reported
+channel failure the supervisor terminates only the exact child and retains the
+unsafe marker when it observes failure before completing clean teardown.
+If a fully attested child has already exited and its marker was cleared before
+the application rejects the frame, the rejected startup still fails, but a
+later `abort()` cannot undo that completed device teardown. `close()` rejects
+an unused or unreceived frame; after a successful receive, use `abort()`
+explicitly to reject it.
+
+The launcher must be a dedicated, trusted process with no concurrent process
+creation that broadly inherits handles. On Windows, Python must temporarily
+mark the write handle inheritable even with `STARTUPINFO`'s explicit
+`handle_list`; this module serializes its own spawns, but cannot prevent an
+unrelated `close_fds=False` spawn from inheriting that handle during the brief
+window. On POSIX it uses `pass_fds`. A hostile same-user process, a malicious
+owner or launcher, and independently exposed credentials are outside this
+cooperative contract. Never claim this is a security sandbox.
+
+The synchronous pipe is read by a daemon thread so `receive` can return on a
+deadline without waiting for a blocking pipe operation. The shared partial
+buffer is cleared on cancellation, but erasure is best effort: Python and the
+OS may retain immutable or allocator copies. If another process holds a write
+endpoint, that reader can remain blocked after timeout and consume a reader
+slot; at most 16 startup readers can exist in the launcher. After a receive,
+verify `channel.wait_closed(timeout=...)` before using the message; after a
+failed or interrupted startup, check it again after owner termination. If it
+returns false, do not reuse the launcher:
+terminate or recycle that dedicated process so the outstanding reader and its
+memory are discarded. Do not assume closing a pipe from another thread proves
+the pending synchronous read was cancelled. Timing is best effort, not a
+hard-real-time guarantee. The constructor cleans up tested interruption
+boundaries, but Python cannot guarantee atomic cleanup for an asynchronous
+exception at every bytecode; recycle the launcher if ownership is uncertain.
+
+An interruption inside process creation can occur after the OS starts a
+process but before `Popen` returns its handle. In that uncertain case the
+supervisor cannot prove that it terminated or reaped the unknown child. The
+marker remains; terminate or recycle the dedicated launcher, and require an
+external process and device assessment before treating the device as safe.
+The owner contract requires a parent watchdog to start before CUDA access,
+but that cooperative watchdog is not independent proof of process teardown.
+
 Marker and attestation files are created exclusively and their contents are
 flushed with `fsync`. This supports persistence through ordinary process
 termination. Directory-entry durability across OS crashes or sudden power loss
