@@ -593,6 +593,7 @@ class NaturalAgreementRunner:
                     raise StudyFailure('held-out evaluation requires four families')
                 from .agreement_heldout import frozen_selection as load_selection, validate_heldout_binding
                 frozen_selection, frozen = load_selection(frozen_predictions)
+                frozen_evidence = json.loads(frozen.prediction_bytes)
                 heldout_binding = validate_heldout_binding(heldout_binding)
             model = self.model
             metric_cases, metric_patches = [], []
@@ -629,6 +630,8 @@ class NaturalAgreementRunner:
                     contract['prediction_freeze_sha256'] = frozen.freeze.sha256
                     contract['heldout_commitment'] = heldout_binding.commitment_sha256
                     contract['exposure_inventory_sha256'] = heldout_binding.inventory_sha256
+                    contract['discovery_event_sha256'] = frozen_evidence['discovery_event_sha256']
+                    contract['independent_audit_sha256'] = frozen_evidence['independent_audit_sha256']
                 self.journal.record(contract, {})
                 for quartet in groups:
                     members = groups[quartet]
@@ -758,6 +761,8 @@ class NaturalAgreementRunner:
                     evaluation['prediction_freeze_sha256'] = frozen.freeze.sha256
                     evaluation['heldout_commitment'] = heldout_binding.commitment_sha256
                     evaluation['exposure_inventory_sha256'] = heldout_binding.inventory_sha256
+                    evaluation['discovery_event_sha256'] = frozen_evidence['discovery_event_sha256']
+                    evaluation['independent_audit_sha256'] = frozen_evidence['independent_audit_sha256']
                     evaluation['clean_baseline'] = metrics['baseline']
                     evaluation['clean_cases'] = []
                     for case in metric_cases:
