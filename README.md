@@ -18,6 +18,7 @@ The roadmap is a research plan, not a claim that its milestones are complete. Th
 - The [local CPU service](docs/SERVICE.md) exposes the pinned DistilGPT2 model to authenticated clients, with a two-token input limit and serial execution. A separate [microbatch primitive](docs/MICROBATCH.md) is not yet integrated into that service.
 - The [device supervisor](docs/SUPERVISOR.md) coordinates a cooperative owner process, a device lease, and a sticky quarantine marker. It has CPU tests, but has not yet been integrated and validated as a shared GPU service.
 - The [local transport](docs/IPC.md) lets authenticated cooperating client processes submit bounded forwards over loopback. It does not by itself enforce GPU budgets or provide trace delivery.
+- The [trace delivery prototype](docs/TRACE_TRANSPORT.md) tests bounded, single-event custody on CPU. The service does not yet send traces through IPC or provide a complete multi-event publication protocol.
 - The [experiment registry](docs/REGISTRY.md) records manifests, artifacts and terminal states. [Research cases](docs/RESEARCH_CASES.md), [localization](docs/LOCALIZATION.md), and [causal metrics](docs/CAUSAL_METRICS.md) support controlled evaluations; the public held-out cases are not a protected blind benchmark. [Transformer trace comparison](docs/TRANSFORMER_LOCALIZATION.md) requires independently verified pairing and execution context.
 
 These components have their own tests and limits; their presence alone does not establish supervised shared GPU execution, causal discovery, or measured GPU throughput.
