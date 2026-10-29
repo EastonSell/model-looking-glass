@@ -973,12 +973,20 @@ class CustodyTests(unittest.TestCase):
     def test_real_supervisor_accepts_protected_fabricated_preparation(self):
         from looking_glass import natural_heldout_supervisor as supervisor
         from scripts import v2_source_guards as guards
-        attempt, _ = self.prepare()
+        attempt = self.root / ('natural-heldout-' + self.freeze.sha256)
         fake_entry = self.root / 'fake-preparation-entry.py'
         fake_entry.write_text(
             "import os,sys\n"
             "token=b'MLG-natural-discovery-start-v1\\n'\n"
-            "sys.exit(0 if os.read(0,len(token))==token else 7)\n", encoding='utf-8')
+            "if os.read(0,len(token))!=token: raise SystemExit(7)\n"
+            "from pathlib import Path\n"
+            "from tests.test_natural_heldout_custody import CustodyTests\n"
+            "fixture=CustodyTests('test_publication_precedes_one_durable_claim_and_nonce')\n"
+            "fixture.setUp()\n"
+            "fixture.root=Path(os.environ['MLG_FAKE_CUSTODY_ROOT'])\n"
+            "fixture.config_path=fixture.root/'private-config.json'\n"
+            "try: fixture.prepare()\n"
+            "finally: fixture.doCleanups()\n", encoding='utf-8')
         frozen_file = self.root / 'fake-frozen-source.py'
         operational_file = self.root / 'fake-operational-source.py'
         frozen_file.write_bytes(b'frozen')
@@ -993,7 +1001,8 @@ class CustodyTests(unittest.TestCase):
             return custody.audit_preparation(attempt, self.public, self.wrapper)
         with mock.patch.object(custody, '__file__', str(fake_entry)), \
              mock.patch.object(custody.sys, 'executable', base_interpreter), \
-             mock.patch.dict(os.environ, {'MLG_NATURAL_SITE': str(self.root)}), \
+             mock.patch.dict(os.environ, {'MLG_NATURAL_SITE': str(Path(__file__).resolve().parents[1]),
+                                         'MLG_FAKE_CUSTODY_ROOT': str(self.root)}), \
              guards.SourceFileLease(self.root, [frozen_file]) as frozen_lease, \
              guards.SourceFileLease(self.root, [operational_file]) as operational_lease:
             with guards.InheritableHandles(frozen_lease.handles() + operational_lease.handles()) as handles:
