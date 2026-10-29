@@ -60,6 +60,8 @@ The [synthetic causal v1 study](docs/CAUSAL_RESULTS_V1.md) records fixed predict
 
 The [DistilBERT agreement pilot](results/bert-agreement-dev-v0-20261028/README.md) observed donor-directed shifts after subject-state patches on four public development examples. All four used plural distractors, so the finding is confounded and a balanced evaluation is needed before making a mechanism claim.
 
+The [DistilBERT GPU calibration](results/bert-gpu-calibration-v1-20261029/README.md) checks patch delivery and allocator cleanup on one previously exposed development pair. It is not a held-out evaluation or a GPU throughput benchmark.
+
 The [DistilGPT2 agreement preflight](results/distilgpt2-agreement-preflight-v1-20261028/README.md) found the grammatical verb preferred on all 16 fixed public development prompts; it establishes a small behavior to investigate, not a held-out or causal result.
 
 A [targeted parameter-edit experiment](results/targeted-edit-cpu-v1-20261028/README.md) changed the intended answer preference but failed its preset locality thresholds on public probes. The negative result and a same-host replay are preserved; the study does not establish general capability preservation.
