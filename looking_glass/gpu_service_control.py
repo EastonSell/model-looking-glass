@@ -108,20 +108,34 @@ def _same_parent(path, expected):
         raise RuntimeError("service stop directory changed")
 
 
-def _monitor_stop(path, stop_event):
+def _monitor_stop(path, stop_event, *, on_failure=None):
     """Start a bounded-poll monitor for a nonsecret private stop marker.
 
-    The preallocated failure flag is set if the marker cannot be checked;
-    diagnostics are best effort. The child must report a flagged monitor as
-    workload failure even if device teardown was verified.
+    The preallocated failure flag starts set and is cleared only after the
+    complete monitor loop exits normally. Uncaught thread exceptions restore
+    it. Diagnostics are best effort; a flagged monitor prevents attestation.
     """
+    if on_failure is not None and not callable(on_failure):
+        raise TypeError('monitor failure callback must be callable')
     path, parent_id = _stop_path(path)
     errors = []
-    failed = [False]
+    failed = [True]
+
+    def signal_failure():
+        failed[0] = True
+        try:
+            if on_failure is not None:
+                on_failure()
+        finally:
+            try:
+                if on_failure is not None:
+                    on_failure()
+            finally:
+                stop_event.set()
 
     def monitor():
-        while not stop_event.wait(.05):
-            try:
+        try:
+            while not stop_event.wait(.05):
                 _same_parent(path, parent_id)
                 try:
                     info = path.lstat()
@@ -131,15 +145,25 @@ def _monitor_stop(path, stop_event):
                         or getattr(info, "st_file_attributes", 0) & 0x400):
                     raise RuntimeError("invalid service stop marker")
                 stop_event.set()
-            except BaseException as exc:
-                failed[0] = True
-                stop_event.set()
-                try:
-                    errors.append(type(exc).__name__)
-                except BaseException:
-                    pass
+            failed[0] = False
+        except BaseException as exc:
+            signal_failure()
+            try:
+                errors.append(type(exc).__name__)
+            except BaseException:
+                pass
+
+    def uncaught_thread_failure(_thread):
+        # CPython's Thread bootstrap invokes this per-instance hook after an
+        # exception escapes the target, including one at its return boundary.
+        # The child joins the exact thread before trusting the resulting flag.
+        try:
+            signal_failure()
+        except BaseException:
+            pass
 
     thread = Thread(target=monitor, name="looking-glass-service-stop", daemon=True)
+    thread._invoke_excepthook = uncaught_thread_failure
     thread.start()
     return thread, failed, errors
 
@@ -257,7 +281,7 @@ def _start_owner_controller(controller, command, *, device_lease_path, marker_pa
                     command, device_lease_path=device_lease_path, marker_path=marker_path,
                     identity=identity, startup_channel=channel, timeout=owner_timeout,
                     lease_timeout=lease_timeout, terminate_grace=terminate_grace,
-                    cwd=cwd, env=env, inherit_environment=False)
+                    cwd=cwd, env=env, inherit_environment=False, require_zero_exit=True)
             except BaseException as exc:
                 controller._error_type = type(exc).__name__
             finally:
