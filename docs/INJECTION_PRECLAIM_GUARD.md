@@ -32,10 +32,13 @@ The production preparation uses a read-only check when consuming its durable
 handoff. After releasing the shared split gate, it enters `hold_existing_claim`,
 which takes a short SQLite `BEGIN IMMEDIATE` write reservation, enables
 query-only mode, verifies the same row/state on that transaction, and holds it
-through the single nonce call. Cooperating v6 claims and reconciliations wait
-only for this boundary. The lock does not prevent out-of-band database
+through the single nonce call and durable nonce write. The outer watchdog
+bounds the local ledger and two-pass evidence checks in this critical section.
+Cooperating v6 claims and reconciliations wait only for this boundary. The lock does not prevent out-of-band database
 replacement; the protected owner must forbid it and check the pinned identity.
 A failed or uncertain nonce or lock release remains consumed and incomplete.
+An interruption between the OS entropy return and local assignment cannot be
+recovered; it never permits a redraw.
 The retained handoff and the outer owner's separate durable launch marker
 prevent retries. All callbacks and saved receipts require their own source and
 lifecycle review.

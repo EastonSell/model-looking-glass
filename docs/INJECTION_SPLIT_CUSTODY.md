@@ -137,8 +137,12 @@ commitments and frozen predictions and keeps the concealed site unavailable to
 the selector. Neither known-exposure checks nor the public sampling frame prove
 unknown historical or pretraining independence.
 
-The final ledger check and nonce call run while the source-bound owner holds the
+The final ledger check, nonce call and durable nonce write run while the source-bound owner holds the
 reviewed guard's short SQLite `BEGIN IMMEDIATE` reservation. The gate lease must
-already be released so no network or long-running work is performed under that
-reservation. The owner must also prevent out-of-band database replacement. An
-uncertain lock release after entropy access is incomplete and cannot be retried.
+already be released, and the outer watchdog bounds the local checks and write;
+no network work is performed under that reservation. The owner must also prevent
+out-of-band database replacement. An uncertain lock release after entropy access
+is incomplete and cannot be retried, even if interruption prevented retaining
+the OS-returned bytes. The exact canonical claim record and handoff marker are
+rechecked at this boundary; a change after entropy access leaves the retained
+nonce and stops the attempt.

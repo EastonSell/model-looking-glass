@@ -451,7 +451,7 @@ class InjectionCustodyTests(unittest.TestCase):
                 '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
                 '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
         with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes') as draw:
-            for changed in ('marker', 'ledger', 'side_evidence'):
+            for changed in ('marker', 'ledger', 'side_evidence', 'claim'):
                 with self.subTest(changed=changed), tempfile.TemporaryDirectory(dir=self.root) as temp:
                     parent = Path(temp)
                     phase = parent / ('injection-heldout-' + self.freeze.sha256)
@@ -462,6 +462,8 @@ class InjectionCustodyTests(unittest.TestCase):
                         state['after_gate'] = True
                         if changed == 'marker':
                             marker.write_bytes(marker.read_bytes() + b' ')
+                        if changed == 'claim':
+                            (phase / 'claim.json').write_bytes(b'fabricated-invalid')
                         return True
                     options['gate_allocation'] = gate
                     options['verify_preclaim'] = lambda *args, **kw: not (changed == 'ledger' and state['after_gate'])
@@ -472,6 +474,25 @@ class InjectionCustodyTests(unittest.TestCase):
                     self.assertTrue((phase / 'preparation-failure.json').is_file())
                     self.assertFalse((phase / 'nonce.bin').exists())
             draw.assert_not_called()
+
+    def test_changed_claim_during_entropy_retains_nonce_and_stops(self):
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
+                '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        phase = self.root / ('injection-heldout-' + self.freeze.sha256)
+        def draw(size):
+            (phase / 'claim.json').write_bytes(b'fabricated-invalid')
+            return SPLIT_NONCE
+        with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes', side_effect=draw) as entropy:
+            with self.assertRaises(custody.CustodyError):
+                custody.prepare_study_preclaimed(self.v3_public(), self.root, self.root / 'fake-ledger',
+                                                  **self.fixed_options())
+            self.assertEqual((phase / 'nonce.bin').read_bytes(), SPLIT_NONCE)
+            self.assertTrue((phase / 'preparation-failure.json').is_file())
+            with self.assertRaises(custody.CustodyError):
+                custody.prepare_study_preclaimed(self.v3_public(), self.root, self.root / 'fake-ledger',
+                                                  **self.fixed_options())
+            self.assertEqual(entropy.call_count, 1)
 
     def test_nonce_is_drawn_only_while_preclaim_protection_is_held(self):
         pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
@@ -496,7 +517,7 @@ class InjectionCustodyTests(unittest.TestCase):
         self.assertFalse(state['held'])
         self.assertTrue((result.phase_root / 'preparation-complete.json').is_file())
 
-    def test_uncertain_guard_release_stops_without_persisting_or_redrawing_nonce(self):
+    def test_uncertain_guard_release_retains_nonce_without_redrawing(self):
         pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
                 '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
                 '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
@@ -513,7 +534,7 @@ class InjectionCustodyTests(unittest.TestCase):
                                                   self.root / 'fake-ledger', **options)
             phase = self.root / ('injection-heldout-' + self.freeze.sha256)
             self.assertTrue((phase / 'preparation-failure.json').is_file())
-            self.assertFalse((phase / 'nonce.bin').exists())
+            self.assertEqual((phase / 'nonce.bin').read_bytes(), SPLIT_NONCE)
             with self.assertRaises(custody.CustodyError):
                 custody.prepare_study_preclaimed(self.v3_public(), self.root,
                                                   self.root / 'fake-ledger', **options)

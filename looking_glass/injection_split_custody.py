@@ -468,7 +468,8 @@ def prepare_once(public, private_parent, ledger_path, *, site_nonce, site_record
             'logical_limit_bytes': _LOGICAL_LIMIT, 'disk_limit_bytes': _DISK_LIMIT}
         if preclaim_handoff_sha256 is not None:
             claim_record['preclaim_handoff_sha256'] = preclaim_handoff_sha256
-        _write_new(phase / 'claim.json', _canonical(claim_record))
+        claim_bytes = _canonical(claim_record)
+        _write_new(phase / 'claim.json', claim_bytes)
         if observe_inventory() != snapshot.sha256:
             raise CustodyError('selected exposure inventory changed after the claim')
         if _read_source_hash() != json.loads(public.operational_binding_bytes)['custody_source_sha256']:
@@ -484,16 +485,23 @@ def prepare_once(public, private_parent, ledger_path, *, site_nonce, site_record
         if (observe_inventory() != snapshot.sha256
                 or _read_source_hash() != json.loads(public.operational_binding_bytes)['custody_source_sha256']):
             raise CustodyError('bound source or exposure inventory changed before the draw')
+        def draw_and_retain():
+            if _read_handoff(phase / 'claim.json') != claim_bytes:
+                raise CustodyError('the phase claim record changed before the draw')
+            value = secrets.token_bytes(32)
+            if type(value) is not bytes or len(value) != 32:
+                raise CustodyError('OS nonce generation failed')
+            _write_new(phase / 'nonce.bin', value)
+            if _read_handoff(phase / 'claim.json') != claim_bytes:
+                raise CustodyError('the phase claim record changed during the draw')
+            return value
         if pre_draw_guard is None:
-            nonce = secrets.token_bytes(32)
+            nonce = draw_and_retain()
         else:
             with pre_draw_guard() as guarded:
                 if guarded is not True:
                     raise CustodyError('the claim or handoff changed before the draw')
-                nonce = secrets.token_bytes(32)
-        if type(nonce) is not bytes or len(nonce) != 32:
-            raise CustodyError('OS nonce generation failed')
-        _write_new(phase / 'nonce.bin', nonce)
+                nonce = draw_and_retain()
         if hmac.compare_digest(nonce, site_nonce) or hmac.compare_digest(nonce, plan_entropy):
             raise CustodyError('the private split nonce is not independent of prior bytes')
         allocation = commitments.sample_families(freeze, nonce, inventory_snapshot=snapshot,
@@ -654,6 +662,8 @@ def prepare_study_preclaimed(public, private_parent, ledger_path, *, verify_prec
                 raise CustodyError('the existing claim is not protected through the draw')
             verified_existing_grant(ledger, 'injection_heldout', output_path=phase, stage='before_nonce')
             yield True
+            if _read_handoff(marker) != marker_bytes:
+                raise CustodyError('the preclaim handoff changed during the draw')
 
     return prepare_once(public, parent, ledger, claim_phase=verified_existing_grant,
                         preclaim_handoff_sha256=_sha(marker_bytes), pre_draw_guard=guard_before_draw, **kwargs)
