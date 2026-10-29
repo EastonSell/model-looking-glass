@@ -1,0 +1,176 @@
+{
+  "configured_interval_seconds": 0.2,
+  "observations": [
+    {
+      "observed_monotonic_ns": 1252276841858400,
+      "gpu_timestamp": "2026/10/28 20:21:32.548",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1431306240,
+      "free_bytes": 6946816000,
+      "utilization_percent": 1,
+      "query_started_monotonic_ns": 1252276768310700,
+      "query_ended_monotonic_ns": 1252276841858400
+    },
+    {
+      "observed_monotonic_ns": 1252277104610900,
+      "gpu_timestamp": "2026/10/28 20:21:32.812",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1431306240,
+      "free_bytes": 6946816000,
+      "utilization_percent": 1,
+      "query_started_monotonic_ns": 1252277049757700,
+      "query_ended_monotonic_ns": 1252277104610900
+    },
+    {
+      "observed_monotonic_ns": 1252277368985800,
+      "gpu_timestamp": "2026/10/28 20:21:33.076",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1431306240,
+      "free_bytes": 6946816000,
+      "utilization_percent": 4,
+      "query_started_monotonic_ns": 1252277313711000,
+      "query_ended_monotonic_ns": 1252277368985800
+    },
+    {
+      "observed_monotonic_ns": 1252277655628200,
+      "gpu_timestamp": "2026/10/28 20:21:33.359",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1517289472,
+      "free_bytes": 6860832768,
+      "utilization_percent": 4,
+      "query_started_monotonic_ns": 1252277581800600,
+      "query_ended_monotonic_ns": 1252277655628200
+    },
+    {
+      "observed_monotonic_ns": 1252277944848100,
+      "gpu_timestamp": "2026/10/28 20:21:33.642",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1519386624,
+      "free_bytes": 6858735616,
+      "utilization_percent": 4,
+      "query_started_monotonic_ns": 1252277864046800,
+      "query_ended_monotonic_ns": 1252277944848100
+    },
+    {
+      "observed_monotonic_ns": 1252278222621100,
+      "gpu_timestamp": "2026/10/28 20:21:33.927",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1519386624,
+      "free_bytes": 6858735616,
+      "utilization_percent": 4,
+      "query_started_monotonic_ns": 1252278151590000,
+      "query_ended_monotonic_ns": 1252278222621100
+    },
+    {
+      "observed_monotonic_ns": 1252278524768800,
+      "gpu_timestamp": "2026/10/28 20:21:34.229",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1519386624,
+      "free_bytes": 6858735616,
+      "utilization_percent": 18,
+      "query_started_monotonic_ns": 1252278443914400,
+      "query_ended_monotonic_ns": 1252278524768800
+    },
+    {
+      "observed_monotonic_ns": 1252278798285100,
+      "gpu_timestamp": "2026/10/28 20:21:34.497",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1519386624,
+      "free_bytes": 6858735616,
+      "utilization_percent": 18,
+      "query_started_monotonic_ns": 1252278733665800,
+      "query_ended_monotonic_ns": 1252278798285100
+    },
+    {
+      "observed_monotonic_ns": 1252279054431600,
+      "gpu_timestamp": "2026/10/28 20:21:34.761",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1519386624,
+      "free_bytes": 6858735616,
+      "utilization_percent": 18,
+      "query_started_monotonic_ns": 1252278998983100,
+      "query_ended_monotonic_ns": 1252279054431600
+    },
+    {
+      "observed_monotonic_ns": 1252279339455200,
+      "gpu_timestamp": "2026/10/28 20:21:35.046",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1519386624,
+      "free_bytes": 6858735616,
+      "utilization_percent": 19,
+      "query_started_monotonic_ns": 1252279266772700,
+      "query_ended_monotonic_ns": 1252279339455200
+    },
+    {
+      "observed_monotonic_ns": 1252279623283300,
+      "gpu_timestamp": "2026/10/28 20:21:35.328",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1519386624,
+      "free_bytes": 6858735616,
+      "utilization_percent": 19,
+      "query_started_monotonic_ns": 1252279549378000,
+      "query_ended_monotonic_ns": 1252279623283300
+    },
+    {
+      "observed_monotonic_ns": 1252279905398700,
+      "gpu_timestamp": "2026/10/28 20:21:35.611",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1519386624,
+      "free_bytes": 6858735616,
+      "utilization_percent": 19,
+      "query_started_monotonic_ns": 1252279831897800,
+      "query_ended_monotonic_ns": 1252279905398700
+    },
+    {
+      "observed_monotonic_ns": 1252280192374900,
+      "gpu_timestamp": "2026/10/28 20:21:35.897",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1519386624,
+      "free_bytes": 6858735616,
+      "utilization_percent": 19,
+      "query_started_monotonic_ns": 1252280118009500,
+      "query_ended_monotonic_ns": 1252280192374900
+    },
+    {
+      "observed_monotonic_ns": 1252280458121500,
+      "gpu_timestamp": "2026/10/28 20:21:36.164",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1519386624,
+      "free_bytes": 6858735616,
+      "utilization_percent": 3,
+      "query_started_monotonic_ns": 1252280400407400,
+      "query_ended_monotonic_ns": 1252280458121500
+    },
+    {
+      "observed_monotonic_ns": 1252280725761300,
+      "gpu_timestamp": "2026/10/28 20:21:36.432",
+      "gpu_uuid": "GPU-<redacted>",
+      "total_bytes": 8589934592,
+      "used_bytes": 1519386624,
+      "free_bytes": 6858735616,
+      "utilization_percent": 3,
+      "query_started_monotonic_ns": 1252280669579400,
+      "query_ended_monotonic_ns": 1252280725761300
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "nvidia-smi polling can perturb latency",
+    "query timestamps bound collection rather than identify its exact instant",
+    "WDDM and endpoint-only process reporting can miss activity"
+  ]
+}

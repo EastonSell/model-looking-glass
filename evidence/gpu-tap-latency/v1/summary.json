@@ -1,0 +1,85 @@
+{
+  "cleanup": {
+    "after_workspace_clear": {
+      "allocated_bytes": 0,
+      "allocator_cap_bytes": 2147401728,
+      "device_free_bytes": 7424966656,
+      "device_total_bytes": 8589606912,
+      "reserve_bytes": 1288441037,
+      "reserved_bytes": 0
+    },
+    "before_workspace_clear": {
+      "allocated_bytes": 33554432,
+      "allocator_cap_bytes": 2147401728,
+      "device_free_bytes": 7391412224,
+      "device_total_bytes": 8589606912,
+      "reserve_bytes": 1288441037,
+      "reserved_bytes": 33554432
+    },
+    "surviving_references": {
+      "input": false,
+      "model": false
+    }
+  },
+  "interpretation": "failed_unverified_likely_cpu_contended",
+  "model_load_metadata": {
+    "asset_sha256": {
+      "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+      "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+      "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+      "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+      "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+      "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+    },
+    "attention_implementation": "eager",
+    "device": "cpu",
+    "dtype": "float32",
+    "model_class": "GPT2LMHeadModel",
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "parameter_count": 81912576,
+    "tokenizer_class": "GPT2TokenizerFast",
+    "tokenizer_id": "distilbert/distilgpt2",
+    "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "torch_version": "2.8.0+cu128",
+    "transformers_version": "4.57.3",
+    "use_cache": false,
+    "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+  },
+  "source_commit_recorded": "151b18e778176c651ceb0047aaabeb5670b86d99",
+  "source_snapshot_public_commit": "d5dfcc4e301c3a90ca41c4a57ea7be30fc23b9c6",
+  "source_snapshot_tree": "b7792db6c6f92166532f48117d71a7c794703cf7",
+  "strict_screen": "unverified",
+  "supervised_clean_teardown": true,
+  "supervised_exit_code": 0,
+  "terminal_message": "process queries do not cover the workload interval",
+  "terminal_stage": "supervised_owner",
+  "terminal_status": "failed",
+  "timing_summary": {
+    "clock": {
+      "implementation": "QueryPerformanceCounter()",
+      "minimum_wall_ns": 10000,
+      "monotonic": true,
+      "name": "perf_counter_ns",
+      "resolution_seconds": 1e-07
+    },
+    "limitations": [
+      "one model and one input; paired rounds are correlated",
+      "wall timing includes output validation and synchronization",
+      "CUDA events cover the checked default stream, not unjoined streams",
+      "sampled memory and allocator peaks are not a guarantee against OOM",
+      "finite warmup observations do not establish a general resource bound"
+    ],
+    "measured_samples": 18,
+    "median_paired_direct_over_none": 1.2077897117341865,
+    "median_paired_gradient_over_direct": 0.9154387776947324,
+    "median_wall_ns": {
+      "direct": 22070100.0,
+      "gradient": 21091100.0,
+      "none": 17994400.0
+    },
+    "protocol": "distilgpt2-tap-latency-smoke-v1",
+    "warmup_samples": 6
+  }
+}

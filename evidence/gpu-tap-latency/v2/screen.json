@@ -1,0 +1,108 @@
+{
+  "classification": {
+    "status": "contaminated",
+    "availability": "complete",
+    "contamination_reasons": [
+      "idle utilization exceeded five percent",
+      "other compute processes were observed"
+    ],
+    "unavailable_reasons": [],
+    "reasons": [
+      "idle utilization exceeded five percent",
+      "other compute processes were observed"
+    ],
+    "before_idle_samples": [
+      {
+        "observed_monotonic_ns": 1252276841858400,
+        "gpu_timestamp": "2026/10/28 20:21:32.548",
+        "gpu_uuid": "GPU-<redacted>",
+        "total_bytes": 8589934592,
+        "used_bytes": 1431306240,
+        "free_bytes": 6946816000,
+        "utilization_percent": 1,
+        "query_started_monotonic_ns": 1252276768310700,
+        "query_ended_monotonic_ns": 1252276841858400
+      },
+      {
+        "observed_monotonic_ns": 1252277104610900,
+        "gpu_timestamp": "2026/10/28 20:21:32.812",
+        "gpu_uuid": "GPU-<redacted>",
+        "total_bytes": 8589934592,
+        "used_bytes": 1431306240,
+        "free_bytes": 6946816000,
+        "utilization_percent": 1,
+        "query_started_monotonic_ns": 1252277049757700,
+        "query_ended_monotonic_ns": 1252277104610900
+      },
+      {
+        "observed_monotonic_ns": 1252277368985800,
+        "gpu_timestamp": "2026/10/28 20:21:33.076",
+        "gpu_uuid": "GPU-<redacted>",
+        "total_bytes": 8589934592,
+        "used_bytes": 1431306240,
+        "free_bytes": 6946816000,
+        "utilization_percent": 4,
+        "query_started_monotonic_ns": 1252277313711000,
+        "query_ended_monotonic_ns": 1252277368985800
+      }
+    ],
+    "after_idle_samples": [
+      {
+        "observed_monotonic_ns": 1252280192374900,
+        "gpu_timestamp": "2026/10/28 20:21:35.897",
+        "gpu_uuid": "GPU-<redacted>",
+        "total_bytes": 8589934592,
+        "used_bytes": 1519386624,
+        "free_bytes": 6858735616,
+        "utilization_percent": 19,
+        "query_started_monotonic_ns": 1252280118009500,
+        "query_ended_monotonic_ns": 1252280192374900
+      },
+      {
+        "observed_monotonic_ns": 1252280458121500,
+        "gpu_timestamp": "2026/10/28 20:21:36.164",
+        "gpu_uuid": "GPU-<redacted>",
+        "total_bytes": 8589934592,
+        "used_bytes": 1519386624,
+        "free_bytes": 6858735616,
+        "utilization_percent": 3,
+        "query_started_monotonic_ns": 1252280400407400,
+        "query_ended_monotonic_ns": 1252280458121500
+      },
+      {
+        "observed_monotonic_ns": 1252280725761300,
+        "gpu_timestamp": "2026/10/28 20:21:36.432",
+        "gpu_uuid": "GPU-<redacted>",
+        "total_bytes": 8589934592,
+        "used_bytes": 1519386624,
+        "free_bytes": 6858735616,
+        "utilization_percent": 3,
+        "query_started_monotonic_ns": 1252280669579400,
+        "query_ended_monotonic_ns": 1252280725761300
+      }
+    ],
+    "limitation": "sampling and endpoint-only WDDM process reporting can miss activity",
+    "foreign_compute_process_count": 17
+  },
+  "process_queries": [
+    {
+      "phase": "before",
+      "ok": true,
+      "observed_monotonic_ns": 1252277371443700,
+      "query_started_monotonic_ns": 1252277371443700,
+      "query_ended_monotonic_ns": 1252277432835700,
+      "process_count": 18
+    },
+    {
+      "phase": "after",
+      "ok": true,
+      "observed_monotonic_ns": 1252280770512100,
+      "query_started_monotonic_ns": 1252280770512100,
+      "query_ended_monotonic_ns": 1252280837181700,
+      "process_count": 18
+    }
+  ],
+  "workload_started_monotonic_ns": 1252277432948900,
+  "workload_ended_monotonic_ns": 1252278953952500,
+  "clock": "perf_counter_ns"
+}
