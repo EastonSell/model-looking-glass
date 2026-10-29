@@ -221,6 +221,40 @@ class IndependentPrimitives(unittest.TestCase):
             self.assertEqual(result['eligibility'], {'toy': False})
             self.assertEqual(result['layer_summary'][0]['sugar_to_lemon'], {'n': 0, 'mean': None})
 
+    def test_repeated_nonbaseline_logits_require_identical_summaries(self):
+        manifest, events = fabricated_journal()
+        ingredient = next(row for row in events if row.get('event') == 'forward_complete'
+                          and row.get('mode') == 'ingredient_matched' and row.get('row_id') == 'toy-sugar'
+                          and row.get('layer') == 0)
+        control = next(row for row in events if row.get('event') == 'forward_complete'
+                       and row.get('mode') == 'control_matched' and row.get('row_id') == 'toy-sugar'
+                       and row.get('layer') == 0)
+        control['summary'] = copy.deepcopy(ingredient['summary'])
+        audit.audit_records(manifest, events, hidden=2, vocab=8, layer_count=2)
+        control['summary']['sweet_probability'] *= 0.5
+        control['summary']['sour_probability'] *= 0.5
+        with self.assertRaisesRegex(ValueError, 'identical mask-logit hash'):
+            audit.audit_records(manifest, events, hidden=2, vocab=8, layer_count=2)
+
+    def test_probability_sanity_for_unsaved_patched_logits(self):
+        _, events = fabricated_journal()
+        event = next(row for row in events if row.get('event') == 'forward_complete'
+                     and row.get('mode') == 'ingredient_matched' and row.get('row_id') == 'toy-sugar'
+                     and row.get('layer') == 0)
+        for ps, po in ((0.8, 0.4), (0.1, 0.8), (-0.1, 0.0), (float('nan'), 0.0)):
+            changed = copy.deepcopy(event)
+            changed['summary'].update(sweet_probability=ps, sour_probability=po)
+            with self.subTest(ps=ps, po=po), self.assertRaisesRegex(ValueError, 'target probabilities'):
+                audit._summary(changed)
+        mismatch = copy.deepcopy(event)
+        mismatch['summary'].update(sweet_probability=0.4, sour_probability=0.1)
+        with self.assertRaisesRegex(ValueError, 'log odds'):
+            audit._summary(mismatch)
+        for ps, po in ((0.0, 0.0), (float.fromhex('0x0.0000000000001p-1022'), 0.0)):
+            changed = copy.deepcopy(event)
+            changed['summary'].update(sweet_probability=ps, sour_probability=po)
+            audit._summary(changed)
+
     def test_closed_files_reject_tampering_and_incomplete_marker(self):
         manifest, events = fabricated_journal()
         report = audit.audit_records(manifest, events, hidden=2, vocab=8, layer_count=2)
