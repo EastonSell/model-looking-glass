@@ -1,0 +1,190 @@
+{
+  "protocol": "shared-model-throughput-v1",
+  "status": "running",
+  "benchmark_session_id": "918ef01b43a24142adc77cd13d72f882",
+  "broker_id": "5a1ce0fa11ec4be9bbc84517c1789aad",
+  "metadata": {
+    "source_commit": "a36c83c3adecca7740a24ce2d02902d72e08b211",
+    "source_dirty": false,
+    "source_sha256": {
+      "looking_glass/throughput_benchmark.py": "1231b10228aab32af5f07c20e431b27eca70c52ea54136b2f805b113976b4186",
+      "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+      "looking_glass/resident_worker.py": "75d62b25859aa52a69cd772850d8ed04224118acfa400de95344a883a806058f",
+      "looking_glass/broker.py": "ca671a77bbc075df36d8a1d02e6ec3490c2350d5378e9782f7053d02aec71f26",
+      "looking_glass/fair_queue.py": "9b5708a16ef4e7fbda2647cb714b98107c3d91b34a003d714b51a2d86b2134b8",
+      "looking_glass/memory_budget.py": "5a7db4ae3ac79ad807a37338b0f01874d07ba146f64bc928cffd1c11aad00845",
+      "docs/THROUGHPUT_PROTOCOL_V1.md": "9af8b93375d6fb317f667b277ddd6d8b76fa10185abaea5a1a0c9fc95e4053ab"
+    },
+    "external_gpu_activity": "unknown; no device-exclusivity claim",
+    "environment": {
+      "python": "3.11.15",
+      "platform": "Windows-10-10.0.26200-SP0",
+      "torch": "2.8.0+cu128",
+      "transformers": "4.57.3",
+      "numpy": "2.4.6",
+      "cuda_runtime": "12.8",
+      "device": "cpu",
+      "torch_threads": 1,
+      "deterministic_algorithms": true,
+      "cublas_workspace_config": null,
+      "cudnn_benchmark": false,
+      "cudnn_deterministic": true,
+      "cudnn_allow_tf32": false,
+      "matmul_allow_tf32": false,
+      "nvidia_inventory": null
+    },
+    "workload_replay": {
+      "public_prompts": [
+        "The small bird landed on",
+        "A bright light appeared in"
+      ],
+      "teams": [
+        "team-a",
+        "team-b"
+      ],
+      "seed_rule": "1000 + prompt index",
+      "batch": 1,
+      "tokenizer_add_special_tokens": false,
+      "padding": false,
+      "max_tokens": 128,
+      "capture_policy": "none",
+      "unit": "input tensor positions, including any padding"
+    },
+    "smoke_only": true,
+    "memory_policy": {
+      "max_batch_size": 1,
+      "max_sequence_length": 128,
+      "max_input_bytes": 1048576,
+      "max_output_bytes": 8388608,
+      "max_gpu_trace_bytes": 0,
+      "max_host_trace_bytes": 0,
+      "gpu_incremental_estimate_bytes": null,
+      "broker_max_pending": 4,
+      "broker_max_pending_per_team": 1
+    }
+  },
+  "model_spec": {
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "tokenizer_id": "distilbert/distilgpt2",
+    "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "model_class": "GPT2LMHeadModel",
+    "tokenizer_class": "GPT2TokenizerFast",
+    "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+    "asset_sha256": {
+      "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+      "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+      "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+      "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+      "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783",
+      "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+    },
+    "torch_version": "2.8.0+cu128",
+    "transformers_version": "4.57.3",
+    "device": "cpu",
+    "dtype": "float32",
+    "attention_implementation": "eager",
+    "use_cache": false,
+    "parameter_count": 81912576,
+    "eval_mode": true,
+    "capture_policy": "none"
+  },
+  "unit_name": "input_positions_including_padding",
+  "manifest": {
+    "model_spec": {
+      "asset_sha256": {
+        "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+        "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+        "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+        "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+        "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+        "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+        "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+      },
+      "attention_implementation": "eager",
+      "capture_policy": "none",
+      "device": "cpu",
+      "dtype": "float32",
+      "eval_mode": true,
+      "model_class": "GPT2LMHeadModel",
+      "model_id": "distilbert/distilgpt2",
+      "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+      "parameter_count": 81912576,
+      "tokenizer_class": "GPT2TokenizerFast",
+      "tokenizer_id": "distilbert/distilgpt2",
+      "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+      "torch_version": "2.8.0+cu128",
+      "transformers_version": "4.57.3",
+      "use_cache": false,
+      "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+    },
+    "unit_name": "input_positions_including_padding",
+    "jobs": [
+      {
+        "job_id": "team-a-0",
+        "team_id": "team-a",
+        "workload_class": "5-positions",
+        "units": 5,
+        "seed": 1000,
+        "input_digest": "257b8a00843dd34e32f32503bdfd6dd0fa8474839f9bf6406b7b223e558b3eb7",
+        "capture_policy": "none",
+        "request_sha256": "257b8a00843dd34e32f32503bdfd6dd0fa8474839f9bf6406b7b223e558b3eb7"
+      },
+      {
+        "job_id": "team-a-1",
+        "team_id": "team-a",
+        "workload_class": "5-positions",
+        "units": 5,
+        "seed": 1001,
+        "input_digest": "fd6d289b882c38973dac6d0b4b6ab89c07778ef0141fbafe13bfece611f5bf4b",
+        "capture_policy": "none",
+        "request_sha256": "fd6d289b882c38973dac6d0b4b6ab89c07778ef0141fbafe13bfece611f5bf4b"
+      },
+      {
+        "job_id": "team-b-0",
+        "team_id": "team-b",
+        "workload_class": "5-positions",
+        "units": 5,
+        "seed": 1000,
+        "input_digest": "a409e25911b17c7675eca975b34d133e1b659d39c1238f3395ccff2bb934c128",
+        "capture_policy": "none",
+        "request_sha256": "a409e25911b17c7675eca975b34d133e1b659d39c1238f3395ccff2bb934c128"
+      },
+      {
+        "job_id": "team-b-1",
+        "team_id": "team-b",
+        "workload_class": "5-positions",
+        "units": 5,
+        "seed": 1001,
+        "input_digest": "365f5464a53bdf1f257789551a8a7f52a6e707ef9ae1a04522930ad094894f46",
+        "capture_policy": "none",
+        "request_sha256": "365f5464a53bdf1f257789551a8a7f52a6e707ef9ae1a04522930ad094894f46"
+      }
+    ]
+  },
+  "manifest_sha256": "0a07707c5044d43f4146eec1884b531fdfc28bdb86a9129c32659eaeb09276b1",
+  "config": {
+    "protocol_seed": 0,
+    "repetitions": 1,
+    "warmup_rounds_per_job_and_mode": 1,
+    "shared_clients": 2,
+    "max_outstanding_per_client": 1,
+    "wait_timeout_s": 120.0,
+    "cancel_timeout_s": 5.0
+  },
+  "clock": {
+    "name": "perf_counter_ns",
+    "implementation": "QueryPerformanceCounter()",
+    "resolution_seconds": 1e-07,
+    "monotonic": true,
+    "adjustable": false
+  },
+  "environment": {
+    "python": "3.11.15",
+    "platform": "Windows-10-10.0.26200-SP0"
+  },
+  "benchmark_source_sha256": "1231b10228aab32af5f07c20e431b27eca70c52ea54136b2f805b113976b4186",
+  "windows": [],
+  "comparisons": []
+}
