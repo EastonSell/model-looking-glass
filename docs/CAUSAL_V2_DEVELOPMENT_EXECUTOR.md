@@ -21,6 +21,28 @@ This per-condition helper recomputes the clean traces and target capture for
 each strength. The real v2 schedule reuses those results, so invoking this
 helper unchanged for all conditions would exceed its planned forward count.
 
+The separate development helpers `prepare_development_clean`,
+`prepare_development_target`, and `run_development_active` exercise that
+reuse: two clean/repeat forwards are shared per input, one private clean target
+capture is shared across strengths, and each active condition uses 16 forwards.
+For one target and both strengths this is 35 forwards, rather than 38 from two
+standalone calls. Cached observations are bound to the same model object,
+budget and numeric-policy object; before and after use, the helper checks the
+model-state SHA-256, exact input identity and hashes of retained trace/logit or
+target payloads and metadata. This detects ordinary accidental mutation or
+cross-use; it is not protection against arbitrary in-process code. The reusable
+helpers still reject every vector outside the two retained development inputs
+and do not supply a production study runner or its fail-stop/custody gates.
+
+For this development interface, input identity is the SHA-256 of the ASCII
+bytes `MLG-v2-input-f32be-v1` followed by a NUL byte, two unsigned 32-bit
+big-endian dimensions (`1`, `8`), then the eight IEEE float32 bit patterns in
+row order, each as an unsigned 32-bit big-endian value. This identity retains
+the distinction between positive and negative zero even though the protocol's
+finite numeric equality treats them as equal. A future study must bind this
+exact byte contract and verify the digest against its actual execution input;
+the digest alone does not establish custody or source provenance.
+
 Each active condition includes three clean-to-perturbed patches, three reverse
 patches, three nulls, three actual same-forward self-patches, an upstream
 negative control, and a final clean check. Every patch/null uses an exclusive
@@ -35,9 +57,10 @@ Ground-truth target and target-capture metadata remain in a separate private
 integrity object; the caller must keep that object away from the selector.
 Case, model, source and base identities must be bound by a future custodian.
 
-The helper requires the checked v2 numeric policy, CPU float32, one intra-op
-thread, no autograd during each forward, and a model tree without existing
-local/global forward or backward hooks or aliased module paths. Its budget counts a
+The helper requires the checked v2 numeric policy, CPU float32 without CPU
+autocast, one intra-op thread, no autograd during each forward, and a model
+tree with the expected tap groups and no existing local/global forward or
+backward hooks or aliased module paths. Its budget counts a
 submission before hook preparation and a root call immediately before the
 model is invoked. These checks rely on cooperative in-process execution; they
 do not prove that another thread or noncooperating code cannot mutate a model
