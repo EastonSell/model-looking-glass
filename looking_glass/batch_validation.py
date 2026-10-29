@@ -382,12 +382,16 @@ def _within_tolerance(ref, got, atol, rtol, difference):
 
 def _comparison(reference, candidate, atol, rtol):
     _require_denormals()
+    if tuple(reference.shape) != tuple(candidate.shape):
+        raise ValueError('comparison outputs must have the same shape')
     # Scalar arithmetic runs on the checked calling thread rather than an
     # already-created intra-op worker with an independently inherited FP mode.
     # Chunking bounds temporary Python float objects; flattening a noncontiguous
     # tensor can still require a full CPU copy accounted for by the caller.
     reference = reference.reshape(-1)
     candidate = candidate.reshape(-1)
+    if reference.numel() != candidate.numel():
+        raise ValueError('comparison outputs must have the same number of elements')
     atol, rtol = float(atol), float(rtol)
     max_abs = max_relative = 0.0
     zero_reference = False
@@ -395,7 +399,7 @@ def _comparison(reference, candidate, atol, rtol):
     for start in range(0, reference.numel(), 4096):
         left = reference[start:start + 4096].tolist()
         right = candidate[start:start + 4096].tolist()
-        for ref, got in zip(left, right):
+        for ref, got in zip(left, right, strict=True):
             difference = abs(got - ref)
             denominator = abs(ref)
             close = close and _within_tolerance(ref, got, atol, rtol, difference)
