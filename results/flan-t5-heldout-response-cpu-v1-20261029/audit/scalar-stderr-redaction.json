@@ -1,0 +1,7 @@
+{
+  "description": "Only local traceback file paths were replaced; the original is retained locally.",
+  "original_stderr_bytes": 633,
+  "original_stderr_sha256": "e5e490df987824892d2f71e38e1ba9c5e1760b08e934ad598a0cf14171ea4032",
+  "published_stderr_sha256": "6ee13e14abcef72e44242da8ce6ab7de549e2858e4347b2487bd8f24884baf5c",
+  "schema": "mlg-flant5-heldout-scalar-redaction-v1"
+}
