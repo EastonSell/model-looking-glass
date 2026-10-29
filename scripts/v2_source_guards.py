@@ -165,6 +165,13 @@ class WindowsJob:
             raise SourceGuardError("cannot inspect process job termination")
         return info
 
+    def process_counts(self):
+        """Read lifetime and active member counts in one retained-job query."""
+        if self._handle is None or self._closing_job or self._stopping:
+            raise SourceGuardError("process job is not available for an active-count check")
+        info = self._accounting()
+        return int(info.total_processes), int(info.active_processes)
+
     def _inventory(self):
         before = self._accounting()
         listing = _JobProcessList()
