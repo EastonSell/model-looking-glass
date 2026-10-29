@@ -69,19 +69,25 @@ scoring from retained bytes.
 The preparation child runs under the separately reviewed Windows Job supervisor.
 The private supervisor receipt binds the exact isolated command, child PID,
 configuration digest, clean exit and reaping, job and log cleanup, and the
-hashes of all eight preparation files. A separate trusted observer must see the
+hashes of all eight preparation files. It must report exactly zero active Job
+members after the child exits and before the supervisor drains the Job. A
+separate trusted observer must see the
 outer supervisor process itself exit successfully and be reaped, then write an
 observation binding that receipt, process identity, command and configuration
 before a commitment is published or the owner starts. The observer is launched
 only after an external bootstrap has checked the published source bytes before
 execution. It retains a process handle, assigns the supervisor to a kill-on-close
-Job before opening its start gate, and confirms Job cleanup. The supervisor's
-separately gated child is assigned to its own Job. The outer Job uses silent
+Job and duplicates both source-lease handle sets into that process before
+opening its start gate, and confirms Job cleanup. The supervisor's separately
+gated child inherits restricted duplicates of both lease sets before it is
+assigned to its own Job. The outer Job uses silent
 breakaway for child processes, so its cleanup establishes only the outer
 supervisor's cleanup; the inner child has its own separately verified Job
 receipt. Any other helpers are outside the outer Job; interrupted startup or
 uncertain helper cleanup remains incomplete.
-If cleanup is unverified after a start gate was attempted, the observer keeps
+If a spawn return is lost, source-handle duplication is only partially
+completed and cleanup is unverified, or a start gate was attempted without a
+verified completion, the observer keeps
 its retained process and Job objects and both source leases rooted in a
 quarantined process. Some native handles may already have closed during a
 failed cleanup; retaining the objects does not make those handles recoverable.
