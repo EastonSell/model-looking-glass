@@ -22,9 +22,12 @@ from . import targeted_edit_cpu_v2 as v2
 
 PHASE = "development"
 CONDITIONS = ("original", *(name for name, _ in v2.GRID))
-DOCUMENTS = ("started.json", "metadata.json", "selection.json", "observations.jsonl")
+DOCUMENTS = ("started.json", "metadata.json", "selection.json", "observations.jsonl", "condition_states.jsonl")
 CLEANUP_KEYS = ("attempted", "weight_restored", "state_restored", "flags_restored",
                 "grads_cleared", "hooks_restored")
+DENORMAL_PROBE = {"subnormal_times_one_bits": 1, "normal_times_half_bits": 0x00400000,
+                  "numpy_cast_preserves_min_subnormal": True}
+_DENORMAL_CANONICAL = v1._canonical(DENORMAL_PROBE)
 MAX_JSON = 1_000_000
 MAX_JOURNAL = 1_000_000
 
@@ -110,7 +113,7 @@ def _inspect(directory, manifest_sha, terminal_sha):
     matrix_bytes = len(v1.CASES) * row_bytes
     for name in sorted(artifact_names):
         limit = (matrix_bytes if name.endswith(".f32") else
-                 (MAX_JOURNAL if name == "observations.jsonl" else MAX_JSON))
+                 (MAX_JOURNAL if name.endswith(".jsonl") else MAX_JSON))
         files[name] = _read(root / name, limit)
         if v1._sha(files[name]) != terminal["artifacts"][name]:
             raise v1.StudyError("development artifact differs from terminal inventory")
@@ -126,6 +129,30 @@ def _inspect(directory, manifest_sha, terminal_sha):
             set(selection) != {"version", "phase", "run_id", "manifest_sha256", "source_commit", "selection"} or
             not _identity(metadata, run_id, manifest_sha, source_commit)):
         raise v1.StudyError("development record identities or times differ")
+    compatibility, grid = metadata.get("compatibility"), metadata.get("grid")
+    if (type(compatibility) is not dict or type(grid) is not dict or
+            set(grid) != set(CONDITIONS[1:]) or
+            any(not _digest(compatibility.get(key)) for key in
+                ("model_state_sha256", "weight_sha256", "discovery_logit_sha256")) or
+            any(type(grid[name]) is not dict or not _digest(grid[name].get("realized_weight_sha256"))
+                for name in CONDITIONS[1:])):
+        raise v1.StudyError("development state attestations are incomplete")
+    if v1._sha(files["original.f32"][:row_bytes]) != compatibility["discovery_logit_sha256"]:
+        raise v1.StudyError("saved original discovery differs from the fitted forward")
+    state_lines = files["condition_states.jsonl"].splitlines(keepends=True)
+    if len(state_lines) != len(CONDITIONS):
+        raise v1.StudyError("condition state journal has missing or extra rows")
+    for index, condition in enumerate(CONDITIONS):
+        state_sha = compatibility["model_state_sha256"]
+        weight_sha = compatibility["weight_sha256"]
+        applied_sha = weight_sha if condition == "original" else grid[condition]["realized_weight_sha256"]
+        expected = {"version": v2.VERSION, "phase": PHASE, "run_id": run_id, "condition": condition,
+                    "model_state_before_sha256": state_sha, "weight_before_sha256": weight_sha,
+                    "applied_weight_sha256": applied_sha, "model_state_after_sha256": state_sha,
+                    "weight_after_sha256": weight_sha, "flags_restored": True,
+                    "grads_cleared": True, "hooks_restored": True}
+        if v1._canonical(v1._decode_document(state_lines[index])) != v1._canonical(expected):
+            raise v1.StudyError("condition state journal is incomplete or inconsistent")
     lines = files["observations.jsonl"].splitlines(keepends=True)
     if len(lines) != len(CONDITIONS) * len(v1.CASES):
         raise v1.StudyError("development journal has missing or extra rows")
@@ -137,14 +164,17 @@ def _inspect(directory, manifest_sha, terminal_sha):
             offset = case_index * row_bytes
             expected = {"version": v2.VERSION, "phase": PHASE, "run_id": run_id,
                         "condition": condition, "case_id": case[0], "offset": offset,
-                        "bytes": row_bytes, "sha256": v1._sha(raw[offset:offset + row_bytes])}
+                        "bytes": row_bytes, "sha256": v1._sha(raw[offset:offset + row_bytes]),
+                        "denormal_probe_before": v1._decode_document(_DENORMAL_CANONICAL),
+                        "denormal_probe_after": v1._decode_document(_DENORMAL_CANONICAL)}
             observed = v1._decode_document(lines[condition_index * len(v1.CASES) + case_index])
             if v1._canonical(observed) != v1._canonical(expected):
                 raise v1.StudyError("development journal does not bind ordered output rows")
     derived = v2.verify_development_selection(arrays, selection["selection"])
     return ({"status": "matching_saved_selection", "run_id": run_id,
              "manifest_sha256": manifest_sha, "source_commit": source_commit,
-             "terminal_sha256": terminal_sha, "selection": derived, "metadata": metadata}, files)
+             "terminal_sha256": terminal_sha, "started_utc": started["started_utc"],
+             "selection": derived, "metadata": metadata}, files)
 
 
 def audit_development(directory, *, manifest_sha256, terminal_sha256):
@@ -191,12 +221,19 @@ def _git(repo, *args, check=True):
     env["GIT_CONFIG_GLOBAL"] = os.devnull
     env["GIT_TERMINAL_PROMPT"] = "0"
     try:
-        process = subprocess.run(["git", "--no-replace-objects", *args], cwd=repo,
+        process = subprocess.run(["git", "--no-replace-objects", "--literal-pathspecs", *args], cwd=repo,
                                  env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                  timeout=30, check=check)
     except (OSError, subprocess.SubprocessError) as exc:
         raise v1.StudyError("Git verification failed") from exc
     return process
+
+
+def _path_absent(repo, commit, path):
+    """Accept absence only after a successful literal Git tree lookup."""
+    path = _relative(path)
+    listing = _git(repo, "ls-tree", "-z", "--full-tree", commit, "--", path).stdout
+    return not listing
 
 
 def _blob(repo, commit, path, limit):
@@ -252,8 +289,8 @@ def verify_committed_development(repo, *, directory, manifest_path, manifest_com
             _git(root, "merge-base", "--is-ancestor", manifest_commit, selection_commit, check=False).returncode != 0 or
             _git(root, "merge-base", "--is-ancestor", selection_commit, head, check=False).returncode != 0):
         raise v1.StudyError("source, manifest and selection ancestry differs")
-    if (_git(root, "cat-file", "-e", f"{source}:{relative_manifest}", check=False).returncode == 0 or
-            _git(root, "cat-file", "-e", f"{manifest_commit}:{relative_dir}", check=False).returncode == 0):
+    if (not _path_absent(root, source, relative_manifest) or
+            not _path_absent(root, manifest_commit, relative_dir)):
         raise v1.StudyError("a later artifact was already present at an earlier commit")
     manifest_raw = _blob(root, manifest_commit, relative_manifest, MAX_JSON)
     if (v1._sha(manifest_raw) != manifest_sha256 or

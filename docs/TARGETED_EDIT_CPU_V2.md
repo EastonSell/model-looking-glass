@@ -2,8 +2,9 @@
 
 **Status:** prospective draft. CPU scoring, edit construction, public-inventory
 and saved/committed-selection verification helpers exist. The complete
-execution owner, frozen manifest and integrated pre-forward gate are not yet
-available. No v2 model run or result is claimed.
+execution owner and a frozen manifest are not yet available. The committed
+handoff checks saved inputs and attestations but does not authorize a model
+forward. No v2 model run or result is claimed.
 
 This is a prospective, exploratory follow-up to the published
 [v1 negative result](../results/targeted-edit-cpu-v1-20261028/README.md).
@@ -24,6 +25,10 @@ gain thresholds after observing v1; the two success labels are not comparable.
 Report the raw common metrics and original v1 scalar thresholds on the new
 sample as well as the v2 decision. V1's discovery criterion is evaluated only
 on the v1 development discovery row, not on the new evaluation cases.
+The v1 scalar-threshold view applies those thresholds to the selected smaller
+edit and its new, smaller-dose random control. The 1% gradient edit is a
+separate same-input reference; this view does not repeat v1's comparison with
+its 1%-matched random control.
 
 ## Fixed checkpoint, site and arithmetic
 
@@ -93,10 +98,19 @@ exact/prefix pass/fail result; otherwise disclose that no such comparison was
 performed. Unknown prior exposure and pretraining remain unverified.
 The manifest records the queried lanes, their reported scope and observation
 time as an operator attestation, not independent or exhaustive evidence. Recheck
-the applicable custodians before the first forward; if protected rows have
-since been generated, obtain and preserve a pass/fail collision result without
-reading them. A change requiring different cases or controls requires a new
-protocol and manifest, not an unrecorded substitution.
+the applicable custodians before the first forward. Publish a separate receipt
+after the manifest and before the development run, binding the manifest, v4
+inventory and public row digests to each lane's reported time and either no
+protected inputs reported or a private exact/prefix collision pass. Record a
+fresh, actually performed comparison against the latest known public inventory
+and its reported digest and scope; a syntactically valid digest or zero count
+does not perform that comparison. Preserve collision and unavailable reports
+as blocked receipts. If protected rows have since been generated, obtain and
+preserve a pass/fail collision result without reading the rows. The receipt
+stores no protected rows and remains an
+operator attestation. A change requiring
+different cases or controls requires a new protocol and manifest, not an
+unrecorded substitution.
 
 Reconstruct and check v1 as above. Then measure the unedited baseline and a
 fixed, ascending grid of relative Frobenius doses
@@ -205,11 +219,15 @@ an unqualified development fallback or any failed criterion is negative; only
 all passing gates give success. Retain each raw criterion and
 `development_qualified` separately. If no dose qualifies, a fallback evaluation
 cannot become successful even when its evaluation numbers look favorable.
+The scoring helper's decision is provisional: the owner and independent auditor
+must apply these nonnumerical gates before reporting a final study outcome.
 
 The saved output auditor independently recomputes metrics and verifies
 artifact/identity links and the frozen decision. It cannot prove the truth of
 execution, public-before-forward timing, exact edits or rollback from logits
 alone. Runtime and source hashes do not attest every imported/native byte.
+The committed handoff rejects custody observations dated after the recorded
+development start; consistent self-reported clocks do not prove chronology.
 Where possible, repeat the complete process on the same frozen source and
 preserve the original attempt, replay and any failures. This CPU-only study is
 not a performance benchmark.
