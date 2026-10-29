@@ -1,0 +1,408 @@
+{
+  "schema": "distilbert-trace-example-v1",
+  "model": "distilbert/distilbert-base-uncased",
+  "revision": "12040accade4e8a0f71eabdb258fecc2e7e948be",
+  "torch_version": "2.8.0+cu128",
+  "transformers_version": "4.57.3",
+  "device": "cpu",
+  "dtype": "float32",
+  "text": "The painter beside the artist [MASK] ready.",
+  "input_ids": [
+    101,
+    1996,
+    5276,
+    3875,
+    1996,
+    3063,
+    103,
+    3201,
+    1012,
+    102
+  ],
+  "attention_mask": [
+    [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ]
+  ],
+  "mask_index": 6,
+  "trace_tensor_bytes": 18432,
+  "clean_and_traced_logits_equal": true,
+  "mask_top_token": {
+    "token_id": 2246,
+    "text": "looked"
+  },
+  "events": [
+    {
+      "metadata": {
+        "schema_version": "1.0",
+        "identity": {
+          "run_id": "distilbert-example",
+          "job_id": null,
+          "request_id": null,
+          "sample_id": null
+        },
+        "generation": {
+          "stage": "unknown",
+          "generation_step": null,
+          "cache_position": null,
+          "cache_length_before": null,
+          "cache_length_after": null,
+          "use_cache": null
+        },
+        "sequence": 0,
+        "forward_index": 0,
+        "module_path": "distilbert.transformer.layer.0.attention",
+        "invocation": 0,
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "capture_mode": "direct",
+        "module_kind": "attention",
+        "layer_index": 0,
+        "batch_axis": 0,
+        "token_axis": 1,
+        "saved_dtype": "torch.float32",
+        "saved_device": "cpu",
+        "shape": [
+          1,
+          10,
+          768
+        ],
+        "output_path": [
+          0
+        ],
+        "batch_positions": [
+          0
+        ],
+        "token_positions": [
+          6
+        ],
+        "saved_shape": [
+          1,
+          1,
+          768
+        ]
+      },
+      "original_saved_shape": [
+        768
+      ],
+      "comparison_transform": "restore_singleton_batch_and_token_axes",
+      "first_four_values": [
+        1.0200600624084473,
+        0.5243071913719177,
+        0.9410293698310852,
+        -1.009897232055664
+      ]
+    },
+    {
+      "metadata": {
+        "schema_version": "1.0",
+        "identity": {
+          "run_id": "distilbert-example",
+          "job_id": null,
+          "request_id": null,
+          "sample_id": null
+        },
+        "generation": {
+          "stage": "unknown",
+          "generation_step": null,
+          "cache_position": null,
+          "cache_length_before": null,
+          "cache_length_after": null,
+          "use_cache": null
+        },
+        "sequence": 1,
+        "forward_index": 0,
+        "module_path": "distilbert.transformer.layer.0.ffn",
+        "invocation": 0,
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "capture_mode": "direct",
+        "module_kind": "ffn",
+        "layer_index": 0,
+        "batch_axis": 0,
+        "token_axis": 1,
+        "saved_dtype": "torch.float32",
+        "saved_device": "cpu",
+        "shape": [
+          1,
+          10,
+          768
+        ],
+        "output_path": [],
+        "batch_positions": [
+          0
+        ],
+        "token_positions": [
+          6
+        ],
+        "saved_shape": [
+          1,
+          1,
+          768
+        ]
+      },
+      "original_saved_shape": [
+        768
+      ],
+      "comparison_transform": "restore_singleton_batch_and_token_axes",
+      "first_four_values": [
+        0.21111635863780975,
+        -0.5371977090835571,
+        0.5798035860061646,
+        0.2609364092350006
+      ]
+    },
+    {
+      "metadata": {
+        "schema_version": "1.0",
+        "identity": {
+          "run_id": "distilbert-example",
+          "job_id": null,
+          "request_id": null,
+          "sample_id": null
+        },
+        "generation": {
+          "stage": "unknown",
+          "generation_step": null,
+          "cache_position": null,
+          "cache_length_before": null,
+          "cache_length_after": null,
+          "use_cache": null
+        },
+        "sequence": 2,
+        "forward_index": 0,
+        "module_path": "distilbert.transformer.layer.0",
+        "invocation": 0,
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "capture_mode": "direct",
+        "module_kind": "block",
+        "layer_index": 0,
+        "batch_axis": 0,
+        "token_axis": 1,
+        "saved_dtype": "torch.float32",
+        "saved_device": "cpu",
+        "shape": [
+          1,
+          10,
+          768
+        ],
+        "output_path": [
+          0
+        ],
+        "batch_positions": [
+          0
+        ],
+        "token_positions": [
+          6
+        ],
+        "saved_shape": [
+          1,
+          1,
+          768
+        ]
+      },
+      "original_saved_shape": [
+        768
+      ],
+      "comparison_transform": "restore_singleton_batch_and_token_axes",
+      "first_four_values": [
+        0.6316609978675842,
+        -0.13660874962806702,
+        0.5156346559524536,
+        -0.3096902370452881
+      ]
+    },
+    {
+      "metadata": {
+        "schema_version": "1.0",
+        "identity": {
+          "run_id": "distilbert-example",
+          "job_id": null,
+          "request_id": null,
+          "sample_id": null
+        },
+        "generation": {
+          "stage": "unknown",
+          "generation_step": null,
+          "cache_position": null,
+          "cache_length_before": null,
+          "cache_length_after": null,
+          "use_cache": null
+        },
+        "sequence": 3,
+        "forward_index": 0,
+        "module_path": "distilbert.transformer.layer.2.attention",
+        "invocation": 0,
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "capture_mode": "direct",
+        "module_kind": "attention",
+        "layer_index": 2,
+        "batch_axis": 0,
+        "token_axis": 1,
+        "saved_dtype": "torch.float32",
+        "saved_device": "cpu",
+        "shape": [
+          1,
+          10,
+          768
+        ],
+        "output_path": [
+          0
+        ],
+        "batch_positions": [
+          0
+        ],
+        "token_positions": [
+          6
+        ],
+        "saved_shape": [
+          1,
+          1,
+          768
+        ]
+      },
+      "original_saved_shape": [
+        768
+      ],
+      "comparison_transform": "restore_singleton_batch_and_token_axes",
+      "first_four_values": [
+        0.6058052182197571,
+        0.5359928011894226,
+        0.29968711733818054,
+        -0.9321246147155762
+      ]
+    },
+    {
+      "metadata": {
+        "schema_version": "1.0",
+        "identity": {
+          "run_id": "distilbert-example",
+          "job_id": null,
+          "request_id": null,
+          "sample_id": null
+        },
+        "generation": {
+          "stage": "unknown",
+          "generation_step": null,
+          "cache_position": null,
+          "cache_length_before": null,
+          "cache_length_after": null,
+          "use_cache": null
+        },
+        "sequence": 4,
+        "forward_index": 0,
+        "module_path": "distilbert.transformer.layer.2.ffn",
+        "invocation": 0,
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "capture_mode": "direct",
+        "module_kind": "ffn",
+        "layer_index": 2,
+        "batch_axis": 0,
+        "token_axis": 1,
+        "saved_dtype": "torch.float32",
+        "saved_device": "cpu",
+        "shape": [
+          1,
+          10,
+          768
+        ],
+        "output_path": [],
+        "batch_positions": [
+          0
+        ],
+        "token_positions": [
+          6
+        ],
+        "saved_shape": [
+          1,
+          1,
+          768
+        ]
+      },
+      "original_saved_shape": [
+        768
+      ],
+      "comparison_transform": "restore_singleton_batch_and_token_axes",
+      "first_four_values": [
+        0.07710679620504379,
+        -0.07256416976451874,
+        -0.17308543622493744,
+        0.9864994287490845
+      ]
+    },
+    {
+      "metadata": {
+        "schema_version": "1.0",
+        "identity": {
+          "run_id": "distilbert-example",
+          "job_id": null,
+          "request_id": null,
+          "sample_id": null
+        },
+        "generation": {
+          "stage": "unknown",
+          "generation_step": null,
+          "cache_position": null,
+          "cache_length_before": null,
+          "cache_length_after": null,
+          "use_cache": null
+        },
+        "sequence": 5,
+        "forward_index": 0,
+        "module_path": "distilbert.transformer.layer.2",
+        "invocation": 0,
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "capture_mode": "direct",
+        "module_kind": "block",
+        "layer_index": 2,
+        "batch_axis": 0,
+        "token_axis": 1,
+        "saved_dtype": "torch.float32",
+        "saved_device": "cpu",
+        "shape": [
+          1,
+          10,
+          768
+        ],
+        "output_path": [
+          0
+        ],
+        "batch_positions": [
+          0
+        ],
+        "token_positions": [
+          6
+        ],
+        "saved_shape": [
+          1,
+          1,
+          768
+        ]
+      },
+      "original_saved_shape": [
+        768
+      ],
+      "comparison_transform": "restore_singleton_batch_and_token_axes",
+      "first_four_values": [
+        0.9894258379936218,
+        0.05676446855068207,
+        0.165574312210083,
+        -0.07726672291755676
+      ]
+    }
+  ],
+  "interpretation": "These are selected encoder activations and a masked-position argmax, not generated text or an explanation of the prediction."
+}
