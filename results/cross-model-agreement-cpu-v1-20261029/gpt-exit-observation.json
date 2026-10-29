@@ -1,0 +1,13 @@
+{
+  "attempt_name": "cross-model-gpt-cpu-v1-20261029-01",
+  "child_pid": 14684,
+  "complete_sha256": "611f57ea1d1fb937c79580c18bc25e5949e4d0b7774f120b2745104d42c97034",
+  "end_unix": 1793275853.026194,
+  "exit_code": 0,
+  "interrupted": null,
+  "metadata_sha256": "c313b8eae74d23cd7060a1c45492528f2e77b9d022fe82596b4292ade75b8e11",
+  "schema": "cross-model-direct-child-exit-v1",
+  "source_commit": "763402e8311e2402c49eb865c1812c5a8b5380a2",
+  "start_unix": 1793275813.053389,
+  "status": "complete"
+}

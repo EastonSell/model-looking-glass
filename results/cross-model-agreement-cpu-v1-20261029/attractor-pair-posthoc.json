@@ -1,0 +1,26 @@
+{
+  "case_sha256": "b1d6dbad76240f07be3a55196ace982767400b60e497d4e7fc75aaae82c8c503",
+  "models": {
+    "bert": {
+      "bit_identical": {
+        "clean": 0,
+        "opposite": 0,
+        "random": 0,
+        "same": 0
+      },
+      "pairs": 16,
+      "witness_sha256": "989caa36de3189e65ce261b93afb7e56dbd349f065673df86d27badd0eb3d269"
+    },
+    "gpt": {
+      "bit_identical": {
+        "clean": 16,
+        "opposite": 16,
+        "random": 0,
+        "same": 16
+      },
+      "pairs": 16,
+      "witness_sha256": "6483e07cf9165f91af416161ff2be5c76b15763493fea037ddde3cc185a36959"
+    }
+  },
+  "scope": "Post-hoc saved-vector bit comparison; no model execution attestation."
+}
