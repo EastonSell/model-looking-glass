@@ -1,0 +1,38 @@
+{
+  "schema": "mlg-agreement-physical-budget-amendment-v2",
+  "status": "prospective storage-only revision after natural discovery",
+  "natural_claim_sha256": "65a7baaa955150e25376de34b7c044b078be240488c9c83626ec160e3c40d6cf",
+  "natural_binding_sha256": "23575704f3e55d741123d3c1024accfb15aa0a048a84ce415bc765573d913ba0",
+  "previous_physical_amendment_sha256": "0f769820591df209bec36f07ead23b45d74e5f1633f39034fb942f444b17b113",
+  "original_host_disk_allowance_bytes": 1073741824,
+  "host_disk_allowance_bytes": 4294967296,
+  "required_free_disk_bytes": 6442450944,
+  "study_limit_bytes": 536870912,
+  "metadata_max_bytes": 8388608,
+  "ledger_disk_reserve_bytes": 67108864,
+  "phase_reservations_bytes": {
+    "natural_discovery": 134217728,
+    "natural_heldout": 167772160,
+    "injection_discovery": 50331648,
+    "injection_heldout": 75497472
+  },
+  "host_disk_phase_reservations_bytes": {
+    "natural_discovery": 1073741824,
+    "natural_heldout": 234881024,
+    "injection_discovery": 134217728,
+    "injection_heldout": 201326592
+  },
+  "observation": {
+    "candidate_inventory_sha256": "1724621d40060bea84cde2a25b01ac193d2a1bc59e2ff7d5552576fec5db8578",
+    "candidate_inventory_custody": "Retained locally as work/agreement-ledger-inventory-next.json with generator work/agreement_ledger_inventory_next.py; absolute local paths are private. This is a historical candidate, not a complete current inventory or a phase authorization.",
+    "natural_apparent_file_bytes": 461958584,
+    "natural_archive_checkout_copies": 31,
+    "prior_apparent_file_bytes": 254239892,
+    "serialized_candidate_inventory_bytes": 1314705,
+    "shared_pack_apparent_file_bytes": 65814592,
+    "free_disk_observed_utc": "2026-10-29T04:57:39Z",
+    "free_disk_bytes": 136344756224,
+    "scope": "Conservative, incomplete candidate of known study originals, publication copies, staging, support and orphans; the shared Git pack containing both relevant blobs is charged once. Other copies and later changes require reconciliation. File lengths are not allocated-cluster measurements. Unrelated developer worktrees are separately reported workspace overhead."
+  },
+  "limitations": "Host evidence-file and point-in-time free-space limits only, not VRAM or peak host-memory limits. The original natural claim, binding, prior storage amendment, logical tensor caps, cases, analyses, predictions and results remain unchanged. A fresh free-space check and independently reviewed complete inventory are required before any future claim."
+}
