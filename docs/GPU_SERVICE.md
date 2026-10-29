@@ -15,6 +15,18 @@ The staged owner checks the supervised device lease and the runtime UUID before
 telemetry, resolves separate load/cold/warm profiles against independently
 constructed live keys, retains the model-load reservation until process exit,
 and repeats the lease, runtime, and headroom checks before copying weights.
+The fixed two-token service holds a 2 GiB load commitment and a separate
+512 MiB commitment for each sequential forward, including the cold warmup.
+The measured estimates must fit within those commitments; they do not replace
+the fixed reservations or guarantee that future operations cannot run out of
+memory. The CPU generator is seeded with 17 immediately before offline loading,
+matching the measured load stage. Ownership is checked between individual CUDA
+identity and telemetry calls and before and after synchronization.
+Every budget telemetry snapshot must report the same 7–9 GiB device total
+bound by all three live workload keys; a mismatch fails before admission.
+The exported `FIXED_SERVICE_OWNER_CONTRACT` value
+`fixed-two-token-commitments-v1` lets a controller reject incompatible owner
+versions before startup; it does not replace source and profile verification.
 The actual CPU model must pass an explicit verifier before that copy. Both
 PyTorch module-conversion flags must read back as false around the copy, and
 the converted model must pass an independent, trusted device verifier after
