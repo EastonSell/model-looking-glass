@@ -18,3 +18,16 @@ This consolidates duplicate historical entry points, not scientific outcomes. No
 | `scripts/flan_t5_equal_length_independent_saved_audit.py` | [results/flan-t5-equal-length-response-cpu-v1-20261029/audit/full-saved-replay.py](../results/flan-t5-equal-length-response-cpu-v1-20261029/audit/full-saved-replay.py) | `92779253f0df5833082dbd2fc723bf80003493ad` |
 
 Removed 228,814 duplicate source bytes. Broader study families remain intact because their manifests, dynamic source-hash checks and replay tools form coupled reproducibility contracts. Deleting a leaf from those families would require retiring the entire workflow and validating that boundary first.
+
+
+## Retired superseded v4 preparation workflow
+
+The original agreement-head v4 proposal was explicitly superseded **before model forwarding**, because three subject lemmas already appeared in exposed development cases. Its three preparation/comparison scripts are retired together. The [original protocol](../docs/DISTILGPT2_AGREEMENT_HEADS_FRESH_CONTEXT_V4.md), [original case records](../results/distilgpt2-agreement-head-v4-cases/README.md), and corrected v4.1 workflow remain. Full tracked-reference review found no incoming active runtime/test dependency on the retired scripts; only their historical case README named them, and those mentions now link to the immutable source. No scientific result is reclassified.
+
+| Retired immutable source | Original Git blob | Retained successor |
+|---|---|---|
+| [scripts/prepare_agreement_head_v4_fresh_cases.py](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/scripts/prepare_agreement_head_v4_fresh_cases.py) | `26bc2fc1becea16afb3e716d993d768705b3067c` | [scripts/prepare_agreement_head_v4_1_fresh_cases.py](../scripts/prepare_agreement_head_v4_1_fresh_cases.py) |
+| [scripts/check_agreement_head_v4_public_overlap.py](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/scripts/check_agreement_head_v4_public_overlap.py) | `ec566fdce5f0068ed621bcbb24e5aa63bb1726ae` | [scripts/check_agreement_head_v4_1_public_overlap.py](../scripts/check_agreement_head_v4_1_public_overlap.py) |
+| [scripts/natural_public_cases_crosscheck_v2.py](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/scripts/natural_public_cases_crosscheck_v2.py) | `02d42e3e4266c9a9d270da35f9bff7a91d40b5f1` | [scripts/natural_public_cases_crosscheck_v3.py](../scripts/natural_public_cases_crosscheck_v3.py) |
+
+These three files total 18,337 bytes. Historical source can be inspected with `git show 3cbdec78134855532811a58a64e8dd5d4d457185:scripts/prepare_agreement_head_v4_fresh_cases.py` after obtaining the pinned commit. The result-payload restore tool is not a source-code restore command; use the immutable links or the [historical checkout instructions](README.md#replaying-a-historical-study).

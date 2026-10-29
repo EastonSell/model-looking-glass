@@ -60,7 +60,7 @@ All outcomes—including failures and negative controls—remain accessible. The
 
 Large historical tensor/archive payloads are indexed in [`archives/results-manifest.json`](archives/results-manifest.json), with their original paths, Git blob hashes, sizes, and source commit. Uncompressed reports and decision records remain in the current tree; compressed records are included in the archive manifest. [Archive and restore instructions](archives/README.md) explain selective restoration and integrity verification.
 
-[Ten duplicate historical auditor entry points](archives/SOURCE_CONSOLIDATION.md) were also consolidated into their retained, byte-identical result-local copies.
+[Ten duplicate historical auditors and a superseded three-script preparation workflow](archives/SOURCE_CONSOLIDATION.md) were removed from active entry points, with canonical copies or immutable historical source links retained.
 
 This reduces the **current checkout**, not Git history. No history is rewritten; a full clone still contains old objects. For a small new checkout:
 
