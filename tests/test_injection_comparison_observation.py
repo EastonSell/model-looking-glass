@@ -23,6 +23,7 @@ here = Path(__file__).parent
 fixtures = load(here / 'test_injection_split_comparison.py', '_comparison_observation_fixtures')
 comparison = fixtures.comparison
 adapter = load(here.parent / 'tools' / 'injection_comparison_observation.py', '_comparison_observation')
+exit_check = load(here.parent / 'tools' / 'injection_comparison_exit.py', '_comparison_receipt_verifier')
 outer_fixtures = load(here / 'test_injection_outer_observer.py', '_fabricated_outer_observer_fixtures')
 
 
@@ -105,6 +106,29 @@ def test_unobserved_source_stops_before_starting_comparison(example):
     with pytest.raises(adapter.ObservationError):
         adapter.observe_comparison(**options, observer=lambda **kwargs: calls.append(True))
     assert calls == []
+
+
+@pytest.mark.parametrize('status', ['clear', 'collision'])
+def test_public_receipt_verifier_binds_both_commitments_without_private_reads(example, status):
+    config = comparison.parse_config(example['options']['config_path'].read_bytes())
+    seen = []
+    public = {comparison._PUBLIC_URLS['natural_commitment']: Path(config['natural']['commitment']).read_bytes(),
+              config['injection_commitment_url']: Path(config['injection']['commitment']).read_bytes()}
+    assert exit_check.verify_public_receipt(comparison=comparison, custody=custody, config=config,
+        receipt=example[status], reader=lambda url: seen.append(url) or public[url])
+    assert seen == [comparison._PUBLIC_URLS['natural_commitment'], config['injection_commitment_url']]
+
+
+def test_public_receipt_verifier_rejects_unobserved_or_changed_commitment(example):
+    config = comparison.parse_config(example['options']['config_path'].read_bytes())
+    with pytest.raises(exit_check.ExitError):
+        exit_check.verify_public_receipt(comparison=comparison, custody=custody, config=config,
+            receipt=example['clear'], reader=lambda url: b'not-the-published-commitment')
+    path = Path(config['injection']['commitment'])
+    path.write_bytes(path.read_bytes() + b' ')
+    with pytest.raises(exit_check.ExitError):
+        exit_check.verify_public_receipt(comparison=comparison, custody=custody, config=config,
+            receipt=example['clear'], reader=lambda url: b'not-the-published-commitment')
 
 
 @pytest.mark.parametrize('exit_code', [0, 7])

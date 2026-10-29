@@ -69,3 +69,6 @@ by both observations. The source-bound caller still has to establish the
 meaning of the operation, public receipt verification and protected source
 leases; a saved terminal alone is not an exit observation. Use the direct base
 Python interpreter so the observed PID is the process writing the terminal.
+Its public receipt verifier checks both commitment readbacks and the complete
+receipt identities without opening either private record. A verified collision
+remains a negative result and cannot authorize a forward.
