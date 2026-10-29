@@ -141,6 +141,14 @@ can precede release of the owner thread's last local references, so it is not a
 guarantee of immediate memory reclamation.
 `broker.failed` remains true after a broker failure and differs from an
 ordinary close; a service should check it when reporting its workload status.
+For a supervisor that must remain responsive while admission is stalled,
+`broker.health_snapshot` reports the broker's `failed`, `quarantined`, `closed`
+and `owner_alive` fields without acquiring the broker condition or probing
+the worker. Its fields are observations, not an atomic snapshot, and may be
+stale across a concurrent transition. Check worker and transport health
+separately; this snapshot does not authorize admission or prove that device
+work or cleanup completed. An active service should treat an unexpectedly
+closed broker or stopped owner thread as unavailable.
 
 If persistent host-memory exhaustion prevents queue cleanup or publication of
 a terminal outcome, `wait()` and `cancel()` can instead raise
