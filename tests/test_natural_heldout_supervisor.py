@@ -111,6 +111,43 @@ def test_nonzero_exit_retains_partial_and_never_audits(tmp_path):
     assert (output / 'attempt/tensors/payload').read_bytes() == b'partial'
 
 
+def test_live_descendant_after_owner_exit_is_drained_but_never_audited(tmp_path):
+    output = tmp_path / 'live-descendant'
+    tail = ("import subprocess; subprocess.Popen([sys._base_executable,'-c','import time; time.sleep(30)'], "
+            "stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL, "
+            "creationflags=subprocess.DETACHED_PROCESS)")
+    audit = Mock()
+    result = supervisor.supervise_heldout(_child(output, tail=tail), output, os.environ.copy(),
+                                          audit_result=audit)
+    audit.assert_not_called()
+    assert result['exit_code'] == 0 and result['postexit_active_processes'] >= 1
+    assert result['status'] == 'incomplete' and result['cleanup_verified'] is True
+    assert 'active Job members' in result['supervisor_error']
+
+
+def test_unreadable_postexit_job_count_never_audits(tmp_path, monkeypatch):
+    import scripts.v2_source_guards as guards
+    real_job = guards.WindowsJob
+    class UnreadableCount:
+        def __init__(self):
+            self.real = real_job()
+        def assign(self, child):
+            self.real.assign(child)
+        def _accounting(self):
+            raise OSError('fabricated count failure')
+        def terminate_and_wait(self):
+            self.real.terminate_and_wait()
+        def close(self):
+            self.real.close()
+    monkeypatch.setattr(guards, 'WindowsJob', UnreadableCount)
+    audit = Mock()
+    output = tmp_path / 'unknown-postexit-count'
+    result = supervisor.supervise_heldout(_child(output), output, os.environ.copy(), audit_result=audit)
+    audit.assert_not_called()
+    assert result['status'] == 'incomplete' and result['postexit_active_processes'] is None
+    assert result['cleanup_verified'] is True and 'post-exit Job count' in result['supervisor_error']
+
+
 def test_timeout_reaps_and_preserves_partial_without_audit(tmp_path):
     output = tmp_path / 'timeout'
     audit = Mock()

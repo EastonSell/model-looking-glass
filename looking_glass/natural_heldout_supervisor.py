@@ -100,6 +100,7 @@ def supervise_heldout(command, output, environment, *, audit_result, timeout=720
     started = datetime.now(timezone.utc).isoformat()
     code, reaped, failure, child, job = None, False, None, None, None
     job_drained, job_closed, cancellation_requested = False, False, False
+    postexit_active_processes = None
     logs_complete = True
     overflow = threading.Event()
     pump_errors, pump_close_errors, pumps = [], [], custody['pumps']
@@ -162,6 +163,17 @@ def supervise_heldout(command, output, environment, *, audit_result, timeout=720
         cancellation_requested = isinstance(error, KeyboardInterrupt)
     finally:
         job, child = custody['job'], custody['child']
+        if job is not None and reaped:
+            try:
+                active = job._accounting().active_processes
+                if type(active) is not int or active < 0:
+                    raise ValueError('invalid Job process count')
+                postexit_active_processes = active
+                if active:
+                    failure = (failure or 'owner exit') + '; active Job members after direct-child exit'
+            except BaseException as error:
+                failure = (failure or 'owner exit') + '; post-exit Job count: ' + type(error).__name__
+                cancellation_requested |= isinstance(error, KeyboardInterrupt)
         if job is not None:
             try:
                 job.terminate_and_wait()
@@ -227,6 +239,7 @@ def supervise_heldout(command, output, environment, *, audit_result, timeout=720
     verdict = {'status': 'incomplete', 'exit_code': code, 'child_reaped': reaped,
                'child_pid': child_pid,
                'job_drained': job_drained, 'job_closed': job_closed, 'logs_complete': logs_complete,
+               'postexit_active_processes': postexit_active_processes,
                'cleanup_verified': cleanup_verified, 'retry_safe': False,
                'cancellation_requested': cancellation_requested, 'quarantined': not cleanup_verified,
                'log_overflow': overflow.is_set(), 'supervisor_error': failure,

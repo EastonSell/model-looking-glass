@@ -420,6 +420,10 @@ def execute(config_path):
         receipt_raw = child._read(output / 'supervisor.json', 2 * 1024 * 1024)
         if not control._same_json(_json(receipt_raw), verdict):
             raise OwnerError('supervisor receipt differs')
+        if (verdict.get('status') == 'evidence_complete'
+                and (type(verdict.get('postexit_active_processes')) is not int
+                     or verdict['postexit_active_processes'] != 0)):
+            raise OwnerError('other Job members remained active after owner exit')
         accounting = state['custody'].account_phase(phase, reserve_side_bytes=65536,
                                                      extra_side_roots=state['side_roots'])
         terminal = {'schema': 'mlg-natural-heldout-owner-terminal-v1', 'status': verdict['status'],
