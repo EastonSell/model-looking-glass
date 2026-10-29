@@ -7,6 +7,7 @@ import subprocess
 import struct
 import sys
 import unittest
+from unittest.mock import patch
 
 from looking_glass.causal_v2_custody import canonical_json, commitment
 from looking_glass import registry
@@ -297,6 +298,39 @@ class ScoringTests(unittest.TestCase):
         args = list(self.args); args[9] = chunks
         self.assertEqual(self.score(args)["status"], "complete")
         self.assertFalse(torch.cuda.is_initialized())
+
+    def test_custodian_accepts_actual_fabricated_scorer_summary(self):
+        from looking_glass import causal_v2_custodian_run as custodian
+        args = list(self.args)
+        chunks, expected = [], {}
+        for index, raw in enumerate(args[9]):
+            chunk = json.loads(raw)
+            chunk["name"] = f"cell-{index:02d}-h.json"
+            encoded = registry._json_bytes(chunk)
+            chunks.append(encoded)
+            expected[chunk["name"]] = {"bytes": len(encoded), "sha256": hashlib.sha256(encoded).hexdigest()}
+        args[9] = chunks
+        result = self.score(args)
+        self.assertEqual(result["mode"], "development")
+        # Only the custodian's shape checker is study-only. Override its seed
+        # list and label in this test to exercise the seam with fabricated
+        # dev inputs; this does not claim a study or model execution occurred.
+        result["mode"] = "study"
+        result["interpretation"] = "confirmation_conditional_on_caller_attestations"
+        summary = canonical_json(result)
+        self.assertLess(len(summary), custodian._PUBLIC_LIMITS["results.json"])
+        assignments, heldout = json.loads(args[5])["assignments"], json.loads(args[4])
+        with patch.object(custodian, "_MODEL_SEEDS", SEEDS):
+            custodian._check_summary(summary, "unexposed", args[0], args[1], args[2],
+                                     assignments, heldout, expected)
+            bad = copy.deepcopy(expected)
+            bad["cell-00-h.json"]["sha256"] = "0" * 64
+            with self.assertRaises(custodian.CustodianError):
+                custodian._check_summary(summary, "unexposed", args[0], args[1], args[2],
+                                         assignments, heldout, bad)
+            with self.assertRaises(custodian.CustodianError):
+                custodian._check_summary(summary, "unknown", args[0], args[1], args[2],
+                                         assignments, heldout, expected)
 
     def test_sign_rule_is_strict_and_abstention_is_undefined(self):
         from looking_glass.causal_v2_scoring import _sign_summary
