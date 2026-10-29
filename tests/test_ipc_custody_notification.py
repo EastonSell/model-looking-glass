@@ -534,9 +534,19 @@ class IPCCustodyNotificationTests(unittest.TestCase):
         server = self.make_server(guardian, broker)
         server.result_encoder = lambda result: (_ for _ in ()).throw(SystemExit("uncertain"))
         client = IPCClient(server.address, server.team_tokens["team"])
-        with self.assertRaises((IPCError, OSError, EOFError)):
-            client.submit(team_id="team", request_id="case", inputs={"input_ids": [[1]]}).wait(3)
-        self.assertTrue(server.close(3))
+        reported = threading.Event()
+        exceptions = []
+
+        def record_exception(args):
+            exceptions.append(args.exc_type)
+            reported.set()
+
+        with patch.object(threading, "excepthook", record_exception):
+            with self.assertRaises((IPCError, OSError, EOFError)):
+                client.submit(team_id="team", request_id="case", inputs={"input_ids": [[1]]}).wait(3)
+            self.assertTrue(reported.wait(3))
+            self.assertTrue(server.close(3))
+        self.assertEqual(exceptions, [SystemExit])
         record = guardian.records[broker.calls[0][0]]
         self.assertFalse(record["notice"])
         self.assertTrue(record["charged"])
