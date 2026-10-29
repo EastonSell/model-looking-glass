@@ -83,15 +83,19 @@ class TraceBudgetTests(unittest.TestCase):
 
     def test_rejected_invocation_does_not_advance_sequence_or_allowance(self):
         tap = TapPoint("point")
-        with TraceSession(tap, max_tensor_bytes=8) as session:
-            tap(torch.tensor([1.0]))
-            with self.assertRaisesRegex(RuntimeError, "max_tensor_bytes"):
-                tap(torch.tensor([2.0, 3.0]))
-            tap(torch.tensor([4.0]))
-        self.assertEqual(session.tensor_bytes, 8)
-        self.assertEqual([event.sequence for event in session.events], [0, 1])
-        self.assertEqual([event.occurrence for event in session.events], [0, 1])
-        self.assertTrue(torch.equal(session.events[-1].value, torch.tensor([4.0])))
+        session = TraceSession(tap, max_tensor_bytes=8)
+        with self.assertRaisesRegex(RuntimeError, "failed"):
+            with session:
+                tap(torch.tensor([1.0]))
+                with self.assertRaisesRegex(RuntimeError, "max_tensor_bytes"):
+                    tap(torch.tensor([2.0, 3.0]))
+                with self.assertRaisesRegex(RuntimeError, "failed"):
+                    tap(torch.tensor([4.0]))
+        self.assertTrue(session.failed)
+        self.assertEqual(session.tensor_bytes, 4)
+        self.assertEqual([event.sequence for event in session.events], [0])
+        self.assertEqual([event.occurrence for event in session.events], [0])
+        self.assertTrue(torch.equal(session.events[0].value, torch.tensor([1.0])))
 
     def test_sparse_value_capture_is_rejected_but_metadata_remains_allowed(self):
         sparse = torch.sparse_coo_tensor([[0]], [1.0], (1,), check_invariants=True)
