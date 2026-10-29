@@ -48,7 +48,7 @@ The initial model is a small randomly initialized residual network with a contro
 
 Python 3.10+ and PyTorch 2.6+ are required. Use the [official PyTorch installation instructions](https://pytorch.org/get-started/locally/) for your platform. The original CPU experiment downloads no models or datasets, and traces stay in the local process/files.
 
-The optional `transformer` extra pins Transformers 4.57.3 for the GPT-2 tooling under development: install it with `python -m pip install -e ".[transformer]"` after selecting the appropriate PyTorch build. The original CPU experiment does not require this extra or a checkpoint download.
+The optional `transformer` extra pins Transformers 4.57.3: install it with `python -m pip install -e ".[transformer]"` after selecting the appropriate PyTorch build. The [DistilGPT2 loader](docs/PRETRAINED_MODEL.md) is offline by default; downloading the pinned checkpoint requires an explicit opt-in and cache directory. Its CPU smoke test checks loading and execution, not causal explanations or performance. The original CPU experiment does not require this extra or a checkpoint download.
 
 The recorded run used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records its installed version inventory; it is not a cross-platform dependency lock. Other versions allowed by the package metadata have not been validated here. For the tested CPU version, install into an isolated environment with `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
 
