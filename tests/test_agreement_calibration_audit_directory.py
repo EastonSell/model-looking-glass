@@ -103,6 +103,19 @@ def test_cli_audits_without_writing_or_promoting(saved_attempt):
     assert report['freeze_observation'] == 'controller-reported'
 
 
+def test_isolated_standalone_cli_does_not_import_checkout_root_shadow(saved_attempt):
+    parent = saved_attempt['run_dir'].parent
+    prefix = parent / 'empty-bytecode-prefix'; prefix.mkdir()
+    marker = parent / 'shadow-imported'
+    (parent / 'copy.py').write_text(f'open({str(marker)!r}, "w").write("unexpected")\n')
+    source = Path(audit.__file__).resolve(strict=True)
+    args = [sys.executable, '-I', '-S', '-B', '-X', 'pycache_prefix=' + str(prefix), str(source)]
+    for name, value in saved_attempt.items(): args.extend(['--' + name.replace('_', '-'), str(value)])
+    completed = subprocess.run(args, cwd=parent, capture_output=True, check=True, timeout=60)
+    assert json.loads(completed.stdout)['status'] == 'saved_records_consistent_not_approved'
+    assert not marker.exists() and not any(prefix.iterdir())
+
+
 def test_freeze_chronology_requires_a_distinct_operator_declaration(saved_attempt):
     report = audit.audit_directory(**saved_attempt, freeze_observation='independent-prelaunch')
     assert report['freeze_observation'] == 'independent-prelaunch'

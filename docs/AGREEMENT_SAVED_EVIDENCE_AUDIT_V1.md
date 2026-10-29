@@ -17,10 +17,15 @@ the private attempt stable and retain the controller's result and all run
 files. The audit expects the original run directory, including its recorded
 device/inode identity; copying it elsewhere is not a verified replay.
 
-From this auditor's checkout, using an appropriate Python interpreter:
+From a trusted auditor checkout, using an appropriate Python interpreter and
+a new, empty private bytecode prefix outside the checkout, run the standalone
+file with isolated Python. Do not add the checkout root to `PYTHONPATH`:
+untracked files there could shadow standard-library imports. This invocation
+does not itself attest the auditor's source bytes or interpreter.
 
 ```text
-python -B -m looking_glass.agreement_calibration_saved_audit \
+python -I -S -B -X pycache_prefix=EMPTY_PRIVATE_PREFIX \
+  looking_glass/agreement_calibration_saved_audit.py \
   --run-dir PRIVATE_RUN_DIRECTORY \
   --controller-result CONTROLLER_RESULT_JSON \
   --source-checkout FROZEN_PRODUCER_CHECKOUT \
@@ -59,3 +64,28 @@ Neither sampled
 peaks, allocator cleanup nor the reaped owner claim proves worst-case memory,
 absence of native allocations, or global GPU quiescence. Separate source,
 hardware, lifecycle and safety reviews remain necessary before any promotion.
+
+## Incomplete attempts
+
+The full directory command rejects an incomplete attempt. For an independently
+bound identity and a checked, gap-free sequence of decoded stage files, the
+Python helper `audit_partial_stage_records(records, warm_key)` validates only
+the supplied prefix, including available headroom checks and completed callback
+metadata. It reports the number of complete samples and the next expected
+phase, and preserves an explicitly recorded trailing failure. Even a failure
+after all 84 ordinary stage records remains an incomplete attempt. A started
+or partly recorded action has unknown outcome; it is not a passed callback.
+The next-phase description does not authorize resuming an interrupted owner.
+This helper does not read files, establish file continuity or
+source identity, inspect a journal or owner, reconstruct a profile, determine
+whether the process exited, or approve anything. Retain the partial artifacts
+and independently review those other boundaries.
+
+`audit_incomplete_directory(...)` adds bounded, contiguous raw stage-file reads,
+the frozen directory and workload identity checks, Git-blob and dependency
+entry-file reconciliation, and a fingerprint of any saved journal bytes. The
+journal fingerprint is not a callback or terminal validation. This method
+does not inspect supervisor status, attest owner exit, establish cleanup, or
+read cached model weights. Even if all 84 ordinary stages exist, it reports
+that owner completion is unverified and returns no resource profile. The
+freeze's chronology remains a controller-reported claim.

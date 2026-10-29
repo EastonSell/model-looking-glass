@@ -174,6 +174,49 @@ def audit_stage_records(records, warm_key):
     """
     _need(type(records) is list and len(records) == 84 and type(warm_key) is dict,
           'the complete 84-stage record and workload key are required')
+    samples, callbacks, increments = _validate_stage_prefix(records, warm_key)
+    return {'sample_count': 14, 'stage_count': 84, 'samples': samples, 'callbacks': callbacks,
+            'cold_observed_increment_bytes': increments[0],
+            'warm_observed_increment_bytes': max(increments[1:])}
+
+
+def audit_partial_stage_records(records, warm_key):
+    """Validate an incomplete ordered stage prefix without inventing results.
+
+    A missing or incomplete callback is unknown, not a passed action. This
+    method derives no profile or device-safety conclusion from partial data.
+    Source identity and the reaped owner must be reviewed separately.
+    """
+    _need(type(records) is list and len(records) <= 85 and type(warm_key) is dict,
+          'an incomplete stage prefix and workload key are required')
+    failed = bool(records and type(records[-1]) is dict and records[-1].get('phase') == 'failed')
+    prefix = records[:-1] if failed else records
+    count = len(prefix)
+    _need(count <= 84 and (count < 84 or failed), 'a full nonfailed sequence is not an incomplete prefix')
+    samples, _, _ = _validate_stage_prefix(prefix, warm_key)
+    kinds = ('warmup', *KINDS)
+    failure = None
+    if failed:
+        last = records[-1]
+        _fields(last, ('phase', 'kind', 'error_type'), 'failed stage')
+        if count == 0:
+            allowed = ('preflight', kinds[0])
+        elif count % 6:
+            allowed = (kinds[count // 6],)
+        elif count == 84:
+            allowed = (kinds[-1],)
+        else:
+            allowed = (kinds[count // 6 - 1], kinds[count // 6])
+        _need(type(last['kind']) is str and last['kind'] in allowed and type(last['error_type']) is str
+              and 0 < len(last['error_type']) <= 128, 'invalid failed stage')
+        failure = {'kind': last['kind'], 'error_type': last['error_type']}
+    return {'status': 'incomplete_prefix_consistent_not_approved', 'stage_count': len(records),
+            'completed_samples': len(samples), 'failure': failure,
+            'next_kind': kinds[count // 6] if count < 84 else None,
+            'next_phase': PHASES[count % 6] if count < 84 else None}
+
+
+def _validate_stage_prefix(records, warm_key):
     fixed = {'warmup_state': 'warm', 'warmup_protocol_sha256': WARMUP_SHA256,
              'capture_policy_sha256': POLICY_SHA256, 'operation': 'forward',
              'capture_mode': 'direct', 'batch_size': 1, 'sequence_length': 5,
@@ -191,19 +234,38 @@ def audit_stage_records(records, warm_key):
     samples, callbacks, increments = [], [], []
     for index, kind in enumerate(('warmup', *KINDS)):
         stages = records[index * 6:(index + 1) * 6]
+        if not stages:
+            break
         for stage, phase in zip(stages, PHASES):
             _need(type(stage) is dict and stage.get('phase') == phase and stage.get('kind') == kind,
                   'stage order or kind differs')
-        start, before, check, after, post, completed = stages
+        start = stages[0]
         _fields(start, ('phase', 'kind', 'seed', 'case_sha256'), 'started stage')
         _same(start, {'phase': 'started', 'kind': kind, 'seed': SEED, 'case_sha256': _case_sha(kind)},
               'started stage')
-        for stage, name in ((before, 'baseline'), (after, 'after_observed')):
-            _fields(stage, ('phase', 'kind', 'snapshot'), name)
-        for stage, name in ((check, 'baseline_check'), (post, 'postcheck')):
-            _fields(stage, ('phase', 'kind', 'budget'), name)
+        if len(stages) == 1:
+            break
+        before = stages[1]
+        _fields(before, ('phase', 'kind', 'snapshot'), 'baseline')
+        _snapshot(before['snapshot'], total, cap)
+        if len(stages) == 2:
+            break
+        check = stages[2]
+        _fields(check, ('phase', 'kind', 'budget'), 'baseline_check')
         _headroom(before['snapshot'], check['budget'], total, cap)
+        if len(stages) == 3:
+            break
+        after = stages[3]
+        _fields(after, ('phase', 'kind', 'snapshot'), 'after_observed')
+        _snapshot(after['snapshot'], total, cap)
+        if len(stages) == 4:
+            break
+        post = stages[4]
+        _fields(post, ('phase', 'kind', 'budget'), 'postcheck')
         _headroom(after['snapshot'], post['budget'], total, cap)
+        if len(stages) == 5:
+            break
+        completed = stages[5]
         _fields(completed, ('phase', 'kind', 'sample', 'callback'), 'completed stage')
         sample, callback = completed['sample'], completed['callback']
         _fields(sample, ('workload_sha256', 'sample_id', 'case_sha256', 'seed', 'status',
@@ -235,9 +297,7 @@ def audit_stage_records(records, warm_key):
         samples.append(sample)
         callbacks.append(callback)
         increments.append(max(0, peak_a - alloc0, peak_r - reserved0, free0 - free1))
-    return {'sample_count': 14, 'stage_count': 84, 'samples': samples, 'callbacks': callbacks,
-            'cold_observed_increment_bytes': increments[0],
-            'warm_observed_increment_bytes': max(increments[1:])}
+    return samples, callbacks, increments
 
 
 def _parse_canonical(raw, name, *, ensure_ascii=False):
@@ -940,6 +1000,90 @@ def audit_directory(*, run_dir, controller_result, source_checkout, git_executab
                     'sampled memory and cleanup do not prove worst-case bounds or global GPU quiescence']}
     except OSError as error:
         raise ValueError('saved attempt or selected source is unavailable') from error
+
+
+def audit_incomplete_directory(*, run_dir, source_checkout, git_executable, site,
+                               expected_commit, expected_device_uuid, expected_freeze_sha256):
+    """Read a retained attempt's stage prefix without asserting owner completion.
+
+    The controller and supervisor must be reviewed independently. The journal
+    is fingerprinted but its callbacks and terminal are not validated here.
+    This helper never derives or approves a resource profile.
+    """
+    try:
+        directory = Path(run_dir).absolute()
+        info = directory.lstat()
+        _need(stat.S_ISDIR(info.st_mode) and not directory.is_symlink()
+              and not getattr(info, 'st_file_attributes', 0) & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)
+              and directory.resolve(strict=True) == directory, 'private run directory is aliased')
+        original_id = (info.st_dev, info.st_ino)
+        names = {item.name for item in directory.iterdir()}
+        stage_names = {name for name in names if name.lower().startswith('stage-')}
+        _need(len(stage_names) <= 85 and stage_names ==
+              {f'stage-{index:03}.json' for index in range(len(stage_names))},
+              'stage files are not a contiguous bounded prefix')
+        identity_names = {'run_manifest': 'run-manifest.json', 'controller_source': 'controller-source.json',
+                          'source_base': 'controller-source-base.json', 'source': 'source-manifest.json',
+                          'runtime': 'runtime-manifest.json', 'assets': 'asset-manifest.json'}
+        identity_files = {key: _read_file(directory / name) for key, name in identity_names.items()}
+        identity = audit_identity(identity_files, expected_commit=expected_commit,
+                                  expected_device_uuid=expected_device_uuid,
+                                  expected_freeze_sha256=expected_freeze_sha256)
+        frozen_dir = identity['freeze']['directory']
+        _need(Path(frozen_dir['path']) == directory
+              and (frozen_dir['device'], frozen_dir['inode']) == original_id,
+              'run directory differs from the prelaunch freeze')
+        source_root = Path(source_checkout).resolve(strict=True)
+        _need(Path(identity['freeze']['source']['checkout']).resolve(strict=True) == source_root,
+              'selected source checkout differs from prelaunch')
+        source_count = verify_committed_sources(source_root, git_executable, expected_commit,
+                                                identity['controller_source'], identity_files['source'])
+        origin_count = verify_dependency_origins(identity_files['source'], site)
+        stage_bytes = [_read_file(directory / f'stage-{index:03}.json') for index in range(len(stage_names))]
+        stages = [_line_json(raw, 'stage') for raw in stage_bytes]
+        if len(stages) == 84 and stages[-1].get('phase') != 'failed':
+            complete = audit_stage_records(stages, identity['warm_key'])
+            report = {'status': 'stage_sequence_consistent_owner_unverified_not_approved',
+                      'stage_count': complete['stage_count'], 'completed_samples': complete['sample_count'],
+                      'failure': None, 'next_kind': None, 'next_phase': None}
+        else:
+            report = audit_partial_stage_records(stages, identity['warm_key'])
+        failure_names = [name for name in names if name.casefold() == 'failure.json']
+        _need(len(failure_names) <= 1, 'multiple failure sidecars exist')
+        failure_raw = _read_file(directory / failure_names[0]) if failure_names else None
+        journal = directory / 'journal'
+        events_sha, events_length, complete_lines = None, None, None
+        if journal.exists():
+            journal_info = journal.lstat()
+            _need(stat.S_ISDIR(journal_info.st_mode) and not journal.is_symlink()
+                  and not getattr(journal_info, 'st_file_attributes', 0) &
+                          getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400), 'journal directory is aliased')
+            events_path = journal / 'events.jsonl'
+            if events_path.exists():
+                events = _read_file(events_path, allow_empty=True)
+                events_sha, events_length, complete_lines = (hashlib.sha256(events).hexdigest(),
+                                                              len(events), events.count(b'\n'))
+        current = directory.lstat()
+        final_names = {item.name for item in directory.iterdir()}
+        _need((current.st_dev, current.st_ino) == original_id
+              and {name for name in final_names if name.lower().startswith('stage-')} == stage_names
+              and {name for name in final_names if name.casefold() == 'failure.json'} == set(failure_names),
+              'private run directory changed during audit')
+        report.update({'run_id': identity['run_id'], 'source_commit': expected_commit,
+            'run_manifest_sha256': expected_freeze_sha256, 'freeze_observation': 'controller-reported',
+            'stage_stream_sha256': hashlib.sha256(b''.join(stage_bytes)).hexdigest(),
+            'committed_source_files_checked': source_count, 'dependency_entry_files_checked': origin_count,
+            'failure_sidecar_sha256': hashlib.sha256(failure_raw).hexdigest() if failure_raw is not None else None,
+            'journal_observed_sha256': events_sha, 'journal_observed_bytes': events_length,
+            'journal_newline_count': complete_lines, 'journal_validated': False, 'supervision_checked': False,
+            'limitations': ['the saved stages are self-reports and do not attest execution',
+                'freeze ordering is controller-reported rather than independently witnessed',
+                'journal fingerprint is not a callback or terminal audit',
+                'process exit, cleanup, retained aliases and marker recovery are not checked here',
+                'source and dependency checks are retrospective and cached assets are not rehashed']})
+        return report
+    except OSError as error:
+        raise ValueError('incomplete attempt or selected source is unavailable') from error
 
 
 def main(argv=None):
