@@ -1,13 +1,22 @@
 # France full-top v2: fixed-input and numerical preparation
 
-This branch proposes the fixed [protocol](TARGETED_EDIT_FRANCE_FULL_TOP_V2.md)
-and publishes its tokenizer-only case inventory. It does not authorize a
-pretrained forward: a source-bound owner, exposure and protected-custody
-checks, a bounded schedule, independent review, capacity checks and an
-observed exit are still required. No model outcome is reported here.
+This branch preserves the [original protocol](TARGETED_EDIT_FRANCE_FULL_TOP_V2.md)
+and tokenizer-only inventory, which are superseded by the pre-forward
+[v4 protocol](TARGETED_EDIT_FRANCE_FULL_TOP_V4.md). Its L10 was replaced after
+an exact public-reservation collision; the replacement's tokenizer inventory
+and reviews are being prepared. This branch does not authorize a pretrained
+forward: a source-bound owner, public/pending exposure checks, a bounded
+schedule, independent review, capacity checks and an observed exit are still
+required. No model outcome is reported here.
 
-The public [manifest](../experiments/france_full_top_cases_v2.json) contains
-27 study rows and four previously exposed projection-basis rows. The three
+The [pre-forward scope amendment](TARGETED_EDIT_FRANCE_FULL_TOP_SCOPE_AMENDMENT_V2.md)
+withdraws the earlier protected-check requirement and explicitly leaves
+private and unknown exposure disjointness unverified. No protected or
+flagged split will be queried, accessed, or checked indirectly.
+
+The superseded original [manifest](../experiments/france_full_top_cases_v2.json)
+contains 27 study rows and four previously exposed projection-basis rows. Its
+L10 must not be used for the revised attempt. The three
 development rows carry their earlier case IDs. The exposed locality sentinels
 L01, L02 and L05 correspond respectively to
 `full-top-japan-evaluation-04`, `full-top-uk-evaluation-04` and
