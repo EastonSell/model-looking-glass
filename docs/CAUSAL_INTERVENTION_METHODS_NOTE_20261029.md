@@ -7,8 +7,9 @@ frozen protocol, establish a new finding, or prescribe a launch gate.
 ## What the existing results establish
 
 - The [DistilGPT2 copying factorial](https://github.com/EastonSell/model-looking-glass/blob/514459c52ccf50b0b3d07250c4ac9b028afe2da5/results/distilgpt2-copy-head-factorial-v1-20261028/README.md)
-  used equal pre-projection L2 head-slice doses on eight public families.
-  Mean projection-output changes nonetheless differed: 5.803 for H2,
+  used equal pre-projection L2 head-slice doses within each of eight public
+  four-prompt families; the dose varied by family. Mean projection-output
+  changes nonetheless differed: 5.803 for H2,
   4.556 for H10, and 5.671 for H7. The joint log-probability interaction
   was descriptive, and its hypothetical additive-logit reference is not
   an exact decomposition of the observed nonlinear response. Equal input
@@ -58,9 +59,10 @@ norms q and angle theta, the ideal joint projected norm is
 q sqrt(2 + 2 cos(theta)); it may be larger or smaller than either single
 dose. Floating-point delivery and cancellation require measured checks.
 
-For a dose response using an adjusted margin
-A = opposite-donor effect - max(|same-class effect|, |random effect|),
-retain each raw effect and the identity of the largest control at each dose.
+For a dose response using an adjusted margin A = I - max(|S|, |R|), let
+I, S and R be same-recipient opposite-donor, same-class and random effects
+signed toward the opposite-class donor, using the recipient-specific sign.
+Retain each raw effect and the identity of the largest control at each dose.
 A change in A can result from a changing control or switching maximum as
 well as a change in the opposite-donor effect. A same-class donor is an
 active comparator, not a guaranteed semantic null; one random direction is
