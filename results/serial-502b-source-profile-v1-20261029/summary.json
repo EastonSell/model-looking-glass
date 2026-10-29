@@ -1,0 +1,71 @@
+{
+  "collector_terminal_profile_approved": false,
+  "direct_controller_waited_exit_code": 0,
+  "estimated_incremental_bytes": {
+    "cold": 355598356,
+    "load": 1024458752,
+    "warm": 270488596
+  },
+  "forward_output_metadata_count": 4,
+  "gpu": "NVIDIA GeForce RTX 2070 SUPER",
+  "host_bootstrap": {
+    "logical_commitment_bytes": 4294967296,
+    "measured_by_this_run": false,
+    "minimum_initial_headroom_each_bytes": 8589934592,
+    "reserve_bytes": 2147483648
+  },
+  "max_sample_process_allocated_peak_bytes": 369417216,
+  "max_sample_process_reserved_peak_bytes": 406847488,
+  "measured_source_commit_local": "502b2d91e6854921e97dba1c63e6947281fb74fc",
+  "minimum_sampled_device_free_bytes": 7018119168,
+  "owner_claims_retained_until_exit": {
+    "resident_bytes": 2147483648,
+    "workspace_bytes": 536870912
+  },
+  "published_source_snapshot_commit": "6955941287ca22b649169bfe02e6410cd6ab6b2b",
+  "runtime_checkout_path_is_profile_specific": true,
+  "sample_count": 5,
+  "saved_cleanup": {
+    "model_weakref_dead": true,
+    "process_allocated_bytes": 0,
+    "process_reserved_bytes": 0
+  },
+  "schema": "serial-502b-source-profile-public-v1",
+  "scope": [
+    "serial fixed 1 x 2 zero-trace development only; no grouped or traced workload",
+    "samples and process allocator peaks do not establish device-wide maxima or future bounds",
+    "the source-specific calibration did not run or measure the 4 GiB host bootstrap",
+    "output metadata is not raw-logit numerical parity",
+    "direct waits and local cleanup do not establish descendant drainage or native CUDA teardown",
+    "controller receipt does not itself hash the terminal or candidate; association uses retained operator context and matching fields and timing",
+    "the later unlocked coordinator marker and numeric-PID point was not saved as a separate receipt"
+  ],
+  "separate_fixed_development_decision": true,
+  "shared_source_tree": "5e01969b5620f1671253e064800239a9d79bbf67",
+  "status": "one-shot-saved-records-consistent",
+  "supervised_owner_exit_code": 0,
+  "workload": {
+    "capture": "none",
+    "cold_seeds": [
+      17
+    ],
+    "input_shape": [
+      1,
+      2
+    ],
+    "input_token_ids": [
+      15496,
+      995
+    ],
+    "load_seeds": [
+      17
+    ],
+    "model": "DistilGPT2",
+    "simultaneous_forwards": 1,
+    "warm_seeds": [
+      29,
+      43,
+      71
+    ]
+  }
+}
