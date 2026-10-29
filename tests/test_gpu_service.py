@@ -231,6 +231,10 @@ def service_keys():
 
 
 class KeyContractTests(unittest.TestCase):
+    def test_owner_exposes_fixed_commitment_compatibility_contract(self):
+        self.assertEqual(gpu_service.FIXED_SERVICE_OWNER_CONTRACT,
+                         'fixed-two-token-commitments-v1')
+
     def test_only_the_exact_pinned_signature_and_state_transition_are_supported(self):
         identity = SimpleNamespace(gpu_uuid=UUID)
         load, cold, warm = service_keys()

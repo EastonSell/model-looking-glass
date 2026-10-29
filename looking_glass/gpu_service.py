@@ -14,6 +14,10 @@ from threading import Event, Lock
 from .memory_budget import CudaMemorySnapshot, MemoryBudget
 
 
+# A controller can fail closed on an older, incompatible owner before launch.
+# This marker is a compatibility check, not proof of source or profile identity.
+FIXED_SERVICE_OWNER_CONTRACT = 'fixed-two-token-commitments-v1'
+
 # A failed device drain is a process-lifetime event. Retain known owner
 # objects and a bounded set of failure tracebacks, and stop admitting work.
 # Unrecorded CUDA internals can be lost; the supervised process must exit.

@@ -24,6 +24,9 @@ matching the measured load stage. Ownership is checked between individual CUDA
 identity and telemetry calls and before and after synchronization.
 Every budget telemetry snapshot must report the same 7–9 GiB device total
 bound by all three live workload keys; a mismatch fails before admission.
+The exported `FIXED_SERVICE_OWNER_CONTRACT` value
+`fixed-two-token-commitments-v1` lets a controller reject incompatible owner
+versions before startup; it does not replace source and profile verification.
 The actual CPU model must pass an explicit verifier before that copy. Both
 PyTorch module-conversion flags must read back as false around the copy, and
 the converted model must pass an independent, trusted device verifier after

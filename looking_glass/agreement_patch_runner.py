@@ -252,6 +252,15 @@ def _pair_with_signs(pair):
             'zero_transition': clean_sign != patched_sign and (clean_sign == 0 or patched_sign == 0)}
 
 
+def _label_past_pair(pair):
+    """Name the generic scorer's first/second logits by their actual tokens."""
+    result = dict(pair)
+    for original, actual in (('clean_is', 'clean_was'), ('clean_are', 'clean_were'),
+                             ('patched_is', 'patched_was'), ('patched_are', 'patched_were')):
+        result[actual] = result.pop(original)
+    return result
+
+
 def _discovery_selection(metrics, magnitudes, expected_quartets):
     """Freeze protocol-v1 ranking and baselines for complete discovery data."""
     site_ids = [site['id'] for site in _CANDIDATES]
@@ -724,6 +733,7 @@ class NaturalAgreementRunner:
                 past_metrics = score_factorial(past_cases, past_patches,
                                                [site['id'] for site in _CANDIDATES],
                                                expected_quartets=self.expected_quartets)
+                past_metrics['pairs'] = [_label_past_pair(pair) for pair in past_metrics['pairs']]
                 # Bound each summary event independently, even with four
                 # families and the full 512-pair factorial retained.
                 for metric_kind, source in (('present_site_metrics', metrics),
@@ -735,7 +745,12 @@ class NaturalAgreementRunner:
                                        'quartets': [row for row in source['quartets'] if row['site'] == site],
                                        'pairs': [_pair_with_signs(row) for row in source['pairs']
                                                  if row['site'] == site]}
-                        self.journal.record({'kind': metric_kind, 'site': site,
+                        contrast = ({'first_token': ' is', 'first_id': 318,
+                                     'second_token': ' are', 'second_id': 389}
+                                    if metric_kind == 'present_site_metrics' else
+                                    {'first_token': ' was', 'first_id': 373,
+                                     'second_token': ' were', 'second_id': 547})
+                        self.journal.record({'kind': metric_kind, 'site': site, 'contrast': contrast,
                                              'metrics': site_result}, {})
                 result = {'status': 'complete', 'forwards': self._forwards, 'controls': controls,
                           'model_state_unchanged': True, 'model_state_sha256': initial_state,

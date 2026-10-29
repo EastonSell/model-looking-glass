@@ -24,6 +24,15 @@ _owner_registry = set()
 _owner_registry_lock = Lock()
 _mapping_proxy_type = type(MappingProxyType({}))
 _input_names = frozenset(('input_ids', 'attention_mask', 'token_type_ids', 'position_ids'))
+_forward_request_fields = frozenset(('request_id', 'inputs', 'seed'))
+_forward_result_fields = frozenset(('request_id', 'logits'))
+
+
+def _has_exact_fields(value, fields):
+    """Reject extra instance-owned state before rewriting a dataclass."""
+    attributes = vars(value)
+    return (type(attributes) is dict and len(attributes) == len(fields) and
+            all(type(key) is str and key in fields for key in attributes))
 
 
 def _validate_forward_snapshot(request):
@@ -34,6 +43,8 @@ def _validate_forward_snapshot(request):
     """
     if type(request) is not ForwardRequest:
         raise InvalidRequest('broker requires an exact ForwardRequest')
+    if not _has_exact_fields(request, _forward_request_fields):
+        raise InvalidRequest('broker requires exactly the ForwardRequest fields')
     if type(request.request_id) is not str or not request.request_id or len(request.request_id) > 256:
         raise InvalidRequest('request_id must be a nonempty string of at most 256 characters')
     if type(request.seed) is not int or not 0 <= request.seed < 2**63:
@@ -68,6 +79,8 @@ def _validate_forward_result(result, worker_request_id):
     """Accept only the forward result schema and its matching internal ID."""
     if type(result) is not ForwardResult:
         raise ValueError('broker requires an exact ForwardResult')
+    if not _has_exact_fields(result, _forward_result_fields):
+        raise ValueError('broker requires exactly the ForwardResult fields')
     if type(result.request_id) is not str or result.request_id != worker_request_id:
         raise ValueError('result identity mismatch')
     if (type(result.logits) is not torch.Tensor or result.logits.device.type != 'cpu'
@@ -115,6 +128,24 @@ class _Job:
     handle: 'RequestHandle'
     request: Any = None
     preparation_token: Any = None
+    input_custody: Any = None
+    receipt_record: Any = None
+    staged_raw: Any = None
+    staged_decoded: Any = None
+    retained_error: Any = None
+    retained_status_error: Any = None
+    retained_result: Any = None
+    retained_cleanup_error: Any = None
+    retiring_staged: Any = None
+    pending_result_custody: Any = None
+    quarantine_required: bool = False
+
+
+class _RetirementSignal:
+    """A handle-independent signal, guarded by the broker condition."""
+
+    def __init__(self):
+        self.complete = False
 
 
 class RequestHandle:
@@ -131,6 +162,8 @@ class RequestHandle:
         self._outcome = None
         self._cancel = Event()
         self._job = None
+        self._retirement = _RetirementSignal()
+        self._retirement_supported = False
 
     @property
     def job_id(self):
@@ -215,6 +248,27 @@ class RequestHandle:
                 raise BrokerUnavailable('request status is unknown after broker cleanup failure')
             return self._outcome
 
+    def wait_for_retirement(self, timeout=None):
+        """Wait until fair-handoff execution aliases have been retired.
+
+        The receipt may still retain this handle until the service owner ACKs.
+        The caller must independently account for all of its own result aliases.
+        This signal is currently available only for fair-handoff handles.
+        """
+        if timeout is not None and (isinstance(timeout, bool) or timeout < 0):
+            raise ValueError('timeout must be nonnegative or None')
+        broker = self._broker
+        with broker._condition:
+            if not self._retirement_supported:
+                raise BrokerUnavailable('retirement tracking requires fair handoff')
+            if not broker._condition.wait_for(
+                    lambda: self._retirement.complete or broker._fatal_cleanup_failure
+                    or broker.quarantined, timeout):
+                raise TimeoutError('request retirement is still in flight')
+            if broker._fatal_cleanup_failure or broker.quarantined:
+                raise BrokerUnavailable('request retirement is unknown after broker cleanup failure')
+            return True
+
 
 class Broker:
     """Queue requests for exactly one trusted, preconstructed resident worker.
@@ -251,6 +305,7 @@ class Broker:
         self._pending_slots = 0
         self._team_slots = {}
         self._preparing = 0
+        self._fair_preparations = set()
         self._running = None
         # Every preparing, queued, executing, or retiring job has a durable
         # slot before its request can become visible to the queue. Queue
@@ -261,7 +316,17 @@ class Broker:
         self._unavailable = None
         self._fatal_cleanup_failure = False
         self._shutdown_error = None
+        self._fair_handoff = None
+        self._fair_running_job = None
+        # One condition-serialized handoff can fail before creating a job or
+        # joining the preparation set. Retain that state through quarantine.
+        self._fair_orphan_state = None
         self._quarantine_latched = False
+        # One preflight status probe can fail before any job exists. The
+        # condition serializes probes, and the latch rejects later probes.
+        self._status_error = None
+        self._status_cleanup_error = None
+        self._status_recovery_error = None
         self._startup_decided = False
         # Every rooted job can have a concurrent cleanup exception and a
         # detached input whose disposal was interrupted. Reserve separate
@@ -298,7 +363,7 @@ class Broker:
         """Whether this broker can currently accept requests."""
         with self._condition:
             return (not self._closed and not self._unavailable and not self.quarantined
-                    and not self._worker.poisoned)
+                    and not self._worker_poisoned_locked())
 
     @property
     def failed(self):
@@ -310,6 +375,83 @@ class Broker:
     def quarantined(self):
         """Unknown worker-owned data requires terminating the owner process."""
         return self._quarantine_latched
+
+    def _worker_poisoned_locked(self):
+        """Probe trusted worker status while preserving unknown failures."""
+        return self._worker_property_locked('poisoned')
+
+    def _worker_property_locked(self, name):
+        """Read a trusted worker property and quarantine unknown failures."""
+        try:
+            return self._worker_poisoned_probe_locked(name)
+        except BaseException as exc:
+            # A second interruption may occur before the inner probe records
+            # its original error. This preallocated slot retains that outer
+            # exception and its private context before returning to a caller.
+            self._status_cleanup_error = exc
+            try:
+                self._mark_cleanup_failed_locked()
+            except BaseException as recovery_exc:
+                self._status_recovery_error = recovery_exc
+                self._quarantine_latched = True
+                self._fatal_cleanup_failure = True
+                self._unavailable = 'broker cleanup failed; request status is unknown'
+                if not isinstance(recovery_exc, Exception):
+                    exc = recovery_exc
+            public_error = _sanitized_failure(exc, BrokerUnavailable)
+        _raise_sanitized(public_error)
+
+    def _worker_poisoned_probe_locked(self, name='poisoned'):
+        try:
+            value = getattr(self._worker, name)
+            return bool(value) if name == 'poisoned' else value
+        except BaseException as exc:
+            self._status_error = exc
+            name = type(exc).__name__
+            if isinstance(exc, KeyboardInterrupt):
+                kind = 1
+            elif isinstance(exc, SystemExit):
+                kind = 2
+            elif isinstance(exc, Exception):
+                kind = 0
+            else:
+                kind = 3
+            try:
+                self._mark_cleanup_failed_locked()
+            except BaseException as cleanup_exc:
+                self._status_cleanup_error = cleanup_exc
+                self._quarantine_latched = True
+                self._fatal_cleanup_failure = True
+                self._unavailable = 'broker cleanup failed; request status is unknown'
+                if not isinstance(cleanup_exc, Exception):
+                    name = type(cleanup_exc).__name__
+                    kind = 1 if isinstance(cleanup_exc, KeyboardInterrupt) else (
+                        2 if isinstance(cleanup_exc, SystemExit) else 3)
+        # Preserve only the fatal category in a fresh exception. In
+        # particular, its mutable traceback must not be the retained one.
+        try:
+            if kind == 1:
+                raise KeyboardInterrupt(name) from None
+            if kind == 2:
+                raise SystemExit(name) from None
+            if kind == 3:
+                raise BaseException(name) from None
+            raise BrokerUnavailable('worker status is unknown; terminate the owner process') from None
+        except BaseException as public_error:
+            public_error.__context__ = None
+            raise
+
+    def _worker_limits_locked(self):
+        """Read and validate per-snapshot/result caps under the condition."""
+        limits = []
+        for name in ('max_input_bytes', 'max_output_bytes'):
+            value = self._worker_property_locked(name)
+            if type(value) is not int or value <= 0:
+                # An unsupported value may itself own opaque resources.
+                self._retain_unknown(value)
+                raise BrokerUnavailable('worker tensor limit is invalid; terminate the owner process') from None
+            limits.append(value)
+        return limits[0], limits[1]
 
     def _retain_unknown(self, value):
         # Retain before signaling. A failed notification must not release the
@@ -338,6 +480,32 @@ class Broker:
                 self._quarantine_objects[index] = value
                 return
         raise RuntimeError('quarantine retention slots exhausted')
+
+    def enable_fair_handoff(self, teams, *, decoder, max_item_bytes,
+                            max_decoded_bytes, preparation_bytes, max_preparation_bytes,
+                            max_result_bytes, max_unacknowledged):
+        """Enable a trusted waiting adapter while idle, disabling direct submit.
+
+        The decoder and its declared bounds are owner-controlled. This mode is
+        experimental and has not been wired into the IPC server.
+        """
+        from .broker_fair_handoff import BrokerFairHandoff
+
+        with self._condition:
+            if self._closed or self._unavailable or self.quarantined or self._worker_poisoned_locked():
+                raise BrokerUnavailable('broker is closed or worker is unavailable')
+            if (self._fair_handoff is not None or self._running is not None or
+                    self._pending_slots or self._preparing or len(self._queue) or
+                    any(job is not None for job in self._job_roots)):
+                raise BrokerUnavailable('fair mode requires an idle, unbound broker')
+            target = BrokerFairHandoff(self, teams, decoder, max_item_bytes,
+                                       max_decoded_bytes, preparation_bytes,
+                                       max_preparation_bytes, max_result_bytes,
+                                       max_unacknowledged)
+            team_slots = {team: 0 for team in target.teams}
+            self._team_slots = team_slots
+            self._fair_handoff = target
+            return target
 
     def _root_job_locked(self, job):
         """Reserve a durable slot under the condition before publishing work."""
@@ -371,6 +539,8 @@ class Broker:
             # occupied until releasing the input really returns, including
             # while a finalizer blocks; no finalizer runs under the condition.
             retiring_request = None
+            self._retire_job_input(job)
+            self._retire_job_result(job)
             with self._condition:
                 if self._fatal_cleanup_failure or self.quarantined:
                     return False
@@ -422,8 +592,10 @@ class Broker:
         _validate_forward_snapshot(request)
         request_id = request.request_id
         with self._condition:
-            if self._closed or self._unavailable or self.quarantined or self._worker.poisoned:
+            if self._closed or self._unavailable or self.quarantined or self._worker_poisoned_locked():
                 raise BrokerUnavailable('broker is closed or worker is unavailable')
+            if self._fair_handoff is not None:
+                raise BrokerUnavailable('direct submission is disabled in fair mode')
             if self._pending_slots >= self._max_pending:
                 raise QueueFull('global pending-job limit reached')
             if self._team_slots.get(team_id, 0) >= self._max_pending_per_team:
@@ -471,10 +643,6 @@ class Broker:
                 self._retain_unknown(snapshot)
                 raise
         except BaseException as exc:
-            try:
-                poisoned = bool(self._worker.poisoned)
-            except BaseException:
-                poisoned = True
             removed = []
             with self._condition:
                 self._preparing -= 1
@@ -485,6 +653,7 @@ class Broker:
                     if not isinstance(exc, Exception):
                         raise
                     raise BrokerUnavailable('snapshot status is unknown after broker cleanup failure') from None
+                poisoned = self._worker_poisoned_locked()
                 try:
                     self._release_slot_locked(team_id)
                 except BaseException:
@@ -505,7 +674,7 @@ class Broker:
         try:
             with self._condition:
                 try:
-                    if self._closed or self._unavailable or self.quarantined or self._worker.poisoned:
+                    if self._closed or self._unavailable or self.quarantined or self._worker_poisoned_locked():
                         raise BrokerUnavailable('broker closed while preparing request')
                     handle._request_id = request_id
                     handle._worker_request_id = worker_request_id
@@ -550,7 +719,7 @@ class Broker:
             raise RuntimeError('invalid pending-slot accounting')
         pending = self._pending_slots - 1
         remaining = team_count - 1
-        if remaining:
+        if remaining or self._fair_handoff is not None:
             self._team_slots[team_id] = remaining
         else:
             del self._team_slots[team_id]
@@ -562,6 +731,27 @@ class Broker:
         self._fatal_cleanup_failure = True
         self._unavailable = 'broker cleanup failed; request status is unknown'
         self._condition.notify_all()
+
+    def _retire_job_input(self, job):
+        """Dispose a finished job's input before releasing its host claim."""
+        custody = job.input_custody
+        if custody is None:
+            return
+        job.request = None
+        job.input_custody = None
+        self._fair_handoff._release(custody)
+
+    def _retire_job_result(self, job):
+        """Dispose broker result aliases before marking a receipt retired."""
+        if job.receipt_record is None:
+            return
+        target = self._fair_handoff
+        with self._condition:
+            held_handle = job.handle
+            job.handle = None
+        # Last-reference finalizers may execute here, never under the condition.
+        del held_handle
+        target.retire_receipt(job)
 
     def _finish_locked(self, handle, state, result=None, error_type=None, error_message=None):
         outcome = Outcome(
@@ -607,7 +797,7 @@ class Broker:
             # A snapshot in progress may still use the worker. Never close it
             # until all accepted preparation reservations have been released.
             with self._condition:
-                self._condition.wait_for(lambda: self._preparing == 0 and
+                self._condition.wait_for(lambda: self._preparing == 0 and not self._fair_preparations and
                                          (self.quarantined or all(job is None for job in self._job_roots)))
             del removed
             if not self.quarantined:
@@ -634,6 +824,10 @@ class Broker:
                 job = item.payload
                 handle = job.handle
                 self._running = handle
+                if job.input_custody is not None:
+                    # Keep the actual input owner rooted if execution becomes
+                    # uncertain, not just the numerical ledger commitment.
+                    self._fair_running_job = job
                 self._release_slot_locked(item.team_id)
                 handle._job = None
                 handle._state = RequestState.RUNNING
@@ -646,6 +840,7 @@ class Broker:
             try:
                 result = self._worker.execute(job.request, handle._cancel)
             except BaseException as exc:
+                job.retained_error = exc
                 if not isinstance(exc, Exception) or isinstance(exc, (MemoryError, torch.OutOfMemoryError)):
                     self._retain_unknown(exc)
                 failure = _describe_exception(exc)
@@ -654,20 +849,41 @@ class Broker:
             else:
                 try:
                     _validate_forward_result(result, handle._worker_request_id)
+                    if self._fair_handoff is not None:
+                        self._fair_handoff.validate_result_storage(result)
                     result = replace(result, request_id=handle.request_id)
                 except BaseException:
                     self._retain_unknown(result)
                     failure = ('InvalidWorkerResult', 'worker returned an invalid request identity or result')
                     fatal = True
                     result = None
-            try:
-                poisoned = self._worker.poisoned
-            except BaseException as exc:
-                poisoned = True
-                if failure is None or cancellation:
-                    failure = _describe_exception(exc)
-                    cancellation = False
+            # Keep the exact returned object rooted if the status probe itself
+            # fails; its fields may own resources beyond numerical ledgers.
+            job.retained_result = result
             with self._condition:
+                if self.quarantined:
+                    poisoned = True
+                else:
+                    try:
+                        poisoned = self._worker_poisoned_locked()
+                    except BaseException as exc:
+                        poisoned = True
+                        job.retained_status_error = exc
+                        if failure is None or cancellation:
+                            failure = _describe_exception(exc)
+                            cancellation = False
+                        if not isinstance(exc, Exception):
+                            fatal = True
+                if poisoned and job.input_custody is not None:
+                    self._mark_cleanup_failed_locked()
+                    if failure is None:
+                        failure = ('WorkerUnavailable', 'worker poisoned during execution')
+                        result = None
+                        cancellation = False
+                if self.quarantined and failure is None:
+                    failure = ('WorkerUnavailable', 'worker status is unknown after quarantine')
+                    result = None
+                    cancellation = False
                 if failure is not None and (not cancellation or poisoned):
                     self._finish_locked(handle, RequestState.FAILED, error_type=failure[0], error_message=failure[1])
                 elif cancellation or handle._cancel.is_set():
@@ -677,11 +893,32 @@ class Broker:
                 self._running = None
                 if (poisoned or fatal) and not self._fatal_cleanup_failure and not self.quarantined:
                     self._unavailable = 'worker failed and cannot be reused'
-                    removed = self._fail_pending_locked()
+                    if not self._fatal_cleanup_failure:
+                        removed = self._fail_pending_locked()
+                # A waiting client can wake when the condition is released.
+                # Drop this thread's result/handle aliases before retirement.
+                item = None
+                handle = None
+                result = None
             # Do not retain finished inputs, exceptions, or results in the owner
             # thread while waiting for the next job.
-            self._retire_items(removed)
-            self._retire_job(job)
+            if not self._fatal_cleanup_failure and not self.quarantined:
+                if not poisoned and not fatal:
+                    job.retained_error = None
+                    job.retained_status_error = None
+                    job.retained_result = None
+                    self._retire_job(job)
+                    with self._condition:
+                        if not self._fatal_cleanup_failure and not self.quarantined:
+                            self._fair_running_job = None
+                elif job.input_custody is None:
+                    # The base trusted-worker contract permits clean disposal
+                    # after an ordinary poisoned direct execution failure.
+                    job.retained_error = None
+                    job.retained_status_error = None
+                    job.retained_result = None
+                    self._retire_job(job)
+                self._retire_items(removed)
             del item, job, handle, result, failure, removed
 
     def _fail_pending_locked(self):
@@ -733,9 +970,13 @@ class Broker:
                 cleanup_failure = exc
             if self._running is not None:
                 self._running._cancel.set()
+            handle = None
             self._condition.notify_all()
-        if cleanup_failure is None:
-            self._retire_items(removed)
+        if cleanup_failure is None and not self._fatal_cleanup_failure and not self.quarantined:
+            try:
+                self._retire_items(removed)
+            except BrokerUnavailable:
+                raise BrokerShutdownError('broker could not release input custody') from None
         del removed
         if cleanup_failure is not None:
             if not isinstance(cleanup_failure, Exception):
