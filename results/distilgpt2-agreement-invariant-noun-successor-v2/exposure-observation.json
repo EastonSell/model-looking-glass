@@ -1,0 +1,18 @@
+{
+  "case_sha256": "188782606abd576cde029408bb34975e7fd7ac2113bf17299dbb7e1aa2ddd76b",
+  "observation": "Public inventory and named pending input comparisons only; protected or unknown history is unverified. Timestamp is the operator public-source review; no protected state or membership was queried. Protected history and target relation are unverified.",
+  "observed_public_main": "4a4078d99d25eba4bbadff16b75e3728524f2c06",
+  "operator_revision": "4a4078d99d25eba4bbadff16b75e3728524f2c06",
+  "operator_sha256": "78d783dc37c1ace4c39300b62e67652d76f3323de79830628ecd64e46aa0bfa0",
+  "operator_version": "distilgpt2-development-exposures-v44",
+  "pending_adapter_comparison_sha256": "d07675c415a2264bae3900789c29d5ebff624d37828019856d8c7984a4339200",
+  "public_only_departure": {
+    "path": "docs/AGREEMENT_INVARIANT_NOUN_V2_PUBLIC_ONLY_DEPARTURE.md",
+    "sha256": "ae980f3fd2a0316d687e45d5038e12b1ecbfab017fe66872f27de9fc4618e749",
+    "source_revision": "ac35e97c250aeefa683d9fd4be7a3761d2fee3f9"
+  },
+  "reconstructed_sha256": "61a80aafd9d4aea075774776d830b017f8e4c5e1a4fd0f2643963d2075a6e4ee",
+  "refreshed_utc": "2026-10-29T14:01:01.822078+00:00",
+  "schema": "agreement-invariant-exposure-refresh-v1",
+  "status": "clear"
+}

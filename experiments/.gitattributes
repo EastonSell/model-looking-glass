@@ -15,3 +15,4 @@ bert_antonym_preference_public_comparison_v1.json -text
 bert_antonym_preference_public_exposures_v1.json -text
 bert_antonym_preference_first_draft_v1.json -text
 bert_antonym_preference_first_comparison_v1.json -text
+bert_antonym_preference_public_exposures_v2.json -text
