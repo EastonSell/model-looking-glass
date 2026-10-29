@@ -40,7 +40,7 @@
   },
   "prior_preflight_note": {
     "git_path": "docs/FLAN_T5_WEIGHT_EDIT_MANIFEST_PREFLIGHT_V1.md",
-    "sha256": "ca45215d4f2e082c40df4ef1c82154948375e7f3f9fbffa3ff643e5c7eca65ab"
+    "sha256": "46485943997a86fb5c0f2e381269476716aa82f65bb48353dbf35dcde524ea7e"
   },
   "protocol_sha256": "c06fd598e6b5d9cf8d9734c26f6711fbf53b0fbfda08f009ab691ee91dca5478",
   "public_inputs": {
@@ -59,7 +59,7 @@
     "transformers": "4.57.3"
   },
   "schema": "flan-weight-edit-manifest-v1",
-  "source_revision": "2edc0c6b60819df8b0a779f624aa307d48ac3792",
+  "source_revision": "07498325b991daa5228a7c661ea42de4b1edbe19",
   "sources": {
     "flan_weight_edit_case_test.py": {
       "git_path": "tests/flan_weight_edit/flan_weight_edit_case_test.py",
