@@ -157,7 +157,7 @@ class GroupedObservation:
         self._fault()
         try:
             current = getattr(_local, 'forward', None)
-            if current is scope or (scope is None and type(current) is _ForwardScope and current.owner is self):
+            if current is scope or (scope is None and isinstance(current, _ForwardScope) and current.owner is self):
                 _local.forward = None
         except BaseException as exc:
             self._fault()
@@ -255,6 +255,37 @@ class _ForwardScope:
                                'synchronized': self.synchronized, 'error': self.error})
 
 
+class _SerialForwardScope(_ForwardScope):
+    """The broker's actual single worker token names this one-member call."""
+
+    def __init__(self, owner, job_id, team_id, request_id, worker_request_id):
+        self.owner = owner
+        self.group_id = self.call_id = worker_request_id
+        self.job_ids = (job_id,)
+        self.members = [{'job_id': request_id, 'team_id': team_id,
+                         'broker_id': owner._broker_id, 'broker_job_id': job_id,
+                         'row_offset': 0}]
+        self.profile_id = self.shape = self.worker_id = None
+        self.schema = self.device = None
+        self.entry_ns = self.finish_ns = None
+        self.returned = False
+        self.state = self.error = None
+        self.synchronized = False
+
+    def bind_serial(self, worker, profile, snapshot):
+        if (self.profile_id is not None or snapshot.request_id != self.group_id
+                or type(profile.profile_id) is not str
+                or re.fullmatch(r'[0-9a-f]{64}', profile.profile_id) is None
+                or tuple(snapshot.inputs['input_ids'].shape) != profile.shape
+                or profile.shape[0] != 1):
+            raise ValueError('selected single-row workload does not match the broker request')
+        self.profile_id = profile.profile_id
+        self.shape = tuple(profile.shape)
+        self.schema = tuple(profile.input_dtypes)
+        self.device = profile.device
+        self.worker_id = id(worker)
+
+
 def _invoke(method, *args):
     """Update thread-local scalar metadata without exposing observer failures."""
     scope = None
@@ -271,6 +302,10 @@ def _invoke(method, *args):
 
 def _bind_forward(worker, profile, snapshot, launch):
     _invoke('bind', worker, profile, snapshot, launch)
+
+
+def _bind_serial_forward(worker, profile, snapshot):
+    _invoke('bind_serial', worker, profile, snapshot)
 
 
 def _enter_forward(worker, request, device_inputs):

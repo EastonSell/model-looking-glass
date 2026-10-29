@@ -11,7 +11,7 @@ import threading
 
 import torch
 
-from .grouped_observation import _bind_forward
+from .grouped_observation import _bind_forward, _bind_serial_forward
 from .memory_budget import AdmissionError, MemoryBudget
 from .resident_worker import (
     ForwardResult, InvalidRequest, RequestCancelled, ResidentWorker,
@@ -410,6 +410,8 @@ class BudgetedWorker:
                         raise
                 if group is not None:
                     _bind_forward(self._worker, profile, snapshot, launch)
+                else:
+                    _bind_serial_forward(self._worker, profile, snapshot)
                 try:
                     result = self._worker.execute(snapshot, cancel_event)
                 except WorkerSynchronizationError as exc:

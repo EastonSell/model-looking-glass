@@ -11,6 +11,88 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class StudyExecutorDevelopmentTests(unittest.TestCase):
+    def test_fixed_cpu_runtime_drift_poisoned_before_model_or_submission(self):
+        code = r'''
+import os
+from unittest.mock import patch
+import torch
+from looking_glass.causal_v2_custodian_run import ForwardBudget
+from looking_glass.causal_v2_runtime import establish_numeric_policy
+from looking_glass.causal_v2_runtime_preflight import inspect_backend_settings
+from looking_glass.causal_v2_study_executor import StudyExecutionError, StudyExecutor
+policy=establish_numeric_policy(); original=torch.get_default_dtype()
+for setting in ('dtype','mask','cuda'):
+    executor=StudyExecutor(policy,backend_settings=inspect_backend_settings()); budget=ForwardBudget(5)
+    try:
+        if setting=='dtype': torch.set_default_dtype(torch.float64)
+        with patch.dict(os.environ, {'CUDA_VISIBLE_DEVICES':'0' if setting=='mask' else '-1'}), \
+             patch('torch.cuda.is_initialized', return_value=(setting=='cuda')), \
+             patch('looking_glass.causal_v2_study_executor.TinyResidual',
+                   side_effect=AssertionError('model construction was not blocked')):
+            try: executor.begin_model('discovery',31201,'a'*64,budget)
+            except StudyExecutionError: pass
+            else: raise AssertionError(f'{setting} drift was accepted')
+            assert executor._failed and budget.submissions==budget.root_forwards==0
+    finally:
+        torch.set_default_dtype(original)
+    assert executor.close() is None
+assert not torch.cuda.is_initialized()
+'''
+        self._run(code)
+
+    def test_fixed_cpu_runtime_drift_after_call_is_detected(self):
+        code = r'''
+import os, torch
+from unittest.mock import patch
+from looking_glass.causal_v2_executor import DevelopmentBudget, _forward
+from looking_glass.causal_v2_runtime import establish_numeric_policy
+from looking_glass.causal_v2_runtime_preflight import inspect_backend_settings
+from looking_glass.causal_v2_study_executor import StudyExecutionError, StudyExecutor
+policy=establish_numeric_policy(); executor=StudyExecutor(policy,backend_settings=inspect_backend_settings())
+class FakeModel:
+    def __call__(self,*args,**kwargs):
+        os.environ['CUDA_VISIBLE_DEVICES']='0'
+        return torch.zeros((1,2),device='cpu')
+budget=DevelopmentBudget(5)
+try:
+    with patch('looking_glass.causal_v2_executor._check_hooks'):
+        try: _forward(FakeModel(),None,budget,policy,backend_check=executor._check_backend)
+        except StudyExecutionError: pass
+        else: raise AssertionError('post-call CPU mask drift was accepted')
+    assert budget.submissions==budget.root_forwards==1
+finally:
+    os.environ['CUDA_VISIBLE_DEVICES']='-1'
+assert not torch.cuda.is_initialized()
+'''
+        self._run(code)
+
+    def test_backend_snapshot_is_required_and_changes_poison_callback(self):
+        code = r'''
+import torch
+from looking_glass.causal_v2_custodian_run import ForwardBudget
+from looking_glass.causal_v2_runtime import establish_numeric_policy
+from looking_glass.causal_v2_runtime_preflight import inspect_backend_settings
+from looking_glass.causal_v2_study_executor import StudyExecutionError, StudyExecutor
+policy=establish_numeric_policy(); snapshot=inspect_backend_settings()
+bad={**snapshot,'mkldnn_enabled': not snapshot['mkldnn_enabled']}
+try: StudyExecutor(policy,backend_settings=bad)
+except StudyExecutionError: pass
+else: raise AssertionError('incorrect backend attestation accepted')
+executor=StudyExecutor(policy,backend_settings=snapshot); budget=ForwardBudget(100)
+snapshot['thread_environment']['OMP_NUM_THREADS']='mutated caller copy'
+executor._check_backend()  # The validated snapshot is owned, not aliased.
+torch.set_float32_matmul_precision('medium' if snapshot['float32_matmul_precision']!='medium' else 'highest')
+try:
+    try: executor.begin_model('discovery',31201,'a'*64,budget)
+    except StudyExecutionError: pass
+    else: raise AssertionError('changed backend accepted')
+    assert executor._failed and budget.submissions==budget.root_forwards==0
+finally:
+    torch.set_float32_matmul_precision(snapshot['float32_matmul_precision'])
+assert executor.close() is None and not torch.cuda.is_initialized()
+'''
+        self._run(code)
+
     def test_input_construction_failure_is_counted_and_poisoned(self):
         code = r'''
 import os,sys,threading,types
@@ -22,6 +104,7 @@ from looking_glass import causal_v2_study_executor as study
 budget=DevelopmentBudget(100); executor=object.__new__(study.StudyExecutor)
 executor._owner_pid=os.getpid(); executor._owner_thread=threading.current_thread()
 executor._closed=executor._failed=executor._active=False
+executor._check_backend=lambda:None
 executor._model=object(); executor._budget=budget; executor._nodes=[]; executor._case_bytes=None
 executor._seed=17; executor._phase='discovery'; executor._state_sha='a'*64
 executor._policy=types.SimpleNamespace(verify=lambda:None); executor._clean={}
@@ -102,6 +185,7 @@ sys.modules[custodian.__name__]=custodian
 from looking_glass import causal_v2_study_executor as study
 class Fake:
     _check_owner=study.StudyExecutor._check_owner
+    def _check_backend(self): pass
     @study._guarded
     def call(self,nested=False):
         if not nested:
@@ -290,6 +374,7 @@ from looking_glass.causal_v2_executor import _check_input
 from looking_glass.causal_v2_evidence_adapter import CellEvidence
 from looking_glass.causal_v2_model_identity import state_sha256
 from looking_glass.causal_v2_runtime import establish_numeric_policy
+from looking_glass.causal_v2_runtime_preflight import inspect_backend_settings
 from looking_glass.model import TinyResidual
 
 # The two inputs are inventoried reviewer vectors outside the v2 domain.
@@ -320,7 +405,7 @@ with patch.object(study,'_MODEL_SEEDS',(41977,)), patch.object(study,'_CASE_COUN
      patch.object(study,'_study_input_check',_check_input), \
      patch.object(study,'_case_values',side_effect=fake_case_values), \
      patch.object(study,'freeze_discovery',side_effect=freeze):
-    executor=study.StudyExecutor(policy)
+    executor=study.StudyExecutor(policy,backend_settings=inspect_backend_settings())
     executor.begin_model('discovery',41977,expected,budget)
     for index,target in enumerate(study._NODES):
         cell_id=f'v2-m41977-c{index:02d}'

@@ -1,0 +1,609 @@
+{
+  "assets_sha256": {
+    "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+    "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+    "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+    "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+    "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+    "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+    "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+  },
+  "cases": [
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c00",
+      "input_ids": [
+        464,
+        3797,
+        1474,
+        262,
+        9168
+      ],
+      "lemma": "cat",
+      "number": "singular",
+      "quartet": "q1",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c01",
+      "input_ids": [
+        464,
+        11875,
+        1474,
+        262,
+        9168
+      ],
+      "lemma": "cat",
+      "number": "plural",
+      "quartet": "q1",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c02",
+      "input_ids": [
+        464,
+        3290,
+        1474,
+        262,
+        9168
+      ],
+      "lemma": "dog",
+      "number": "singular",
+      "quartet": "q1",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c03",
+      "input_ids": [
+        464,
+        6844,
+        1474,
+        262,
+        9168
+      ],
+      "lemma": "dog",
+      "number": "plural",
+      "quartet": "q1",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c04",
+      "input_ids": [
+        464,
+        4701,
+        287,
+        262,
+        2119
+      ],
+      "lemma": "teacher",
+      "number": "singular",
+      "quartet": "q2",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c05",
+      "input_ids": [
+        464,
+        7799,
+        287,
+        262,
+        2119
+      ],
+      "lemma": "teacher",
+      "number": "plural",
+      "quartet": "q2",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c06",
+      "input_ids": [
+        464,
+        6253,
+        287,
+        262,
+        2119
+      ],
+      "lemma": "doctor",
+      "number": "singular",
+      "quartet": "q2",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c07",
+      "input_ids": [
+        464,
+        7519,
+        287,
+        262,
+        2119
+      ],
+      "lemma": "doctor",
+      "number": "plural",
+      "quartet": "q2",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c08",
+      "input_ids": [
+        464,
+        6802,
+        13970,
+        262,
+        18180
+      ],
+      "lemma": "artist",
+      "number": "singular",
+      "quartet": "q3",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c09",
+      "input_ids": [
+        464,
+        7912,
+        13970,
+        262,
+        18180
+      ],
+      "lemma": "artist",
+      "number": "plural",
+      "quartet": "q3",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c10",
+      "input_ids": [
+        464,
+        6260,
+        13970,
+        262,
+        18180
+      ],
+      "lemma": "writer",
+      "number": "singular",
+      "quartet": "q3",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c11",
+      "input_ids": [
+        464,
+        8786,
+        13970,
+        262,
+        18180
+      ],
+      "lemma": "writer",
+      "number": "plural",
+      "quartet": "q3",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c12",
+      "input_ids": [
+        464,
+        18739,
+        2157,
+        262,
+        2156
+      ],
+      "lemma": "farmer",
+      "number": "singular",
+      "quartet": "q4",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c13",
+      "input_ids": [
+        464,
+        9818,
+        2157,
+        262,
+        2156
+      ],
+      "lemma": "farmer",
+      "number": "plural",
+      "quartet": "q4",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c14",
+      "input_ids": [
+        464,
+        43272,
+        2157,
+        262,
+        2156
+      ],
+      "lemma": "sailor",
+      "number": "singular",
+      "quartet": "q4",
+      "subject_index": 1
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "case_id": "c15",
+      "input_ids": [
+        464,
+        29996,
+        2157,
+        262,
+        2156
+      ],
+      "lemma": "sailor",
+      "number": "plural",
+      "quartet": "q4",
+      "subject_index": 1
+    }
+  ],
+  "checkpoint_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "development_exposure_inventory_scope": "snapshot at source freeze; recheck latest before held-out draw",
+  "development_exposure_inventory_sha256": "e5feaccfeaed288bd53509ee4d68675d6b00ddb1a876279d5c42465010c63344",
+  "development_exposure_inventory_version": "distilgpt2-development-exposures-v7",
+  "execution_timeout_seconds": 7200,
+  "expected_forwards": 608,
+  "independent_natural_audit_source_sha256": "7b82b476788ccec49c8f48bd30dfd9a21cdedd2c5532057c11b087e08b641a6d",
+  "model_id": "distilbert/distilgpt2",
+  "natural_prediction_clarification_sha256": "e9cd1e0d1b1144ffdc7b3c45be12393dd3c285e28b310b3334f4926fdb2b8d06",
+  "preflight_archive_sha256": "7c262f3fe81236888a8f5fdb6d31f7835666674be9ffbf36f8ce2ca6a375eb6c",
+  "preflight_manifest_sha256": "1b1adf4d72163bfa3e0399ed8ee92eba6b5c0eb82a47edf28cecde5ffb1deafe",
+  "preflight_result_sha256": "96bcb687dbdd9bb4017a8506b6acaffeb5a3da43478cf2da551a4a5cb0c723c8",
+  "preflight_status": "passed; public exposed development",
+  "protocol_sha256": "95a8914ca1b7412cfe931a9ccb5341a388ec391159c934095c63a966beb051ee",
+  "runtime": {
+    "attention": "eager",
+    "autocast_cpu": false,
+    "batch_size": 1,
+    "byteorder": "little",
+    "cache": false,
+    "cpu_count": 24,
+    "cpu_rng_seed": 20261028,
+    "cpu_threads": 1,
+    "cuda_initialized": false,
+    "cuda_visible_devices": "-1",
+    "default_dtype": "torch.float32",
+    "denormal_probe": [
+      1,
+      4194304
+    ],
+    "dependency_configuration": {
+      "pyvenv_config_sha256": "1358371368b66b4380d1b9cee2ae1286cb00cea05010de259e4aa68cfb84e613",
+      "site_packages_sha256": "04b59a493504e9982dcb4234d2e1c4f0d670c68e5159d665f667dd4aa8443e22"
+    },
+    "deterministic_algorithms": true,
+    "deterministic_warn_only": false,
+    "device": "cpu",
+    "driver": "not applicable",
+    "dtype": "float32",
+    "evaluation": true,
+    "float32_matmul_precision": "highest",
+    "huggingface_hub": "0.36.2",
+    "interop_threads": 1,
+    "mkl_available": true,
+    "mkldnn_available": true,
+    "mkldnn_enabled": true,
+    "omp_num_threads": "1",
+    "openmp_available": true,
+    "platform": "Windows",
+    "processor": "AMD64 Family 25 Model 33 Stepping 2, AuthenticAMD",
+    "python": "3.11.15 (main, Jun 11 2026, 04:59:07) [MSC v.1944 64 bit (AMD64)]",
+    "python_executable_sha256": "749a54c7896d14138d74c6e35f89cb4f8fb1c59d1dd6ddaeaa8107b2a8e0aba2",
+    "safetensors": "0.8.0",
+    "thread_environment": {
+      "MKL_NUM_THREADS": null,
+      "NUMEXPR_NUM_THREADS": null,
+      "OPENBLAS_NUM_THREADS": null
+    },
+    "tokenizers": "0.22.2",
+    "torch": "2.8.0+cu128",
+    "torch_build_sha256": "9835a6eed581f616d1e294cc42162b701425ea24bf4723678b8233e78f30e8c6",
+    "transformers": "4.57.3",
+    "windows_version": {
+      "build": 26200,
+      "major": 10,
+      "minor": 0,
+      "platform": 2,
+      "platform_version": [
+        10,
+        0,
+        26100
+      ],
+      "service_pack": ""
+    }
+  },
+  "schema": "mlg-natural-cpu-binding-v1",
+  "source_commit": "def07cbb168408a12c76ba30f196af45149e111d",
+  "source_sha256": {
+    "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+    "looking_glass/agreement_calibration_spec.py": "2d94bf37fb92c53c5d304d51022a9e8b4b1d91264c9eb23b4e13d655e29fa19d",
+    "looking_glass/agreement_heldout.py": "30183924b8b0698f104716a021037721bfc4e2ac818035e51d5d5372dc29e462",
+    "looking_glass/agreement_journal.py": "f3f9fe27ea32ab820e226b5c77b392afcb108d9943014e8f043145d8f8e05797",
+    "looking_glass/agreement_metrics.py": "e9b3014e91ccf2dec8bb2e7b9433519d5090ccefaf8669864edf543b44f5986e",
+    "looking_glass/agreement_numeric.py": "f9a5a9ee3627162d843c0dc0d8c6ea9d98c000a4b6d472fb55254fb3395d07dc",
+    "looking_glass/agreement_patch_runner.py": "992a58eaa5c6f9927d756daddb65ffb360a1eb58c751afa53363538fabadcefd",
+    "looking_glass/agreement_preflight_v1.py": "e6952ead61dd9f8f383fceb2e3581ad6fe093f59fb0da5928cc306e3f7a81351",
+    "looking_glass/batch_validation.py": "214732f79a476e82c325216b118525a9a3bac72860e7e98aab059180e17dda18",
+    "looking_glass/batched_events.py": "79cc10978caca7a026824be35ddf01013be601b94bce5afcd3303a361d83bffc",
+    "looking_glass/batched_recorder.py": "8e241c8b6670539ee9d130dea587220fe3132c3452330605e612cc26c1eb53cd",
+    "looking_glass/batched_throughput.py": "44d817cdda2d8c557b70f41aa399e8abb97d24b2f8ca025119896db524f0651b",
+    "looking_glass/bert_agreement_audit.py": "177378de15373664dd12090b6812a9efd13c3c4b586ca8d7bb19a2ee3b3e4183",
+    "looking_glass/bert_agreement_cases.py": "8fe4b55b02505510a779aa8ac9c6c28123dd0b101528bec7f50c3fc6c94f4a61",
+    "looking_glass/bert_agreement_exposures_v2.py": "69174e70badff58c413f2c2ec87c7dc0fdf7243ec76f2472de2411a04644a33d",
+    "looking_glass/bert_agreement_exposures_v3.py": "9423f20399c97b2592a0d04ce39b791e4646ddb7952d5c7afc42c9031c9cd6e9",
+    "looking_glass/bert_agreement_runner.py": "e777a2eb647a1a5c024b369be0dc8941df664a7ee02958bcb3dec6f3f617739b",
+    "looking_glass/bert_agreement_study.py": "38642f2f51eb74fba1d0156d530d1e6c88a75a923a64ba30d5a3a1d715d2abc4",
+    "looking_glass/bert_gpu_calibration.py": "7ffe65e95c909438fe83ffff96f3f50a9e16b0e205176ad32711d572a8e175b9",
+    "looking_glass/bert_gpu_evidence.py": "08a84c4eee1910f2322687f548501cc3eb0e39daa2714b36a26cf5f85ced3b5e",
+    "looking_glass/bert_gpu_study_adapter.py": "070c45afd92cc23adba8079860799ba8aec34e8a131e6488954e5bc14cc62847",
+    "looking_glass/broker.py": "0eb045c7d3f6f05195df0f8c16bb44d70cc7debf9e1738a086198661dfe46261",
+    "looking_glass/broker_fair_handoff.py": "7cc10e2ba308a147831cc6e4e1b001c8be6eed372e725771252ecd4c1e231868",
+    "looking_glass/budgeted_worker.py": "b6cc12e9d0b9048e268c186dd97a6fed900e9117dc9848abc5156fd8c7079e53",
+    "looking_glass/capture_dispatcher.py": "be7e89e43d5f42ed221c515746c4ca4157e61954dc8bda7fd45f738b87079fc1",
+    "looking_glass/causal_experiment.py": "1bc3b54f48d6aefa59c51d9d884fb5f2bb72a0c45e904f9f97edea0c1d08992a",
+    "looking_glass/causal_metrics.py": "3bbd4361cf97130a8313488ca997c51d41988d7baf416d54fb8d20b5247f0227",
+    "looking_glass/causal_trace_v2.py": "861ba7b6a63784ca698b1878935b969bb73af84e05e4b0914f05f4c942a581e2",
+    "looking_glass/causal_v2_custodian_run.py": "8bffb0c0809248cc21a815a37446f9b5d3926dbfe9dd5bfba1c0f412a1e9346f",
+    "looking_glass/causal_v2_custody.py": "27801bba107ee5d5a5f914072b221208082d53da96f230fee8f365e7a47c0c56",
+    "looking_glass/causal_v2_evidence_adapter.py": "b3dcd792e02d341a35e75430bf4deadddadedc5c6c8977a8d5f3f72fb4b5de53",
+    "looking_glass/causal_v2_evidence_encoder.py": "61074feb09f928a980364881eabd435265ad67c2b5f959ce09217612b8f609eb",
+    "looking_glass/causal_v2_executor.py": "6bd4dae37059847d1756b7bc918fd7de4280c5ac773621dd5c68f006e493e4bc",
+    "looking_glass/causal_v2_freeze.py": "26dc06210845e06729fde7e7a55caf5a52cb206f8568a3ea5e9ca323a7ab0b49",
+    "looking_glass/causal_v2_gate_dev.py": "b02ab5d8c7d38832395aed6c0bf08388c77247d56eb48d5498e30b0798dbcd3a",
+    "looking_glass/causal_v2_model_identity.py": "7ac08d3167072564516bba03955426339c2e505844aa69d02c228f41ad2a64c0",
+    "looking_glass/causal_v2_preparation.py": "90e4f06ee4043fdca7dc639a42da4e2ace7e1cff649f0126fa3acf601df58fc4",
+    "looking_glass/causal_v2_runtime.py": "886165889984f8a0d493d76aa6c46721fe78bd16f88ef6f3da87af28400da82b",
+    "looking_glass/causal_v2_runtime_preflight.py": "7d0f5ef931697f475060dc7143183e31e14fddee13456195065a0304b9376b6d",
+    "looking_glass/causal_v2_scoring.py": "dc340e892bb35c4811dec62275a56fbcf3f89789f5d58caa837260923f26bf18",
+    "looking_glass/causal_v2_selection.py": "82301d4814c9bfabbbe9da0f31bfe685c80f11790816739ab492e2a065409335",
+    "looking_glass/causal_v2_study_executor.py": "ab51bc7c587cd6735271e4d7df65296e7d570462566abc737a0f9c151b6d8aa4",
+    "looking_glass/causal_verify.py": "6a540c6f31ae4158c33a681489f8b76049f35c73cc8710814d7ef05a5f4acefa",
+    "looking_glass/certified_batch_policy.py": "4355979f8655eff414ee763b6a107504503be2e5532654153d88e859f125c08d",
+    "looking_glass/cpu_service.py": "f563400f68b02e45cea5c734836c241a5c04785304a761b1d79502a09e749687",
+    "looking_glass/cpu_study_supervision.py": "5fcb398f882bb6c89093faf845bee16256526947e2a8b4ae9f0b0ffbde602085",
+    "looking_glass/cpu_trace_owner.py": "71be76669fa4faecd7526e3316f01917b9cd1f32a988014897cda6575ed3bb20",
+    "looking_glass/cuda_benchmark.py": "fd82db8cc4d7b51f0e100ae276f38951c57e79778dc871e7134c60d42c06d35e",
+    "looking_glass/cuda_benchmark_entry.py": "691e0865b21a47f33285e3e8ac5195dcd723477e6d79be77dbfaafaa0b3f1a82",
+    "looking_glass/cuda_cleanup.py": "bccde75044bd2ee0ab1c4dfd8826fa214fc497e0d44b0d56493303b2315d73c9",
+    "looking_glass/device_identity.py": "ad08eff6edbb1c94af9abec0d07d8a10944624488b8d723b10c75e8c67e10c45",
+    "looking_glass/device_lease.py": "7f52ad238a1c9e8800c3d1ebf3b6969edd810a02754d1462c34f06cf783b57bf",
+    "looking_glass/distilgpt2_batch_cpu_audit.py": "20ae4b0c2169543b375a7808d034c52d504bf872503d99fb71e482f0c1345417",
+    "looking_glass/distilgpt2_batch_cpu_v1.py": "fd7f8300f0d6904236d5688389a043906c6cd2d6f66f688abb0b8120b10cbeb0",
+    "looking_glass/distilgpt2_intervention_dev.py": "43e25d8f05b3a2f32694f551fc3569457858f6d719b45fd9c477d89afb7dc985",
+    "looking_glass/experiment.py": "7d6f0a9591cf808358dad3fc94672c5e04868ef273ea4cded2a4c938dd3d0d5d",
+    "looking_glass/fair_adapter.py": "a43c86e51c023eb0d0e9ac1e48ae9a38cddc074ad2702e460f48065d629d046c",
+    "looking_glass/fair_admission.py": "36d34cebebb3a4e08eed85a02517e041d88bdab73280afae19af7bcda83f78e1",
+    "looking_glass/fair_queue.py": "af9b1fdf9b8b86483ee446a9d13bce72ff844341266707b757807ea6265ad1fb",
+    "looking_glass/fair_service_lifecycle.py": "bfe026a3bababc32f3d591f746db43a703b26cf1bff39b515713686e2386e4be",
+    "looking_glass/gpu_bootstrap.py": "86ab2008b7973493f431df243b1821c7083fb50eec8c7cde292906b086d51ff5",
+    "looking_glass/gpu_oneshot.py": "bc994727276a9918741ee80bd1ad8913b01d474015bb8dfdadbbfed1de9e048f",
+    "looking_glass/gpu_service.py": "12ca7458d2aefeaed83065475ab132ff3d56167664553de117352a7c0009cbee",
+    "looking_glass/gpu_service_control.py": "5b448a8f39b6d464a06e6f58aa748ce3662a551b3b4d6fc8ed85ef77e19e1839",
+    "looking_glass/gpu_service_process.py": "9ebe8f06e78476a5862eaf9399b2b28f6d3b74445c5f37c8abcba975d73125e4",
+    "looking_glass/grouped_broker.py": "6aea6281d9fdaa61eb2052e2916f1590c7eb8f124c66c33cc5ebdd15300c282e",
+    "looking_glass/grouped_broker_state.py": "face7ad615cd3285aa21796ef7a21a5b7779539bb4280480f9225007e3dfd112",
+    "looking_glass/grouped_observation.py": "b89f297221b62b3807f83f25c68f4ed9762b390b24c4ab116dc61b9712828d46",
+    "looking_glass/grouped_worker.py": "16bca1e0062ae486d4e77b18a6f7057a4d8cd40e99c57a999102789a6b8ec85f",
+    "looking_glass/host_budget.py": "1bab870bba3d7f5d8ccdbf25458c7cb60192248c25506b451859fadcc6340d37",
+    "looking_glass/intervention_plan.py": "6470676938e73e48234128c30ba1d10a49104ee8513434871bc6e973c55d6120",
+    "looking_glass/interventions.py": "71cbcf4776660d2dd883b82815f710b0c909228fd1762504f9e3f984f7f6c60f",
+    "looking_glass/ipc.py": "df395dd1da71735808ac40b16e72172bed1338cd7d4a344b15ba4d08e1098426",
+    "looking_glass/ipc_custody.py": "de198407c09b2a48c8de009c128a09010907cb158f5bb4662ef38546d0d1f9d7",
+    "looking_glass/ipc_fair_bridge.py": "0f970115a11e564bfbcedb81e712692979bbe4bb32495a7e8fc2b020f30befd1",
+    "looking_glass/live_profile.py": "b29df1518a66b7c445e582d7a78c430db0253d11b9e3a4825530f6a3bd25e6fc",
+    "looking_glass/localization.py": "48f7141f5f2c1c6e7491fada748cad795990f5de87f70c2b63cda7cf0cc58006",
+    "looking_glass/memory_budget.py": "27d7b1a352815b7a103e1d70a5f8f0a3ccffdd10dacb71a0744a47ad6f66e1b9",
+    "looking_glass/microbatch.py": "c1f50d987cb3cc253f21a46fde696f3443131ab743272685f14a94ad181e5032",
+    "looking_glass/model.py": "b8f3809c8720b168ed5f036503b4b9f977c2797f156f7869e0004fe192d133e3",
+    "looking_glass/model_ownership.py": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434",
+    "looking_glass/natural_agreement_controller.py": "8ad913fd2dd96c1a268c1d67c0c95b2f178312bffdae2fa54116fbe88d9cabc3",
+    "looking_glass/natural_prediction_freeze.py": "b1644dcc712c76537ff68b7b5b573992d168aed888fee9afdf8da449c9538144",
+    "looking_glass/plan_worker.py": "7b5c716a1ac977b00a0f6987a1b0216b3c9538711688a5fcf21c7f9e1b7162bb",
+    "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+    "looking_glass/pretrained_causal_experiment.py": "663600de3faf16de7527f0ce0169fdc010b27a26e6b64992c92bbce313ce3ead",
+    "looking_glass/pretrained_custodian.py": "aadcb4f9de536aa92729984e60f723c6091c75f1e81761fa22e4cc08f4a2948b",
+    "looking_glass/pretrained_exposures.py": "6ec5a00a6950a739ddfab1c0335065609aead275f0f393323ecb22699d93a9cd",
+    "looking_glass/pretrained_exposures_v2.py": "fa9014fb5cce2c3d8be3497a561754e47115ec07b9be3a896bb3bf1b20f8c474",
+    "looking_glass/pretrained_exposures_v3.py": "2546bb672a461bfea10f0aed5e83c3a2110b2c898b56ff17542cb4718fc32886",
+    "looking_glass/pretrained_exposures_v4.py": "0347502d7deabe3c660493cd7d8db112b42a9e06d5548395a51db2fcd89a0af2",
+    "looking_glass/pretrained_exposures_v5.py": "98c36f3fd15f9775ea19dccc068917eba3600e10df6a4baf09913b91710385e9",
+    "looking_glass/pretrained_exposures_v6.py": "ea567cf648dbc12d913dac6e00b69e2bf385d3016c56482100595f8152e70c25",
+    "looking_glass/pretrained_exposures_v7.py": "b48df46a2c285f79a12e6eaa2f0140373c9a985df926cccc2c2ba51bcbf94fa0",
+    "looking_glass/pretrained_number_adapter.py": "81e036375f4823daf7780579f524b0a38605012c202db96dd9fdcf37f4f03812",
+    "looking_glass/pretrained_number_archive.py": "8d6533bc5cf6b07deedc67b69d312cca47e7abc0b05f14758a1a7d315430bb7a",
+    "looking_glass/pretrained_number_commitments.py": "635f25553c20dd437f5cc4a8a9ca3a7a1453e7f8a517875fe75eb01ede2d5f35",
+    "looking_glass/pretrained_number_injection.py": "836ecadcad4fd83c72f05c4e730fa2e3cb2fa30c0ca89061163e4d59221e88a8",
+    "looking_glass/pretrained_number_journal.py": "0ebe1171523d9f0b55a5b1ebc0316fd94e96bfbeb273d8828b2179b83e82013e",
+    "looking_glass/pretrained_number_requests.py": "e080060d2288e3e822cf4a221b97a2582b58cf0776be497e69f6ef557ccf02ee",
+    "looking_glass/pretrained_number_selection.py": "7330f6cd0eef2c9be0567d490dba6c72f0d4d47bf1127408a4d38d00c8932a83",
+    "looking_glass/pretrained_number_witness.py": "346e7edaa3ee7f386f865984e7c6b7432080e79e2a75d4fc25389ce8f81ce252",
+    "looking_glass/pretrained_protocol.py": "38525414546f4e1f8eca71c21462f149d57c4cd480141ee4aa9178a0f43710b6",
+    "looking_glass/pretrained_replay.py": "1db9a9b0e157e7987b49ab6d73ce9042d136379eeefcb1f3136a96038ced6a56",
+    "looking_glass/pretrained_smoke.py": "5b6b3f88f3d9dae001e826d2ec3c3658cd9a637d78c7a484e1e0f9c16ec7d59e",
+    "looking_glass/private_capture_journal.py": "0e2e2d425829629d9e6fbf78cbb493ba1852e2836d5a99288f1f809717e5bb93",
+    "looking_glass/probes.py": "3ba99f7289bb2f12cc7e0c1e255c22a7c7aff3a48e1348ec5d503956e0c8e730",
+    "looking_glass/producer_slot.py": "5ed51cb0368243d12398015aa6310d30911766fb6b1a61dc34e0ce3276343003",
+    "looking_glass/recorder_overhead.py": "a2d4020b86f0cd2062be17fac2b0012a56bc733ee3c8ccecc6b20cd982f5db69",
+    "looking_glass/registry.py": "e59bdbe2ffbcd8ae6a42ec8869796c97f9ba28a1408ee85c99d1e3b3280945dc",
+    "looking_glass/reproduce.py": "e577a700d207961431fa854970f164249c7eaeb31afd6b1e144a54056b99f1c5",
+    "looking_glass/research_cases.py": "af31fed971ba095a95e74f7007a609555b1ca84d741496243eaaf531da625a94",
+    "looking_glass/resident_worker.py": "0a70a6d03f4dc0ba7ef5e033954daeccdcf8acc540cfe4e4bd65fa524569f1d0",
+    "looking_glass/resource_bootstrap_audit.py": "ead0bc28cd5aa40934e480a91374bfd9b0524e38a60bb896ef9c2d9c8a6b715d",
+    "looking_glass/resource_profile.py": "cabd81db426a407e5c28393c35ec1b449f78908b5c064f49d51b0f781231b819",
+    "looking_glass/service.py": "a20e31284dada26477fbe22de3ec2b1798fe3b609c42567a8f6152ffdd38d944",
+    "looking_glass/supervisor.py": "87603aad90ff541e14e5a8f7c847f0237995be8e578fe1fb4f7e6c59aef94d2a",
+    "looking_glass/targeted_edit_cpu_v1.py": "fc17d2118ef99f95542ab6de2e069730947d369557f12fb3f1344cc07ae2af92",
+    "looking_glass/targeted_edit_cpu_v2.py": "e943d16e7221a9f381477e5df76ce1572ec84d7b828554ba3bbce86ea510c166",
+    "looking_glass/targeted_edit_v2_custody.py": "60bbcb0cf1ecd22e7a725830607bc0f076552ee3c02883d7b9ab062958d67de5",
+    "looking_glass/targeted_edit_v2_edits.py": "a3e9048bd62010ab1479d724e31b5b6c3e3f26cb6a5c292d76dcb83aafd3ec11",
+    "looking_glass/targeted_edit_v2_evidence.py": "f35bf79cfe10b1266bb56a1eb9fa2656f9d450d0224604f2bd263dfcf1347c5c",
+    "looking_glass/targeted_edit_v2_exposure.py": "022fb5c9ecaedd003eb407e15e0acbe9b2036f87a7f44ea1c4663b5e550a0539",
+    "looking_glass/targeted_edit_v2_gate.py": "0db09707f9f5d69273ef7d2ddbde95ae8487052950c056a07f5ee5602a887568",
+    "looking_glass/targeted_edit_v2_manifest.py": "905f5343ffa4580da663b2f790541d60003b3918a700aaa6513d8ea4b58230c3",
+    "looking_glass/throughput_benchmark.py": "601aa88f21a6b841bd576a83c7672a13720f304e685d532e81ccb0e5997ced8d",
+    "looking_glass/trace_batch_handoff.py": "055f85050d3d7f6f95554aabc8f34f0ad853f17abbd0a8cf0407f99bdd73b466",
+    "looking_glass/trace_batch_owner.py": "1204eb96d7c0519ba756d08a6873b00a9c5fbd6b8187b32b4a1b953d029617ff",
+    "looking_glass/trace_delivery_guard.py": "c44c8880d07d82b9fd991652afc92da9b261cf4993dbfb88ff5a98190783eace",
+    "looking_glass/trace_gpu_owner.py": "30d2b3d1dfdaf36a66aa6f3f02509250bcdf489adec675fa9cfe0a14e6965faf",
+    "looking_glass/trace_handoff_recovery.py": "29186d9993d05f1fa4c9780680a1dd2427a6c46420e483b13410ef0fb1b6fbac",
+    "looking_glass/trace_job_registry.py": "381d617cdcb9f5fb01ee81460ec27b3dfd92063425cf79163c408f7602f5b665",
+    "looking_glass/trace_job_validation.py": "f95c916e4a39f02cac336f3caedfd66a07993220c62f1baec293b2fca4e7d35c",
+    "looking_glass/trace_producer.py": "8e7106b3ea3b21f70d90ad22cb31e93c61dbbf5f7895b0464fe9904f2a569057",
+    "looking_glass/trace_schema.py": "38e05eb52a59a10ad9f93d19763d60df4c27f9eb626fdefdcba39fc4af3eb92c",
+    "looking_glass/trace_store.py": "29411ca0580ba75ab12bd295cfb8d445faaa881be3664f505b5adf6f9fb1826d",
+    "looking_glass/trace_transport.py": "fe09533eacbb9b1828e541901f6358933d47600cec0865ff0500eceb9da7c824",
+    "looking_glass/traced_broker_worker.py": "b56b23aa095ac51b9afb358a2108f30f521e86fdde3d397956206a1d661be7d6",
+    "looking_glass/traced_worker.py": "f756e23be3ec586f1d0b75fda5648f381795f2eb4c38cca81aaefd3c5693d2a8",
+    "looking_glass/transformer_localization.py": "23373e9d34f42607620056ed4055f1c00f4e8f09f121acd83b971cb7e02e48df",
+    "looking_glass/transformer_trace.py": "c58b303bd2448d0bb6804ee28066d33cc6830da8cec43986f6d481806b3b1929",
+    "looking_glass/trusted_profile_collector.py": "b762ff70dce9d93111a3b6e4c4f009b915a3ab6ee40ba94a1ab4ab0db1a259c6",
+    "looking_glass/trusted_service_launch.py": "0206409a2fc619bfadb34c441254be896575f1ce0359e95cd9727a5ae3c1a293",
+    "looking_glass/trusted_service_profile.py": "27249d2cf9c9a5affa68c8c0a7f377fec37d50aa72733f9f2b6fe04eb860f846",
+    "looking_glass/two_token_service.py": "2aeeb97422c9a1c4b7ad4911ff9a03ebe3d60b1461f9f6e9d5182c8537f04cb6",
+    "looking_glass/v2_evidence.py": "50f81addccbccef18f863f78c8b709810bfa547e18d347c524fcfb790dded574",
+    "looking_glass/v2_resource_pilot.py": "053de8a6e8cf7489760168b96c9997b2c71e60f89e9ca68ead17e43124aeb6ab",
+    "scripts/v2_source_guards.py": "729754ba236e2d9d47ef662077706b3c3f0640b6359b92c223a5b57677c18477",
+    "tools/audit_natural_agreement_discovery.py": "7b82b476788ccec49c8f48bd30dfd9a21cdedd2c5532057c11b087e08b641a6d",
+    "tools/natural_agreement_cpu.py": "1325af599ffce4f44963a23d14623938e1e038fb66fd65fc8003e7f50a478b5c"
+  },
+  "study_budget": {
+    "coordination": "external single study owner; source leases are not a study-wide lock",
+    "future_reservations_status": "prospective; other track owners must enforce and reconcile",
+    "host_disk_allowance_bytes": 1073741824,
+    "host_disk_phase_reservations_bytes": {
+      "injection_discovery": 134217728,
+      "injection_heldout": 201326592,
+      "natural_discovery": 234881024,
+      "natural_heldout": 234881024
+    },
+    "host_disk_scope": "prospective physical evidence including serialized copies and metadata; custodian reconciles preflight copies, failed attempts and overhead; not VRAM",
+    "host_disk_unallocated_bytes": 268435456,
+    "phase_reservations_bytes": {
+      "injection_discovery": 50331648,
+      "injection_heldout": 75497472,
+      "natural_discovery": 134217728,
+      "natural_heldout": 167772160
+    },
+    "prior_payloads": [
+      {
+        "bytes": 3216448,
+        "description": "public preflight full-vocabulary logits",
+        "sha256": "7c262f3fe81236888a8f5fdb6d31f7835666674be9ffbf36f8ce2ca6a375eb6c"
+      }
+    ],
+    "prior_unique_tensor_bytes": 3216448,
+    "required_free_disk_bytes": 1073741824,
+    "study_limit_bytes": 536870912,
+    "unallocated_bytes": 105835456
+  },
+  "track": "natural discovery only"
+}

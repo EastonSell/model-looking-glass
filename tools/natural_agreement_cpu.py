@@ -14,7 +14,6 @@ import importlib.util
 import json
 import os
 from pathlib import Path
-import platform
 import re
 import shutil
 import sys
@@ -65,7 +64,7 @@ CLARIFICATION_PATH = 'docs/PRETRAINED_NUMBER_NATURAL_PREDICTION_CLARIFICATION.md
 CLARIFICATION = 'e9cd1e0d1b1144ffdc7b3c45be12393dd3c285e28b310b3334f4926fdb2b8d06'
 AUDITOR_PATH = 'tools/audit_natural_agreement_discovery.py'
 AUDITOR = '7b82b476788ccec49c8f48bd30dfd9a21cdedd2c5532057c11b087e08b641a6d'
-EXPOSURE = '76803775e6929b4a20463a50bcae839a727b1a875a0d433f7c27c9d1d69f0681'
+EXPOSURE = 'e5feaccfeaed288bd53509ee4d68675d6b00ddb1a876279d5c42465010c63344'
 MANIFEST_PATH = 'results/distilgpt2-agreement-preflight-v1-20261028/frozen.json'
 PREFLIGHT_RESULT = '96bcb687dbdd9bb4017a8506b6acaffeb5a3da43478cf2da551a4a5cb0c723c8'
 PREFLIGHT_ARCHIVE = '7c262f3fe81236888a8f5fdb6d31f7835666674be9ffbf36f8ce2ca6a375eb6c'
@@ -74,6 +73,8 @@ PREFLIGHT_BYTES = 3216448
 STUDY_LIMIT_BYTES = 512 * 1024 * 1024
 RESERVATIONS = {'natural_discovery': 128 * 1024 * 1024, 'natural_heldout': 160 * 1024 * 1024,
                 'injection_discovery': 48 * 1024 * 1024, 'injection_heldout': 72 * 1024 * 1024}
+HOST_DISK_RESERVATIONS = {'natural_discovery': 224 * 1024 * 1024, 'natural_heldout': 224 * 1024 * 1024,
+                          'injection_discovery': 128 * 1024 * 1024, 'injection_heldout': 192 * 1024 * 1024}
 BOOTSTRAP = ("import os,runpy,sys; sys.path.append(os.environ['MLG_NATURAL_SITE']); "
              "script=sys.argv.pop(1); sys.argv[0]=script; runpy.run_path(script,run_name='__main__')")
 REQUIRED_STUDY_SOURCES = (
@@ -87,6 +88,7 @@ REQUIRED_STUDY_SOURCES = (
     'looking_glass/pretrained_exposures.py', 'looking_glass/pretrained_exposures_v2.py',
     'looking_glass/pretrained_exposures_v3.py', 'looking_glass/pretrained_exposures_v4.py',
     'looking_glass/pretrained_exposures_v5.py', 'looking_glass/pretrained_exposures_v6.py',
+    'looking_glass/pretrained_exposures_v7.py',
     'looking_glass/agreement_preflight_v1.py',
     'looking_glass/pretrained.py',
 )
@@ -163,6 +165,13 @@ def _startup():
 
 def _configure_runtime():
     """Set the preregistered CPU state once, before model work."""
+    # Windows stdlib platform.win32_ver otherwise starts `cmd /c ver`, including
+    # when Torch asks platform.machine() while importing its native libraries.
+    # Supply the same process-observed Win32 version without a descendant.
+    import platform
+    windows = sys.getwindowsversion()
+    version = f'{windows.major}.{windows.minor}.{windows.build}'
+    platform._syscmd_ver = lambda *args, **kwargs: ('Windows', str(windows.major), version)
     import torch
     if torch.cuda.is_initialized() or torch.is_autocast_enabled('cpu'):
         raise RuntimeError('CUDA initialization or CPU autocast is unsupported')
@@ -189,9 +198,14 @@ def _runtime():
              int((normal * 0.5).view(torch.int32).item())]
     if probe != [1, 0x00400000]:
         raise RuntimeError('CPU subnormal probe failed')
+    windows = sys.getwindowsversion()
     return {'python': sys.version, 'python_executable_sha256': _sha(sys.executable),
             'dependency_configuration': _dependency_configuration(),
-            'platform': platform.platform(), 'processor': platform.processor(),
+            'platform': 'Windows',
+            'windows_version': {'major': windows.major, 'minor': windows.minor, 'build': windows.build,
+                                'platform': windows.platform, 'service_pack': windows.service_pack,
+                                'platform_version': list(windows.platform_version)},
+            'processor': os.environ.get('PROCESSOR_IDENTIFIER'),
             'cpu_count': os.cpu_count(), 'byteorder': sys.byteorder,
             'torch': torch.__version__, 'transformers': transformers.__version__,
             'tokenizers': tokenizers.__version__, 'safetensors': safetensors.__version__,
@@ -219,7 +233,7 @@ def _runtime():
 def build_binding(cache, *, expected_source=None):
     """Validate public inputs and runtime without loading or running a model."""
     from looking_glass import agreement_preflight_v1 as preflight
-    from looking_glass import pretrained_exposures_v6
+    from looking_glass import pretrained_exposures_v7
     from looking_glass.pretrained import ASSETS, MODEL_ID, REVISION
     from huggingface_hub import hf_hub_download
     revision, source = (control.source_inventory(ROOT) if expected_source is None else
@@ -229,7 +243,7 @@ def build_binding(cache, *, expected_source=None):
             raise RuntimeError('required committed study source is absent')
     if source[AUDITOR_PATH] != AUDITOR:
         raise RuntimeError('independent audit source differs from the reviewed bytes')
-    if pretrained_exposures_v6.inventory_digest() != EXPOSURE:
+    if pretrained_exposures_v7.inventory_digest() != EXPOSURE:
         raise RuntimeError('public development exposure inventory differs from the reviewed snapshot')
     if _sha(ROOT / 'docs/PRETRAINED_NUMBER_PATCH_V1.md') != PROTOCOL:
         raise RuntimeError('published protocol bytes changed')
@@ -268,13 +282,18 @@ def build_binding(cache, *, expected_source=None):
               'unallocated_bytes': STUDY_LIMIT_BYTES - PREFLIGHT_BYTES - sum(RESERVATIONS.values()),
               'future_reservations_status': 'prospective; other track owners must enforce and reconcile',
               'coordination': 'external single study owner; source leases are not a study-wide lock',
+              'host_disk_allowance_bytes': 1024 * 1024 * 1024,
+              'host_disk_phase_reservations_bytes': dict(HOST_DISK_RESERVATIONS),
+              'host_disk_unallocated_bytes': 1024 * 1024 * 1024 - sum(HOST_DISK_RESERVATIONS.values()),
+              'host_disk_scope': ('prospective physical evidence including serialized copies and metadata; '
+                                  'custodian reconciles preflight copies, failed attempts and overhead; not VRAM'),
               'required_free_disk_bytes': 1024 * 1024 * 1024}
     return {'schema': 'mlg-natural-cpu-binding-v1', 'source_commit': revision,
             'source_sha256': source, 'protocol_sha256': PROTOCOL,
             'natural_prediction_clarification_sha256': CLARIFICATION,
             'independent_natural_audit_source_sha256': AUDITOR,
             'development_exposure_inventory_sha256': EXPOSURE,
-            'development_exposure_inventory_version': 'distilgpt2-development-exposures-v6',
+            'development_exposure_inventory_version': 'distilgpt2-development-exposures-v7',
             'development_exposure_inventory_scope': 'snapshot at source freeze; recheck latest before held-out draw',
             'preflight_manifest_sha256': control._PUBLIC_MANIFEST_SHA256,
             'preflight_result_sha256': PREFLIGHT_RESULT, 'preflight_archive_sha256': PREFLIGHT_ARCHIVE,
@@ -320,9 +339,32 @@ def _start_record(raw, binding):
             'binding_sha256': hashlib.sha256(raw).hexdigest(), 'binding': binding}
 
 
+class _OwnerAuditHookCheck(RuntimeError):
+    pass
+
+
+def _owner_audit_hook(event, args):
+    """Forbid Python-level descendant creation in the cooperating CPU owner."""
+    if event == 'mlg.natural_owner.audit_hook_check':
+        raise _OwnerAuditHookCheck('owner audit hook is active')
+    if event in ('subprocess.Popen', '_winapi.CreateProcess', 'os.system', 'os.spawn', 'os.posix_spawn', 'os.exec',
+                 'os.fork', 'os.forkpty', 'os.startfile', 'os.startfile/2'):
+        raise RuntimeError('CPU owner subprocess creation is prohibited')
+
+
+def _install_owner_audit_hook():
+    sys.addaudithook(_owner_audit_hook)
+    try:
+        sys.audit('mlg.natural_owner.audit_hook_check')
+    except _OwnerAuditHookCheck:
+        return
+    raise RuntimeError('CPU owner audit hook could not be verified')
+
+
 def _child(cache, binding_path, output, publication_url, *, validation_only=False):
     control.await_start()
     _startup()
+    _install_owner_audit_hook()
     _configure_runtime()
     from scripts.v2_source_guards import SourceFileLease
     binding = json.loads(Path(binding_path).read_bytes())
