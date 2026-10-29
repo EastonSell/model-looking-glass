@@ -5,22 +5,89 @@ Its coordinates are the original probes.TraceEvent node labels and per-node
 occurrence ordinals, not the richer transformer trace metadata schema.
 """
 from collections import Counter, defaultdict
-import math
-from numbers import Real
+import struct
 
 import torch
 
 
 def _tolerance(name, value):
-    if isinstance(value, bool) or not isinstance(value, Real):
-        raise ValueError(f"{name} must be a finite nonnegative real")
+    # Conversion from other Real types may itself flush a subnormal before we
+    # can inspect it. Restrict the boundary to the built-in binary64 and integer
+    # types, whose conversion is defined here.
+    if type(value) not in (int, float):
+        raise ValueError(f"{name} must be a finite nonnegative built-in int or float")
     try:
         converted = float(value)
     except (OverflowError, ValueError):
-        raise ValueError(f"{name} must be a finite nonnegative real") from None
-    if not math.isfinite(converted) or converted < 0:
-        raise ValueError(f"{name} must be a finite nonnegative real")
+        raise ValueError(f"{name} must be a finite nonnegative built-in int or float") from None
+    bits = _float64_bits(converted)
+    magnitude = bits & ((1 << 63) - 1)
+    if (magnitude >> 52) == 0x7ff or (bits >> 63 and magnitude != 0):
+        raise ValueError(f"{name} must be a finite nonnegative built-in int or float")
     return converted
+
+
+def _float64_bits(value):
+    # struct copies binary64 bits; float arithmetic/truthiness can treat a
+    # double subnormal as zero under DAZ on the calling CPU thread.
+    return int.from_bytes(struct.pack(">d", value), "big")
+
+
+def _reported_tolerance(value):
+    bits = _float64_bits(value)
+    magnitude = bits & ((1 << 63) - 1)
+    # Python's JSON float formatting can print a binary64 subnormal as 0.0
+    # under DAZ. Keep an exact, mode-independent representation in the report.
+    numeric = None if 0 < magnitude < (1 << 52) else value
+    return numeric, f"{bits:016x}"
+
+
+_FORMATS = {
+    torch.float16: (torch.int16, 5, 10, 15),
+    torch.bfloat16: (torch.int16, 8, 7, 127),
+    torch.float32: (torch.int32, 8, 23, 127),
+    torch.float64: (torch.int64, 11, 52, 1023),
+}
+
+
+def _dyadic(bits, exponent_bits, fraction_bits, bias):
+    """Return exact signed integer significand and power of two for finite bits."""
+    fraction = bits & ((1 << fraction_bits) - 1)
+    exponent = (bits >> fraction_bits) & ((1 << exponent_bits) - 1)
+    if exponent:
+        significand = (1 << fraction_bits) | fraction
+        power = exponent - bias - fraction_bits
+    else:
+        significand = fraction
+        power = 1 - bias - fraction_bits
+    if bits & (1 << (exponent_bits + fraction_bits)):
+        significand = -significand
+    return significand, power
+
+
+def _within_one(reference, candidate, rtol, atol):
+    """Test the declared tolerance exactly over finite binary rational values."""
+    ref, ref_power = reference
+    cand, cand_power = candidate
+    nonzero_powers = [power for number, power in (reference, candidate) if number]
+    if not nonzero_powers:
+        return True
+    difference_power = min(nonzero_powers)
+    difference = abs((cand << (cand_power - difference_power) if cand else 0)
+                     - (ref << (ref_power - difference_power) if ref else 0))
+    if not difference:
+        return True
+    relative = rtol[0] * abs(ref)
+    relative_power = rtol[1] + ref_power
+    terms = [(number, power) for number, power in
+             ((atol[0], atol[1]), (relative, relative_power)) if number]
+    if not terms:
+        return False
+    bound_power = min(power for _, power in terms)
+    bound = sum(number << (power - bound_power) for number, power in terms)
+    if difference_power >= bound_power:
+        return (difference << (difference_power - bound_power)) <= bound
+    return difference <= (bound << (bound_power - difference_power))
 
 
 def _coordinate(event):
@@ -81,7 +148,9 @@ def _payload(event):
         return None, "value is missing or is not a tensor"
     if value.layout != torch.strided or value.is_nested or value.device.type not in ("cpu", "cuda"):
         return None, "only dense strided CPU or CUDA values are supported"
-    if value.dtype not in (torch.float16, torch.bfloat16, torch.float32, torch.float64):
+    if value.is_neg() or value.is_conj() or any(name is not None for name in value.names):
+        return None, "named tensors and lazy negative or conjugate views are unsupported"
+    if value.dtype not in _FORMATS:
         return None, "value dtype is not a supported floating type"
     if value.numel() == 0:
         return None, "value is an empty tensor"
@@ -98,20 +167,36 @@ def _payload(event):
 
 
 def _within_tolerance(reference, candidate, rtol, atol):
-    if not rtol and not atol:
-        return bool(torch.equal(reference, candidate))
-    # Subtract before scaling to preserve differences between nearby numbers.
-    # If both the difference and the tolerance overflow, compare their halves:
-    # this avoids mistaking inf <= inf for equality in extreme opposite signs.
-    reference = reference.to(dtype=torch.float64)
-    candidate = candidate.to(dtype=torch.float64)
-    difference = (candidate - reference).abs()
-    bound = atol + rtol * reference.abs()
-    half_difference = (candidate * 0.5 - reference * 0.5).abs()
-    half_bound = atol * 0.5 + (rtol * 0.5) * reference.abs()
-    equal = torch.where(torch.isinf(difference) & torch.isinf(bound),
-                        half_difference <= half_bound, difference <= bound)
-    return bool(equal.all())
+    int_dtype, exponent_bits, fraction_bits, bias = _FORMATS[reference.dtype]
+    rtol_bits, atol_bits = _float64_bits(rtol), _float64_bits(atol)
+    magnitude64 = (1 << 63) - 1
+    if not (rtol_bits & magnitude64) and not (atol_bits & magnitude64):
+        # Integer comparisons preserve subnormal bits irrespective of FTZ/DAZ.
+        # Negative and positive zero represent the same real value.
+        left = reference.view(int_dtype).reshape(-1).contiguous()
+        right = candidate.view(int_dtype).reshape(-1).contiguous()
+        if torch.equal(left, right):
+            return True
+        magnitude = (1 << (exponent_bits + fraction_bits)) - 1
+        equal = (left == right) | (((left & magnitude) == 0) & ((right & magnitude) == 0))
+        return bool(equal.all())
+
+    # Float conversion/subtraction can flush even double subnormal differences.
+    # Stage retained snapshots on CPU, then process bounded integer-list chunks;
+    # each comparison is exact real arithmetic over the recorded IEEE values.
+    left = reference.view(int_dtype).to(device="cpu").reshape(-1).contiguous()
+    right = candidate.view(int_dtype).to(device="cpu").reshape(-1).contiguous()
+    rtol_parts = _dyadic(rtol_bits, 11, 52, 1023)
+    atol_parts = _dyadic(atol_bits, 11, 52, 1023)
+    for offset in range(0, left.numel(), 8192):
+        left_chunk = left[offset:offset + 8192].tolist()
+        right_chunk = right[offset:offset + 8192].tolist()
+        for left_bits, right_bits in zip(left_chunk, right_chunk):
+            a = _dyadic(left_bits, exponent_bits, fraction_bits, bias)
+            b = _dyadic(right_bits, exponent_bits, fraction_bits, bias)
+            if not _within_one(a, b, rtol_parts, atol_parts):
+                return False
+    return True
 
 
 def _compare_pair(reference, candidate, rtol, atol):
@@ -138,6 +223,8 @@ def compare_traces(reference, candidate, *, rtol=0.0, atol=0.0,
     two calls have the same semantic role.
     """
     rtol, atol = _tolerance("rtol", rtol), _tolerance("atol", atol)
+    reported_rtol, rtol_hex = _reported_tolerance(rtol)
+    reported_atol, atol_hex = _reported_tolerance(atol)
     if type(reference_complete) is not bool or type(candidate_complete) is not bool:
         raise ValueError("completion flags must be boolean")
     left = _inspect(list(reference))
@@ -215,6 +302,8 @@ def compare_traces(reference, candidate, *, rtol=0.0, atol=0.0,
             "incompatible": sum(item["result"] == "incompatible" for item in comparisons),
         },
         "comparisons": comparisons,
-        "tolerance": {"rtol": rtol, "atol": atol, "reference": "reference"},
+        "tolerance": {"rtol": reported_rtol, "atol": reported_atol,
+                      "rtol_binary64_hex": rtol_hex, "atol_binary64_hex": atol_hex,
+                      "reference": "reference"},
         "causal_origin": "unknown",
     }
