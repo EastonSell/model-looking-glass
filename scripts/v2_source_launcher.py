@@ -127,7 +127,10 @@ def _revision(checkout):
     return value
 
 
-def _committed_sources(checkout, revision):
+def _committed_sources(checkout, revision, *, extra=()):
+    if (type(extra) is not tuple or len(extra) > 64
+            or any(type(path) is not str for path in extra) or len(set(extra)) != len(extra)):
+        raise LaunchError("invalid additional committed source inventory")
     raw = _git(checkout, "ls-tree", "-rz", "--full-tree", revision)
     found = {}
     casefolded = set()
@@ -137,7 +140,8 @@ def _committed_sources(checkout, revision):
         header, encoded_path = record.split(b"\t", 1)
         mode, kind, sha = header.decode("ascii").split(" ")
         relative = encoded_path.decode("utf-8")
-        selected = relative in _SCRIPTS or (relative.startswith("looking_glass/") and relative.endswith(".py"))
+        selected = (relative in _SCRIPTS or relative in extra
+                    or (relative.startswith("looking_glass/") and relative.endswith(".py")))
         if not selected:
             continue
         path = PurePosixPath(relative)
@@ -150,7 +154,7 @@ def _committed_sources(checkout, revision):
         found[relative] = sha
         if len(found) > 4096:
             raise LaunchError("too many committed source files")
-    if any(path not in found for path in _SCRIPTS) or "looking_glass/__init__.py" not in found:
+    if any(path not in found for path in (*_SCRIPTS, *extra)) or "looking_glass/__init__.py" not in found:
         raise LaunchError("required committed source is missing")
     return dict(sorted(found.items()))
 
