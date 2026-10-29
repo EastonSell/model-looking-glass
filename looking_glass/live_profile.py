@@ -582,6 +582,9 @@ def preflight_sources(repo_root, cache_root, site_packages, environment_root):
 
 def _verify_cpu_tensors(torch, model, weights):
     """Compare CPU model values, nonpersistent masks and tied storage to the pin."""
+    if (torch.__future__.get_overwrite_module_params_on_conversion() is not False
+            or torch.__future__.get_swap_module_params_on_conversion() is not False):
+        raise ValueError('model conversion flags differ from the fixed tie policy')
     state = model.state_dict()
     if not isinstance(state, dict):
         raise ValueError('model state dictionary is unavailable')
@@ -593,6 +596,8 @@ def _verify_cpu_tensors(torch, model, weights):
             or set(dict(model.named_buffers())) != mask_names | masked_names):
         raise ValueError('model tensors or buffers do not match the pinned checkpoint')
     embedding, head = state['transformer.wte.weight'], state['lm_head.weight']
+    if model.get_parameter('transformer.wte.weight') is not model.get_parameter('lm_head.weight'):
+        raise ValueError('language-model head and token embeddings must be the same Parameter')
     for tensor in (embedding, head):
         if type(tensor) is not torch.Tensor or tensor.device.type != 'cpu':
             raise ValueError('model tensors must be ordinary CPU tensors')

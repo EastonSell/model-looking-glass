@@ -11,6 +11,15 @@ import re
 _EPOCH = re.compile(r"[0-9a-f]{32}\Z")
 
 
+class IPCCustodyCapacity(RuntimeError):
+    """Trusted guardian denied reservation before any request state exists.
+
+    Only the exact type is recognized. Raising it asserts that no record,
+    claim, pending registration, or request-owned payload was created for
+    the key. Violating that contract breaks the custody guarantee.
+    """
+
+
 @dataclass(frozen=True, slots=True)
 class IPCCustodyKey:
     server_epoch: str
