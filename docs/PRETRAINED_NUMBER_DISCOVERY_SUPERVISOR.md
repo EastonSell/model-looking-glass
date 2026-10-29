@@ -49,8 +49,8 @@ Exception objects, tracebacks, paths, timing and private hashes remain with
 the custodian.
 
 The phase takes a caller-reserved share of the protocol's 512 MiB whole-study
-logical tensor cap and a separate share of the 1 GiB physical evidence
-allowance. It checks free disk for its physical share and reserves at least
+logical tensor cap and a separate share of the 2 GiB physical evidence
+allowance in `experiments/agreement_physical_budget_v1.json`. It checks free disk for its physical share and reserves at least
 1 MiB of logical capacity before each forward. The executor counts unique
 retained byte objects; its public and private serialized representations of
 those same tensors are not charged again to the logical cap. The journal's
