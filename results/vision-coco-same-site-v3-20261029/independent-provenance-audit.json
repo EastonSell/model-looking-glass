@@ -1,0 +1,32 @@
+{
+  "aggregate": {
+    "evaluable": 2,
+    "positive": 0,
+    "selected": 8,
+    "status": "inconclusive"
+  },
+  "auditor_sha256": "7d028eef02adbb073120421f4a503dc441dcc1c189597a71aa1e7261860a75cb",
+  "forwards": 195,
+  "initial_image_forwards": 19,
+  "input_auditor_sha256": "4ac2d8bd9b61d5a4bbfa914851039ba5cf40b8a5b10fc694cd6edc1e61f881ee",
+  "input_rechecked_after_run": true,
+  "limitations": [
+    "Saved-file consistency does not prove execution, timing or whole-process-tree cleanup.",
+    "Separate scientific replay is required for intervention landing and the full decision rule.",
+    "Third-party mirrors and fixed splits do not authenticate official origin or pretraining independence."
+  ],
+  "manifest_sha256": "6fc5159a57cf07a91e93c8bc38f27d3f5925877083532ce92fec828c6d777bfb",
+  "model_state_sha256": "d1bfb26b30f847366de6388385d547fc29cc3c20b330c4faad993891e165eccd",
+  "outer_receipt_sha256": "98d6ab736ade9ee9735bcee723f77ae70af3ac82f1ba77efa92cf256495fec77",
+  "pair_status_counts": {
+    "baseline-ineligible": 6,
+    "negative": 2
+  },
+  "revision": "c260321cb955ae31490da639fabc23a290c3a1ce",
+  "saved_data_files": 400,
+  "source_files": 22,
+  "status": "saved_consistency_verified",
+  "supervisor_sha256": "b941b09db75b5269c932b0c7937eefdcc8e0826794f0db48ea7654696fd07503",
+  "support_auditor_sha256": "50005edb939d225bf58e1d3353c36df98279e72302d52b7caea4d5ded43c0717",
+  "terminal_sha256": "1114e86ccc95cc5ae48daef40fcc3c1cfd7ffadd6bc102fa6c9350bd135d59b4"
+}

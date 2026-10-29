@@ -1,0 +1,1 @@
+{"clean":true,"exit_code":0,"pid":9296,"reason":"clean device teardown","run_id":"bedfb762b8aa4ceca7bb3e2c7e4c0a7d","scope":"cooperative CPU custody; direct child reaped; no process-tree or GPU attestation","status":"complete","terminal_sha256":"1114e86ccc95cc5ae48daef40fcc3c1cfd7ffadd6bc102fa6c9350bd135d59b4","timed_out":false}
