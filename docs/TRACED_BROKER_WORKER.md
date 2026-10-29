@@ -1,8 +1,9 @@
 # Trace plan binding for a broker job
 
 `bind_trace_plan` validates and snapshots trace selections for **one** trusted
-owner's job. It produces metadata for a future traced worker; it does not run
-a model, own hooks, reserve storage, submit to the broker, deliver tensors, or
+owner's job. The separate [CPU trace owner](CPU_TRACE_OWNER.md) can use the
+plan with a trusted traced worker. The binder does not run a model, own hooks,
+reserve storage, submit to the broker, deliver tensors, or
 authenticate identities. The existing broker is forward-only: it can discard
 a result during cancellation or error and has no trace-payload disposal
 protocol. Do not submit trace payloads through it. This plan is deliberately
