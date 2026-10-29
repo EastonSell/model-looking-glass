@@ -1,0 +1,61 @@
+{
+  "schema": "synthetic-v2-observer-receipt-v1",
+  "source_revision": "4e657aeb92c2b69edf8e6e5c70a9b6c7e4a6507f",
+  "rehearsal": {
+    "process_exit_code": 0,
+    "status": "rehearsal",
+    "submissions": 0,
+    "root_forwards": 0,
+    "child_reaped": true,
+    "scope": "no_forward_rehearsal"
+  },
+  "study": {
+    "process_exit_code": 0,
+    "status": "terminal_verified",
+    "submissions": 57408,
+    "root_forwards": 57408,
+    "child_reaped": true,
+    "verification_scope": "terminals_counts_and_inventory",
+    "scientific_replay_verified": false,
+    "exposure_classification": "unknown"
+  },
+  "stdout_provenance": "The rehearsal and owner JSON receipts were emitted to the Codex command transcript and transcribed here after completion; stdout was not redirected to an independent file.",
+  "independent_chronology_observations": [
+    "A poll saw 46 discovery chunks, no held-out chunks, and no freeze or prediction commitment.",
+    "A later poll saw 54 discovery chunks, three held-out chunks, and both the freeze and prediction commitment."
+  ],
+  "chronology_limit": "No independent observation or byte hash established the contents or publication time of the freeze and prediction commitment before the first held-out chunk. The custodian code enforces that ordering, but these post-run pins are not an external timestamp or pre-held-out content attestation.",
+  "post_run_sha256": {
+    "public_evidence_zip": "f80b01e1d3e0ffea13e454c1202814e1015ea2d4d6c21a3a6b3eb7736ba7ef04",
+    "public_pre_manifest": "331c32b7b44662e265d5bd73082c5c844fed8065a8d6637fbfef138aac5d8e84",
+    "public_prediction_freeze": "c5a78c79a17673986147b6ad4898f856992d42b5d29bd7aaf313f42ab74eb2fa",
+    "public_prediction_commitment": "ba95fd4ae32468d160d5789bd3fedfb1059ce223c80b970140ca9dfa02990576",
+    "public_results": "c376a39a201a244feeea69859c9ec0b38ddb52d755cf045b2873c214bcdecf32",
+    "public_reveal": "e7293999d338f98042225d7d8e0c287113f27873e0d7164411a8449c467fc1fc",
+    "public_manifest": "bf3b6bb0da2e137f273a1cf63b43018510948ff7f3cb9fa2408d2d5c3f387334",
+    "public_outcome": "76fb67273652b7f501b4eba726a0497da6836200cbb205070a9603157cb38492",
+    "private_manifest": "6248741ac549e9ea775f47246683f434c3f7105d76a92490e7693d2fa581eff1",
+    "private_outcome": "035030a3a6dc6f16e4675918675abbc0c5b4c5ded9f3565689799e27e91aaeb2"
+  },
+  "independent_terminal_review": "A separate hash-only review confirmed all public and private registry artifact sizes and hashes, both terminal counts, the public-to-private outcome binding, and the premanifest source revision. It did not independently establish execution, chronology, or scientific scoring.",
+  "independent_saved_data_audit": {
+    "status": "saved_data_consistent",
+    "source_revision": "95af78d6430858578baf2e2ad7112bab0d43712b",
+    "published_source_revision": "5d3fce399d9a2c224b83b9cfdddfc673eddc0635",
+    "auditor_source_sha256": "b94b5430173720c3741f950ee07fbc8330bc9159834c0ccd1453d298aa58e63a",
+    "report_sha256": "ce2c7e2a5d147281c0ad0b64ff86183db3dcb65eebf8c86eb7aee31bff33137f",
+    "discovery_chunks": 54,
+    "heldout_chunks": 54,
+    "conditions_per_phase": 1728,
+    "execution_or_chronology_proven": false,
+    "secrecy_proven": false,
+    "case_generation_or_exclusions_proven": false
+  },
+  "second_independent_replay": {
+    "method": "A second reviewer ran the same reviewed auditor against the saved registry and obtained an identical semantic report; this is not a second implementation.",
+    "wrapper_sha256": "c03ecdba2fa9048d79a8a580ce40e9b2aaf5653b008f8a44649bfd64e3d4d9f1",
+    "recorded_source_files_checked_against_frozen_checkout_and_git": 187,
+    "owner_exit_or_job_drain_independently_os_attested": false,
+    "pre_heldout_freeze_independently_witnessed": false
+  }
+}
