@@ -6,6 +6,7 @@ process isolation, VRAM budgeting, batching, or concurrent CUDA execution API.
 
 from dataclasses import dataclass, replace
 from enum import Enum
+import sys
 from threading import Condition, Event, Lock, Thread, current_thread
 from time import monotonic, perf_counter_ns
 from types import MappingProxyType
@@ -103,6 +104,16 @@ class RequestState(str, Enum):
     SUCCEEDED = 'succeeded'
     FAILED = 'failed'
     CANCELLED = 'cancelled'
+
+
+@dataclass(frozen=True)
+class BrokerHealth:
+    """Observational broker state for a separately supervised owner."""
+
+    failed: bool
+    quarantined: bool
+    closed: bool
+    owner_alive: bool
 
 
 @dataclass(frozen=True)
@@ -327,6 +338,10 @@ class Broker:
         self._status_error = None
         self._status_cleanup_error = None
         self._status_recovery_error = None
+        # Unexpected owner failures must be observable and retained even when
+        # another thread holds the admission condition indefinitely.
+        self._owner_failure = None
+        self._owner_escaping_failure = None
         self._startup_decided = False
         # Every rooted job can have a concurrent cleanup exception and a
         # detached input whose disposal was interrupted. Reserve separate
@@ -357,6 +372,22 @@ class Broker:
     def broker_id(self):
         """Unique identifier for this broker lifetime, for artifact correlation."""
         return self._identity_prefix
+
+    @property
+    def health_snapshot(self):
+        """Observe broker-owned latches without waiting for admission or a worker.
+
+        These fields are not a synchronized snapshot and may change while they
+        are read. They cannot authorize admission or prove device completion.
+        Supervisors must separately monitor worker and transport health.
+        """
+        quarantined = self._quarantine_latched
+        return BrokerHealth(
+            failed=bool(self._unavailable or self._fatal_cleanup_failure or quarantined),
+            quarantined=quarantined,
+            closed=self._closed,
+            owner_alive=self._thread.is_alive(),
+        )
 
     @property
     def available(self):
@@ -765,14 +796,39 @@ class Broker:
         self._condition.notify_all()
 
     def _run(self):
+        try:
+            self._run_inner()
+        except BaseException as exc:
+            # A failure in the owner error/cleanup path must not escape to a
+            # thread exception hook that could clear its private traceback.
+            self._owner_escaping_failure = exc
+            if self._owner_failure is None:
+                original = BaseException.__getattribute__(exc, '__context__')
+                self._owner_failure = original if isinstance(original, BaseException) else exc
+            self._quarantine_latched = True
+
+    def _run_inner(self):
         removed = []
+        serve_returned = False
         try:
             # Do not close/unregister before the constructor knows whether
             # Thread.start returned, including a start-then-raise interruption.
             with self._condition:
                 self._condition.wait_for(lambda: self._startup_decided)
             self._serve()
+            serve_returned = True
         except BaseException as exc:
+            # A stalled handoff may hold the condition. Signal the supervisor
+            # and root the private exception before waiting for that condition.
+            # Repeated assignments preserve both on a one-shot interruption.
+            try:
+                self._owner_failure = exc
+            finally:
+                try:
+                    self._quarantine_latched = True
+                finally:
+                    self._owner_failure = exc
+                    self._quarantine_latched = True
             self._retain_unknown(exc)
             failure = _describe_exception(exc)
             with self._condition:
@@ -794,6 +850,16 @@ class Broker:
                     self._mark_cleanup_failed_locked()
                     self._condition.notify_all()
         finally:
+            if not serve_returned:
+                # This also covers an interruption before the failure handler
+                # could root its exception or notify the supervisor.
+                self._quarantine_latched = True
+                escaping = sys.exc_info()[1]
+                if escaping is not None:
+                    self._owner_escaping_failure = escaping
+                    if self._owner_failure is None:
+                        original = BaseException.__getattribute__(escaping, '__context__')
+                        self._owner_failure = original if isinstance(original, BaseException) else escaping
             # A snapshot in progress may still use the worker. Never close it
             # until all accepted preparation reservations have been released.
             with self._condition:
@@ -808,7 +874,9 @@ class Broker:
                     with self._condition:
                         self._shutdown_error = _describe_exception(exc)
                         self._condition.notify_all()
-                finally:
+                else:
+                    # An interrupted error handler must leave the owner rooted
+                    # until the outer guard can latch and retain the failure.
                     if not self.quarantined:
                         with _owner_registry_lock:
                             _owner_registry.discard(self)

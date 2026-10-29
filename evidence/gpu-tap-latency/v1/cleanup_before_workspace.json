@@ -1,0 +1,8 @@
+{
+  "device_free_bytes": 7391412224,
+  "device_total_bytes": 8589606912,
+  "allocated_bytes": 33554432,
+  "reserved_bytes": 33554432,
+  "allocator_cap_bytes": 2147401728,
+  "reserve_bytes": 1288441037
+}

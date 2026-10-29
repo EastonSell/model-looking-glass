@@ -1,0 +1,40 @@
+{
+  "classification": {
+    "status": "unverified",
+    "reasons": [
+      "fewer than three idle samples before or after workload",
+      "telemetry GPU identity does not match the selected device",
+      "telemetry query failed",
+      "compute process list unavailable"
+    ],
+    "before_idle_samples": [],
+    "after_idle_samples": [],
+    "foreign_compute_pids": [],
+    "limitation": "sampling and endpoint-only WDDM process reporting can miss activity"
+  },
+  "process_queries": [
+    {
+      "phase": "before",
+      "observed_monotonic_ns": 1249749324744800,
+      "ok": false,
+      "pids": [],
+      "processes": [],
+      "returncode": 255,
+      "stderr": "",
+      "error": "compute process query failed"
+    },
+    {
+      "phase": "after",
+      "observed_monotonic_ns": 1249750923310300,
+      "ok": false,
+      "pids": [],
+      "processes": [],
+      "returncode": 255,
+      "stderr": "",
+      "error": "compute process query failed"
+    }
+  ],
+  "workload_started_monotonic_ns": 1249749355066300,
+  "workload_ended_monotonic_ns": 1249750923296400,
+  "clock": "perf_counter_ns"
+}

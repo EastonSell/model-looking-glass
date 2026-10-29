@@ -21,10 +21,10 @@ The roadmap is a research plan, not a claim that its milestones are complete. Th
 - The [local transport](docs/IPC.md) lets authenticated cooperating client processes submit bounded forwards over loopback. It does not by itself enforce GPU budgets or provide trace delivery.
 - The [experimental fair IPC bridge](docs/IPC_FAIR_BRIDGE.md) joins bounded forward-only admission and receipt custody in CPU tests. GPU service composition requires separate admission and supervision.
 - The [trace delivery prototype](docs/TRACE_TRANSPORT.md) tests bounded, single-event custody on CPU. The service does not yet send traces through IPC or provide a complete multi-event publication protocol.
-- A [traced CPU worker](docs/TRACED_WORKER.md), [request plan](docs/TRACED_BROKER_WORKER.md), [producer envelope](docs/TRACE_PRODUCER.md) and [host custody ledger](docs/HOST_BUDGET.md) are separately tested building blocks; they do not yet form a live broker-to-IPC trace path or a physical memory limit.
+- A [CPU trace owner](docs/CPU_TRACE_OWNER.md) composes the [traced worker](docs/TRACED_WORKER.md), [producer envelope](docs/TRACE_PRODUCER.md) and [host custody ledger](docs/HOST_BUDGET.md) for private in-process jobs. They do not yet form a live broker-to-IPC trace path or a physical memory limit.
 - The [experiment registry](docs/REGISTRY.md) records manifests, artifacts and terminal states. [Research cases](docs/RESEARCH_CASES.md), [localization](docs/LOCALIZATION.md), and [causal metrics](docs/CAUSAL_METRICS.md) support controlled evaluations; the public held-out cases are not a protected blind benchmark. [Transformer trace comparison](docs/TRANSFORMER_LOCALIZATION.md) requires independently verified pairing and execution context.
 
-These components have their own tests and limits; their presence alone does not establish supervised shared GPU execution, causal discovery, or measured GPU throughput.
+These components have their own tests and limits; their presence alone does not establish a validated shared GPU service, causal discovery, or a general throughput claim.
 
 ## First experiment
 
@@ -133,6 +133,8 @@ Full activations can contain sensitive information. This synthetic benchmark sav
 - [Causal intervention literature and controls](docs/CAUSAL_LITERATURE.md)
 - [Machine and GPU inventory](docs/GPU_INVENTORY_V1.md)
 - [Supervised GPU memory pilot and recovery record](docs/GPU_ONESHOT_RESULTS_V2.md)
+- [Exploratory direct-versus-gradient GPU timing](docs/GPU_TAP_LATENCY_RESULTS.md)
+- [Site-blind injection selection and controls](docs/PRETRAINED_NUMBER_INJECTION_SELECTION.md)
 - [Trace custody integration plan](docs/TRACE_CUSTODY_PLAN.md)
 - [Shared-model throughput protocol](docs/THROUGHPUT_PROTOCOL_V1.md), its [CPU functionality record](results/throughput-cpu-smoke-v1-20261028/run_status.json), and the [quick GPU development comparison](results/throughput-gpu-quick-dev-v1-20261029/README.md)
 - [Verification status](evidence/STATUS.md)
