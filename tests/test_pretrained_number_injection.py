@@ -283,6 +283,7 @@ class ToyModel(nn.Module):
         self.calls = 0
         self.fail = False
         self.flip_denormal = False
+        self.bad_contract = None
         self.eval()
 
     def forward(self, input_ids, attention_mask, use_cache=False, return_dict=True):
@@ -296,7 +297,12 @@ class ToyModel(nn.Module):
         hidden = self.transformer(hidden)
         if self.flip_denormal:
             torch.set_flush_denormal(True)
-        return SimpleNamespace(logits=hidden[:, :, self.indices])
+        if self.bad_contract == "ids":
+            input_ids[0, 0] = 7
+        elif self.bad_contract == "mask":
+            attention_mask[0, 0] = 0
+        cache = ("unexpected",) if self.bad_contract == "cache" else None
+        return SimpleNamespace(logits=hidden[:, :, self.indices], past_key_values=cache)
 
 
 def serial_toy_reference(ids, *, site, condition, layer=None, donor=None):
@@ -516,6 +522,86 @@ class OrderedInjectionExecutorTests(unittest.TestCase):
             digest = hashlib.sha256(b"MLG-number-input-v1\0" + bytes([2]) +
                                     (2).to_bytes(4, "big") + (3).to_bytes(4, "big")).hexdigest()
             self.assertEqual(observation.input_sha256, digest)
+
+    def test_wrong_model_entry_input_is_rejected_before_model_forward(self):
+        model = ToyModel()
+        original_tensor = torch.tensor
+        def altered_tensor(data, *args, **kwargs):
+            result = original_tensor(data, *args, **kwargs)
+            if (type(data) is list and len(data) == 1 and data[0] == (2, 3)
+                    and kwargs.get("dtype") is torch.int64):
+                result[0, 0] = 7
+            return result
+        with NumberInjectionExecutor(model, site=2) as executor:
+            with patch.object(torch, "tensor", side_effect=altered_tensor):
+                with self.assertRaisesRegex(RuntimeError, "forward failed"):
+                    executor.forward([2, 3], request_id=f"{1:032x}", condition="clean")
+            self.assertEqual(model.calls, 0)
+            self.assertTrue(executor.poisoned)
+            self.assertEqual(executor.failures()[0]["phase"], "forward")
+
+    def test_mutated_model_inputs_or_returned_cache_are_terminal(self):
+        for fault in ("ids", "mask", "cache"):
+            model = ToyModel()
+            model.bad_contract = fault
+            with self.subTest(fault=fault), NumberInjectionExecutor(model, site=2) as executor:
+                with self.assertRaisesRegex(RuntimeError, "forward failed"):
+                    executor.forward([2, 3], request_id=f"{1:032x}", condition="clean")
+                self.assertEqual(model.calls, 1)
+                self.assertTrue(executor.poisoned)
+                self.assertEqual(executor.failures()[0]["phase"], "input_contract")
+                self.assertEqual(executor.failures()[0]["partial_forward_captures"], "retained_privately")
+
+    def test_entry_guard_cleanup_error_preserves_original_forward_failure(self):
+        model = ToyModel()
+        model.fail = True
+        register = model.register_forward_pre_hook
+
+        class FailingCleanup:
+            def __init__(self, actual):
+                self.actual = actual
+            def remove(self):
+                self.actual.remove()
+                raise RuntimeError("entry guard cleanup failed")
+
+        def register_hook(hook, *args, **kwargs):
+            handle = register(hook, *args, **kwargs)
+            return FailingCleanup(handle) if kwargs.get("with_kwargs") else handle
+
+        with NumberInjectionExecutor(model, site=2) as executor:
+            with patch.object(model, "register_forward_pre_hook", side_effect=register_hook):
+                with self.assertRaisesRegex(RuntimeError, "forward failed") as caught:
+                    executor.forward([2, 3], request_id=f"{1:032x}", condition="clean")
+            self.assertTrue(executor.poisoned)
+            self.assertEqual(executor.private_failures()[0].exception_message, "private failure")
+            original = caught.exception.__context__
+            self.assertEqual(str(original), "private failure")
+            self.assertEqual(str(original.__cause__), "entry guard cleanup failed")
+        self.assertFalse(model._forward_pre_hooks)
+
+    def test_uncertain_entry_guard_registration_quarantines_model(self):
+        model = ToyModel()
+        register = model.register_forward_pre_hook
+        orphaned = []
+
+        def interrupted_registration(hook, *args, **kwargs):
+            handle = register(hook, *args, **kwargs)
+            if kwargs.get("with_kwargs"):
+                orphaned.append(handle)
+                raise MemoryError("interrupted after registration")
+            return handle
+
+        with NumberInjectionExecutor(model, site=2) as executor:
+            with patch.object(model, "register_forward_pre_hook", side_effect=interrupted_registration):
+                with self.assertRaisesRegex(RuntimeError, "forward failed"):
+                    executor.forward([2, 3], request_id=f"{1:032x}", condition="clean")
+            self.assertEqual(model.calls, 0)
+            self.assertTrue(executor.poisoned)
+            self.assertEqual(executor.private_failures()[0].exception_type, "MemoryError")
+        with self.assertRaisesRegex(RuntimeError, "already leased"):
+            ModelLease(model).acquire()
+        for handle in orphaned:
+            handle.remove()
 
     def test_interrupted_acquisition_releases_lease(self):
         model = ToyModel()

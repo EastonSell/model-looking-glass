@@ -644,13 +644,45 @@ class NumberInjectionExecutor:
             self._lease.verify_tree()
             ids = torch.tensor([frozen_ids], dtype=torch.int64, device="cpu")
             mask = torch.ones_like(ids)
+            entered = 0
+            def matching_inputs():
+                return (type(ids) is torch.Tensor and ids.device.type == "cpu" and ids.dtype is torch.int64
+                        and tuple(ids.shape) == (1, length) and ids.tolist() == [list(frozen_ids)]
+                        and type(mask) is torch.Tensor and mask.device.type == "cpu" and mask.dtype is torch.int64
+                        and tuple(mask.shape) == (1, length) and mask.tolist() == [[1] * length])
+
+            def check_entry(module, args, kwargs):
+                nonlocal entered
+                if (entered != 0 or module is not self._model or type(args) is not tuple or args
+                        or type(kwargs) is not dict
+                        or set(kwargs) != {"input_ids", "attention_mask", "use_cache", "return_dict"}
+                        or kwargs["input_ids"] is not ids or kwargs["attention_mask"] is not mask
+                        or kwargs["use_cache"] is not False or kwargs["return_dict"] is not True
+                        or not matching_inputs()):
+                    raise RuntimeError("model entry inputs differ from the fixed request")
+                entered += 1
+
             plan = ActivationPlan(self._model, steps, max_tensor_bytes=1024 * 1024,
                                   max_capture_bytes=1024 * 1024, max_source_bytes=1024 * 1024,
                                   _parent_lease=self._lease)
             phase = "forward"
             with plan:
-                with torch.inference_mode():
-                    result = self._model(input_ids=ids, attention_mask=mask, use_cache=False, return_dict=True)
+                handle = None
+                try:
+                    handle = self._model.register_forward_pre_hook(check_entry, with_kwargs=True)
+                    if not callable(getattr(handle, "remove", None)):
+                        raise TypeError("model-entry hook registration returned an invalid handle")
+                    with torch.inference_mode():
+                        result = self._model(input_ids=ids, attention_mask=mask, use_cache=False, return_dict=True)
+                except BaseException as error:
+                    if callable(getattr(handle, "remove", None)):
+                        try:
+                            handle.remove()
+                        except BaseException as cleanup_error:
+                            raise error.with_traceback(error.__traceback__) from cleanup_error
+                    raise
+                else:
+                    handle.remove()
             phase = "snapshot"
             metadata = plan.metadata
             captures = plan.captures
@@ -662,6 +694,9 @@ class NumberInjectionExecutor:
                     ([_WIDTH] if "token_index" in step else [1, length, _WIDTH]))
                 self._keep(raw[name])
                 _finite_raw(raw[name])
+            phase = "input_contract"
+            if entered != 1 or not matching_inputs() or getattr(result, "past_key_values", None) is not None:
+                raise ValueError("model input, mask, or cache contract changed during the forward")
             all_logits = result.logits
             if (type(all_logits) is not torch.Tensor or all_logits.device.type != "cpu" or
                     all_logits.dtype is not torch.float32 or tuple(all_logits.shape) != (1, length, 50257)):

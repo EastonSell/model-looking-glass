@@ -34,6 +34,11 @@ site. The site alone is hidden: the direction and nominal 0.5 strength are
 public in the protocol. The executor freezes input IDs, binds each same-input
 donor to an earlier capture from the same executor, and checks the actual
 module, invocation, batch/token, tuple selector, shape, dtype and device.
+An owned root pre-hook checks the exact input IDs, all-one mask and cache flags
+at model entry; inputs are checked again after the call, and a returned KV
+cache is rejected. An unsuccessful or uncertain hook cleanup quarantines the
+executor. These checks assume the verified model implementation and do not
+attest arbitrary same-process code.
 Selector-facing traces contain only the 13 boundary captures in execution
 order, with contiguous public capture-order indices; private action metadata
 retains the original plan ordinals, which could reveal the site.
