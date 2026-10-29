@@ -14,6 +14,7 @@ from looking_glass import targeted_edit_v2_manifest as manifest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+HISTORICAL_PRETRAINED = ROOT / "tests/fixtures/targeted-edit-v1-pretrained/pretrained.py"
 
 
 def git(repo, *args):
@@ -38,7 +39,7 @@ def frozen_repo(tmp_path, monkeypatch):
     for name in manifest.SOURCE_PATHS:
         target = repo / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        source = ROOT / name
+        source = HISTORICAL_PRETRAINED if name == "looking_glass/pretrained.py" else ROOT / name
         if source.exists():
             shutil.copyfile(source, target)
         else:
@@ -56,6 +57,13 @@ def frozen_repo(tmp_path, monkeypatch):
     git(repo, "add", "frozen.json")
     git(repo, "commit", "-m", "freeze")
     return repo, source_commit, git(repo, "rev-parse", "HEAD"), sha
+
+
+def test_historical_pretrained_fixture_matches_published_v1_manifest():
+    raw_manifest = (ROOT / manifest.V1_MANIFEST).read_bytes()
+    assert v1._sha(raw_manifest) == manifest.V1_MANIFEST_SHA256
+    published = v1._decode_document(raw_manifest)
+    assert v1._sha(HISTORICAL_PRETRAINED.read_bytes()) == published["source_sha256"]["looking_glass/pretrained.py"]
 
 
 def test_fixed_manifest_binds_all_cases_doses_and_source_bytes(frozen_repo):
@@ -151,11 +159,13 @@ def test_wrong_external_manifest_pin_is_rejected(frozen_repo):
         manifest.verify_manifest(repo, "frozen.json", manifest_commit=frozen_commit, expected_sha256="f" * 64)
 
 
-def test_v1_reconstruction_source_cannot_be_changed_before_freeze(frozen_repo):
+@pytest.mark.parametrize("historical_source", ["looking_glass/targeted_edit_cpu_v1.py",
+                                                "looking_glass/pretrained.py"])
+def test_v1_reconstruction_source_cannot_be_changed_before_freeze(frozen_repo, historical_source):
     repo, _source, _frozen_commit, _sha = frozen_repo
-    path = repo / "looking_glass/targeted_edit_cpu_v1.py"
+    path = repo / historical_source
     path.write_bytes(path.read_bytes() + b"\n# changed after v1\n")
-    git(repo, "add", "looking_glass/targeted_edit_cpu_v1.py")
+    git(repo, "add", historical_source)
     git(repo, "commit", "-m", "changed historical reconstruction")
     with pytest.raises(v1.StudyError):
         manifest.make_manifest(repo, git(repo, "rev-parse", "HEAD"))
