@@ -1,0 +1,13 @@
+{
+  "artifact_count": 10,
+  "current_inventory_sha256": "3df696303a06b2ec6ddf4113df1969897dbae89566375b7d3a9cecb85b3d59cd",
+  "current_public_rows": 499,
+  "manifest_sha256": "1de77fa0078b71d75606d39001280267adb6ae5d3d3558fdea36283995e9b653",
+  "owner_pid": 52128,
+  "owner_run_id": "a070307c678c4402b17d63c3e6942b69",
+  "phase_sha256": "c8e4c87377d57ada69d50b717524fd082a8b5d464b66baf39bc2af5a1e9c53b5",
+  "reported_clean_reaped_drained_and_disposed": true,
+  "scope": "saved cooperative process and custodian reports; not authenticated execution, chronology or private data",
+  "selection_sha256": "9ea861d89c8ed78c038947dbdb331d6dba1ea8267901ce06e5492dab32e7c11f",
+  "source_commit": "8f2dc4dcb8a2bcd10531ecaffbf893f794fe2e26"
+}
