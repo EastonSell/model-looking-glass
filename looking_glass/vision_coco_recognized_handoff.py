@@ -121,6 +121,8 @@ def screen_receipt(screen, data_dir, archive_sha256, observer_raw):
     if (observer.get('schema') != 'vision-recognized-v4-external-observer' or
             observer.get('status') != 'complete' or observer.get('mode') != 'screen' or
             type(observer.get('controller_exit_code')) is not int or observer['controller_exit_code'] != 0 or
+            observer.get('controller_reaped') is not True or observer.get('timed_out') is not False or
+            observer.get('forced_stop') is not False or
             observer.get('supervisor_sha256') != hashlib.sha256(raw).hexdigest() or
             observer.get('terminal_sha256') != screen['terminal_sha256']):
         raise ValueError('external screen controller receipt differs')
