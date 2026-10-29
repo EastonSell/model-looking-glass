@@ -166,6 +166,10 @@ class CustodyTests(unittest.TestCase):
         options.update(changes)
         return custody.prepare_once(self.public, self.root, **options)
 
+    def observe_supervisor_process(self, *args, **kwargs):
+        kwargs.setdefault('protect_process', lambda _process: None)
+        return custody.observe_supervisor_process(*args, **kwargs)
+
     def supervised(self, attempt):
         directory = self.root / 'preparation-supervisor'
         directory.mkdir()
@@ -180,6 +184,7 @@ class CustodyTests(unittest.TestCase):
                                '--config', str(self.config_path), '--config-sha',
                                hashlib.sha256(self.config_bytes).hexdigest()],
                    'job_drained': True, 'job_closed': True, 'cleanup_verified': True,
+                   'postexit_active_processes': 0,
                    'supervisor_error': None, 'log_overflow': False,
                    'audit': custody.audit_preparation(attempt, self.public, self.wrapper),
                    'retained_tensor_files': {'accounting_complete': True, 'total_bytes': 0},
@@ -349,7 +354,9 @@ class CustodyTests(unittest.TestCase):
         observed_path.write_bytes(raw_observed)
         for field, value in (('child_pid', None), ('child_pid', True), ('quarantined', True),
                              ('cancellation_requested', True), ('logs_complete', False),
-                             ('retry_safe', True)):
+                             ('retry_safe', True), ('postexit_active_processes', None),
+                             ('postexit_active_processes', False), ('postexit_active_processes', 0.0),
+                             ('postexit_active_processes', 1)):
             with self.subTest(field=field, value=value):
                 receipt = json.loads(raw_receipt)
                 receipt[field] = value
@@ -360,6 +367,15 @@ class CustodyTests(unittest.TestCase):
                 observed_path.write_bytes(custody._json_bytes(observation))
                 with self.assertRaises(custody.CustodyError):
                     custody.verify_preparation_supervisor(attempt, supervisor, self.public, self.wrapper)
+        receipt = json.loads(raw_receipt)
+        del receipt['postexit_active_processes']
+        altered = custody._json_bytes(receipt)
+        receipt_path.write_bytes(altered)
+        observation = json.loads(raw_observed)
+        observation['supervisor_record_sha256'] = hashlib.sha256(altered).hexdigest()
+        observed_path.write_bytes(custody._json_bytes(observation))
+        with self.assertRaises(custody.CustodyError):
+            custody.verify_preparation_supervisor(attempt, supervisor, self.public, self.wrapper)
         for index, value in ((8, str(self.root / 'unrelated.py')), (9, 'validate'),
                              (11, str(self.root / 'other-config.json')), (13, 'f' * 64)):
             with self.subTest(command_index=index):
@@ -418,13 +434,15 @@ class CustodyTests(unittest.TestCase):
         def birth(process):
             calls.append('birth')
             return 123456789
+        def protect(process):
+            calls.append('protect')
         with mock.patch.object(custody.subprocess, 'Popen', side_effect=create), \
              mock.patch.object(custody, '_process_birth_100ns', side_effect=birth):
-            result = custody.observe_supervisor_process(command, attempt, supervisor, self.public,
+            result = self.observe_supervisor_process(command, attempt, supervisor, self.public,
                                                         self.wrapper, config_path=self.config_path,
                                                         config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
-                                                        job_factory=Job)
-        self.assertEqual(calls, ['spawn', 'assign', 'birth', 'gate', 'wait', 'drain', 'close'])
+                                                        job_factory=Job, protect_process=protect)
+        self.assertEqual(calls, ['spawn', 'assign', 'protect', 'birth', 'gate', 'wait', 'drain', 'close'])
         self.assertEqual(result['status'], 'observed_preparation_exit')
         custody.verify_preparation_supervisor(attempt, supervisor, self.public, self.wrapper)
         observation = json.loads(observation_path.read_bytes())
@@ -459,11 +477,13 @@ class CustodyTests(unittest.TestCase):
         receipt['command'][8] = str(fake_supervisor)
         receipt_path.write_bytes(custody._json_bytes(receipt))
         command = outer_command(receipt['command'])
-        with mock.patch.object(custody, '__file__', str(fake_supervisor)), \
+        with guards.SourceFileLease(self.root, [fake_supervisor]) as source_lease, \
+             mock.patch.object(custody, '__file__', str(fake_supervisor)), \
              mock.patch.dict(os.environ, {'MLG_NATURAL_SITE': str(self.root)}):
-            result = custody.observe_supervisor_process(command, attempt, supervisor, self.public, self.wrapper,
+            result = self.observe_supervisor_process(command, attempt, supervisor, self.public, self.wrapper,
                 config_path=self.config_path, config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
-                job_factory=lambda: custody._outer_supervisor_job(guards))
+                job_factory=lambda: custody._outer_supervisor_job(guards),
+                protect_process=lambda process: guards.duplicate_to_process(source_lease.handles(), process))
             self.assertEqual(result['status'], 'observed_preparation_exit')
             custody.verify_preparation_supervisor(attempt, supervisor, self.public, self.wrapper)
         saved = json.loads(observation.read_bytes())
@@ -502,7 +522,7 @@ class CustodyTests(unittest.TestCase):
                  mock.patch.object(custody.subprocess, 'Popen', return_value=Process()), \
                  mock.patch.object(custody, '_process_birth_100ns', side_effect=birth):
                 with self.assertRaises((custody.CustodyError, KeyboardInterrupt)):
-                    custody.observe_supervisor_process(command, attempt, supervisor, self.public,
+                    self.observe_supervisor_process(command, attempt, supervisor, self.public,
                                                        self.wrapper, config_path=self.config_path,
                                                        config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
                                                        job_factory=Job, custody_state=state)
@@ -544,7 +564,7 @@ class CustodyTests(unittest.TestCase):
             raise OSError('synthetic lost Popen return')
         with mock.patch.object(custody.subprocess, 'Popen', side_effect=lost):
             with self.assertRaises(custody.CustodyError):
-                custody.observe_supervisor_process(command, attempt, supervisor, self.public, self.wrapper,
+                self.observe_supervisor_process(command, attempt, supervisor, self.public, self.wrapper,
                     config_path=self.config_path, config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
                     job_factory=Job)
         children[0].stdin.close()
@@ -602,7 +622,7 @@ class CustodyTests(unittest.TestCase):
         with mock.patch.object(custody.subprocess, 'Popen', return_value=Process()), \
              mock.patch.object(custody, '_process_birth_100ns', side_effect=KeyboardInterrupt()):
             with self.assertRaises(KeyboardInterrupt) as caught:
-                custody.observe_supervisor_process(command, attempt, supervisor, self.public, self.wrapper,
+                self.observe_supervisor_process(command, attempt, supervisor, self.public, self.wrapper,
                     config_path=self.config_path, config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
                     job_factory=Job)
         self.assertIsInstance(caught.exception.__cause__, OSError)
@@ -631,7 +651,7 @@ class CustodyTests(unittest.TestCase):
         with mock.patch.object(custody.subprocess, 'Popen', return_value=process), \
              mock.patch.object(custody, '_process_birth_100ns', return_value=123456789):
             with self.assertRaises(KeyboardInterrupt) as caught:
-                custody.observe_supervisor_process(command, attempt, supervisor, self.public, self.wrapper,
+                self.observe_supervisor_process(command, attempt, supervisor, self.public, self.wrapper,
                     config_path=self.config_path, config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
                     job_factory=lambda: job, custody_state=state)
         self.assertIs(state[0], job)
@@ -666,7 +686,7 @@ class CustodyTests(unittest.TestCase):
         with mock.patch.object(custody.subprocess, 'Popen', return_value=process), \
              mock.patch.object(custody, '_process_birth_100ns', side_effect=ValueError('synthetic birth failure')):
             with self.assertRaises(KeyboardInterrupt) as caught:
-                custody.observe_supervisor_process(outer_command(inner), attempt, supervisor, self.public,
+                self.observe_supervisor_process(outer_command(inner), attempt, supervisor, self.public,
                     self.wrapper, config_path=self.config_path,
                     config_sha256=hashlib.sha256(self.config_bytes).hexdigest(), job_factory=lambda: job)
         self.assertIsInstance(caught.exception.__cause__, ValueError)
@@ -689,7 +709,7 @@ class CustodyTests(unittest.TestCase):
         with mock.patch.object(custody.subprocess, 'Popen', return_value=Process()), \
              mock.patch.object(custody, '_process_birth_100ns', side_effect=KeyboardInterrupt()):
             with self.assertRaises(KeyboardInterrupt) as caught:
-                custody.observe_supervisor_process(outer_command(inner), attempt, supervisor, self.public,
+                self.observe_supervisor_process(outer_command(inner), attempt, supervisor, self.public,
                     self.wrapper, config_path=self.config_path,
                     config_sha256=hashlib.sha256(self.config_bytes).hexdigest(), job_factory=Job)
         self.assertIsInstance(caught.exception.__cause__, SystemExit)
@@ -717,7 +737,7 @@ class CustodyTests(unittest.TestCase):
         with mock.patch.object(custody.subprocess, 'Popen', return_value=process), \
              mock.patch.object(custody, '_process_birth_100ns', return_value=123456789):
             with self.assertRaises(custody.CustodyError):
-                custody.observe_supervisor_process(outer_command(inner), attempt, supervisor, self.public,
+                self.observe_supervisor_process(outer_command(inner), attempt, supervisor, self.public,
                     self.wrapper, config_path=self.config_path,
                     config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
                     job_factory=lambda: job, custody_state=state)
@@ -823,10 +843,131 @@ class CustodyTests(unittest.TestCase):
         command[9] = 'prepare'
         with mock.patch.object(custody.subprocess, 'Popen') as spawn:
             with self.assertRaises(custody.CustodyError):
-                custody.observe_supervisor_process(command, attempt, supervisor, self.public, self.wrapper,
+                self.observe_supervisor_process(command, attempt, supervisor, self.public, self.wrapper,
                     config_path=self.config_path, config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
                     job_factory=lambda: None)
             spawn.assert_not_called()
+
+    def test_source_duplication_failure_stops_before_outer_gate(self):
+        attempt, _ = self.prepare()
+        supervisor = self.supervised(attempt)
+        (supervisor / 'supervisor-observation.json').unlink()
+        inner = json.loads((supervisor / 'supervisor.json').read_bytes())['command']
+        calls = []
+        class Process:
+            pid = 54321
+            stdin = io.BytesIO()
+            def wait(self, timeout): calls.append('wait'); return 0
+            def poll(self): return None
+            def kill(self): calls.append('kill')
+        class Job:
+            def assign(self, process): calls.append('assign')
+            def terminate_and_wait(self): calls.append('drain')
+            def close(self): calls.append('close')
+        process, state = Process(), [None, None, False, False]
+        def fail_protection(_process):
+            raise OSError('synthetic source duplication failure')
+        with mock.patch.object(custody.subprocess, 'Popen', return_value=process):
+            with self.assertRaises(OSError):
+                self.observe_supervisor_process(outer_command(inner), attempt, supervisor, self.public,
+                    self.wrapper, config_path=self.config_path,
+                    config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
+                    job_factory=Job, protect_process=fail_protection, custody_state=state)
+        self.assertEqual(process.stdin.getvalue(), b'')
+        self.assertFalse(state[2])
+        self.assertEqual(calls, ['assign', 'drain', 'close', 'kill', 'wait'])
+
+    def test_failed_pre_gate_cleanup_keeps_partial_duplication_in_custody(self):
+        attempt, _ = self.prepare()
+        supervisor = self.supervised(attempt)
+        inner = json.loads((supervisor / 'supervisor.json').read_bytes())['command']
+        class Process:
+            pid = 54321
+            stdin = io.BytesIO()
+            def poll(self): return None
+            def kill(self): pass
+            def wait(self, timeout): raise OSError('synthetic reap failure')
+        class Job:
+            def assign(self, process): pass
+            def terminate_and_wait(self): raise OSError('synthetic drain failure')
+            def close(self): pass
+        process, job, state = Process(), Job(), [None, None, False, False]
+        def partial_duplication(_process):
+            raise OSError('synthetic partial source duplication')
+        with mock.patch.object(custody.subprocess, 'Popen', return_value=process):
+            with self.assertRaises(OSError):
+                self.observe_supervisor_process(outer_command(inner), attempt, supervisor, self.public,
+                    self.wrapper, config_path=self.config_path,
+                    config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
+                    job_factory=lambda: job, protect_process=partial_duplication, custody_state=state)
+        self.assertEqual(process.stdin.getvalue(), b'')
+        self.assertEqual(state, [job, process, True, False])
+
+    def test_lost_outer_spawn_return_keeps_uncertain_process_in_custody(self):
+        attempt, _ = self.prepare()
+        supervisor = self.supervised(attempt)
+        inner = json.loads((supervisor / 'supervisor.json').read_bytes())['command']
+        class Job:
+            def terminate_and_wait(self): pass
+            def close(self): pass
+        job, state = Job(), [None, None, False, False]
+        def lose_spawn_return(*_args, **_kwargs):
+            self.assertTrue(state[2])
+            raise OSError('lost spawn return')
+        with mock.patch.object(custody.subprocess, 'Popen', side_effect=lose_spawn_return):
+            with self.assertRaises(custody.CustodyError):
+                self.observe_supervisor_process(outer_command(inner), attempt, supervisor, self.public,
+                    self.wrapper, config_path=self.config_path,
+                    config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
+                    job_factory=lambda: job, custody_state=state)
+        self.assertEqual(state, [job, None, True, False])
+
+    def test_interrupt_at_pre_gate_cleanup_entry_keeps_custody_rooted(self):
+        attempt, _ = self.prepare()
+        supervisor = self.supervised(attempt)
+        inner = json.loads((supervisor / 'supervisor.json').read_bytes())['command']
+        class Process:
+            pid = 54321
+            stdin = io.BytesIO()
+        class Job:
+            def assign(self, _process): pass
+        process, job, state = Process(), Job(), [None, None, False, False]
+        lines, start = inspect.getsourcelines(custody.observe_supervisor_process)
+        target = next(start + index for index, line in enumerate(lines)
+                      if 'if gate_attempted and not custody_state[3]' in line)
+        fired = []
+        def tracer(frame, event, arg):
+            if (frame.f_code is custody.observe_supervisor_process.__code__ and event == 'line'
+                    and frame.f_lineno == target and not fired):
+                fired.append(True)
+                raise KeyboardInterrupt()
+            return tracer
+        def fail_protection(_process):
+            raise OSError('synthetic partial duplication')
+        with mock.patch.object(custody.subprocess, 'Popen', return_value=process):
+            sys.settrace(tracer)
+            try:
+                with self.assertRaises(KeyboardInterrupt):
+                    self.observe_supervisor_process(outer_command(inner), attempt, supervisor, self.public,
+                        self.wrapper, config_path=self.config_path,
+                        config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
+                        job_factory=lambda: job, protect_process=fail_protection, custody_state=state)
+            finally:
+                sys.settrace(None)
+        self.assertEqual(fired, [True])
+        self.assertEqual(process.stdin.getvalue(), b'')
+        self.assertEqual(state, [job, process, True, False])
+
+    def test_inner_supervisor_receives_the_restricted_handle_set(self):
+        seen = []
+        def supervise(*args, **kwargs):
+            seen.append(kwargs['inherited_handles'])
+            return {'cleanup_verified': True}
+        supervisor = SimpleNamespace(_QUARANTINED=[], supervise_heldout=supervise)
+        result = custody._supervise_preparation(supervisor, ['fake'], self.root, lambda *_: {},
+                                                inherited_handles=(11, 22))
+        self.assertTrue(result['cleanup_verified'])
+        self.assertEqual(seen, [(11, 22)])
 
     def test_complete_observation_after_write_error_is_recoverable_without_redraw(self):
         attempt, _ = self.prepare()
@@ -852,7 +993,7 @@ class CustodyTests(unittest.TestCase):
              mock.patch.object(custody, '_process_birth_100ns', return_value=123456789), \
              mock.patch.object(custody, '_write_new', side_effect=interrupted):
             with self.assertRaises(OSError):
-                custody.observe_supervisor_process(command, attempt, supervisor, self.public,
+                self.observe_supervisor_process(command, attempt, supervisor, self.public,
                                                    self.wrapper, config_path=self.config_path,
                                                    config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
                                                    job_factory=Job)
