@@ -71,3 +71,25 @@ output serialization, native and decoder allocations, and the interpreter
 baseline, and is not a process RSS bound. The decoder and logical input/output
 caps are documented separately. Runtime metadata and last-bit numerical values
 can differ on a replay.
+
+An [independent Decimal checker](independent_decimal_audit.py) streams the
+same archive, compares its 64 selected vectors and derived metrics to the saved
+report at 60-digit precision, and independently checks the baseline gates and
+stratum summaries. On this report, the largest absolute discrepancies were
+1.12e−16 for probabilities, 5.56e−17 for total variation, 2.23e−16 for
+off-group share, 6.39e−16 for oriented margin and 2.45e−15 for cosine. It can
+be run from the repository root with:
+
+```text
+python results/vision-coco-distribution-posthoc-v1-20261029/independent_decimal_audit.py \
+  --archive <new-archive-path> \
+  --index results/vision-coco-vit-v1-20261029/evidence-index.json \
+  --manifest experiments/vision_coco_spatial_v1.json \
+  --report results/vision-coco-distribution-posthoc-v1-20261029/result.json.gz
+```
+
+Compare its reported compressed and uncompressed hashes to the pins above.
+The checker compares supplied inputs to the report's pins and does not
+independently authenticate those pins or execution. Its streaming XZ reader
+uses the standard library's default decoder and is separate from the main
+reader's explicit 32 MiB decoder limit.
