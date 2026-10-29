@@ -23,6 +23,8 @@ class PreparationAuditTests(unittest.TestCase):
     setUp = fixtures.InjectionCustodyTests.setUp
     prepare = fixtures.InjectionCustodyTests.prepare
     v2_public = fixtures.InjectionCustodyTests.v2_public
+    v3_public = fixtures.InjectionCustodyTests.v3_public
+    fixed_options = fixtures.InjectionCustodyTests.fixed_options
 
     def checked(self, phase, **overrides):
         config = self.root / 'preparation-config.json'
@@ -116,10 +118,10 @@ class PreparationAuditTests(unittest.TestCase):
     def test_study_audit_rejects_an_alternate_freeze_before_generic_audit(self):
         with mock.patch.object(audit, 'audit_preparation') as generic:
             with self.assertRaises(ValueError):
-                audit.audit_study_preparation(self.root, public=self.v2_public())
+                audit.audit_study_preparation(self.root, public=self.v3_public())
             generic.assert_not_called()
 
-    def test_study_audit_requires_v2_even_with_matching_discovery_pins(self):
+    def test_study_audit_requires_v3_even_with_matching_discovery_pins(self):
         pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
                 '_STUDY_RUNTIME': fixtures.digest(self.runtime), '_STUDY_PREDICTION': fixtures.digest(self.prediction),
                 '_STUDY_PLAN': fixtures.digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
@@ -127,7 +129,39 @@ class PreparationAuditTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 audit.audit_study_preparation(self.root, public=self.inputs)
             generic.assert_not_called()
-            self.assertEqual(audit.audit_study_preparation(self.root, public=self.v2_public()), 'verified')
+            with self.assertRaises(ValueError):
+                audit.audit_study_preparation(self.root, public=self.v2_public())
+            generic.assert_not_called()
+            self.assertEqual(audit.audit_study_preparation(self.root, public=self.v3_public()), 'verified')
+
+    def test_preclaimed_v3_preparation_audits_and_binds_its_handoff(self):
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': fixtures.digest(self.runtime), '_STUDY_PREDICTION': fixtures.digest(self.prediction),
+                '_STUDY_PLAN': fixtures.digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        public = self.v3_public()
+        options = self.fixed_options()
+        config_path = self.root / 'config.json'
+        config_path.write_bytes(options['config_bytes'])
+        ledger = self.root / 'fake-ledger'
+        with mock.patch.multiple(custody, **pins), mock.patch.object(
+                custody.secrets, 'token_bytes', return_value=fixtures.SPLIT_NONCE):
+            prepared = custody.prepare_study_preclaimed(public, self.root, ledger, **options)
+            audit_options = dict(public=public, config_path=config_path,
+                config_sha256=options['config_sha256'], ledger_path=ledger,
+                site_nonce=fixtures.SITE_NONCE, site_record_bytes=self.site.record_bytes,
+                tokenizer=fixtures.FakeTokenizer(), publication_check=lambda name, raw: True,
+                source_check=lambda binding: True, prediction_check=lambda raw, sha: True,
+                observe_inventory=lambda: self.inventory_sha,
+                claim_check=lambda path, name, phase: True,
+                runtime_check=lambda runtime, deviation, plan, replay, binding: True)
+            result = audit.audit_study_preparation(prepared.phase_root, **audit_options)
+            marker = self.root / (prepared.phase_root.name + '.preparation-started.json')
+            self.assertEqual(result['preclaim_handoff_sha256'], fixtures.digest(marker.read_bytes()))
+            self.assertEqual(result['status'], 'evidence_complete')
+            self.assertEqual(len(result['preparation']), 6)
+            marker.write_bytes(marker.read_bytes() + b' ')
+            with self.assertRaises(ValueError):
+                audit.audit_study_preparation(prepared.phase_root, **audit_options)
 
 
 if __name__ == '__main__':

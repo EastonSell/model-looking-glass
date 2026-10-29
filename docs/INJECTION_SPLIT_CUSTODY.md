@@ -16,11 +16,12 @@ binding; a trusted bootstrap must check those source bytes **before** import.
 `prepare_study_once` is the real-study entry: it pins the already published
 injection-only aggregate, discovery source, runtime, prediction, public plan
 and site commitment before calling the generic `prepare_once` helper. It also
-requires `mlg-injection-heldout-operational-binding-v2`, which separately
-identifies the preparation child, structural auditor, outer observer and the
-source-first gate callers. The
-generic helper retains v1 compatibility for historical or fabricated inputs;
-it must not be substituted for the fixed-study gate in production.
+requires `mlg-injection-heldout-operational-binding-v3`, which separately
+identifies the preparation child, structural auditor, outer observer, the
+source-first gate callers, the prospectively published runtime deviation and
+the observed held-out runtime. The generic helper retains v1 and v2
+compatibility for historical or fabricated inputs; it must not be substituted
+for the fixed-study gate in production.
 
 The helper accepts immutable public bytes, a private site nonce and record,
 the protected parent path, and trusted publication, exposure-observation,
@@ -44,11 +45,47 @@ to the independent held-out numerical auditor. A trusted `source_check`
 must check those published and locally executed bytes, and a trusted
 `prediction_check` must validate the frozen prediction's schema and means using
 the prebound discovery scoring source before either claim or nonce draw.
+V3 binds exact `runtime_deviation_sha256` and `heldout_runtime_sha256` bytes;
+it also binds the separately published compatibility-replay plan, the replay
+producer, claimant, supervised owner and read-only preclaim-guard sources, and
+the completed replay evidence. A trusted source check must verify the actual
+published and executed bytes for each of those identities.
+The caller must independently verify the observed current runtime and replay
+against the prospectively published requirements. The original discovery runtime
+digest remains unchanged.
 
-Preparation checks the public freeze and the existing site commitment before
-claiming `injection_heldout`. It checks the phase's fixed 72 MiB logical and
-192 MiB physical shares, writes a claim record, announces the allocation under
-the shared gate, rechecks current exposure and source, and draws one 32-byte
+The separately supervised claimant must verify the frozen public inputs and the
+published prospective replay plan before consuming the single ledger claim. The
+plan binds both runtime hashes, the fixed roles, public references, tolerance,
+replay source and the diagnostic and replay budgets. After that plan is
+published, the owner makes the single claim and runs the fixed public replay.
+The claim and every partial or failed replay remain consumed. Once successful
+completion and cleanup are independently checked, the owner publishes the replay
+result and the complete operation binding and observes their exact bytes.
+Preparation may begin only after that readback; its source-bound caller must verify the exact
+protected ledger row and phase path, original claim history, and all phase-side
+evidence rather than pass a cached or caller-created grant. The fixed study entry
+uses `prepare_study_preclaimed`: it writes an exclusive durable start marker,
+checks that real ledger row and reconciles side evidence through trusted callbacks,
+and never makes a second claim. A failed or interrupted handoff must be retained
+and cannot be retried, including a failure before the marker can be written.
+The helper latches a start attempt in the current process before marker creation,
+so a failed open cannot be retried there. The separately supervised owner must
+also durably record its one-use preparation launch before starting that process
+and refuse every restart after a failed or uncertain launch; an in-memory latch
+cannot protect a new process if marker creation failed before creating a file.
+The 72 MiB logical and 192 MiB physical phase limits include the fixed 8 MiB
+logical and 16 MiB physical replay reservations, plus 4 MiB physical for the
+retained no-model rehearsals; all partial, failed and duplicate side evidence
+counts. The external owner must verify actual file sizes, free space, source,
+published ordering and private path identities. The marker binds the exact
+ledger and phase paths, configuration, operation, replay-plan and replay-evidence digests;
+it does not itself prove that a callback observed the real ledger or evidence.
+
+Preparation checks the public freeze and the existing site commitment, checks
+the fixed phase limits, writes a claim record, announces the allocation under
+the shared gate, rechecks current exposure, runtime, source, the protected claim,
+side evidence and unchanged handoff, and draws one 32-byte
 nonce from `secrets.token_bytes`. The nonce must differ from both the private
 site nonce and the public discovery-plan entropy. It checks actual tokenizer
 output for every family member, one-token subject alignment, shared context,

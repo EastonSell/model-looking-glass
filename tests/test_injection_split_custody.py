@@ -2,6 +2,7 @@
 import hashlib
 import importlib
 import json
+import os
 from dataclasses import replace
 from pathlib import Path
 import tempfile
@@ -155,6 +156,34 @@ class InjectionCustodyTests(unittest.TestCase):
         raw = canonical(binding)
         return replace(self.inputs, operational_binding_bytes=raw, operational_binding_sha256=digest(raw))
 
+    def v3_public(self):
+        binding = json.loads(self.v2_public().operational_binding_bytes)
+        heldout_runtime = canonical({'schema': 'fabricated-heldout-runtime-v1', 'system_environment_sha256': '7' * 64})
+        deviation = b'fabricated published runtime deviation'
+        replay_plan = canonical({'schema': 'fabricated-compatibility-plan-v1', 'fixed_roles': 16})
+        replay = canonical({'schema': 'fabricated-compatibility-replay-v1', 'status': 'passed'})
+        binding.update({'schema': 'mlg-injection-heldout-operational-binding-v3',
+            'runtime_deviation_sha256': digest(deviation), 'heldout_runtime_sha256': digest(heldout_runtime),
+            'runtime_replay_plan_sha256': digest(replay_plan), 'runtime_replay_source_sha256': '6' * 64,
+            'runtime_replay_claim_source_sha256': '7' * 64, 'runtime_replay_owner_source_sha256': '8' * 64,
+            'preclaim_guard_source_sha256': '9' * 64,
+            'runtime_replay_evidence_sha256': digest(replay)})
+        raw = canonical(binding)
+        return replace(self.inputs, operational_binding_bytes=raw, operational_binding_sha256=digest(raw),
+                       runtime_deviation_bytes=deviation, heldout_runtime_bytes=heldout_runtime,
+                       runtime_replay_plan_bytes=replay_plan,
+                       runtime_replay_evidence_bytes=replay)
+
+    def fixed_options(self):
+        config = canonical({'schema': 'fabricated-preparation-config-v1'})
+        return dict(site_nonce=SITE_NONCE, site_record_bytes=self.site.record_bytes,
+            tokenizer=FakeTokenizer(), verify_preclaim=lambda path, phase, **kw: True,
+            reconcile_phase=lambda path, **kw: True, config_bytes=config, config_sha256=digest(config),
+            publication_check=lambda name, raw: True, source_check=lambda binding: True,
+            prediction_check=lambda raw, sha: True, gate_allocation=lambda freeze: True,
+            observe_inventory=lambda: self.inventory_sha,
+            runtime_check=lambda runtime, deviation, plan, replay, binding: True)
+
     def test_claim_precedes_one_draw_and_private_commitment_verifies(self):
         prepared = self.prepare()
         self.assertEqual(self.claim.events, ['claim', 'gate', 'draw'])
@@ -198,54 +227,262 @@ class InjectionCustodyTests(unittest.TestCase):
     def test_real_study_entry_rejects_a_self_consistent_alternate_freeze(self):
         self.assertTrue(hasattr(custody, 'prepare_study_once'), 'fixed-study entry is not implemented')
         with self.assertRaises(custody.CustodyError):
-            custody.prepare_study_once(self.inputs, self.root, self.root / 'fake-ledger',
-                site_nonce=SITE_NONCE, site_record_bytes=self.site.record_bytes,
-                tokenizer=FakeTokenizer(), claim_phase=self.claim,
-                publication_check=lambda name, raw: True, observe_inventory=lambda: self.inventory_sha,
-                gate_allocation=lambda freeze: True,
-                source_check=lambda binding: True, prediction_check=lambda raw, sha: True)
+            custody.prepare_study_once(self.v3_public(), self.root, self.root / 'fake-ledger',
+                                       **self.fixed_options())
         self.assertEqual(self.claim.events, [])
 
     def test_fixed_study_requires_v2_preparation_sources_before_claim(self):
         pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
                 '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
                 '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
-        options = dict(site_nonce=SITE_NONCE, site_record_bytes=self.site.record_bytes,
-            tokenizer=FakeTokenizer(), claim_phase=self.claim, publication_check=lambda name, raw: True,
-            source_check=lambda binding: True, prediction_check=lambda raw, sha: True,
-            gate_allocation=lambda freeze: True, observe_inventory=lambda: self.inventory_sha)
+        options = self.fixed_options()
         with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes', return_value=SPLIT_NONCE):
             with self.assertRaises(ValueError):
                 custody.prepare_study_once(self.inputs, self.root, self.root / 'fake-ledger', **options)
             self.assertEqual(self.claim.events, [])
             for field in ('preparation_child_source_sha256', 'preparation_audit_source_sha256',
                           'outer_observer_source_sha256', 'gate_allocation_caller_source_sha256',
-                          'gate_transition_caller_source_sha256'):
+                          'gate_transition_caller_source_sha256', 'runtime_replay_claim_source_sha256',
+                          'runtime_replay_owner_source_sha256', 'preclaim_guard_source_sha256'):
                 with self.subTest(field=field):
-                    altered = json.loads(self.v2_public().operational_binding_bytes)
+                    altered = json.loads(self.v3_public().operational_binding_bytes)
                     altered[field] = 'NOT-A-SHA256'
                     raw = canonical(altered)
-                    bad = replace(self.inputs, operational_binding_bytes=raw, operational_binding_sha256=digest(raw))
-                    with self.assertRaises(ValueError):
-                        custody.prepare_study_once(bad, self.root, self.root / 'fake-ledger', **options)
+                    bad = replace(self.v3_public(), operational_binding_bytes=raw, operational_binding_sha256=digest(raw))
+                    with tempfile.TemporaryDirectory(dir=self.root) as temp:
+                        with self.assertRaises(ValueError):
+                            custody.prepare_study_once(bad, Path(temp), self.root / 'fake-ledger', **options)
+                        self.assertTrue((Path(temp) / ('injection-heldout-' + self.freeze.sha256
+                                                       + '.preparation-started.json')).exists())
                     self.assertEqual(self.claim.events, [])
-            result = custody.prepare_study_once(self.v2_public(), self.root, self.root / 'fake-ledger', **options)
+            result = custody.prepare_study_once(self.v3_public(), self.root, self.root / 'fake-ledger', **options)
             self.assertTrue((result.phase_root / 'preparation-complete.json').is_file())
-            self.assertEqual(self.claim.events, ['claim'])
+            self.assertEqual(self.claim.events, [])
+
+    def test_fixed_study_requires_published_runtime_deviation_before_claim(self):
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
+                '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        options = self.fixed_options()
+        with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes', return_value=SPLIT_NONCE):
+            with self.assertRaises(ValueError):
+                custody.prepare_study_once(self.v2_public(), self.root, self.root / 'fake-ledger', **options)
+            self.assertEqual(self.claim.events, [])
+            public = self.v3_public()
+            for name in ('runtime_deviation', 'heldout_runtime', 'runtime_replay_plan', 'runtime_replay_evidence'):
+                with self.subTest(name=name):
+                    options['publication_check'] = lambda key, raw, refused=name: key != refused
+                    with tempfile.TemporaryDirectory(dir=self.root) as temp:
+                        with self.assertRaises(ValueError):
+                            custody.prepare_study_once(public, Path(temp), self.root / 'fake-ledger', **options)
+                        self.assertTrue((Path(temp) / ('injection-heldout-' + self.freeze.sha256
+                                                       + '.preparation-started.json')).exists())
+                    self.assertEqual(self.claim.events, [])
+            options['publication_check'] = lambda name, raw: True
+            options['runtime_check'] = lambda runtime, deviation, plan, replay, binding: False
+            with tempfile.TemporaryDirectory(dir=self.root) as temp:
+                with self.assertRaises(ValueError):
+                    custody.prepare_study_once(public, Path(temp), self.root / 'fake-ledger', **options)
+            self.assertEqual(self.claim.events, [])
+            options['runtime_check'] = lambda runtime, deviation, plan, replay, binding: True
+            result = custody.prepare_study_once(public, self.root, self.root / 'fake-ledger', **options)
+            self.assertTrue((result.phase_root / 'preparation-complete.json').exists())
+
+    def test_preclaimed_study_uses_one_durable_handoff_without_reclaiming(self):
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
+                '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        phase = self.root / ('injection-heldout-' + self.freeze.sha256)
+        ledger = self.root / 'fake-ledger'
+        calls = []
+        def verify_preclaim(path, phase_name, *, output_path):
+            calls.append('verify')
+            return path == ledger and phase_name == 'injection_heldout' and output_path == phase
+        def reconcile_phase(output_path, *, pilot_logical_bytes, pilot_disk_bytes, rehearsal_disk_bytes):
+            calls.append('reconcile')
+            return (output_path == phase and pilot_logical_bytes == 8 * 1024**2
+                    and pilot_disk_bytes == 16 * 1024**2 and rehearsal_disk_bytes == 4 * 1024**2)
+        options = dict(site_nonce=SITE_NONCE, site_record_bytes=self.site.record_bytes,
+            tokenizer=FakeTokenizer(), verify_preclaim=verify_preclaim, reconcile_phase=reconcile_phase,
+            publication_check=lambda name, raw: True, source_check=lambda binding: True,
+            prediction_check=lambda raw, sha: True, gate_allocation=lambda freeze: True,
+            observe_inventory=lambda: self.inventory_sha,
+            runtime_check=lambda runtime, deviation, plan, replay, binding: True,
+            config_bytes=b'fabricated-config', config_sha256=digest(b'fabricated-config'))
+        with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes', return_value=SPLIT_NONCE) as draw:
+            result = custody.prepare_study_preclaimed(self.v3_public(), self.root, ledger, **options)
+            marker = self.root / (phase.name + '.preparation-started.json')
+            self.assertTrue(marker.is_file())
+            claim = json.loads((result.phase_root / 'claim.json').read_bytes())
+            self.assertEqual(claim['preclaim_handoff_sha256'], digest(marker.read_bytes()))
+            self.assertIn('verify', calls)
+            self.assertIn('reconcile', calls)
+            with self.assertRaises(ValueError):
+                custody.prepare_study_preclaimed(self.v3_public(), self.root, ledger, **options)
+            self.assertEqual(draw.call_count, 1)
+            self.assertFalse(self.claim.claimed)
+
+    def test_v3_rejects_altered_replay_plan_and_result_before_draw(self):
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
+                '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes') as draw:
+            for field in ('runtime_replay_plan_bytes', 'runtime_replay_evidence_bytes'):
+                with self.subTest(field=field), tempfile.TemporaryDirectory(dir=self.root) as temp:
+                    bad = replace(self.v3_public(), **{field: b'altered published bytes'})
+                    with self.assertRaises(custody.CustodyError):
+                        custody.prepare_study_preclaimed(bad, Path(temp), self.root / 'fake-ledger',
+                                                         **self.fixed_options())
+            draw.assert_not_called()
+
+    def test_preclaim_or_phase_reconciliation_failure_is_terminal_before_draw(self):
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
+                '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes') as draw:
+            for failed_callback in ('verify_preclaim', 'reconcile_phase'):
+                with self.subTest(callback=failed_callback), tempfile.TemporaryDirectory(dir=self.root) as temp:
+                    parent = Path(temp)
+                    options = self.fixed_options()
+                    options[failed_callback] = lambda *args, **kwargs: False
+                    for _ in range(2):
+                        with self.assertRaises(custody.CustodyError):
+                            custody.prepare_study_preclaimed(self.v3_public(), parent,
+                                                              self.root / 'fake-ledger', **options)
+                    phase = parent / ('injection-heldout-' + self.freeze.sha256)
+                    self.assertFalse(phase.exists())
+                    self.assertTrue((parent / (phase.name + '.preparation-started.json')).is_file())
+            draw.assert_not_called()
+
+    def test_interrupted_handoff_is_retained_and_cannot_be_retried(self):
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
+                '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        def interrupted_write(path, data):
+            path.write_bytes(data[:13])
+            raise KeyboardInterrupt()
+        options = self.fixed_options()
+        with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes') as draw:
+            with mock.patch.object(custody, '_write_new', side_effect=interrupted_write):
+                with self.assertRaises(KeyboardInterrupt):
+                    custody.prepare_study_preclaimed(self.v3_public(), self.root,
+                                                      self.root / 'fake-ledger', **options)
+            marker = self.root / ('injection-heldout-' + self.freeze.sha256 + '.preparation-started.json')
+            self.assertEqual(marker.stat().st_size, 13)
+            with self.assertRaises(custody.CustodyError):
+                custody.prepare_study_preclaimed(self.v3_public(), self.root,
+                                                  self.root / 'fake-ledger', **options)
+            draw.assert_not_called()
+
+    def test_failed_marker_open_cannot_be_retried_in_the_same_process(self):
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
+                '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        options = self.fixed_options()
+        with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes') as draw:
+            with mock.patch.object(custody, '_write_new', side_effect=OSError('fabricated open failure')):
+                with self.assertRaises(OSError):
+                    custody.prepare_study_preclaimed(self.v3_public(), self.root,
+                                                      self.root / 'fake-ledger', **options)
+            marker = self.root / ('injection-heldout-' + self.freeze.sha256 + '.preparation-started.json')
+            self.assertFalse(marker.exists())
+            with self.assertRaises(custody.CustodyError):
+                custody.prepare_study_preclaimed(self.v3_public(), self.root,
+                                                  self.root / 'fake-ledger', **options)
+            self.assertFalse(marker.exists())
+            draw.assert_not_called()
+
+    def test_mutated_or_hardlinked_handoff_cannot_authorize_preparation(self):
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
+                '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes') as draw:
+            for modification in ('oversize', 'hardlink'):
+                with self.subTest(modification=modification), tempfile.TemporaryDirectory(dir=self.root) as temp:
+                    parent = Path(temp)
+                    marker = parent / ('injection-heldout-' + self.freeze.sha256 + '.preparation-started.json')
+                    def reconcile(*args, **kwargs):
+                        if modification == 'oversize':
+                            marker.write_bytes(b'x' * 8193)
+                        else:
+                            os.link(marker, parent / 'extra-link')
+                        return True
+                    options = self.fixed_options()
+                    options['reconcile_phase'] = reconcile
+                    with self.assertRaises(custody.CustodyError):
+                        custody.prepare_study_preclaimed(self.v3_public(), parent,
+                                                          self.root / 'fake-ledger', **options)
+                    self.assertTrue(marker.exists())
+            draw.assert_not_called()
+
+    def test_runtime_drift_after_gate_stops_before_the_single_draw(self):
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
+                '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        options = self.fixed_options()
+        checks = []
+        options['runtime_check'] = lambda *args: checks.append('runtime') or len(checks) == 1
+        options['gate_allocation'] = lambda freeze: checks.append('gate') or True
+        with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes') as draw:
+            with self.assertRaises(custody.CustodyError):
+                custody.prepare_study_preclaimed(self.v3_public(), self.root,
+                                                  self.root / 'fake-ledger', **options)
+            phase = self.root / ('injection-heldout-' + self.freeze.sha256)
+            self.assertEqual(checks, ['runtime', 'gate', 'runtime'])
+            self.assertTrue((phase / 'preparation-failure.json').is_file())
+            self.assertFalse((phase / 'nonce.bin').exists())
+            with self.assertRaises(custody.CustodyError):
+                custody.prepare_study_preclaimed(self.v3_public(), self.root,
+                                                  self.root / 'fake-ledger', **options)
+            draw.assert_not_called()
+
+    def test_changed_handoff_or_ledger_after_gate_stops_before_draw(self):
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
+                '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes') as draw:
+            for changed in ('marker', 'ledger', 'side_evidence'):
+                with self.subTest(changed=changed), tempfile.TemporaryDirectory(dir=self.root) as temp:
+                    parent = Path(temp)
+                    phase = parent / ('injection-heldout-' + self.freeze.sha256)
+                    marker = parent / (phase.name + '.preparation-started.json')
+                    state = {'after_gate': False}
+                    options = self.fixed_options()
+                    def gate(freeze):
+                        state['after_gate'] = True
+                        if changed == 'marker':
+                            marker.write_bytes(marker.read_bytes() + b' ')
+                        return True
+                    options['gate_allocation'] = gate
+                    options['verify_preclaim'] = lambda *args, **kw: not (changed == 'ledger' and state['after_gate'])
+                    options['reconcile_phase'] = lambda *args, **kw: not (changed == 'side_evidence' and state['after_gate'])
+                    with self.assertRaises(custody.CustodyError):
+                        custody.prepare_study_preclaimed(self.v3_public(), parent,
+                                                          self.root / 'fake-ledger', **options)
+                    self.assertTrue((phase / 'preparation-failure.json').is_file())
+                    self.assertFalse((phase / 'nonce.bin').exists())
+            draw.assert_not_called()
+
+    def test_preclaim_marker_binds_ledger_and_phase_path(self):
+        public = self.v3_public()
+        pins = {'_STUDY_FREEZE': self.freeze.sha256}
+        with mock.patch.multiple(custody, **pins):
+            record = custody._preclaim_record(public, self.root / 'ledger', self.root / 'phase', '1' * 64)
+            changed_ledger = custody._preclaim_record(public, self.root / 'other-ledger', self.root / 'phase', '1' * 64)
+            changed_phase = custody._preclaim_record(public, self.root / 'ledger', self.root / 'other-phase', '1' * 64)
+        self.assertNotEqual(record['ledger_path_sha256'], changed_ledger['ledger_path_sha256'])
+        self.assertNotEqual(record['phase_path_sha256'], changed_phase['phase_path_sha256'])
 
     def test_fixed_entry_accepts_only_the_independently_pinned_inputs(self):
         pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
                 '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
                 '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
         with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes', return_value=SPLIT_NONCE):
-            prepared = custody.prepare_study_once(self.v2_public(), self.root, self.root / 'fake-ledger',
-                site_nonce=SITE_NONCE, site_record_bytes=self.site.record_bytes,
-                tokenizer=FakeTokenizer(), claim_phase=self.claim,
-                publication_check=lambda name, raw: True, observe_inventory=lambda: self.inventory_sha,
-                source_check=lambda binding: True, prediction_check=lambda raw, sha: True,
-                gate_allocation=lambda freeze: self.claim.events.append('gate') or True)
+            options = self.fixed_options()
+            options['gate_allocation'] = lambda freeze: self.claim.events.append('gate') or True
+            prepared = custody.prepare_study_once(self.v3_public(), self.root, self.root / 'fake-ledger', **options)
         self.assertTrue((prepared.phase_root / 'preparation-complete.json').is_file())
-        self.assertEqual(self.claim.events, ['claim', 'gate'])
+        self.assertEqual(self.claim.events, ['gate'])
 
     def test_bad_continuation_aborts_without_sealing(self):
         class BadTokenizer(FakeTokenizer):

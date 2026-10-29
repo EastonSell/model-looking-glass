@@ -57,8 +57,8 @@ def audit_study_preparation(phase_root, *, public, **kwargs):
         freeze = custody._parse_canonical(public.freeze_bytes)
         operation = custody._parse_canonical(public.operational_binding_bytes)
         track = freeze['tracks']['injection']
-        if (type(operation) is not dict or set(operation) != custody._OP_V2_KEYS
-                or operation.get('schema') != 'mlg-injection-heldout-operational-binding-v2'
+        if (type(operation) is not dict or set(operation) != custody._OP_V3_KEYS
+                or operation.get('schema') != 'mlg-injection-heldout-operational-binding-v3'
                 or public.freeze_sha256 != custody._STUDY_FREEZE
                 or _sha(public.freeze_bytes) != custody._STUDY_FREEZE
                 or type(freeze['tracks']) is not dict or set(freeze['tracks']) != {'injection'}
@@ -77,7 +77,7 @@ def audit_study_preparation(phase_root, *, public, **kwargs):
 
 def audit_preparation(phase_root, *, public, config_path, config_sha256, ledger_path,
                       site_nonce, site_record_bytes, tokenizer, publication_check,
-                      source_check, prediction_check, observe_inventory, claim_check):
+                      source_check, prediction_check, observe_inventory, claim_check, runtime_check=None):
     """Recheck a closed, fabricated-or-real preparation without revealing it.
 
     This generic helper checks self-consistency; the real study must use
@@ -107,7 +107,8 @@ def audit_preparation(phase_root, *, public, config_path, config_sha256, ledger_
         if _sha(config) != custody._hex(config_sha256):
             raise ValueError('preparation configuration differs')
         freeze, snapshot, plan_entropy = custody._check_inputs(public, site_nonce, site_record_bytes,
-                                                               publication_check, source_check, prediction_check)
+                                                               publication_check, source_check, prediction_check,
+                                                               runtime_check)
         if (observe_inventory() != snapshot.sha256
                 or claim_check(ledger, 'injection_heldout', phase) is not True):
             raise ValueError('the inventory or consumed claim differs')
@@ -120,6 +121,14 @@ def audit_preparation(phase_root, *, public, config_path, config_sha256, ledger_
                  'exposure_inventory_sha256': snapshot.sha256,
                  'operational_binding_sha256': public.operational_binding_sha256,
                  'logical_limit_bytes': 72 * 1024 ** 2, 'disk_limit_bytes': 192 * 1024 ** 2}
+        operation = custody._parse_canonical(public.operational_binding_bytes)
+        marker_path = phase.parent / (phase.name + '.preparation-started.json')
+        marker = None
+        if operation.get('schema') == 'mlg-injection-heldout-operational-binding-v3':
+            marker = _read(marker_path, 8192)
+            if marker != commitments.canonical_json(custody._preclaim_record(public, ledger, phase, config_sha256)):
+                raise ValueError('the preclaim handoff differs')
+            claim['preclaim_handoff_sha256'] = _sha(marker)
         if files['claim.json'] != commitments.canonical_json(claim):
             raise ValueError('the phase claim differs')
         published = custody._parse_canonical(files['commitment.json'])
@@ -152,14 +161,18 @@ def audit_preparation(phase_root, *, public, config_path, config_sha256, ledger_
                 or claim_check(ledger, 'injection_heldout', phase) is not True
                 or _read(config_path, 65536) != config
                 or any(_read(phase / name, limit) != files[name] for name, limit in _LIMITS.items())
+                or (marker is not None and _read(marker_path, 8192) != marker)
                 or {entry.name for entry in phase.iterdir()} != set(_LIMITS)
                 or _identity(phase.lstat()) != _identity(info)):
             raise ValueError('preparation changed during audit')
         custody._check_inputs(public, site_nonce, site_record_bytes, publication_check,
-                              source_check, prediction_check)
-        return {'status': 'evidence_complete', 'inventory': {'retained_tensor_bytes': 0},
+                              source_check, prediction_check, runtime_check)
+        result = {'status': 'evidence_complete', 'inventory': {'retained_tensor_bytes': 0},
                 'config_sha256': config_sha256,
                 'operational_binding_sha256': public.operational_binding_sha256,
                 'preparation': {name: _sha(files[name]) for name in sorted(files)}}
+        if marker is not None:
+            result['preclaim_handoff_sha256'] = _sha(marker)
+        return result
     except (OSError, ValueError, TypeError, KeyError, AttributeError, RecursionError):
         raise ValueError('injection preparation audit is incomplete') from None
