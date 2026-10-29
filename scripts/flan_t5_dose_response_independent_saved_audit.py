@@ -52,6 +52,13 @@ assert completed['schema'] == 'mlg-flant5-dose-response-v1' and completed['statu
 assert completed['source'] == started['source']
 assert completed['case_manifest_sha256'] == started['case_manifest_sha256'] == sha(cases_bytes)
 assert completed['asset_manifest_sha256'] == started['asset_manifest_sha256'] == manifest['asset_manifest_sha256']
+assert completed['hooks_restored'] is True
+runtime = json.loads((root / 'environment.json').read_bytes())
+assert runtime == completed['environment']
+assert (runtime['device'], runtime['dtype'], runtime['threads'], runtime['interop_threads'],
+        runtime['deterministic'], runtime['attention_implementation']) == ('cpu', 'float32', 1, 1, True, 'eager')
+assert all(runtime['numeric_environment'][key] == value for key, value in
+           (('MKL_CBWR', 'COMPATIBLE'), ('OMP_NUM_THREADS', '1'), ('MKL_NUM_THREADS', '1')))
 publication_bytes = (root / 'publication-observation.json').read_bytes()
 assert sha(publication_bytes) == started['publication_observation_sha256']
 assert 0 <= completed['forwards'] <= 468
