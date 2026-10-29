@@ -155,6 +155,12 @@ def _inspect(gate, root, *, allow_unannounced_claim=False):
         raise SuccessorStateError('owner-start marker lacks a committed forward announcement')
     if os.path.lexists(root / 'owner') and commitment is None:
         raise SuccessorStateError('owner directory lacks a committed successor')
+    nonce = root / 'nonce.bin'
+    if os.path.lexists(nonce):
+        info = nonce.lstat()
+        if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1 or info.st_size != 32
+                or getattr(info, 'st_file_attributes', 0) & 1024):
+            raise SuccessorStateError('nonce file metadata is incomplete or unsafe')
     if claim is None:
         if (allocation is not None or commitment is not None or forward is not None
                 or any(os.path.lexists(root / item) for item in
