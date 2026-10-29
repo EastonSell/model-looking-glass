@@ -37,6 +37,15 @@ reported free memory. `BudgetSnapshot.admissible_estimate_bytes` is the
 instantaneous upper bound on a *new estimate under these two policy checks*;
 it is not physical free VRAM or an allocation forecast.
 
+`try_acquire(...)` returns a lease on admission and `None` only when the
+capacity checks reject before publishing a lease. It propagates all exceptions,
+including `AdmissionError` raised by telemetry or an interrupted return after
+publication. A supervisor can therefore treat an actual returned `None` as an
+ordinary capacity rejection and quarantine an exception whose outcome is
+uncertain. The existing `acquire(...)` API retains its behavior: it delegates
+to `try_acquire` and raises `AdmissionError` for a capacity rejection. Exception
+type alone does not prove that an admission did not commit.
+
 The broker must derive or validate estimates using trusted workload profiles and
 request shapes. Estimates must include incremental input/output and retained
 GPU trace storage, activations, scratch space, allocator/runtime transients and
