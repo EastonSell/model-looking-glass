@@ -184,6 +184,34 @@ def test_fabricated_fixed_query_is_recorded_and_cannot_repeat(setup):
     assert old_snapshot(setup['old_parent']) == before
 
 
+@pytest.mark.parametrize('name', ['nonce.bin', 'heldout-record.json', 'phase-claim.json', 'pool-query-supervisor'])
+@pytest.mark.parametrize('during_precheck', [False, True])
+def test_existing_or_late_phase_artifact_stops_before_query(setup, name, during_precheck):
+    root = setup['root']
+    path = root / name
+    def insert():
+        if name == 'pool-query-supervisor':
+            path.mkdir()
+        else:
+            path.write_bytes(b'fabricated orphan')
+    if during_precheck:
+        prior = setup['observe']
+        def observe(operation):
+            result = prior(operation)
+            insert()
+            return result
+        setup['observe'] = observe
+    else:
+        insert()
+    before = old_snapshot(setup['old_parent'])
+    with pytest.raises((ValueError, RuntimeError, OSError)):
+        run(setup)
+    assert not (root / 'pool-query-claim.json').exists()
+    assert not (root / 'pool-query-receipt.json').exists()
+    assert not (root / 'pool-query-observation.json').exists()
+    assert old_snapshot(setup['old_parent']) == before
+
+
 def test_stale_official_inventory_stops_before_query_claim(setup):
     assert query is not None
     setup['observe'] = lambda _: {'version': 22, 'source_sha256': '9' * 64,

@@ -402,10 +402,12 @@ def run_query(config_path, *, config_sha256, operation_sha256,
             or type(pins['private_count']) is not int or pins['private_count'] != 16
             or type(pins['public_count']) is not int or pins['public_count'] != 256):
         raise QueryError('comparator pins differ')
-    if any(os.path.lexists(root / name) for name in
-           ('pool-query-claim.json', 'pool-query-receipt.json', 'pool-query-observation.json',
-            'pool-query-supervisor', 'phase-claim.json')):
-        raise QueryError('query or phase is already started or uncertain')
+    def require_fresh_query():
+        if any(os.path.lexists(root / name) for name in
+               ('pool-query-claim.json', 'pool-query-receipt.json', 'pool-query-observation.json',
+                'pool-query-supervisor', 'phase-claim.json', 'nonce.bin', 'heldout-record.json')):
+            raise QueryError('query or phase is already started or uncertain')
+    require_fresh_query()
     sampler.reject_known_rows(rows, inventory['records'])
     def unchanged():
         if (_read(config_path, 65536) != config_raw or _read(config['operation'], 1000000) != operation_raw
@@ -479,6 +481,7 @@ def run_query(config_path, *, config_sha256, operation_sha256,
         unchanged()
         private_identities()
         state['first'] = _current(operation, observe_current)
+        require_fresh_query()
         state['claim_sha'] = claim.claim_query(root=root, root_path_sha256=operation['root_path_sha256'],
             root_device=operation['root_device'], root_inode=operation['root_inode'],
             operation_sha256=operation_sha256, pool_input_sha256=operation['pool_input_sha256'],
