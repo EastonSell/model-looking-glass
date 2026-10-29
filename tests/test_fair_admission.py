@@ -1,4 +1,5 @@
 import unittest
+from collections import OrderedDict, deque
 from concurrent.futures import ThreadPoolExecutor
 from queue import Empty, Full
 from threading import Barrier, Event, Thread
@@ -103,6 +104,94 @@ class FairAdmissionTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             FairAdmissionQueue(MisleadingMapping({'a': 5}), 1, 1)
+
+    def test_failed_internal_ticket_index_update_rolls_back_admission(self):
+        class FailingIndex(dict):
+            def __setitem__(self, key, value):
+                raise MemoryError('deliberate index allocation failure')
+
+        admission = FairAdmissionQueue({'a': 'A'}, 1, 1)
+        admission._ticket_teams = FailingIndex()
+        with self.assertRaises(MemoryError):
+            admission.submit('a', 'first')
+        self.assertEqual(len(admission), 0)
+        admission._ticket_teams = {}
+        admission.submit('a', 'second')
+        self.assertEqual(admission.claim_next().payload, 'second')
+
+    def test_failed_rotation_allocation_does_not_consume_a_waiter(self):
+        class FailingRotation(deque):
+            def append(self, value):
+                raise MemoryError('deliberate rotation allocation failure')
+
+        admission = FairAdmissionQueue({'a': 'A'}, 2, 2)
+        admission.submit('a', 'first')
+        admission.submit('a', 'second')
+        admission._rotation = FailingRotation(admission._rotation)
+        with self.assertRaises(MemoryError):
+            admission.claim_next()
+        self.assertEqual(len(admission), 2)
+        admission._rotation = deque(admission._rotation)
+        self.assertEqual([admission.claim_next().payload for _ in range(2)],
+                         ['first', 'second'])
+
+    def test_claim_survives_popitem_allocating_after_removal(self):
+        class UnsafePopItem(OrderedDict):
+            def popitem(self, last=True):
+                super().popitem(last=last)
+                raise MemoryError('tuple allocation after removal')
+
+        admission = FairAdmissionQueue({'a': 'A'}, 2, 2)
+        admission.submit('a', 'first')
+        admission.submit('a', 'second')
+        admission._teams['A'] = UnsafePopItem(admission._teams['A'])
+        self.assertEqual([admission.claim_next().payload for _ in range(2)],
+                         ['first', 'second'])
+
+    def test_claim_and_cancel_keep_state_if_team_delete_fails(self):
+        class FailingDelete(OrderedDict):
+            def __delitem__(self, key):
+                raise MemoryError('deliberate pre-delete failure')
+
+            def pop(self, key, *args):
+                raise MemoryError('deliberate pre-delete failure')
+
+        for operation in ('claim', 'cancel'):
+            with self.subTest(operation=operation):
+                admission = FairAdmissionQueue({'a': 'A'}, 2, 2)
+                ticket = admission.submit('a', 'first')
+                admission.submit('a', 'second')
+                admission._teams['A'] = FailingDelete(admission._teams['A'])
+                with self.assertRaises(MemoryError):
+                    admission.claim_next() if operation == 'claim' else admission.cancel(ticket)
+                admission._teams['A'] = OrderedDict(admission._teams['A'])
+                self.assertEqual([admission.claim_next().payload for _ in range(2)],
+                                 ['first', 'second'])
+                with self.assertRaises(Empty):
+                    admission.claim_next()
+
+    def test_cancel_size_allocation_failure_does_not_remove_a_waiter(self):
+        class FailingCount(int):
+            def __sub__(self, other):
+                raise MemoryError('deliberate accounting failure')
+
+        admission = FairAdmissionQueue({'a': 'A'}, 1, 1)
+        ticket = admission.submit('a', 'first')
+        admission._size = FailingCount(1)
+        with self.assertRaises(MemoryError):
+            admission.cancel(ticket)
+        admission._size = 1
+        self.assertEqual(admission.claim_next().payload, 'first')
+
+    def test_drain_returns_and_removes_every_waiter(self):
+        admission = FairAdmissionQueue({'a': 'A', 'b': 'B'}, 3, 2)
+        first = admission.submit('a', 'first')
+        second = admission.submit('b', 'second')
+        drained = admission.drain()
+        self.assertEqual({item.ticket_id for item in drained}, {first, second})
+        self.assertEqual(len(admission), 0)
+        with self.assertRaises(Empty):
+            admission.claim_next()
 
     def test_unknown_eligible_team_is_rejected_without_changing_queue(self):
         admission = FairAdmissionQueue({'a': 'A'}, 1, 1)

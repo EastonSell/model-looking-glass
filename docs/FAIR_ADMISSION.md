@@ -88,6 +88,10 @@ queue instance. The broker is responsible for cancellation and cleanup after
 claim. Payload finalizers run outside the queue's lock, but an external lock may
 still be held by the broker.
 
+The trusted owner can atomically `drain()` all pending requests and receive the
+removed request snapshots. If allocating that snapshot fails, the queue has not
+been changed. This supports a shutdown path that can report canceled work.
+
 `claim_next` transfers ownership of the request to the broker; it is **not an
 atomic resource reservation**. To integrate it safely, the broker must protect
 its capacity checks, the claim, and its own slot-accounting changes with the
