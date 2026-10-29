@@ -40,3 +40,4 @@ interruption, identity matching, source and sourceless import shadows, and
 tracked-source blob verification. The actual public owner and supervisor also
 passed a gated, zero-forward validation rehearsal. That rehearsal is not a
 study result.
+\n\n[Completed study results and evidence](RESULTS.md).\n

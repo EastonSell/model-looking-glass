@@ -1,0 +1,1 @@
+{"original_claim_bytes":256,"original_claim_sha256":"d57f651aa93247b387d085f01e1398aaad0c51101d549ec1042a21246c697601","prelaunch_sha256":"c367112faf54cf8321b15059fbc8bb65460f3f83c0b52c7e9eb58a81dad49e33","schema":"agreement-direction-public-claim-projection-v1","scope":"The original claim contains a local output path and is retained locally; this projection omits that path."}
