@@ -75,11 +75,20 @@ def test_handler_exit_keeps_custody_until_exact_target_retirement_and_ack():
     target = adapter._target
     entered = threading.Event()
     resume = threading.Event()
+    empty_retirement_seen = threading.Event()
     acknowledgements = []
+    retired_sequences = []
     original_retire = broker._retire_job_result
     original_acknowledge = adapter.acknowledge_receipt
 
     def gate_retirement(job):
+        if job.receipt_record is None:
+            # The dispatcher also retires provisional jobs when no waiter is
+            # ready. Gating those would prevent the real request being claimed.
+            empty_retirement_seen.set()
+            return original_retire(job)
+        assert job.handle.team_id == 'A' and job.handle.request_id == 'retirement'
+        retired_sequences.append(job.receipt_record.sequence)
         entered.set()
         if not resume.wait(30):
             raise TimeoutError('test did not release target retirement')
@@ -105,6 +114,7 @@ def test_handler_exit_keeps_custody_until_exact_target_retirement_and_ack():
     try:
         with patch.object(broker, '_retire_job_result', side_effect=gate_retirement), \
                 patch.object(adapter, 'acknowledge_receipt', side_effect=observe_acknowledgement):
+            assert empty_retirement_seen.wait(8)
             client_handle = IPCClient(server.address, server.team_tokens['A'], io_timeout=8).submit(
                 team_id='A', request_id='retirement', inputs={'input_ids': [[7]]})
             result = client_handle.wait(12)
@@ -114,6 +124,7 @@ def test_handler_exit_keeps_custody_until_exact_target_retirement_and_ack():
             eventually(handler_exited, seconds=8)
             with bridge._condition:
                 ticket = next(iter(bridge._records.values())).ticket
+            assert retired_sequences == [ticket.sequence]
             target_handle = adapter.recover_receipt(ticket)
             assert target_handle is not None
             expected = ticket.sequence, id(target_handle)

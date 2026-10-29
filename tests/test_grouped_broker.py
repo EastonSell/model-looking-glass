@@ -6,6 +6,7 @@ import gc
 import inspect
 import sys
 import weakref
+from time import perf_counter_ns
 from unittest.mock import patch, PropertyMock
 
 import torch
@@ -26,10 +27,12 @@ class ObservedModel(nn.Module):
     def __init__(self):
         super().__init__()
         self.calls = []
+        self.call_times = []
         self.entered, self.proceed = None, None
         self.fail = False
 
     def forward(self, input_ids):
+        self.call_times.append(perf_counter_ns())
         self.calls.append(tuple(input_ids.shape))
         if self.entered is not None:
             self.entered.set()
@@ -40,7 +43,7 @@ class ObservedModel(nn.Module):
         return {'logits': input_ids.float().unsqueeze(-1)}
 
 
-def fixture(host=None, *, max_pending=4):
+def fixture(host=None, *, max_pending=4, observation=None, workload_id='whole-2'):
     from looking_glass.grouped_broker import GroupedBroker, SnapshotReservation, ValidationReservation
     runtime = {'schema': 'test-cpu-v1', 'execution': 'eager'}
     contract = ForwardContract('a' * 64, 'checkpoint', 'adapter', 'cpu', torch.float32,
@@ -75,7 +78,7 @@ def fixture(host=None, *, max_pending=4):
     device_budget = MemoryBudget(lambda: CudaMemorySnapshot(3 * GIB, 4 * GIB, 0, 0),
                                  max_gpu_trace_bytes=0, max_host_trace_bytes=0)
     gate = DeviceAdmission(device_budget, device='cpu', max_estimated_incremental_bytes=4096)
-    workload = WorkloadProfile('whole-2', 'a' * 64, 'cpu', (2, 3),
+    workload = WorkloadProfile(workload_id, 'a' * 64, 'cpu', (2, 3),
                                (('input_ids', 'torch.int64'),), 256, 1024)
     budgeted = BudgetedWorker(resident, gate, (workload,))
     grouped = GroupedWorker(budgeted, (profile,), host_budget=host,
@@ -83,10 +86,12 @@ def fixture(host=None, *, max_pending=4):
                             finite_scratch_items={'profile': 4})
     reservation = ValidationReservation(policy.compatibility_key, 2, 'd' * 64, 256, 4)
     snapshot_reservation = SnapshotReservation(policy.compatibility_key, 'e' * 64, 128, 4)
+    options = {} if observation is None else {'observation': observation}
     broker = GroupedBroker(grouped, profile, policy, host_budget=host,
         identity=identity, collect_runtime=lambda: dict(runtime), validation_reservations=(reservation,),
         snapshot_reservation=snapshot_reservation,
-        max_pending=max_pending, max_pending_per_team=2, max_coalesce_wait=0.05, max_lifetime_jobs=20)
+        max_pending=max_pending, max_pending_per_team=2, max_coalesce_wait=0.05, max_lifetime_jobs=20,
+        **options)
     return broker, worker, host
 
 

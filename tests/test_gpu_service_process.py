@@ -146,6 +146,38 @@ assert 'torch' not in sys.modules and 'transformers' not in sys.modules
                                  cwd=self.root, capture_output=True, text=True, timeout=15)
         self.assertEqual(outcome.returncode, 0, outcome.stderr)
 
+    def test_missing_completion_contract_blocks_child_before_owner(self):
+        program = r'''
+import sys
+from dataclasses import replace
+from pathlib import Path
+from unittest.mock import patch
+sys.path.extend((sys.argv[1], sys.argv[2]))
+from looking_glass import gpu_service_process as child, two_token_service as service
+from looking_glass.device_lease import DeviceLease
+from looking_glass.supervisor import OwnerSession
+config = replace(child._parse_config(Path(sys.argv[3]).read_bytes()), repo_root=Path(sys.argv[1]))
+with patch.object(service._owner_module, 'OWNER_COMPLETION_CUSTODY_CONTRACT', None, create=True), \
+     patch.object(OwnerSession, 'from_environment') as owner, \
+     patch.object(DeviceLease, 'acquire') as lease:
+    try:
+        child._owner(config)
+    except RuntimeError as exc:
+        assert 'completion custody' in str(exc)
+    else:
+        raise AssertionError('missing completion contract was accepted')
+    owner.assert_not_called()
+    lease.assert_not_called()
+assert 'torch' not in sys.modules and 'transformers' not in sys.modules
+'''
+        path = self.root / 'config.json'
+        path.write_bytes(self.data())
+        repo = Path(__file__).resolve().parents[1]
+        outcome = subprocess.run([sys._base_executable, '-B', '-S', '-P', '-c', program,
+                                  str(repo), sysconfig.get_paths()['purelib'], str(path)],
+                                 cwd=self.root, capture_output=True, text=True, timeout=15)
+        self.assertEqual(outcome.returncode, 0, outcome.stderr)
+
     def test_owner_failure_does_not_touch_a_failing_stderr(self):
         path = self.root / 'config.json'
         path.write_bytes(self.data())

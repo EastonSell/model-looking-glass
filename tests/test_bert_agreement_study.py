@@ -2,6 +2,7 @@
 
 import json
 import hashlib
+import os
 from pathlib import Path
 import struct
 import subprocess
@@ -195,8 +196,12 @@ class EventJournalTest(unittest.TestCase):
             real_manifest = (Path(__file__).resolve().parents[1] /
                              'experiments/bert_agreement_public_cases_v1.json').read_bytes()
             (root / 'experiments/bert_agreement_public_cases_v1.json').write_bytes(real_manifest)
+            exposure = (Path(__file__).resolve().parents[1] /
+                        'experiments/bert_agreement_exposures_v2.json').read_bytes()
+            (root / 'experiments/bert_agreement_exposures_v2.json').write_bytes(exposure)
             verified = {'docs/BERT_AGREEMENT_V1.md': hashlib.sha256(b'draft protocol').hexdigest(),
-                        'experiments/bert_agreement_public_cases_v1.json': hashlib.sha256(real_manifest).hexdigest()}
+                        'experiments/bert_agreement_public_cases_v1.json': hashlib.sha256(real_manifest).hexdigest(),
+                        'experiments/bert_agreement_exposures_v2.json': hashlib.sha256(exposure).hexdigest()}
             with patch('looking_glass.bert_agreement_study.verify_git_sources', return_value=verified):
                 with self.assertRaises(RuntimeError):
                     _checked_manifest(root, 'a' * 40, 'git', 'evaluation')
@@ -211,11 +216,44 @@ class EventJournalTest(unittest.TestCase):
             manifest = (Path(__file__).resolve().parents[1] /
                         'experiments/bert_agreement_public_cases_v1.json').read_bytes()
             (root / 'experiments/bert_agreement_public_cases_v1.json').write_bytes(manifest)
+            exposure = (Path(__file__).resolve().parents[1] /
+                        'experiments/bert_agreement_exposures_v2.json').read_bytes()
+            (root / 'experiments/bert_agreement_exposures_v2.json').write_bytes(exposure)
             verified = {'docs/BERT_AGREEMENT_V1.md': hashlib.sha256(protocol).hexdigest(),
-                        'experiments/bert_agreement_public_cases_v1.json': hashlib.sha256(manifest).hexdigest()}
+                        'experiments/bert_agreement_public_cases_v1.json': hashlib.sha256(manifest).hexdigest(),
+                        'experiments/bert_agreement_exposures_v2.json': hashlib.sha256(exposure).hexdigest()}
             with patch('looking_glass.bert_agreement_study.verify_git_sources', return_value=verified):
                 with self.assertRaises(RuntimeError):
                     _checked_manifest(root, 'a' * 40, 'git', 'evaluation')
+
+    def test_preflight_binds_the_exact_exposure_snapshot_and_rejects_changes(self):
+        source = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'docs').mkdir()
+            (root / 'experiments').mkdir()
+            protocol = b'# Draft\n\nStatus: **draft**\n'
+            manifest = (source / 'experiments/bert_agreement_public_cases_v1.json').read_bytes()
+            exposure = (source / 'experiments/bert_agreement_exposures_v2.json').read_bytes()
+            files = {'docs/BERT_AGREEMENT_V1.md': protocol,
+                     'experiments/bert_agreement_public_cases_v1.json': manifest,
+                     'experiments/bert_agreement_exposures_v2.json': exposure}
+            for name, data in files.items():
+                (root / name).write_bytes(data)
+            verified = {name: hashlib.sha256(data).hexdigest() for name, data in files.items()}
+            with patch('looking_glass.bert_agreement_study.verify_git_sources', return_value=verified):
+                hashes, _, _ = _checked_manifest(root, 'a' * 40, 'git', 'development')
+                self.assertEqual(hashes['experiments/bert_agreement_exposures_v2.json'],
+                                 '224d683291b5b4f3a617697c8f9811351cf63bef19958fff9870c943e88fcdbc')
+                # A changed file must fail even if its altered digest is returned
+                # by a source verifier: only the pinned canonical snapshot works.
+                changed = exposure + b' '
+                (root / 'experiments/bert_agreement_exposures_v2.json').write_bytes(changed)
+                with self.assertRaises(RuntimeError):
+                    _checked_manifest(root, 'a' * 40, 'git', 'development')
+                verified['experiments/bert_agreement_exposures_v2.json'] = hashlib.sha256(changed).hexdigest()
+                with self.assertRaises(ValueError):
+                    _checked_manifest(root, 'a' * 40, 'git', 'development')
 
     def test_journal_body_error_remains_primary_if_close_also_fails(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -418,6 +456,50 @@ with patch.object(study, '_require_bootstrap'), patch.object(study, '_require_ch
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertEqual(json.loads((root/'owner-failure.json').read_text())['error_type'], 'RuntimeError')
 
+    def test_actual_supervised_bootstrap_claims_before_model_import(self):
+        import shutil
+        import sysconfig
+        from looking_glass.cpu_study_supervision import run_cpu_study
+        repo = Path(__file__).resolve().parent.parent
+        workspace = repo.parent.parent
+        with tempfile.TemporaryDirectory(prefix='bert-cpu-custody-test-', dir=workspace) as directory:
+            root = Path(directory).resolve(strict=True)
+            self.assertTrue(root.is_relative_to(workspace.resolve(strict=True)))
+            custody, attempt, prefix, cwd, direct_attempt, direct_prefix = (
+                root/name for name in ('custody', 'attempt', 'prefix', 'cwd', 'direct-attempt', 'direct-prefix'))
+            for path in (custody, attempt, prefix, cwd, direct_attempt, direct_prefix): path.mkdir()
+            site = Path(sysconfig.get_paths()['purelib']).resolve()
+            git = shutil.which('git')
+            self.assertIsNotNone(git)
+            command = [sys._base_executable, '-I', '-S', '-B', '-X', 'pycache_prefix='+str(prefix),
+                       str(repo/'scripts/bert_agreement_bootstrap.py'), '--bootstrap-site', str(site),
+                       '--worker', '--repo', str(repo), '--cache', str(root), '--output', str(attempt),
+                       '--commit', '0'*40, '--git', git, '--split', 'development', '--family', '1',
+                       '--run-id', 'f'*32, '--custody-root', str(custody)]
+            environment = {key: os.environ[key] for key in ('SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATHEXT')
+                           if key in os.environ}
+            environment.update({'TEMP': str(cwd), 'TMP': str(cwd),
+                                'PATH': os.environ.get('PATH', ''), 'CUDA_VISIBLE_DEVICES': '-1'})
+            direct_command = command.copy()
+            direct_command[5] = 'pycache_prefix='+str(direct_prefix)
+            direct_command[direct_command.index('--output') + 1] = str(direct_attempt)
+            direct_environment = dict(environment, CUDA_VISIBLE_DEVICES='')
+            direct = subprocess.run(direct_command, cwd=cwd, env=direct_environment,
+                                    capture_output=True, timeout=30)
+            self.assertEqual(direct.returncode, 1, direct.stderr)
+            direct_failure = json.loads((direct_attempt/'owner-failure.json').read_text())
+            self.assertEqual(direct_failure['stage'], 'custody_claim')
+            self.assertFalse((direct_attempt/'events.jsonl').exists())
+            result = run_cpu_study(command, study_root=custody, timeout=30, cwd=cwd,
+                                   env=environment, inherit_environment=False)
+            self.assertEqual(result.exit_code, 1)
+            self.assertFalse(result.clean)
+            self.assertTrue((custody/'cpu-study.unsafe.json').exists())
+            failure = json.loads((attempt/'owner-failure.json').read_text())
+            self.assertEqual(failure['stage'], 'source_preflight')
+            self.assertEqual(failure['error_type'], 'RuntimeError')
+            self.assertFalse((attempt/'events.jsonl').exists())
+
     def test_controller_rejects_evaluation_even_when_protocol_is_frozen(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -471,6 +553,41 @@ with patch.object(study, '_require_bootstrap'), patch.object(study, '_write_json
             self.assertEqual(cancellation['error_type'], 'KeyboardInterrupt')
             self.assertEqual(cancellation['previous_error_type'], 'OSError')
 
+    def test_supervised_timeout_is_recorded_as_timeout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            code = r'''
+import json, os, sys
+from pathlib import Path
+from unittest.mock import patch
+import looking_glass.bert_agreement_study as study
+from looking_glass.supervisor import SupervisionResult
+root = Path(sys.argv[1])
+os.environ['LOOKING_GLASS_BERT_SITE'] = str(root)
+(root/'repo').mkdir(); (root/'custody').mkdir()
+observed = SupervisionResult('c'*32, 12345, 9, False, True, 'timeout')
+with patch.object(study, '_require_bootstrap'), patch.object(study, '_require_checkout'), \
+     patch.object(study, '_checked_manifest', return_value=({}, {}, 'b'*64)), \
+     patch('shutil.which', return_value=sys.executable), \
+     patch('looking_glass.cpu_study_supervision.run_cpu_study', return_value=observed) as supervisor:
+    result = study.run_cpu_controller(repo=root/'repo', cache=root, output_dir=root/'attempt',
+                                      commit='a'*40, split='development', family=1, custody_root=root/'custody')
+    assert supervisor.call_count == 1
+    call = supervisor.call_args
+    assert call.kwargs['cwd'] == root/'attempt'/'owner-working'
+    assert call.kwargs['env']['TEMP'] == str(root/'attempt'/'owner-working'/'tmp')
+    assert '--custody-root' in call.args[0]
+print(json.dumps(result))
+'''
+            completed = subprocess.run([sys.executable, '-c', code, str(root)],
+                                       capture_output=True, text=True, timeout=30)
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            result = json.loads(completed.stdout)
+            self.assertEqual(result['status'], 'incomplete')
+            self.assertTrue(result['timed_out'])
+            self.assertFalse(result['cpu_supervision']['clean'])
+            self.assertEqual(result['owner_state'], 'reaped')
+
     def test_controller_inventories_success_and_marks_post_link_cancellation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -479,8 +596,11 @@ import hashlib, json, os, sys
 from pathlib import Path
 from unittest.mock import patch
 import looking_glass.bert_agreement_study as study
+from looking_glass.supervisor import SupervisionResult
 root, mode = Path(sys.argv[1]), sys.argv[2]
 os.environ['LOOKING_GLASS_BERT_SITE'] = str(root)
+supervised = mode.startswith('supervised_')
+if supervised: (root/'repo').mkdir(); (root/'custody').mkdir()
 original = study._write_json
 event_raw = b'{"example":true}\n'
 event_sha = hashlib.sha256(event_raw).hexdigest()
@@ -495,9 +615,12 @@ class Child:
     def __init__(self, command):
         run_id = command[command.index('--run-id') + 1]
         out = root/'attempt'
-        original(out/'owner-started.json', {'schema':'bert-agreement-owner-start-v1',
+        started = {'schema':'bert-agreement-owner-start-v1',
             'run_id':run_id, 'pid':self.pid, 'source_commit':'a'*40,
-            'manifest_sha256':'b'*64, 'split':'development', 'family':1})
+            'manifest_sha256':'b'*64, 'split':'development', 'family':1}
+        binding = study._cpu_study_binding(root/'custody') if supervised else None
+        if supervised: started['cpu_study'] = binding
+        original(out/'owner-started.json', started)
         (out/'events.jsonl').write_bytes(event_raw)
         runtime = {'pytorch_cuda_initialized':False, 'denormals_preserved_calling_thread':True,
             'deterministic_algorithms':True, 'intraop_threads':1, 'interop_threads':1,
@@ -510,24 +633,33 @@ class Child:
             'torch_version':'2.8.0+cu128', 'transformers_version':'4.57.3',
             'parameter_count':66985530, 'pytorch_cuda_initialized':False,
             'assets':{name:{'size':size, 'sha256':digest} for name,(size,digest) in study.ASSETS.items()}}
-        original(out/'owner-candidate.json', {'schema':'bert-agreement-owner-v1', 'status':'complete',
+        candidate = {'schema':'bert-agreement-owner-v1', 'status':'complete',
             'run_id':run_id, 'pid':self.pid, 'source_commit':'a'*40, 'source_sha256':{},
             'manifest_sha256':'b'*64, 'split':'development', 'family':1, 'journal_sha256':event_sha,
             'audited':audited, 'runtime':runtime, 'model':model,
-            'model_state_sha256_before_after':'c'*64})
+            'model_state_sha256_before_after':'c'*64}
+        if supervised:
+            candidate['cpu_study'] = dict(binding)
+            if mode == 'supervised_bad_binding': candidate['cpu_study']['custody_root_sha256'] = 'd'*64
+        original(out/'owner-candidate.json', candidate)
     def wait(self, timeout): return 0
+def fake_supervisor(command, **kwargs):
+    Child(command)
+    return SupervisionResult('c'*32, 12345, 0, True, False, 'clean device teardown')
 with patch.object(study, '_require_bootstrap'), patch.object(study, '_require_checkout'), \
      patch.object(study, '_checked_manifest', return_value=({}, {}, 'b'*64)), \
      patch.object(study, 'audit_event_journal', return_value=audited), \
      patch.object(study, 'verify_git_sources', return_value={}), \
      patch.object(study, '_write_json', side_effect=maybe_cancel), \
      patch('shutil.which', return_value=sys.executable), \
+     patch('looking_glass.cpu_study_supervision.run_cpu_study', side_effect=fake_supervisor), \
      patch('subprocess.Popen', side_effect=lambda command, **kw: Child(command)):
-    result = study.run_cpu_controller(repo=root, cache=root, output_dir=root/'attempt',
-                                      commit='a'*40, split='development', family=1)
+    result = study.run_cpu_controller(repo=root/'repo' if supervised else root, cache=root, output_dir=root/'attempt',
+                                      commit='a'*40, split='development', family=1,
+                                      custody_root=root/'custody' if supervised else None)
 print(json.dumps(result))
 '''
-            for mode in ('success', 'cancel', 'bad_machine'):
+            for mode in ('success', 'cancel', 'bad_machine', 'supervised_success', 'supervised_bad_binding'):
                 case = root / mode
                 case.mkdir()
                 completed = subprocess.run([sys.executable, '-c', code, str(case), mode],
@@ -535,9 +667,18 @@ print(json.dumps(result))
                 self.assertEqual(completed.returncode, 0, completed.stderr)
                 result = json.loads(completed.stdout)
                 attempt = case / 'attempt'
-                if mode == 'success':
+                if mode in ('success', 'supervised_success'):
                     self.assertEqual(result['status'], 'complete')
                     self.assertFalse((attempt/'controller-failure.json').exists())
+                    if mode == 'supervised_success':
+                        self.assertTrue(result['cpu_supervision']['clean'])
+                        self.assertEqual(result['cpu_supervision']['reason'], 'clean device teardown')
+                        self.assertEqual(result['cpu_supervision']['scope'], 'cooperative-cpu-study-custody-only')
+                        self.assertEqual(result['cpu_study']['contract'], 'cooperative-cpu-study-v1')
+                        self.assertEqual(json.loads((attempt/'preflight.json').read_text())['cpu_study'],
+                                         result['cpu_study'])
+                        self.assertEqual(json.loads((attempt/'owner-started.json').read_text())['cpu_study'],
+                                         result['cpu_study'])
                     self.assertEqual(set(result['artifacts']),
                                      {'started.json', 'preflight.json', 'owner-started.json',
                                       'owner-candidate.json', 'events.jsonl'})
@@ -549,9 +690,12 @@ print(json.dumps(result))
                     self.assertTrue(result['cancelled'])
                     self.assertEqual(json.loads((attempt/'controller-failure.json').read_text())['status'], 'incomplete')
                     self.assertEqual(json.loads((attempt/'result.json').read_text())['status'], 'complete')
-                else:
+                elif mode == 'bad_machine':
                     self.assertEqual(result['status'], 'incomplete')
                     self.assertEqual(result['stage'], 'runtime_validation')
+                else:
+                    self.assertEqual(result['status'], 'incomplete')
+                    self.assertEqual(result['stage'], 'evidence_validation')
 
     def test_model_value_change_or_same_value_parameter_replacement_is_detected(self):
         model = torch.nn.Linear(3, 2).eval()
