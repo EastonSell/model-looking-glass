@@ -15,7 +15,23 @@ The staged owner checks the supervised device lease and the runtime UUID before
 telemetry, resolves separate load/cold/warm profiles against independently
 constructed live keys, retains the model-load reservation until process exit,
 and repeats the lease, runtime, and headroom checks before copying weights.
-The actual CPU model must pass an explicit verifier before that copy. At
+The actual CPU model must pass an explicit verifier before that copy. Both
+PyTorch module-conversion flags must read back as false around the copy, and
+the converted model must pass an independent, trusted device verifier after
+synchronization and before worker construction or warmup. The intended
+verifier checks that GPT-2's embedding and language-model head are the same
+device `Parameter` and share storage under the live supervised lease. The
+intended verifier reads metadata and storage identity without allocating GPU
+tensors, transferring data, or launching kernels; its exact implementation
+must be included in the measured startup envelope. The owner synchronizes
+again after a successful check. This is a required startup callback; a fake
+callback in CPU tests is not GPU evidence.
+These checks rely on exclusive, cooperative ownership of the process and model
+and on the verified model's trusted conversion implementation; they do not
+protect against arbitrary concurrent mutation. If an unusual conversion returns
+a different object, the owner retains it after assignment and fails. An
+asynchronous interruption between the return and that assignment can prevent
+retention of that returned object; the owner must quarantine and exit. At
 shutdown, the owner distinguishes workload failure from verified device drain;
 worker or broker quarantine prevents attestation, including a quarantine
 observed after synchronization. Unverified state latches process quarantine
