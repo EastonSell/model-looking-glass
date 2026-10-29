@@ -54,11 +54,15 @@ The natural and injection tracks use separate allocations and may proceed
 independently if the other allocation does not yet exist. Custodians serialize
 the allocation and first-forward announcements using one reviewed cooperative
 gate so that a concurrent allocation cannot be mistaken for an absent peer.
+The durable first-forward announcement is the ordering point; it treats that
+track's rows as possibly exposed even if its eventual execution is uncertain.
 When the peer is absent, record cross-track disjointness as pending and do not
 claim it has been established. Once both splits are committed, a trusted
 comparator verifies both commitments privately and checks all 16-by-16 full
 rows in both prefix directions before the later track's held-out forward. If
-both commitments exist before either forward, compare before either evaluation. A
+both commitments exist before either first-forward announcement, compare before
+either evaluation. If the second commitment follows an earlier announcement,
+compare before the second track's first forward. A
 collision or incomplete required comparison stops the affected evaluation
 without redraw; it does not erase a previously completed separate track. A
 later attempt must also compare against earlier possibly executed or exposed
