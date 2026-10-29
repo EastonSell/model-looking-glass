@@ -1,0 +1,3 @@
+# Saved evidence is byte-addressed, including logs, protocols and scripts.
+# Preserve the committed bytes regardless of a checkout's autocrlf setting.
+* -text
