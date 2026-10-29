@@ -69,14 +69,19 @@ Treat every callback exception or uncertain return as terminal: call
 `quarantine_after_uncertain_callback()` if possible, keep the device and memory
 claims, and terminate the supervised owner without a clean attestation or
 retry. An interruption can occur at a callback's return boundary after its own
-handler exits. On any failed drain no further CUDA call is permitted. Known
+handler exits. Before device RNG setup and model work, callbacks check for
+cancellation; cancellation can still race a native call after a check. A failed
+callback quarantines before RNG cleanup, without attempting device RNG restore.
+After a failed forward the adapter may attempt one first guarded synchronization
+solely to assess completion; it remains quarantined. On any failed or uncertain
+drain no further CUDA call is permitted. Known
 returned device buffers, including plan-owned source and available capture
 clones, are rooted until process exit when possible; Python interruption
 before assignment, allocation failure during custody and model-internal
 temporaries limit what can be retained.
 
 `quarantined` is a quiescent-boundary health check: it is also true while a
-healthy synchronization is in progress. The supervisor must impose a bounded
+healthy synchronization or device RNG setup/restoration is in progress. The supervisor must impose a bounded
 completion deadline and treat a hung or unknown drain as unsafe. Failure during
 construction after the owner gate is installed also requires process
 replacement. Following a successful run, `dispose_after_success()` only drops
