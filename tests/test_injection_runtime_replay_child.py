@@ -67,6 +67,7 @@ def test_published_plan_binds_fixed_design_and_exact_child():
                    lambda p: p['budgets'].__setitem__('pilot_logical_bytes', True),
                    lambda p: p['sources'].__setitem__('producer', '3' * 64),
                    lambda p: p['sources'].__setitem__('child', '3' * 64),
+                   lambda p: p['sources'].pop('cpu_job_adapter'),
                    lambda p: p['reference_sha256'].pop('clean')):
         candidate = _plan()
         mutate(candidate)
