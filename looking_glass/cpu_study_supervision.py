@@ -36,16 +36,17 @@ def _study_paths(study_root):
 
 def run_cpu_study(command, *, study_root, timeout, lease_timeout=5,
                   terminate_grace=5, cwd=None, env=None, startup_channel=None,
-                  inherit_environment=False):
+                  inherit_environment=False, process_job=None):
     """Supervise one trusted direct child using its dedicated CPU study root."""
     if getattr(supervisor, "SUPERVISOR_LAUNCH_CUSTODY_CONTRACT", None) != _REQUIRED_LAUNCH_CONTRACT:
         raise CpuStudyError("reviewed supervisor launch custody is unavailable")
     lock, marker = _study_paths(study_root)
+    job_option = {} if process_job is None else {"process_job": process_job}
     return supervisor.run_supervised(
         command, device_lease_path=lock, marker_path=marker, identity=None,
         timeout=timeout, lease_timeout=lease_timeout, terminate_grace=terminate_grace,
         cwd=cwd, env=env, startup_channel=startup_channel,
-        inherit_environment=inherit_environment,
+        inherit_environment=inherit_environment, **job_option,
     )
 
 
