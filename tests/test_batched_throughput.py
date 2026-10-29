@@ -262,6 +262,34 @@ def test_distinct_brokers_can_share_one_externally_verified_owner():
     assert report['measured_pair_consistent'] and not report['same_recorded_broker']
 
 
+def test_grouped_broker_opaque_job_ids_are_preserved_without_coercion():
+    data = _pair()
+    for index, row in enumerate(data[3]['attempts'], 1):
+        row['broker_id'] = 'grouped-broker'
+        row['broker_job_id'] = f'grouped-broker-j-{index}'
+    for index, member in enumerate(data[3]['calls'][0]['members'], 1):
+        member['broker_id'] = 'grouped-broker'
+        member['broker_job_id'] = f'grouped-broker-j-{index}'
+    report = _analyze(data)
+    assert report['measured_pair_consistent'] and not report['same_recorded_broker']
+
+
+def test_broker_job_ids_must_match_in_type_as_well_as_value():
+    data = _pair()
+    data[3]['attempts'][0]['broker_job_id'] = '3'
+    with pytest.raises(ValueError, match='identity'):
+        _analyze(data)
+
+
+@pytest.mark.parametrize('invalid', [True, 0, '', '  '])
+def test_invalid_broker_job_identity_is_rejected(invalid):
+    data = _pair()
+    data[3]['attempts'][0]['broker_job_id'] = invalid
+    data[3]['calls'][0]['members'][0]['broker_job_id'] = invalid
+    with pytest.raises(ValueError, match='broker job ID'):
+        _analyze(data)
+
+
 def test_success_cannot_be_published_after_accepted_or_unknown_cancellation():
     data = _pair()
     row = data[3]['attempts'][0]

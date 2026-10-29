@@ -57,6 +57,17 @@ def _int(value, label, *, minimum=0):
         raise ValueError(f'{label} must be a bounded integer >= {minimum}')
 
 
+def _broker_job_id(value):
+    # Serial brokers currently use integers; grouped brokers issue opaque
+    # strings. Preserve the actual type instead of inventing a conversion.
+    if type(value) is int:
+        _int(value, 'broker job ID', minimum=1)
+    elif type(value) is str:
+        _name(value, 'broker job ID')
+    else:
+        raise ValueError('broker job ID must be a bounded string or positive integer')
+
+
 def _tolerance(value):
     if type(value) not in (float, int):
         raise ValueError('tolerance must be a finite nonnegative number')
@@ -218,7 +229,7 @@ def _window(protocol, protocol_sha256, window, expected_mode):
             raise ValueError('broker ID and job ID must be present together')
         if broker_id is not None:
             _name(broker_id, 'broker ID')
-            _int(broker_job_id, 'broker job ID', minimum=1)
+            _broker_job_id(broker_job_id)
             identity = (broker_id, broker_job_id)
             if identity in broker_jobs:
                 raise ValueError('duplicate broker-scoped job ID')
@@ -332,7 +343,7 @@ def _window(protocol, protocol_sha256, window, expected_mode):
             row, job = by_id[job_id], jobs[job_id]
             if (row['call_id'] != call['call_id'] or row['selected_ns'] > call['launch_ns']
                     or member['broker_id'] != row['broker_id']
-                    or type(member['broker_job_id']) is not int
+                    or type(member['broker_job_id']) is not type(row['broker_job_id'])
                     or member['broker_job_id'] != row['broker_job_id']):
                 raise ValueError('member call identity or selection differs')
             if row['state'] == 'succeeded' and (call['state'] != 'succeeded'
