@@ -100,7 +100,9 @@ No grant is sent in that case, and the marker remains for operator/process
 recovery; do not guess a PID or use lease reacquisition as proof of exit.
 The registry holds at most 64 records and fails closed when full. Its
 capabilities are process-local and recovery requires external coordination;
-it is not an authentication or process-tree management facility.
+they are not an authentication facility. By default this protocol tracks the
+direct child only. The optional Windows process-job contract below adds a
+separately supplied, cooperative process-tree check.
 The `run_supervised(timeout=...)` child-wait deadline starts after spawn and
 grant return; it is not a hard deadline on a stalled native spawn or grant
 write. A stuck launcher may require process-level recovery with the marker
@@ -138,6 +140,55 @@ mapping. Reserved supervisor fields are stripped case-insensitively before the
 run's authoritative values are added; identity-less CPU mode also replaces any
 case spelling of `CUDA_VISIBLE_DEVICES` with an empty mask. The parent process
 environment is not modified.
+
+### Optional Windows process-job custody
+
+A dedicated Windows launcher may pass `process_job=job` to `run_supervised`.
+The caller must provide a fresh, empty, independently reviewed job capability
+and must not share it with another run or assign unrelated processes to it.
+The reviewed `WindowsJob` in `scripts/v2_source_guards.py` supplies this
+interface. The trusted capability must provide `assign(child)`,
+`process_counts()`, `terminate_and_wait(timeout=...)`, and `close()`.
+Its counts must be a pair of exact nonnegative lifetime and active integers;
+both must initially be zero. Its drain method must
+establish complete termination and handle custody for the job's members.
+For this option, `terminate_grace` must be greater than zero and at most ten
+seconds, matching the reviewed job implementation's drain limit.
+The supervisor cannot authenticate the implementation or detect a capability
+that lies. A caller that uses another implementation must independently verify
+those properties.
+
+The supervisor registers the job with the rooted child custody record, assigns
+the exact child before the launch grant, and prevents concurrent reuse of the
+same job object. Once the exact direct child is reaped, the supervisor requires
+an observed zero active job-member count, then confirms the job drain and
+closes its handle before considering marker removal. If members were still
+active, it stops and drains them but leaves the marker unsafe. An unknown,
+malformed or failed count, drain or close also leaves the marker and retains
+the child/job recovery record. No failed drain is automatically retried.
+Once the launcher is known quiescent, explicit `record.recover(...)` may retry
+the supplied capability's recovery protocol; it never clears the marker.
+If validation or registration fails before the custody record is registered,
+the supervisor does not drain or close the supplied job. The caller remains
+responsible for closing a fresh, unassigned job. If a caller erroneously passes
+a job already held by another custody record, it must not close or otherwise
+touch that other run's job.
+If cleanup receives `KeyboardInterrupt` or `SystemExit` while handling an
+ordinary launch error, the interruption is raised with that error as its cause.
+An earlier fatal interruption retains precedence. The no-job path does not
+require a process-job capability.
+
+The supplied `WindowsJob` checks its lifetime accounting against retained
+process handles. A short-lived member that escaped observation makes that
+inventory unconfirmed even if the active count later becomes zero. The owner
+must prevent or account for such descendants. The contract assumes the job
+handle is not leaked and no external process can assign or break away from the
+job; it cannot prove the absence of escaped or otherwise nonparticipating
+processes. It does not itself verify CUDA teardown. The owner must still stop
+all work and unsafe-reporting threads before attesting, and the launcher must
+reconcile child exit, job evidence, and device state. Spawn, assignment and job
+drain can stall outside the child-wait timeout; use an external deadline and
+retain quarantine if the launcher is uncertain.
 
 ```python
 from looking_glass.device_lease import DeviceLease
