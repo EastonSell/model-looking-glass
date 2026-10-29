@@ -167,6 +167,8 @@ The [pretrained trace smoke](results/pretrained-trace-cpu-v1-20261028/README.md)
 
 The [pretrained intervention smoke](results/distilgpt2-intervention-dev-cpu-v1-20261028/README.md) checks a known injection and same-site activation restoration on one public input, with an independent same-host replay. It tests intervention mechanics, not a held-out behavioral explanation.
 
+The [public known-injection localization study](results/public-known-injection-v1-20261029/README.md) identified both fixed injected sites; first-change and magnitude controls also did, while constant and fixed random controls each hit one. The selected held-out predictions beat zero, and a wrong-site patch partially restored logits. This is a two-site instrumentation check, not a natural-circuit claim.
+
 The [pretrained trace and intervention example](docs/PRETRAINED_TRACE_INTERVENTION_EXAMPLE.md) shows how to use the APIs directly on a short CPU input, with a bounded trace, self-patch control and saved explanatory output. Its known artificial edit demonstrates the tools; it is not an explanation of the model's ordinary behavior.
 
 The [clean-versus-corrupted trace workflow](docs/GPT2_TRACE_WORKFLOW.md) compares selected observations after a known embedding edit and tests same-site restoration against controls. The example is a mechanics check, not a causal discovery.
