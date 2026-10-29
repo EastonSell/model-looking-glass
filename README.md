@@ -15,15 +15,17 @@ The roadmap is a research plan, not a claim that its milestones are complete. Th
 - The [GPT-2 trace adapter](docs/TRANSFORMER_TRACE.md) captures selected layer, module, local token and invocation coordinates; generation and cache positions remain unknown unless established separately. The [ordered intervention plan](docs/INTERVENTION_PLANS.md) can capture, inject and patch at specified boundaries.
 - The [DistilBERT masked-LM trace adapter](docs/DISTILBERT_TRACE.md) records bounded eager CPU snapshots at selected attention, FFN and block outputs. Its [intervention workflow](docs/DISTILBERT_INTERVENTION_WORKFLOW.md) tests a known artificial injection with restoration and an off-target comparison.
 - The [T5 trace adapter](docs/FLAN_T5_TRACE.md) captures selected encoder and decoder outputs in one uncached forward with explicit masks. It does not trace generation or a separate cross-attention output. Its [donor-patch workflow](docs/FLAN_T5_INTERVENTION_WORKFLOW.md) checks specified state transfers and self/off-target controls on CPU.
+- The [ViT trace adapter](docs/VIT_TRACE.md) captures bounded CLS and patch-token observations on CPU, with coordinates in the processed image grid. It does not infer original-image boxes or causal localization.
 - The [fair queue](docs/FAIR_QUEUE.md) rotates among admitted teams; it does not by itself guarantee admission fairness or equal GPU time.
 - The [memory budget](docs/MEMORY_BUDGET.md) and [resource profiles](docs/RESOURCE_PROFILE.md) track conservative leases, trace allowances and workload-specific measurements. Estimates and logical byte counts are not peak-memory guarantees or proof of device enforcement; no shared-service GPU workload profile has yet been approved.
 - The [resident worker](docs/RESIDENT_WORKER.md) and [broker](docs/BROKER.md) reuse one trusted model for queued forwards. Their current execution is serial; GPU-wide admission and concurrent device throughput require separate integration and validation.
 - The [local CPU service](docs/SERVICE.md) exposes the pinned DistilGPT2 model to authenticated clients, with a two-token input limit and serial execution. A separate [microbatch primitive](docs/MICROBATCH.md) and [sampled batch validator](docs/BATCH_VALIDATION.md) are not yet integrated into that service.
 - The [device supervisor](docs/SUPERVISOR.md) coordinates a cooperative owner process, a device lease, and a sticky quarantine marker. It has CPU tests, but has not yet been integrated and validated as a shared GPU service.
-- The [local transport](docs/IPC.md) lets authenticated cooperating client processes submit bounded forwards over loopback. It does not by itself enforce GPU budgets or provide trace delivery.
+- The [forward-only IPC v1](docs/IPC.md) lets authenticated cooperating client processes submit bounded forwards over loopback. It does not by itself enforce GPU budgets or provide trace delivery.
 - The [experimental fair IPC bridge](docs/IPC_FAIR_BRIDGE.md) joins bounded forward-only admission and receipt custody in CPU tests. GPU service composition requires separate admission and supervision.
-- The [trace delivery prototype](docs/TRACE_TRANSPORT.md) tests bounded, single-event custody on CPU. The service does not yet send traces through IPC or provide a complete multi-event publication protocol.
-- A [CPU trace owner](docs/CPU_TRACE_OWNER.md) composes the [traced worker](docs/TRACED_WORKER.md), [producer envelope](docs/TRACE_PRODUCER.md) and [host custody ledger](docs/HOST_BUDGET.md) for private in-process jobs. They do not yet form a live broker-to-IPC trace path or a physical memory limit.
+- The [trace delivery prototype](docs/TRACE_TRANSPORT.md) tests bounded, single-event custody on CPU. The original forward-only service does not deliver traces.
+- The separate [CPU trace IPC v2](docs/TRACE_IPC_V2.md) delivers bounded multi-event traces to two trusted local client processes. Host budgets are independent per process and release is cooperative; it does not enable GPU tracing.
+- A [CPU trace owner](docs/CPU_TRACE_OWNER.md) composes the [traced worker](docs/TRACED_WORKER.md), [producer envelope](docs/TRACE_PRODUCER.md) and [host custody ledger](docs/HOST_BUDGET.md) for private in-process jobs. It also underpins the separate CPU trace IPC v2; it is not integrated with the existing forward-only broker and does not impose a physical memory limit.
 - The [experiment registry](docs/REGISTRY.md) records manifests, artifacts and terminal states. [Research cases](docs/RESEARCH_CASES.md), [localization](docs/LOCALIZATION.md), and [causal metrics](docs/CAUSAL_METRICS.md) support controlled evaluations; the public held-out cases are not a protected blind benchmark. [Transformer trace comparison](docs/TRANSFORMER_LOCALIZATION.md) requires independently verified pairing and execution context.
 
 These components have their own tests and limits; their presence alone does not establish a validated shared GPU service, causal discovery, or a general throughput claim.
@@ -159,8 +161,9 @@ The [grouped-broker CPU development replay](results/grouped-broker-cpu-dev-v3/RE
 The recorded original experiment used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records that run's installed versions; it is not a cross-platform dependency lock. Later experiments record their own environments. To install the original run's PyTorch version in an isolated environment, use `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
 
 Install the test and transformer extras and use pytest to discover both
-`unittest` cases and pytest-style tests. Some checks require optional local
-model assets and will be skipped when those assets are unavailable. Set
+`unittest` cases and pytest-style tests. The test extra pins Pillow 11.3.0
+for the vision selectors' fixed polygon rasterization. Some checks require
+optional local model assets and will be skipped when those assets are unavailable. Set
 `CUDA_VISIBLE_DEVICES=-1` before testing to keep the run CPU-only.
 
 ```bash
