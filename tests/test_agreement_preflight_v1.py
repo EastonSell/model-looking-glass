@@ -34,12 +34,17 @@ class FakeTokenizer:
             raise AssertionError("no special tokens allowed")
         if text.startswith(" "):
             return list(self.contexts[text[1:]])
+        if text == "The":
+            return [1]
         target = None
         for suffix, token in study.TARGETS.items():
             if text.endswith(suffix):
                 text, target = text[:-len(suffix)], token
                 break
-        _, subject, context = text.split(" ", 2)
+        parts = text.split(" ", 2)
+        if len(parts) == 2:
+            return [1, self.subjects[parts[1]]]
+        _, subject, context = parts
         result = [1, self.subjects[subject], *self.contexts[context]]
         return result + ([target] if target is not None else [])
 
@@ -58,6 +63,8 @@ class AgreementPreflightTests(unittest.TestCase):
         self.assertEqual(sum(row["congruent"] for row in rows), 8)
         self.assertTrue(all(group["same_length"] and group["same_context_suffix"] for group in groups))
         self.assertTrue(all(row["attention_mask"] == [1] * row["length"] for row in rows))
+        self.assertTrue(all(row["subject_index"] == 1 and row["subject_token_id"] == row["input_ids"][1]
+                            for row in rows))
 
     def test_alignment_failure_prevents_manifest(self):
         class Broken(FakeTokenizer):
@@ -70,15 +77,26 @@ class AgreementPreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "next-token alignment"):
             study.tokenize_inputs(Broken())
 
-    def test_quartet_length_mismatch_is_rejected(self):
+    def test_full_text_context_mismatch_is_rejected(self):
         class Split(FakeTokenizer):
             def encode(self, text, add_special_tokens=False):
                 ids = super().encode(text, add_special_tokens)
-                if "writers" in text:
+                if "writers " in text:
                     ids.insert(2, 88)
                 return ids
 
-        with self.assertRaisesRegex(ValueError, "quartet token alignment"):
+        with self.assertRaisesRegex(ValueError, "subject and context token alignment"):
+            study.tokenize_inputs(Split())
+
+    def test_multi_token_subject_is_rejected(self):
+        class Split(FakeTokenizer):
+            def encode(self, text, add_special_tokens=False):
+                ids = super().encode(text, add_special_tokens)
+                if text == "The writers":
+                    ids.append(88)
+                return ids
+
+        with self.assertRaisesRegex(ValueError, "exactly one token"):
             study.tokenize_inputs(Split())
 
     def test_threshold_applies_every_prespecified_stratum(self):
@@ -111,6 +129,38 @@ class AgreementPreflightTests(unittest.TestCase):
         for name, value in values.items():
             self.assertEqual(scores[name]["value"], value)
             self.assertEqual(scores[name]["bits_le"], struct.pack("<f", value).hex())
+
+    def test_subnormal_and_signed_zero_decode_under_float32_flush_modes(self):
+        code = '''
+import math, torch
+from looking_glass import agreement_preflight_v1 as study
+for enabled in (False, True):
+    if not torch.set_flush_denormal(enabled):
+        continue
+    raw = bytearray(study.VOCAB_SIZE * 4)
+    for name, bits in {" is": 1, " are": 0x80000001, " was": 0, " were": 0x80000000}.items():
+        token = study.TARGETS[name]
+        raw[token * 4:token * 4 + 4] = bits.to_bytes(4, "little")
+    score = study.extract_targets(bytes(raw))
+    assert score[" is"]["value"] == math.ldexp(1, -149)
+    assert score[" are"]["value"] == -math.ldexp(1, -149)
+    assert math.copysign(1, score[" was"]["value"]) == 1
+    assert math.copysign(1, score[" were"]["value"]) == -1
+    assert study._prepare_denormals(torch) == {"subnormal_input_bits": 1, "subnormal_output_bits": 0x00400000}
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            prefix = Path(tmp) / "no-bytecode"
+            result = subprocess.run([sys.executable, "-B", "-X", f"pycache_prefix={prefix}",
+                                     "-c", code], cwd=Path(__file__).resolve().parents[1],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_nonfinite_target_bits_are_rejected(self):
+        raw = bytearray(study.VOCAB_SIZE * 4)
+        token = study.TARGETS[" is"]
+        raw[token * 4:token * 4 + 4] = (0x7f800000).to_bytes(4, "little")
+        with self.assertRaisesRegex(ValueError, "nonfinite"):
+            study.extract_targets(bytes(raw))
 
     def test_canonical_comparison_distinguishes_json_number_and_boolean(self):
         self.assertEqual({"token": True}, {"token": 1})
@@ -228,6 +278,8 @@ class AgreementPreflightTests(unittest.TestCase):
                 mock.patch.object(study, "_verify_manifest", return_value=(manifest, "manifest", "commit")),
                 mock.patch.object(study, "_tokenizer", return_value=FakeTokenizer()),
                 mock.patch.object(study, "load_distilgpt2", return_value=bundle),
+                mock.patch.object(study, "_prepare_denormals", return_value={"subnormal_input_bits": 1, "subnormal_output_bits": 0x00400000}),
+                mock.patch.object(study, "_probe_denormals", return_value={"subnormal_input_bits": 1, "subnormal_output_bits": 0x00400000}),
                 mock.patch("looking_glass.resident_worker.registered_model_state", return_value="stable"),
                 mock.patch("torch.set_num_interop_threads"),
                 mock.patch("torch.use_deterministic_algorithms"),

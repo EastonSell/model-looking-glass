@@ -3,10 +3,10 @@
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import platform
-import struct
 import subprocess
 import sys
 import tempfile
@@ -114,12 +114,20 @@ def _tokenizer(cache_dir):
 def tokenize_inputs(tokenizer):
     """Encode only the fixed public rows and reject structural misalignment."""
     rows, groups = [], []
+    base = tokenizer.encode("The", add_special_tokens=False)
+    if not base:
+        raise ValueError("empty subject prefix")
     for index, (subjects, context, attractor_number) in enumerate(GROUPS):
         group_rows = []
         suffix = tokenizer.encode(" " + context, add_special_tokens=False)
         for position, subject in enumerate(subjects):
             text = f"The {subject} {context}"
             ids = tokenizer.encode(text, add_special_tokens=False)
+            subject_prefix = tokenizer.encode(f"The {subject}", add_special_tokens=False)
+            if len(subject_prefix) != len(base) + 1 or subject_prefix[:-1] != base:
+                raise ValueError("subject must be exactly one token after The")
+            if ids != subject_prefix + suffix:
+                raise ValueError("full text does not preserve subject and context token alignment")
             if not ids or len(ids) > MAX_TOKENS or not suffix:
                 raise ValueError("prefix or context token count is outside its bound")
             for continuation, target in TARGETS.items():
@@ -132,7 +140,8 @@ def tokenize_inputs(tokenizer):
                    "congruent": number == attractor_number,
                    "grammatical_sign": 1 if number == "singular" else -1,
                    "input_ids": list(ids), "attention_mask": [1] * len(ids),
-                   "length": len(ids), "final_position": len(ids) - 1}
+                   "length": len(ids), "subject_index": len(base),
+                   "subject_token_id": subject_prefix[-1], "final_position": len(ids) - 1}
             rows.append(row)
             group_rows.append(row)
         same_length = len({row["length"] for row in group_rows}) == 1
@@ -162,12 +171,24 @@ def summarize(rows):
 
 
 def extract_targets(raw):
-    """Decode exact little-endian float32 target bits into Python floats."""
+    """Decode IEEE float32 bits in binary64, even with float32 flush-to-zero."""
     if type(raw) is not bytes or len(raw) != VOCAB_SIZE * 4:
         raise ValueError("last-token logit vector has the wrong byte length")
-    return {name: {"value": struct.unpack_from("<f", raw, token * 4)[0],
-                   "bits_le": raw[token * 4:token * 4 + 4].hex()}
-            for name, token in TARGETS.items()}
+    scores = {}
+    for name, token in TARGETS.items():
+        bits = raw[token * 4:token * 4 + 4]
+        encoded = int.from_bytes(bits, "little")
+        sign = -1 if encoded >> 31 else 1
+        exponent = (encoded >> 23) & 0xff
+        fraction = encoded & 0x7fffff
+        if exponent == 0xff:
+            raise ValueError("nonfinite target logit")
+        if exponent == 0:
+            value = math.ldexp(sign * fraction, -149) if fraction else (-0.0 if sign < 0 else 0.0)
+        else:
+            value = math.ldexp(sign * (0x800000 + fraction), exponent - 150)
+        scores[name] = {"value": value, "bits_le": bits.hex()}
+    return scores
 
 
 def _write_json(path, payload):
@@ -257,6 +278,23 @@ def _state_digest(model):
     return digest.hexdigest()
 
 
+def _probe_denormals(torch):
+    """Test subnormal input and output arithmetic in this execution thread."""
+    subnormal = torch.tensor([1], dtype=torch.int32).view(torch.float32)
+    normal = torch.tensor([0x00800000], dtype=torch.int32).view(torch.float32)
+    input_bits = int((subnormal * 1.0).view(torch.int32).item())
+    output_bits = int((normal * 0.5).view(torch.int32).item())
+    if input_bits != 1 or output_bits != 0x00400000:
+        raise RuntimeError("float32 subnormal arithmetic was flushed")
+    return {"subnormal_input_bits": input_bits, "subnormal_output_bits": output_bits}
+
+
+def _prepare_denormals(torch):
+    if not torch.set_flush_denormal(False):
+        raise RuntimeError("float32 denormal mode cannot be configured")
+    return _probe_denormals(torch)
+
+
 def _event(stream, payload):
     stream.write(json.dumps(payload, sort_keys=True, ensure_ascii=True, allow_nan=False) + "\n")
     stream.flush()
@@ -297,6 +335,10 @@ def run(root, cache_dir, manifest_path, inventory_payload, inventory_sha256,
                      "inventory_sha256": inventory_sha256, "inventory_revision": inventory_revision,
                      "inventory_source_sha256": inventory_source_sha256})
         try:
+            phase = "denormal_configuration"
+            denormals_before = _prepare_denormals(torch)
+            _event(log, {"event": "denormal_probe_before", **denormals_before})
+            phase = "load"
             bundle = load_distilgpt2(cache_dir=cache_dir, allow_download=False)
             model = bundle.model
             baseline = registered_model_state(model, "cpu")
@@ -341,6 +383,8 @@ def run(root, cache_dir, manifest_path, inventory_payload, inventory_sha256,
                                  "vector_sha256": row["vector_sha256"]})
             phase = "verify"
             state_after = _state_digest(model)
+            denormals_after = _probe_denormals(torch)
+            _event(log, {"event": "denormal_probe_after", **denormals_after})
             if state_after != state_before or registered_model_state(model, "cpu") != baseline:
                 raise RuntimeError("registered model state changed")
             if torch.cuda.is_initialized() or total != 16 * VOCAB_SIZE * 4:
@@ -357,6 +401,9 @@ def run(root, cache_dir, manifest_path, inventory_payload, inventory_sha256,
                                   "torch": torch.__version__, "threads": torch.get_num_threads(),
                                   "deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
                                   "cuda_initialized": torch.cuda.is_initialized(),
+                                  "flush_denormal_requested": False,
+                                  "denormal_probe_before": denormals_before,
+                                  "denormal_probe_after": denormals_after,
                                   "bytecode_writes_disabled": sys.dont_write_bytecode,
                                   "nonexistent_pycache_prefix": sys.pycache_prefix},
                       "state_sha256_before": state_before, "state_sha256_after": state_after,

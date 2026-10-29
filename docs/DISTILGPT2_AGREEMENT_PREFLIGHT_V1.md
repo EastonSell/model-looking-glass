@@ -32,7 +32,10 @@ batch-one int64 input row, its all-one attention mask, and the final prefix
 position. Before any forward, require that appending ` is`, ` are`, ` was` and
 ` were` each preserves the complete original token row and adds exactly one
 token, IDs 318, 389, 373 and 547 respectively. Record the text, all IDs and mask values, token count,
-position, subject number, attractor number and congruence. For each quartet,
+final position, zero-based subject position and token ID, subject number,
+attractor number and congruence. Require `The` plus the subject to append one
+token and the full token row to be exactly that prefix followed by the
+tokenized context. For each quartet,
 record whether all four prefix lengths match and whether the tokenized
 `" " + context` is an identical suffix of all four rows. Any failed
 quartet or next-token alignment aborts the run before any model forward.
@@ -47,8 +50,9 @@ logits, `logit[318] - logit[389]`. A prompt is correct only when the margin
 times the grammatical sign is strictly positive; a zero margin is incorrect.
 Also save the ` was` and ` were` logits and their float64 difference as a
 descriptive secondary measure; this does not change the present-tense success
-criterion. Decode each target directly from its raw little-endian float32 bits
-and save both those bits and the resulting Python float.
+criterion. Decode each target from its raw little-endian IEEE float32 bits
+using integer sign, exponent and fraction into binary64, including subnormals
+under float32 flush-to-zero, and save both bits and the resulting Python float.
 Before seeing any logits, label the baseline **informative under this fixed
 criterion** only if at least 12 of 16 prompts are correct overall, and at least
 5 of 8 are correct in each of the four overlapping strata: singular subjects,
@@ -85,6 +89,11 @@ pycache_prefix=<absolute, nonexistent path>`; the entry point rejects other
 settings before importing project code. This prevents timestamp-valid stale
 bytecode reads in this trusted process. It does not attest to the Python
 interpreter or external dependencies.
+Request float32 denormal flushing disabled in the execution thread, and check
+both subnormal-input and subnormal-output arithmetic before and after the model
+work. Abort if either probe fails. These checks do not attest to transient
+changes during kernels or to other threads; replay may differ with a different
+runtime or arithmetic environment.
 
 Forward the 16 rows in the order above, once each, without batching or
 interventions. Preserve an append-only attempt log before each forward, and
