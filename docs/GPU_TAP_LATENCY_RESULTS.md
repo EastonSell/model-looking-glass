@@ -54,16 +54,19 @@ distinct foreign PIDs across the endpoint queries. The three before-idle GPU
 utilization samples were 1%, 1%, and 4%; the three after-idle samples were 19%,
 3%, and 3%. Other listed processes are not necessarily actively computing, and
 sampled utilization does not identify its source. WDDM endpoint process lists
-and periodic polling can miss activity or overlap in time.
+and periodic polling can miss activity. The 19% sample is coarse, and its
+averaging window can overlap the preceding workload.
 
 The process used a 25% PyTorch allocator cap, live headroom guards, and a
 separately held device lease. The maximum PyTorch allocated/reserved peaks
 observed across measured and warmup samples were 369,420,288 and 408,944,640
 bytes. The composite equivalence preflight reached 370,630,656 allocated and
 408,944,640 reserved bytes. These are observations, not device-wide peaks or
-guaranteed upper bounds. The owner exited cleanly; after a 32 MiB retained
-cuBLAS workspace was cleared and synchronized, current PyTorch allocated and
-reserved bytes were both zero. No unsafe device marker remained.
+guaranteed upper bounds. The owner exited cleanly. PyTorch counters showed
+32 MiB allocated and reserved before the cuBLAS workspace-clear call, then zero
+after that call, synchronization and `empty_cache`. Those counters alone do
+not identify every retained byte. An immediate operator check observed no unsafe
+device marker; a separate marker snapshot was not retained.
 
 ## Earlier failed attempt
 
