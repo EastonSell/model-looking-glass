@@ -90,6 +90,17 @@ measurements, or substitute a smaller workload. A result with a wrong internal
 identity is discarded and makes the broker unavailable. An outcome notification
 can precede release of the owner thread's last local references, so it is not a
 guarantee of immediate memory reclamation.
+`broker.failed` remains true after a broker failure and differs from an
+ordinary close; a service should check it when reporting its workload status.
+
+If persistent host-memory exhaustion prevents queue cleanup or publication of
+a terminal outcome, `wait()` and `cancel()` can instead raise
+`BrokerUnavailable`: the request's status is unknown, not a completed failure.
+The broker rejects further work, retains unresolved accounting and request
+references where possible, and reports `BrokerShutdownError` rather than
+claiming a clean shutdown. Catastrophic exhaustion can also prevent even this
+best-effort notification; a supervising process must treat an unresponsive
+owner as incomplete and preserve its resource quarantine.
 
 `close(wait=True, timeout=None)` stops admission, cancels queued work, requests
 cancellation of a running call, and waits for the owner to stop. It returns

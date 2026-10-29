@@ -1,4 +1,5 @@
 import importlib.util
+import threading
 import unittest
 
 import torch
@@ -25,6 +26,147 @@ class Doubler(nn.Module):
 
 
 class InterventionTests(unittest.TestCase):
+    def test_caught_target_failure_never_mislabels_or_patches_a_later_call(self):
+        from looking_glass.interventions import ActivationCapture, ActivationIntervention
+        class FailsFirst(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.calls = 0
+            def forward(self, x):
+                self.calls += 1
+                if self.calls == 1:
+                    raise ValueError('first target call failed')
+                return x * 2
+        class Root(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.tap = FailsFirst()
+            def forward(self, x):
+                try:
+                    self.tap(x)
+                except ValueError:
+                    pass
+                return self.tap(x)
+        for operation in ('capture', 'patch'):
+            with self.subTest(operation=operation):
+                model = Root()
+                session = (ActivationCapture(model, 'tap', invocation=0, max_invocations=1)
+                           if operation == 'capture' else
+                           ActivationIntervention(model, 'tap', invocation=0, max_invocations=1,
+                                                  operation='patch', value=torch.ones(1, 2)))
+                with self.assertRaises(RuntimeError):
+                    with session:
+                        model(torch.ones(1, 2))
+                with self.assertRaises(RuntimeError):
+                    _ = session.metadata
+                if operation == 'capture':
+                    with self.assertRaises(RuntimeError):
+                        _ = session.value
+                self.assertEqual(len(model.tap._forward_hooks), 0)
+
+    def test_reentrant_target_is_not_mislabeled_by_output_completion_order(self):
+        from looking_glass.interventions import ActivationCapture
+        class Recursive(nn.Module):
+            def forward(self, x, depth):
+                return self(x, depth - 1) if depth else x
+        class Root(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.tap = Recursive()
+            def forward(self, x):
+                return self.tap(x, 1)
+        model = Root()
+        session = ActivationCapture(model, 'tap')
+        with self.assertRaisesRegex(RuntimeError, 'reentrant'):
+            with session:
+                model(torch.ones(1, 2))
+        with self.assertRaises(RuntimeError):
+            _ = session.value
+
+    def test_caught_target_keyboard_interrupt_cannot_publish(self):
+        from looking_glass.interventions import ActivationCapture
+        class Interrupted(nn.Module):
+            def forward(self, x):
+                raise KeyboardInterrupt('target cancellation')
+        class Root(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.tap = Interrupted()
+            def forward(self, x):
+                try:
+                    self.tap(x)
+                except KeyboardInterrupt:
+                    return x
+        model = Root()
+        session = ActivationCapture(model, 'tap')
+        with self.assertRaises(RuntimeError):
+            with session:
+                model(torch.ones(1, 2))
+        with self.assertRaises(RuntimeError):
+            _ = session.value
+
+    def test_root_model_can_be_targeted_by_its_empty_path(self):
+        from looking_glass.interventions import ActivationCapture
+        model = nn.Sequential(nn.Identity())
+        with ActivationCapture(model, '') as capture:
+            result = model(torch.tensor([[1., 2.]]))
+        self.assertTrue(torch.equal(capture.value, result))
+        self.assertEqual(capture.metadata['invocation'], 0)
+
+    def test_null_can_change_layout_sensitive_downstream_behavior(self):
+        from looking_glass.interventions import ActivationIntervention
+        class LayoutSensitive(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.tap = nn.Identity()
+            def forward(self, x):
+                return self.tap(x[:, ::2, :]).stride(1)
+        model = LayoutSensitive()
+        x = torch.zeros(1, 4, 3)
+        sliced = x[:, ::2, :]
+        if sliced.clone().stride() == sliced.stride():
+            self.skipTest('this torch build preserves the example layout on clone')
+        untouched = model(x)
+        with ActivationIntervention(model, 'tap', operation='null'):
+            control = model(x)
+        self.assertNotEqual(untouched, control)
+
+    def test_repeated_entry_does_not_clear_an_active_patch_or_delta(self):
+        from looking_glass.interventions import ActivationIntervention
+        for operation in ('patch', 'add'):
+            with self.subTest(operation=operation):
+                model = nn.Sequential(nn.Identity())
+                session = ActivationIntervention(model, '0', operation=operation,
+                                                 value=torch.tensor([[8., 9.]]))
+                with session:
+                    with self.assertRaisesRegex(RuntimeError, 'single-use'):
+                        session.__enter__()
+                    result = model(torch.tensor([[1., 2.]]))
+                expected = torch.tensor([[8., 9.]]) if operation == 'patch' else torch.tensor([[9., 11.]])
+                self.assertTrue(torch.equal(result, expected))
+
+    def test_rejected_foreign_exit_preserves_source_until_owner_cleanup(self):
+        from looking_glass.interventions import ActivationIntervention
+        model = nn.Sequential(nn.Identity())
+        session = ActivationIntervention(model, '0', operation='patch',
+                                         value=torch.tensor([[8., 9.]]))
+        errors = []
+        def foreign_exit():
+            try:
+                session.__exit__(None, None, None)
+            except BaseException as error:
+                errors.append(error)
+        with self.assertRaisesRegex(RuntimeError, 'already invalid'):
+            with session:
+                worker = threading.Thread(target=foreign_exit)
+                worker.start()
+                worker.join(timeout=5)
+                self.assertFalse(worker.is_alive())
+                self.assertEqual(len(errors), 1)
+                self.assertIsNotNone(session._source)
+                model(torch.ones(1, 2))
+        self.assertIsNone(session._source)
+
     def test_capture_selected_token_from_second_module_invocation(self):
         self.assertIsNotNone(importlib.util.find_spec('looking_glass.interventions'),
                              'the intervention API must exist')

@@ -874,6 +874,56 @@ class TracedWorkerTests(unittest.TestCase):
         self.assertIsInstance(results[0], self.import_result_type())
         self.assert_no_hooks()
 
+    @unittest.skipUnless(importlib.util.find_spec("looking_glass.transformer_trace") is not None,
+                         "requires the GPT-2 trace adapter")
+    def test_gpt2_adapter_and_worker_exclude_each_other_both_ways(self):
+        from looking_glass.capture_dispatcher import CaptureDispatcher
+        from looking_glass.transformer_trace import GPT2TraceSession
+        worker = self.make_worker()
+        with GPT2TraceSession(self.model, run_id="adapter", targets=("mlp",), layers=(0,)):
+            with self.assertRaises(RuntimeError):
+                self.traced(worker)
+        self.assertFalse(worker.poisoned)
+
+        entered, release, results = threading.Event(), threading.Event(), []
+        record = CaptureDispatcher.record
+
+        def hold(dispatcher, *args, **kwargs):
+            record(dispatcher, *args, **kwargs)
+            entered.set()
+            if not release.wait(15):
+                raise RuntimeError("test hook timed out")
+
+        def call():
+            try:
+                results.append(self.traced(worker))
+            except BaseException as exc:
+                results.append(exc)
+
+        with patch.object(CaptureDispatcher, "record", hold):
+            thread = threading.Thread(target=call, daemon=True)
+            thread.start()
+            try:
+                self.assertTrue(entered.wait(15))
+                with self.assertRaises(RuntimeError):
+                    with GPT2TraceSession(self.model, run_id="adapter-overlap",
+                                          targets=("mlp",), layers=(0,)):
+                        pass
+            finally:
+                release.set()
+                thread.join(30)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], self.import_result_type())
+        self.assert_no_hooks()
+        with GPT2TraceSession(self.model, run_id="adapter-after",
+                              targets=("mlp",), layers=(0,)) as trace:
+            with torch.inference_mode():
+                self.model(self.inputs)
+        self.assertTrue(trace.successful)
+        self.assertTrue(trace.events)
+        self.assert_no_hooks()
+
     def test_competing_callers_keep_batch_logits_and_trace_values_separate(self):
         worker, start, outcomes, errors = self.make_worker(), threading.Event(), {}, []
         inputs = {"a": torch.tensor([[1, 2, 3], [4, 5, 6]]),

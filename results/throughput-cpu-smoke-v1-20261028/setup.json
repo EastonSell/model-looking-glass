@@ -1,0 +1,69 @@
+{
+  "protocol": "shared-model-throughput-v1",
+  "status": "initializing",
+  "smoke_only": true,
+  "source": {
+    "source_commit": "a36c83c3adecca7740a24ce2d02902d72e08b211",
+    "source_dirty": false,
+    "source_sha256": {
+      "looking_glass/throughput_benchmark.py": "1231b10228aab32af5f07c20e431b27eca70c52ea54136b2f805b113976b4186",
+      "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+      "looking_glass/resident_worker.py": "75d62b25859aa52a69cd772850d8ed04224118acfa400de95344a883a806058f",
+      "looking_glass/broker.py": "ca671a77bbc075df36d8a1d02e6ec3490c2350d5378e9782f7053d02aec71f26",
+      "looking_glass/fair_queue.py": "9b5708a16ef4e7fbda2647cb714b98107c3d91b34a003d714b51a2d86b2134b8",
+      "looking_glass/memory_budget.py": "5a7db4ae3ac79ad807a37338b0f01874d07ba146f64bc928cffd1c11aad00845",
+      "docs/THROUGHPUT_PROTOCOL_V1.md": "9af8b93375d6fb317f667b277ddd6d8b76fa10185abaea5a1a0c9fc95e4053ab"
+    }
+  },
+  "environment": {
+    "python": "3.11.15",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "torch": "2.8.0+cu128",
+    "transformers": "4.57.3",
+    "numpy": "2.4.6",
+    "cuda_runtime": "12.8",
+    "device": "cpu",
+    "torch_threads": 1,
+    "deterministic_algorithms": true,
+    "cublas_workspace_config": null,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": true,
+    "cudnn_allow_tf32": false,
+    "matmul_allow_tf32": false,
+    "nvidia_inventory": null
+  },
+  "external_gpu_activity": "unknown; no device-exclusivity claim",
+  "model_id": "distilbert/distilgpt2",
+  "revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "expected_checkpoint_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+  "workload_replay": {
+    "public_prompts": [
+      "The small bird landed on",
+      "A bright light appeared in"
+    ],
+    "teams": [
+      "team-a",
+      "team-b"
+    ],
+    "seed_rule": "1000 + prompt index",
+    "batch": 1,
+    "tokenizer_add_special_tokens": false,
+    "padding": false,
+    "max_tokens": 128,
+    "capture_policy": "none",
+    "unit": "input tensor positions, including any padding"
+  },
+  "limits": {
+    "max_batch_size": 1,
+    "max_sequence_length": 128,
+    "max_input_bytes": 1048576,
+    "max_output_bytes": 8388608,
+    "max_gpu_trace_bytes": 0,
+    "max_host_trace_bytes": 0,
+    "gpu_incremental_estimate_bytes": null,
+    "broker_max_pending": 4,
+    "broker_max_pending_per_team": 1
+  },
+  "protocol_seed": 0,
+  "repetitions": 1
+}

@@ -1,7 +1,11 @@
 import math
 import json
+import subprocess
+import sys
 import unittest
+from fractions import Fraction
 from types import SimpleNamespace
+import warnings
 
 import torch
 
@@ -127,6 +131,125 @@ class LocalizationTests(unittest.TestCase):
         candidate = [event("a", 0, 0, [1.0600853094673224e-14], dtype=torch.float64)]
         result = compare(reference, candidate, atol=1.262177448353619e-30)
         self.assertEqual(result["status"], "difference_observed")
+
+    def test_exact_tolerance_boundaries_and_extremes(self):
+        reference = [event("a", 0, 0, [1.], dtype=torch.float64)]
+        candidate = [event("a", 0, 0, [1. + 2. ** -52], dtype=torch.float64)]
+        self.assertEqual(compare(reference, candidate, rtol=2. ** -53,
+                                 atol=2. ** -53)["status"], "no_difference_observed")
+        self.assertEqual(compare(reference, candidate,
+                                 atol=math.nextafter(2. ** -52, 0.))["status"],
+                         "difference_observed")
+        largest = float.fromhex("0x1.fffffffffffffp+1023")
+        positive = [event("a", 0, 0, [largest], dtype=torch.float64)]
+        negative = [event("a", 0, 0, [-largest], dtype=torch.float64)]
+        self.assertEqual(compare(positive, negative, rtol=2.)["status"],
+                         "no_difference_observed")
+        self.assertEqual(compare(positive, negative, rtol=math.nextafter(2., 0.))["status"],
+                         "difference_observed")
+
+    def test_non_builtin_tolerances_are_rejected_before_lossy_conversion(self):
+        events = [event("a", 0, 0, [1.])]
+        for value in (Fraction(1, 2), Fraction(-1, 1 << 1074)):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                compare(events, events, atol=value)
+
+    def test_integer_tolerances_must_be_exactly_representable(self):
+        events = [event("a", 0, 0, [1.])]
+        with self.assertRaises(ValueError):
+            compare(events, events, atol=9007199254740995)
+        self.assertEqual(compare(events, events, atol=9007199254740994)["status"],
+                         "no_difference_observed")
+        self.assertEqual(compare(events, events, atol=1 << 100)["status"],
+                         "no_difference_observed")
+
+    def test_named_and_lazy_negative_views_are_unavailable(self):
+        tensor = torch.tensor([1.])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            named = tensor.refine_names("features")
+        for unsupported in (named, tensor._neg_view()):
+            item = TraceEvent("run", "a", 0, 0, tuple(unsupported.shape),
+                              str(unsupported.dtype), "cpu", unsupported)
+            with self.subTest(unsupported=unsupported):
+                result = compare([item], [item])
+                self.assertEqual(result["status"], "inconclusive")
+                self.assertEqual(result["coverage"]["unavailable"], 1)
+
+    def test_scalar_and_inference_mode_snapshots_can_be_compared(self):
+        with torch.inference_mode():
+            reference = torch.tensor(1.)
+            candidate = torch.tensor(1.125)
+        def observed(run, value):
+            return TraceEvent(run, "a", 0, 0, tuple(value.shape),
+                              str(value.dtype), "cpu", value)
+        left, right = [observed("reference", reference)], [observed("candidate", candidate)]
+        self.assertEqual(compare(left, right)["status"], "difference_observed")
+        self.assertEqual(compare(left, right, atol=0.125)["status"], "no_difference_observed")
+
+    def test_subnormals_and_tolerances_are_independent_of_cpu_flush_mode(self):
+        # Isolate the thread-local FP-mode changes from the test process.
+        code = r'''
+import json, math, struct, sys, torch
+from looking_glass.localization import compare_traces
+from looking_glass.probes import TraceEvent
+
+def bits(dtype, integers):
+    integer_dtype = {torch.float16: torch.int16, torch.bfloat16: torch.int16,
+                     torch.float32: torch.int32, torch.float64: torch.int64}[dtype]
+    return torch.tensor(integers, dtype=integer_dtype, device="cpu").view(dtype)
+
+def report(a, b, **kwargs):
+    def event(run, value):
+        return TraceEvent(run, "a", 0, 0, tuple(value.shape), str(value.dtype),
+                          "cpu", value)
+    return compare_traces([event("reference", a)], [event("candidate", b)],
+                          reference_complete=True, candidate_complete=True,
+                          **kwargs)
+
+def compare(a, b, **kwargs):
+    return report(a, b, **kwargs)["status"]
+
+minimum64 = struct.unpack("<d", (1).to_bytes(8, "little"))[0]
+negative_minimum64 = struct.unpack("<d", (0x8000000000000001).to_bytes(8, "little"))[0]
+for flush in (False, True):
+    if not torch.set_flush_denormal(flush):
+        sys.exit(77)
+    for dtype in (torch.float16, torch.bfloat16, torch.float32, torch.float64):
+        assert compare(bits(dtype, [0]), bits(dtype, [1])) == "difference_observed", (flush, dtype)
+        sign = -(1 << ({torch.float16: 15, torch.bfloat16: 15,
+                       torch.float32: 31, torch.float64: 63}[dtype]))
+        assert compare(bits(dtype, [0]), bits(dtype, [sign])) == "no_difference_observed", (flush, dtype)
+    assert compare(bits(torch.float32, [0]), bits(torch.float32, [1]),
+                   atol=math.ldexp(1., -150)) == "difference_observed", flush
+    strided = bits(torch.float32, [0, 9, 1, 9])[::2]
+    assert compare(bits(torch.float32, [0, 0]), strided,
+                   atol=math.ldexp(1., -150)) == "difference_observed", flush
+    assert compare(bits(torch.float64, [0]), bits(torch.float64, [1]),
+                   atol=minimum64) == "no_difference_observed", flush
+    assert compare(bits(torch.float64, [0]), bits(torch.float64, [2]),
+                   atol=minimum64) == "difference_observed", flush
+    serialized = json.loads(json.dumps(report(bits(torch.float64, [0]),
+                                             bits(torch.float64, [1]),
+                                             atol=minimum64, rtol=-0.0), allow_nan=False))
+    assert serialized["tolerance"]["atol"] is None, (flush, serialized)
+    assert serialized["tolerance"]["atol_binary64_hex"] == "0000000000000001", flush
+    assert serialized["tolerance"]["rtol_binary64_hex"] == "8000000000000000", flush
+    assert compare(bits(torch.float64, [0x0010000000000000]),
+                   bits(torch.float64, [0x0010000000000001]),
+                   rtol=1e-17) == "difference_observed", flush
+    try:
+        compare(bits(torch.float64, [0]), bits(torch.float64, [0]),
+                atol=negative_minimum64)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError(("negative subnormal tolerance accepted", flush))
+'''
+        process = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+        if process.returncode == 77:
+            self.skipTest("runtime cannot configure the CPU denormal mode")
+        self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
 
     def test_invalid_tolerances_are_rejected(self):
         events = [event("a", 0, 0, [1.])]

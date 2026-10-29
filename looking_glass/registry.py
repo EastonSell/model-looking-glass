@@ -194,8 +194,19 @@ def _publish(path, destination, data):
             os.fsync(stream.fileno())
         # A same-filesystem hard link is atomically visible and fails if the target exists.
         os.link(pending, destination)
-    finally:
+    except BaseException as publication_error:
+        try:
+            pending.unlink(missing_ok=True)
+        except BaseException as cleanup_error:
+            raise publication_error from cleanup_error
+        raise
+    # Once the link succeeds, cleanup is best effort: its failure must not
+    # make the caller believe that an already published record failed. The
+    # next locked mutation can retry and status exposes a leftover scratch file.
+    try:
         pending.unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def _inventory(path, manifest):

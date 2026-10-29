@@ -4,6 +4,7 @@ import threading
 import unittest
 from unittest.mock import Mock, patch
 import weakref
+from types import SimpleNamespace
 
 import torch
 from torch import nn
@@ -241,7 +242,7 @@ class ResidentWorkerTests(unittest.TestCase):
 
     def test_failed_cuda_rng_setup_still_attempts_device_drain(self):
         worker = ResidentWorker("small", SmallModel().eval())
-        worker.device = torch.device("cuda:0")  # Exercise cleanup without initializing a GPU.
+        worker._device = torch.device("cuda:0")  # Exercise cleanup without initializing a GPU.
         with patch("torch.random.fork_rng", side_effect=RuntimeError("RNG setup failed")):
             with patch("torch.cuda.synchronize", side_effect=RuntimeError("drain failed")) as drain:
                 with self.assertRaises(WorkerSynchronizationError):
@@ -258,7 +259,7 @@ class ResidentWorkerTests(unittest.TestCase):
             with self.subTest(drain_error=type(drain_error).__name__):
                 with patch.object(worker_module, "_process_quarantined", threading.Event()):
                     worker = ResidentWorker("interrupt", InterruptModel().eval())
-                    worker.device = torch.device("cuda:0")
+                    worker._device = torch.device("cuda:0")
                     with patch("torch.random.fork_rng", return_value=nullcontext()):
                         with patch("torch.cuda.default_generators", [Mock()]):
                             with patch.object(torch.Tensor, "to", lambda tensor, *args, **kwargs: tensor):
@@ -266,6 +267,15 @@ class ResidentWorkerTests(unittest.TestCase):
                                     with self.assertRaises(WorkerSynchronizationError):
                                         worker.execute(ForwardRequest("fail", {"input_ids": torch.tensor([[1]])}))
                     self.assertTrue(worker.poisoned)
+
+    def test_failed_drain_takes_precedence_over_post_forward_state_check(self):
+        worker = ResidentWorker("small", SmallModel().eval())
+        with patch.object(worker, "_model_state", side_effect=[worker._baseline, RuntimeError("unreadable")]) as state:
+            with patch.object(worker, "_perform", return_value=(None, (WorkerSynchronizationError, "drain failed"))):
+                with self.assertRaisesRegex(WorkerSynchronizationError, "drain failed"):
+                    worker.execute(ForwardRequest("r", {"input_ids": torch.tensor([[1]])}))
+        self.assertEqual(state.call_count, 1)
+        self.assertTrue(worker.poisoned)
 
     def test_snapshot_oom_blocks_other_queued_forwards_immediately(self):
         entered, release, failed_copy = threading.Event(), threading.Event(), threading.Event()
@@ -332,7 +342,7 @@ class ResidentWorkerTests(unittest.TestCase):
         other = ResidentWorker("other", other_model)
         del model
         del other_model
-        failed.device = torch.device("cuda:0")
+        failed._device = torch.device("cuda:0")
         with patch("torch.random.fork_rng", return_value=nullcontext()):
             with patch("torch.cuda.default_generators", [Mock()]):
                 with patch.object(torch.Tensor, "to", lambda tensor, *args, **kwargs: tensor):
@@ -361,7 +371,7 @@ class ResidentWorkerTests(unittest.TestCase):
                 raise MemoryError("no space to retain references")
 
         worker = ResidentWorker("cuda", SmallModel().eval())
-        worker.device = torch.device("cuda:0")
+        worker._device = torch.device("cuda:0")
         with patch.object(worker_module, "_quarantine_references", NoRetentionSpace()):
             with patch("torch.random.fork_rng", side_effect=RuntimeError("setup failed")):
                 with patch("torch.cuda.synchronize", side_effect=UndisplayableError()):
@@ -380,7 +390,7 @@ class ResidentWorkerTests(unittest.TestCase):
 
         failed = ResidentWorker("cuda", SmallModel().eval())
         other = ResidentWorker("other", ObservedModel().eval())
-        failed.device = torch.device("cuda:0")
+        failed._device = torch.device("cuda:0")
         original_snapshot = other.snapshot_request
         failures = []
 
@@ -419,6 +429,153 @@ class ResidentWorkerTests(unittest.TestCase):
         self.assertEqual(seen, [])
         self.assertEqual(len(failures), 2)
         self.assertTrue(all(isinstance(exc, WorkerSynchronizationError) for exc in failures))
+
+    def test_invalid_request_exceptions_do_not_retain_input_tensors(self):
+        for boundary in ("validate_request", "snapshot_request", "execute", "invalid_cancel"):
+            with self.subTest(boundary=boundary):
+                worker = ResidentWorker("small", SmallModel().eval())
+                tensor = torch.tensor([1.0])
+                tensor_ref = weakref.ref(tensor)
+                request = ForwardRequest("invalid", {"input_ids": tensor})
+                caught = None
+                try:
+                    if boundary == "invalid_cancel":
+                        worker.execute(request, object())
+                    else:
+                        getattr(worker, boundary)(request)
+                except InvalidRequest as exc:
+                    caught = exc
+                self.assertIsNotNone(caught)
+                self.assertIsNone(caught.__context__)
+                request = None
+                tensor = None
+                gc.collect()
+                self.assertIsNone(tensor_ref())
+
+    def test_autocast_is_rejected_in_the_execution_thread(self):
+        class LinearModel(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.projection = nn.Linear(1, 2)
+
+            def forward(self, input_ids):
+                return {"logits": self.projection(input_ids.float().unsqueeze(-1))}
+
+        worker = ResidentWorker("linear", LinearModel().eval())
+        request = ForwardRequest("r", {"input_ids": torch.tensor([[1]])})
+        with torch.autocast("cpu", dtype=torch.bfloat16):
+            with self.assertRaisesRegex(WorkerExecutionError, "autocast"):
+                worker.execute(request)
+        self.assertFalse(worker.poisoned)
+        self.assertEqual(worker.execute(request).logits.dtype, torch.float32)
+
+    def test_enabled_or_changed_model_cache_is_rejected(self):
+        for setting in (True, None):
+            enabled = SmallModel().eval()
+            enabled.config = SimpleNamespace(use_cache=setting)
+            with self.subTest(setting=setting), self.assertRaisesRegex(ValueError, "cache"):
+                ResidentWorker("enabled", enabled)
+        model = SmallModel().eval()
+        model.config = SimpleNamespace(use_cache=False)
+        worker = ResidentWorker("changing", model)
+        model.config.use_cache = True
+        with self.assertRaises(WorkerUnavailable):
+            worker.execute(ForwardRequest("r", {"input_ids": torch.tensor([[1]])}))
+        self.assertTrue(worker.poisoned)
+
+    def test_returned_cache_fails_and_poisons_even_when_config_is_disabled(self):
+        class CacheModel(SmallModel):
+            def forward(self, input_ids, attention_mask=None):
+                result = super().forward(input_ids, attention_mask)
+                result["past_key_values"] = (torch.ones(1),)
+                return result
+
+        model = CacheModel().eval()
+        model.config = SimpleNamespace(use_cache=False)
+        worker = ResidentWorker("cached", model)
+        with self.assertRaises(WorkerExecutionError):
+            worker.execute(ForwardRequest("r", {"input_ids": torch.tensor([[1]])}))
+        self.assertTrue(worker.poisoned)
+
+    def test_interrupt_during_state_validation_poison_worker(self):
+        for failure_point in ("before", "after"):
+            with self.subTest(failure_point=failure_point):
+                worker = ResidentWorker("small", SmallModel().eval())
+                outcomes = [KeyboardInterrupt("state interrupted")]
+                if failure_point == "after":
+                    outcomes.insert(0, worker._baseline)
+                with patch.object(worker, "_model_state", side_effect=outcomes):
+                    with self.assertRaises(KeyboardInterrupt):
+                        worker.execute(ForwardRequest("r", {"input_ids": torch.tensor([[1]])}))
+                self.assertTrue(worker.poisoned)
+
+    def test_binding_properties_are_read_only(self):
+        worker = ResidentWorker("small", SmallModel().eval())
+        for name in ("model_id", "device", "max_batch_size", "max_sequence_length",
+                     "max_input_bytes", "max_output_bytes"):
+            with self.subTest(name=name), self.assertRaises(AttributeError):
+                setattr(worker, name, 999)
+
+    def test_snapshot_oom_with_unprintable_error_still_drops_model(self):
+        class UnprintableOom(MemoryError):
+            def __str__(self):
+                raise RuntimeError("cannot format OOM")
+
+        model = SmallModel().eval()
+        model_ref = weakref.ref(model)
+        worker = ResidentWorker("small", model)
+        del model
+        with patch.object(torch.Tensor, "clone", side_effect=UnprintableOom()):
+            with self.assertRaises(WorkerOutOfMemory):
+                worker.snapshot_request(ForwardRequest("r", {"input_ids": torch.tensor([[1]])}))
+        gc.collect()
+        self.assertTrue(worker.poisoned)
+        self.assertIsNone(model_ref())
+
+    def test_interrupted_snapshot_oom_cleanup_does_not_retain_inputs(self):
+        def fail_clone(tensor, *args, **kwargs):
+            raise MemoryError("injected")
+
+        for boundary in ("snapshot_request", "execute"):
+            with self.subTest(boundary=boundary):
+                worker = ResidentWorker("small", SmallModel().eval())
+                tensor = torch.tensor([[1]])
+                tensor_ref = weakref.ref(tensor)
+                request = ForwardRequest("r", {"input_ids": tensor})
+                caught = None
+                with patch.object(torch.Tensor, "clone", fail_clone):
+                    with patch.object(worker, "_poison", side_effect=KeyboardInterrupt("cleanup")):
+                        try:
+                            getattr(worker, boundary)(request)
+                        except KeyboardInterrupt as exc:
+                            caught = exc
+                self.assertIsNotNone(caught)
+                self.assertTrue(worker.poisoned)
+                tensor = None
+                request = None
+                gc.collect()
+                self.assertIsNone(tensor_ref())
+
+    def test_forward_oom_with_unprintable_error_keeps_oom_classification(self):
+        class UnprintableOom(MemoryError):
+            def __str__(self):
+                raise RuntimeError("cannot format OOM")
+
+        class FailingModel(nn.Module):
+            def forward(self, input_ids):
+                raise UnprintableOom()
+
+        worker = ResidentWorker("failing", FailingModel().eval())
+        with self.assertRaises(WorkerOutOfMemory):
+            worker.execute(ForwardRequest("r", {"input_ids": torch.tensor([[1]])}))
+        self.assertTrue(worker.poisoned)
+
+    def test_shared_registered_state_helper_matches_worker_baseline(self):
+        from looking_glass.resident_worker import registered_model_state
+
+        model = SmallModel().eval()
+        worker = ResidentWorker("small", model)
+        self.assertEqual(registered_model_state(model, worker.device), worker._baseline)
 
 
 if __name__ == "__main__":

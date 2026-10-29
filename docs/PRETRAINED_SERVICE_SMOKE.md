@@ -66,3 +66,15 @@ prints no input text, logits, model activations or credentials.
 The result applies only to this one checkpoint, input pair, software stack,
 CPU, and serial execution setup. It does not establish concurrent CUDA
 execution, GPU admission/memory safety, general privacy, or fairness.
+
+## Recorded CPU checks
+
+The [v1 record](../evidence/pretrained-service-cpu-v1.json) uses source commit
+`d39691d9049b0ad350ac50ac00c7a573d2493138`. The separate
+[v2 record](../evidence/pretrained-service-cpu-v2.json) replays the check on
+merged commit `0385457d15f68529f0b72693b84f6037475c5411`, which has a newer
+fair queue. In each run, both complete outputs had maximum absolute error 0.0
+against their own serial reference, and one model deserialization was observed.
+An independent reviewer replayed both source configurations. Each record
+identifies its own source files, checkpoint assets and software versions; later
+changes to this document do not alter the recorded source revision.

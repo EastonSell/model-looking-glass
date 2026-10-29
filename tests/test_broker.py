@@ -2,6 +2,7 @@ import threading
 import unittest
 from dataclasses import dataclass
 from time import perf_counter_ns
+from unittest.mock import patch
 
 import torch
 from torch import nn
@@ -9,7 +10,7 @@ from torch import nn
 from looking_glass.resident_worker import ForwardRequest, ResidentWorker
 
 try:
-    from looking_glass.broker import Broker, BrokerUnavailable, QueueFull, RequestState
+    from looking_glass.broker import Broker, BrokerShutdownError, BrokerUnavailable, QueueFull, RequestState
 except ModuleNotFoundError as exc:
     if exc.name not in ('looking_glass.broker', 'looking_glass.fair_queue'):
         raise
@@ -162,6 +163,70 @@ class BrokerTests(unittest.TestCase):
                 worker.release.set()
             self.assertEqual(other.wait(2).state, RequestState.SUCCEEDED)
             self.assertEqual(replacement.wait(2).state, RequestState.SUCCEEDED)
+
+    def test_handle_allocation_failure_does_not_leak_preparation_slot(self):
+        worker = FakeWorker()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        try:
+            with patch('looking_glass.broker.RequestHandle', side_effect=MemoryError('allocation')):
+                with self.assertRaises(MemoryError):
+                    broker.submit('alpha', FakeRequest('failed', b'x'))
+            handle = broker.submit('alpha', FakeRequest('after', b'y'))
+            self.assertEqual(handle.wait(2).state, RequestState.SUCCEEDED)
+        finally:
+            broker.close(timeout=0.2)
+
+    def test_readiness_timestamp_failure_does_not_publish_a_queue_item(self):
+        worker = FakeWorker()
+        with Broker(worker, max_pending=1, max_pending_per_team=1) as broker:
+            with patch('looking_glass.broker.perf_counter_ns', side_effect=[1, MemoryError('clock')]):
+                with self.assertRaises(MemoryError):
+                    broker.submit('alpha', FakeRequest('failed', b'x'))
+            self.assertEqual(broker._pending_slots, 0)
+            self.assertEqual(len(broker._queue), 0)
+            handle = broker.submit('alpha', FakeRequest('after', b'y'))
+            self.assertEqual(handle.wait(2).state, RequestState.SUCCEEDED)
+
+    def test_queue_publication_failure_retains_unknown_accounting(self):
+        worker = FakeWorker()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        original_put = broker._queue.put
+
+        def insert_then_fail(*args):
+            original_put(*args)
+            raise MemoryError('queue publication failed')
+
+        broker._queue.put = insert_then_fail
+        try:
+            with self.assertRaises(BrokerUnavailable):
+                broker.submit('alpha', FakeRequest('uncertain', b'x'))
+            self.assertFalse(broker.available)
+            self.assertEqual(broker._pending_slots, 1)
+            self.assertFalse(worker.started.is_set())
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(timeout=2)
+            self.assertEqual(broker._pending_slots, 1)
+        finally:
+            broker._queue.put = original_put
+
+    def test_failed_snapshot_cleanup_marks_accounting_unknown(self):
+        worker = FakeWorker()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        original_release = broker._release_slot_locked
+
+        def failed_release(_):
+            raise MemoryError('cannot update reservation')
+
+        broker._release_slot_locked = failed_release
+        try:
+            with self.assertRaises(BrokerUnavailable):
+                broker.submit('alpha', object())
+            self.assertFalse(broker.available)
+            self.assertEqual(broker._pending_slots, 1)
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(timeout=2)
+        finally:
+            broker._release_slot_locked = original_release
 
     def test_running_cancel_is_cooperative_and_discards_result(self):
         worker = FakeWorker()
@@ -380,6 +445,7 @@ class BrokerTests(unittest.TestCase):
             self.assertEqual(outcome.state, RequestState.FAILED)
             self.assertEqual(outcome.error_type, 'InvalidWorkerResult')
             self.assertIsNone(outcome.result)
+            self.assertTrue(broker.failed)
             with self.assertRaises(BrokerUnavailable):
                 broker.submit('alpha', FakeRequest('two', b'y'))
 
@@ -441,6 +507,89 @@ class BrokerTests(unittest.TestCase):
             worker.release.set()
             self.assertEqual(running.wait(2).state, RequestState.FAILED)
             self.assertEqual(pending.wait(2).state, RequestState.FAILED)
+
+    def test_persistent_queue_oom_wakes_waiters_without_claiming_completion(self):
+        worker = FakeWorker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        broker.submit('alpha', FakeRequest('running', b'x'))
+        self.assertTrue(worker.started.wait(2))
+        pending = broker.submit('beta', FakeRequest('pending', b'y'))
+        original_pop = broker._queue.pop
+
+        def persistent_oom():
+            raise MemoryError('queue cannot pop')
+
+        broker._queue.pop = persistent_oom
+        try:
+            worker.release.set()
+            with self.assertRaises(BrokerUnavailable):
+                pending.wait(2)
+            self.assertFalse(broker.available)
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(timeout=2)
+        finally:
+            broker._queue.pop = original_pop
+            try:
+                broker.close(timeout=2)
+            except BrokerShutdownError:
+                pass
+
+    def test_queue_oom_during_close_wakes_pending_waiters(self):
+        worker = FakeWorker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        broker.submit('alpha', FakeRequest('running', b'x'))
+        self.assertTrue(worker.started.wait(2))
+        pending = broker.submit('beta', FakeRequest('pending', b'y'))
+        original_pop = broker._queue.pop
+
+        def persistent_oom():
+            raise MemoryError('queue cannot pop')
+
+        broker._queue.pop = persistent_oom
+        try:
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(wait=False)
+            with self.assertRaises(BrokerUnavailable):
+                pending.wait(2)
+        finally:
+            worker.release.set()
+            broker._queue.pop = original_pop
+            try:
+                broker.close(timeout=2)
+            except BrokerShutdownError:
+                pass
+
+    def test_terminal_publication_oom_keeps_pending_slot_and_input(self):
+        worker = FakeWorker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        broker.submit('alpha', FakeRequest('running', b'x'))
+        self.assertTrue(worker.started.wait(2))
+        pending = broker.submit('beta', FakeRequest('pending', b'y'))
+        original_finish = broker._finish_locked
+
+        def broken_finish(handle, state, *args, **kwargs):
+            if handle is pending:
+                raise MemoryError('cannot publish outcome')
+            return original_finish(handle, state, *args, **kwargs)
+
+        broker._finish_locked = broken_finish
+        try:
+            with self.assertRaises(BrokerUnavailable):
+                pending.cancel()
+            with self.assertRaises(BrokerUnavailable):
+                pending.wait(2)
+            self.assertEqual(broker._pending_slots, 1)
+            self.assertIsNotNone(pending._job)
+        finally:
+            broker._finish_locked = original_finish
+            worker.release.set()
+            try:
+                broker.close(timeout=2)
+            except BrokerShutdownError:
+                pass
 
     def test_owner_base_exception_fails_queued_work(self):
         worker = FakeWorker()

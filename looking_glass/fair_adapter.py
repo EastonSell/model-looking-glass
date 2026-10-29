@@ -63,6 +63,12 @@ class ExperimentalFairAdapter:
                 raise ValueError('byte limits must be positive integers')
         if max_item_bytes > max_waiting_bytes:
             raise ValueError('item byte limit cannot exceed total waiting byte limit')
+        target_limit = getattr(target, 'max_item_bytes', None)
+        if target_limit is not None:
+            if type(target_limit) is not int or target_limit <= 0:
+                raise ValueError('target item byte limit must be a positive integer')
+            if max_item_bytes > target_limit:
+                raise ValueError('item byte limit exceeds the target limit')
         if not isinstance(principal_teams, Mapping):
             raise ValueError('principal-to-team mapping must be a mapping')
         principal_snapshot = dict(principal_teams)
@@ -78,6 +84,14 @@ class ExperimentalFairAdapter:
         self._sizes = {}
         self._tickets = {}
         self._closed = False
+        # A concrete broker target can reserve itself for exactly one waiting
+        # adapter and validate the canonical team set. This hook is trusted,
+        # like the target's atomic handoff implementation itself.
+        binder = getattr(target, 'bind_waiting_queue', None)
+        if binder is not None:
+            if not callable(binder):
+                raise TypeError('target waiting-queue binder must be callable')
+            binder(frozenset(principal_snapshot.values()), max_item_bytes)
 
     def submit(self, credential, payload):
         principal = self._verify(credential)

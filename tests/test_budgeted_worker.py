@@ -16,7 +16,7 @@ from looking_glass.budgeted_worker import (
 from looking_glass.memory_budget import AdmissionError, CudaMemorySnapshot, GIB, MemoryBudget, MemoryLease
 from looking_glass.resident_worker import (
     ForwardRequest, ForwardResult, RequestCancelled, ResidentWorker,
-    WorkerExecutionError, WorkerOutOfMemory, WorkerSynchronizationError,
+    WorkerExecutionError, WorkerOutOfMemory, WorkerStateError, WorkerSynchronizationError,
 )
 
 
@@ -85,6 +85,16 @@ class BudgetedWorkerTests(unittest.TestCase):
         self.assertTrue(failed.failed)
         failed.close()
         self.assertTrue(failed.failed)
+
+    def test_exposes_bound_input_limit_read_only_and_rejects_changed_binding(self):
+        wrapper, worker, _, _ = make_wrapper()
+        self.assertEqual(wrapper.max_input_bytes, worker.max_input_bytes)
+        with self.assertRaises(AttributeError):
+            wrapper.max_input_bytes = 1
+        worker._model_id = 'b' * 64
+        with self.assertRaises(Exception):
+            _ = wrapper.max_input_bytes
+        self.assertTrue(wrapper.poisoned)
 
     def test_real_worker_success_releases_lease_only_after_forward_returns(self):
         entered, finish = threading.Event(), threading.Event()
@@ -191,6 +201,23 @@ class BudgetedWorkerTests(unittest.TestCase):
         self.assertTrue(admission.quarantined)
         self.assertEqual(budget.snapshot().active_leases, 1)
 
+    def test_unexpected_returned_cache_quarantines_the_profile_lease(self):
+        class UnexpectedCache(SmallModel):
+            def __init__(self):
+                super().__init__()
+                self.config = SimpleNamespace(use_cache=False)
+
+            def forward(self, input_ids, **kwargs):
+                output = super().forward(input_ids, **kwargs)
+                output['past_key_values'] = (torch.ones(1),)
+                return output
+
+        wrapper, _, budget, admission = make_wrapper(make_worker(UnexpectedCache()))
+        with self.assertRaises(WorkerContractError):
+            wrapper.execute(request())
+        self.assertTrue(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+
     def test_cache_change_during_admission_prevents_forward_and_releases_unused_lease(self):
         model = SmallModel()
         model.config = SimpleNamespace(use_cache=False)
@@ -232,7 +259,7 @@ class BudgetedWorkerTests(unittest.TestCase):
                                        ('max_output_bytes', 128), ('max_sequence_length', 16)):
             model = SmallModel()
             wrapper, worker, budget, _ = make_wrapper(make_worker(model))
-            setattr(worker, attribute, replacement)
+            setattr(worker, '_' + attribute, replacement)
             with self.subTest(attribute=attribute), self.assertRaises(Exception):
                 wrapper.execute(request())
             self.assertEqual(model.calls, 0)
@@ -273,7 +300,7 @@ class BudgetedWorkerTests(unittest.TestCase):
         thread.start()
         try:
             self.assertTrue(entered.wait(5))
-            worker.max_output_bytes = 128
+            worker._max_output_bytes = 128
         finally:
             finish.set()
             thread.join(5)
@@ -340,6 +367,83 @@ class BudgetedWorkerTests(unittest.TestCase):
             wrapper.execute(request())
         self.assertTrue(worker.poisoned)
         self.assertTrue(wrapper.poisoned)
+        self.assertFalse(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 0)
+
+    def test_state_mutation_before_failed_forward_quarantines_lease(self):
+        for exception, classified in ((torch.OutOfMemoryError('injected oom'), 'WorkerOutOfMemory'),
+                                      (RuntimeError('injected failure'), 'WorkerExecutionError')):
+            with self.subTest(exception=type(exception).__name__):
+                class MutatingThenFail(SmallModel):
+                    def __init__(self):
+                        super().__init__()
+                        self.config = SimpleNamespace(use_cache=False)
+                        self.register_buffer('counter', torch.zeros(1))
+
+                    def forward(self, input_ids, **kwargs):
+                        self.counter.add_(1)
+                        self.config.use_cache = True
+                        raise exception
+
+                model = MutatingThenFail()
+                wrapper, worker, budget, admission = make_wrapper(make_worker(model))
+                with self.assertRaises(WorkerContractError) as caught:
+                    wrapper.execute(request())
+                cause = caught.exception.__cause__
+                self.assertIsInstance(cause, WorkerStateError)
+                self.assertIn(classified, str(cause))
+                self.assertIn('injected', str(cause))
+                self.assertTrue(worker.poisoned)
+                self.assertTrue(admission.quarantined)
+                self.assertEqual(budget.snapshot().active_leases, 1)
+                self.assertTrue(model.config.use_cache)
+
+    def test_unreadable_post_state_after_failure_quarantines_lease(self):
+        class Oom(SmallModel):
+            def forward(self, input_ids, **kwargs):
+                raise torch.OutOfMemoryError('injected oom')
+
+        wrapper, worker, budget, admission = make_wrapper(make_worker(Oom()))
+        with patch.object(worker, '_model_state', side_effect=[worker._baseline, RuntimeError('unknown state')]):
+            with self.assertRaises(WorkerContractError) as caught:
+                wrapper.execute(request())
+        self.assertIsInstance(caught.exception.__cause__, WorkerStateError)
+        self.assertIn('WorkerOutOfMemory', str(caught.exception.__cause__))
+        self.assertIn('injected oom', str(caught.exception.__cause__))
+        self.assertTrue(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+
+    def test_broker_reports_state_violation_and_original_oom(self):
+        class MutatingOom(SmallModel):
+            def __init__(self):
+                super().__init__()
+                self.register_buffer('counter', torch.zeros(1))
+
+            def forward(self, input_ids, **kwargs):
+                self.counter.add_(1)
+                raise torch.OutOfMemoryError('injected oom ' + 'x' * 10000)
+
+        wrapper, _, budget, admission = make_wrapper(make_worker(MutatingOom()))
+        with Broker(wrapper, max_pending=2, max_pending_per_team=1) as broker:
+            outcome = broker.submit('team', request()).wait(5)
+        self.assertEqual(outcome.state, RequestState.FAILED)
+        self.assertEqual(outcome.error_type, 'WorkerContractError')
+        self.assertIn('WorkerStateError', outcome.error_message)
+        self.assertIn('WorkerOutOfMemory', outcome.error_message)
+        self.assertIn('injected oom', outcome.error_message)
+        self.assertLessEqual(len(outcome.error_message), 1200)
+        self.assertTrue(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+
+    def test_unchanged_failed_forward_releases_lease(self):
+        class Failing(SmallModel):
+            def forward(self, input_ids, **kwargs):
+                raise RuntimeError('injected failure')
+
+        wrapper, worker, budget, admission = make_wrapper(make_worker(Failing()))
+        with self.assertRaisesRegex(WorkerExecutionError, 'injected failure'):
+            wrapper.execute(request())
+        self.assertTrue(worker.poisoned)
         self.assertFalse(admission.quarantined)
         self.assertEqual(budget.snapshot().active_leases, 0)
 
@@ -547,7 +651,7 @@ class BudgetedWorkerTests(unittest.TestCase):
         with patch.object(resident_worker_module, '_process_quarantined', threading.Event()):
             with patch.object(resident_worker_module, '_quarantine_references', []):
                 worker = make_worker()
-                worker.device = torch.device('cuda:0')
+                worker._device = torch.device('cuda:0')
                 budget = make_budget()
                 admission = DeviceAdmission(budget, device='cuda:0', max_estimated_incremental_bytes=4096)
                 wrapper = BudgetedWorker(worker, admission, (profile(device='cuda:0'),))

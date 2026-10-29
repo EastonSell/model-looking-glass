@@ -43,6 +43,11 @@ class ModelLease:
     The lease covers cooperating Python hook ownership. It does not synchronize
     CUDA or enforce device-work lifetime: a broker must separately hold its GPU
     resource lease through synchronization and device cleanup.
+
+    Retain the lease object and put acquisition inside an outer try/finally that
+    calls release when cancellation is possible. Python can interrupt a context
+    manager at the call/return boundary after ownership has been published.
+    If release itself fails, retry or quarantine the model/worker.
     """
 
     def __init__(self, model):
@@ -155,5 +160,10 @@ class ModelLease:
         return self.acquire()
 
     def __exit__(self, exc_type, exc, tb):
-        self.release()
+        try:
+            self.release()
+        except BaseException as cleanup_error:
+            if exc is not None:
+                raise exc.with_traceback(tb) from cleanup_error
+            raise
         return False

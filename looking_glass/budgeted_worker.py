@@ -14,7 +14,7 @@ import torch
 from .memory_budget import MemoryBudget
 from .resident_worker import (
     ForwardResult, InvalidRequest, RequestCancelled, ResidentWorker,
-    WorkerExecutionError, WorkerSynchronizationError, WorkerUnavailable,
+    WorkerExecutionError, WorkerStateError, WorkerSynchronizationError, WorkerUnavailable,
 )
 
 
@@ -62,7 +62,7 @@ def _positive_int(value, name):
 
 def _describe_error(exc):
     try:
-        return f'{type(exc).__name__}: {exc}'
+        return f'{type(exc).__name__}: {str(exc)[:1024]}'
     except BaseException:
         return f'{type(exc).__name__}: <message unavailable>'
 
@@ -214,6 +214,12 @@ class BudgetedWorker:
         # Broker queries this while holding its condition; never acquire the gate.
         return self._closed or self.failed
 
+    @property
+    def max_input_bytes(self):
+        """Per-snapshot input-tensor limit; not an aggregate host-memory cap."""
+        self._check_available()
+        return self._binding[4]
+
     def _process_is_quarantined(self):
         try:
             return bool(self._worker.quarantined)
@@ -311,6 +317,10 @@ class BudgetedWorker:
             except WorkerSynchronizationError as exc:
                 self._admission._quarantine(lease, self._worker, exc)
                 raise
+            except WorkerStateError as exc:
+                self._admission._quarantine(lease, self._worker, exc)
+                raise WorkerContractError(
+                    f'worker model state or cache policy changed during execution: {_describe_error(exc)}') from exc
             except (InvalidRequest, RequestCancelled, WorkerUnavailable, WorkerExecutionError) as exc:
                 if self._process_is_quarantined():
                     self._admission._quarantine(lease, self._worker, exc)
