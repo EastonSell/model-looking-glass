@@ -79,8 +79,10 @@ broker lifetimes if schema metadata is exported without its delivery envelope.
    after it has established that a complete payload arrived. Receipt keeps
    the service payload charged. A separate `ack_release(identity)` schedules
    local disposal; exact duplicate receipt and release acknowledgements are
-   idempotent while the generation remains active. A wrong or stale identity
-   never releases a claim. The acknowledgement is a cooperative statement, not proof that a
+   idempotent while the generation remains active. An unequal identity cannot
+   release a claim. A stale acknowledgement is rejected only if its identity
+   differs from the active one; the prototype does not enforce historical
+   uniqueness of its random delivery ID. The acknowledgement is a cooperative statement, not proof that a
    client discarded its copy or refrained from making more copies.
 7. `drain(timeout)` returns true only after local operations, cleanup,
    producer confirmation and ledger closure complete. It includes the wait
@@ -152,8 +154,13 @@ bounds the representation, not transient Python object overhead. A returned
 manifest belongs to the caller; caller-retained metadata is outside the
 adapter's ledger after local closure.
 
-The generation ID is random and scoped to a broker lifetime. A production
-trace wire protocol still needs authenticated identity binding, bounded
+The delivery ID is a random UUID associated with the broker lifetime; the
+prototype does not track previously issued UUIDs. If a UUID repeats with the
+same other identity fields, an old acknowledgement is indistinguishable from
+the new one and can be accepted. Do not rely on random non-repetition as an
+enforced stale-acknowledgement guarantee. A production trace wire protocol
+needs an authenticated process/job epoch and a non-reused delivery generation
+bound to every acknowledgement, as well as bounded
 framing and total queued deliveries, explicit complete-manifest/final markers,
 partial-frame rejection, broker-owned result disposal, disconnect handling,
 and an explicit client lifetime contract. Neither send completion, ACK, nor

@@ -1033,6 +1033,49 @@ class EquivalenceTests(unittest.TestCase):
         self.assertEqual(report["value_tensor_bytes"], 16)
         self.assertTrue(report["outputs_exact"])
         self.assertTrue(report["values_exact"])
+        self.assertTrue(report["outputs_finite"])
+        self.assertEqual(report["comparison"]["operator"], "torch.equal")
+        self.assertFalse(report["comparison"]["guarantees_bitwise_identity"])
+
+    def test_signed_zero_matches_numerically_without_implying_bitwise_identity(self):
+        class SignedZeroSession(TraceSession):
+            def _capture(self, module, inputs, output):
+                result = super()._capture(module, inputs, output)
+                if self.mode == "gradient":
+                    self.events[-1].value = torch.tensor([-0.0])
+                return result
+
+        positive, negative = torch.tensor([0.0]), torch.tensor([-0.0])
+        self.assertTrue(torch.equal(positive, negative))
+        self.assertFalse(torch.equal(positive.view(torch.int32), negative.view(torch.int32)))
+        model = nn.Sequential(TapPoint("point"))
+        report = bench.verify_equivalence(lambda: model(positive),
+            lambda mode: SignedZeroSession(model, mode=mode),
+            lambda event: (event.node_id, event.occurrence))
+        self.assertTrue(report["values_exact"])
+        self.assertEqual(report["comparison"]["operator"], "torch.equal")
+        self.assertFalse(report["comparison"]["guarantees_bitwise_identity"])
+
+    def test_nonfinite_baseline_output_fails_before_captures(self):
+        model = nn.Sequential(TapPoint("point"))
+        for value in (float("inf"), float("-inf"), float("nan")):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(AssertionError, "baseline model output contains non-finite"):
+                    bench.verify_equivalence(lambda: model(torch.tensor([value])),
+                        lambda mode: TraceSession(model, mode=mode),
+                        lambda event: (event.node_id, event.occurrence))
+
+    def test_nonfinite_mode_output_fails_even_when_tap_values_are_finite(self):
+        model = nn.Sequential(TapPoint("point"))
+        calls = 0
+        def invoke():
+            nonlocal calls
+            calls += 1
+            output = model(torch.ones(1))
+            return torch.full_like(output, float("inf")) if calls == 2 else output
+        with self.assertRaisesRegex(AssertionError, "mode id contains non-finite"):
+            bench.verify_equivalence(invoke, lambda mode: TraceSession(model, mode=mode),
+                                     lambda event: (event.node_id, event.occurrence))
 
     def test_different_captured_values_fail_the_preflight(self):
         class WrongValueSession(TraceSession):

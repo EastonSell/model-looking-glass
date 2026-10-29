@@ -107,10 +107,11 @@ class _DeliverySlot:
         return guard
 
     def owned_delivery(self):
-        """Return the exact object for a trusted supervisor after quiescence.
+        """Return the exact object after slot construction/signalling stops.
 
         A quarantined object may be partially initialized; its methods are not
-        necessarily safe. This accessor does not establish claim disposal.
+        necessarily safe. This does not establish that child operations stopped
+        or that any claims have been disposed.
         """
         with self._registry._lock:
             self._check_locked()
