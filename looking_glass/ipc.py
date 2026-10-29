@@ -5,7 +5,7 @@ The broker and adapter callables are trusted, server-side objects.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 import math
 import re
@@ -14,9 +14,10 @@ import select
 import socket
 import struct
 import sys
+import sysconfig
 import threading
 import time
-from types import MappingProxyType
+from types import MappingProxyType, TracebackType
 
 from .ipc_custody import IPCCustodyCapacity, IPCCustodyKey
 
@@ -54,6 +55,48 @@ class _ProtocolError(Exception):
 
 class _ResultTooLarge(Exception):
     pass
+
+
+class _HandlerFaultSlot:
+    """Preallocated, server-rooted custody for one handler's escaped fault."""
+
+    __slots__ = ("seen", "capture_complete", "exception", "traceback")
+
+    def __init__(self):
+        self.seen = False
+        self.capture_complete = False
+        self.exception = None
+        self.traceback = None
+
+
+@dataclass(frozen=True)
+class IPCHandlerFault:
+    """Trusted-local fault snapshot; incomplete capture requires recovery."""
+
+    capture_complete: bool
+    exception: BaseException | None = field(repr=False)
+    traceback: TracebackType | None = field(repr=False)
+
+
+def _current_handler_exception():
+    return sys.exc_info()[1]
+
+
+def _current_handler_traceback(error):
+    _, active_error, active_traceback = sys.exc_info()
+    if active_error is not error:
+        raise IPCError("handler exception context changed during capture")
+    return active_traceback
+
+
+def _supported_handler_runtime():
+    bootstrap = getattr(threading.Thread, "_bootstrap_inner", None)
+    code = getattr(bootstrap, "__code__", None)
+    gil_enabled = getattr(sys, "_is_gil_enabled", None)
+    return (sys.implementation.name == "cpython" and (3, 10) <= sys.version_info[:2] <= (3, 13)
+            and not sysconfig.get_config_var("Py_GIL_DISABLED")
+            and (gil_enabled is None or gil_enabled()) and code is not None
+            and "_invoke_excepthook" in code.co_names)
 
 
 def _remaining(deadline):
@@ -322,6 +365,8 @@ def _completion_binding(broker, guardian, authority):
     if (actual._completion_authority is not authority or authority._broker is not actual
             or authority.unsafe):
         raise ValueError("completion authority does not match the live broker")
+    if not _supported_handler_runtime():
+        raise ValueError("authority-bound handler supervision requires supported CPython")
     return authority, actual, fair_target
 
 
@@ -426,6 +471,9 @@ class IPCServer:
         # Completed handlers remain rooted until another thread has observed
         # their actual termination. A handler cannot prove its own exit.
         self._retiring_handlers = set()
+        # Bound-mode slots are rooted before start. Escaped exceptions remain
+        # here after the corresponding thread exits and consume capacity.
+        self._handler_fault_slots = {}
         self._stop = threading.Event()
         self._accepting_stopped = threading.Event()
         self._listener = None
@@ -458,6 +506,63 @@ class IPCServer:
         """Report an uncertain custody transition without waiting for locks."""
         return self._custody_quarantine.is_set()
 
+    @property
+    def retained_handler_faults(self):
+        """Return trusted-local fault snapshots, including incomplete captures.
+
+        This is a nonblocking snapshot, not evidence of disposal. The server
+        retains these roots until its owning process is replaced.
+        """
+        if self._completion_binding is None:
+            raise IPCError("handler fault observation is not configured")
+        if not self._lock.acquire(blocking=False):
+            raise IPCError("handler fault inventory is temporarily unavailable")
+        try:
+            return tuple(IPCHandlerFault(slot.capture_complete, slot.exception, slot.traceback)
+                         for slot in self._handler_fault_slots.values() if slot.seen)
+        finally:
+            self._lock.release()
+
+    def _install_handler_fault_observer(self, thread, slot):
+        """Use the supported CPython per-thread hook without a global hook."""
+        original = getattr(thread, "_invoke_excepthook", None)
+        if not callable(original):
+            raise IPCError("unsupported CPython handler exception machinery")
+
+        def observe(fault_thread):
+            # No server lock: a failing thread may have stranded it. The slot
+            # is already rooted by the server before the thread starts.
+            try:
+                slot.seen = True
+                error = _current_handler_exception()
+                if not isinstance(error, BaseException):
+                    raise IPCError("handler exception capture is unavailable")
+                slot.exception = error
+                captured_traceback = _current_handler_traceback(error)
+                if type(captured_traceback) is not TracebackType:
+                    raise IPCError("handler traceback capture is unavailable")
+                slot.traceback = captured_traceback
+                slot.capture_complete = True
+            finally:
+                try:
+                    self._mark_custody_fault()
+                finally:
+                    # Preserve an unknown record if a one-shot interruption
+                    # struck before the first slot assignment completed.
+                    slot.seen = True
+            original(fault_thread)
+
+        thread._invoke_excepthook = observe
+
+    def _reap_retiring_handlers_locked(self):
+        """Forget normal exits; preserve fault slots and exception roots."""
+        for prior in tuple(self._retiring_handlers):
+            if not prior.is_alive():
+                slot = self._handler_fault_slots.get(prior)
+                if slot is not None and not slot.seen:
+                    del self._handler_fault_slots[prior]
+                self._retiring_handlers.discard(prior)
+
     def _mark_custody_fault(self):
         # The owner decision and this signal use a shared authority. Mark it
         # before publishing the separate observational IPC quarantine flag.
@@ -483,7 +588,7 @@ class IPCServer:
             if fair_target is not None:
                 from .ipc_fair_bridge import _ServerConstruction
                 construction = endpoint._server_construction
-            valid = (self.broker is endpoint and actual._completion_authority is authority
+            valid = (_supported_handler_runtime() and self.broker is endpoint and actual._completion_authority is authority
                      and authority._broker is actual
                      and (actual._fair_handoff is None if fair_target is None else
                           (self._custody_guardian is endpoint and endpoint._target is fair_target
@@ -614,6 +719,9 @@ class IPCServer:
                     continue
                 thread = threading.Thread(target=self._run_handler, args=(client,), daemon=True,
                                           name="looking-glass-ipc-client")
+                fault_slot = _HandlerFaultSlot() if self._completion_binding is not None else None
+                if fault_slot is not None:
+                    self._install_handler_fault_observer(thread, fault_slot)
                 full = False
                 with self._lock:
                     if self._accepting_stopped.is_set():
@@ -624,11 +732,14 @@ class IPCServer:
                     # A socket slot can have been released just before its
                     # handler exits. Keep the combined live thread count
                     # bounded even in that interval.
-                    self._retiring_handlers.difference_update(
-                        [prior for prior in self._retiring_handlers if not prior.is_alive()])
-                    if len(self._handlers) + len(self._retiring_handlers) >= self._max_connections:
+                    self._reap_retiring_handlers_locked()
+                    occupied = (len(self._handler_fault_slots) if self._completion_binding is not None
+                                else len(self._handlers) + len(self._retiring_handlers))
+                    if occupied >= self._max_connections:
                         full = True
                     else:
+                        if fault_slot is not None:
+                            self._handler_fault_slots[thread] = fault_slot
                         self._clients.add(client)
                         self._handlers.add(thread)
                         thread.start()
@@ -1051,8 +1162,7 @@ class IPCServer:
             if thread is not threading.current_thread():
                 thread.join(timeout=_remaining(deadline))
         with self._lock:
-            self._retiring_handlers.difference_update(
-                [thread for thread in self._retiring_handlers if not thread.is_alive()])
+            self._reap_retiring_handlers_locked()
             return (not self._handlers and not self._retiring_handlers and
                     (self._accept_thread is None or not self._accept_thread.is_alive()))
 
@@ -1110,8 +1220,7 @@ class IPCServer:
             if thread is not threading.current_thread():
                 thread.join(timeout=_remaining(deadline))
         with self._lock:
-            self._retiring_handlers.difference_update(
-                [thread for thread in self._retiring_handlers if not thread.is_alive()])
+            self._reap_retiring_handlers_locked()
             return (not self._handlers and not self._retiring_handlers and
                     (self._accept_thread is None or not self._accept_thread.is_alive()))
 

@@ -65,15 +65,57 @@ retiring handlers, and `close`/`drain` join them and prune only after actual
 thread exit. A `True` return from `close` or `drain` establishes quiescence
 of the server's tracked acceptor and handler threads under this cooperative
 Python contract; the owner must still check the sticky authority/quarantine
-state after the join and establish broker, worker, device and external-alias disposal
-separately. Exceptions escaping the protected handler call are marked by its
-wrapper. An interruption at the wrapper's own return or in Python's thread
-bootstrap or exception reporting can escape that protection. A joined thread
-and a clear flag therefore do not prove that every possible handler fault was
-observed. The owner needs separately reviewed fault supervision and, when its
-outcome is uncertain, process-level recovery before a clean attestation. The
-live service remains gated until the complete owner lifecycle is reviewed and
-composed.
+state after the join and establish broker, worker, device and external-alias
+disposal separately. Exceptions escaping the protected handler call are marked
+by its wrapper.
+
+For an authority-bound server, each handler has a preallocated fault slot
+rooted before its thread starts. On supported GIL-enabled CPython 3.10 through
+3.13, a per-thread wrapper of CPython's private `_invoke_excepthook` roots the
+exact exception and its original traceback separately, then marks the
+authority before invoking the existing application exception hook. It takes
+no server lock. The traceback comes from the active interpreter exception
+context and must be an actual traceback for the same exception; a subclass's
+overridden `__traceback__` property is not trusted. `retained_handler_faults`
+returns trusted-local snapshots;
+`capture_complete` stays false until both references are rooted, including
+when capture is interrupted. The property does not wait for the server lock
+and raises `IPCError` if it is unavailable. An in-flight snapshot can be
+incomplete; join the handler before interpreting it. Do not send these
+exceptions or their potentially sensitive frames over IPC.
+
+The existing application hook and supervisor are trusted to preserve any
+traceback frames, exception attributes and payload aliases needed for
+custody. Rooting the traceback separately survives clearing the exception's
+`__traceback__` attribute, but cannot prevent `traceback.clear_frames` or
+other mutation of the frames and aliases. An untrusted or noncompliant hook
+invalidates that preservation contract and requires separate accounting and
+process-level recovery. `capture_complete` records the initial capture, not
+proof that another actor has not mutated the referenced objects afterward.
+
+After a faulted handler exits, the server keeps its fault slot and exception
+root and counts that slot against `max_connections`; it does not release the
+root on `close` or `drain`. The supervisor must retain the server graph and
+perform separate custody reconciliation or process-level recovery. The slot
+does not itself identify a connection, job or client: the owner must reconcile
+all potentially affected records unless it has a separately trusted binding.
+A `True` shutdown return reports thread exit, not exception or payload disposal.
+Unbound legacy servers do not install this observer, and accessing their
+`retained_handler_faults` raises `IPCError` rather than reporting an empty
+inventory. Authority binding rejects
+unsupported interpreters, free-threaded builds and versions; the runtime check
+only verifies the expected CPython bootstrap hook name, not protection
+against trusted-process mutation of private machinery or runtime GIL changes.
+
+The observer covers handler exceptions delivered to that CPython hook,
+including an exception escaping the handler wrapper's return; it does not
+observe the separate acceptor thread. An interruption at hook entry
+or in later Python bootstrap, exception reporting, or finalizer code can escape
+it. A joined thread and a clear flag therefore do not prove that every possible
+handler fault was observed. The owner needs separately reviewed fault
+supervision and, when its outcome is uncertain, process-level recovery before
+a clean attestation. The live service remains gated until the complete owner
+lifecycle is reviewed and composed.
 The owner must mark it if its own deadline or custody checks cannot establish
 safe teardown. Bound-server startup and handler checks reject an owner they
 already observe as unsafe, but do not form an atomic admission barrier against
@@ -187,8 +229,10 @@ checkpoint and workload settings before permitting execution.
    justified. A trusted encoder must not retain its argument or frame unless
    separately charged and managed.
 
-The IPC handler does not retain the original factory or encoder exception and
-traceback for the guardian. Unreachable synchronous CPU temporaries can be
+The IPC handler does not generally retain a factory or encoder exception and
+traceback that it catches for the guardian. The authority-bound thread observer
+above retains only an exception that escapes to its CPython thread hook; it
+does not recover a swallowed exception. Unreachable synchronous CPU temporaries can be
 disposed while their conservative connection claim remains charged; that is
 not proof that another alias or operation has finished. Trusted overrides that
 start asynchronous or native work, or retain buffers or frames externally,
