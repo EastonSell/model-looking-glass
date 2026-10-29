@@ -13,6 +13,8 @@ the exact `cancellation_exception` type. Submissions and worker snapshots
 must have the exact `ForwardRequest` type; worker results must have the exact
 `ForwardResult` type and contain a detached, mutable plain CPU tensor for logits
 (inference-mode tensors are rejected because they cannot be mutated normally).
+Both dataclasses must have exactly their declared instance fields: extra
+attributes are rejected before the broker rewrites their request IDs.
 Subclasses and trace-bearing wrappers are rejected. The resident worker
 validates and copies bounded named CPU token tensors for forward inference;
 arbitrary code, hooks, interventions, and tracing are not supported by this
