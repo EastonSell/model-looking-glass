@@ -14,6 +14,7 @@ import unittest
 from unittest import mock
 import weakref
 
+from opcode_support import run_opcode_trace
 import torch
 
 from looking_glass.capture_dispatcher import (
@@ -73,27 +74,26 @@ class TraceTransportTests(unittest.TestCase):
                 store = HostTraceStore(max_tensor_bytes=64, max_items=4)
                 unrelated = budget.open_request("unrelated")
                 unrelated_claim = unrelated.reserve("other", "data", 9)
+                injected = []
 
                 def interrupt(frame, action, _arg):
                     if frame.f_code is TraceDelivery.__init__.__code__:
                         if action == "call":
                             frame.f_trace_opcodes = True
                         if action == "opcode" and frame.f_lasti == target:
+                            injected.append(True)
                             sys.settrace(None)
                             raise KeyboardInterrupt("simulated handoff interruption")
                     return interrupt
 
-                try:
-                    sys.settrace(interrupt)
-                    with self.assertRaises(BaseException):
-                        TraceDelivery(
+                with self.assertRaises(BaseException):
+                    run_opcode_trace(interrupt, lambda: TraceDelivery(
                             budget, store, broker_id="0" * 32, job_id=7,
                             team_id="team", run_id="run", request_id="request",
                             sample_id="sample", batch_position=0,
                             max_payload_bytes=64, metadata_reserve_bytes=META,
-                        )
-                finally:
-                    sys.settrace(None)
+                        ))
+                self.assertEqual(injected, [True])
                 snap = budget.snapshot()
                 self.assertEqual(snap.used_bytes, 9)
                 self.assertEqual([item.request_id for item in snap.requests], ["unrelated"])

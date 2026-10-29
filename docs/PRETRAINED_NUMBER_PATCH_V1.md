@@ -278,8 +278,12 @@ contrast averaged across the two lemma conditions, not their interaction.
 A positive value can arise from erasing the target margin toward zero without
 transferring the donor's number preference; it does not establish transfer.
 Decode stored float32 logit bit patterns to exact binary64 values before
-subtraction, including subnormals. In preflight and both tracks compute each
-two-logit margin with `math.fsum((z_first, -z_second))`; compute each signed
+subtraction, including subnormals. The completed public preflight computed its
+two-logit margins by binary64 subtraction in its frozen source; an independent
+review found all 32 saved present- and past-tense margins bit-identical to the
+two-term `math.fsum` calculation. Its source and saved result remain unchanged.
+In both intervention tracks compute each two-logit margin with
+`math.fsum((z_first, -z_second))`; compute each signed
 shift with `math.fsum((m_clean, -m_patch))` times `w`. Use `math.fsum` for
 each four-target cell and each four-family mean, dividing by four, and compute
 `D` as half the `math.fsum` of its four signed cell terms. Each mean has exactly four equally weighted

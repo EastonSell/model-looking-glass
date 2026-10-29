@@ -57,6 +57,8 @@ The initial model is a small randomly initialized residual network with a contro
 
 The [synthetic causal v1 study](docs/CAUSAL_RESULTS_V1.md) records fixed predictions and tests clean-state patches on 16 public held-out inputs. Its selected injection-site patch and the single random draw, a final-state patch, produced the same measured scalar effects, illustrating why restoration alone does not identify a unique cause. One held-out vector was previously used during development, so the result is explicitly exploratory; the raw run and protocol clarification are preserved alongside the report.
 
+The [DistilBERT agreement pilot](results/bert-agreement-dev-v0-20261028/README.md) observed donor-directed shifts after subject-state patches on four public development examples. All four used plural distractors, so the finding is confounded and a balanced evaluation is needed before making a mechanism claim.
+
 ## Run locally
 
 Python 3.10+ and PyTorch 2.6+ are required. Use the [official PyTorch installation instructions](https://pytorch.org/get-started/locally/) for your platform. The original CPU experiment downloads no models or datasets, and traces stay in the local process/files.
