@@ -1,0 +1,12 @@
+{
+  "answer_case_sha256": "cb1cfb9c4ab3c57dbcb78b778d01eaec50c0600caee2c9ee862ded14f2b8f38a",
+  "answer_input_and_continuation_entries": 320,
+  "answer_inputs": 64,
+  "bidirectional_prefix_comparisons": 149760,
+  "relations": 0,
+  "schema": "year-label-v2-answer-format-public-check-v1",
+  "scope": "Public cases and listed next-token continuations only; no protected or unknown outside exposure is checked.",
+  "year_case_sha256": "07d68842ab7f5195a61e719f4bafd825ab19673971a7e4ea450330838deafa08",
+  "year_input_and_continuation_entries": 468,
+  "year_inputs": 36
+}
