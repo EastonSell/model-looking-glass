@@ -47,3 +47,14 @@ comparison. `--compare` writes a new receipt exclusively, up to 8 KiB. Partial
 or failed files are retained and charged within the existing injection held-out
 physical share; no prior file is overwritten. The operator preserves and
 accounts for any incomplete execution and does not infer a clear result from it.
+
+`tools/injection_comparison_observation.py` adapts the reviewed outer observer
+to the direct comparator child. It fixes the comparison caller's published
+source and constructs the isolated hash-before-execution command, binds the
+configuration and operation, and verifies the resulting receipt against both
+published public commitments after the child exits and the Job is drained.
+Both `clear` and `collision` can be observed; only `clear` can ever support a
+later gate decision. Its trusted operator must source-verify the adapter and
+its dependencies, protect the actual paths and leases, and independently
+observe the adapter process's own clean exit. The observer's saved record is
+not self-authenticating and neither record announces a model forward.
