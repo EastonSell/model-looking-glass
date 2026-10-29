@@ -82,11 +82,13 @@ supervisor's cleanup; the inner child has its own separately verified Job
 receipt. Any other helpers are outside the outer Job; interrupted startup or
 uncertain helper cleanup remains incomplete.
 If cleanup is unverified after a start gate was attempted, the observer keeps
-the process and Job handles and both source leases rooted in a quarantined
-process. A trusted operator must independently establish that the exact process
-tree has stopped before explicitly ending that quarantine; no retry or success
-is inferred. Forced process termination or OS failure can release the handles,
-so those cases require separate process and device inspection.
+its retained process and Job objects and both source leases rooted in a
+quarantined process. Some native handles may already have closed during a
+failed cleanup; retaining the objects does not make those handles recoverable.
+A trusted operator must independently establish that the exact process tree has
+stopped before explicitly ending quarantine; no retry or success is inferred.
+Forced process termination or OS failure can release the handles, so those cases
+require separate process and device inspection.
 The observation's commit
 point is the already observed zero exit, verified Job cleanup and successful
 revalidation of the bound preparation files. If writing the observation then
@@ -96,23 +98,27 @@ unobserved or failed process. A missing or partial file is not authorization,
 and no failure permits another draw. These records provide cooperative process
 custody, not independent attestation against a writer with the same account.
 
-At publication of this notice, the reviewed v11 inventory reserves the 13
-public projected-edit proposals and records the completed copying follow-up
-rows as observed. The operator must re-observe the
+At publication of this notice, the reviewed v12 inventory reserves the 13
+public projected-edit proposals and 32 factorial prompts, and records the
+completed copying follow-up rows as observed. The operator must re-observe the
 latest reviewed inventory and coordinate against new exposures before the
 single draw; version enumeration alone cannot prove that every public case or
 unknown exposure was inventoried.
 
 Start the observer with the direct base interpreter in isolated, no-site,
 no-bytecode mode and a fresh nonexistent absolute bytecode-cache prefix. Its
-`-c` source is the exact ASCII line below; pass the custody source path, the
+`-c` source is the exact ASCII code below; pass the custody source path, the
 independently observed SHA-256 from the published operational binding, then
 `observe-prepare --config` and the private configuration path. It hashes those
 bytes before compiling or executing them. Hash agreement does not make a
 same-account operator adversary-resistant.
 
 ```python
-import hashlib,sys; p=sys.argv.pop(1); h=sys.argv.pop(1); data=open(p,'rb').read(8388609); assert len(data)<=8388608 and hashlib.sha256(data).hexdigest()==h; sys.argv[0]=p; exec(compile(data,p,'exec',dont_inherit=True),{'__name__':'__main__','__file__':p})
+import hashlib,sys
+p=sys.argv.pop(1); h=sys.argv.pop(1); data=open(p,'rb').read(8388609)
+if len(data)>8388608 or hashlib.sha256(data).hexdigest()!=h:
+    raise SystemExit(1)
+sys.argv[0]=p; exec(compile(data,p,'exec',dont_inherit=True),{'__name__':'__main__','__file__':p})
 ```
 
 Publication, hashes and a cooperative local claim do not independently attest
