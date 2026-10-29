@@ -44,14 +44,27 @@ def make_development(directory, manifest_sha="1" * 64, source="2" * 40):
     common = {"version": v2.VERSION, "phase": evidence.PHASE, "run_id": run_id,
               "manifest_sha256": manifest_sha, "source_commit": source}
     write_json(directory / "started.json", {**common, "started_utc": "2026-10-29T01:00:00+00:00"})
-    write_json(directory / "metadata.json", {**common, "description": "synthetic-only"})
     baseline = np.zeros((len(v1.CASES), v1.VOCAB_SIZE), dtype="<f4")
     baseline[:5, 1] = -1
     arrays = {name: baseline.copy() for name in evidence.CONDITIONS}
     arrays["dose-0001"][:5, 1] = 2
+    compatibility = {"model_state_sha256": "e" * 64, "weight_sha256": "f" * 64,
+                     "discovery_logit_sha256": v1._sha(baseline[0].tobytes())}
+    grid = {name: {"realized_weight_sha256": str(index + 1) * 64}
+            for index, name in enumerate(evidence.CONDITIONS[1:])}
+    write_json(directory / "metadata.json", {**common, "description": "synthetic-only",
+                                             "compatibility": compatibility, "grid": grid})
     row_size = v1.VOCAB_SIZE * 4
     journal = bytearray()
+    state_journal = bytearray()
     for name in evidence.CONDITIONS:
+        applied = compatibility["weight_sha256"] if name == "original" else grid[name]["realized_weight_sha256"]
+        state_journal.extend(v1._canonical({"version": v2.VERSION, "phase": evidence.PHASE, "run_id": run_id,
+                            "condition": name, "model_state_before_sha256": compatibility["model_state_sha256"],
+                            "weight_before_sha256": compatibility["weight_sha256"], "applied_weight_sha256": applied,
+                            "model_state_after_sha256": compatibility["model_state_sha256"],
+                            "weight_after_sha256": compatibility["weight_sha256"], "flags_restored": True,
+                            "grads_cleared": True, "hooks_restored": True}))
         raw = arrays[name].tobytes()
         (directory / f"{name}.f32").write_bytes(raw)
         for index, case in enumerate(v1.CASES):
@@ -59,8 +72,11 @@ def make_development(directory, manifest_sha="1" * 64, source="2" * 40):
             journal.extend(v1._canonical({"version": v2.VERSION, "phase": evidence.PHASE,
                                          "run_id": run_id, "condition": name, "case_id": case[0],
                                          "offset": offset, "bytes": row_size,
-                                         "sha256": v1._sha(raw[offset:offset + row_size])}))
+                                         "sha256": v1._sha(raw[offset:offset + row_size]),
+                                         "denormal_probe_before": evidence.DENORMAL_PROBE,
+                                         "denormal_probe_after": evidence.DENORMAL_PROBE}))
     (directory / "observations.jsonl").write_bytes(journal)
+    (directory / "condition_states.jsonl").write_bytes(state_journal)
     write_json(directory / "selection.json", {**common, "selection": v2.select_development(arrays)})
     artifacts = {*evidence.DOCUMENTS, *(f"{name}.f32" for name in evidence.CONDITIONS)}
     terminal = {**common, "status": "complete", "finished_utc": "2026-10-29T01:01:00+00:00",
@@ -98,7 +114,8 @@ def test_rehashed_forged_selection_is_not_authoritative(tiny_vocab, tmp_path, fi
         evidence.audit_development(directory, manifest_sha256=manifest, terminal_sha256=terminal)
 
 
-@pytest.mark.parametrize("mutation", ["truncated", "extra", "wrong_case", "raw_change", "bad_cleanup", "extra_file"])
+@pytest.mark.parametrize("mutation", ["truncated", "extra", "wrong_case", "bad_probe", "raw_change",
+                                      "discovery_mismatch", "wrong_state", "state_order", "bad_cleanup", "extra_file"])
 def test_complete_terminal_rejects_mutated_evidence(tiny_vocab, tmp_path, mutation):
     directory = tmp_path / "development"
     manifest, original_terminal = make_development(directory)
@@ -107,16 +124,38 @@ def test_complete_terminal_rejects_mutated_evidence(tiny_vocab, tmp_path, mutati
         journal.write_bytes(journal.read_bytes()[:-1])
     elif mutation == "extra":
         journal.write_bytes(journal.read_bytes() + b"{}\n")
-    elif mutation == "wrong_case":
+    elif mutation in ("wrong_case", "bad_probe"):
         lines = journal.read_bytes().splitlines(keepends=True)
         first = v1._decode_document(lines[0])
-        first["case_id"] = "not-the-discovery"
+        if mutation == "wrong_case":
+            first["case_id"] = "not-the-discovery"
+        else:
+            first["denormal_probe_before"]["subnormal_times_one_bits"] = 0
         journal.write_bytes(v1._canonical(first) + b"".join(lines[1:]))
     elif mutation == "raw_change":
         path = directory / "dose-0001.f32"
         raw = bytearray(path.read_bytes())
         raw[8] ^= 1
         path.write_bytes(raw)
+    elif mutation == "discovery_mismatch":
+        path = directory / "original.f32"
+        raw = bytearray(path.read_bytes())
+        raw[:4] = np.float32(0.1).tobytes()
+        path.write_bytes(raw)
+        lines = journal.read_bytes().splitlines(keepends=True)
+        first = v1._decode_document(lines[0])
+        first["sha256"] = v1._sha(bytes(raw[:v1.VOCAB_SIZE * 4]))
+        journal.write_bytes(v1._canonical(first) + b"".join(lines[1:]))
+    elif mutation in ("wrong_state", "state_order"):
+        path = directory / "condition_states.jsonl"
+        lines = path.read_bytes().splitlines(keepends=True)
+        if mutation == "wrong_state":
+            first = v1._decode_document(lines[0])
+            first["model_state_after_sha256"] = "0" * 64
+            lines[0] = v1._canonical(first)
+        else:
+            lines[0], lines[1] = lines[1], lines[0]
+        path.write_bytes(b"".join(lines))
     elif mutation == "bad_cleanup":
         path = directory / "terminal.json"
         terminal = v1._decode_document(path.read_bytes())
