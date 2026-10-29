@@ -16,8 +16,11 @@ from .memory_budget import CudaMemorySnapshot, MemoryBudget
 
 
 # A controller can fail closed on an older, incompatible owner before launch.
-# This marker is a compatibility check, not proof of source or profile identity.
+# These markers describe compatibility, not measured resource limits or source
+# identity. The source-bound profile and host-admission checks remain separate.
 FIXED_SERVICE_OWNER_CONTRACT = 'fixed-two-token-commitments-v1'
+OWNER_COMPLETION_CUSTODY_CONTRACT = 'service-result-retirement-v1'
+DIRECT_SERVICE_OWNER_CONTRACT = 'two-team-direct-service-v1'
 
 # A failed device drain is a process-lifetime event. Retain known owner
 # objects and a bounded set of failure tracebacks, and stop admitting work.
