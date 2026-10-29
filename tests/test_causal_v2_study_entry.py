@@ -149,6 +149,33 @@ def test_marker_synchronization_failure_prevents_preparation_and_reuse(owner, mo
         _run(owner)
 
 
+@pytest.mark.parametrize("write_error, close_error, expected, cause", [
+    (KeyboardInterrupt(), OSError("close failed"), KeyboardInterrupt, OSError),
+    (ValueError("write failed"), KeyboardInterrupt(), KeyboardInterrupt, ValueError),
+])
+def test_marker_cancellation_precedence_retains_partial_attempt(
+        owner, monkeypatch, write_error, close_error, expected, cause):
+    marker = entry._marker_path(owner["output"])
+    original = Path.open
+    fake = Mock()
+    fake.write.side_effect = write_error
+    fake.close.side_effect = close_error
+
+    def open_with_failure(path, mode="r", *args, **kwargs):
+        if path == marker and mode == "xb":
+            marker.touch(exist_ok=False)
+            return fake
+        return original(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", open_with_failure)
+    with pytest.raises(expected) as error:
+        _run(owner)
+    assert isinstance(error.value.__cause__, cause)
+    assert marker.exists()
+    owner["prepare"].assert_not_called()
+    owner["executor"].close.assert_called_once()
+
+
 def test_early_custodian_failure_closes_executor_and_preserves_cancellation(owner, monkeypatch):
     def fail_before_ownership(path, *, source_inventory, **kwargs):
         raise ValueError("custodian failed before cleanup")

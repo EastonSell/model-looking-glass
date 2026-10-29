@@ -115,11 +115,22 @@ def _begin_attempt(output, context):
         raise StudyEntryError("attempt marker exceeds its public reserve")
     # Even a partial marker is intentionally retained: the path cannot be
     # reused as a fresh attempt if creation or synchronization is interrupted.
-    with _marker_path(output).open("xb") as stream:
+    stream = _marker_path(output).open("xb")
+    try:
         if stream.write(raw) != len(raw):
             raise StudyEntryError("attempt marker was not completely written")
         stream.flush()
         os.fsync(stream.fileno())
+    except BaseException as primary:
+        try:
+            stream.close()
+        except BaseException as cleanup:
+            if isinstance(cleanup, (KeyboardInterrupt, SystemExit)):
+                raise cleanup from primary
+            raise primary from cleanup
+        raise
+    else:
+        stream.close()
     _sync_directory(output.parent)
 
 

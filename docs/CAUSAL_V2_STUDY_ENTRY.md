@@ -13,6 +13,10 @@ bounded sibling `<output>.attempt.json` marker. A partial or complete marker
 blocks reuse of that output path even if a crash occurs before the custodian
 creates its evidence directory. The marker is charged to the public disk
 reserve; it is a local operational record, not an independent timestamp.
+It does not prevent launching a different output path or prove a global
+no-retry policy. A separate attempt requires its own protocol review, including
+the treatment of any previously generated or disclosed inputs; the owner must
+not silently present it as a continuation of an incomplete attempt.
 
 The entry requires the custodian's phase-inventory callback before it prepares
 any v2 inputs. It measures six CPU model-state hashes without a forward, checks
