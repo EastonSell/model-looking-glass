@@ -21,11 +21,13 @@ MAX_TENSOR_BYTES = 32 * 50257 * 4
 SOURCE_PATHS = ('looking_glass/__init__.py', 'looking_glass/pretrained.py',
                 'looking_glass/short_service_cpu_reference.py',
                 'looking_glass/short_service_pilot_core.py',
+                'scripts/short_service_cpu_reference_bootstrap.py',
                 'looking_glass/broker.py', 'looking_glass/owner_completion.py',
                 'looking_glass/resident_worker.py', 'looking_glass/budgeted_worker.py',
                 'looking_glass/memory_budget.py', 'looking_glass/grouped_observation.py', 'looking_glass/fair_queue.py',
                 'experiments/short_cpu_service_reference_inputs_v1.json',
-                'tests/test_short_service_cpu_reference.py', 'docs/SHORT_GPU_SERVICE_PILOT_V1.md',
+                'tests/test_short_service_cpu_reference.py', 'tests/test_short_service_cpu_bootstrap.py',
+                'docs/SHORT_GPU_SERVICE_PILOT_V1.md',
                 'pyproject.toml')
 
 

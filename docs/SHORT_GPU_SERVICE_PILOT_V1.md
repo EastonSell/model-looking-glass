@@ -23,8 +23,8 @@ already cached, use a fresh empty bytecode prefix and a new output directory:
 
 ```sh
 CUDA_VISIBLE_DEVICES=-1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
-  python -B -X pycache_prefix=/absolute/fresh/empty/prefix \
-  -m looking_glass.short_service_cpu_reference \
+  python -I -S -B -X pycache_prefix=/absolute/fresh/empty/prefix \
+  scripts/short_service_cpu_reference_bootstrap.py --site-packages /absolute/venv/site-packages \
   --cache-dir /absolute/hf-hub-cache --inventory /absolute/v33-canonical.json \
   --output-dir /absolute/new/output --git /absolute/git --expected-commit COMMIT
 ```
@@ -65,7 +65,9 @@ The core uses in-process Broker clients and full outputs. It does not exercise
 IPC, the CPU service's compact last-token projector, concurrent model forwards,
 or a two-row batch. A future GPU owner must use one separately supervised
 attempt per exact 1×16 or 1×32 shape, with one resident model and two clients
-in each attempt. It must bind exact rows, masks, seed, source and asset hashes,
+in each attempt. The core sends immutable float32 bytes to its recorder and
+records their hashes; the owner must read saved files back against those hashes.
+It must bind exact rows, masks, seed, source and asset hashes,
 runtime precision and physical identity; acquire the canonical physical lease;
 make a fresh shape-specific admission with bounded device, host and disk
 commitments; synchronize and retain allocated/reserved peaks and device-free

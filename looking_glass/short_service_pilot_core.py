@@ -3,7 +3,9 @@
 The caller owns admission, device supervision, evidence storage and cleanup.
 This module does not acquire a GPU, establish a profile, or attest execution.
 """
+import hashlib
 import math
+import sys
 import threading
 import time
 
@@ -102,6 +104,7 @@ class SerialRoutingPilot:
             self.requests.append(snapshot)
         self.broker = None
         self.handles, self.outcomes, self.threads, self.errors = [], [], [], []
+        self.record_hashes = {}
         self.started = self.finished = False
 
     def _request(self, index, request_id):
@@ -124,6 +127,15 @@ class SerialRoutingPilot:
         self.outcomes.append(outcome)
         return tensor
 
+    def _record(self, name, tensor):
+        if sys.byteorder != 'little' or name in self.record_hashes:
+            raise RuntimeError('unsupported byte order or duplicate tensor record')
+        raw = tensor.detach().numpy().tobytes(order='C')
+        if len(raw) != self.bucket * self.vocab * 4:
+            raise RuntimeError('full-logit byte count differs')
+        self.record_hashes[name] = hashlib.sha256(raw).hexdigest()
+        self.on_tensor(name, raw)
+
     def run(self):
         if self.started:
             raise RuntimeError('pilot is single use')
@@ -138,7 +150,7 @@ class SerialRoutingPilot:
                 handle = self.broker.submit(team, self._request(index, request_id))
                 self.handles.append(handle)
                 value = self._accept(handle, team=team, request_id=request_id)
-                self.on_tensor(request_id, value)
+                self._record(request_id, value)
                 references.append(value)
                 self.on_stage('after-' + request_id)
             selected = [references[i][0, self.positions[i], :].contiguous() for i in range(2)]
@@ -172,7 +184,7 @@ class SerialRoutingPilot:
             self.on_stage('after-two-clients')
             comparisons = []
             for index, team in enumerate(('alpha', 'beta')):
-                self.on_tensor('client-' + team, observed[index])
+                self._record('client-' + team, observed[index])
                 full = compare_f32(observed[index], references[index])
                 own = compare_f32(observed[index][0, self.positions[index], :].contiguous(), selected[index])
                 other = compare_f32(observed[index][0, self.positions[index], :].contiguous(), selected[1 - index])
@@ -185,7 +197,7 @@ class SerialRoutingPilot:
             self.finished = True
             return {'status': 'passed', 'bucket': self.bucket, 'vocab': self.vocab,
                     'reference_separation': separation, 'comparisons': comparisons,
-                    'broker_jobs': len(self.handles)}
+                    'broker_jobs': len(self.handles), 'full_logit_sha256': dict(self.record_hashes)}
         except BaseException:
             self.authority.mark_unsafe()
             raise

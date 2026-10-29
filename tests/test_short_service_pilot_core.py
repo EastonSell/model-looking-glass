@@ -51,7 +51,7 @@ def make_pilot(bucket, *, vocab=41, collapse=False, misroute=False):
     stages, saved = [], {}
     pilot = SerialRoutingPilot(worker, authority, bucket=bucket, vocab=vocab, pad=vocab - 1,
         seed=29, cases=cases, on_stage=stages.append,
-        on_tensor=lambda name, value: saved.setdefault(name, value.detach().clone()), timeout=10)
+        on_tensor=lambda name, raw: saved.setdefault(name, raw), timeout=10)
     return model, resident, budget, authority, pilot, stages, saved
 
 
@@ -63,9 +63,9 @@ def test_two_distinct_clients_match_complete_serial_references(bucket):
     assert [item['active_position'] for item in result['comparisons']] == [bucket - 1, bucket - 2]
     assert result['reference_separation']['violations'] > 0
     assert set(saved) == {'reference-alpha', 'reference-beta', 'client-alpha', 'client-beta'}
-    assert all(value.shape == (1, bucket, 41) for value in saved.values())
-    assert torch.equal(saved['reference-alpha'], saved['client-alpha'])
-    assert torch.equal(saved['reference-beta'], saved['client-beta'])
+    assert all(type(value) is bytes and len(value) == bucket * 41 * 4 for value in saved.values())
+    assert saved['reference-alpha'] == saved['client-alpha']
+    assert saved['reference-beta'] == saved['client-beta']
     assert stages == ['before-reference-alpha', 'after-reference-alpha', 'before-reference-beta',
                       'after-reference-beta', 'before-two-clients', 'after-two-clients']
     pilot.close()
@@ -91,6 +91,20 @@ def test_wrong_client_outputs_are_rejected_and_owner_becomes_unsafe():
         pilot.close()
 
 
+def test_recorder_receives_immutable_bytes_without_tensor_aliases():
+    model, resident, budget, authority, pilot, stages, saved = make_pilot(16)
+    def recorder(name, raw):
+        assert type(raw) is bytes
+        with pytest.raises(TypeError):
+            raw[0] = 0
+        saved[name] = raw
+    pilot.on_tensor = recorder
+    result = pilot.run()
+    assert result['status'] == 'passed'
+    assert set(result['full_logit_sha256']) == set(saved)
+    pilot.close()
+
+
 @pytest.mark.parametrize('wrong_job', [999, True])
 def test_outcome_job_identity_must_match_the_exact_handle(wrong_job):
     from dataclasses import replace
@@ -111,7 +125,7 @@ def test_full_vocabulary_payload_is_bounded_and_distinct():
     model, resident, budget, authority, pilot, stages, saved = make_pilot(32, vocab=50257)
     result = pilot.run()
     assert result['comparisons'][0]['full']['count'] == 32 * 50257
-    assert all(value.numel() * value.element_size() == 32 * 50257 * 4 for value in saved.values())
+    assert all(len(value) == 32 * 50257 * 4 for value in saved.values())
     pilot.close()
 
 
