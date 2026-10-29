@@ -1,0 +1,95 @@
+{
+  "schema": "serial-two-client-serving-memory-result-v1",
+  "source_commit": "f2f1a18257fd8474f9ee460e243e3c3a3efa53a2",
+  "source_tree": "ee0ba2660036249c833ef98d961208abff395455",
+  "workload": {
+    "model": "distilbert/distilgpt2",
+    "input_shape": [
+      1,
+      2
+    ],
+    "input_ids": [
+      15496,
+      995
+    ],
+    "teams": 2,
+    "requests_per_team": 1,
+    "seeds": [
+      29,
+      43
+    ],
+    "requested_cancellations": 0,
+    "activation_trace": false
+  },
+  "outcome": {
+    "successful_requests": 2,
+    "outstanding_requests_overlapped": true,
+    "broker_service_intervals_overlapped": false,
+    "queueing_observed": true,
+    "output_digests_equal": true,
+    "independent_numerical_correctness_check": false,
+    "independent_model_load_count": null,
+    "independent_forward_count": null,
+    "independent_raw_logit_replay": false
+  },
+  "broker_intervals_ms": [
+    {
+      "request": "first",
+      "seed": 43,
+      "ready_to_selected": 0.1846,
+      "selected_to_terminal": 974.8769
+    },
+    {
+      "request": "second",
+      "seed": 29,
+      "ready_to_selected": 958.2438,
+      "selected_to_terminal": 949.1687
+    }
+  ],
+  "serving_memory": {
+    "window_ns": 2887689000,
+    "device_total_bytes": 8589606912,
+    "device_free_baseline_bytes": 7018119168,
+    "device_free_endpoint_bytes": 6951010304,
+    "device_free_min_saved_point_bytes": 6951010304,
+    "intermediate_point_count": 4,
+    "dropped_points": 0,
+    "process_allocated_baseline_bytes": 368299008,
+    "process_reserved_baseline_bytes": 406847488,
+    "process_allocated_endpoint_bytes": 401853440,
+    "process_reserved_endpoint_bytes": 440401920,
+    "process_peak_allocated_bytes": 402971648,
+    "process_peak_reserved_bytes": 440401920
+  },
+  "host": {
+    "sample_count": 122,
+    "maximum_sample_gap_ns": 208396000,
+    "owner_lifetime_peak_working_set_bytes": 1693765632,
+    "owner_lifetime_peak_private_commit_bytes": 2545537024,
+    "controller_lifetime_peak_working_set_bytes": 101249024,
+    "controller_lifetime_peak_private_commit_bytes": 92901376,
+    "sampled_max_combined_private_commit_bytes": 2552999936,
+    "minimum_sampled_available_physical_bytes": 12149882880,
+    "minimum_sampled_available_system_commit_bytes": 7573504000,
+    "minimum_sampled_available_caller_commit_bytes": 7573504000,
+    "logical_host_commitment_bytes": 8589934592,
+    "initial_required_headroom_bytes": 10737418240
+  },
+  "owner_supervisor_exit": 0,
+  "direct_controller_wait_exit": 0,
+  "operator_observed_outer_parent_exit": 0,
+  "separate_outer_parent_exit_receipt": false,
+  "matched_sequential_baseline_recorded": false,
+  "limitations": [
+    "One fixed two-client serial run is not a sustained throughput or fairness benchmark.",
+    "Equal output digests do not independently establish numerical correctness.",
+    "Only payload digests were retained in the diagnostic; no independent raw-logit replay was performed.",
+    "The guarded memory observation may affect the recorded broker timings.",
+    "The source defines one model construction and warmup; actual load and forward counts were not independently recorded.",
+    "Device free-memory values are discrete device-wide points, not a continuous minimum or device-wide allocation peak.",
+    "PyTorch allocator peaks are process-local, cover the post-warmup serving window and include resident baseline allocations.",
+    "Host samples and separate lifetime process peaks are observations, not OS reservations or worst-case bounds.",
+    "The initial host screen is a point check; it is not a continuously maintained floor.",
+    "Saved direct waits do not prove descendant absence or native CUDA teardown."
+  ]
+}
