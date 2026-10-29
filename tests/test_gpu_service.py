@@ -9,6 +9,7 @@ import threading
 import unittest
 import gc
 import ctypes
+import dis
 import inspect
 import os
 from pathlib import Path
@@ -832,6 +833,444 @@ class ConcreteBackendContractTests(unittest.TestCase):
         self.assertFalse(broker._thread.is_alive())
         self.assertFalse(authority.unsafe)
         self.assertEqual(set(budget.active_leases()), {load, workspace})
+
+    def test_direct_startup_failure_retains_callback_claim_and_suppresses_forward(self):
+        import torch
+        from looking_glass.broker import BrokerShutdownError, BrokerUnavailable, RequestState
+        from looking_glass.ipc import IPCServer
+        from looking_glass.service import OwnerStatus
+        import looking_glass.resident_worker as resident_module
+        from test_owner_completion import make_owner
+
+        class Claim:
+            pass
+
+        with patch.object(resident_module, '_process_quarantined', threading.Event()), \
+             patch.object(resident_module, '_process_quarantine_latch', None):
+            model, _, budget, load, workspace, authority, worker, broker, request = make_owner()
+            gpu_service._OWNER_COMPLETION = authority
+            server = IPCServer(broker, team_ids=('alpha',), completion_authority=authority)
+            backend = _TorchServiceBackend(session=FakeSession([]), device_lease=object(),
+                cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+                verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
+            aliases, claims = [], []
+
+            def announce(_server):
+                claim = Claim()
+                tensor = torch.ones(1)
+                tensor.claim = claim
+                claims.append(weakref.ref(claim))
+                aliases.append(tensor.detach())
+                raise RuntimeError('startup callback failed')
+
+            handle = broker.submit('alpha', request)
+            try:
+                self.assertTrue(model.entered.wait(5))
+                result = backend.serve(server, broker, worker, threading.Event(), announce, lambda: True)
+                self.assertIn(result.status, (OwnerStatus.QUARANTINED, OwnerStatus.SHUTDOWN_INCOMPLETE))
+                self.assertFalse(result.teardown_verified)
+                self.assertTrue(authority.unsafe)
+                for thread in threading.enumerate():
+                    if thread.name == 'looking-glass-owner-startup':
+                        thread.join(5)
+                        self.assertFalse(thread.is_alive())
+                gc.collect()
+                self.assertIsNotNone(claims[0]())
+                self.assertEqual(aliases[0].tolist(), [1.0])
+                self.assertEqual(set(budget.active_leases()), {load, workspace})
+            finally:
+                model.release.set()
+                server.close(timeout=5)
+                try:
+                    broker.close(timeout=5)
+                except BrokerShutdownError:
+                    broker._thread.join(5)
+            self.assertFalse(broker._thread.is_alive())
+            try:
+                outcome = handle.wait(2)
+            except BrokerUnavailable:
+                pass
+            else:
+                self.assertNotEqual(outcome.state, RequestState.SUCCEEDED)
+
+    def test_direct_shutdown_failure_retains_callback_claim(self):
+        import torch
+        from looking_glass.broker import BrokerShutdownError
+        from looking_glass.ipc import IPCServer
+        import looking_glass.resident_worker as resident_module
+        from test_owner_completion import make_owner
+
+        class Claim:
+            pass
+
+        with patch.object(resident_module, '_process_quarantined', threading.Event()), \
+             patch.object(resident_module, '_process_quarantine_latch', None):
+            model, _, budget, load, workspace, authority, worker, broker, _ = make_owner()
+            gpu_service._OWNER_COMPLETION = authority
+            server = IPCServer(broker, team_ids=('alpha',), completion_authority=authority)
+            backend = _TorchServiceBackend(session=FakeSession([]), device_lease=object(),
+                cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+                verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
+            aliases, claims = [], []
+            stop = threading.Event()
+
+            def failing_close(*, timeout):
+                claim = Claim()
+                tensor = torch.ones(1)
+                tensor.claim = claim
+                claims.append(weakref.ref(claim))
+                aliases.append(tensor.detach())
+                raise RuntimeError('shutdown callback failed')
+
+            try:
+                with patch.object(server, 'close', failing_close):
+                    result = backend.serve(server, broker, worker, stop,
+                                           lambda _: stop.set(), lambda: True)
+                    self.assertFalse(result.teardown_verified)
+                for thread in threading.enumerate():
+                    if thread.name == 'looking-glass-owner-shutdown':
+                        thread.join(5)
+                        self.assertFalse(thread.is_alive())
+                self.assertTrue(authority.unsafe)
+                gc.collect()
+                self.assertEqual(len(claims), 1)
+                self.assertIsNotNone(claims[0]())
+                self.assertEqual(aliases[0].tolist(), [1.0])
+                self.assertEqual(set(budget.active_leases()), {load, workspace})
+            finally:
+                model.release.set()
+                server.close(timeout=5)
+                try:
+                    broker.close(timeout=5)
+                except BrokerShutdownError:
+                    broker._thread.join(5)
+
+    def test_direct_startup_failure_survives_interrupted_custody_entry(self):
+        import torch
+        from looking_glass.broker import BrokerShutdownError
+        from looking_glass.ipc import IPCServer
+        from looking_glass import service
+        import looking_glass.resident_worker as resident_module
+        from test_owner_completion import make_owner
+
+        class Claim:
+            pass
+
+        fired, aliases, claims = [], [], []
+        previous_trace = threading.gettrace()
+
+        def trace(frame, event, _arg):
+            if (event == 'call' and frame.f_code is service._record_lifecycle_failure.__code__
+                    and threading.current_thread().name == 'looking-glass-owner-startup'
+                    and not fired):
+                fired.append(True)
+                raise KeyboardInterrupt('interrupted custody entry')
+            return trace
+
+        def announce(_server):
+            claim = Claim()
+            tensor = torch.ones(1)
+            tensor.claim = claim
+            claims.append(weakref.ref(claim))
+            aliases.append(tensor.detach())
+            raise RuntimeError('startup callback failed')
+
+        with patch.object(resident_module, '_process_quarantined', threading.Event()), \
+             patch.object(resident_module, '_process_quarantine_latch', None):
+            model, _, budget, load, workspace, authority, worker, broker, _ = make_owner()
+            gpu_service._OWNER_COMPLETION = authority
+            server = IPCServer(broker, team_ids=('alpha',), completion_authority=authority)
+            backend = _TorchServiceBackend(session=FakeSession([]), device_lease=object(),
+                cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+                verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
+            try:
+                threading.settrace(trace)
+                result = backend.serve(server, broker, worker, threading.Event(), announce, lambda: True)
+                threading.settrace(previous_trace)
+                for thread in threading.enumerate():
+                    if thread.name == 'looking-glass-owner-startup':
+                        thread.join(5)
+                        self.assertFalse(thread.is_alive())
+                self.assertEqual(fired, [True])
+                self.assertFalse(result.teardown_verified)
+                self.assertTrue(authority.unsafe)
+                gc.collect()
+                self.assertIsNotNone(claims[0]())
+                self.assertEqual(aliases[0].tolist(), [1.0])
+                self.assertEqual(set(budget.active_leases()), {load, workspace})
+            finally:
+                threading.settrace(previous_trace)
+                model.release.set()
+                server.close(timeout=5)
+                try:
+                    broker.close(timeout=5)
+                except BrokerShutdownError:
+                    broker._thread.join(5)
+
+    def test_direct_shutdown_retains_notification_failure_after_callback_error(self):
+        import torch
+        from looking_glass.broker import BrokerShutdownError
+        from looking_glass.ipc import IPCServer
+        import looking_glass.resident_worker as resident_module
+        from test_owner_completion import make_owner
+
+        class Claim:
+            pass
+
+        claims, aliases = [], []
+        original_notify = gpu_service._DirectOwnerHealth.mark_uncertain
+
+        def notify(health):
+            if threading.current_thread().name == 'looking-glass-owner-shutdown' and not claims:
+                claim = Claim()
+                tensor = torch.ones(1)
+                tensor.claim = claim
+                claims.append(weakref.ref(claim))
+                aliases.append(tensor.detach())
+                raise RuntimeError('notification callback failed')
+            return original_notify(health)
+
+        def failing_close(*, timeout):
+            raise RuntimeError('shutdown callback failed')
+
+        with patch.object(resident_module, '_process_quarantined', threading.Event()), \
+             patch.object(resident_module, '_process_quarantine_latch', None):
+            model, _, budget, load, workspace, authority, worker, broker, _ = make_owner()
+            gpu_service._OWNER_COMPLETION = authority
+            server = IPCServer(broker, team_ids=('alpha',), completion_authority=authority)
+            backend = _TorchServiceBackend(session=FakeSession([]), device_lease=object(),
+                cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+                verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
+            stop = threading.Event()
+            try:
+                with patch.object(server, 'close', failing_close), \
+                     patch.object(gpu_service._DirectOwnerHealth, 'mark_uncertain', notify):
+                    result = backend.serve(server, broker, worker, stop,
+                                           lambda _: stop.set(), lambda: True)
+                    for thread in threading.enumerate():
+                        if thread.name == 'looking-glass-owner-shutdown':
+                            thread.join(5)
+                            self.assertFalse(thread.is_alive())
+                self.assertFalse(result.teardown_verified)
+                self.assertTrue(authority.unsafe)
+                self.assertEqual(len(claims), 1)
+                gc.collect()
+                self.assertIsNotNone(claims[0]())
+                self.assertEqual(aliases[0].tolist(), [1.0])
+                self.assertEqual(set(budget.active_leases()), {load, workspace})
+            finally:
+                model.release.set()
+                server.close(timeout=5)
+                try:
+                    broker.close(timeout=5)
+                except BrokerShutdownError:
+                    broker._thread.join(5)
+
+    def test_startup_handler_interruption_marks_unsafe_before_completion_signal(self):
+        import torch
+        from looking_glass.broker import BrokerShutdownError, BrokerUnavailable, RequestState
+        from looking_glass.ipc import IPCServer
+        from looking_glass import service
+        import looking_glass.resident_worker as resident_module
+        from test_owner_completion import make_owner
+
+        class Claim:
+            pass
+
+        lines, start = inspect.getsourcelines(service._serve_owner_impl)
+        startup = next(i for i, line in enumerate(lines) if line.strip() == 'def startup():')
+        target = start + next(i for i, line in enumerate(lines)
+                              if i > startup and line.strip() == 'except BaseException as exc:') + 1
+        fired, observed, claims, aliases = [], [], [], []
+        previous_trace = threading.gettrace()
+
+        def trace(frame, event, _arg):
+            if (event == 'line' and frame.f_code.co_name == 'startup'
+                    and frame.f_lineno == target and not fired):
+                fired.append(True)
+                raise KeyboardInterrupt('interrupted startup handler')
+            return trace
+
+        def announce(_server):
+            claim = Claim()
+            tensor = torch.ones(1)
+            tensor.claim = claim
+            claims.append(weakref.ref(claim))
+            aliases.append(tensor.detach())
+            raise RuntimeError('startup callback failed')
+
+        with patch.object(resident_module, '_process_quarantined', threading.Event()), \
+             patch.object(resident_module, '_process_quarantine_latch', None):
+            model, _, budget, load, workspace, authority, worker, broker, request = make_owner()
+            gpu_service._OWNER_COMPLETION = authority
+            server = IPCServer(broker, team_ids=('alpha',), completion_authority=authority)
+            backend = _TorchServiceBackend(session=FakeSession([]), device_lease=object(),
+                cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+                verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
+
+            class ObservedEvent(threading.Event):
+                def set(self):
+                    if threading.current_thread().name == 'looking-glass-owner-startup':
+                        observed.append(authority.unsafe)
+                    return super().set()
+
+            handle = broker.submit('alpha', request)
+            try:
+                self.assertTrue(model.entered.wait(5))
+                with patch.object(service, 'Event', ObservedEvent):
+                    threading.settrace(trace)
+                    result = backend.serve(server, broker, worker, threading.Event(), announce, lambda: True)
+                    threading.settrace(previous_trace)
+                    for thread in threading.enumerate():
+                        if thread.name == 'looking-glass-owner-startup':
+                            thread.join(5)
+                            self.assertFalse(thread.is_alive())
+                self.assertEqual(fired, [True])
+                self.assertEqual(observed, [True])
+                self.assertFalse(result.teardown_verified)
+                self.assertTrue(authority.unsafe)
+                gc.collect()
+                self.assertIsNotNone(claims[0]())
+                self.assertEqual(aliases[0].tolist(), [1.0])
+                self.assertEqual(set(budget.active_leases()), {load, workspace})
+            finally:
+                threading.settrace(previous_trace)
+                model.release.set()
+                server.close(timeout=5)
+                try:
+                    broker.close(timeout=5)
+                except BrokerShutdownError:
+                    broker._thread.join(5)
+            try:
+                outcome = handle.wait(2)
+            except BrokerUnavailable:
+                pass
+            else:
+                self.assertNotEqual(outcome.state, RequestState.SUCCEEDED)
+
+    def test_direct_startup_target_return_failure_is_privately_retained(self):
+        import torch
+        from looking_glass.broker import BrokerShutdownError
+        from looking_glass.ipc import IPCServer
+        import looking_glass.resident_worker as resident_module
+        from test_owner_completion import make_owner
+
+        class Claim:
+            pass
+
+        fired, aliases, claims, public_hooks = [], [], [], []
+        offsets = {}
+        previous_trace = threading.gettrace()
+
+        def trace(frame, event, _arg):
+            if frame.f_code.co_name == 'startup':
+                if event == 'call':
+                    frame.f_trace_opcodes = True
+                    offsets[frame.f_code] = {item.offset for item in dis.get_instructions(frame.f_code)
+                                             if item.opname == 'RETURN_VALUE'}
+                elif (event == 'opcode' and frame.f_lasti in offsets.get(frame.f_code, ())
+                      and frame.f_locals['startup_terminal'][0] and not fired):
+                    fired.append(True)
+                    claim = Claim()
+                    tensor = torch.ones(1)
+                    tensor.claim = claim
+                    claims.append(weakref.ref(claim))
+                    aliases.append(tensor.detach())
+                    raise RuntimeError('interrupted target return')
+            return trace
+
+        with patch.object(resident_module, '_process_quarantined', threading.Event()), \
+             patch.object(resident_module, '_process_quarantine_latch', None):
+            model, _, budget, load, workspace, authority, worker, broker, _ = make_owner()
+            gpu_service._OWNER_COMPLETION = authority
+            server = IPCServer(broker, team_ids=('alpha',), completion_authority=authority)
+            backend = _TorchServiceBackend(session=FakeSession([]), device_lease=object(),
+                cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+                verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
+            stop = threading.Event()
+            try:
+                with patch('threading.excepthook', lambda args: public_hooks.append(args)):
+                    threading.settrace(trace)
+                    result = backend.serve(server, broker, worker, stop,
+                                           lambda _: stop.set(), lambda: True)
+                    threading.settrace(previous_trace)
+                    for thread in threading.enumerate():
+                        if thread.name == 'looking-glass-owner-startup':
+                            thread.join(5)
+                            self.assertFalse(thread.is_alive())
+                self.assertEqual(fired, [True])
+                self.assertFalse(result.teardown_verified)
+                self.assertTrue(authority.unsafe)
+                self.assertEqual(public_hooks, [])
+                gc.collect()
+                self.assertIsNotNone(claims[0]())
+                self.assertEqual(aliases[0].tolist(), [1.0])
+                self.assertEqual(set(budget.active_leases()), {load, workspace})
+            finally:
+                threading.settrace(previous_trace)
+                model.release.set()
+                server.close(timeout=5)
+                try:
+                    broker.close(timeout=5)
+                except BrokerShutdownError:
+                    broker._thread.join(5)
+
+    def test_lifecycle_hook_retains_target_failure_when_capture_is_interrupted(self):
+        import torch
+        from looking_glass import service
+        from looking_glass.owner_completion import OwnerCompletionAuthority
+
+        class Claim:
+            pass
+
+        code = service._LifecycleFailureSlot.capture_thread_failure.__code__
+        unpack = {item.offset for item in dis.get_instructions(code) if item.opname == 'UNPACK_SEQUENCE'}
+        self.assertTrue(unpack)
+        previous_trace = threading.gettrace()
+        for boundary in ('entry', 'unpack'):
+            with self.subTest(boundary=boundary):
+                authority = OwnerCompletionAuthority()
+                slot = service._ServiceLifecycleCustody(authority).startup
+                failed, fired, claims, aliases, public_hooks = [False], [], [], [], []
+
+                def target():
+                    claim = Claim()
+                    tensor = torch.ones(1)
+                    tensor.claim = claim
+                    claims.append(weakref.ref(claim))
+                    aliases.append(tensor.detach())
+                    raise RuntimeError('lifecycle target failed')
+
+                def trace(frame, event, _arg):
+                    if frame.f_code is code:
+                        if event == 'call':
+                            if boundary == 'entry' and not fired:
+                                fired.append(True)
+                                raise KeyboardInterrupt('interrupted hook entry')
+                            frame.f_trace_opcodes = True
+                        elif event == 'opcode' and frame.f_lasti in unpack and not fired:
+                            fired.append(True)
+                            raise KeyboardInterrupt('interrupted hook unpack')
+                    return trace
+
+                thread = threading.Thread(target=target, name='test-lifecycle-owner')
+                service._observe_thread_exception(thread, failed, custody=slot)
+                try:
+                    with patch('threading.excepthook', lambda args: public_hooks.append(args)):
+                        threading.settrace(trace)
+                        thread.start()
+                        thread.join(5)
+                finally:
+                    threading.settrace(previous_trace)
+                self.assertFalse(thread.is_alive())
+                self.assertEqual(fired, [True])
+                self.assertEqual(failed, [True])
+                self.assertTrue(authority.unsafe)
+                self.assertEqual(public_hooks, [])
+                self.assertIsInstance(slot.hook_error, RuntimeError)
+                gc.collect()
+                self.assertIsNotNone(claims[0]())
+                self.assertEqual(aliases[0].tolist(), [1.0])
 
     def test_health_failure_retains_original_resources_and_suppresses_inflight_success(self):
         import torch

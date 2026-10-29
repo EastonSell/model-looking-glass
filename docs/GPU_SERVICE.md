@@ -105,16 +105,27 @@ signaler; it is not an atomic lock between an independently running signaler
 and attestation. Joining a thread alone does not report every possible fault
 at its outer return or interpreter bootstrap boundary. An uncertain shutdown
 must remain unverified.
-The generic service lifecycle formats startup and shutdown callback errors
-and delegates escaped thread failures to the application's thread hook; it
-does not itself retain the original callback exception graph. Before enabling
-the launcher, the concrete `announce`, transport start/close, broker and
-worker close, and drain callbacks must be reviewed to retain any resources and
-claims owned only by their partial work or failure frames through recovery.
-Their signal and join results alone do not establish that custody.
+The direct backend preallocates separate startup and shutdown failure slots,
+roots them with its health observer, and marks the common authority before
+recording a callback failure. Each slot retains the original exception and
+traceback, a bounded recovery failure, and an escaped lifecycle-thread failure;
+the bound thread hook does not hand the private graph to the application hook.
+The unbound generic lifecycle retains its prior behavior and does not provide
+that custody. The bound path covers known Python failures under its cooperative
+single-interruption contract; it does not recover unassigned native temporaries
+or prove observation of arbitrary thread bootstrap, hook, or finalizer faults.
+Transport acceptor, handler, monitor, and other independent producers require
+their own failure custody and joined exit; a signal or join alone is not proof.
 The launcher remains gated while this signaler-quiescence/attestation boundary
 and the fair ingress and IPC custody integrations are being completed. No
 compatibility marker for that completed boundary is exported by this draft.
+Once the complete owner is independently cleared, commit any required marker
+constants before freezing the clean, detached source for custody-profile
+collection. The collector and service must use that same source and runtime;
+adding a marker or changing package code afterward changes the source identity
+and requires a new profile. No measured custody-bound GPU profile is supplied
+by these CPU checks. A later run still needs approved load, cold and warm
+profiles, fresh device and host headroom, and its own coordinated GPU slot.
 
 The fixed worker and Broker share a sticky completion authority. A success,
 retirement, buffer cleanup, or guarded device-operation decision is ordered at

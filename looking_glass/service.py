@@ -5,8 +5,10 @@ marker. Only a separate supervisor may clear a marker after this process exits.
 """
 from dataclasses import dataclass
 from enum import Enum
+import sys
 from threading import Event, Thread
 from time import monotonic
+from types import TracebackType
 
 
 class OwnerStatus(str, Enum):
@@ -88,7 +90,101 @@ def _error(exc):
     return type(exc).__name__, message
 
 
-def _observe_thread_exception(thread, failed, on_failure=None):
+class _LifecycleFailureSlot:
+    """Preallocated roots for one trusted lifecycle producer."""
+
+    def __init__(self, authority):
+        self.authority = authority
+        self.error = self.traceback = None
+        self.followup_error = self.followup_traceback = None
+        self.hook_error = self.hook_traceback = None
+        self.hook_recovery_error = None
+
+    def _capture(self, exc):
+        if self.error is None or self.error is exc:
+            self.error = exc
+            target = 'traceback'
+        elif self.followup_error is None or self.followup_error is exc:
+            self.followup_error = exc
+            target = 'followup_traceback'
+        else:
+            raise RuntimeError('lifecycle failure custody is exhausted')
+        traceback = BaseException.__dict__['__traceback__'].__get__(exc, BaseException)
+        if type(traceback) is TracebackType:
+            setattr(self, target, traceback)
+
+    def record(self, exc):
+        # No broker condition or notification lock is needed for this signal.
+        try:
+            self.authority._unsafe = True
+        finally:
+            try:
+                self._capture(exc)
+            finally:
+                self.authority._unsafe = True
+                self._capture(exc)
+
+    def capture_thread_failure(self):
+        """Root the active target exception without calling a global hook."""
+        try:
+            self.authority._unsafe = True
+            _, error, traceback = sys.exc_info()
+            if not isinstance(error, BaseException) or type(traceback) is not TracebackType:
+                raise RuntimeError('lifecycle thread failure capture is unavailable')
+            self.hook_error = error
+            self.hook_traceback = traceback
+        except BaseException as interrupted:
+            # If capture is interrupted, CPython chains the original target
+            # failure as context. Base descriptors reject spoofed properties.
+            self.hook_recovery_error = interrupted
+            original = BaseException.__dict__['__context__'].__get__(interrupted, BaseException)
+            if isinstance(original, BaseException):
+                self.hook_error = original
+                traceback = BaseException.__dict__['__traceback__'].__get__(original, BaseException)
+                if type(traceback) is TracebackType:
+                    self.hook_traceback = traceback
+        finally:
+            self.authority._unsafe = True
+
+    def recover_hook_interruption(self, interrupted):
+        """Recover an interrupted hook call while its target error is active."""
+        try:
+            self.hook_recovery_error = interrupted
+            original = BaseException.__dict__['__context__'].__get__(interrupted, BaseException)
+            if isinstance(original, BaseException):
+                self.hook_error = original
+                traceback = BaseException.__dict__['__traceback__'].__get__(original, BaseException)
+                if type(traceback) is TracebackType:
+                    self.hook_traceback = traceback
+        finally:
+            self.authority._unsafe = True
+
+
+class _ServiceLifecycleCustody:
+    """One startup and one shutdown producer, rooted by their owner."""
+
+    def __init__(self, authority):
+        from .broker import _supports_bound_owner_thread_hook
+        from .owner_completion import OwnerCompletionAuthority
+        if type(authority) is not OwnerCompletionAuthority:
+            raise TypeError('an exact owner completion authority is required')
+        if not _supports_bound_owner_thread_hook():
+            raise RuntimeError('lifecycle failure observation requires supported CPython')
+        self.authority = authority
+        self.startup = _LifecycleFailureSlot(authority)
+        self.shutdown = _LifecycleFailureSlot(authority)
+
+
+def _record_lifecycle_failure(slot, exc):
+    try:
+        slot.record(exc)
+    finally:
+        # Retry at a one-shot interruption to the record call or its signal.
+        slot.authority._unsafe = True
+        slot._capture(exc)
+
+
+def _observe_thread_exception(thread, failed, on_failure=None, custody=None):
     """Latch an escaped target exception before CPython reports it.
 
     This per-thread hook covers exceptions escaping the target's return, as
@@ -101,6 +197,17 @@ def _observe_thread_exception(thread, failed, on_failure=None):
         raise RuntimeError('thread exception observation is unavailable')
 
     def notify(owner_thread):
+        if custody is not None:
+            try:
+                try:
+                    custody.authority._unsafe = True
+                    custody.capture_thread_failure()
+                except BaseException as interrupted:
+                    custody.recover_hook_interruption(interrupted)
+            finally:
+                custody.authority._unsafe = True
+                failed[0] = True
+            return
         failed[0] = True
         if on_failure is not None:
             try:
@@ -188,7 +295,7 @@ def _notify_health_uncertainty(callback):
 
 def serve_owner(server, broker, worker, stop_event, *, announce, verify_drain,
                 poll_interval=0.1, shutdown_timeout=10, health_provider=None,
-                on_health_uncertain=None):
+                on_health_uncertain=None, failure_custody=None):
     """Run an assembled owner and report whether its teardown was verified.
 
     ``announce(server)`` must keep credentials private. ``verify_drain()``
@@ -215,15 +322,21 @@ def serve_owner(server, broker, worker, stop_event, *, announce, verify_drain,
     callbacks. A verified result joins this helper's lifecycle threads; it
     does not establish quiescence of separately owned threads or protect every
     possible interpreter bootstrap, exception-hook, or finalizer interruption.
-    These lifecycle helpers format callback errors and delegate escaped thread
-    errors; they do not privately retain each original callback failure graph.
-    Trusted announce, transport, broker/worker close, and drain callbacks must
-    themselves retain any resource-bearing partials or failure-only claims
-    until recovery, or supply separately reviewed producer-failure custody.
+    By default these helpers format callback errors and delegate escaped thread
+    errors; callbacks must independently retain resource-bearing partials.
+    An owner may supply its private preallocated ``failure_custody`` to retain
+    startup and shutdown errors and escaped target failures until process exit.
+    This is bounded cooperative custody, not protection against arbitrary
+    repeated interruptions, unassigned native temporaries, or faults in the
+    interpreter's thread bootstrap, exception hook, or finalizer.
     """
     options = dict(announce=announce, verify_drain=verify_drain,
                    poll_interval=poll_interval, shutdown_timeout=shutdown_timeout,
-                   health_provider=health_provider, on_health_uncertain=on_health_uncertain)
+                   health_provider=health_provider, on_health_uncertain=on_health_uncertain,
+                   failure_custody=failure_custody)
+    if failure_custody is not None:
+        if type(failure_custody) is not _ServiceLifecycleCustody or health_provider is None:
+            raise TypeError('lifecycle failure custody requires the bound health interface')
     if health_provider is None:
         return _serve_owner_impl(server, broker, worker, stop_event, **options)
     if not callable(health_provider) or not callable(on_health_uncertain):
@@ -246,7 +359,7 @@ def serve_owner(server, broker, worker, stop_event, *, announce, verify_drain,
 
 def _serve_owner_impl(server, broker, worker, stop_event, *, announce, verify_drain,
                       poll_interval=0.1, shutdown_timeout=10, health_provider=None,
-                      on_health_uncertain=None):
+                      on_health_uncertain=None, failure_custody=None):
     """Run an already-configured owner and report if teardown was verified.
 
     `announce(server)` must deliver credentials only to trusted recipients.
@@ -289,12 +402,17 @@ def _serve_owner_impl(server, broker, worker, stop_event, *, announce, verify_dr
 
     broker_close_started = [False]
 
-    def notify_uncertainty_best_effort():
+    def notify_uncertainty_best_effort(custody=None):
         if health_provider is not None:
             try:
                 _notify_health_uncertainty(on_health_uncertain)
-            except BaseException:
-                pass
+            except BaseException as exc:
+                if custody is not None:
+                    try:
+                        _record_lifecycle_failure(custody, exc)
+                    finally:
+                        custody.authority._unsafe = True
+                        custody._capture(exc)
 
     def quarantine_cleanup():
         if health_provider is None:
@@ -370,6 +488,7 @@ def _serve_owner_impl(server, broker, worker, stop_event, *, announce, verify_dr
     startup_outcome = [None]
     startup_terminal = [False]
     startup_thread_failed = [False]
+    startup_custody = failure_custody.startup if failure_custody is not None else None
 
     def startup():
         try:
@@ -377,23 +496,45 @@ def _serve_owner_impl(server, broker, worker, stop_event, *, announce, verify_dr
             announce(server)
         except BaseException as exc:
             try:
+                if startup_custody is not None:
+                    try:
+                        _record_lifecycle_failure(startup_custody, exc)
+                    finally:
+                        startup_custody.authority._unsafe = True
+                        startup_custody._capture(exc)
                 if health_provider is not None:
                     _notify_health_uncertainty(on_health_uncertain)
-                startup_errors.append(_error(exc))
+                startup_errors.append(('OwnerLifecycleFailure', 'startup callback failed')
+                                      if startup_custody is not None else _error(exc))
                 startup_outcome[0] = 'failed'
-            except BaseException:
-                pass
+            except BaseException as recovery:
+                if startup_custody is not None:
+                    _record_lifecycle_failure(startup_custody, recovery)
         else:
             startup_outcome[0] = 'succeeded'
+        startup_terminal[0] = True
+
+    def startup_wrapper():
+        completed = False
+        try:
+            startup()
+            completed = startup_outcome[0] == 'succeeded'
         finally:
+            # This separate frame protects even an interruption at entry to
+            # startup's exception handler before it reaches its first try.
+            if startup_custody is not None and not completed:
+                startup_custody.authority._unsafe = True
             try:
                 startup_done.set()
-            except BaseException:
+            except BaseException as exc:
+                startup_terminal[0] = False
+                if startup_custody is not None:
+                    _record_lifecycle_failure(startup_custody, exc)
                 return
-            startup_terminal[0] = True
 
-    startup_thread = Thread(target=startup, name='looking-glass-owner-startup', daemon=True)
-    _observe_thread_exception(startup_thread, startup_thread_failed, on_health_uncertain)
+    startup_thread = Thread(target=startup_wrapper, name='looking-glass-owner-startup', daemon=True)
+    _observe_thread_exception(startup_thread, startup_thread_failed, on_health_uncertain,
+                              custody=startup_custody)
     startup_thread.start()
     startup_deadline = monotonic() + shutdown_timeout
     while not startup_done.wait(poll_interval):
@@ -468,6 +609,7 @@ def _serve_owner_impl(server, broker, worker, stop_event, *, announce, verify_dr
     results = []
     finish_terminal = [False]
     finish_thread_failed = [False]
+    finish_custody = failure_custody.shutdown if failure_custody is not None else None
 
     def finish():
         try:
@@ -490,12 +632,12 @@ def _serve_owner_impl(server, broker, worker, stop_event, *, announce, verify_dr
                     result = OwnerResult(OwnerStatus.QUARANTINED)
                 elif (not server_stopped or not broker_stopped
                       or (health_provider is not None and broker_stopped is not True)):
-                    notify_uncertainty_best_effort()
+                    notify_uncertainty_best_effort(finish_custody)
                     result = OwnerResult(OwnerStatus.SHUTDOWN_INCOMPLETE)
                 elif health_provider is not None and terminal_status() is OwnerStatus.QUARANTINED:
                     result = OwnerResult(OwnerStatus.QUARANTINED)
                 elif verify_drain() is not True:
-                    notify_uncertainty_best_effort()
+                    notify_uncertainty_best_effort(finish_custody)
                     result = OwnerResult(OwnerStatus.QUARANTINED)
                 else:
                     final_health = terminal_status()
@@ -505,17 +647,28 @@ def _serve_owner_impl(server, broker, worker, stop_event, *, announce, verify_dr
                         final_status = status or final_health
                         result = OwnerResult(final_status, *(failure or (None, None)), teardown_verified=True)
         except BaseException as exc:
-            notify_uncertainty_best_effort()
-            result = OwnerResult(OwnerStatus.QUARANTINED, *_error(exc))
+            if finish_custody is not None:
+                try:
+                    _record_lifecycle_failure(finish_custody, exc)
+                finally:
+                    finish_custody.authority._unsafe = True
+                    finish_custody._capture(exc)
+            notify_uncertainty_best_effort(finish_custody)
+            details = (('OwnerLifecycleFailure', 'shutdown callback failed')
+                       if finish_custody is not None else _error(exc))
+            result = OwnerResult(OwnerStatus.QUARANTINED, *details)
         results.append(result)
         try:
             done.set()
-        except BaseException:
+        except BaseException as exc:
+            if finish_custody is not None:
+                _record_lifecycle_failure(finish_custody, exc)
             return
         finish_terminal[0] = True
 
     finish_thread = Thread(target=finish, name='looking-glass-owner-shutdown', daemon=True)
-    _observe_thread_exception(finish_thread, finish_thread_failed, on_health_uncertain)
+    _observe_thread_exception(finish_thread, finish_thread_failed, on_health_uncertain,
+                              custody=finish_custody)
     finish_thread.start()
     while True:
         try:

@@ -239,11 +239,15 @@ class _DirectOwnerHealth:
     """Observe one exact owner graph without taking the broker condition."""
 
     def __init__(self, server, broker, worker, authority):
+        from .service import _ServiceLifecycleCustody
         self.server, self.broker, self.worker, self.authority = server, broker, worker, authority
         self._owner_thread = current_thread()
         # serve_owner invokes the provider on its caller and at most one
         # shutdown thread. Each gets separate pre-rooted failure storage.
         self._owner_failures, self._shutdown_failures = _HealthFailureSlot(), _HealthFailureSlot()
+        # Lifecycle helpers can fail while owning resources unknown to the
+        # worker. Root their preallocated private slots with this owner graph.
+        self._lifecycle_custody = _ServiceLifecycleCustody(authority)
 
     def __call__(self):
         authority = self.authority
@@ -640,7 +644,8 @@ class _TorchServiceBackend:
         self._retained[2] = health
         return serve_owner(server, broker, worker, stop_event, announce=announce,
                            verify_drain=verify_drain, shutdown_timeout=self.shutdown_timeout,
-                           health_provider=health, on_health_uncertain=health.mark_uncertain)
+                           health_provider=health, on_health_uncertain=health.mark_uncertain,
+                           failure_custody=health._lifecycle_custody)
 
 
 def _run_bound_owner(session, device_lease, *, backend, registry, stop_event,
