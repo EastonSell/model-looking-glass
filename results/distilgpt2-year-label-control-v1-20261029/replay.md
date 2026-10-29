@@ -1,12 +1,15 @@
 # Independent saved-byte replays
 
-The two readers were developed independently before inspecting the closed
-attempt. They make no model calls. Use a compatible little-endian Python with
+The two independent readers draw on full-run reader foundations developed
+before this attempt. Their incomplete-run adaptations were made after the
+stop, with its failure phase and count already known. They make no model calls.
+Use a compatible little-endian Python with
 binary64/libm support and assertions enabled. Numeric replay can depend on the
 host's binary64/libm behavior. Paths below are examples; the audited v1
 case file and a clean checkout of source commit
-`72ff52feca7c102e611023b54f031fbb8ff17bd4` are external inputs. That checkout
-must contain the observed-main commit objects as well as the execution source.
+`72ff52feca7c102e611023b54f031fbb8ff17bd4` are external inputs. The reader
+checks the recorded launch observations against externally supplied pins; it
+does not independently verify the observed-main ancestry.
 
 The saved-bit replay and its separate rounding diagnostic do not read the
 supervisor or stderr and therefore do not attest process exit, source
