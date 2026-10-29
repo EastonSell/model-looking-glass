@@ -6,7 +6,8 @@ frozen inputs and resource bounds, and terminate the isolated owner on any
 failure or interruption. The caller must separately check complete state and
 buffer restoration and the frozen runtime and denormal settings.
 The cloned full gradient overlaps the model's weight gradient in memory;
-calibration concatenation overlaps per-row buffers, and exception frames can
+the discovery forward also retains a copy of every site output until backward.
+Calibration concatenation overlaps per-row buffers, and exception frames can
 retain tensor aliases. Saved artifact sizes do not bound the process peak.
 """
 import torch
@@ -53,7 +54,7 @@ def _finish(actions, primary):
 
 
 def capture_discovery(model, module, ids, target, competitor):
-    """Capture the final-position input, output gradient, full gradient and row.
+    """Capture all site inputs/outputs, the final-position gradient and row.
 
     The site weight must be an unshared CPU float32 matrix with shape
     (input width, output width); the caller binds it to the real named
@@ -83,7 +84,7 @@ def capture_discovery(model, module, ids, target, competitor):
     def after(_module, _inputs, output):
         if "output" in captured or type(output) is not torch.Tensor:
             raise CaptureError("the site output is unexpected")
-        _tensor(output, (1, tokens.shape[1], weight.shape[1]))
+        captured["output_values"] = _tensor(output, (1, tokens.shape[1], weight.shape[1]))
         output.retain_grad()
         captured["output"] = output
 
@@ -106,13 +107,17 @@ def capture_discovery(model, module, ids, target, competitor):
         if not bool(torch.isfinite(objective)):
             raise CaptureError("the float32 discovery objective is nonfinite")
         objective.backward()
-        if set(captured) != {"input", "output"} or captured["output"].grad is None or weight.grad is None:
+        if (set(captured) != {"input", "output", "output_values"}
+                or captured["output"].grad is None or weight.grad is None):
             raise CaptureError("the discovery gradient is missing")
         h = _tensor(captured["input"][0, -1], (weight.shape[0],))
         g = _tensor(captured["output"].grad[0, -1], (weight.shape[1],))
         gradient = _tensor(weight.grad, weight.shape)
         margin = float(row[target].to(torch.float64) - row[competitor].to(torch.float64))
+        site_inputs = _tensor(captured["input"][0], (tokens.shape[1], weight.shape[0]))
+        site_outputs = _tensor(captured["output_values"][0], (tokens.shape[1], weight.shape[1]))
         return {"input_factor": h, "output_factor": g, "gradient": gradient,
+                "site_inputs": site_inputs, "site_outputs": site_outputs,
                 "logits": row, "margin": margin}
     except BaseException as error:
         primary = error

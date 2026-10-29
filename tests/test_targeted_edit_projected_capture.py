@@ -41,6 +41,8 @@ def test_discovery_captures_full_gradient_and_restores_flags_and_hooks():
     h = model.embedding.weight[3].detach()
     g = (model.head[:, 3] - model.head[:, 1]).detach()
     assert torch.equal(result["input_factor"], h)
+    assert torch.equal(result["site_inputs"], model.embedding.weight[torch.tensor([1, 2, 3])].detach())
+    assert torch.equal(result["site_outputs"], result["site_inputs"] @ model.projection.weight.detach())
     assert torch.allclose(result["output_factor"], g, atol=1e-7, rtol=0)
     assert torch.allclose(result["gradient"], torch.outer(h, g), atol=1e-6, rtol=0)
     assert result["margin"] == pytest.approx(
@@ -62,6 +64,26 @@ def test_calibration_keeps_all_positions_and_their_order():
     assert torch.equal(result["outputs"], expected_outputs)
     assert torch.equal(result["logits"], expected_outputs[[1, 4, 5, 7]] @ model.head.detach())
     assert not model.projection._forward_pre_hooks and not model.projection._forward_hooks
+
+
+def test_discovery_saves_site_output_at_forward_time():
+    model = TinyModel()
+    projection = model.projection.forward
+
+    def mutate_on_backward(inputs):
+        output = projection(inputs)
+
+        def mutate(gradient):
+            output.detach().add_(10)
+            return gradient
+
+        output.register_hook(mutate)
+        return output
+
+    model.projection.forward = mutate_on_backward
+    expected = model.embedding.weight[torch.tensor([1, 2, 3])].detach() @ model.projection.weight.detach()
+    result = capture.capture_discovery(model, model.projection, (1, 2, 3), 3, 1)
+    assert torch.equal(result["site_outputs"], expected)
 
 
 def test_fabricated_capture_drives_the_frozen_projection_construction():

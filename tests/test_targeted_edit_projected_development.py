@@ -1,6 +1,7 @@
 """Private development-stage checks with a fabricated CPU model only."""
 import hashlib
 import json
+from types import SimpleNamespace
 
 import pytest
 import torch
@@ -53,6 +54,9 @@ def test_development_uses_only_frozen_development_rows_and_preserves_raw_evidenc
         guard.state_sha, guard.weight_sha, guard.buffer_sha
     )
     assert candidate["runtime_settings"] == guard.runtime_settings
+    assert "not proven Jacobian equivalence" in candidate["gradient_prediction_scope"]
+    assert (output / "discovery-grad-inputs.f32").read_bytes() == (output / "discovery-original-inputs.f32").read_bytes()
+    assert (output / "discovery-grad-outputs.f32").read_bytes() == (output / "discovery-original-outputs.f32").read_bytes()
     assert candidate["calibration_shifts"]["projected"]["max_output_abs"] < 1e-7
     assert candidate["calibration_shifts"]["unprojected"]["max_output_abs"] > 1e-6
     assert set(candidate["discovery_changes"]) == set(projected.CONDITIONS)
@@ -104,26 +108,121 @@ def test_gradient_and_no_grad_baselines_must_match_before_edits(tmp_path):
     assert not (output / "pre-evaluation-candidate.json").exists()
 
 
+def test_equal_logits_do_not_hide_mode_dependent_site_inputs(tmp_path):
+    model = TinyModel()
+    model.eval()
+    with torch.no_grad():
+        model.embedding.weight.zero_()
+        model.embedding.weight[:6].copy_(torch.eye(6))
+        model.embedding.weight[3, 1] = 1
+        model.projection.weight[5].zero_()
+
+    def mode_dependent(*, input_ids, attention_mask, use_cache):
+        inputs = model.embedding(input_ids)
+        if torch.is_grad_enabled():
+            offset = torch.zeros_like(inputs)
+            offset[..., 5] = 1
+            inputs = inputs + offset
+        return SimpleNamespace(logits=model.projection(inputs) @ model.head)
+
+    model.forward = mode_dependent
+    guard = owner._ModelGuard(model, model.projection, model.projection.weight, torch, v1)
+    output = tmp_path / "input-mismatch"
+    with pytest.raises(development.DevelopmentError, match="site activations differ"):
+        development.prepare_development(guard, (3,), ((1,), (2,)), 3, 1, output)
+    assert (output / "discovery-logits.f32").read_bytes() == (output / "discovery-original-logits.f32").read_bytes()
+    assert (output / "discovery-grad-outputs.f32").read_bytes() == (output / "discovery-original-outputs.f32").read_bytes()
+    assert (output / "discovery-grad-inputs.f32").read_bytes() != (output / "discovery-original-inputs.f32").read_bytes()
+    assert guard.poisoned and not (output / "pre-evaluation-candidate.json").exists()
+
+
+def test_equal_inputs_and_logits_do_not_hide_mode_dependent_site_outputs(tmp_path):
+    model = TinyModel()
+    model.eval()
+    with torch.no_grad():
+        model.head[3].zero_()
+    projection = model.projection.forward
+
+    def mode_dependent(inputs):
+        value = projection(inputs)
+        if torch.is_grad_enabled():
+            offset = torch.zeros_like(value)
+            offset[..., 3] = 1
+            value = value + offset
+        return value
+
+    model.projection.forward = mode_dependent
+    guard = owner._ModelGuard(model, model.projection, model.projection.weight, torch, v1)
+    output = tmp_path / "output-mismatch"
+    with pytest.raises(development.DevelopmentError, match="site activations differ"):
+        development.prepare_development(guard, (3,), ((1,), (2,)), 3, 1, output)
+    assert (output / "discovery-logits.f32").read_bytes() == (output / "discovery-original-logits.f32").read_bytes()
+    assert (output / "discovery-grad-inputs.f32").read_bytes() == (output / "discovery-original-inputs.f32").read_bytes()
+    assert (output / "discovery-grad-outputs.f32").read_bytes() != (output / "discovery-original-outputs.f32").read_bytes()
+    assert guard.poisoned and not (output / "pre-evaluation-candidate.json").exists()
+
+
+def test_matching_forward_values_do_not_claim_matching_jacobians(tmp_path):
+    model, guard = guarded_model()
+
+    def mode_dependent(*, input_ids, attention_mask, use_cache):
+        output = model.projection(model.embedding(input_ids))
+        if torch.is_grad_enabled():
+            output = output.detach() + 2 * (output - output.detach())
+        return SimpleNamespace(logits=output @ model.head)
+
+    model.forward = mode_dependent
+    candidate = development.prepare_development(guard, (3,), ((1,), (2,)), 3, 1, tmp_path / "jacobian")
+    expected = candidate["construction"]["conditions"]["projected"]["realized_prediction"]["full_gradient_dot"]
+    observed = candidate["discovery_changes"]["projected"]["change"]
+    assert observed == pytest.approx(expected / 2, rel=0.002, abs=1e-7)
+    assert "not proven Jacobian equivalence" in candidate["gradient_prediction_scope"]
+
+
 def test_changed_calibration_input_leaves_fenced_partial_attempt(monkeypatch, tmp_path):
     model, guard = guarded_model()
     original = guard.original.clone()
-    actual_capture = development.capture.capture_calibration
+    actual_capture = development._calibration_rows
     calls = []
 
     def tamper(*args):
         calls.append(True)
-        result = actual_capture(*args)
-        if len(calls) == 3:
+        result, probes = actual_capture(*args)
+        if len(calls) == 2:
             result["inputs"] = result["inputs"].clone()
             result["inputs"][0, 0] += 1
-        return result
+        return result, probes
 
-    monkeypatch.setattr(development.capture, "capture_calibration", tamper)
+    monkeypatch.setattr(development, "_calibration_rows", tamper)
     output = tmp_path / "partial"
     with pytest.raises(development.DevelopmentError, match="inputs changed"):
         development.prepare_development(guard, (3,), ((1,), (2,)), 3, 1, output)
-    assert len(calls) == 4 and guard.poisoned
+    assert len(calls) == 2 and guard.poisoned
     assert torch.equal(model.projection.weight, original)
+    assert (output / "state-original.json").is_file()
+    assert not (output / "state-projected.json").exists()
+    assert not (output / "pre-evaluation-candidate.json").exists()
+
+
+def test_changed_discovery_input_leaves_fenced_partial_attempt(monkeypatch, tmp_path):
+    model, guard = guarded_model()
+    actual_capture = development._no_grad_discovery
+    calls = []
+
+    def tamper(*args):
+        calls.append(True)
+        result, probes = actual_capture(*args)
+        if len(calls) == 2:
+            result["inputs"] = result["inputs"].clone()
+            result["inputs"][0, 0] += 1
+        return result, probes
+
+    monkeypatch.setattr(development, "_no_grad_discovery", tamper)
+    output = tmp_path / "discovery-input-changed"
+    with pytest.raises(development.DevelopmentError, match="discovery inputs changed"):
+        development.prepare_development(guard, (3,), ((1,), (2,)), 3, 1, output)
+    assert len(calls) == 2 and guard.poisoned
+    assert torch.equal(model.projection.weight, guard.original)
     assert (output / "state-original.json").is_file()
     assert not (output / "state-projected.json").exists()
     assert not (output / "pre-evaluation-candidate.json").exists()
@@ -132,20 +231,20 @@ def test_changed_calibration_input_leaves_fenced_partial_attempt(monkeypatch, tm
 def test_interrupted_condition_restores_but_never_continues(monkeypatch, tmp_path):
     model, guard = guarded_model()
     original = guard.original.clone()
-    actual_capture = development.capture.capture_calibration
+    actual_capture = development._calibration_rows
     calls = []
 
     def interrupt(*args):
         calls.append(True)
-        if len(calls) == 3:
+        if len(calls) == 2:
             raise KeyboardInterrupt()
         return actual_capture(*args)
 
-    monkeypatch.setattr(development.capture, "capture_calibration", interrupt)
+    monkeypatch.setattr(development, "_calibration_rows", interrupt)
     output = tmp_path / "interrupted"
     with pytest.raises(KeyboardInterrupt):
         development.prepare_development(guard, (3,), ((1,), (2,)), 3, 1, output)
-    assert len(calls) == 3 and guard.poisoned and torch.equal(model.projection.weight, original)
+    assert len(calls) == 2 and guard.poisoned and torch.equal(model.projection.weight, original)
     assert not (output / "state-projected.json").exists()
     assert not (output / "pre-evaluation-candidate.json").exists()
 

@@ -10,6 +10,8 @@ token rows for the entire call. The owner must bind the private candidate and
 every artifact in its inventory before any evaluation-row forward.
 Calibration is captured one row at a time; its per-row buffers overlap the
 concatenated buffers, so the output-size bound does not bound peak memory.
+Gradient predictions describe the grad-enabled execution. Matching site
+activations and baseline logits across modes does not prove equal Jacobians.
 On any error or interrupted return, terminate the isolated owner and retain
 the partial directory; do not replay a condition.
 """
@@ -58,18 +60,6 @@ def _state(guard, condition, applied, add_before, add_after, forward_probes):
             "forward_denormal_probes": forward_probes}
 
 
-def _discovery_row(model, ids, expected_size):
-    tokens = capture._tokens(ids)
-    with torch.no_grad():
-        logits = model(input_ids=tokens, attention_mask=torch.ones_like(tokens), use_cache=False).logits
-    if (type(logits) is not torch.Tensor or logits.device.type != "cpu"
-            or logits.dtype != torch.float32 or logits.layout != torch.strided
-            or tuple(logits.shape) != (1, tokens.shape[1], expected_size)
-            or not bool(torch.isfinite(logits).all())):
-        raise DevelopmentError("a discovery logit row is invalid")
-    return capture._tensor(logits[0, -1], (expected_size,))
-
-
 def _calibration_rows(guard, token_rows):
     """Probe the calling thread around every individual calibration forward."""
     captures, probes = [], []
@@ -87,9 +77,12 @@ def _calibration_rows(guard, token_rows):
 
 def _no_grad_discovery(guard, ids, expected_size):
     before = v1._denormal_probe()
-    row = _discovery_row(guard.model, ids, expected_size)
+    captured = capture.capture_calibration(guard.model, guard.module, (ids,))
+    if tuple(captured["logits"].shape) != (1, expected_size):
+        raise DevelopmentError("a discovery logit row is invalid")
     after = v1._denormal_probe()
-    return row, {"before": before, "after": after}
+    return {"logits": captured["logits"][0], "inputs": captured["inputs"],
+            "outputs": captured["outputs"]}, {"before": before, "after": after}
 
 
 def prepare_development(guard, discovery_ids, calibration_rows, target, competitor, output):
@@ -121,6 +114,8 @@ def _prepare_development(guard, discovery_ids, calibration_rows, target, competi
     discovery_probe_after = v1._denormal_probe()
     guard.verify()
     for name, tensor in (("discovery-logits.f32", discovery["logits"]),
+                         ("discovery-grad-inputs.f32", discovery["site_inputs"]),
+                         ("discovery-grad-outputs.f32", discovery["site_outputs"]),
                          ("input-factor.f32", discovery["input_factor"]),
                          ("output-factor.f32", discovery["output_factor"]),
                          ("full-gradient.f32", discovery["gradient"])):
@@ -133,19 +128,25 @@ def _prepare_development(guard, discovery_ids, calibration_rows, target, competi
         baseline_probes["after"] = v1._denormal_probe()
         calibration, calibration_probes = _calibration_rows(guard, calibration_rows)
         observed.update(calibration)
-        observed["discovery_logits"], discovery_probes = _no_grad_discovery(
+        observed["discovery"], discovery_probes = _no_grad_discovery(
             guard, discovery_ids, discovery["logits"].numel()
         )
         observed["forward_probes"] = {"calibration": calibration_probes, "discovery": discovery_probes}
-        if v1._tensor_sha(observed["discovery_logits"]) != v1._tensor_sha(discovery["logits"]):
+        for name, tensor in (("discovery-original-logits.f32", observed["discovery"]["logits"]),
+                             ("discovery-original-inputs.f32", observed["discovery"]["inputs"]),
+                             ("discovery-original-outputs.f32", observed["discovery"]["outputs"])):
+            _save(output, name, tensor, inventory)
+        if v1._tensor_sha(observed["discovery"]["logits"]) != v1._tensor_sha(discovery["logits"]):
             raise DevelopmentError("gradient and no-grad discovery rows differ")
+        if (v1._tensor_sha(observed["discovery"]["inputs"]) != v1._tensor_sha(discovery["site_inputs"])
+                or v1._tensor_sha(observed["discovery"]["outputs"]) != v1._tensor_sha(discovery["site_outputs"])):
+            raise DevelopmentError("gradient and no-grad discovery site activations differ")
 
     guard.condition(None, guard.weight_sha, baseline_rows)
     baseline = observed
     for name, tensor in (("calibration-inputs.f32", baseline["inputs"]),
                          ("calibration-original-outputs.f32", baseline["outputs"]),
-                         ("calibration-original-logits.f32", baseline["logits"]),
-                         ("discovery-original-logits.f32", baseline["discovery_logits"])):
+                         ("calibration-original-logits.f32", baseline["logits"])):
         _save(output, name, tensor, inventory)
     _save_json(output, "state-original.json",
                _state(guard, "original", guard.weight_sha,
@@ -169,7 +170,7 @@ def _prepare_development(guard, discovery_ids, calibration_rows, target, competi
             addition_probes["after"] = v1._denormal_probe()
             calibration, calibration_probes = _calibration_rows(guard, calibration_rows)
             actual.update(calibration)
-            actual["discovery_logits"], discovery_probes = _no_grad_discovery(
+            actual["discovery"], discovery_probes = _no_grad_discovery(
                 guard, discovery_ids, discovery["logits"].numel()
             )
             actual["forward_probes"] = {"calibration": calibration_probes, "discovery": discovery_probes}
@@ -183,16 +184,20 @@ def _prepare_development(guard, discovery_ids, calibration_rows, target, competi
         if (actual["inputs"].shape != baseline["inputs"].shape
                 or actual["outputs"].shape != baseline["outputs"].shape
                 or actual["logits"].shape != baseline["logits"].shape
-                or v1._tensor_sha(actual["inputs"]) != base_input_sha):
-            raise DevelopmentError("calibration inputs changed under an edit")
+                or v1._tensor_sha(actual["inputs"]) != base_input_sha
+                or v1._tensor_sha(actual["discovery"]["inputs"]) !=
+                   v1._tensor_sha(baseline["discovery"]["inputs"])):
+            raise DevelopmentError("calibration or discovery inputs changed under an edit")
         _save(output, "calibration-" + condition + "-outputs.f32", actual["outputs"], inventory)
         _save(output, "calibration-" + condition + "-logits.f32", actual["logits"], inventory)
-        _save(output, "discovery-" + condition + "-logits.f32", actual["discovery_logits"], inventory)
+        _save(output, "discovery-" + condition + "-logits.f32", actual["discovery"]["logits"], inventory)
+        _save(output, "discovery-" + condition + "-inputs.f32", actual["discovery"]["inputs"], inventory)
+        _save(output, "discovery-" + condition + "-outputs.f32", actual["discovery"]["outputs"], inventory)
         before = v1._denormal_probe()
         difference = actual["outputs"].to(torch.float64) - baseline["outputs"].to(torch.float64)
         per_token = torch.max(torch.abs(difference), dim=1).values.tolist()
-        margin = float(actual["discovery_logits"][target].to(torch.float64)
-                       - actual["discovery_logits"][competitor].to(torch.float64))
+        margin = float(actual["discovery"]["logits"][target].to(torch.float64)
+                       - actual["discovery"]["logits"][competitor].to(torch.float64))
         after = v1._denormal_probe()
         shifts[condition] = {
             "max_output_abs": max(per_token), "max_output_abs_by_token": per_token,
@@ -221,6 +226,7 @@ def _prepare_development(guard, discovery_ids, calibration_rows, target, competi
                  "buffer_state_sha256": guard.buffer_sha, "runtime_settings": dict(guard.runtime_settings),
                  "construction": built["attestation"], "calibration_shifts": shifts,
                  "discovery_changes": discovery_changes,
+                 "gradient_prediction_scope": "grad-enabled derivative; no-grad outcome comparison, not proven Jacobian equivalence",
                  "artifacts": inventory,
                  "scope": "recorded computations; model provenance and cleanup require the owner"}
     owner._json_new(output / "pre-evaluation-candidate.json", candidate)
