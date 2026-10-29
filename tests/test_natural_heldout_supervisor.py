@@ -39,6 +39,7 @@ def test_success_audits_after_reap_and_rejects_overwrite(tmp_path):
     output = tmp_path / 'run'
     result = supervisor.supervise_heldout(_child(output), output, os.environ.copy(), audit_result=_complete)
     assert result['status'] == 'evidence_complete'
+    assert type(result['child_pid']) is int and 0 < result['child_pid'] <= 0xffffffff
     assert result['cleanup_verified'] is True and result['child_reaped'] is True
     assert result['job_drained'] is True and result['job_closed'] is True
     assert result['retry_safe'] is False and result['scientific_validation'].startswith('pending')
@@ -137,6 +138,7 @@ def test_lost_child_handle_never_receives_start_or_becomes_complete(tmp_path, mo
                                           audit_result=audit)
     audit.assert_not_called()
     assert result['status'] == 'incomplete' and result['child_reaped'] is False
+    assert result['child_pid'] is None
     assert result['cleanup_verified'] is False and result['retry_safe'] is False
     child = children[0]
     child.stdin.close()
@@ -339,3 +341,59 @@ def test_supervisor_record_failure_retains_custody_and_blocks_next_owner(tmp_pat
     with pytest.raises(RuntimeError, match='custody'):
         supervisor.supervise_heldout(_child(next_output), next_output, os.environ.copy(), audit_result=_complete)
     assert not next_output.exists()
+
+
+@pytest.mark.parametrize('exit_code', [0, 7])
+def test_external_preparation_is_accepted_only_after_clean_process_exit(tmp_path, exit_code):
+    preparation = tmp_path / 'private-preparation'
+    output = tmp_path / 'preparation-supervisor'
+    code = ("import pathlib,sys; token=sys.stdin.buffer.readline(); "
+            "assert token == b'MLG-natural-discovery-start-v1\\n'; "
+            "p=pathlib.Path(sys.argv[1]); p.mkdir(); "
+            "(p/'claim.json').write_bytes(b'claim'); "
+            "(p/'preparation-complete.json').write_bytes(b'complete'); "
+            "(p/'commitment.json').write_bytes(b'commitment'); "
+            f"sys.exit({exit_code})")
+    expected = {name: hashlib.sha256(data).hexdigest() for name, data in
+                [('claim.json', b'claim'), ('preparation-complete.json', b'complete'),
+                 ('commitment.json', b'commitment')]}
+    calls = []
+    def audit_preparation(unused_attempt, code, reaped):
+        calls.append((code, reaped))
+        observed = {name: hashlib.sha256((preparation / name).read_bytes()).hexdigest() for name in expected}
+        assert observed == expected
+        assert not (preparation / 'failure.json').exists()
+        return {'status':'evidence_complete', 'inventory':{'retained_tensor_bytes':0},
+                'preparation':observed}
+    result = supervisor.supervise_heldout([sys._base_executable, '-c', code, str(preparation)], output,
+                                          os.environ.copy(), audit_result=audit_preparation)
+    assert result['cleanup_verified'] is True and result['exit_code'] == exit_code
+    if exit_code == 0:
+        assert calls == [(0, True)] and result['status'] == 'evidence_complete'
+        assert result['audit']['preparation'] == expected
+    else:
+        assert calls == [] and result['status'] == 'incomplete'
+        assert (preparation / 'preparation-complete.json').read_bytes() == b'complete'
+
+
+def test_malformed_pid_prevents_audit_after_real_job_cleanup(tmp_path, monkeypatch):
+    import scripts.v2_source_guards as guards
+    real_job = guards.WindowsJob
+    class InvalidPidAfterDrain:
+        def __init__(self):
+            self.real = real_job()
+        def assign(self, owner):
+            self.owner = owner
+            self.real.assign(owner)
+        def terminate_and_wait(self):
+            self.real.terminate_and_wait()
+            self.owner.pid = True
+        def close(self):
+            self.real.close()
+    monkeypatch.setattr(guards, 'WindowsJob', InvalidPidAfterDrain)
+    audit = Mock()
+    output = tmp_path / 'bad-pid'
+    result = supervisor.supervise_heldout(_child(output), output, os.environ.copy(), audit_result=audit)
+    audit.assert_not_called()
+    assert result['cleanup_verified'] is True and result['status'] == 'incomplete'
+    assert result['child_pid'] is None and 'invalid child PID' in result['supervisor_error']
