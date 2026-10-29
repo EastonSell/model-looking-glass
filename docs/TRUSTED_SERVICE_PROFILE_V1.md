@@ -47,6 +47,12 @@ If CUDA was initialized before the live identity helper runs, the trusted owner
 must have performed that initialization under the same supervised lease; the
 helper does not prove the history of an existing process context.
 
+The replacement environment sets `CUDA_MODULE_LOADING=LAZY` before the first
+runtime identity is built. The identity requires and records this exact value,
+including after PyTorch's CUDA lazy initialization and CPU model staging.
+Missing or changed values fail closed; a profile measured under a different
+runtime identity cannot authorize this one.
+
 `HF_HOME` must be an explicit canonical existing directory strictly containing
 the selected canonical offline cache root. Validate this before importing
 Transformers, and include the exact `HF_HOME` in the runtime manifest used by

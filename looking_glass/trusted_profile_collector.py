@@ -561,6 +561,18 @@ def _private_driver_failure(error):
             'environment': {key: _private_text(os.environ.get(key), 1024) for key in allowed}}
 
 
+def _private_runtime_environment_failure(error):
+    """Recover the bounded key, including when unsafe sync wrapped the failure."""
+    from .resource_profile import ProfilingSynchronizationError
+    original = error.original_error if type(error) is ProfilingSynchronizationError else error
+    if type(original) is not ValueError:
+        return None
+    key = getattr(original, '_private_runtime_environment_key', None)
+    if type(key) is not str:
+        return None
+    return {'key': _private_text(key, 128)}
+
+
 def _owner_main(config):
     """Short-lived child; failed execution never attests or releases ownership."""
     from .device_lease import DeviceLease
@@ -618,6 +630,12 @@ def _owner_main(config):
                 diagnostic = {'capture': 'unavailable'}
             if diagnostic is not None:
                 failure['private_driver_query'] = diagnostic
+            try:
+                environment_diagnostic = _private_runtime_environment_failure(exc)
+            except BaseException:
+                environment_diagnostic = {'capture': 'unavailable'}
+            if environment_diagnostic is not None:
+                failure['private_runtime_environment'] = environment_diagnostic
             _write_json(run_dir / 'failure.json', failure)
         except BaseException:
             pass
