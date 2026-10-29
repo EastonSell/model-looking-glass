@@ -90,7 +90,8 @@ invalid(cases[:-1])
 invalid((replace(cases[0], case_index=1),) + cases[1:])
 bad = replace(cases[0].conditions[0], upstream_logits=tensor(9.))
 invalid((replace(cases[0], conditions=(bad, cases[0].conditions[1])),) + cases[1:])
-for field in ("null_logits", "identity_logits", "clean_to_perturbed_logits"):
+for field in ("null_logits", "identity_logits", "clean_to_perturbed_logits",
+              "perturbed_to_clean_logits"):
     values = list(getattr(cases[0].conditions[0], field))
     values[-1] = tensor(9.)
     bad = replace(cases[0].conditions[0], **{field: tuple(values)})
