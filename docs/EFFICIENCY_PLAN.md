@@ -1,6 +1,6 @@
 # Parallel teams and GPU efficiency
 
-Status: proposed design, October 28, 2026. No shared GPU service or concurrent tracing is implemented by this document. Today's `TraceSession` is single-use and single-threaded; do not attach multiple sessions to one live model and assume they are isolated. The published experiment remains CPU-only.
+Status: proposed design, October 28, 2026; this document is a plan rather than a release claim. The [grouped GPU development pilot](../results/grouped-gpu-resource-v3-20261029/README.md) subsequently exercised one resident model with bounded compatible calls and reported its shape-specific memory observations. It did not trace activations or establish shared-service throughput. The original `TraceSession` remains single-use and single-threaded; do not attach multiple sessions to one live model and assume they are isolated. See the [README](../README.md) for current components and experiment results.
 
 ## Objective
 
@@ -98,7 +98,7 @@ Run discovery, confirmation and independent reproduction as separate stages. Fre
 
 ## Implementation order and release gates
 
-1. **Inventory and serial baseline:** verify hardware/runtime, profile one model and record memory/latency envelopes. No GPU evidence exists yet.
+1. **Inventory and serial baseline:** verify hardware/runtime, profile one model and record memory/latency envelopes. Existing GPU observations are workload-specific; they do not replace an isolated latency benchmark or a capacity bound.
 2. **Manifest and broker skeleton:** bounded queue, request schema, leases and cancellation; test with simulated resource budgets and CPU workers first.
 3. **Single GPU worker:** checkpoint reuse, measured memory admission and deterministic cleanup. Fail closed on unsupported jobs.
 4. **Compatible batching:** request-local traces, exact or prespecified tolerance checks against serial runs, no cross-request leakage.
