@@ -1,4 +1,4 @@
-"""Identity observation points and two equivalent value-reporting channels.
+"""Identity observation points with direct and auxiliary-gradient reporting.
 
 The hook always returns None. Recording never replaces the main-path tensor.
 Sessions are local, single-use and single-threaded. They are not a general
@@ -23,7 +23,13 @@ def _validate_tensor(a):
 
 
 def gradient_readout(a: torch.Tensor) -> torch.Tensor:
-    """Return a detached copy via grad_q sum(stopgrad(a)*q), where q=0.
+    """Read values through grad_q sum(stopgrad(a)*q), where q=0.
+
+    The derivative equals a algebraically, but floating-point behavior depends
+    on dtype, device and runtime settings. In particular, subnormal values can
+    be lost under flush-to-zero or denormals-are-zero settings. This experimental
+    channel is not an unconditional bitwise copy; prefer direct capture unless
+    its fidelity has been verified for the intended workload.
 
     The separate q is ephemeral, not a model parameter, and never optimized.
     Local contexts also permit this isolated computation during inference mode.
@@ -74,8 +80,12 @@ class TraceEvent:
 class TraceSession:
     """Record labeled identity outputs, without replacing values or gradients.
 
-    max_events is an explicit bound; exceeding it raises rather than silently
-    dropping events. max_tensor_bytes, when set, is a cumulative allowance for
+    max_events bounds the cumulative number of session-produced events;
+    exceeding it raises rather than silently dropping events. Sequence numbers
+    are monotonic even if the caller removes entries from the public events
+    list. Caller-inserted entries do not consume this allowance, and their
+    contents or sequence IDs are not validated by the session.
+    max_tensor_bytes, when set, is a cumulative allowance for
     the logical payload bytes of successfully captured tensor snapshots. The
     configured limit is read-only for the session. The allowance
     does not replenish if the caller removes or modifies events, and it does
@@ -117,6 +127,7 @@ class TraceSession:
         self.run_id, self.max_events = run_id, max_events
         self._max_tensor_bytes = max_tensor_bytes
         self._captured_tensor_bytes = 0
+        self._captured_events = 0
         self.events = []
         self._handles = []
         self._pending_handle = None
@@ -261,7 +272,7 @@ class TraceSession:
             raise
 
     def _capture_value(self, module, inputs, output):
-        if len(self.events) >= self.max_events:
+        if self._captured_events >= self.max_events:
             raise RuntimeError("trace capacity exceeded; increase max_events explicitly")
         if not isinstance(output, torch.Tensor):
             raise TypeError("tap output must be one tensor")
@@ -288,8 +299,9 @@ class TraceSession:
         count = self._counts[module.node_id]
         self._counts[module.node_id] += 1
         self.events.append(TraceEvent(self.run_id, module.node_id,
-            len(self.events), count, tuple(output.shape), str(output.dtype),
+            self._captured_events, count, tuple(output.shape), str(output.dtype),
             str(output.device), value))
+        self._captured_events += 1
         if self.max_tensor_bytes is not None:
             self._captured_tensor_bytes += value_bytes
         return None
