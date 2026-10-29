@@ -25,14 +25,17 @@ class GateCallerTests(unittest.TestCase):
         self.base = Path(self.temp.name).resolve()
         self.root = self.base / 'gate'
         self.root.mkdir()
+        (self.root / 'gate.lock').write_bytes(b'')
         self.source_root = self.base / 'source'
         (self.source_root / 'looking_glass').mkdir(parents=True)
         for name in CALLER.SOURCE_HASHES:
             shutil.copyfile(REVIEWED / (name + '.py'), self.source_root / 'looking_glass' / (name + '.py'))
         st = self.root.lstat()
+        lock = (self.root / 'gate.lock').lstat()
         path_hash = hashlib.sha256(os.path.normcase(os.path.abspath(str(self.root))).encode('utf-8')).hexdigest()
         self.patch = mock.patch.multiple(CALLER, GATE_ROOT_SHA256=path_hash,
-                                        GATE_ROOT_IDENTITY=(st.st_dev, st.st_ino))
+                                        GATE_ROOT_IDENTITY=(st.st_dev, st.st_ino),
+                                        GATE_LOCK_IDENTITY=(lock.st_dev, lock.st_ino))
         self.patch.start()
         self.addCleanup(self.patch.stop)
         self.addCleanup(self.clear_modules)
@@ -65,7 +68,7 @@ class GateCallerTests(unittest.TestCase):
         with self.assertRaises(CALLER.CallerError):
             CALLER.operate('allocate', 'natural', self.root, self.source_root, reader=self.reader)
         self.assertFalse(marker.exists())
-        self.assertFalse(any(self.root.iterdir()))
+        self.assertEqual({p.name for p in self.root.iterdir()}, {'gate.lock'})
         self.assertNotIn('looking_glass', sys.modules)
 
     def test_unreviewed_gate_root_is_rejected_before_lock(self):
@@ -79,6 +82,14 @@ class GateCallerTests(unittest.TestCase):
         result = CALLER.operate('inspect', 'natural', self.root, self.source_root, reader=self.reader)
         self.assertEqual(result, {'status': 'inspected', 'track': 'natural'})
         self.assertEqual({p.name for p in self.root.iterdir()}, {'gate.lock'})
+
+    def test_replaced_lock_is_rejected_before_allocation(self):
+        replacement = self.base / 'replacement.lock'
+        replacement.write_bytes(b'')
+        os.replace(replacement, self.root / 'gate.lock')
+        with self.assertRaises(CALLER.CallerError):
+            CALLER.operate('allocate', 'natural', self.root, self.source_root, reader=self.reader)
+        self.assertFalse((self.root / 'natural-allocation.json').exists())
 
 
 if __name__ == '__main__':

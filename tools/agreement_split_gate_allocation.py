@@ -18,6 +18,7 @@ import urllib.request
 SOURCE_COMMIT = '02e1c5d5c79813e3d67bbd0468b599926b4b9f83'
 GATE_ROOT_SHA256 = '0ede711a758f4cd5a7b3651d12aa9b81ac7f0cac7e6419a309411e24c9f80e70'
 GATE_ROOT_IDENTITY = (1219152768, 4503599632054271)
+GATE_LOCK_IDENTITY = (1219152768, 6192449492328171)
 FREEZES = {'natural': '35138307572410466d7cd1e1632bdfdfb9474562e9916fb48a0669a3478c6eeb',
            'injection': 'c327e191214cfb661b429c6d0a66900ca773c148782e1cc88be669c54deaee98'}
 SOURCE_HASHES = {
@@ -96,17 +97,32 @@ def checked_root(path):
     return root
 
 
+def checked_lock(root):
+    path = _ordinary(root / 'gate.lock')
+    info = path.lstat()
+    if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+            or (info.st_dev, info.st_ino) != GATE_LOCK_IDENTITY):
+        raise CallerError('the shared lock identity differs')
+    return path
+
+
 def operate(action, track, root, source_root, *, reader=_remote):
     if action not in ('inspect', 'allocate') or track not in FREEZES:
         raise CallerError('unsupported action or track')
     root = checked_root(root)
+    checked_lock(root)
     gate_module = load_sources(source_root, reader=reader)
     root = checked_root(root)
+    checked_lock(root)
     # The lease checks the root again and guards the marker transition.
     with gate_module.acquire(root, expected_root=root, timeout=30) as gate:
         checked_root(root)
+        checked_lock(root)
         if action == 'allocate':
             gate.announce_allocation(track, FREEZES[track])
+        checked_lock(root)
+    checked_root(root)
+    checked_lock(root)
     return {'status': 'inspected' if action == 'inspect' else 'allocation_announced', 'track': track}
 
 
