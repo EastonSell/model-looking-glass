@@ -98,6 +98,33 @@ def test_result_name_and_all_related_records_must_be_fresh(tmp_path, suffix):
         controller._check_output_destination(output)
 
 
+def test_private_run_directory_is_beside_the_result_not_the_workspace(tmp_path):
+    workspace = tmp_path / 'workspace'
+    evidence = tmp_path / 'separate-evidence'
+    workspace.mkdir()
+    evidence.mkdir()
+    destination = evidence / 'result.json'
+    assert controller._check_output_destination(destination) == destination
+    run_dir = controller._make_run_directory(destination)
+    assert run_dir.parent == evidence.resolve()
+    assert not run_dir.is_relative_to(workspace.resolve())
+    assert run_dir.name.startswith('tap-repeated-v12-')
+    temp_dir = run_dir / 'temp'
+    temp_dir.mkdir()
+    env = controller._child_environment(workspace, 'GPU-test', 0, 'a' * 64, 'b' * 64, {}, temp_dir)
+    assert env['TEMP'] == env['TMP'] == str(temp_dir)
+    assert env['HF_HOME'] == str(workspace / 'work/hf-cache')
+
+
+def test_private_evidence_rejects_noncanonical_parent(tmp_path):
+    nested = tmp_path / 'nested'
+    nested.mkdir()
+    with pytest.raises(ValueError, match='canonical'):
+        controller._make_run_directory(nested / '..' / 'result.json')
+    with pytest.raises(ValueError, match='canonical'):
+        controller._make_run_directory(Path('relative') / 'result.json')
+
+
 @pytest.mark.skipif(os.name != 'nt', reason='Windows create-only rename contract')
 def test_result_is_published_create_only_and_keeps_complete_bytes(tmp_path):
     output = tmp_path / 'result.json'
