@@ -436,6 +436,53 @@ class NaturalAgreementRunner:
         if self.cancel_event.is_cancelled():
             raise StudyCancelled('study cancelled')
 
+    # Device-specific implementations must establish ownership and settle all
+    # work before returning. The public base class remains strictly CPU-only.
+    def _execution_contract(self):
+        return _model_contract(self.model)
+
+    def _model_digest(self):
+        return _state_hash(self.model)
+
+    def _encode_payload(self, tensor):
+        return _payload(tensor)
+
+    def _prepare_steps(self, steps):
+        return steps
+
+    def _new_plan(self, steps):
+        return ActivationPlan(self.model, steps, max_tensor_bytes=1024 * 1024,
+                              max_capture_bytes=512 * 1024, max_source_bytes=128 * 1024,
+                              max_steps=16, max_invocations=1, _parent_lease=self._lease)
+
+    def _root_forward(self, name, value):
+        pass
+
+    def _finish_forward_roots(self):
+        pass
+
+    def _make_inputs(self, case):
+        ids = torch.tensor([case.input_ids], dtype=torch.int64, device='cpu')
+        return ids, torch.ones_like(ids)
+
+    def _before_forward(self):
+        pass
+
+    def _after_forward(self):
+        pass
+
+    def _failed_forward(self, error):
+        pass
+
+    def _seed_device_rng(self):
+        return None
+
+    def _restore_device_rng(self):
+        pass
+
+    def _runtime_metadata(self):
+        return {'device': self.device}
+
     def _release_after_work(self, lease, initial_state, primary_error):
         """Keep model ownership if post-failure cleanup is changed or unknown."""
         unsafe = self.quarantined
@@ -443,9 +490,9 @@ class NaturalAgreementRunner:
         if self._started_work:
             try:
                 lease.verify_tree()
-                unsafe = (unsafe or initial_state is None or _state_hash(self.model) != initial_state
+                unsafe = (unsafe or initial_state is None or self._model_digest() != initial_state
                           or _hook_state(self.model) != self._baseline_hooks
-                          or _model_contract(self.model) != self._baseline_contract
+                          or self._execution_contract() != self._baseline_contract
                           or not _same_state_identity(self._baseline_state_identity, self.model))
             except BaseException as error:
                 unsafe = True
@@ -477,42 +524,48 @@ class NaturalAgreementRunner:
 
     def _forward(self, case, steps):
         self._cancel_check()
-        if _model_contract(self.model) != self._baseline_contract:
-            raise StudyFailure('model execution contract changed before forward')
-        if _hook_state(self.model) != self._baseline_hooks:
-            raise StudyFailure('unexpected hook before forward')
-        self._lease.verify_tree()
-        ids = torch.tensor([case.input_ids], dtype=torch.int64, device='cpu')
-        mask = torch.ones_like(ids)
         plan = None
+        ids, mask = None, None
         output, captures, metadata = None, None, None
         started_here = False
         try:
+            self._before_forward()
+            if self._execution_contract() != self._baseline_contract:
+                raise StudyFailure('model execution contract changed before forward')
+            if _hook_state(self.model) != self._baseline_hooks:
+                raise StudyFailure('unexpected hook before forward')
+            self._lease.verify_tree()
+            ids, mask = self._make_inputs(case)
+            self._root_forward('inputs', (ids, mask))
+            steps = self._prepare_steps(steps)
+            self._root_forward('steps', steps)
             with torch.inference_mode():
                 if steps:
-                    plan = ActivationPlan(self.model, steps, max_tensor_bytes=1024 * 1024,
-                                          max_capture_bytes=512 * 1024, max_source_bytes=128 * 1024,
-                                          max_steps=16, max_invocations=1, _parent_lease=self._lease)
+                    plan = self._new_plan(steps)
+                    self._root_forward('plan', plan)
                     with plan:
                         self._started_work = True
                         started_here = True
                         self._forwards_started += 1
                         output = self.model(input_ids=ids, attention_mask=mask, use_cache=False)
+                        self._root_forward('output', output)
                         self._model_returns += 1
                     captures = plan.captures
+                    self._root_forward('captures', captures)
                     metadata = plan.metadata
                 else:
                     self._started_work = True
                     started_here = True
                     self._forwards_started += 1
                     output = self.model(input_ids=ids, attention_mask=mask, use_cache=False)
+                    self._root_forward('output', output)
                     self._model_returns += 1
                     captures, metadata = {}, {'steps': []}
-            if _model_contract(self.model) != self._baseline_contract:
+            if self._execution_contract() != self._baseline_contract:
                 raise StudyFailure('model execution contract changed after forward')
             logits = output.logits
             if (not isinstance(logits, torch.Tensor) or logits.dtype != torch.float32
-                    or logits.device.type != 'cpu'
+                    or str(logits.device) != self.device
                     or tuple(logits.shape) != (1, len(case.input_ids), self.model.config.vocab_size)
                     or getattr(output, 'past_key_values', None) is not None):
                 raise StudyFailure('unexpected output shape, dtype, device or cache')
@@ -534,7 +587,7 @@ class NaturalAgreementRunner:
                         or event['forward_index'] != 0 or event['output_selector'] != site['output_selector']
                         or event['output_shape'] != [1, len(case.input_ids), self.model.config.n_embd]
                         or event['selected_shape'] != expected_shape
-                        or event['dtype'] != 'torch.float32' or event['device'] != 'cpu'
+                        or event['dtype'] != 'torch.float32' or event['device'] != self.device
                         or event['source_capture'] != requested.get('source_capture')
                         or event['preceding_same_site_actions'] != prior):
                     raise StudyFailure('plan metadata does not match its requested coordinate')
@@ -545,17 +598,38 @@ class NaturalAgreementRunner:
             if set(captures) != set(expected_captures) or any(
                     list(captures[name].shape) != shape for name, shape in expected_captures.items()):
                 raise StudyFailure('captured activation shape does not match metadata')
-            encoded = {name: _payload(value) for name, value in captures.items()}
+            encoded = {name: self._encode_payload(value) for name, value in captures.items()}
             if any(len(value) != 4 * math.prod(expected_captures[name]) for name, value in encoded.items()):
                 raise StudyFailure('captured activation has the wrong size')
-            last_logits = _payload(logits[0, -1])
+            last_logits = self._encode_payload(logits[0, -1])
+            self._after_forward()
             self._forwards += 1
             self._lease.verify_tree()
             if _hook_state(self.model) != self._baseline_hooks:
                 raise StudyFailure('hook registry changed after forward')
             self._pending_forward = (case, last_logits, encoded, metadata)
+            self._finish_forward_roots()
             return last_logits, encoded, metadata
         except BaseException as error:
+            # A device call may have returned into a local before an interrupt
+            # prevented its normal custody-slot assignment. Retain every known
+            # local before attempting any synchronization or cleanup.
+            for name, value in (('ids', ids), ('mask', mask), ('steps', steps),
+                                ('plan', plan), ('output', output), ('captures', captures)):
+                if value is not None:
+                    try:
+                        self._root_forward(name, value)
+                    except BaseException as root_error:
+                        self.quarantined = True
+                        if hasattr(error, 'add_note'):
+                            error.add_note('Forward custody is uncertain: ' + type(root_error).__name__)
+            try:
+                self._failed_forward(error)
+            except BaseException as cleanup_error:
+                self.quarantined = True
+                if hasattr(error, 'add_note'):
+                    error.add_note('Device completion is unknown; discard the worker: '
+                                   + type(cleanup_error).__name__)
             _cleanup_status(self.model, self._baseline_hooks, error)
             if started_here:
                 self._record_rejected(case, output, captures, metadata, error)
@@ -567,7 +641,7 @@ class NaturalAgreementRunner:
         if isinstance(captures, dict):
             for name, tensor in captures.items():
                 try:
-                    tensors[name] = (tuple(tensor.shape), _payload(tensor))
+                    tensors[name] = (tuple(tensor.shape), self._encode_payload(tensor))
                 except BaseException as error:
                     unavailable.append('capture ' + str(name) + ': ' + type(error).__name__)
         else:
@@ -577,7 +651,7 @@ class NaturalAgreementRunner:
             if (isinstance(logits, torch.Tensor) and logits.ndim == 3 and logits.shape[0] == 1
                     and logits.shape[1] > 0):
                 selected = logits[0, -1]
-                tensors['last_logits'] = (tuple(selected.shape), _payload(selected))
+                tensors['last_logits'] = (tuple(selected.shape), self._encode_payload(selected))
             else:
                 unavailable.append('last logits unavailable')
         except BaseException as error:
@@ -671,18 +745,21 @@ class NaturalAgreementRunner:
             rng_before = None
             try:
                 lease.acquire()
-                self._baseline_contract = _model_contract(model)
+                self._baseline_contract = self._execution_contract()
                 groups = _validate_cases(cases, self.expected_quartets, model.config.vocab_size)
                 self._baseline_hooks = _hook_state(model)
                 if any(any(registry for registry in module[1:]) for module in self._baseline_hooks[0]) or any(self._baseline_hooks[1:]):
                     raise StudyFailure('preexisting local or global hooks are unsupported')
-                initial_state = _state_hash(model)
+                initial_state = self._model_digest()
                 self._baseline_state_identity = _state_identity(model)
                 rng_before = torch.random.get_rng_state()
                 torch.random.default_generator.manual_seed(_RNG_SEED)
+                device_rng = self._seed_device_rng()
                 seeded_rng_sha256 = hashlib.sha256(torch.random.get_rng_state().numpy().tobytes()).hexdigest()
                 contract = {'kind': 'run_contract', 'cpu_rng_seed': _RNG_SEED,
                             'seeded_cpu_rng_sha256': seeded_rng_sha256,
+                            'device_rng': device_rng,
+                            'runtime': self._runtime_metadata(),
                             'execution_configuration': self._baseline_contract[2],
                             'execution_configuration_sha256': hashlib.sha256(
                                 json.dumps(self._baseline_contract[2], separators=(',', ':'),
@@ -816,7 +893,7 @@ class NaturalAgreementRunner:
                         if not comparison['within_tolerance']:
                             raise StudyFailure('final clean control failed')
                         controls['final_clean'] += 1
-                final_state = _state_hash(model)
+                final_state = self._model_digest()
                 if (initial_state != final_state or _hook_state(model) != self._baseline_hooks
                         or not _same_state_identity(self._baseline_state_identity, model)):
                     raise StudyFailure('model state or hooks changed during the study')
@@ -865,7 +942,8 @@ class NaturalAgreementRunner:
                                              'metrics': site_result}, {})
                 result = {'status': 'complete', 'forwards': self._forwards, 'controls': controls,
                           'model_state_unchanged': True, 'model_state_sha256': initial_state,
-                          'cpu_rng_seed': _RNG_SEED, 'seeded_cpu_rng_sha256': seeded_rng_sha256}
+                          'cpu_rng_seed': _RNG_SEED, 'seeded_cpu_rng_sha256': seeded_rng_sha256,
+                          'device_rng': device_rng}
                 if mode == 'discovery':
                     result['selection'] = selection
                 else:
@@ -878,14 +956,17 @@ class NaturalAgreementRunner:
                 try:
                     if rng_before is not None:
                         try:
-                            torch.random.set_rng_state(rng_before)
+                            try:
+                                self._restore_device_rng()
+                            finally:
+                                torch.random.set_rng_state(rng_before)
                             if not torch.equal(torch.random.get_rng_state(), rng_before):
                                 raise StudyFailure('CPU RNG state restoration failed')
                         except BaseException as rng_error:
                             self.quarantined = True
                             if primary_error is not None:
                                 if hasattr(primary_error, 'add_note'):
-                                    primary_error.add_note('CPU RNG restoration failed; discard the worker: '
+                                    primary_error.add_note('RNG restoration failed; discard the worker: '
                                                            + type(rng_error).__name__)
                             else:
                                 raise
