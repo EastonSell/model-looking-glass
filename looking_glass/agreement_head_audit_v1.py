@@ -72,13 +72,17 @@ def _evaluation(details, candidate, comparator):
                       ("passes_fixed_rule" if criterion else "does_not_pass_fixed_rule")}
 
 
-def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None):
+def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
+          expected_width=768, expected_nheads=12, expected_vocab=50257):
     """Recompute one closed attempt; callers separately verify source and admission."""
     _rounding_probe()
     root = Path(directory)
     if (phase not in ("development", "evaluation") or len(rows) != 16 or len(heads) < 2
             or (phase == "evaluation" and len(heads) != 2) or len(set(heads)) != len(heads)):
         raise ValueError("invalid phase, row or head specification")
+    if (any(type(value) is not int or value <= 0 for value in (expected_width, expected_nheads, expected_vocab))
+            or expected_width % expected_nheads):
+        raise ValueError("invalid expected model layout")
     terminal = json.loads((root / "terminal.json").read_bytes())
     started = json.loads((root / "started.json").read_bytes())
     raw_events = (root / "events.jsonl").read_bytes()
@@ -141,7 +145,7 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None):
         data = {name: payload(ref) for name, ref in refs.items()}
         point = event["point"]
         width, nheads = point["input_shape"][-1], point["heads"]
-        if (type(width) is not int or type(nheads) is not int or width <= 0 or nheads <= 0 or width % nheads
+        if (type(width) is not int or type(nheads) is not int or (width, nheads) != (expected_width, expected_nheads)
                 or point != {"run_id": f"{phase}-{ordinal}", "module_path": "transformer.h.3.attn.c_proj",
                     "layer": 3, "batch": 0, "token": len(rows[row]) - 1, "invocation": 0,
                     "head": head, "heads": nheads, "head_width": width // nheads,
@@ -152,8 +156,8 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None):
                     "use_cache": False, "dtype": "float32", "device": "cpu"}
                 or any(refs[name]["shape"] != [1, len(rows[row]), width]
                        for name in ("before", "after", "projection_output"))
-                or len(refs["last_logits"]["shape"]) != 1
-                or max(present_ids + (() if secondary_ids is None else secondary_ids)) >= refs["last_logits"]["shape"][0]):
+                or refs["last_logits"]["shape"] != [expected_vocab]
+                or max(present_ids + (() if secondary_ids is None else secondary_ids)) >= expected_vocab):
             raise ValueError("forward coordinates or shapes differ")
         if kind not in ("observe", "repeat") and refs["replacement"]["shape"] != [width // nheads]:
             raise ValueError("replacement width differs")
@@ -268,4 +272,5 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None):
     return {"phase": phase, "forward_count": ordinal, "q": q, "ranking": ranking,
             "candidate": summary["candidate"], "comparator": summary["comparator"],
             "details": details, "evaluation": expected_evaluation, "retained_tensor_bytes": sum(unique.values()),
+            "expected_layout": {"width": expected_width, "heads": expected_nheads, "vocab": expected_vocab},
             "scope": "saved bytes and arithmetic; not execution, exposure or descendant-drain proof"}

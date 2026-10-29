@@ -55,9 +55,15 @@ def test_complete_tiny_model_scan_records_all_calls_and_self_controls(tmp_path):
     assert all(len(item["values"]) == 8 for item in output["ranking"])
     assert (tmp_path / "attempt" / "terminal.json").is_file()
     assert not any(m._forward_hooks or m._forward_pre_hooks for m in model.modules())
-    replay = audit(tmp_path / "attempt", rows, phase="development", heads=(0, 1), present_ids=(1, 2))
+    audit_options = {"phase": "development", "heads": (0, 1), "present_ids": (1, 2),
+                     "expected_width": 16, "expected_nheads": 2, "expected_vocab": 64}
+    replay = audit(tmp_path / "attempt", rows, **audit_options)
     assert replay["ranking"] == output["ranking"]
     assert replay["forward_count"] == 66
+    with pytest.raises(ValueError, match="coordinates or shapes"):
+        audit(tmp_path / "attempt", rows, **{**audit_options, "expected_nheads": 4})
+    with pytest.raises(ValueError, match="coordinates or shapes"):
+        audit(tmp_path / "attempt", rows, **{**audit_options, "expected_vocab": 63})
     # Rehash a malicious change to an untouched coordinate: hashes alone still
     # match, but independent before/after replay must reject the modification.
     event_path = tmp_path / "attempt" / "events.jsonl"
@@ -76,7 +82,7 @@ def test_complete_tiny_model_scan_records_all_calls_and_self_controls(tmp_path):
     terminal["event_log_bytes"] = len(raw)
     terminal_path.write_text(json.dumps(terminal), encoding="utf-8")
     with pytest.raises(ValueError, match="untouched bits"):
-        audit(tmp_path / "attempt", rows, phase="development", heads=(0, 1), present_ids=(1, 2))
+        audit(tmp_path / "attempt", rows, **audit_options)
 
 
 def test_distance_rejects_nonfinite():
@@ -107,7 +113,8 @@ def test_evaluation_replay_checks_fixed_candidate_and_rule(tmp_path):
     rows = [[1, 4 * group + index + 2, 30] for group in range(4) for index in range(4)]
     output = run_evaluation(model, rows, tmp_path / "evaluation", candidate=1, comparator=0,
                             present_ids=(1, 2), secondary_ids=None, metadata={"fixture": True})
-    replay = audit(tmp_path / "evaluation", rows, phase="evaluation", heads=(1, 0), present_ids=(1, 2))
+    replay = audit(tmp_path / "evaluation", rows, phase="evaluation", heads=(1, 0), present_ids=(1, 2),
+                   expected_width=16, expected_nheads=2, expected_vocab=64)
     assert output["forward_count"] == replay["forward_count"] == 128
     assert output["candidate"] == replay["candidate"] == 1
     assert output["evaluation"] == replay["evaluation"]

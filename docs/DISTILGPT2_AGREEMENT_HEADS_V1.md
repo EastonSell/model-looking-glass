@@ -159,7 +159,9 @@ RAM, allocator overhead, native work, process trees or all filesystem usage.
 
 An independent saved-byte replay checks schedules, selection, every delivered
 slice and untouched bit, full last-logit controls, dose and metric arithmetic,
-and the fixed evaluation rule. A saved journal and observed child exit are
+and the fixed evaluation rule. Real-run replay requires width 768, exactly 12
+heads and vocabulary 50,257 on every saved forward; alternate layout arguments
+are for fabricated tests only. A saved journal and observed child exit are
 consistency evidence rather than authenticated execution or descendant-drain
 proof. If interrupted during a hook or cleanup, retain the evidence and discard
 the worker/model. No GPU use or timing claim is part of this protocol.
