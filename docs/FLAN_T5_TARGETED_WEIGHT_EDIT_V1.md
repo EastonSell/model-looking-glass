@@ -195,14 +195,16 @@ calibration rows. No replacement after a failed check.
 
 The independent FLAN sentiment custodian must receive the exact candidate
 bundle and all proposal/screen token rows, including any rejected proposals,
-before any new input is forwarded and before its as-yet-unformed private pool
-is drawn, so that pool can exclude the new exposures. Fail closed if that pool
-is already drawn or if any required fresh applicable protected-pool check
-cannot be made; a commitment cannot be retroactively amended. Refresh its scope and every other
-relevant FLAN protected-pool custody at each launch boundary. A scoped absence
-report is not a private comparison, and known public exclusions do not prove
-anything about unknown model pretraining history. Disclose all shared words
-and instructions. No secret future unit is requested or inferred.
+before any new input is forwarded. Before its currently unformed private pool is
+drawn, include those rows and their variable words in its exclusion ledger.
+If an applicable pool has already been committed, an authorized, identity-bound
+custodian comparison must instead establish the specified scoped non-overlap;
+do not modify the commitment or inspect private rows. Fail closed if a required
+comparison cannot be authorized or completed. Refresh the scope of every
+relevant FLAN protected pool at each launch boundary. A scoped absence report
+is not a private comparison, and known public exclusions do not prove anything
+about unknown model pretraining history. Disclose all shared words and
+instructions. No secret future unit is requested or inferred.
 
 Run a clean baseline and clean substituted input for every target, and a clean
 baseline for every locality. A target is baseline-eligible only if it produces
