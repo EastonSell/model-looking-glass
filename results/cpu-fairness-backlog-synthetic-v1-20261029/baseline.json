@@ -1,0 +1,2245 @@
+{
+  "boundaries": {
+    "clients_joined_ns": 1261499218159300,
+    "end_ns": 1261499218557100,
+    "owner_drain_ns": 1261499218531300,
+    "start_ns": 1261498417269100
+  },
+  "client_errors": [
+    null
+  ],
+  "clock": {
+    "adjustable": false,
+    "implementation": "QueryPerformanceCounter()",
+    "monotonic": true,
+    "name": "perf_counter_ns",
+    "nominal_resolution_ns": 100
+  },
+  "mode": "baseline",
+  "owner": {
+    "model_and_lease_disposal_attested": false,
+    "resource_profile_verified": false,
+    "supervised_device_owner": false,
+    "synthetic_device_telemetry": true,
+    "work_drained": true
+  },
+  "plan": {
+    "backlog_offsets_us": {
+      "job-0001": 0,
+      "job-0002": 3000,
+      "job-0003": 6000,
+      "job-0004": 9000,
+      "job-0005": 15000,
+      "job-0006": 75000,
+      "job-0007": 135000,
+      "job-0008": 195000,
+      "job-0009": 20000,
+      "job-0010": 80000,
+      "job-0011": 140000,
+      "job-0012": 200000
+    },
+    "baseline_order": [
+      "job-0001",
+      "job-0005",
+      "job-0009",
+      "job-0002",
+      "job-0006",
+      "job-0010",
+      "job-0003",
+      "job-0007",
+      "job-0011",
+      "job-0004",
+      "job-0008",
+      "job-0012"
+    ],
+    "jobs": [
+      {
+        "expected_output_sha256": "d5aece3a833fc8b1a78d5bbeb8e44b46a51f7a446a218a7aeb7527801aeffe3a",
+        "input_ids": [
+          1,
+          1001
+        ],
+        "input_sha256": "8aaf2c3a17efeb952ee6dfca64732b94c91afe377b93572c167d6453bf744512",
+        "job_id": "job-0001",
+        "request_sha256": "98d33029407afb2e710e47f119313a95dd1d0308c0f93f7fa6c62fe909262701",
+        "team_id": "bulk"
+      },
+      {
+        "expected_output_sha256": "cc2c72f1c86c1a9973d47893b3981a5d3da7317d4b118aca616de658d50ff5ad",
+        "input_ids": [
+          2,
+          1002
+        ],
+        "input_sha256": "861959a45979cdb6dd623f9960cf9916213b8200776b316790346a8f77a2036e",
+        "job_id": "job-0002",
+        "request_sha256": "d92ecd680e8125ae8ba38630e2e74d949f43e1147ff8cdcd645ddc4bd5b10e93",
+        "team_id": "bulk"
+      },
+      {
+        "expected_output_sha256": "4f9df62adfcc37c4a3d9b5d0163fffec27cf25e8b0bd56d5f2bb017579baf50a",
+        "input_ids": [
+          3,
+          1003
+        ],
+        "input_sha256": "3df6bf02b6f79dec9ddadea816ecf617de42eabb1c240021abf6d3bfdf31cd23",
+        "job_id": "job-0003",
+        "request_sha256": "306b61f341ff28e21f44c05421ef17e4450212b2bf3b200a297b4f47d3b1091f",
+        "team_id": "bulk"
+      },
+      {
+        "expected_output_sha256": "e1f1356d3315ff88b96493b327e469d4ceed80e92b3911c592fc475aaf57e0b1",
+        "input_ids": [
+          4,
+          1004
+        ],
+        "input_sha256": "17e7c77f008f738bbf4a815beecb86b8b13f730f92019286f1a316793d8ffd69",
+        "job_id": "job-0004",
+        "request_sha256": "df422bfb9e7b71fd8736cb9cbdd3f2a9512ba7545f5088bc9397596806d7c368",
+        "team_id": "bulk"
+      },
+      {
+        "expected_output_sha256": "58d5cc18045b8d60e0adf8737caceff2ed3fc9b128d15dc632dcca61eda4ff23",
+        "input_ids": [
+          5,
+          1005
+        ],
+        "input_sha256": "2067959cbb5e92b674f49ef30e570b5c088960d5cf723d19b3466c6a0e1ce367",
+        "job_id": "job-0005",
+        "request_sha256": "b459adcfa3976a67351895d2d699865957630f22d41a8945d9ddca1b8118c850",
+        "team_id": "peer-b"
+      },
+      {
+        "expected_output_sha256": "e0b846f394bc69aead75bd377ffb09a5f4e2bf4e61c9636affb5ecfda5d3f710",
+        "input_ids": [
+          6,
+          1006
+        ],
+        "input_sha256": "c1458895a7a0a0c8424a3f2fe1b95bb099a6451f11872c2aa31c9a7375432520",
+        "job_id": "job-0006",
+        "request_sha256": "45729de130a536390d45ecc01b48ce6c91a6bab98010440eaaa93a779949f141",
+        "team_id": "peer-b"
+      },
+      {
+        "expected_output_sha256": "b8909d761baa72bf150dee9241b0c8f5054ab6eff900860e2bb588adfeae8f4c",
+        "input_ids": [
+          7,
+          1007
+        ],
+        "input_sha256": "1910f0ed0782231d0589669d8ad612bc1245c6ffe0fc60598f56c1db276105fc",
+        "job_id": "job-0007",
+        "request_sha256": "f3c593f73308f761d60a2bc81e3cd2e3a2b9e731b3743af85223d60fec4761d8",
+        "team_id": "peer-b"
+      },
+      {
+        "expected_output_sha256": "54261ae934da82e1308339b290315f16d78665a7b0215041c424e4cee4e4def1",
+        "input_ids": [
+          8,
+          1008
+        ],
+        "input_sha256": "10b4abee46272781518d7a5f588b4f9cef8de475e31cf75fed62893442bd9d0b",
+        "job_id": "job-0008",
+        "request_sha256": "2b8d70d39d291949c1370948388ce24e131a499725c1898a016126613b49e4b7",
+        "team_id": "peer-b"
+      },
+      {
+        "expected_output_sha256": "de2c8c76b29dfbf2be88d9ef69b0f7c8b2c66538e706b34ab6d6bb5a92ff29e4",
+        "input_ids": [
+          9,
+          1009
+        ],
+        "input_sha256": "30c4c88c63107e4e1a28b860f78635fd4736b6b353655fe42935cfbf9d258e0f",
+        "job_id": "job-0009",
+        "request_sha256": "e397ecf66a4eafa00983e6a17d1ffe45ede7bfa40068bb1d147192adcb1b1f30",
+        "team_id": "peer-c"
+      },
+      {
+        "expected_output_sha256": "290444a5f29169eceeec41f6b3e1af2d15f114c2561ab0cebddda6ceb293403e",
+        "input_ids": [
+          10,
+          1010
+        ],
+        "input_sha256": "1546b8bc92b5e90a2e162075dc7a6a5a54169ad10fcbcaeb2993108f4aba35d5",
+        "job_id": "job-0010",
+        "request_sha256": "27bf394d5bafeb29bc3e36ea2d6531f88084623208943fe3b83c8622783dd372",
+        "team_id": "peer-c"
+      },
+      {
+        "expected_output_sha256": "ae153fbd147d8c5719ec26cc01fa26c6667a78f7a64ea23b3e1a628d43938dd3",
+        "input_ids": [
+          11,
+          1011
+        ],
+        "input_sha256": "614ce7e12c5e042039f0e040791416700abd30fd9abf8cab09b289936c335b43",
+        "job_id": "job-0011",
+        "request_sha256": "131e3c3e1c78c716b8e3e0aa007c87e0f5c6812cf05673761752fcafb740bbce",
+        "team_id": "peer-c"
+      },
+      {
+        "expected_output_sha256": "1f6b47111cc8eb3e1901a664f203c78284aef53ee20bdea6e4f93ed056b6dd9b",
+        "input_ids": [
+          12,
+          1012
+        ],
+        "input_sha256": "e69ce9ba176b98a0b1f0949c9a91fbf97869f03748482e14ef9104c69a9664f4",
+        "job_id": "job-0012",
+        "request_sha256": "6c33bebc19d239a325712ad0bed7676bda547f7334c67183681a4c3d9e706131",
+        "team_id": "peer-c"
+      }
+    ],
+    "jobs_per_team": 4,
+    "max_connections": 12,
+    "max_pending": 12,
+    "max_pending_per_team": 4,
+    "model_hold_us": 30000,
+    "model_sha256": "28546392a1413915f4842e563a9389c187a1f3ea48b5745ff210809b03de5ece",
+    "model_spec": {
+      "dtype": "float32",
+      "input_shape": [
+        1,
+        2
+      ],
+      "kind": "synthetic-input-to-float32",
+      "model_hold_us": 30000,
+      "output_shape": [
+        1,
+        2,
+        1
+      ]
+    },
+    "profile_sha256": "df32010cc693553cc4f6756add0b9c9d0b8bd015633a05cd7c6fd0b2e41d52fb",
+    "seed": 17,
+    "teams": [
+      "bulk",
+      "peer-b",
+      "peer-c"
+    ],
+    "version": "synthetic-cpu-fairness-backlog-v1"
+  },
+  "plan_sha256": "57e8b0a98f64e7bfb5ec3aa04a97bfb21c14a0af15772227264f033523d82049",
+  "recording": {
+    "events": [
+      {
+        "kind": "window_start",
+        "time_ns": 1261498417269100
+      },
+      {
+        "input_sha256": "8aaf2c3a17efeb952ee6dfca64732b94c91afe377b93572c167d6453bf744512",
+        "job_id": "job-0001",
+        "kind": "attempt",
+        "request_sha256": "98d33029407afb2e710e47f119313a95dd1d0308c0f93f7fa6c62fe909262701",
+        "team_id": "bulk",
+        "time_ns": 1261498417334100
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-1",
+        "group_id": "lg-2fe0bf6928364cad9de545b262c1bf32-1",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+            "broker_job_id": 1,
+            "job_id": "job-0001",
+            "row_offset": 0,
+            "team_id": "bulk"
+          }
+        ],
+        "profile_sha256": "df32010cc693553cc4f6756add0b9c9d0b8bd015633a05cd7c6fd0b2e41d52fb",
+        "time_ns": 1261498425518800
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-1",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1261498456021000
+      },
+      {
+        "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+        "broker_job_id": 1,
+        "job_id": "job-0001",
+        "kind": "ready",
+        "team_id": "bulk",
+        "time_ns": 1261498424886200
+      },
+      {
+        "job_id": "job-0001",
+        "kind": "selected",
+        "time_ns": 1261498424988200
+      },
+      {
+        "job_id": "job-0001",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1261498456294700
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0001",
+        "kind": "returned",
+        "output_sha256": "d5aece3a833fc8b1a78d5bbeb8e44b46a51f7a446a218a7aeb7527801aeffe3a",
+        "state": "succeeded",
+        "time_ns": 1261498478490700
+      },
+      {
+        "input_sha256": "2067959cbb5e92b674f49ef30e570b5c088960d5cf723d19b3466c6a0e1ce367",
+        "job_id": "job-0005",
+        "kind": "attempt",
+        "request_sha256": "b459adcfa3976a67351895d2d699865957630f22d41a8945d9ddca1b8118c850",
+        "team_id": "peer-b",
+        "time_ns": 1261498478543400
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-2",
+        "group_id": "lg-2fe0bf6928364cad9de545b262c1bf32-2",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+            "broker_job_id": 2,
+            "job_id": "job-0005",
+            "row_offset": 0,
+            "team_id": "peer-b"
+          }
+        ],
+        "profile_sha256": "df32010cc693553cc4f6756add0b9c9d0b8bd015633a05cd7c6fd0b2e41d52fb",
+        "time_ns": 1261498480968000
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-2",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1261498511692300
+      },
+      {
+        "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+        "broker_job_id": 2,
+        "job_id": "job-0005",
+        "kind": "ready",
+        "team_id": "peer-b",
+        "time_ns": 1261498480427600
+      },
+      {
+        "job_id": "job-0005",
+        "kind": "selected",
+        "time_ns": 1261498480522700
+      },
+      {
+        "job_id": "job-0005",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1261498511939200
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0005",
+        "kind": "returned",
+        "output_sha256": "58d5cc18045b8d60e0adf8737caceff2ed3fc9b128d15dc632dcca61eda4ff23",
+        "state": "succeeded",
+        "time_ns": 1261498539626100
+      },
+      {
+        "input_sha256": "30c4c88c63107e4e1a28b860f78635fd4736b6b353655fe42935cfbf9d258e0f",
+        "job_id": "job-0009",
+        "kind": "attempt",
+        "request_sha256": "e397ecf66a4eafa00983e6a17d1ffe45ede7bfa40068bb1d147192adcb1b1f30",
+        "team_id": "peer-c",
+        "time_ns": 1261498539683700
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-3",
+        "group_id": "lg-2fe0bf6928364cad9de545b262c1bf32-3",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+            "broker_job_id": 3,
+            "job_id": "job-0009",
+            "row_offset": 0,
+            "team_id": "peer-c"
+          }
+        ],
+        "profile_sha256": "df32010cc693553cc4f6756add0b9c9d0b8bd015633a05cd7c6fd0b2e41d52fb",
+        "time_ns": 1261498542407000
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-3",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1261498572641900
+      },
+      {
+        "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+        "broker_job_id": 3,
+        "job_id": "job-0009",
+        "kind": "ready",
+        "team_id": "peer-c",
+        "time_ns": 1261498541751200
+      },
+      {
+        "job_id": "job-0009",
+        "kind": "selected",
+        "time_ns": 1261498541857900
+      },
+      {
+        "job_id": "job-0009",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1261498572871900
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0009",
+        "kind": "returned",
+        "output_sha256": "de2c8c76b29dfbf2be88d9ef69b0f7c8b2c66538e706b34ab6d6bb5a92ff29e4",
+        "state": "succeeded",
+        "time_ns": 1261498602842000
+      },
+      {
+        "input_sha256": "861959a45979cdb6dd623f9960cf9916213b8200776b316790346a8f77a2036e",
+        "job_id": "job-0002",
+        "kind": "attempt",
+        "request_sha256": "d92ecd680e8125ae8ba38630e2e74d949f43e1147ff8cdcd645ddc4bd5b10e93",
+        "team_id": "bulk",
+        "time_ns": 1261498602872000
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-4",
+        "group_id": "lg-2fe0bf6928364cad9de545b262c1bf32-4",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+            "broker_job_id": 4,
+            "job_id": "job-0002",
+            "row_offset": 0,
+            "team_id": "bulk"
+          }
+        ],
+        "profile_sha256": "df32010cc693553cc4f6756add0b9c9d0b8bd015633a05cd7c6fd0b2e41d52fb",
+        "time_ns": 1261498619287800
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-4",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1261498649772200
+      },
+      {
+        "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+        "broker_job_id": 4,
+        "job_id": "job-0002",
+        "kind": "ready",
+        "team_id": "bulk",
+        "time_ns": 1261498618603400
+      },
+      {
+        "job_id": "job-0002",
+        "kind": "selected",
+        "time_ns": 1261498618725600
+      },
+      {
+        "job_id": "job-0002",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1261498650026800
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0002",
+        "kind": "returned",
+        "output_sha256": "cc2c72f1c86c1a9973d47893b3981a5d3da7317d4b118aca616de658d50ff5ad",
+        "state": "succeeded",
+        "time_ns": 1261498682529800
+      },
+      {
+        "input_sha256": "c1458895a7a0a0c8424a3f2fe1b95bb099a6451f11872c2aa31c9a7375432520",
+        "job_id": "job-0006",
+        "kind": "attempt",
+        "request_sha256": "45729de130a536390d45ecc01b48ce6c91a6bab98010440eaaa93a779949f141",
+        "team_id": "peer-b",
+        "time_ns": 1261498682580700
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-5",
+        "group_id": "lg-2fe0bf6928364cad9de545b262c1bf32-5",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+            "broker_job_id": 5,
+            "job_id": "job-0006",
+            "row_offset": 0,
+            "team_id": "peer-b"
+          }
+        ],
+        "profile_sha256": "df32010cc693553cc4f6756add0b9c9d0b8bd015633a05cd7c6fd0b2e41d52fb",
+        "time_ns": 1261498684835800
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-5",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1261498715218600
+      },
+      {
+        "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+        "broker_job_id": 5,
+        "job_id": "job-0006",
+        "kind": "ready",
+        "team_id": "peer-b",
+        "time_ns": 1261498684222800
+      },
+      {
+        "job_id": "job-0006",
+        "kind": "selected",
+        "time_ns": 1261498684324200
+      },
+      {
+        "job_id": "job-0006",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1261498715458800
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0006",
+        "kind": "returned",
+        "output_sha256": "e0b846f394bc69aead75bd377ffb09a5f4e2bf4e61c9636affb5ecfda5d3f710",
+        "state": "succeeded",
+        "time_ns": 1261498744310900
+      },
+      {
+        "input_sha256": "1546b8bc92b5e90a2e162075dc7a6a5a54169ad10fcbcaeb2993108f4aba35d5",
+        "job_id": "job-0010",
+        "kind": "attempt",
+        "request_sha256": "27bf394d5bafeb29bc3e36ea2d6531f88084623208943fe3b83c8622783dd372",
+        "team_id": "peer-c",
+        "time_ns": 1261498744377500
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-6",
+        "group_id": "lg-2fe0bf6928364cad9de545b262c1bf32-6",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+            "broker_job_id": 6,
+            "job_id": "job-0010",
+            "row_offset": 0,
+            "team_id": "peer-c"
+          }
+        ],
+        "profile_sha256": "df32010cc693553cc4f6756add0b9c9d0b8bd015633a05cd7c6fd0b2e41d52fb",
+        "time_ns": 1261498746826200
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-6",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1261498777129300
+      },
+      {
+        "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+        "broker_job_id": 6,
+        "job_id": "job-0010",
+        "kind": "ready",
+        "team_id": "peer-c",
+        "time_ns": 1261498746078500
+      },
+      {
+        "job_id": "job-0010",
+        "kind": "selected",
+        "time_ns": 1261498746192600
+      },
+      {
+        "job_id": "job-0010",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1261498777354200
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0010",
+        "kind": "returned",
+        "output_sha256": "290444a5f29169eceeec41f6b3e1af2d15f114c2561ab0cebddda6ceb293403e",
+        "state": "succeeded",
+        "time_ns": 1261498807138200
+      },
+      {
+        "input_sha256": "3df6bf02b6f79dec9ddadea816ecf617de42eabb1c240021abf6d3bfdf31cd23",
+        "job_id": "job-0003",
+        "kind": "attempt",
+        "request_sha256": "306b61f341ff28e21f44c05421ef17e4450212b2bf3b200a297b4f47d3b1091f",
+        "team_id": "bulk",
+        "time_ns": 1261498807182800
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-7",
+        "group_id": "lg-2fe0bf6928364cad9de545b262c1bf32-7",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+            "broker_job_id": 7,
+            "job_id": "job-0003",
+            "row_offset": 0,
+            "team_id": "bulk"
+          }
+        ],
+        "profile_sha256": "df32010cc693553cc4f6756add0b9c9d0b8bd015633a05cd7c6fd0b2e41d52fb",
+        "time_ns": 1261498809924700
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-7",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1261498840653400
+      },
+      {
+        "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+        "broker_job_id": 7,
+        "job_id": "job-0003",
+        "kind": "ready",
+        "team_id": "bulk",
+        "time_ns": 1261498809246300
+      },
+      {
+        "job_id": "job-0003",
+        "kind": "selected",
+        "time_ns": 1261498809373100
+      },
+      {
+        "job_id": "job-0003",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1261498840926500
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0003",
+        "kind": "returned",
+        "output_sha256": "4f9df62adfcc37c4a3d9b5d0163fffec27cf25e8b0bd56d5f2bb017579baf50a",
+        "state": "succeeded",
+        "time_ns": 1261498869660800
+      },
+      {
+        "input_sha256": "1910f0ed0782231d0589669d8ad612bc1245c6ffe0fc60598f56c1db276105fc",
+        "job_id": "job-0007",
+        "kind": "attempt",
+        "request_sha256": "f3c593f73308f761d60a2bc81e3cd2e3a2b9e731b3743af85223d60fec4761d8",
+        "team_id": "peer-b",
+        "time_ns": 1261498869697500
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-8",
+        "group_id": "lg-2fe0bf6928364cad9de545b262c1bf32-8",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+            "broker_job_id": 8,
+            "job_id": "job-0007",
+            "row_offset": 0,
+            "team_id": "peer-b"
+          }
+        ],
+        "profile_sha256": "df32010cc693553cc4f6756add0b9c9d0b8bd015633a05cd7c6fd0b2e41d52fb",
+        "time_ns": 1261498885834600
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-8",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1261498916256200
+      },
+      {
+        "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+        "broker_job_id": 8,
+        "job_id": "job-0007",
+        "kind": "ready",
+        "team_id": "peer-b",
+        "time_ns": 1261498885192700
+      },
+      {
+        "job_id": "job-0007",
+        "kind": "selected",
+        "time_ns": 1261498885306500
+      },
+      {
+        "job_id": "job-0007",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1261498916484400
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0007",
+        "kind": "returned",
+        "output_sha256": "b8909d761baa72bf150dee9241b0c8f5054ab6eff900860e2bb588adfeae8f4c",
+        "state": "succeeded",
+        "time_ns": 1261498949298400
+      },
+      {
+        "input_sha256": "614ce7e12c5e042039f0e040791416700abd30fd9abf8cab09b289936c335b43",
+        "job_id": "job-0011",
+        "kind": "attempt",
+        "request_sha256": "131e3c3e1c78c716b8e3e0aa007c87e0f5c6812cf05673761752fcafb740bbce",
+        "team_id": "peer-c",
+        "time_ns": 1261498949340600
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-9",
+        "group_id": "lg-2fe0bf6928364cad9de545b262c1bf32-9",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+            "broker_job_id": 9,
+            "job_id": "job-0011",
+            "row_offset": 0,
+            "team_id": "peer-c"
+          }
+        ],
+        "profile_sha256": "df32010cc693553cc4f6756add0b9c9d0b8bd015633a05cd7c6fd0b2e41d52fb",
+        "time_ns": 1261498951778500
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-9",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1261498982163100
+      },
+      {
+        "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+        "broker_job_id": 9,
+        "job_id": "job-0011",
+        "kind": "ready",
+        "team_id": "peer-c",
+        "time_ns": 1261498951220600
+      },
+      {
+        "job_id": "job-0011",
+        "kind": "selected",
+        "time_ns": 1261498951307700
+      },
+      {
+        "job_id": "job-0011",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1261498982403700
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0011",
+        "kind": "returned",
+        "output_sha256": "ae153fbd147d8c5719ec26cc01fa26c6667a78f7a64ea23b3e1a628d43938dd3",
+        "state": "succeeded",
+        "time_ns": 1261499012417600
+      },
+      {
+        "input_sha256": "17e7c77f008f738bbf4a815beecb86b8b13f730f92019286f1a316793d8ffd69",
+        "job_id": "job-0004",
+        "kind": "attempt",
+        "request_sha256": "df422bfb9e7b71fd8736cb9cbdd3f2a9512ba7545f5088bc9397596806d7c368",
+        "team_id": "bulk",
+        "time_ns": 1261499012456100
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-10",
+        "group_id": "lg-2fe0bf6928364cad9de545b262c1bf32-10",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+            "broker_job_id": 10,
+            "job_id": "job-0004",
+            "row_offset": 0,
+            "team_id": "bulk"
+          }
+        ],
+        "profile_sha256": "df32010cc693553cc4f6756add0b9c9d0b8bd015633a05cd7c6fd0b2e41d52fb",
+        "time_ns": 1261499015045900
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-10",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1261499045746400
+      },
+      {
+        "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+        "broker_job_id": 10,
+        "job_id": "job-0004",
+        "kind": "ready",
+        "team_id": "bulk",
+        "time_ns": 1261499014519000
+      },
+      {
+        "job_id": "job-0004",
+        "kind": "selected",
+        "time_ns": 1261499014628600
+      },
+      {
+        "job_id": "job-0004",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1261499045969700
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0004",
+        "kind": "returned",
+        "output_sha256": "e1f1356d3315ff88b96493b327e469d4ceed80e92b3911c592fc475aaf57e0b1",
+        "state": "succeeded",
+        "time_ns": 1261499076113000
+      },
+      {
+        "input_sha256": "10b4abee46272781518d7a5f588b4f9cef8de475e31cf75fed62893442bd9d0b",
+        "job_id": "job-0008",
+        "kind": "attempt",
+        "request_sha256": "2b8d70d39d291949c1370948388ce24e131a499725c1898a016126613b49e4b7",
+        "team_id": "peer-b",
+        "time_ns": 1261499076145900
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-11",
+        "group_id": "lg-2fe0bf6928364cad9de545b262c1bf32-11",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+            "broker_job_id": 11,
+            "job_id": "job-0008",
+            "row_offset": 0,
+            "team_id": "peer-b"
+          }
+        ],
+        "profile_sha256": "df32010cc693553cc4f6756add0b9c9d0b8bd015633a05cd7c6fd0b2e41d52fb",
+        "time_ns": 1261499092125400
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-11",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1261499122867600
+      },
+      {
+        "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+        "broker_job_id": 11,
+        "job_id": "job-0008",
+        "kind": "ready",
+        "team_id": "peer-b",
+        "time_ns": 1261499091635400
+      },
+      {
+        "job_id": "job-0008",
+        "kind": "selected",
+        "time_ns": 1261499091726700
+      },
+      {
+        "job_id": "job-0008",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1261499123144700
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0008",
+        "kind": "returned",
+        "output_sha256": "54261ae934da82e1308339b290315f16d78665a7b0215041c424e4cee4e4def1",
+        "state": "succeeded",
+        "time_ns": 1261499155905900
+      },
+      {
+        "input_sha256": "e69ce9ba176b98a0b1f0949c9a91fbf97869f03748482e14ef9104c69a9664f4",
+        "job_id": "job-0012",
+        "kind": "attempt",
+        "request_sha256": "6c33bebc19d239a325712ad0bed7676bda547f7334c67183681a4c3d9e706131",
+        "team_id": "peer-c",
+        "time_ns": 1261499155954500
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-12",
+        "group_id": "lg-2fe0bf6928364cad9de545b262c1bf32-12",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+            "broker_job_id": 12,
+            "job_id": "job-0012",
+            "row_offset": 0,
+            "team_id": "peer-c"
+          }
+        ],
+        "profile_sha256": "df32010cc693553cc4f6756add0b9c9d0b8bd015633a05cd7c6fd0b2e41d52fb",
+        "time_ns": 1261499158725700
+      },
+      {
+        "call_id": "lg-2fe0bf6928364cad9de545b262c1bf32-12",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1261499189305600
+      },
+      {
+        "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+        "broker_job_id": 12,
+        "job_id": "job-0012",
+        "kind": "ready",
+        "team_id": "peer-c",
+        "time_ns": 1261499158165500
+      },
+      {
+        "job_id": "job-0012",
+        "kind": "selected",
+        "time_ns": 1261499158319400
+      },
+      {
+        "job_id": "job-0012",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1261499189550600
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0012",
+        "kind": "returned",
+        "output_sha256": "1f6b47111cc8eb3e1901a664f203c78284aef53ee20bdea6e4f93ed056b6dd9b",
+        "state": "succeeded",
+        "time_ns": 1261499218065400
+      },
+      {
+        "drained": true,
+        "kind": "owner_drain",
+        "time_ns": 1261499218531300
+      },
+      {
+        "kind": "window_end",
+        "time_ns": 1261499218557100
+      }
+    ],
+    "events_complete": true,
+    "explicit_faults": 0,
+    "late_records": 0,
+    "lost_capacity": 0,
+    "lost_internal": 0,
+    "lost_invalid": 0,
+    "max_events": 4096,
+    "max_wire_bytes": 1048576,
+    "recorded": 87,
+    "wire_bytes_upper_bound": 151939
+  },
+  "runtime": {
+    "device": "cpu",
+    "external_activity": "unmeasured",
+    "python": "3.11.15",
+    "torch": "2.8.0+cu128",
+    "torch_num_threads": 12
+  },
+  "samples": [
+    {
+      "accepted_receipt_ns": 1261498425185900,
+      "attempt_ns": 1261498417334100,
+      "broker_cancellation_decision": "unobserved",
+      "broker_finished_ns": 1261498456294700,
+      "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+      "broker_job_id": 1,
+      "broker_ready_ns": 1261498424886200,
+      "broker_started_ns": 1261498424988200,
+      "broker_submitted_ns": 1261498424693200,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1261498478160500,
+      "error": null,
+      "handled_ns": 1261498478490700,
+      "job_id": "job-0001",
+      "output_sha256": "d5aece3a833fc8b1a78d5bbeb8e44b46a51f7a446a218a7aeb7527801aeffe3a",
+      "release_due_ns": null,
+      "state": "succeeded",
+      "team_id": "bulk"
+    },
+    {
+      "accepted_receipt_ns": 1261498619129300,
+      "attempt_ns": 1261498602872000,
+      "broker_cancellation_decision": "unobserved",
+      "broker_finished_ns": 1261498650026800,
+      "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+      "broker_job_id": 4,
+      "broker_ready_ns": 1261498618603400,
+      "broker_started_ns": 1261498618725600,
+      "broker_submitted_ns": 1261498618435300,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1261498682328300,
+      "error": null,
+      "handled_ns": 1261498682529800,
+      "job_id": "job-0002",
+      "output_sha256": "cc2c72f1c86c1a9973d47893b3981a5d3da7317d4b118aca616de658d50ff5ad",
+      "release_due_ns": null,
+      "state": "succeeded",
+      "team_id": "bulk"
+    },
+    {
+      "accepted_receipt_ns": 1261498809634800,
+      "attempt_ns": 1261498807182800,
+      "broker_cancellation_decision": "unobserved",
+      "broker_finished_ns": 1261498840926500,
+      "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+      "broker_job_id": 7,
+      "broker_ready_ns": 1261498809246300,
+      "broker_started_ns": 1261498809373100,
+      "broker_submitted_ns": 1261498809023100,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1261498869333200,
+      "error": null,
+      "handled_ns": 1261498869660800,
+      "job_id": "job-0003",
+      "output_sha256": "4f9df62adfcc37c4a3d9b5d0163fffec27cf25e8b0bd56d5f2bb017579baf50a",
+      "release_due_ns": null,
+      "state": "succeeded",
+      "team_id": "bulk"
+    },
+    {
+      "accepted_receipt_ns": 1261499014920200,
+      "attempt_ns": 1261499012456100,
+      "broker_cancellation_decision": "unobserved",
+      "broker_finished_ns": 1261499045969700,
+      "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+      "broker_job_id": 10,
+      "broker_ready_ns": 1261499014519000,
+      "broker_started_ns": 1261499014628600,
+      "broker_submitted_ns": 1261499014349400,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1261499075761400,
+      "error": null,
+      "handled_ns": 1261499076113000,
+      "job_id": "job-0004",
+      "output_sha256": "e1f1356d3315ff88b96493b327e469d4ceed80e92b3911c592fc475aaf57e0b1",
+      "release_due_ns": null,
+      "state": "succeeded",
+      "team_id": "bulk"
+    },
+    {
+      "accepted_receipt_ns": 1261498480819300,
+      "attempt_ns": 1261498478543400,
+      "broker_cancellation_decision": "unobserved",
+      "broker_finished_ns": 1261498511939200,
+      "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+      "broker_job_id": 2,
+      "broker_ready_ns": 1261498480427600,
+      "broker_started_ns": 1261498480522700,
+      "broker_submitted_ns": 1261498480263600,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1261498539358500,
+      "error": null,
+      "handled_ns": 1261498539626100,
+      "job_id": "job-0005",
+      "output_sha256": "58d5cc18045b8d60e0adf8737caceff2ed3fc9b128d15dc632dcca61eda4ff23",
+      "release_due_ns": null,
+      "state": "succeeded",
+      "team_id": "peer-b"
+    },
+    {
+      "accepted_receipt_ns": 1261498684693900,
+      "attempt_ns": 1261498682580700,
+      "broker_cancellation_decision": "unobserved",
+      "broker_finished_ns": 1261498715458800,
+      "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+      "broker_job_id": 5,
+      "broker_ready_ns": 1261498684222800,
+      "broker_started_ns": 1261498684324200,
+      "broker_submitted_ns": 1261498684064800,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1261498743815200,
+      "error": null,
+      "handled_ns": 1261498744310900,
+      "job_id": "job-0006",
+      "output_sha256": "e0b846f394bc69aead75bd377ffb09a5f4e2bf4e61c9636affb5ecfda5d3f710",
+      "release_due_ns": null,
+      "state": "succeeded",
+      "team_id": "peer-b"
+    },
+    {
+      "accepted_receipt_ns": 1261498885691300,
+      "attempt_ns": 1261498869697500,
+      "broker_cancellation_decision": "unobserved",
+      "broker_finished_ns": 1261498916484400,
+      "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+      "broker_job_id": 8,
+      "broker_ready_ns": 1261498885192700,
+      "broker_started_ns": 1261498885306500,
+      "broker_submitted_ns": 1261498884984600,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1261498949051000,
+      "error": null,
+      "handled_ns": 1261498949298400,
+      "job_id": "job-0007",
+      "output_sha256": "b8909d761baa72bf150dee9241b0c8f5054ab6eff900860e2bb588adfeae8f4c",
+      "release_due_ns": null,
+      "state": "succeeded",
+      "team_id": "peer-b"
+    },
+    {
+      "accepted_receipt_ns": 1261499092254200,
+      "attempt_ns": 1261499076145900,
+      "broker_cancellation_decision": "unobserved",
+      "broker_finished_ns": 1261499123144700,
+      "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+      "broker_job_id": 11,
+      "broker_ready_ns": 1261499091635400,
+      "broker_started_ns": 1261499091726700,
+      "broker_submitted_ns": 1261499091477600,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1261499155712200,
+      "error": null,
+      "handled_ns": 1261499155905900,
+      "job_id": "job-0008",
+      "output_sha256": "54261ae934da82e1308339b290315f16d78665a7b0215041c424e4cee4e4def1",
+      "release_due_ns": null,
+      "state": "succeeded",
+      "team_id": "peer-b"
+    },
+    {
+      "accepted_receipt_ns": 1261498542054100,
+      "attempt_ns": 1261498539683700,
+      "broker_cancellation_decision": "unobserved",
+      "broker_finished_ns": 1261498572871900,
+      "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+      "broker_job_id": 3,
+      "broker_ready_ns": 1261498541751200,
+      "broker_started_ns": 1261498541857900,
+      "broker_submitted_ns": 1261498541598700,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1261498602696800,
+      "error": null,
+      "handled_ns": 1261498602842000,
+      "job_id": "job-0009",
+      "output_sha256": "de2c8c76b29dfbf2be88d9ef69b0f7c8b2c66538e706b34ab6d6bb5a92ff29e4",
+      "release_due_ns": null,
+      "state": "succeeded",
+      "team_id": "peer-c"
+    },
+    {
+      "accepted_receipt_ns": 1261498746655900,
+      "attempt_ns": 1261498744377500,
+      "broker_cancellation_decision": "unobserved",
+      "broker_finished_ns": 1261498777354200,
+      "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+      "broker_job_id": 6,
+      "broker_ready_ns": 1261498746078500,
+      "broker_started_ns": 1261498746192600,
+      "broker_submitted_ns": 1261498745936800,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1261498806729900,
+      "error": null,
+      "handled_ns": 1261498807138200,
+      "job_id": "job-0010",
+      "output_sha256": "290444a5f29169eceeec41f6b3e1af2d15f114c2561ab0cebddda6ceb293403e",
+      "release_due_ns": null,
+      "state": "succeeded",
+      "team_id": "peer-c"
+    },
+    {
+      "accepted_receipt_ns": 1261498951477500,
+      "attempt_ns": 1261498949340600,
+      "broker_cancellation_decision": "unobserved",
+      "broker_finished_ns": 1261498982403700,
+      "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+      "broker_job_id": 9,
+      "broker_ready_ns": 1261498951220600,
+      "broker_started_ns": 1261498951307700,
+      "broker_submitted_ns": 1261498951066300,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1261499012247500,
+      "error": null,
+      "handled_ns": 1261499012417600,
+      "job_id": "job-0011",
+      "output_sha256": "ae153fbd147d8c5719ec26cc01fa26c6667a78f7a64ea23b3e1a628d43938dd3",
+      "release_due_ns": null,
+      "state": "succeeded",
+      "team_id": "peer-c"
+    },
+    {
+      "accepted_receipt_ns": 1261499158786500,
+      "attempt_ns": 1261499155954500,
+      "broker_cancellation_decision": "unobserved",
+      "broker_finished_ns": 1261499189550600,
+      "broker_id": "2fe0bf6928364cad9de545b262c1bf32",
+      "broker_job_id": 12,
+      "broker_ready_ns": 1261499158165500,
+      "broker_started_ns": 1261499158319400,
+      "broker_submitted_ns": 1261499157871700,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1261499217708200,
+      "error": null,
+      "handled_ns": 1261499218065400,
+      "job_id": "job-0012",
+      "output_sha256": "1f6b47111cc8eb3e1901a664f203c78284aef53ee20bdea6e4f93ed056b6dd9b",
+      "release_due_ns": null,
+      "state": "succeeded",
+      "team_id": "peer-c"
+    }
+  ],
+  "summary": {
+    "acceptance_unknown": 0,
+    "accepted_observed": 12,
+    "ambiguous_samples": 0,
+    "attempted": 12,
+    "conditions_realized": {
+      "bulk_backlog_and_peer_competition": null,
+      "no_competing_experiment_clients": true
+    },
+    "elapsed_ns": 801288000,
+    "event_audit_errors": [],
+    "extra_or_ambiguous_sample_rows": 0,
+    "invalid_state_samples": 0,
+    "missing_samples": 0,
+    "nominal_resolution_screen": {
+      "client_receipt_intervals_observed": 12,
+      "client_receipt_intervals_short": 0,
+      "forward_intervals_observed": 12,
+      "forward_intervals_short": 0,
+      "queue_wait_intervals_observed": 12,
+      "queue_wait_intervals_short": 0,
+      "threshold_ns": 10000,
+      "window_short": false
+    },
+    "owner_drained": true,
+    "planned": 12,
+    "queue": {
+      "by_team": {
+        "bulk": {
+          "strictly_intervening_selections": {
+            "max": 0,
+            "n": 4,
+            "p50": 0.0,
+            "p95": 0
+          },
+          "wait_ns": {
+            "max": 126800,
+            "n": 4,
+            "p50": 115900.0,
+            "p95": 126800
+          }
+        },
+        "peer-b": {
+          "strictly_intervening_selections": {
+            "max": 0,
+            "n": 4,
+            "p50": 0.0,
+            "p95": 0
+          },
+          "wait_ns": {
+            "max": 113800,
+            "n": 4,
+            "p50": 98250.0,
+            "p95": 113800
+          }
+        },
+        "peer-c": {
+          "strictly_intervening_selections": {
+            "max": 0,
+            "n": 4,
+            "p50": 0.0,
+            "p95": 0
+          },
+          "wait_ns": {
+            "max": 153900,
+            "n": 4,
+            "p50": 110400.0,
+            "p95": 153900
+          }
+        }
+      },
+      "jobs": [
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0001",
+          "ready_ns": 1261498424886200,
+          "selected_ns": 1261498424988200,
+          "strictly_intervening_selections": 0,
+          "team_id": "bulk",
+          "wait_ns": 102000
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0005",
+          "ready_ns": 1261498480427600,
+          "selected_ns": 1261498480522700,
+          "strictly_intervening_selections": 0,
+          "team_id": "peer-b",
+          "wait_ns": 95100
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0009",
+          "ready_ns": 1261498541751200,
+          "selected_ns": 1261498541857900,
+          "strictly_intervening_selections": 0,
+          "team_id": "peer-c",
+          "wait_ns": 106700
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0002",
+          "ready_ns": 1261498618603400,
+          "selected_ns": 1261498618725600,
+          "strictly_intervening_selections": 0,
+          "team_id": "bulk",
+          "wait_ns": 122200
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0006",
+          "ready_ns": 1261498684222800,
+          "selected_ns": 1261498684324200,
+          "strictly_intervening_selections": 0,
+          "team_id": "peer-b",
+          "wait_ns": 101400
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0010",
+          "ready_ns": 1261498746078500,
+          "selected_ns": 1261498746192600,
+          "strictly_intervening_selections": 0,
+          "team_id": "peer-c",
+          "wait_ns": 114100
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0003",
+          "ready_ns": 1261498809246300,
+          "selected_ns": 1261498809373100,
+          "strictly_intervening_selections": 0,
+          "team_id": "bulk",
+          "wait_ns": 126800
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0007",
+          "ready_ns": 1261498885192700,
+          "selected_ns": 1261498885306500,
+          "strictly_intervening_selections": 0,
+          "team_id": "peer-b",
+          "wait_ns": 113800
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0011",
+          "ready_ns": 1261498951220600,
+          "selected_ns": 1261498951307700,
+          "strictly_intervening_selections": 0,
+          "team_id": "peer-c",
+          "wait_ns": 87100
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0004",
+          "ready_ns": 1261499014519000,
+          "selected_ns": 1261499014628600,
+          "strictly_intervening_selections": 0,
+          "team_id": "bulk",
+          "wait_ns": 109600
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0008",
+          "ready_ns": 1261499091635400,
+          "selected_ns": 1261499091726700,
+          "strictly_intervening_selections": 0,
+          "team_id": "peer-b",
+          "wait_ns": 91300
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0012",
+          "ready_ns": 1261499158165500,
+          "selected_ns": 1261499158319400,
+          "strictly_intervening_selections": 0,
+          "team_id": "peer-c",
+          "wait_ns": 153900
+        }
+      ],
+      "wait_ns": {
+        "max": 153900,
+        "n": 12,
+        "p50": 108150.0,
+        "p95": 153900
+      }
+    },
+    "queue_observations_valid": true,
+    "rotation": {
+      "competing_selections_with_bulk_backlog": 0,
+      "competing_team_selections": 0,
+      "decisions": [
+        {
+          "eligible_teams": [
+            "bulk"
+          ],
+          "expected_job_id": "job-0001",
+          "expected_team_id": "bulk",
+          "job_id": "job-0001",
+          "pending_by_team": {
+            "bulk": 1
+          },
+          "team_id": "bulk",
+          "time_ns": 1261498424988200
+        },
+        {
+          "eligible_teams": [
+            "peer-b"
+          ],
+          "expected_job_id": "job-0005",
+          "expected_team_id": "peer-b",
+          "job_id": "job-0005",
+          "pending_by_team": {
+            "peer-b": 1
+          },
+          "team_id": "peer-b",
+          "time_ns": 1261498480522700
+        },
+        {
+          "eligible_teams": [
+            "peer-c"
+          ],
+          "expected_job_id": "job-0009",
+          "expected_team_id": "peer-c",
+          "job_id": "job-0009",
+          "pending_by_team": {
+            "peer-c": 1
+          },
+          "team_id": "peer-c",
+          "time_ns": 1261498541857900
+        },
+        {
+          "eligible_teams": [
+            "bulk"
+          ],
+          "expected_job_id": "job-0002",
+          "expected_team_id": "bulk",
+          "job_id": "job-0002",
+          "pending_by_team": {
+            "bulk": 1
+          },
+          "team_id": "bulk",
+          "time_ns": 1261498618725600
+        },
+        {
+          "eligible_teams": [
+            "peer-b"
+          ],
+          "expected_job_id": "job-0006",
+          "expected_team_id": "peer-b",
+          "job_id": "job-0006",
+          "pending_by_team": {
+            "peer-b": 1
+          },
+          "team_id": "peer-b",
+          "time_ns": 1261498684324200
+        },
+        {
+          "eligible_teams": [
+            "peer-c"
+          ],
+          "expected_job_id": "job-0010",
+          "expected_team_id": "peer-c",
+          "job_id": "job-0010",
+          "pending_by_team": {
+            "peer-c": 1
+          },
+          "team_id": "peer-c",
+          "time_ns": 1261498746192600
+        },
+        {
+          "eligible_teams": [
+            "bulk"
+          ],
+          "expected_job_id": "job-0003",
+          "expected_team_id": "bulk",
+          "job_id": "job-0003",
+          "pending_by_team": {
+            "bulk": 1
+          },
+          "team_id": "bulk",
+          "time_ns": 1261498809373100
+        },
+        {
+          "eligible_teams": [
+            "peer-b"
+          ],
+          "expected_job_id": "job-0007",
+          "expected_team_id": "peer-b",
+          "job_id": "job-0007",
+          "pending_by_team": {
+            "peer-b": 1
+          },
+          "team_id": "peer-b",
+          "time_ns": 1261498885306500
+        },
+        {
+          "eligible_teams": [
+            "peer-c"
+          ],
+          "expected_job_id": "job-0011",
+          "expected_team_id": "peer-c",
+          "job_id": "job-0011",
+          "pending_by_team": {
+            "peer-c": 1
+          },
+          "team_id": "peer-c",
+          "time_ns": 1261498951307700
+        },
+        {
+          "eligible_teams": [
+            "bulk"
+          ],
+          "expected_job_id": "job-0004",
+          "expected_team_id": "bulk",
+          "job_id": "job-0004",
+          "pending_by_team": {
+            "bulk": 1
+          },
+          "team_id": "bulk",
+          "time_ns": 1261499014628600
+        },
+        {
+          "eligible_teams": [
+            "peer-b"
+          ],
+          "expected_job_id": "job-0008",
+          "expected_team_id": "peer-b",
+          "job_id": "job-0008",
+          "pending_by_team": {
+            "peer-b": 1
+          },
+          "team_id": "peer-b",
+          "time_ns": 1261499091726700
+        },
+        {
+          "eligible_teams": [
+            "peer-c"
+          ],
+          "expected_job_id": "job-0012",
+          "expected_team_id": "peer-c",
+          "job_id": "job-0012",
+          "pending_by_team": {
+            "peer-c": 1
+          },
+          "team_id": "peer-c",
+          "time_ns": 1261499158319400
+        }
+      ],
+      "peak_bulk_pending": 1,
+      "peak_pending": 1,
+      "reason": null,
+      "state": "matches_round_robin_fifo"
+    },
+    "source_timings_by_team_success": {
+      "bulk": {
+        "attempt_to_admission_receipt_ns": {
+          "max": 16257300,
+          "n": 4,
+          "p50": 5157950.0,
+          "p95": 16257300
+        },
+        "attempt_to_broker_submission_ns": {
+          "max": 15563300,
+          "n": 4,
+          "p50": 4626200.0,
+          "p95": 15563300
+        },
+        "broker_submission_to_ready_ns": {
+          "max": 223200,
+          "n": 4,
+          "p50": 181300.0,
+          "p95": 223200
+        },
+        "model_entry_to_finished_ns": {
+          "max": 30728700,
+          "n": 4,
+          "p50": 30601350.0,
+          "p95": 30728700
+        },
+        "ready_to_selection_ns": {
+          "max": 126800,
+          "n": 4,
+          "p50": 115900.0,
+          "p95": 126800
+        },
+        "selection_to_terminal_ns": {
+          "max": 31553400,
+          "n": 4,
+          "p50": 31323800.0,
+          "p95": 31553400
+        }
+      },
+      "peer-b": {
+        "attempt_to_admission_receipt_ns": {
+          "max": 16108300,
+          "n": 4,
+          "p50": 9134850.0,
+          "p95": 16108300
+        },
+        "attempt_to_broker_submission_ns": {
+          "max": 15331700,
+          "n": 4,
+          "p50": 8503650.0,
+          "p95": 15331700
+        },
+        "broker_submission_to_ready_ns": {
+          "max": 208100,
+          "n": 4,
+          "p50": 161000.0,
+          "p95": 208100
+        },
+        "model_entry_to_finished_ns": {
+          "max": 30742200,
+          "n": 4,
+          "p50": 30572950.0,
+          "p95": 30742200
+        },
+        "ready_to_selection_ns": {
+          "max": 113800,
+          "n": 4,
+          "p50": 98250.0,
+          "p95": 113800
+        },
+        "selection_to_terminal_ns": {
+          "max": 31418000,
+          "n": 4,
+          "p50": 31297200.0,
+          "p95": 31418000
+        }
+      },
+      "peer-c": {
+        "attempt_to_admission_receipt_ns": {
+          "max": 2832000,
+          "n": 4,
+          "p50": 2324400.0,
+          "p95": 2832000
+        },
+        "attempt_to_broker_submission_ns": {
+          "max": 1917200,
+          "n": 4,
+          "p50": 1820350.0,
+          "p95": 1917200
+        },
+        "broker_submission_to_ready_ns": {
+          "max": 293800,
+          "n": 4,
+          "p50": 153400.0,
+          "p95": 293800
+        },
+        "model_entry_to_finished_ns": {
+          "max": 30579900,
+          "n": 4,
+          "p50": 30343850.0,
+          "p95": 30579900
+        },
+        "ready_to_selection_ns": {
+          "max": 153900,
+          "n": 4,
+          "p50": 110400.0,
+          "p95": 153900
+        },
+        "selection_to_terminal_ns": {
+          "max": 31231200,
+          "n": 4,
+          "p50": 31128800.0,
+          "p95": 31231200
+        }
+      }
+    },
+    "states": {
+      "cancelled": 0,
+      "failed": 0,
+      "invalid_output": 0,
+      "rejected": 0,
+      "succeeded": 12,
+      "unattempted": 0,
+      "unresolved": 0
+    },
+    "successful_input_positions_per_second": 29.951777638002817,
+    "successful_jobs_per_second": 14.975888819001408,
+    "teams": {
+      "bulk": {
+        "acceptance_unknown": 0,
+        "accepted_observed": 4,
+        "ambiguous_samples": 0,
+        "attempted": 4,
+        "invalid_state_samples": 0,
+        "missing_samples": 0,
+        "planned": 4,
+        "states": {
+          "cancelled": 0,
+          "failed": 0,
+          "invalid_output": 0,
+          "rejected": 0,
+          "succeeded": 4,
+          "unattempted": 0,
+          "unresolved": 0
+        },
+        "successful_input_positions_per_second": 9.983925879334272,
+        "successful_jobs_per_second": 4.991962939667136,
+        "timing_by_state": {
+          "cancelled": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "failed": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "invalid_output": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "rejected": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "succeeded": {
+            "client_handled_ns": {
+              "max": 79657800,
+              "n": 4,
+              "p50": 63067450.0,
+              "p95": 79657800
+            },
+            "client_receipt_ns": {
+              "max": 79456300,
+              "n": 4,
+              "p50": 62727850.0,
+              "p95": 79456300
+            }
+          },
+          "unattempted": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "unresolved": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          }
+        }
+      },
+      "peer-b": {
+        "acceptance_unknown": 0,
+        "accepted_observed": 4,
+        "ambiguous_samples": 0,
+        "attempted": 4,
+        "invalid_state_samples": 0,
+        "missing_samples": 0,
+        "planned": 4,
+        "states": {
+          "cancelled": 0,
+          "failed": 0,
+          "invalid_output": 0,
+          "rejected": 0,
+          "succeeded": 4,
+          "unattempted": 0,
+          "unresolved": 0
+        },
+        "successful_input_positions_per_second": 9.983925879334272,
+        "successful_jobs_per_second": 4.991962939667136,
+        "timing_by_state": {
+          "cancelled": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "failed": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "invalid_output": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "rejected": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "succeeded": {
+            "client_handled_ns": {
+              "max": 79760000,
+              "n": 4,
+              "p50": 70665550.0,
+              "p95": 79760000
+            },
+            "client_receipt_ns": {
+              "max": 79566300,
+              "n": 4,
+              "p50": 70294000.0,
+              "p95": 79566300
+            }
+          },
+          "unattempted": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "unresolved": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          }
+        }
+      },
+      "peer-c": {
+        "acceptance_unknown": 0,
+        "accepted_observed": 4,
+        "ambiguous_samples": 0,
+        "attempted": 4,
+        "invalid_state_samples": 0,
+        "missing_samples": 0,
+        "planned": 4,
+        "states": {
+          "cancelled": 0,
+          "failed": 0,
+          "invalid_output": 0,
+          "rejected": 0,
+          "succeeded": 4,
+          "unattempted": 0,
+          "unresolved": 0
+        },
+        "successful_input_positions_per_second": 9.983925879334272,
+        "successful_jobs_per_second": 4.991962939667136,
+        "timing_by_state": {
+          "cancelled": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "failed": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "invalid_output": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "rejected": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "succeeded": {
+            "client_handled_ns": {
+              "max": 63158300,
+              "n": 4,
+              "p50": 62918850.0,
+              "p95": 63158300
+            },
+            "client_receipt_ns": {
+              "max": 63013100,
+              "n": 4,
+              "p50": 62629650.0,
+              "p95": 63013100
+            }
+          },
+          "unattempted": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "unresolved": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          }
+        }
+      }
+    },
+    "timing_by_state": {
+      "cancelled": {
+        "client_handled_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        },
+        "client_receipt_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        }
+      },
+      "failed": {
+        "client_handled_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        },
+        "client_receipt_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        }
+      },
+      "invalid_output": {
+        "client_handled_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        },
+        "client_receipt_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        }
+      },
+      "rejected": {
+        "client_handled_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        },
+        "client_receipt_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        }
+      },
+      "succeeded": {
+        "client_handled_ns": {
+          "max": 79760000,
+          "n": 12,
+          "p50": 62918850.0,
+          "p95": 79760000
+        },
+        "client_receipt_ns": {
+          "max": 79566300,
+          "n": 12,
+          "p50": 62629650.0,
+          "p95": 79566300
+        }
+      },
+      "unattempted": {
+        "client_handled_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        },
+        "client_receipt_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        }
+      },
+      "unresolved": {
+        "client_handled_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        },
+        "client_receipt_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        }
+      }
+    }
+  },
+  "version": "synthetic-cpu-fairness-backlog-v1"
+}

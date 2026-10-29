@@ -1,0 +1,231 @@
+{
+  "status": "pass",
+  "forwards": 44,
+  "pairs": [
+    {
+      "baseline_margins": [
+        4.472808837890625,
+        3.448697954416275
+      ],
+      "baseline_supported": false,
+      "context_adjusted_margins": [
+        3.675306558609009,
+        2.651195675134659
+      ],
+      "context_only_margin": 0.7975022792816162,
+      "context_only_scores": [
+        -17.457892656326294,
+        -18.25539493560791
+      ],
+      "delta": 1.02411088347435,
+      "pair_index": 0,
+      "status": "baseline-unsupported"
+    },
+    {
+      "baseline_margins": [
+        5.385010719299316,
+        -8.369743525981903
+      ],
+      "baseline_supported": true,
+      "condition_margins": {
+        "full_self": [
+          5.385010719299316,
+          -8.369743525981903
+        ],
+        "full_swap": [
+          -8.369743525981903,
+          5.385010719299316
+        ],
+        "instruction_swap": [
+          5.1379194259643555,
+          -8.208426535129547
+        ],
+        "null": [
+          5.385010719299316,
+          -8.369743525981903
+        ],
+        "repeat": [
+          5.385010719299316,
+          -8.369743525981903
+        ],
+        "token_self": [
+          5.385010719299316,
+          -8.369743525981903
+        ],
+        "word_swap": [
+          -8.259137988090515,
+          5.088144302368164
+        ],
+        "zero": [
+          -1.7138185501098633,
+          -1.9796409606933594
+        ]
+      },
+      "context_adjusted_margins": [
+        6.504969596862793,
+        -7.2497846484184265
+      ],
+      "context_only_margin": -1.1199588775634766,
+      "context_only_scores": [
+        -14.877726554870605,
+        -13.757767677307129
+      ],
+      "delta": 13.75475424528122,
+      "instruction_movements": [
+        0.24709129333496094,
+        0.16131699085235596
+      ],
+      "pair_index": 1,
+      "patch_distances_l2": {
+        "full_self-0": 0.0,
+        "full_self-1": 0.0,
+        "full_swap-0": 2.2031447576073426,
+        "full_swap-1": 2.2031447576073426,
+        "instruction_swap-0": 0.5327258007652099,
+        "instruction_swap-1": 0.5327258007652099,
+        "null-0": 0.0,
+        "null-1": 0.0,
+        "token_self-0": 0.0,
+        "token_self-1": 0.0,
+        "word_swap-0": 2.014642662504253,
+        "word_swap-1": 2.014642662504253,
+        "zero-0": 2.375044958582029,
+        "zero-1": 2.456254116882549
+      },
+      "patch_metadata": {
+        "full_self-0": {
+          "destination_position": null,
+          "destination_side": 0,
+          "destination_special": null,
+          "donor_position": null,
+          "donor_side": 0,
+          "donor_special": null,
+          "l2": 0.0
+        },
+        "full_self-1": {
+          "destination_position": null,
+          "destination_side": 1,
+          "destination_special": null,
+          "donor_position": null,
+          "donor_side": 1,
+          "donor_special": null,
+          "l2": 0.0
+        },
+        "full_swap-0": {
+          "destination_position": null,
+          "destination_side": 0,
+          "destination_special": null,
+          "donor_position": null,
+          "donor_side": 1,
+          "donor_special": null,
+          "l2": 2.2031447576073426
+        },
+        "full_swap-1": {
+          "destination_position": null,
+          "destination_side": 1,
+          "destination_special": null,
+          "donor_position": null,
+          "donor_side": 0,
+          "donor_special": null,
+          "l2": 2.2031447576073426
+        },
+        "instruction_swap-0": {
+          "destination_position": 0,
+          "destination_side": 0,
+          "destination_special": 0,
+          "donor_position": 0,
+          "donor_side": 1,
+          "donor_special": 0,
+          "l2": 0.5327258007652099
+        },
+        "instruction_swap-1": {
+          "destination_position": 0,
+          "destination_side": 1,
+          "destination_special": 0,
+          "donor_position": 0,
+          "donor_side": 0,
+          "donor_special": 0,
+          "l2": 0.5327258007652099
+        },
+        "null-0": {
+          "destination_position": 6,
+          "destination_side": 0,
+          "destination_special": 0,
+          "donor_position": 6,
+          "donor_side": 0,
+          "donor_special": 0,
+          "l2": 0.0
+        },
+        "null-1": {
+          "destination_position": 6,
+          "destination_side": 1,
+          "destination_special": 0,
+          "donor_position": 6,
+          "donor_side": 1,
+          "donor_special": 0,
+          "l2": 0.0
+        },
+        "token_self-0": {
+          "destination_position": 6,
+          "destination_side": 0,
+          "destination_special": 0,
+          "donor_position": 6,
+          "donor_side": 0,
+          "donor_special": 0,
+          "l2": 0.0
+        },
+        "token_self-1": {
+          "destination_position": 6,
+          "destination_side": 1,
+          "destination_special": 0,
+          "donor_position": 6,
+          "donor_side": 1,
+          "donor_special": 0,
+          "l2": 0.0
+        },
+        "word_swap-0": {
+          "destination_position": 6,
+          "destination_side": 0,
+          "destination_special": 0,
+          "donor_position": 6,
+          "donor_side": 1,
+          "donor_special": 0,
+          "l2": 2.014642662504253
+        },
+        "word_swap-1": {
+          "destination_position": 6,
+          "destination_side": 1,
+          "destination_special": 0,
+          "donor_position": 6,
+          "donor_side": 0,
+          "donor_special": 0,
+          "l2": 2.014642662504253
+        },
+        "zero-0": {
+          "destination_position": 6,
+          "destination_side": 0,
+          "destination_special": 0,
+          "donor_position": null,
+          "donor_side": null,
+          "donor_special": null,
+          "l2": 2.375044958582029
+        },
+        "zero-1": {
+          "destination_position": 6,
+          "destination_side": 1,
+          "destination_special": 0,
+          "donor_position": null,
+          "donor_side": null,
+          "donor_special": null,
+          "l2": 2.456254116882549
+        }
+      },
+      "status": "positive",
+      "word_movements": [
+        13.644148707389832,
+        13.457887828350067
+      ]
+    }
+  ],
+  "scope": "saved-evidence consistency only; no model execution"
+}

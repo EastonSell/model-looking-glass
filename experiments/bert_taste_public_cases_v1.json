@@ -1,0 +1,23 @@
+{
+  "schema": "bert-taste-public-cases-v1",
+  "model": "distilbert/distilbert-base-uncased",
+  "revision": "12040accade4e8a0f71eabdb258fecc2e7e948be",
+  "status": "public-exploratory-reservation",
+  "scope": "Public convenience prompts, not held out or blind; unknown prior and pretraining exposure is not certified.",
+  "prior_public_inventories": {
+    "experiments/bert_agreement_exposures_v5.json": "34db577a211d6036e7803b8cdb6aaab35687b56974de8cf1ac6bccbf3272fb3c",
+    "experiments/bert_matched_public_cases_v1.json": "5b708600dba78db9e4ee676650bc5e1f6b3269d52179a8e45d5d45fee55219bb"
+  },
+  "coordinates": {"mask": 4, "ingredient": 7, "unchanged_control": 1, "sequence_length": 10},
+  "tokens": {"mask": 103, "sugar": 5699, "lemon": 14380, "sweet": 4086, "sour": 14768, "unchanged_control": 1996},
+  "rows": [
+    {"id": "tea-sugar", "text": "The tea tasted [MASK] after adding sugar.", "input_ids": [101, 1996, 5572, 12595, 103, 2044, 5815, 5699, 1012, 102], "attention_mask": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]},
+    {"id": "tea-lemon", "text": "The tea tasted [MASK] after adding lemon.", "input_ids": [101, 1996, 5572, 12595, 103, 2044, 5815, 14380, 1012, 102], "attention_mask": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]},
+    {"id": "drink-sugar", "text": "The drink tasted [MASK] because of sugar.", "input_ids": [101, 1996, 4392, 12595, 103, 2138, 1997, 5699, 1012, 102], "attention_mask": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]},
+    {"id": "drink-lemon", "text": "The drink tasted [MASK] because of lemon.", "input_ids": [101, 1996, 4392, 12595, 103, 2138, 1997, 14380, 1012, 102], "attention_mask": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]},
+    {"id": "sauce-sugar", "text": "The sauce tasted [MASK] from the sugar.", "input_ids": [101, 1996, 12901, 12595, 103, 2013, 1996, 5699, 1012, 102], "attention_mask": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]},
+    {"id": "sauce-lemon", "text": "The sauce tasted [MASK] from the lemon.", "input_ids": [101, 1996, 12901, 12595, 103, 2013, 1996, 14380, 1012, 102], "attention_mask": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]},
+    {"id": "water-sugar", "text": "The water tasted [MASK] with some sugar.", "input_ids": [101, 1996, 2300, 12595, 103, 2007, 2070, 5699, 1012, 102], "attention_mask": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]},
+    {"id": "water-lemon", "text": "The water tasted [MASK] with some lemon.", "input_ids": [101, 1996, 2300, 12595, 103, 2007, 2070, 14380, 1012, 102], "attention_mask": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
+  ]
+}

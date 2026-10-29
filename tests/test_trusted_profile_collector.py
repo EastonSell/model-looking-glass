@@ -190,6 +190,44 @@ class TrustedProfileCollectorTests(unittest.TestCase):
             launch.assert_not_called()
             resolve.assert_not_called()
 
+    def test_collector_parent_requires_zero_exit_from_its_supervisor(self):
+        import looking_glass.trusted_profile_collector as collector
+        import looking_glass.trusted_service_profile as trusted
+        from looking_glass import gpu_oneshot, supervisor, trusted_service_launch
+        from looking_glass import device_identity
+        repo = Path(collector.__file__).resolve().parents[1]
+        parents = [parent for parent in repo.parents if parent.name.casefold() == 'work']
+        workspace = parents[0].parent if parents else repo
+        source = SimpleNamespace(source_base=b'source', asset_manifest=b'assets')
+        uuid = 'GPU-12345678-1234-5678-9abc-1234567890ab'
+        result = SimpleNamespace(run_id='b' * 32, pid=123, clean=False, exit_code=1,
+                                 timed_out=False, reason='nonzero_exit')
+        def git_result(args, **kwargs):
+            if args[1] == 'rev-parse': return SimpleNamespace(stdout='a' * 40, returncode=0)
+            if args[1] == 'status': return SimpleNamespace(stdout='', returncode=0)
+            if args[1] == 'symbolic-ref': return SimpleNamespace(stdout='', returncode=1)
+            raise AssertionError('unexpected git operation')
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            home, cache, private = root / 'hf', root / 'hf' / 'hub', root / 'private'
+            cache.mkdir(parents=True)
+            private.mkdir()
+            identity = SimpleNamespace(lock_path=root / 'device.lock', marker_path=root / 'unsafe')
+            launch = SimpleNamespace(command=('python',), environment={}, verify_ready=lambda: None)
+            with (patch.object(collector.subprocess, 'run', side_effect=git_result),
+                  patch.object(collector, '_require_gated_supervisor'),
+                  patch.object(trusted, 'prepare_trusted_source', return_value=source),
+                  patch.object(gpu_oneshot, '_smi_snapshot', return_value=(uuid, {})),
+                  patch.object(gpu_oneshot, '_owner_presence_after_exit', return_value={}),
+                  patch.object(trusted_service_launch, 'prepare_trusted_launch', return_value=launch),
+                  patch.object(device_identity, 'resolve_device_identity', return_value=identity),
+                  patch.object(supervisor, 'run_supervised', return_value=result) as supervise):
+                _run_dir, terminal = collector.run_supervised_collector(
+                    workspace_root=workspace, cache_root=cache, hf_home=home, site_packages=root,
+                    environment_root=root, private_parent=private, trusted_path=str(root))
+            self.assertIs(supervise.call_args.kwargs['require_zero_exit'], True)
+            self.assertEqual(terminal['status'], 'quarantined')
+
     def test_nested_work_ancestors_cannot_select_an_inner_lease_namespace(self):
         import looking_glass.trusted_profile_collector as collector
         with tempfile.TemporaryDirectory() as folder:

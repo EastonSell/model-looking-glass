@@ -1,0 +1,874 @@
+{
+  "schema": "bert-taste-template-direction-public-cases-v1",
+  "status": "public-exploratory-reservation",
+  "model": "distilbert/distilbert-base-uncased",
+  "revision": "12040accade4e8a0f71eabdb258fecc2e7e948be",
+  "tokenizer_sha256": "ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98",
+  "selection_source_commit": "210dfc676f9e1670391f8fe71f2a9c418d6fe962",
+  "selection_source_sha256": {
+    "scripts/bert_taste_template_cases_v1.py": "d5755c0b72f5dcc0dc413a254548eaf3f9f47d9466ba01472479134c3981a75b",
+    "docs/BERT_TASTE_TEMPLATE_DIRECTION_V1.md": "a24bee821839ffa4bd4ea2ac3805621d524491f3933009fd9450ca714fb5182d",
+    "experiments/bert_agreement_exposures_v6.json": "0d0b37539c30c8ff25ea5b1cfa95ecd4587f048434348a1c91ec010418553afb",
+    "experiments/bert_matched_public_cases_v1.json": "5b708600dba78db9e4ee676650bc5e1f6b3269d52179a8e45d5d45fee55219bb",
+    "experiments/bert_taste_public_exposures_v2.json": "a766d20778191280122a6b498b9bcb34907bfac761152ae7c3cf4df0fb9c5aa1",
+    "experiments/bert_taste_matched_dose_public_exposures_v2.json": "9b08e38927187c6f43d8659603e27e0f5397034e01143e665ab01a139a64e845",
+    "experiments/bert_taste_matched_dose_public_cases_v1.json": "983be330b6691ce23986f26e50a345f77ca5cf46dd28a660a3a012a2cf598a7c"
+  },
+  "prior_public_inventories": {
+    "experiments/bert_agreement_exposures_v6.json": "0d0b37539c30c8ff25ea5b1cfa95ecd4587f048434348a1c91ec010418553afb",
+    "experiments/bert_matched_public_cases_v1.json": "5b708600dba78db9e4ee676650bc5e1f6b3269d52179a8e45d5d45fee55219bb",
+    "experiments/bert_taste_public_exposures_v2.json": "a766d20778191280122a6b498b9bcb34907bfac761152ae7c3cf4df0fb9c5aa1",
+    "experiments/bert_taste_matched_dose_public_exposures_v2.json": "9b08e38927187c6f43d8659603e27e0f5397034e01143e665ab01a139a64e845"
+  },
+  "tokens": {
+    "mask": 103,
+    "sugar": 5699,
+    "lemon": 14380,
+    "sweet": 4086,
+    "sour": 14768,
+    "the": 1996
+  },
+  "coordinates": {
+    "mask": 4,
+    "ingredient": 7,
+    "the": 1,
+    "sequence_length": 10
+  },
+  "scope": "New public frames selected without model outputs; prior and pretraining exposure are unknown.",
+  "candidate_pool": [
+    "apple",
+    "berries",
+    "bread",
+    "cereal",
+    "chocolate",
+    "cream",
+    "custard",
+    "dessert",
+    "fruit",
+    "jam",
+    "jelly",
+    "juice",
+    "lemonade",
+    "oatmeal",
+    "orange",
+    "porridge",
+    "rice",
+    "salad",
+    "soda",
+    "syrup",
+    "toast",
+    "wine",
+    "yogurt"
+  ],
+  "digest_order": [
+    "chocolate",
+    "rice",
+    "salad",
+    "syrup",
+    "dessert",
+    "cream",
+    "wine",
+    "oatmeal",
+    "orange",
+    "cereal",
+    "juice",
+    "yogurt",
+    "apple",
+    "porridge",
+    "fruit",
+    "jelly",
+    "bread",
+    "custard",
+    "toast",
+    "soda",
+    "berries",
+    "jam",
+    "lemonade"
+  ],
+  "decisions": [
+    {
+      "stem": "chocolate",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stem": "rice",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stem": "salad",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stem": "syrup",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stem": "dessert",
+      "status": "accepted",
+      "reason": null
+    },
+    {
+      "stem": "cream",
+      "status": "accepted",
+      "reason": null
+    }
+  ],
+  "selected_stems": [
+    "chocolate",
+    "rice",
+    "salad",
+    "syrup",
+    "dessert",
+    "cream"
+  ],
+  "rows": [
+    {
+      "id": "chocolate-after-sugar",
+      "stem": "chocolate",
+      "template": "after",
+      "ingredient": "sugar",
+      "text": "The chocolate tasted [MASK] after adding sugar.",
+      "input_ids": [
+        101,
+        1996,
+        7967,
+        12595,
+        103,
+        2044,
+        5815,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "chocolate-after-lemon",
+      "stem": "chocolate",
+      "template": "after",
+      "ingredient": "lemon",
+      "text": "The chocolate tasted [MASK] after adding lemon.",
+      "input_ids": [
+        101,
+        1996,
+        7967,
+        12595,
+        103,
+        2044,
+        5815,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "chocolate-with-sugar",
+      "stem": "chocolate",
+      "template": "with",
+      "ingredient": "sugar",
+      "text": "The chocolate tasted [MASK] with some sugar.",
+      "input_ids": [
+        101,
+        1996,
+        7967,
+        12595,
+        103,
+        2007,
+        2070,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "chocolate-with-lemon",
+      "stem": "chocolate",
+      "template": "with",
+      "ingredient": "lemon",
+      "text": "The chocolate tasted [MASK] with some lemon.",
+      "input_ids": [
+        101,
+        1996,
+        7967,
+        12595,
+        103,
+        2007,
+        2070,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "rice-after-sugar",
+      "stem": "rice",
+      "template": "after",
+      "ingredient": "sugar",
+      "text": "The rice tasted [MASK] after adding sugar.",
+      "input_ids": [
+        101,
+        1996,
+        5785,
+        12595,
+        103,
+        2044,
+        5815,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "rice-after-lemon",
+      "stem": "rice",
+      "template": "after",
+      "ingredient": "lemon",
+      "text": "The rice tasted [MASK] after adding lemon.",
+      "input_ids": [
+        101,
+        1996,
+        5785,
+        12595,
+        103,
+        2044,
+        5815,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "rice-with-sugar",
+      "stem": "rice",
+      "template": "with",
+      "ingredient": "sugar",
+      "text": "The rice tasted [MASK] with some sugar.",
+      "input_ids": [
+        101,
+        1996,
+        5785,
+        12595,
+        103,
+        2007,
+        2070,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "rice-with-lemon",
+      "stem": "rice",
+      "template": "with",
+      "ingredient": "lemon",
+      "text": "The rice tasted [MASK] with some lemon.",
+      "input_ids": [
+        101,
+        1996,
+        5785,
+        12595,
+        103,
+        2007,
+        2070,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "salad-after-sugar",
+      "stem": "salad",
+      "template": "after",
+      "ingredient": "sugar",
+      "text": "The salad tasted [MASK] after adding sugar.",
+      "input_ids": [
+        101,
+        1996,
+        16521,
+        12595,
+        103,
+        2044,
+        5815,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "salad-after-lemon",
+      "stem": "salad",
+      "template": "after",
+      "ingredient": "lemon",
+      "text": "The salad tasted [MASK] after adding lemon.",
+      "input_ids": [
+        101,
+        1996,
+        16521,
+        12595,
+        103,
+        2044,
+        5815,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "salad-with-sugar",
+      "stem": "salad",
+      "template": "with",
+      "ingredient": "sugar",
+      "text": "The salad tasted [MASK] with some sugar.",
+      "input_ids": [
+        101,
+        1996,
+        16521,
+        12595,
+        103,
+        2007,
+        2070,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "salad-with-lemon",
+      "stem": "salad",
+      "template": "with",
+      "ingredient": "lemon",
+      "text": "The salad tasted [MASK] with some lemon.",
+      "input_ids": [
+        101,
+        1996,
+        16521,
+        12595,
+        103,
+        2007,
+        2070,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "syrup-after-sugar",
+      "stem": "syrup",
+      "template": "after",
+      "ingredient": "sugar",
+      "text": "The syrup tasted [MASK] after adding sugar.",
+      "input_ids": [
+        101,
+        1996,
+        23353,
+        12595,
+        103,
+        2044,
+        5815,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "syrup-after-lemon",
+      "stem": "syrup",
+      "template": "after",
+      "ingredient": "lemon",
+      "text": "The syrup tasted [MASK] after adding lemon.",
+      "input_ids": [
+        101,
+        1996,
+        23353,
+        12595,
+        103,
+        2044,
+        5815,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "syrup-with-sugar",
+      "stem": "syrup",
+      "template": "with",
+      "ingredient": "sugar",
+      "text": "The syrup tasted [MASK] with some sugar.",
+      "input_ids": [
+        101,
+        1996,
+        23353,
+        12595,
+        103,
+        2007,
+        2070,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "syrup-with-lemon",
+      "stem": "syrup",
+      "template": "with",
+      "ingredient": "lemon",
+      "text": "The syrup tasted [MASK] with some lemon.",
+      "input_ids": [
+        101,
+        1996,
+        23353,
+        12595,
+        103,
+        2007,
+        2070,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "dessert-after-sugar",
+      "stem": "dessert",
+      "template": "after",
+      "ingredient": "sugar",
+      "text": "The dessert tasted [MASK] after adding sugar.",
+      "input_ids": [
+        101,
+        1996,
+        18064,
+        12595,
+        103,
+        2044,
+        5815,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "dessert-after-lemon",
+      "stem": "dessert",
+      "template": "after",
+      "ingredient": "lemon",
+      "text": "The dessert tasted [MASK] after adding lemon.",
+      "input_ids": [
+        101,
+        1996,
+        18064,
+        12595,
+        103,
+        2044,
+        5815,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "dessert-with-sugar",
+      "stem": "dessert",
+      "template": "with",
+      "ingredient": "sugar",
+      "text": "The dessert tasted [MASK] with some sugar.",
+      "input_ids": [
+        101,
+        1996,
+        18064,
+        12595,
+        103,
+        2007,
+        2070,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "dessert-with-lemon",
+      "stem": "dessert",
+      "template": "with",
+      "ingredient": "lemon",
+      "text": "The dessert tasted [MASK] with some lemon.",
+      "input_ids": [
+        101,
+        1996,
+        18064,
+        12595,
+        103,
+        2007,
+        2070,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cream-after-sugar",
+      "stem": "cream",
+      "template": "after",
+      "ingredient": "sugar",
+      "text": "The cream tasted [MASK] after adding sugar.",
+      "input_ids": [
+        101,
+        1996,
+        6949,
+        12595,
+        103,
+        2044,
+        5815,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cream-after-lemon",
+      "stem": "cream",
+      "template": "after",
+      "ingredient": "lemon",
+      "text": "The cream tasted [MASK] after adding lemon.",
+      "input_ids": [
+        101,
+        1996,
+        6949,
+        12595,
+        103,
+        2044,
+        5815,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cream-with-sugar",
+      "stem": "cream",
+      "template": "with",
+      "ingredient": "sugar",
+      "text": "The cream tasted [MASK] with some sugar.",
+      "input_ids": [
+        101,
+        1996,
+        6949,
+        12595,
+        103,
+        2007,
+        2070,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cream-with-lemon",
+      "stem": "cream",
+      "template": "with",
+      "ingredient": "lemon",
+      "text": "The cream tasted [MASK] with some lemon.",
+      "input_ids": [
+        101,
+        1996,
+        6949,
+        12595,
+        103,
+        2007,
+        2070,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    }
+  ]
+}

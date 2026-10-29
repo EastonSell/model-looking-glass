@@ -404,8 +404,21 @@ def _read_development_arrays(output, v1, v2, evidence, np):
     return arrays
 
 
+def _require_candidate_context():
+    """Refuse contexts in which the unchanged v1 cleanup can suppress errors."""
+    active_exception = getattr(sys, "exception", None)
+    if not callable(active_exception) or active_exception() is not None:
+        raise OwnerError("the historical candidate requires sys.exception and no active exception")
+
+
+def _candidate_v1_safely(v1, model, module, ids, target, competitor, *, expected_shape=None):
+    _require_candidate_context()
+    return v1._candidate(model, module, ids, target, competitor, expected_shape=expected_shape)
+
+
 def _prepare_v1_reconstruction(repo, cache, manifest_value, deps):
     """Reconstruct the frozen v1 candidate in an already-gated private owner."""
+    _require_candidate_context()
     torch, np, pretrained, v1, v2, edits, evidence, _manifest, _custody, _exposure, _gate = deps
     if (sys.byteorder != "little" or os.environ.get("CUDA_VISIBLE_DEVICES") != "-1"
             or os.environ.get("HF_HUB_OFFLINE") != "1" or os.environ.get("TRANSFORMERS_OFFLINE") != "1"
@@ -437,8 +450,8 @@ def _prepare_v1_reconstruction(repo, cache, manifest_value, deps):
         raise Incompatible("checkpoint state or projection digest differs from v1")
     guard.verify()
     v1._denormal_probe()
-    gradient, random, discovery = v1._candidate(model, module, v1.CASES[0][3], v1.LONDON, v1.PARIS,
-                                                 expected_shape=v1.WEIGHT_SHAPE)
+    gradient, random, discovery = _candidate_v1_safely(
+        v1, model, module, v1.CASES[0][3], v1.LONDON, v1.PARIS, expected_shape=v1.WEIGHT_SHAPE)
     discovery["denormal_probe_after_discovery"] = v1._denormal_probe()
     guard.verify()
     reference = evidence._read(repo / _manifest.V1_PRECOMMIT, evidence.MAX_JSON)

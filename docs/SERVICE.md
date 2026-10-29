@@ -76,11 +76,32 @@ protocols, source/model identifiers, seeds, controls, failures, and results.
 
 The reusable `serve_owner` lifecycle helper in `looking_glass.service`
 supports an externally assembled worker, broker, and IPC server. It monitors
-the worker's and broker's quarantine signals during blocked startup and shutdown and
-reports workload status separately from `teardown_verified`. The helper is
-not itself a GPU service or a process supervisor. A future GPU owner must
-use a verified device identity, a process-held device lease and durable
-supervisor protocol, and trusted measured resource profiles and live admission.
+the worker's and broker's quarantine signals during blocked startup and
+shutdown and reports workload status separately from `teardown_verified`.
+The optional trusted `health_provider` and `on_health_uncertain` callbacks
+must be supplied together. The provider returns an exact `OwnerHealth` with
+boolean fields without waiting on the broker condition. Its
+`worker_unavailable` means a persistent closed or poisoned worker, not
+temporary backpressure. It must synchronously signal resource uncertainty to
+its owner authority and independently retain resource-bearing partials and
+exception graphs; prefer scalar-only observations. The paired callback must
+be nonblocking and idempotently mark the same authority unsafe. It can be
+called more than once, including after a failed or malformed observation.
+
+These observations can be stale and do not authorize admission or atomically
+order a concurrent fault with startup, publication, or retirement. Fault
+sources need their own coordinated authority signal, and an external process
+watchdog must bound stalled or repeatedly interrupted callbacks. In the
+opt-in mode uncertain shutdown is left for process recovery, with no new
+best-effort cleanup threads after quarantine. A verified result joins the
+helper's startup and shutdown threads; separately owned monitor and transport
+threads need their own quiescence checks. Arbitrary interpreter bootstrap,
+exception-hook, or finalizer interruptions remain recovery cases.
+
+The helper is not itself a GPU service or a process supervisor. A future GPU
+owner must use a verified device identity, a process-held device lease and
+durable supervisor protocol, and trusted measured resource profiles and live
+admission.
 The owner may attest only after verified shutdown and synchronization, and
 must retain its lease through exit. The supervisor may clear the unsafe marker
 only after reaping that exact owner and reacquiring the lease.

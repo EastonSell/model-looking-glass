@@ -1,6 +1,8 @@
 import threading
 import time
 import unittest
+import inspect
+import dis
 import io
 import json
 import subprocess
@@ -54,6 +56,626 @@ class TestWorker:
 
 
 class OwnerTests(unittest.TestCase):
+    def test_trusted_health_provider_avoids_blocking_legacy_properties(self):
+        from looking_glass import service
+
+        class LegacyBroker:
+            closed = False
+
+            @property
+            def available(self):
+                raise AssertionError('condition-locked broker availability was read')
+
+            @property
+            def failed(self):
+                raise AssertionError('condition-locked broker failure was read')
+
+            @property
+            def quarantined(self):
+                raise AssertionError('legacy broker quarantine was read')
+
+            def close(self, *, timeout=None):
+                self.closed = True
+                return True
+
+        class LegacyWorker:
+            @property
+            def quarantined(self):
+                raise AssertionError('legacy worker quarantine was read')
+
+            @property
+            def poisoned(self):
+                raise AssertionError('legacy worker availability was read')
+
+            @property
+            def failed(self):
+                raise AssertionError('legacy worker failure was read')
+
+        broker, worker, stop, faults = LegacyBroker(), LegacyWorker(), threading.Event(), []
+
+        def health():
+            return service.OwnerHealth(False, False, False, False, broker.closed, not broker.closed)
+
+        result = serve_owner(TestServer(), broker, worker, stop, announce=lambda _: stop.set(),
+                             verify_drain=lambda: True, health_provider=health,
+                             on_health_uncertain=lambda: faults.append(True),
+                             poll_interval=.001, shutdown_timeout=.5)
+        self.assertEqual(result.status, OwnerStatus.CLEAN)
+        self.assertTrue(result.teardown_verified)
+        self.assertEqual(faults, [])
+
+    def test_real_broker_health_remains_observable_with_its_condition_held(self):
+        from looking_glass import service
+        from looking_glass.broker import Broker
+
+        class Cancelled(Exception):
+            pass
+        class Worker:
+            cancellation_exception = Cancelled
+            poisoned = False
+            failed = False
+            quarantined = False
+            def close(self):
+                pass
+
+        broker, worker = Broker(Worker(), max_pending=1, max_pending_per_team=1), TestWorker()
+        stop, ready, unsafe = threading.Event(), threading.Event(), threading.Event()
+        notices, results = [], []
+
+        def health():
+            value = broker.health_snapshot
+            return service.OwnerHealth(unsafe.is_set() or value.quarantined, False, False,
+                                       value.failed, value.closed, value.owner_alive)
+
+        def owner():
+            results.append(serve_owner(TestServer(), broker, worker, stop,
+                announce=lambda _: ready.set(), verify_drain=lambda: True,
+                health_provider=health, on_health_uncertain=lambda: notices.append(True),
+                poll_interval=.001, shutdown_timeout=.5))
+
+        thread = threading.Thread(target=owner, daemon=True)
+        try:
+            with broker._condition:
+                thread.start()
+                self.assertTrue(ready.wait(2))
+                unsafe.set()
+                thread.join(.5)
+                self.assertFalse(thread.is_alive(), 'health observation waited on the broker condition')
+                self.assertEqual(results[0].status, OwnerStatus.QUARANTINED)
+                self.assertFalse(results[0].teardown_verified)
+                self.assertTrue(notices)
+        finally:
+            thread.join(2)
+            broker.close(timeout=2)
+
+    def test_health_provider_and_uncertainty_callback_are_both_required(self):
+        server = TestServer()
+        for provider, notify in ((lambda: None, None), (None, lambda: None), (1, lambda: None),
+                                 (lambda: None, 1)):
+            with self.subTest(provider=provider, notify=notify), self.assertRaises(TypeError):
+                serve_owner(server, TestBroker(), TestWorker(), threading.Event(),
+                            announce=lambda _: None, verify_drain=lambda: True,
+                            health_provider=provider, on_health_uncertain=notify)
+        self.assertFalse(server.started)
+
+    def test_malformed_or_raising_health_provider_notifies_and_fails_closed(self):
+        from looking_glass import service
+        malformed = lambda: service.OwnerHealth(1, False, False, False, False, True)
+        def raises():
+            raise RuntimeError('injected observation failure')
+        for provider in (lambda: object(), malformed, raises):
+            with self.subTest(provider=provider):
+                stop, notices, drains = threading.Event(), [], []
+                result = serve_owner(TestServer(), TestBroker(), TestWorker(), stop,
+                                     announce=lambda _: stop.set(),
+                                     verify_drain=lambda: drains.append(True) or True,
+                                     health_provider=provider, on_health_uncertain=lambda: notices.append(True),
+                                     poll_interval=.001, shutdown_timeout=.5)
+                self.assertEqual(result.status, OwnerStatus.QUARANTINED)
+                self.assertFalse(result.teardown_verified)
+                self.assertTrue(notices)
+                self.assertEqual(drains, [])
+
+    def test_interrupted_health_notification_never_certifies_teardown(self):
+        stop, drains = threading.Event(), []
+        def interrupted():
+            raise KeyboardInterrupt('injected notification interruption')
+        with self.assertRaises(KeyboardInterrupt):
+            serve_owner(TestServer(), TestBroker(), TestWorker(), stop,
+                        announce=lambda _: stop.set(),
+                        verify_drain=lambda: drains.append(True) or True,
+                        health_provider=lambda: object(), on_health_uncertain=interrupted,
+                        poll_interval=.001, shutdown_timeout=.5)
+        self.assertEqual(drains, [])
+
+    def test_one_shot_interruption_at_uncertainty_callback_entry_still_marks(self):
+        stop, marked, fired = threading.Event(), threading.Event(), []
+        def notify():
+            marked.set()
+        def trace(frame, event, _arg):
+            if frame.f_code is notify.__code__ and event == 'call' and not fired:
+                fired.append(True)
+                raise KeyboardInterrupt('injected at uncertainty callback entry')
+            return trace
+        previous = sys.gettrace()
+        try:
+            sys.settrace(trace)
+            result = serve_owner(TestServer(), TestBroker(), TestWorker(), stop,
+                announce=lambda _: None, verify_drain=lambda: True,
+                health_provider=lambda: object(), on_health_uncertain=notify,
+                poll_interval=.001, shutdown_timeout=.5)
+        finally:
+            sys.settrace(previous)
+        self.assertEqual(fired, [True])
+        self.assertTrue(marked.is_set())
+        self.assertEqual(result.status, OwnerStatus.QUARANTINED)
+        self.assertFalse(result.teardown_verified)
+
+    def test_interruption_before_observation_failure_notification_still_marks(self):
+        from looking_glass import service
+        target_function = getattr(service, '_serve_owner_impl', service.serve_owner)
+        lines, first = inspect.getsourcelines(target_function)
+        start = next(i for i, line in enumerate(lines) if line.strip() == 'def observation():')
+        target = first + next(i for i, line in enumerate(lines) if i > start and (
+            'on_health_uncertain()' in line or '_notify_health_uncertainty(on_health_uncertain)' in line))
+        marked, fired = threading.Event(), []
+
+        def provider():
+            raise RuntimeError('injected health failure')
+
+        def trace(frame, event, _arg):
+            if (frame.f_code.co_name == 'observation' and event == 'line'
+                    and frame.f_lineno == target and not fired):
+                fired.append(True)
+                raise KeyboardInterrupt('injected before uncertainty notification')
+            return trace
+
+        previous = sys.gettrace()
+        try:
+            sys.settrace(trace)
+            result = serve_owner(TestServer(), TestBroker(), TestWorker(), threading.Event(),
+                announce=lambda _: None, verify_drain=lambda: True,
+                health_provider=provider, on_health_uncertain=marked.set,
+                poll_interval=.001, shutdown_timeout=.5)
+        finally:
+            sys.settrace(previous)
+        self.assertEqual(fired, [True])
+        self.assertTrue(marked.is_set())
+        self.assertEqual(result.status, OwnerStatus.QUARANTINED)
+        self.assertFalse(result.teardown_verified)
+
+    def test_interruption_at_healthy_observation_return_still_marks(self):
+        from looking_glass import service
+        marked, fired = threading.Event(), []
+
+        def trace(frame, event, _arg):
+            if frame.f_code.co_name == 'observation' and event == 'return' and not fired:
+                fired.append(True)
+                raise KeyboardInterrupt('injected at health observation return')
+            return trace
+
+        previous = sys.gettrace()
+        try:
+            sys.settrace(trace)
+            result = serve_owner(TestServer(), TestBroker(), TestWorker(), threading.Event(),
+                announce=lambda _: None, verify_drain=lambda: True,
+                health_provider=lambda: service.OwnerHealth(False, False, False, False, False, True),
+                on_health_uncertain=marked.set, poll_interval=.001, shutdown_timeout=.5)
+        finally:
+            sys.settrace(previous)
+        self.assertEqual(fired, [True])
+        self.assertTrue(marked.is_set())
+        self.assertEqual(result.status, OwnerStatus.QUARANTINED)
+        self.assertFalse(result.teardown_verified)
+
+    def test_startup_return_failure_marks_before_delegating_blocked_thread_hook(self):
+        from looking_glass import service
+        marked, hook_entered, release, ready = (threading.Event() for _ in range(4))
+        fired, results, offsets = [], [], {}
+        previous_trace, previous_hook = threading.gettrace(), threading.excepthook
+
+        def trace(frame, event, _arg):
+            if frame.f_code.co_name == 'startup':
+                if event == 'call':
+                    frame.f_trace_opcodes = True
+                    offsets[frame.f_code] = {item.offset for item in dis.get_instructions(frame.f_code)
+                                             if item.opname == 'RETURN_VALUE'}
+                elif (event == 'opcode' and frame.f_lasti in offsets.get(frame.f_code, ())
+                      and frame.f_locals.get('startup_terminal', [False])[0] and not fired):
+                    fired.append(True)
+                    raise KeyboardInterrupt('injected startup target return')
+            return trace
+
+        def blocked_hook(_args):
+            hook_entered.set()
+            release.wait(3)
+
+        def owner():
+            results.append(serve_owner(TestServer(), TestBroker(), TestWorker(), threading.Event(),
+                announce=lambda _: ready.set(), verify_drain=lambda: True,
+                health_provider=lambda: service.OwnerHealth(False, False, False, False, False, True),
+                on_health_uncertain=marked.set, poll_interval=.001, shutdown_timeout=1))
+
+        thread = threading.Thread(target=owner, daemon=True)
+        try:
+            threading.excepthook = blocked_hook
+            threading.settrace(trace)
+            thread.start()
+            self.assertTrue(ready.wait(2))
+            self.assertTrue(hook_entered.wait(2))
+            self.assertTrue(marked.is_set(), 'authority was not marked before the original hook')
+        finally:
+            release.set()
+            thread.join(3)
+            threading.settrace(previous_trace)
+            threading.excepthook = previous_hook
+        self.assertEqual(fired, [True])
+        self.assertFalse(thread.is_alive())
+        self.assertFalse(results[0].teardown_verified)
+
+    def test_unexpected_closed_or_dead_broker_marks_uncertainty_before_drain(self):
+        from looking_glass import service
+        for closed, alive in ((True, True), (False, False)):
+            with self.subTest(closed=closed, alive=alive):
+                stop, notices, drains = threading.Event(), [], []
+                result = serve_owner(TestServer(), TestBroker(), TestWorker(), stop,
+                                     announce=lambda _: None,
+                                     verify_drain=lambda: drains.append(True) or True,
+                                     health_provider=lambda: service.OwnerHealth(
+                                         False, False, False, False, closed, alive),
+                                     on_health_uncertain=lambda: notices.append(True),
+                                     poll_interval=.001, shutdown_timeout=.5)
+                self.assertEqual(result.status, OwnerStatus.QUARANTINED)
+                self.assertFalse(result.teardown_verified)
+                self.assertTrue(notices)
+                self.assertEqual(drains, [])
+
+    def test_quarantine_observed_during_drain_marks_uncertainty(self):
+        from looking_glass import service
+        stop, marked, notices = threading.Event(), [False], []
+        class ClosingBroker(TestBroker):
+            closed = False
+            def close(self, *, timeout=None):
+                self.closed = True
+                return True
+        broker = ClosingBroker()
+        def drain():
+            marked[0] = True
+            return True
+        result = serve_owner(TestServer(), broker, TestWorker(), stop,
+                             announce=lambda _: stop.set(), verify_drain=drain,
+                             health_provider=lambda: service.OwnerHealth(
+                                 marked[0], False, False, False, broker.closed, not broker.closed),
+                             on_health_uncertain=lambda: notices.append(True),
+                             poll_interval=.001, shutdown_timeout=.5)
+        self.assertEqual(result.status, OwnerStatus.QUARANTINED)
+        self.assertFalse(result.teardown_verified)
+        self.assertTrue(marked[0])
+        self.assertTrue(notices)
+
+    def test_broker_death_before_its_shutdown_call_cannot_be_healed(self):
+        from looking_glass import service
+        entered, release, dead, stop = (threading.Event() for _ in range(4))
+        notices, drains, results = [], [], []
+
+        class SlowServer(TestServer):
+            def close(self, timeout=0):
+                entered.set()
+                release.wait(3)
+                return True
+
+        class ClosingBroker(TestBroker):
+            closed = False
+            def close(self, *, timeout=None):
+                self.closed = True
+                return True
+
+        broker = ClosingBroker()
+        def owner():
+            results.append(serve_owner(SlowServer(), broker, TestWorker(), stop,
+                announce=lambda _: stop.set(), verify_drain=lambda: drains.append(True) or True,
+                health_provider=lambda: service.OwnerHealth(False, False, False, False,
+                                                            broker.closed, not dead.is_set()),
+                on_health_uncertain=lambda: notices.append(True),
+                poll_interval=.001, shutdown_timeout=1))
+        thread = threading.Thread(target=owner, daemon=True)
+        thread.start()
+        try:
+            self.assertTrue(entered.wait(2))
+            dead.set()
+            # Allow the owner to observe the unexpected death before cleanup
+            # returns; the teardown result must never heal that observation.
+            thread.join(.2)
+        finally:
+            release.set()
+            thread.join(3)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(results[0].status, OwnerStatus.QUARANTINED)
+        self.assertFalse(results[0].teardown_verified)
+        self.assertTrue(notices)
+        self.assertEqual(drains, [])
+
+    def test_uncertain_shutdown_notifies_authority_before_later_cleanup(self):
+        from looking_glass import service
+        for failure in ('server_false', 'server_raises', 'broker_false', 'drain_false'):
+            with self.subTest(failure=failure):
+                events, stop = [], threading.Event()
+
+                class FaultyServer(TestServer):
+                    def close(self, timeout=0):
+                        events.append('server_close')
+                        if failure == 'server_raises':
+                            raise RuntimeError('injected server close failure')
+                        return failure != 'server_false'
+
+                class FaultyBroker(TestBroker):
+                    closed = False
+                    def close(self, *, timeout=None):
+                        events.append('broker_close')
+                        self.closed = failure != 'broker_false'
+                        return self.closed
+
+                def drain():
+                    events.append('drain')
+                    return failure != 'drain_false'
+
+                broker = FaultyBroker()
+                result = serve_owner(FaultyServer(), broker, TestWorker(), stop,
+                    announce=lambda _: stop.set(), verify_drain=drain,
+                    health_provider=lambda: service.OwnerHealth(False, False, False, False,
+                                                                broker.closed, not broker.closed),
+                    on_health_uncertain=lambda: events.append('unsafe'),
+                    poll_interval=.001, shutdown_timeout=.5)
+                self.assertFalse(result.teardown_verified)
+                self.assertIn('unsafe', events)
+                if failure in ('server_false', 'server_raises'):
+                    self.assertNotIn('broker_close', events)
+                if failure != 'drain_false':
+                    self.assertNotIn('drain', events)
+
+    def test_failed_opt_in_startup_notifies_and_never_attempts_verified_drain(self):
+        from looking_glass import service
+        events, stop = [], threading.Event()
+        class FaultyServer(TestServer):
+            def start(self):
+                events.append('startup')
+                raise RuntimeError('injected startup failure')
+            def close(self, timeout=0):
+                events.append('close')
+                return True
+        result = serve_owner(FaultyServer(), TestBroker(), TestWorker(), stop,
+            announce=lambda _: None, verify_drain=lambda: events.append('drain') or True,
+            health_provider=lambda: service.OwnerHealth(False, False, False, False, False, True),
+            on_health_uncertain=lambda: events.append('unsafe'),
+            poll_interval=.001, shutdown_timeout=.5)
+        self.assertFalse(result.teardown_verified)
+        self.assertEqual(events[0], 'startup')
+        self.assertTrue(events[1:])
+        self.assertTrue(all(event == 'unsafe' for event in events[1:]))
+
+    def test_truthy_non_boolean_broker_close_cannot_certify_opt_in_shutdown(self):
+        from looking_glass import service
+        events, stop = [], threading.Event()
+        class Broker(TestBroker):
+            def close(self, *, timeout=None):
+                events.append('broker_close')
+                return 1
+        result = serve_owner(TestServer(), Broker(), TestWorker(), stop,
+            announce=lambda _: stop.set(), verify_drain=lambda: events.append('drain') or True,
+            health_provider=lambda: service.OwnerHealth(False, False, False, False, False, True),
+            on_health_uncertain=lambda: events.append('unsafe'),
+            poll_interval=.001, shutdown_timeout=.5)
+        self.assertFalse(result.teardown_verified)
+        self.assertIn('unsafe', events)
+        self.assertNotIn('drain', events)
+
+    def test_successful_close_with_live_broker_observation_cannot_certify_shutdown(self):
+        from looking_glass import service
+        events, stop = [], threading.Event()
+        result = serve_owner(TestServer(), TestBroker(), TestWorker(), stop,
+            announce=lambda _: stop.set(), verify_drain=lambda: events.append('drain') or True,
+            health_provider=lambda: service.OwnerHealth(False, False, False, False, False, True),
+            on_health_uncertain=lambda: events.append('unsafe'),
+            poll_interval=.001, shutdown_timeout=.5)
+        self.assertFalse(result.teardown_verified)
+        self.assertIn('unsafe', events)
+        self.assertNotIn('drain', events)
+
+    def test_opt_in_quarantine_does_not_start_new_cleanup_threads(self):
+        from looking_glass import service
+        events, stop = [], threading.Event()
+        class Server(TestServer):
+            def close(self, timeout=0):
+                events.append('server_close')
+                return True
+        class Broker(TestBroker):
+            def close(self, *, wait=True, timeout=None):
+                events.append('broker_close')
+                return True
+        result = serve_owner(Server(), Broker(), TestWorker(), stop,
+            announce=lambda _: stop.set(), verify_drain=lambda: events.append('drain') or True,
+            health_provider=lambda: service.OwnerHealth(True, False, False, False, False, True),
+            on_health_uncertain=lambda: events.append('unsafe'),
+            poll_interval=.001, shutdown_timeout=.5)
+        self.assertEqual(result.status, OwnerStatus.QUARANTINED)
+        self.assertFalse(result.teardown_verified)
+        self.assertTrue(events)
+        self.assertTrue(all(event == 'unsafe' for event in events))
+
+    def test_preexisting_unsafe_health_rejects_before_listener_start(self):
+        from looking_glass import service
+        server, stop, events = TestServer(), threading.Event(), []
+        result = serve_owner(server, TestBroker(), TestWorker(), stop,
+            announce=lambda _: events.append('announce'), verify_drain=lambda: events.append('drain') or True,
+            health_provider=lambda: service.OwnerHealth(True, False, False, False, False, True),
+            on_health_uncertain=lambda: events.append('unsafe'),
+            poll_interval=.001, shutdown_timeout=.5)
+        self.assertEqual(result.status, OwnerStatus.QUARANTINED)
+        self.assertFalse(result.teardown_verified)
+        self.assertFalse(server.started)
+        self.assertTrue(events)
+        self.assertTrue(all(event == 'unsafe' for event in events))
+
+    def _interrupted_terminal_return(self, name, marker):
+        interrupted, offsets = [], {}
+        previous = threading.gettrace()
+
+        def trace(frame, event, _arg):
+            if frame.f_code.co_name == name:
+                if event == 'call':
+                    frame.f_trace_opcodes = True
+                    offsets[frame.f_code] = {instruction.offset for instruction in dis.get_instructions(frame.f_code)
+                                             if instruction.opname == 'RETURN_VALUE'}
+                elif (event == 'opcode' and frame.f_lasti in offsets.get(frame.f_code, ())
+                      and frame.f_locals.get(marker, [False])[0] and not interrupted):
+                    interrupted.append(True)
+                    raise KeyboardInterrupt('injected terminal return interruption')
+            return trace
+
+        stop = threading.Event()
+        try:
+            threading.settrace(trace)
+            with patch('threading.excepthook', lambda _args: None):
+                result = serve_owner(TestServer(), TestBroker(), TestWorker(), stop,
+                                     announce=lambda _: stop.set(), verify_drain=lambda: True,
+                                     poll_interval=.001, shutdown_timeout=.5)
+        finally:
+            threading.settrace(previous)
+        self.assertEqual(interrupted, [True])
+        self.assertFalse(result.teardown_verified)
+
+    def test_startup_return_interruption_cannot_certify_clean_drain(self):
+        self._interrupted_terminal_return('startup', 'startup_terminal')
+
+    def test_shutdown_return_interruption_cannot_certify_clean_drain(self):
+        self._interrupted_terminal_return('finish', 'finish_terminal')
+
+    def test_interrupted_startup_failure_handler_cannot_certify_clean_drain(self):
+        from looking_glass import service
+
+        class FailingServer(TestServer):
+            def start(self):
+                raise RuntimeError('injected startup failure')
+
+        lines, start = inspect.getsourcelines(service._serve_owner_impl)
+        startup_line = next(i for i, line in enumerate(lines) if line.strip() == 'def startup():')
+        target = start + next(i for i, line in enumerate(lines)
+                              if i > startup_line and line.strip() == 'except BaseException as exc:') + 1
+        interrupted = []
+        previous = threading.gettrace()
+
+        def trace(frame, event, _arg):
+            if (event == 'line' and frame.f_code.co_name == 'startup'
+                    and frame.f_lineno == target and not interrupted):
+                interrupted.append(True)
+                raise KeyboardInterrupt('injected failure-handler interruption')
+            return trace
+
+        stop, drains = threading.Event(), []
+        stop.set()
+        try:
+            threading.settrace(trace)
+            with patch('threading.excepthook', lambda _args: None):
+                result = serve_owner(FailingServer(), TestBroker(), TestWorker(), stop,
+                                     announce=lambda _: None,
+                                     verify_drain=lambda: drains.append(True) or True,
+                                     poll_interval=.001, shutdown_timeout=.5)
+        finally:
+            threading.settrace(previous)
+        self.assertEqual(interrupted, [True])
+        self.assertFalse(result.teardown_verified)
+        self.assertEqual(result.status, OwnerStatus.SHUTDOWN_INCOMPLETE)
+        self.assertEqual(drains, [])
+
+    def test_startup_signal_failure_after_set_is_not_a_clean_drain(self):
+        class FailedSignal(threading.Event):
+            def set(self):
+                super().set()
+                if threading.current_thread().name == 'looking-glass-owner-startup':
+                    raise RuntimeError('injected startup signal failure')
+
+        stop, drains = threading.Event(), []
+        with patch('looking_glass.service.Event', FailedSignal), \
+                patch('threading.excepthook', lambda _args: None):
+            result = serve_owner(TestServer(), TestBroker(), TestWorker(), stop,
+                                 announce=lambda _: stop.set(),
+                                 verify_drain=lambda: drains.append(True) or True,
+                                 poll_interval=.001, shutdown_timeout=.5)
+        self.assertFalse(result.teardown_verified)
+        self.assertEqual(result.status, OwnerStatus.SHUTDOWN_INCOMPLETE)
+        self.assertEqual(drains, [])
+
+    def test_shutdown_signal_failure_after_set_is_not_a_clean_drain(self):
+        class FailedSignal(threading.Event):
+            def set(self):
+                super().set()
+                if threading.current_thread().name == 'looking-glass-owner-shutdown':
+                    raise RuntimeError('injected shutdown signal failure')
+
+        stop = threading.Event()
+        with patch('looking_glass.service.Event', FailedSignal), \
+                patch('threading.excepthook', lambda _args: None):
+            result = serve_owner(TestServer(), TestBroker(), TestWorker(), stop,
+                                 announce=lambda _: stop.set(), verify_drain=lambda: True,
+                                 poll_interval=.001, shutdown_timeout=.5)
+        self.assertFalse(result.teardown_verified)
+        self.assertEqual(result.status, OwnerStatus.SHUTDOWN_INCOMPLETE)
+
+    def test_unexited_startup_thread_cannot_certify_a_clean_drain(self):
+        reached, release = threading.Event(), threading.Event()
+        blocked_threads, drains = [], []
+
+        class CompletionGate(threading.Event):
+            def set(self):
+                super().set()
+                if threading.current_thread().name == 'looking-glass-owner-startup':
+                    blocked_threads.append(threading.current_thread())
+                    reached.set()
+                    release.wait(5)
+
+        stop = threading.Event()
+        stop.set()
+        try:
+            with patch('looking_glass.service.Event', CompletionGate):
+                result = serve_owner(TestServer(), TestBroker(), TestWorker(), stop,
+                                     announce=lambda _: None, verify_drain=lambda: drains.append(True) or True,
+                                     poll_interval=.001, shutdown_timeout=.15)
+            self.assertTrue(reached.is_set())
+            self.assertFalse(result.teardown_verified)
+            self.assertEqual(result.status, OwnerStatus.SHUTDOWN_INCOMPLETE)
+            self.assertEqual(drains, [])
+        finally:
+            release.set()
+            for thread in blocked_threads:
+                thread.join(5)
+
+    def test_unexited_shutdown_thread_cannot_certify_a_clean_drain(self):
+        reached, release = threading.Event(), threading.Event()
+        blocked_threads = []
+
+        class CompletionGate(threading.Event):
+            def set(self):
+                super().set()
+                if threading.current_thread().name == 'looking-glass-owner-shutdown':
+                    blocked_threads.append(threading.current_thread())
+                    reached.set()
+                    release.wait(5)
+
+        stop = threading.Event()
+        stop.set()
+        try:
+            with patch('looking_glass.service.Event', CompletionGate):
+                result = serve_owner(TestServer(), TestBroker(), TestWorker(), stop,
+                                     announce=lambda _: None, verify_drain=lambda: True,
+                                     poll_interval=.001, shutdown_timeout=.15)
+            self.assertTrue(reached.is_set())
+            self.assertFalse(result.teardown_verified)
+            self.assertEqual(result.status, OwnerStatus.SHUTDOWN_INCOMPLETE)
+        finally:
+            release.set()
+            for thread in blocked_threads:
+                thread.join(5)
+
     def test_broker_quarantine_takes_precedence_over_verified_shutdown(self):
         broker = TestBroker()
         broker.quarantined = True

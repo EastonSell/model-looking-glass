@@ -58,7 +58,7 @@ The initial model is a small randomly initialized residual network with a contro
 
 The [synthetic causal v1 study](docs/CAUSAL_RESULTS_V1.md) records fixed predictions and tests clean-state patches on 16 public held-out inputs. Its selected injection-site patch and the single random draw, a final-state patch, produced the same measured scalar effects, illustrating why restoration alone does not identify a unique cause. One held-out vector was previously used during development, so the result is explicitly exploratory; the raw run and protocol clarification are preserved alongside the report.
 
-The proposed [synthetic v2 protocol](docs/CAUSAL_CONFIRMATION_V2.md) preserves its original, hash-bound wording. Its separately bound [resource clarification](docs/CAUSAL_CONFIRMATION_V2_RESOURCE_CLARIFICATION.md) supersedes the earlier 64 MiB evidence limit with a 1 GiB aggregate **host-disk** allowance; the current registry separately limits declared artifact payloads to 512 MiB and 128 names. These are storage limits, not GPU VRAM allowances. A complete v2 study has not yet been recorded.
+The [synthetic v2 study](results/synthetic-causal-v2-20261029/README.md) records 57,408 forwards across six fixed small models and 54 model/injection cells. First-changed blocks matched the injected block in 54/54 cells, while a magnitude-based rule matched 33/54. The known feedforward structure favors the first-change rule; a successful patch does not uniquely identify an operation. The saved-data audit does not independently verify execution, prediction chronology or exposure, so the result remains unconfirmed. The [resource clarification](docs/CAUSAL_CONFIRMATION_V2_RESOURCE_CLARIFICATION.md) revises the original 64 MiB evidence allowance to 1 GiB of host disk, not GPU VRAM.
 
 The [DistilBERT agreement pilot](results/bert-agreement-dev-v0-20261028/README.md) observed donor-directed shifts after subject-state patches on four public development examples. All four used plural distractors, so the finding is confounded and a balanced evaluation is needed before making a mechanism claim.
 
@@ -66,17 +66,45 @@ The [DistilBERT GPU calibration](results/bert-gpu-calibration-v1-20261029/README
 
 The [DistilBERT GPU family profile](results/bert-gpu-family-profile-v1-20261029/README.md) records 140 forwards on one exposed family, with a 324 MiB peak PyTorch reservation and zero PyTorch allocator bytes allocated/reserved after cleanup. An earlier subject-state comparison produced a larger mean effect than the candidate site, so the result does not uniquely localize the computation. These allocator observations are not a worst-case VRAM bound.
 
+The [balanced DistilBERT CPU evaluation](results/bert-agreement-cpu-evaluation-v1-20261029/README.md) tested the candidate on eight public families held out from local site selection. The candidate exceeded its matched-layer distractor control, but an earlier subject-state patch produced a larger effect in all eight families. The cases were public rather than blind, and the result does not establish a uniquely localized grammatical-number representation.
+
+The [matched-dose follow-up](results/bert-matched-dose-v1-20261029/README.md) did not meet its preregistered early-site persistence rule: only four of eight family differences favored block 0 over block 2, versus six required. The result does not establish that the sites are equivalent. A separate [taste-context exploration](results/bert-taste-context-v1-20261029/RESULTS.md) found donor-directed ingredient-patch effects on four public sentence frames, although the clean `sweet`/`sour` preference was not reliable across frames.
+
+In a [matched-dose taste follow-up](results/bert-taste-matched-dose-v1-20261029/RESULTS.md), 29 of 30 directional comparisons across blocks 0–4 favored the ingredient patch over the position control. Only three of six frames met the baseline rule, all using the same template; the comparisons are dependent and do not establish a general taste mechanism.
+
+The [DistilBERT exposed-pair GPU observation](results/bert-gpu-exposed-pair-v1-20261028/README.md) reduced the `is − are` margin from +5.2040 to +0.0572 on one previously exposed public pair, without reversing that two-word preference. Its peak PyTorch reserved memory was 324 MiB; this allocator counter does not measure total or worst-case GPU memory.
+
 The [DistilGPT2 agreement preflight](results/distilgpt2-agreement-preflight-v1-20261028/README.md) found the grammatical verb preferred on all 16 fixed public development prompts; it establishes a small behavior to investigate, not a held-out or causal result.
 
 The independently audited [agreement discovery](results/distilgpt2-natural-agreement-v1-20261028/README.md) selected the layer 3 attention output at the final token. Across four public families, opposite-number donors caused a mean 3.095-logit greater shift away from the target's present-tense agreement margin than same-number donors. They reversed the margin in 10 of 32 donor–target pairs involving six distinct targets, versus none of 32 same-number pairs. These are development results, and a shift can reflect weakening rather than transfer of number information; held-out prediction remains to be tested.
 
-An [independent held-out auditor](docs/INDEPENDENT_NATURAL_HELDOUT_AUDIT.md) is prepared to check saved controls and frozen-prediction errors after reveal; it does not establish that a held-out study has run.
+The [natural-agreement held-out attempt](results/distilgpt2-natural-agreement-v1-20261028/heldout-attempt-status-v1.md) stopped without an evaluable result. Its one-use claim and sealed split remain preserved; the recorded RuntimeError and a no-model startup reproduction support, but do not prove, a missing dependency-path diagnosis. An [independent held-out auditor](docs/INDEPENDENT_NATURAL_HELDOUT_AUDIT.md) is prepared for saved controls and frozen-prediction errors after a valid reveal.
 
 The [DistilGPT2 copying screen](results/distilgpt2-copying-dev-v1-20261028/README.md) found higher target log probability after repetition than after each of three first-block shuffles in eight public development families. The shuffles also change local transitions; the observed attention pattern proposes a head for intervention but does not establish a cause.
 
 In a [follow-up intervention](results/distilgpt2-copy-head-eval-v1-20261028/README.md) on eight new public families, zeroing the selected head at the final input position reduced the repeated-versus-shuffled log-probability contrast by 0.638 nats on average, compared with an increase of 0.130 for one same-layer control head. All eight repeated targets remained top-ranked after the selected-head intervention. These fixed-order exploratory tests do not establish a complete copying circuit.
 
+A [broader head comparison](results/distilgpt2-copy-head-followup-v2-20261028/README.md) found a larger mean contrast reduction from another head in seven of eight families, failing the proposed specificity criterion for the originally selected head. The interventions have different activation magnitudes, and these public exploratory results do not establish a unique copying mechanism.
+
+The [matched-dose copying factorial](results/distilgpt2-copy-head-factorial-v1-20261028/README.md) compared single-head and joint interventions on 32 public prompts. Both candidate heads affected the repeated-versus-shuffled contrast, with variation across families. The joint intervention had a larger total input dose than either single intervention, and downstream nonlinearities can contribute to the observed output interaction; the result does not establish direct cooperation between heads.
+
+The [copying dose follow-up](results/distilgpt2-copy-head-pairs-dose-v1-20261028/README.md) found a mean high-dose contrast change of −0.138 nats for the H2+H10 pair on eight public families, with seven negative family effects and one positive. Target top-one status remained unchanged in all 480 intervention comparisons. Different total doses at matched per-head scale and output nonlinearities limit the interaction's interpretation; equal-total-dose singles and additive-logit comparators are also reported.
+
+In a [recipient-name screen](results/distilgpt2-recipient-screen-v1-20261028/README.md), only three of 32 matched prompt pairs met the baseline rule, so the planned patches were not run. A separate [year-comparison screen](results/distilgpt2-greater-than-screen-v1-20261028/README.md) found a wording-dependent shift but a later-year preference even in all reverse and neutral prompts; it does not establish a general temporal comparator.
+
+In the [year-transfer intervention](results/distilgpt2-year-transfer-v1-20261029/README.md), donorward shifts occurred under forward, neutral and reverse wording. The comparator baseline failed in all eight families, and only one met the separate forward-specific intervention criterion, below the six required. The result does not establish a numerical comparator or a unique circuit.
+
+The [FLAN-T5 encoder study](results/flan-t5-equal-dose-cpu-v1-20261029/README.md) compared word-position patches with matched-dose instruction and punctuation controls. The preset rule was negative for both evaluable word pairs; the third pair failed the baseline and was not patched. Teacher-forced sequence scores include EOS and are sensitive to target length and prior frequency, so they are not generated translations or a unique translation mechanism.
+
+The separate [FLAN-T5 dose-response attempt](results/flan-t5-dose-response-cpu-v1-20261029/README.md) was inconclusive: all six cases failed the baseline, and no patches ran. The differing target lengths are a possible contributor, not an established explanation.
+
+In a [length-matched FLAN-T5 follow-up](results/flan-t5-equal-length-response-cpu-v1-20261029/README.md), four public word pairs met the fixed three-dose directional-response rule in both templates; two pairs were baseline-unsupported and were not patched. The largest matched-dose word-position patch reversed the original two-target preference in only one of 16 evaluable cell-direction comparisons. This is a small teacher-forced score study, not evidence of generated translation, generalization or a unique mechanism; equal token lengths do not remove lexical-prior differences.
+
 A [targeted parameter-edit experiment](results/targeted-edit-cpu-v1-20261028/README.md) changed the intended answer preference but failed its preset locality thresholds on public probes. The negative result and a same-host replay are preserved; the study does not establish general capability preservation.
+
+The [projected-edit follow-up](results/targeted-edit-projected-cpu-v1-20261028/README.md) was ineligible because only two of four targets had the required baseline preference; neither reversed. The projected and unprojected edits had different target effects, and the nine locality probes cannot establish broad capability preservation.
+
+The preserved v1 runner has a [cleanup compatibility limitation](docs/TARGETED_EDIT_V2_OWNER.md#historical-v1-cleanup-limitations) in Python 3.10 and when called while an unrelated exception is being handled. The recorded run used Python 3.11; this limitation does not reclassify its result.
 
 ## Run locally
 
@@ -154,3 +182,6 @@ Full activations can contain sensitive information. This synthetic benchmark sav
 - [Implementation plan](docs/superpowers/plans/2026-10-28-runtime-probes.md)
 
 This work grew out of the [Trojan Regularizer Audit](https://github.com/EastonSell/turing-complete-malware-pytorch-backward-pass-audit), but addresses trusted runtime instrumentation. It is not a general backdoor detector or model-safety certification. Ordinary PyTorch hooks and the gradient identity are standard mechanisms; possible value lies in the measured placement, provenance and operating costs, not a novelty claim for those mechanisms.
+
+
+

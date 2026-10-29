@@ -1,12 +1,12 @@
 # Planned supervised grouped-GPU development check
 
-This is a plan, not a completed experiment or a frozen executable protocol.
+This is a development plan, not a completed experiment or a GPU certification.
 The grouped broker currently has CPU integration evidence only. A reviewed
 runner, independently retained protocol and source hashes, and a dedicated
 coordinated GPU window are required before collecting these observations.
-GPU launch is explicitly disabled in this version: the session-bound worker
-transition and device-lease interruption fixes must be integrated and reviewed
-before enabling it. The synthetic CPU tests do not authorize a GPU run.
+GPU launch is explicitly disabled in this version while the integrated
+session-bound worker, custody and teardown are reviewed. The synthetic CPU
+tests do not authorize a GPU run.
 
 The proposed first check uses one resident
 `distilbert/distilgpt2@2290a62682d06624634c1f46a6ad5be0f47f38aa`, float32,
@@ -42,7 +42,7 @@ lease through `OwnerSession`, verify the actual CUDA runtime UUID against the
 leased device before importing Transformers, and use a 25% native PyTorch
 allocator fraction. Require at least 5 GiB device-wide free before model load.
 A provisional 2 GiB resident
-commitment and 1 GiB combined-forward commitment limit admission for this
+commitment and 1 GiB fixed workspace commitment limit admission for this
 short experiment; these are conservative declarations, not measured
 worst-case guarantees or authorization for other shapes. Synchronized
 device-free/total and process allocated/reserved/peak counters must be saved
@@ -83,15 +83,51 @@ The controller and child use `scripts/grouped_gpu_dev_bootstrap.py` with
 from an allowlisted set of source files; sourceless dependencies are rejected.
 The runtime contract pins PyTorch 2.8.0+cu128 and Transformers 4.57.3 and
 checks deterministic, precision, allocator, autocast, cache and thread settings.
+The Python interpreter, standard library, import machinery and selected
+dependency directory are trusted; checking versions and a post-import source
+hash does not independently attest the bytes that those dependencies executed.
+The controller verifies committed source bytes and sends the child a digest-bound
+source manifest. The child rechecks those bytes without launching Git. Both
+entry points bind the requested physical-device namespace to the single shared
+`work` ancestor; a nested or different workspace is rejected before device use.
+The interpreter and bootstrap start before the supervisor's launch grant;
+device acquisition is gated until a fresh Windows process Job is assigned.
+The controller and child each retain independent Windows source and manifest
+leases from successful acquisition until process exit, including uncertain
+teardown. The child obtains its own leases before device acquisition; if the
+controller dies before that point, its leases can end before the child has
+acquired its own. The supervising-parent watchdog requests process exit when
+the parent dies; an already-started operation can overlap that exit. The already
+imported controller and bootstrap are trusted to start from a quiescent clean
+checkout: later hashes do not prove their earlier executed bytes. These are
+cooperative source protections, not a security boundary against hostile
+same-account code. The supervisor retains and drains the Job before clearing the
+unsafe marker; the Job does not prove CUDA cleanup or contain processes that
+escape it. An incomplete process inventory remains a failed, quarantined run.
+The owner disables `subprocess.Popen` before device acquisition.
+Each controller or owner process admits only one attempt, including a failed
+preflight, so a later attempt cannot replace its rooted source or failure custody.
+On Windows, `platform` may use the native Python version fallback when its
+shell-based query is unavailable; the observed runtime string is retained in
+the private and redacted manifests. `os.system`, `os.spawn*`, native calls and
+other unobserved process creation are not prevented by this guard and must
+still satisfy the Job.
 
-The supervised owner holds the physical device lease and the conservative
-resident commitment through process exit.
-Each driver-level CUDA operation checks the owner before and after the call;
-failure or an unreadable worker health state is rooted and prohibits later
-driver CUDA calls. An operation already inside the worker can complete and
-release its forward accounting before the postcheck. This dedicated-owner
-protocol does not establish an atomic shared-service retirement contract.
-Known exception and returned model references are rooted on failure; repeated
+The v2 protocol holds the physical device lease, resident commitment and fixed
+workspace commitment through process exit. Its session-bound worker checks the
+physical owner before each guarded device operation, after synchronization,
+and at the completion and custody transitions. Driver-level calls also check
+before and after execution; failure or an unreadable worker health state is
+rooted and prohibits later driver CUDA calls. A device operation already
+decided can still finish after an external lease loss; process replacement is
+required on uncertainty. This dedicated-owner protocol does not establish an
+atomic shared-service retirement contract.
+Known exception and returned operation references are rooted on failure in
+preallocated slots for up to eight nested guarded calls; a deeper call fails
+before it starts. A per-call pending marker remains set if a failure handler
+is interrupted, and an enclosing call or clean attestation rejects that state.
+The single driver must transfer each successful returned
+object to its own custody before another call can reuse its nesting slot. Repeated
 asynchronous interruption, a return interrupted before assignment, inaccessible
 runtime temporaries and arbitrary caller aliases require process recovery.
 The complete runtime manifest and selected physical identity stay in the
@@ -99,7 +135,9 @@ private run directory; the public record contains a redacted manifest and
 hash/size inventory. Pass promotion requires a clean reaped owner and
 reconciles saved source/protocol, checkpoint, sampled policy, owner identity,
 per-call entries, routing, memory and cleanup records. It checks consistency,
-not independent numerical recomputation: raw logits are not retained.
+not independent numerical recomputation: raw logits are not retained. The
+supervisor requires an owner exit of zero before it can clear its unsafe
+marker, including after an earlier cleanup attestation.
 The terminal result uses create-only publication. An interruption can leave a
 complete file even though the controller did not return; release or audit must
 also verify the controller's successful exit or caller acknowledgement. Keep

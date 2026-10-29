@@ -60,7 +60,7 @@ class ServiceControlTests(unittest.TestCase):
             self.assertNotIn(secret, str(caught.exception))
             self.assertIsNone(caught.exception.__context__)
 
-    def child(self, *, invalid=False, ignore_stop=False, controller=None):
+    def child(self, *, invalid=False, ignore_stop=False, controller=None, exit_code=0):
         program = """
             import json, os, secrets, sys, time
             from pathlib import Path
@@ -82,11 +82,11 @@ class ServiceControlTests(unittest.TestCase):
             while time.monotonic() < until:
                 if Path(sys.argv[1]).exists() and sys.argv[3] != 'ignore':
                     session.attest_clean(lease)
-                    raise SystemExit(0)
+                    raise SystemExit(int(sys.argv[4]))
                 time.sleep(.02)
         """
         command = [sys._base_executable, "-c", textwrap.dedent(program), str(self.stop),
-                   "invalid" if invalid else "valid", "ignore" if ignore_stop else "normal"]
+                   "invalid" if invalid else "valid", "ignore" if ignore_stop else "normal", str(exit_code)]
         env = dict(os.environ)
         env["PYTHONPATH"] = str(self.repo)
         env["CUDA_VISIBLE_DEVICES"] = ""
@@ -118,6 +118,13 @@ class ServiceControlTests(unittest.TestCase):
     def test_bad_startup_aborts_child_and_preserves_unsafe_marker(self):
         with self.assertRaisesRegex(ValueError, "invalid private service readiness"):
             self.child(invalid=True)
+        self.assertTrue(self.marker.exists())
+
+    def test_nonzero_exit_after_attestation_retains_the_unsafe_marker(self):
+        owner = self.child(exit_code=9)
+        result = owner.shutdown(timeout=5)
+        self.assertFalse(result.clean)
+        self.assertEqual(result.exit_code, 9)
         self.assertTrue(self.marker.exists())
 
     def test_shutdown_timeout_aborts_then_reports_actual_supervisor_result(self):
@@ -335,6 +342,134 @@ class ServiceControlTests(unittest.TestCase):
         self.assertTrue(stop.is_set())
         self.assertTrue(failed[0])
         self.assertEqual(errors, [])
+
+    def test_interrupted_failure_store_does_not_publish_a_clean_monitor(self):
+        import inspect
+        lines, first = inspect.getsourcelines(control._monitor_stop)
+        target = first + next(index for index, line in enumerate(lines)
+                              if line.strip() == 'failed[0] = True')
+        fired = []
+        def trace(frame, event, arg):
+            if frame.f_code.co_name == 'signal_failure' and event == 'line' and frame.f_lineno == target and not fired:
+                fired.append(True)
+                raise KeyboardInterrupt('interrupted monitor failure store')
+            return trace
+        previous = threading.gettrace()
+        stop = threading.Event()
+        try:
+            threading.settrace(trace)
+            with patch.object(control, '_same_parent', side_effect=RuntimeError('failed stat')):
+                thread, failed, _ = control._monitor_stop(self.stop, stop)
+                thread.join(timeout=2)
+        finally:
+            threading.settrace(previous)
+        self.assertEqual(fired, [True])
+        self.assertFalse(thread.is_alive())
+        self.assertTrue(stop.is_set())
+        self.assertTrue(failed[0])
+
+    def test_interrupted_monitor_return_re_latches_thread_failure(self):
+        fired = []
+        def trace(frame, event, arg):
+            if (frame.f_code.co_name == 'monitor' and frame.f_code.co_filename == control.__file__
+                    and event == 'return' and not fired):
+                fired.append(True)
+                raise KeyboardInterrupt('interrupted monitor return')
+            return trace
+        previous = threading.gettrace()
+        stop = threading.Event()
+        try:
+            threading.settrace(trace)
+            thread, failed, _ = control._monitor_stop(self.stop, stop)
+            stop.set()
+            thread.join(timeout=2)
+        finally:
+            threading.settrace(previous)
+        self.assertEqual(fired, [True])
+        self.assertFalse(thread.is_alive())
+        self.assertTrue(failed[0])
+
+    def test_stop_wait_exception_is_recorded_as_a_monitor_failure(self):
+        class BrokenStop:
+            signalled = False
+            def wait(self, timeout):
+                raise RuntimeError('wait failed')
+            def set(self):
+                self.signalled = True
+        stop = BrokenStop()
+        thread, failed, errors = control._monitor_stop(self.stop, stop)
+        thread.join(timeout=2)
+        self.assertFalse(thread.is_alive())
+        self.assertTrue(stop.signalled)
+        self.assertTrue(failed[0])
+        self.assertEqual(errors, ['RuntimeError'])
+
+    def test_monitor_marks_owner_unsafe_before_a_broken_stop_event(self):
+        from looking_glass import gpu_service
+        from test_gpu_service import _reset_fake_owner
+        class BrokenStop:
+            def wait(self, timeout):
+                raise RuntimeError('wait failed')
+            def set(self):
+                raise RuntimeError('signal failed')
+        _reset_fake_owner()
+        try:
+            thread, failed, _ = control._monitor_stop(self.stop, BrokenStop(),
+                                                     on_failure=gpu_service._mark_unsafe)
+            thread.join(timeout=2)
+            self.assertFalse(thread.is_alive())
+            self.assertTrue(failed[0])
+            self.assertTrue(gpu_service._owner_is_unsafe())
+        finally:
+            _reset_fake_owner()
+
+    def test_interrupted_failure_callback_marks_owner_before_stop_and_publication(self):
+        from looking_glass import gpu_service
+        from looking_glass.broker import BrokerUnavailable, RequestState
+        from test_gpu_service import _reset_fake_owner
+        from test_ipc_completion_authority import stop_owner
+        from test_owner_completion import make_owner
+
+        _reset_fake_owner()
+        model, _, _, _, _, authority, _, broker, request = make_owner()
+        gpu_service._OWNER_COMPLETION = authority
+        handle = broker.submit('team', request)
+        observations, fired = [], []
+        class ObservedStop(threading.Event):
+            def set(self):
+                observations.append(authority.unsafe)
+                super().set()
+        stop = ObservedStop()
+        target = gpu_service._mark_unsafe.__code__
+        def trace(frame, event, arg):
+            if frame.f_code is target and event == 'call' and not fired:
+                fired.append(True)
+                raise KeyboardInterrupt('interrupted authority signal')
+            return trace
+        previous = threading.gettrace()
+        try:
+            self.assertTrue(model.entered.wait(5))
+            threading.settrace(trace)
+            with patch.object(control, '_same_parent', side_effect=RuntimeError('failed stat')):
+                monitor, failed, _ = control._monitor_stop(self.stop, stop, on_failure=gpu_service._mark_unsafe)
+                monitor.join(timeout=2)
+            threading.settrace(previous)
+            self.assertFalse(monitor.is_alive())
+            self.assertEqual(fired, [True])
+            self.assertTrue(failed[0])
+            self.assertTrue(authority.unsafe)
+            self.assertTrue(observations and observations[0])
+            model.release.set()
+            try:
+                outcome = handle.wait(5)
+            except BrokerUnavailable:
+                outcome = None
+            self.assertTrue(outcome is None or outcome.state is not RequestState.SUCCEEDED)
+        finally:
+            threading.settrace(previous)
+            model.release.set()
+            stop_owner(model, broker)
+            _reset_fake_owner()
 
 
 if __name__ == "__main__":

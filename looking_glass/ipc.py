@@ -5,6 +5,7 @@ The broker and adapter callables are trusted, server-side objects.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import json
 import math
 import re
@@ -13,9 +14,10 @@ import select
 import socket
 import struct
 import sys
+import sysconfig
 import threading
 import time
-from types import MappingProxyType
+from types import MappingProxyType, TracebackType
 
 from .ipc_custody import IPCCustodyCapacity, IPCCustodyKey
 
@@ -53,6 +55,60 @@ class _ProtocolError(Exception):
 
 class _ResultTooLarge(Exception):
     pass
+
+
+class _HandlerFaultSlot:
+    """Preallocated, server-rooted custody for one IPC thread's escaped fault."""
+
+    __slots__ = ("seen", "capture_complete", "exception", "traceback", "observer_failure")
+
+    def __init__(self):
+        self.seen = False
+        self.capture_complete = False
+        self.exception = None
+        self.traceback = None
+        self.observer_failure = None
+
+
+@dataclass(frozen=True)
+class IPCHandlerFault:
+    """Trusted-local fault snapshot; incomplete capture requires recovery."""
+
+    capture_complete: bool
+    exception: BaseException | None = field(repr=False)
+    traceback: TracebackType | None = field(repr=False)
+    observer_failure: BaseException | None = field(default=None, repr=False)
+
+
+@dataclass(frozen=True)
+class IPCAcceptorFault:
+    """Trusted-local acceptor fault snapshot; incomplete capture requires recovery."""
+
+    capture_complete: bool
+    exception: BaseException | None = field(repr=False)
+    traceback: TracebackType | None = field(repr=False)
+    observer_failure: BaseException | None = field(default=None, repr=False)
+
+
+def _current_handler_exception():
+    return sys.exc_info()[1]
+
+
+def _current_handler_traceback(error):
+    _, active_error, active_traceback = sys.exc_info()
+    if active_error is not error:
+        raise IPCError("handler exception context changed during capture")
+    return active_traceback
+
+
+def _supported_handler_runtime():
+    bootstrap = getattr(threading.Thread, "_bootstrap_inner", None)
+    code = getattr(bootstrap, "__code__", None)
+    gil_enabled = getattr(sys, "_is_gil_enabled", None)
+    return (sys.implementation.name == "cpython" and (3, 10) <= sys.version_info[:2] <= (3, 13)
+            and not sysconfig.get_config_var("Py_GIL_DISABLED")
+            and (gil_enabled is None or gil_enabled()) and code is not None
+            and "_invoke_excepthook" in code.co_names)
 
 
 def _remaining(deadline):
@@ -321,6 +377,8 @@ def _completion_binding(broker, guardian, authority):
     if (actual._completion_authority is not authority or authority._broker is not actual
             or authority.unsafe):
         raise ValueError("completion authority does not match the live broker")
+    if not _supported_handler_runtime():
+        raise ValueError("authority-bound handler supervision requires supported CPython")
     return authority, actual, fair_target
 
 
@@ -414,6 +472,7 @@ class IPCServer:
         self._custody_epoch = custody_epoch
         self._custody_generation = 0
         self._custody_quarantine = threading.Event()
+        self._max_connections = max_connections
         self._slots = threading.BoundedSemaphore(max_connections)
         self._lock = threading.Lock()
         self._lifecycle = threading.Lock()
@@ -421,6 +480,15 @@ class IPCServer:
         self._admissions_active = 0
         self._clients = set()
         self._handlers = set()
+        # Completed handlers remain rooted until another thread has observed
+        # their actual termination. A handler cannot prove its own exit.
+        self._retiring_handlers = set()
+        # Bound-mode slots are rooted before start. Escaped exceptions remain
+        # here after the corresponding thread exits and consume capacity.
+        self._handler_fault_slots = {}
+        # There is exactly one acceptor per server. Root its slot before its
+        # thread can start, independently of the bounded handler inventory.
+        self._accept_fault_slot = _HandlerFaultSlot() if binding is not None else None
         self._stop = threading.Event()
         self._accepting_stopped = threading.Event()
         self._listener = None
@@ -453,6 +521,101 @@ class IPCServer:
         """Report an uncertain custody transition without waiting for locks."""
         return self._custody_quarantine.is_set()
 
+    @property
+    def retained_handler_faults(self):
+        """Return trusted-local fault snapshots, including incomplete captures.
+
+        This is a nonblocking snapshot, not evidence of disposal. The server
+        retains these roots until its owning process is replaced.
+        """
+        if self._completion_binding is None:
+            raise IPCError("handler fault observation is not configured")
+        if not self._lock.acquire(blocking=False):
+            raise IPCError("handler fault inventory is temporarily unavailable")
+        try:
+            return tuple(IPCHandlerFault(slot.capture_complete, slot.exception, slot.traceback,
+                                         slot.observer_failure)
+                         for slot in self._handler_fault_slots.values() if slot.seen)
+        finally:
+            self._lock.release()
+
+    @property
+    def retained_acceptor_fault(self):
+        """Return a trusted-local fault snapshot without taking the server lock.
+
+        A snapshot read while the thread is alive can be incomplete. The
+        server retains this single fault root until its process is replaced.
+        """
+        if self._completion_binding is None:
+            raise IPCError("acceptor fault observation is not configured")
+        slot = self._accept_fault_slot
+        if not slot.seen:
+            return None
+        return IPCAcceptorFault(slot.capture_complete, slot.exception, slot.traceback,
+                                slot.observer_failure)
+
+    def _install_thread_fault_observer(self, thread, slot, *, acceptor=False):
+        """Use the supported CPython per-thread hook without a global hook."""
+        original = getattr(thread, "_invoke_excepthook", None)
+        if not callable(original):
+            raise IPCError("unsupported CPython thread exception machinery")
+        authority = self._completion_binding[0]
+
+        def observe(fault_thread):
+            # No server lock: a failing thread may have stranded it. The slot
+            # is already rooted by the server before the thread starts.
+            try:
+                try:
+                    # The bound authority's sticky flag orders success decisions.
+                    # Latch it before capture, event signaling or application code:
+                    # any of those may pause while a worker is finishing.
+                    try:
+                        authority._unsafe = True
+                    finally:
+                        authority._unsafe = True
+                    self._mark_custody_fault()
+                finally:
+                    try:
+                        self._custody_quarantine.set()
+                    finally:
+                        # An interrupted signal leaves an explicit unknown slot.
+                        try:
+                            slot.seen = True
+                        finally:
+                            slot.seen = True
+                            if acceptor:
+                                self._accept_uncertain = True
+                                self._accepting_stopped.set()
+                error = _current_handler_exception()
+                if not isinstance(error, BaseException):
+                    raise IPCError("handler exception capture is unavailable")
+                slot.exception = error
+                captured_traceback = _current_handler_traceback(error)
+                if type(captured_traceback) is not TracebackType:
+                    raise IPCError("handler traceback capture is unavailable")
+                slot.traceback = captured_traceback
+                slot.capture_complete = True
+            except BaseException as observer_failure:
+                # Python normally chains the escaped target exception to this
+                # failure. Keep that graph rooted even if capture never began.
+                try:
+                    slot.observer_failure = observer_failure
+                finally:
+                    slot.seen = True
+                raise
+            original(fault_thread)
+
+        thread._invoke_excepthook = observe
+
+    def _reap_retiring_handlers_locked(self):
+        """Forget normal exits; preserve fault slots and exception roots."""
+        for prior in tuple(self._retiring_handlers):
+            if not prior.is_alive():
+                slot = self._handler_fault_slots.get(prior)
+                if slot is not None and not slot.seen:
+                    del self._handler_fault_slots[prior]
+                self._retiring_handlers.discard(prior)
+
     def _mark_custody_fault(self):
         # The owner decision and this signal use a shared authority. Mark it
         # before publishing the separate observational IPC quarantine flag.
@@ -478,7 +641,7 @@ class IPCServer:
             if fair_target is not None:
                 from .ipc_fair_bridge import _ServerConstruction
                 construction = endpoint._server_construction
-            valid = (self.broker is endpoint and actual._completion_authority is authority
+            valid = (_supported_handler_runtime() and self.broker is endpoint and actual._completion_authority is authority
                      and authority._broker is actual
                      and (actual._fair_handoff is None if fair_target is None else
                           (self._custody_guardian is endpoint and endpoint._target is fair_target
@@ -538,6 +701,8 @@ class IPCServer:
                 self._listener = listener
                 self.address = listener.getsockname()
                 self._accept_thread = threading.Thread(target=self._accept, daemon=True, name="looking-glass-ipc")
+                if self._accept_fault_slot is not None:
+                    self._install_thread_fault_observer(self._accept_thread, self._accept_fault_slot, acceptor=True)
                 self._accept_thread.start()
             except BaseException as exc:
                 monitored = self._completion_binding is not None or self._custody_guardian is not None
@@ -559,20 +724,40 @@ class IPCServer:
         return self
 
     def _accept(self):
+        # Bind the exact authority before entering the accept loop, so its
+        # finally path can signal even if fault-path lookup is interrupted.
+        completion_authority = (None if self._completion_binding is None
+                                else self._completion_binding[0])
         try:
             self._accept_loop()
         except BaseException as exc:
             try:
-                # One acceptor can fail once. Its traceback may still own a
-                # socket between accept() and the explicit orphan handoff.
-                self._accept_failure = exc
+                # Signal before retaining the exception: a blocked capture
+                # must not let an owner finish a later success decision.
+                binding = self._completion_binding
+                if binding is not None:
+                    try:
+                        binding[0]._unsafe = True
+                    finally:
+                        binding[0]._unsafe = True
+                self._mark_custody_fault()
             finally:
                 try:
-                    self._mark_custody_fault()
+                    # An interrupted lookup or signal must be retried before
+                    # a potentially stalled exception-retention assignment.
+                    if completion_authority is not None:
+                        completion_authority._unsafe = True
                 finally:
-                    if self._completion_binding is not None or self._custody_guardian is not None:
-                        self._accept_uncertain = True
-                        self._accepting_stopped.set()
+                    try:
+                        # The frame may own a socket between accept() and handoff.
+                        self._accept_failure = exc
+                    finally:
+                        try:
+                            self._mark_custody_fault()
+                        finally:
+                            if self._completion_binding is not None or self._custody_guardian is not None:
+                                self._accept_uncertain = True
+                                self._accepting_stopped.set()
             raise
 
     def _accept_loop(self):
@@ -607,17 +792,42 @@ class IPCServer:
                         client.close()
                     self._accept_orphan = None
                     continue
-                thread = threading.Thread(target=self._serve, args=(client,), daemon=True,
+                thread = threading.Thread(target=self._run_handler, args=(client,), daemon=True,
                                           name="looking-glass-ipc-client")
+                fault_slot = _HandlerFaultSlot() if self._completion_binding is not None else None
+                if fault_slot is not None:
+                    self._install_thread_fault_observer(thread, fault_slot)
+                full = False
                 with self._lock:
                     if self._accepting_stopped.is_set():
                         client.close()
                         self._slots.release()
                         self._accept_orphan = None
                         return
-                    self._clients.add(client)
-                    self._handlers.add(thread)
-                    thread.start()
+                    # A socket slot can have been released just before its
+                    # handler exits. Keep the combined live thread count
+                    # bounded even in that interval.
+                    self._reap_retiring_handlers_locked()
+                    occupied = (len(self._handler_fault_slots) if self._completion_binding is not None
+                                else len(self._handlers) + len(self._retiring_handlers))
+                    if occupied >= self._max_connections:
+                        full = True
+                    else:
+                        if fault_slot is not None:
+                            self._handler_fault_slots[thread] = fault_slot
+                        self._clients.add(client)
+                        self._handlers.add(thread)
+                        thread.start()
+                        self._accept_orphan = None
+                if full:
+                    try:
+                        _send(client, {"version": 1, "status": "rejected", "error": "busy"},
+                              self.max_response_bytes, time.monotonic() + min(self.io_timeout, 0.2))
+                    except (OSError, EOFError, TimeoutError, ValueError, _ProtocolError, _ResultTooLarge):
+                        pass
+                    finally:
+                        client.close()
+                        self._slots.release()
                     self._accept_orphan = None
             except BaseException:
                 self._mark_custody_fault()
@@ -628,6 +838,15 @@ class IPCServer:
 
     def _send(self, client, message):
         _send(client, message, self.max_response_bytes, time.monotonic() + self.io_timeout)
+
+    def _run_handler(self, client):
+        # Retain a source-time fault signal even if an unexpected exception
+        # escapes the final part of the handler's own cleanup.
+        try:
+            self._serve(client)
+        except BaseException:
+            self._mark_custody_fault()
+            raise
 
     def _serve(self, client):
         handle = None
@@ -869,6 +1088,9 @@ class IPCServer:
                             # Keep the handler discoverable until connection
                             # accounting has actually completed.
                             self._slots.release()
+                            # Root first, then remove from active handlers;
+                            # only another thread can observe actual exit.
+                            self._retiring_handlers.add(threading.current_thread())
                             self._handlers.discard(threading.current_thread())
                         except BaseException:
                             # A notice may already have been observed. Latch
@@ -1010,12 +1232,13 @@ class IPCServer:
         if self._accept_thread is not None and self._accept_thread is not threading.current_thread():
             self._accept_thread.join(timeout=_remaining(deadline))
         with self._lock:
-            handlers = list(self._handlers)
+            handlers = list(self._handlers | self._retiring_handlers)
         for thread in handlers:
             if thread is not threading.current_thread():
                 thread.join(timeout=_remaining(deadline))
         with self._lock:
-            return (not self._handlers and
+            self._reap_retiring_handlers_locked()
+            return (not self._handlers and not self._retiring_handlers and
                     (self._accept_thread is None or not self._accept_thread.is_alive()))
 
     def close(self, timeout=5.0):
@@ -1067,12 +1290,13 @@ class IPCServer:
         if self._startup_uncertain or self._accept_uncertain or self._accept_orphan is not None:
             return False
         with self._lock:
-            handlers = list(self._handlers)
+            handlers = list(self._handlers | self._retiring_handlers)
         for thread in handlers:
             if thread is not threading.current_thread():
                 thread.join(timeout=_remaining(deadline))
         with self._lock:
-            return (not self._handlers and
+            self._reap_retiring_handlers_locked()
+            return (not self._handlers and not self._retiring_handlers and
                     (self._accept_thread is None or not self._accept_thread.is_alive()))
 
     def __enter__(self):
@@ -1087,10 +1311,19 @@ class IPCServer:
         return False
 
 
+@dataclass(frozen=True)
+class CancelAckObservation:
+    """A validated client acknowledgement receipt, not a broker decision time."""
+
+    accepted: bool
+    received_ns: int
+
+
 class IPCClient:
     """Connect to a known loopback server using an out-of-band secret."""
 
-    def __init__(self, address, token, *, io_timeout=3.0, max_response_bytes=_MAX_RESPONSE):
+    def __init__(self, address, token, *, io_timeout=3.0, max_response_bytes=_MAX_RESPONSE,
+                 observe_cancel_ack=False):
         if (type(address) is not tuple or len(address) != 2 or address[0] != "127.0.0.1" or
                 type(address[1]) is not int or not 0 < address[1] < 65536):
             raise ValueError("only an IPv4 loopback endpoint is allowed")
@@ -1100,8 +1333,11 @@ class IPCClient:
             raise ValueError("invalid io_timeout")
         if type(max_response_bytes) is not int or not 512 <= max_response_bytes <= _MAX_RESPONSE:
             raise ValueError("invalid max_response_bytes")
+        if type(observe_cancel_ack) is not bool:
+            raise ValueError("observe_cancel_ack must be a boolean")
         self.address, self.token = address, token
         self.io_timeout, self.max_response_bytes = io_timeout, max_response_bytes
+        self._observe_cancel_ack = observe_cancel_ack
 
     def submit(self, *, team_id, request_id, inputs, seed=0):
         sock = socket.create_connection(self.address, timeout=self.io_timeout)
@@ -1127,14 +1363,17 @@ class IPCClient:
                     not _BROKER_ID.fullmatch(response["broker_id"])):
                 raise IPCError("invalid admission response")
             return IPCHandle(sock, request_id, team_id, response["broker_id"], response["job_id"], self.io_timeout,
-                             self.max_response_bytes)
+                             self.max_response_bytes, observe_cancel_ack=self._observe_cancel_ack)
         except BaseException:
             sock.close()
             raise
 
 
 class IPCHandle:
-    def __init__(self, sock, request_id, team_id, broker_id, job_id, io_timeout, max_response_bytes):
+    def __init__(self, sock, request_id, team_id, broker_id, job_id, io_timeout, max_response_bytes,
+                 *, observe_cancel_ack=False):
+        if type(observe_cancel_ack) is not bool:
+            raise ValueError("observe_cancel_ack must be a boolean")
         self._sock, self.request_id, self.team_id = sock, request_id, team_id
         self.broker_id, self.job_id = broker_id, job_id
         self._io_timeout, self._max_response_bytes = io_timeout, max_response_bytes
@@ -1142,7 +1381,35 @@ class IPCHandle:
         self._read_lock = threading.Lock()
         self._closed = False
         self._cancel_sent = False
+        self._cancel_attempted = False
         self.cancel_acknowledged = False
+        self._observe_cancel_ack = observe_cancel_ack
+        self._cancel_ack_observation = None
+        self._cancel_ack_observation_failed = False
+        self._cancel_ack_capture_pending = False
+
+    @property
+    def cancel_ack_observation(self):
+        """First validated acknowledgement receipt, or None if not observed."""
+        return self._cancel_ack_observation
+
+    @property
+    def cancel_ack_observation_failed(self):
+        """Whether receipt capture failed or more than one acknowledgement arrived."""
+        return self._cancel_ack_observation_failed or self._cancel_ack_capture_pending
+
+    def _capture_cancel_ack(self, accepted):
+        try:
+            if (self._cancel_ack_observation_failed or self._cancel_ack_observation is not None
+                    or not self._cancel_attempted):
+                self._cancel_ack_observation_failed = True
+                return
+            stamp = time.perf_counter_ns()
+            if type(stamp) is not int or not 0 <= stamp < 2 ** 63:
+                raise ValueError("invalid acknowledgement observation timestamp")
+            self._cancel_ack_observation = CancelAckObservation(accepted, stamp)
+        except Exception:
+            self._cancel_ack_observation_failed = True
 
     def cancel(self):
         """Request cooperative cancellation; call wait() for its acknowledgement."""
@@ -1151,6 +1418,10 @@ class IPCHandle:
                 raise IPCError("handle closed")
             if self._cancel_sent:
                 return
+            if self._observe_cancel_ack:
+                # The peer may reply while _send is still returning; record
+                # the local attempt before a frame can be acknowledged.
+                self._cancel_attempted = True
             _send(self._sock, {"version": 1, "op": "cancel", "request_id": self.request_id},
                   _MAX_REQUEST, time.monotonic() + self._io_timeout)
             self._cancel_sent = True
@@ -1173,8 +1444,21 @@ class IPCHandle:
                                                            "cancel_requested", "cancel_not_accepted"}):
                         raise IPCError("invalid result response")
                     if response["status"] in {"cancel_requested", "cancel_not_accepted"}:
+                        if self._observe_cancel_ack:
+                            # Set before entering the helper so interrupted
+                            # capture cannot be mistaken for complete evidence.
+                            self._cancel_ack_capture_pending = True
+                            try:
+                                self._capture_cancel_ack(response["status"] == "cancel_requested")
+                            except Exception:
+                                self._cancel_ack_observation_failed = True
+                            self._cancel_ack_capture_pending = False
                         self.cancel_acknowledged = response["status"] == "cancel_requested"
                         continue
+                    if (self._observe_cancel_ack and response["status"] == "succeeded"
+                            and self._cancel_ack_observation is not None
+                            and self._cancel_ack_observation.accepted):
+                        self._cancel_ack_observation_failed = True
                     return response
             finally:
                 self.close()

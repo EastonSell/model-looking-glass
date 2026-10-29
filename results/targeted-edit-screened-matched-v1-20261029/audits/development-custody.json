@@ -1,0 +1,16 @@
+{
+  "candidate_artifacts": 97,
+  "candidate_sha256": "f038db0b27f68a80fc3fc11374971bf8acd6b47812ab112d760520acc7ff5166",
+  "checkout_commit": "894cb7d0f69592773187be7b21d7f84bb6654eef",
+  "manifest_sha256": "4002c5a539a93c315cbcfd2f7170ec39d702f84be38df1af160379aba4e10cb7",
+  "owner_pid": 49064,
+  "phase_artifacts": 103,
+  "phase_sha256": "80d392a5f7bdfad8e730b8d40087421c1e990151af4efcf9504fd63e73573cd7",
+  "recorded_clean_reaped_drained": true,
+  "recorded_no_pool_reservations": true,
+  "scope": "saved cooperative evidence only; no authenticated chronology, execution or complete exposure proof",
+  "source_commit": "94125e4fad37f9481c1d10381bec752f7a21d6f4",
+  "state_records": 12,
+  "status": "saved_phase_consistent",
+  "v18_sha256": "3fa3eda9508ca314505aa658b1c02d04dbc98681bfc776337cd9ca1c9c384f5a"
+}

@@ -108,6 +108,17 @@ def _result_code(result, *, monitor_failed, monitor_alive):
     return 32
 
 
+def _drain_stop_monitor(stop, monitor, failed):
+    """Join the host-only stop-file monitor before clean attestation.
+
+    This monitor only checks the stop path and signals an event; it must not
+    issue CUDA work or own GPU resources after the owner's device drain.
+    """
+    stop.set()
+    monitor.join(timeout=2)
+    return monitor.is_alive() is False and len(failed) == 1 and failed[0] is False
+
+
 def _owner(config):
     """Run only as the direct child of the identity-aware supervisor."""
     global _LEASE_HOLD
@@ -127,10 +138,12 @@ def _owner(config):
     from .device_identity import DeviceIdentity
     from .device_lease import DeviceLease
     from .supervisor import OwnerSession
-    from .gpu_service import ProfileFiles, _load_profile_registry, _run_bound_owner, _TorchServiceBackend
-    from .trusted_service_profile import (prepare_trusted_source, build_trusted_service_identity,
-        resolve_trusted_service_profiles, verify_trusted_cpu_model, verify_trusted_device_tie,
-        JOB_COMMITMENT)
+    from .gpu_service import (ProfileFiles, _load_profile_registry, _run_bound_owner,
+                              _TorchServiceBackend, _mark_unsafe)
+    from .trusted_service_profile import (prepare_trusted_source, verify_trusted_cpu_model,
+        verify_trusted_device_tie, JOB_COMMITMENT)
+    from .custody_service_profile import (build_custody_service_identity,
+                                          resolve_custody_service_profiles)
 
     session = OwnerSession.from_environment()
     _require_workspace_spec(session, config.repo_root)
@@ -151,7 +164,7 @@ def _owner(config):
     latest = [None]
 
     def live_keys(actual_identity):
-        live = build_trusted_service_identity(source, actual_identity, session, lease)
+        live = build_custody_service_identity(source, actual_identity, session, lease)
         latest[0] = live
         return live.keys
 
@@ -160,7 +173,7 @@ def _owner(config):
             live = latest[0]
             if live is None or live.keys != keys:
                 raise RuntimeError('live service identity was not reconstructed')
-            checked = resolve_trusted_service_profiles(candidate, live, pins)
+            checked = resolve_custody_service_profiles(candidate, live, pins)
             # The independently checked measured estimates establish
             # eligibility. The worker reserves the larger fixed commitment.
             checked = (checked[0],
@@ -176,14 +189,17 @@ def _owner(config):
         verify_loaded_model=lambda model: verify_trusted_cpu_model(source, model),
         verify_device_model=verify_trusted_device_tie, shutdown_timeout=10)
     stop = Event()
-    monitor, failed, _errors = _monitor_stop(config.stop_path, stop)
+    monitor, failed, _errors = _monitor_stop(config.stop_path, stop, on_failure=_mark_unsafe)
 
     def announce(server):
         session.send_startup(lease, _encode_ready(server, config.teams))
 
+    def before_attest():
+        return _drain_stop_monitor(stop, monitor, failed)
+
     try:
         result = _run_bound_owner(session, lease, backend=backend, registry=registry,
-                                  stop_event=stop, announce=announce)
+                                  stop_event=stop, announce=announce, before_attest=before_attest)
     finally:
         stop.set()
         monitor.join(timeout=2)

@@ -34,6 +34,29 @@ checking that snapshot through the study. These checks still rely on trusted,
 exclusive code and cannot detect a change that is made and reversed between
 checks.
 
+## Historical v1 cleanup limitations
+
+The historical v1 candidate and protocol remain byte-for-byte unchanged. Its
+cleanup uses `sys.exception()`, which is unavailable in Python 3.10; a failure
+there can leave registered hooks and altered gradient flags behind. Even on
+Python 3.11 or later, a caller's unrelated handled exception can be mistaken
+for a candidate failure and an ordinary hook-removal error can be suppressed.
+The recorded v1 run used Python 3.11; these findings do not reclassify its
+result. The old direct v1 entry point is not protected by the v2 guard and
+should not be used in either affected context.
+
+The prospective v2 owner rejects a missing `sys.exception()` API or an active
+handled exception before checkpoint loading and checks again immediately
+before calling the unchanged candidate. In an accepted context, a hook-removal
+failure after an otherwise successful candidate is surfaced. This is a narrow,
+cooperative guard, not a repair of the historical direct entry or proof of
+cleanup. An asynchronous interruption during hook registration may lose a
+just-created handle, and a failed cleanup may leave a hook installed. On any
+uncertain candidate failure or interruption, stop and reap the isolated owner;
+do not perform another forward or infer disposal from an exception or record.
+
+## Source and custody
+
 The prospective source inventory includes the remote-witness and evaluation
 reader and writer modules and their protocols, as well as the CPU supervision and
 supervisor contracts. A static regression checks direct relative imports of
@@ -48,6 +71,13 @@ the full supervised import and environment path without loading or forwarding
 the checkpoint, account for subprocess lifetime, and ensure any spawn-free
 replacement exactly matches the frozen v1 environment. Do not weaken process
 accounting to make this preflight pass.
+
+The separate [source-bound rehearsal](TARGETED_EDIT_V2_SOURCE_REHEARSAL.md)
+exercises that path without a checkpoint or forward. It uses one CPU
+supervisor and its pre-grant Windows Job. It is a diagnostic, not a complete
+live-study controller: its parent-held source protections do not survive
+parent death, and it does not establish a manifest, custody receipt, witness,
+or study readiness.
 
 The private condition guard checks the original named parameter identity,
 registered parameter and module identities, parameter gradient/require-grad

@@ -244,6 +244,70 @@ assert 'torch' not in sys.modules and 'transformers' not in sys.modules
         self.assertEqual(code('clean', True, failed=True), 34)
         self.assertEqual(code('clean', True, alive=True), 35)
 
+    def test_pre_attestation_requires_stop_monitor_join_and_no_failure(self):
+        from threading import Event
+        class Monitor:
+            def __init__(self, alive):
+                self.alive = alive
+                self.timeouts = []
+            def join(self, timeout):
+                self.timeouts.append(timeout)
+            def is_alive(self):
+                return self.alive
+        for alive, failed, expected in ((False, False, True), (True, False, False),
+                                        (False, True, False)):
+            with self.subTest(alive=alive, failed=failed):
+                stop, monitor = Event(), Monitor(alive)
+                self.assertIs(child._drain_stop_monitor(stop, monitor, [failed]), expected)
+                self.assertTrue(stop.is_set())
+                self.assertEqual(monitor.timeouts, [2])
+
+    def test_real_owner_calls_monitor_barrier_before_attestation(self):
+        from threading import Event, Thread
+        from looking_glass import gpu_service
+        from test_gpu_service import FakeBackend, FakeSession, _reset_fake_owner
+        events, stop = [], Event()
+        session, backend = FakeSession(events), FakeBackend(events)
+        def watch():
+            stop.wait(5)
+            events.append('monitor-exit')
+        monitor = Thread(target=watch)
+        _reset_fake_owner()
+        monitor.start()
+        try:
+            result = gpu_service._run_bound_owner(session, object(), backend=backend,
+                registry=object(), stop_event=stop, announce=lambda server: None,
+                before_attest=lambda: child._drain_stop_monitor(stop, monitor, [False]))
+            self.assertTrue(result.teardown_verified)
+            self.assertLess(events.index('monitor-exit'), events.index('attest'))
+            self.assertFalse(monitor.is_alive())
+        finally:
+            stop.set()
+            monitor.join(timeout=2)
+            _reset_fake_owner()
+
+    def test_real_owner_does_not_attest_if_monitor_is_not_drained(self):
+        from threading import Event
+        from looking_glass import gpu_service
+        from test_gpu_service import FakeBackend, FakeSession, _reset_fake_owner
+        class StillAlive:
+            def join(self, timeout):
+                pass
+            def is_alive(self):
+                return True
+        events, stop = [], Event()
+        session, backend = FakeSession(events), FakeBackend(events)
+        _reset_fake_owner()
+        try:
+            result = gpu_service._run_bound_owner(session, object(), backend=backend,
+                registry=object(), stop_event=stop, announce=lambda server: None,
+                before_attest=lambda: child._drain_stop_monitor(stop, StillAlive(), [False]))
+            self.assertEqual(result.status, 'quarantined')
+            self.assertFalse(result.teardown_verified)
+            self.assertNotIn('attest', events)
+            self.assertTrue(gpu_service._owner_is_unsafe())
+        finally:
+            _reset_fake_owner()
     def test_direct_owner_exit_skips_atexit_on_success_and_interruption(self):
         program = ("import atexit,sys;from pathlib import Path;"
                    "atexit.register(lambda:Path(sys.argv[1]).write_text('ran'));"
@@ -272,6 +336,7 @@ from unittest.mock import Mock, patch
 sys.path.extend((sys.argv[1], sys.argv[2]))
 from looking_glass import gpu_service_process as child
 from looking_glass import gpu_service, trusted_service_profile as profile, two_token_service as service
+from looking_glass import custody_service_profile as custody
 from looking_glass.device_identity import DeviceIdentity
 from looking_glass.device_lease import DeviceLease
 from looking_glass.supervisor import OwnerSession
@@ -300,7 +365,7 @@ def prepare(*args):
     assert events == [('lease-checked', lease)]
     events.append(('source', None))
     return source
-def execute(actual_session, actual_lease, *, backend, registry, stop_event, announce):
+def execute(actual_session, actual_lease, *, backend, registry, stop_event, announce, before_attest):
     assert actual_session is session and actual_lease is lease
     assert isinstance(backend, gpu_service._TorchServiceBackend)
     assert backend.live_keys(identity) == live.keys
@@ -308,6 +373,7 @@ def execute(actual_session, actual_lease, *, backend, registry, stop_event, anno
     assert backend.verify_loaded_model(model) is True
     assert backend.verify_device_model(model, identity, session, lease) is True
     announce(server)
+    assert before_attest() is True and stop_event.is_set()
     return SimpleNamespace(status='clean', teardown_verified=True, error_type=None)
 with patch.object(service, '_check_owner_contract') as gate, \
      patch.object(service, '_source_checkout', return_value=config.repo_root), \
@@ -317,8 +383,8 @@ with patch.object(service, '_check_owner_contract') as gate, \
      patch.object(OwnerSession, 'from_environment', return_value=session), \
      patch.object(DeviceLease, 'acquire', return_value=lease), \
      patch.object(profile, 'prepare_trusted_source', side_effect=prepare), \
-     patch.object(profile, 'build_trusted_service_identity', return_value=live), \
-     patch.object(profile, 'resolve_trusted_service_profiles', return_value=profiles) as resolve, \
+     patch.object(custody, 'build_custody_service_identity', return_value=live), \
+     patch.object(custody, 'resolve_custody_service_profiles', return_value=profiles) as resolve, \
      patch.object(profile, 'verify_trusted_cpu_model', return_value=True), \
      patch.object(profile, 'verify_trusted_device_tie', return_value=True), \
      patch.object(gpu_service, '_load_profile_registry', return_value=(registry, live.keys)), \
@@ -338,11 +404,95 @@ assert 'torch' not in sys.modules
                                  cwd=self.root, capture_output=True, text=True, timeout=15)
         self.assertEqual(outcome.returncode, 0, outcome.stderr)
 
-    def test_measured_profiles_compose_with_fixed_backend_commitments(self):
+    def test_actual_child_backend_binds_owner_guard_on_the_real_owner_path(self):
+        # The device and model operations are fakes; the child-created backend,
+        # owner coordinator and stop-monitor barrier are the real CPU code.
+        program = r'''
+import builtins, hashlib, sys
+from dataclasses import replace
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
+verified = [False]
+original_import = builtins.__import__
+def guarded_import(name, *args, **kwargs):
+    if name.partition('.')[0] == 'torch' and not verified[0]:
+        raise RuntimeError('Torch imported before owner verification')
+    result = original_import(name, *args, **kwargs)
+    if name == 'torch' and hasattr(result, 'cuda'):
+        result.cuda._lazy_init = lambda *a, **k: (_ for _ in ()).throw(RuntimeError('CUDA forbidden'))
+    return result
+builtins.__import__ = guarded_import
+sys.path.extend((sys.argv[1], sys.argv[2], str(Path(sys.argv[1]) / 'tests')))
+from looking_glass import gpu_service_process as child, gpu_service, two_token_service as service
+from looking_glass import trusted_service_profile as profile
+from looking_glass import custody_service_profile as custody
+from looking_glass.device_identity import DeviceIdentity
+from looking_glass.device_lease import DeviceLease
+from looking_glass.supervisor import OwnerSession
+import test_gpu_service as fixtures
+config = child._parse_config(Path(sys.argv[3]).read_bytes())
+source = SimpleNamespace(source_base=b'source', asset_manifest=b'assets')
+config = replace(config, source_base_sha256=hashlib.sha256(source.source_base).hexdigest(),
+                 asset_manifest_sha256=hashlib.sha256(source.asset_manifest).hexdigest())
+identity = object.__new__(DeviceIdentity)
+object.__setattr__(identity, 'workspace_root', config.workspace_root)
+object.__setattr__(identity, 'gpu_uuid', fixtures.UUID)
+lease = object()
+session = Mock(identity=identity, device_lease_path=config.workspace_root / 'device.lock')
+session.check.side_effect = lambda actual: verified.__setitem__(0, actual is lease)
+events = []
+fake = fixtures.FakeBackend(events)
+live = SimpleNamespace(keys=fake.keys)
+profiles = (fixtures.FakeProfile(fixtures.GIB), fixtures.FakeProfile(profile.JOB_COMMITMENT),
+            fixtures.FakeProfile(profile.JOB_COMMITMENT))
+registry = object()
+def construct(backend, budget, resident_lease, resolved):
+    authority = gpu_service._OWNER_COMPLETION
+    guard = authority._device_guard
+    assert guard.__self__ is backend
+    assert guard.__func__ is gpu_service._TorchServiceBackend._check_owner_lease
+    assert backend.session is session and backend.device_lease is lease
+    before = session.check.call_count
+    authority._before_device()
+    assert session.check.call_count > before
+    return fake.construct(budget, resident_lease, resolved)
+def serve(backend, server, broker, worker, stop_event, announce, verify_drain):
+    return fake.serve(server, broker, worker, stop_event, announce, verify_drain)
+with patch.object(service, '_check_owner_contract'), \
+     patch.object(service, '_source_checkout', return_value=config.repo_root), \
+     patch.object(service, '_workspace_root'), \
+     patch.object(service, '_require_workspace_spec'), \
+     patch.object(service, '_require_workspace_binding'), \
+     patch.object(OwnerSession, 'from_environment', return_value=session), \
+     patch.object(DeviceLease, 'acquire', return_value=lease), \
+     patch.object(profile, 'prepare_trusted_source', return_value=source), \
+     patch.object(custody, 'build_custody_service_identity', return_value=live), \
+     patch.object(custody, 'resolve_custody_service_profiles', return_value=profiles), \
+     patch.object(gpu_service, '_load_profile_registry', return_value=(registry, live.keys)), \
+     patch.object(gpu_service._TorchServiceBackend, 'runtime_binding', return_value=(fixtures.UUID, 1)), \
+     patch.object(gpu_service._TorchServiceBackend, 'telemetry', side_effect=fake.telemetry), \
+     patch.object(gpu_service._TorchServiceBackend, 'resolve_profiles', return_value=profiles), \
+     patch.object(gpu_service._TorchServiceBackend, 'construct', new=construct), \
+     patch.object(gpu_service._TorchServiceBackend, 'serve', new=serve), \
+     patch.object(gpu_service._TorchServiceBackend, 'synchronize', side_effect=fake.synchronize):
+    assert child._owner(config) == 0
+assert verified[0]
+session.attest_clean.assert_called_once_with(lease)
+'''
+        path = self.root / 'config.json'
+        path.write_bytes(self.data())
+        repo = Path(__file__).resolve().parents[1]
+        outcome = subprocess.run([sys._base_executable, '-B', '-S', '-P', '-c', program,
+                                  str(repo), sysconfig.get_paths()['purelib'], str(path)],
+                                 cwd=self.root, capture_output=True, text=True, timeout=20)
+        self.assertEqual(outcome.returncode, 0, outcome.stderr)
+
+    def test_custody_profiles_compose_with_fixed_backend_commitments(self):
         # Synthetic samples exercise the real helper and backend resolver. No
         # measured GPU profile or live GPU work is claimed by this CPU test.
         program = r'''
-import builtins, hashlib, sys
+import builtins, hashlib, json, sys
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -362,14 +512,35 @@ builtins.__import__ = guarded_import
 sys.path.extend((sys.argv[1], sys.argv[2], str(Path(sys.argv[1]) / 'tests')))
 from looking_glass import gpu_service_process as child
 from looking_glass import gpu_service, trusted_service_profile as profile, two_token_service as service
+from looking_glass import custody_service_profile as custody
 from looking_glass.device_identity import DeviceIdentity
 from looking_glass.device_lease import DeviceLease
-from looking_glass.resource_profile import ProfileRegistry
+from looking_glass.resource_profile import ProfileRegistry, ProfileUnavailable
 from looking_glass.supervisor import OwnerSession
 import test_trusted_service_profile as fixtures
-fixture = fixtures.TrustedServiceProfileTests()
-live = fixture.make_identity()
-measured = fixture.make_profiles(live)
+import test_custody_service_profile as custody_fixtures
+fixture = custody_fixtures.CustodyServiceProfileTests()
+fixture.setUp()
+live = fixture.custody_identity()
+measured = fixture.fixtures.make_profiles(live)
+mode = sys.argv[4]
+if mode == 'direct':
+    measured = fixture.fixtures.make_profiles(fixture.direct)
+elif mode == 'seed':
+    measured = fixture.fixtures.make_profiles(live, warm_seeds=(29, 71, 43))
+elif mode == 'case':
+    measured = fixture.fixtures.make_profiles(live, warm_case='f' * 64)
+elif mode == 'source':
+    changed_source = fixtures.canonical({**json.loads(live.source_manifest), 'other_source': True})
+    stale_identity = replace(live, source_manifest=changed_source,
+        keys=custody._make_workload_keys(hashlib.sha256(changed_source).hexdigest(),
+                                        json.loads(live.runtime_manifest)))
+    measured = fixture.fixtures.make_profiles(stale_identity)
+elif mode == 'runtime':
+    old_runtime = {**json.loads(live.runtime_manifest), 'torch_version': 'old-version'}
+    stale_identity = replace(live, runtime_manifest=fixtures.canonical(old_runtime),
+        keys=custody._make_workload_keys(hashlib.sha256(live.source_manifest).hexdigest(), old_runtime))
+    measured = fixture.fixtures.make_profiles(stale_identity)
 pins = tuple(item.profile_id for item in measured)
 registry = ProfileRegistry(measured, approved_profile_ids=pins)
 assert measured[1].estimated_incremental_bytes < profile.JOB_COMMITMENT
@@ -385,13 +556,23 @@ object.__setattr__(identity, 'gpu_uuid', fixtures.UUID)
 lease = object()
 session = Mock(identity=identity, device_lease_path=config.workspace_root / 'device.lock')
 session.check.side_effect = lambda actual: verified.__setitem__(0, True)
-def execute(actual_session, actual_lease, *, backend, registry, stop_event, announce):
+def execute(actual_session, actual_lease, *, backend, registry, stop_event, announce, before_attest):
     assert backend.live_keys(identity) == live.keys
-    resolved = backend.resolve_profiles(registry, live.keys)
-    assert resolved[0].profile_id == pins[0]
-    assert tuple(item.profile_id for item in resolved[1:]) == pins[1:]
-    assert tuple(item.estimated_incremental_bytes for item in resolved[1:]) == (
-        profile.JOB_COMMITMENT, profile.JOB_COMMITMENT)
+    if mode != 'valid':
+        expected = ProfileUnavailable if mode in ('direct', 'source', 'runtime') else ValueError
+        try:
+            backend.resolve_profiles(registry, live.keys)
+        except expected:
+            pass
+        else:
+            raise AssertionError('incompatible profile evidence reached model construction')
+    else:
+        resolved = backend.resolve_profiles(registry, live.keys)
+        assert resolved[0].profile_id == pins[0]
+        assert tuple(item.profile_id for item in resolved[1:]) == pins[1:]
+        assert tuple(item.estimated_incremental_bytes for item in resolved[1:]) == (
+            profile.JOB_COMMITMENT, profile.JOB_COMMITMENT)
+    assert before_attest() is True and stop_event.is_set()
     return SimpleNamespace(status='clean', teardown_verified=True, error_type=None)
 with patch.object(service, '_check_owner_contract') as gate, \
      patch.object(service, '_source_checkout', return_value=config.repo_root), \
@@ -401,20 +582,26 @@ with patch.object(service, '_check_owner_contract') as gate, \
      patch.object(OwnerSession, 'from_environment', return_value=session), \
      patch.object(DeviceLease, 'acquire', return_value=lease), \
      patch.object(profile, 'prepare_trusted_source', return_value=source), \
-     patch.object(profile, 'build_trusted_service_identity', return_value=live), \
+     patch.object(custody, 'build_trusted_service_identity', return_value=fixture.direct), \
+     patch.object(custody, '_guard_owner'), \
+     patch.object(custody, '_verify_protocol_document'), \
      patch.object(gpu_service, '_load_profile_registry', return_value=(registry, live.keys)), \
+     patch.object(gpu_service._TorchServiceBackend, 'construct') as construct, \
      patch.object(gpu_service, '_run_bound_owner', side_effect=execute):
     assert child._owner(config) == 0
     gate.assert_called_once_with(config.repo_root)
+    construct.assert_not_called()
 assert verified[0]
 '''
         path = self.root / 'config.json'
         path.write_bytes(self.data())
         repo = Path(__file__).resolve().parents[1]
-        outcome = subprocess.run([sys._base_executable, '-B', '-S', '-P', '-c', program,
-                                  str(repo), sysconfig.get_paths()['purelib'], str(path)],
-                                 cwd=self.root, capture_output=True, text=True, timeout=15)
-        self.assertEqual(outcome.returncode, 0, outcome.stderr)
+        for mode in ('valid', 'direct', 'seed', 'case', 'source', 'runtime'):
+            with self.subTest(mode=mode):
+                outcome = subprocess.run([sys._base_executable, '-B', '-S', '-P', '-c', program,
+                                          str(repo), sysconfig.get_paths()['purelib'], str(path), mode],
+                                         cwd=self.root, capture_output=True, text=True, timeout=15)
+                self.assertEqual(outcome.returncode, 0, outcome.stderr)
 
 
 if __name__ == '__main__':

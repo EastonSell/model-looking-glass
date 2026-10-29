@@ -173,6 +173,23 @@ preparation or non-preemptible worker thread has not stopped; a supervisor must
 terminate the owning process and preserve its resource quarantine. The context
 manager waits without a timeout on exit only while ownership remains known.
 
+For a completion-authority-bound broker, the original authority is pinned;
+attempting to replace or remove it latches that authority unsafe. The broker
+property check relies on the cooperative private-field contract; it does not
+prevent arbitrary in-process mutation of its backing storage. The broker
+remains process-rooted through process exit, even after the owner thread has
+been joined. Use this bound mode in a dedicated single-owner process or impose
+an external finite bound on the number of broker instances; each bound graph
+remains retained. On supported CPython, a per-thread hook privately retains
+an exception escaping the bound owner target, including its return boundary,
+and marks the authority before a successful close can be reported. The private
+failure is not forwarded to the application's global thread exception hook,
+which could mutate its traceback. Bound mode requires GIL-enabled CPython
+3.10–3.13 and the per-thread hook; other runtimes fail closed before binding.
+This does not prove observation of arbitrary faults in the hook, interpreter
+bootstrap, or thread finalization; the supervisor must treat uncertain exit as
+unsafe.
+
 ## Timing and memory boundaries
 
 Outcomes include `submitted_ns`, `ready_ns`, `started_ns`, and `finished_ns`

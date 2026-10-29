@@ -1,0 +1,3 @@
+# Preserve the captured Windows files byte-for-byte; their hashes are evidence.
+*.json -text whitespace=cr-at-eol
+*.py -text whitespace=cr-at-eol
