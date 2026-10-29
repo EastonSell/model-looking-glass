@@ -1,0 +1,58 @@
+{
+  "case_sha256": "811a1f0251ff21ddaa1869ee96c80dfa47beb87a6b6c2f1e3b6505728fee1825",
+  "current_exposure_sha256": "5e593d1b5a0ac35aba2791cd5eafe7114f7e93ba4bb1c90706e385d2fab0cadc",
+  "current_exposure_version": "distilgpt2-development-exposures-v39",
+  "dependency_sha256": {
+    "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+    "looking_glass/intervention_plan.py": "5bb643c538a1d7dcd97214238c2a996967d4b6ae2e965d3776b3699758491c0a",
+    "looking_glass/interventions.py": "71cbcf4776660d2dd883b82815f710b0c909228fd1762504f9e3f984f7f6c60f",
+    "looking_glass/model_ownership.py": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434",
+    "looking_glass/pretrained.py": "1f3ff1cb1457aa0a9df73a2b791f6b391ee4716b951bc988f461bfe168eb9d6f",
+    "looking_glass/probes.py": "3ba99f7289bb2f12cc7e0c1e255c22a7c7aff3a48e1348ec5d503956e0c8e730",
+    "looking_glass/trace_schema.py": "38e05eb52a59a10ad9f93d19763d60df4c27f9eb626fdefdcba39fc4af3eb92c",
+    "looking_glass/transformer_trace.py": "c58b303bd2448d0bb6804ee28066d33cc6830da8cec43986f6d481806b3b1929"
+  },
+  "direct_launcher_sha256": "341c1fe29541f427ce5964d8ac2ae565f69d8c8297e598c131b4e98dd1f36279",
+  "fresh_space_before_pre_run": {
+    "cache": 1845243904,
+    "output": 388861124608,
+    "source": 1845243904
+  },
+  "minimum_e_before_action_bytes": 1073741824,
+  "minimum_e_before_load_bytes": 2147483648,
+  "minimum_source_cache_bytes": 268435456,
+  "observed_main": "91d4a3913dacd05436e3ce5248f96aaf2b7aefd9",
+  "output_drive": "E:",
+  "pending_copy_report_sha256": "c08ad30e2f9e5dabecba471955bd36cee59d0126b005cadd28f9fb1308be4a87",
+  "pending_invariant_report_sha256": "41f4e9c9753439568fba7249ca05ca449325041dcc89bb4f07f751b7f832c2aa",
+  "phase_forward_count": 224,
+  "phase_metadata_cap_bytes": 16777216,
+  "phase_raw_cap_bytes": 268435456,
+  "process_scope": "Direct-child observation is cooperative; an absent or uncertain receipt does not establish child exit or permit an automatic retry.",
+  "protocol_sha256": "6d87a579eb27f214db3e8769232b5940d263da59490480765118174ef99b5d70",
+  "public_support_scope": "v37 public comparison retained, v38 admission and v39 delta checked; old protected split and unknown outside/pretraining exposure unchecked",
+  "pycache_prefix_sha256": {
+    "discovery": "31faa51f9bfc273316ed0a0f5df212e4efce97c746f6a54b9866fb31cf2e75cc",
+    "held-out": "2b6de85374cbffadda70c52de09abc632601c3df3b327284624af1d01e1d729a"
+  },
+  "reservation_sha256": "f3a500dc02d85b8f004275ba2edd74febf9cec138e83755568e5be31045898a9",
+  "rounding_scope": "Windows thread rounding mode checked; interpreter and native libraries assumed not to change it concurrently",
+  "schema": "public-distractor-repair-pre-run-v1",
+  "source_revision": "26e84ad8da3139a110d45302a99b996d242fc54d",
+  "source_scope": "public source tree; local study and selected dependency bytes individually pinned; direct child observation is cooperative",
+  "source_tree": "a03400a4a45fd95b2ed15b89d5dbd5b4dbe54d9e",
+  "stage_dir_sha256": "a1beec3faf63701a20014240ef3ba260dfc569ca4c76855d264a7faefae2e334",
+  "study_sha256": {
+    "direct_launch.py": "341c1fe29541f427ce5964d8ac2ae565f69d8c8297e598c131b4e98dd1f36279",
+    "distractor_admission.py": "f7a1637c65eb075003090ac450b8ce64647a5776639b76f029aa775cbdf94ca8",
+    "distractor_analysis.py": "8dacca4483c4b8be23f5f6b17da245f20fa3c8ba2b66031a9fe03c30b03f6b41",
+    "distractor_core.py": "6f97ea1a06b928c3be62b0a0930b02701decb20d86cf91780efc58954c4a2acb",
+    "distractor_executor.py": "bafd64d85b3b24ffb04546a453f7be217de4b79b75e963532e2a42af00513c70",
+    "distractor_journal.py": "1f50cf4d28a019ba14e8f871c3d319bef5ebf3ada60289d6382694ea4668aed0",
+    "distractor_report.py": "5f57da9fec15ed3093600de112735257bf4e39e5d46daeb8c676f70912b78586",
+    "distractor_saved.py": "b741376f1c01c485c3c0482235b172ccd9903171590eb194a54e835c95801933",
+    "run_phase.py": "dc9dfdf8bb2554f55d2a821d84ceb65a0f08cb002854e767683670b6fb7844a8"
+  },
+  "v39_delta_report_sha256": "74c2ba7e3d3288158daf7d2b360a9148b7bef71fac3b71e532a60e051c806be6",
+  "v39_merge": "a27cd1dfeadb3c1e434a5e524ccbd5d305f4c883"
+}
