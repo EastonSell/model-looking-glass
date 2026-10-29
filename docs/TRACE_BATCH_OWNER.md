@@ -2,9 +2,11 @@
 
 Status: **trusted, process-local CPU prototype**. It validates and privately
 stores a complete single-job GPT-2 batch, then commits one metadata manifest.
-It is not connected to the broker, worker, GPU, IPC, network, or any sending
-API. It does not authenticate callers or prove that values came from a given
-model or input. Trace values do not by themselves explain model behavior.
+The batch primitive does not run a model or expose a sending API. The separate
+[CPU trace owner](CPU_TRACE_OWNER.md) composes it with a trusted CPU traced
+worker and producer envelope. Neither is connected to the broker, GPU, IPC or
+network. They do not authenticate callers or prove that values came from a
+given model or input. Trace values do not by themselves explain model behavior.
 
 `TraceBatchRegistry` keeps a bounded number of private job contexts, including
 contexts still being constructed. A trusted owner supplies the exact
