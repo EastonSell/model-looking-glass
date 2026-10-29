@@ -1,0 +1,7 @@
+{
+  "archive_sha256": "a7c01d8676c349b99b09a1e2be6f721c30bd306ce730ed582e07338d36f2dd72",
+  "documents_scanned": 10,
+  "pattern_hits": {},
+  "schema": "color-v2-public-bundle-pattern-review-v1",
+  "scope": "Common local-path, GPU UUID and secret-prefix patterns only; not proof of complete de-identification."
+}

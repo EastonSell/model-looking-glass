@@ -1,0 +1,9 @@
+# Prospective resource amendment for the baseline-supported copying screen
+
+This amendment corrects the resource paragraph of the already published [protocol](DISTILGPT2_COPY_BEHAVIOR_SCREEN_V1.md), whose SHA-256 is `78907b74bf3edb44a47c794508a9385da23b2bf2f26d07df4fefe74542b58875`. It is published before any pretrained forward for this study. The fixed cases, candidate order, split, thresholds, comparisons, interventions, failure rules and scientific claims are unchanged; the original protocol remains preserved.
+
+The reviewed loader verifies checkpoint and tokenizer assets by temporarily staging copies before loading. Instead of the original protocol's “without copies” wording, each supervised phase will pass an explicit staging directory under `E:/Codex/model-looking-glass/work` to that loader. The existing pinned C: cache is the source of the assets, not the staging destination. For the pinned assets, the seven staged files total 355,679,200 bytes, including the 352,824,413-byte checkpoint. The loader's successful return exits its temporary-directory context; a later listing alone will not be described as historical proof of cleanup.
+
+Before each phase, in addition to the phase's frozen maximum raw payload, 32 MiB metadata reserve and 1 MiB failure reserve, E: must have at least 355,679,200 bytes available for the verified temporary assets. The unchanged C: preflight requires at least 1 GiB free. New scratch, the temporary staging directory, output and partial failure evidence remain under `E:/Codex/model-looking-glass/work`. If the space or source checks fail, no phase starts. A failed or uncertain attempt retains its available evidence and is not retried automatically.
+
+This prospective correction follows the separately disclosed staging deviation in the earlier [output-dose result](../results/distilgpt2-copy-head-output-dose-v1-20261029/README.md); it does not alter that result or imply that an output from this study exists.

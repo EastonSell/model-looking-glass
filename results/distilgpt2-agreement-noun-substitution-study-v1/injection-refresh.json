@@ -1,0 +1,9 @@
+{
+  "direct_target_conflict": "none reported",
+  "limitation": "Cooperative point-in-time operator record, not a private-row comparison; indirect effects are not excluded.",
+  "observation": "Injection custodian reports zero held-out claims, an empty phase parent, no shared gate marker, no nonce, split, protected rows or held-out injection forward. The fixed separate-owner layer-3 final attention-output site has no direct target conflict with the public injection protocol MLP-output boundary.",
+  "refreshed_utc": "2026-10-29T11:49:01.810673+00:00",
+  "schema": "agreement-substitution-injection-refresh-v1",
+  "site": "transformer.h.3.attn",
+  "status": "no_protected_rows"
+}

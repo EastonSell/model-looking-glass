@@ -1,0 +1,1684 @@
+{
+  "actions_sha256": "fbf526fd867ed48127c24b3b35004727b1757782e90798d60dcfdec37ac9b2f6",
+  "answers": [
+    318,
+    389,
+    373,
+    547,
+    262,
+    257,
+    287,
+    319
+  ],
+  "cases": [
+    {
+      "case_id": "discovery_target_f0_c2_n0_this",
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "Before breakfast, this sheep near the gates",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        428,
+        15900,
+        1474,
+        262,
+        17435
+      ]
+    },
+    {
+      "case_id": "discovery_target_f0_c2_n0_these",
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "Before breakfast, these sheep near the gates",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        777,
+        15900,
+        1474,
+        262,
+        17435
+      ]
+    },
+    {
+      "case_id": "discovery_target_f1_c0_n0_these",
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 0,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "After dinner, these sheep nearby",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        777,
+        15900,
+        6716
+      ]
+    },
+    {
+      "case_id": "discovery_target_f1_c0_n0_this",
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 0,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "After dinner, this sheep nearby",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        428,
+        15900,
+        6716
+      ]
+    },
+    {
+      "case_id": "discovery_fragment_f0_c0",
+      "context_index": 0,
+      "determiner": null,
+      "final_index": 3,
+      "frame_index": 0,
+      "noun_index": null,
+      "role": "fragment",
+      "split": "discovery",
+      "text": "Before breakfast, nearby",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        6716
+      ]
+    },
+    {
+      "case_id": "discovery_target_f1_c2_n0_these",
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "After dinner, these sheep near the lamps",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        777,
+        15900,
+        1474,
+        262,
+        32209
+      ]
+    },
+    {
+      "case_id": "discovery_target_f1_c2_n0_this",
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "After dinner, this sheep near the lamps",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        428,
+        15900,
+        1474,
+        262,
+        32209
+      ]
+    },
+    {
+      "case_id": "discovery_demonstrative_f1_these",
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 4,
+      "frame_index": 1,
+      "noun_index": null,
+      "role": "demonstrative",
+      "split": "discovery",
+      "text": "After dinner, these nearby",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        777,
+        6716
+      ]
+    },
+    {
+      "case_id": "discovery_demonstrative_f1_this",
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 4,
+      "frame_index": 1,
+      "noun_index": null,
+      "role": "demonstrative",
+      "split": "discovery",
+      "text": "After dinner, this nearby",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        428,
+        6716
+      ]
+    },
+    {
+      "case_id": "discovery_fragment_f0_c1",
+      "context_index": 1,
+      "determiner": null,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": null,
+      "role": "fragment",
+      "split": "discovery",
+      "text": "Before breakfast, near the gate",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        1474,
+        262,
+        8946
+      ]
+    },
+    {
+      "case_id": "discovery_target_f0_c1_n1_these",
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "Before breakfast, these deer near the gate",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        777,
+        20096,
+        1474,
+        262,
+        8946
+      ]
+    },
+    {
+      "case_id": "discovery_target_f0_c1_n1_this",
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "Before breakfast, this deer near the gate",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        428,
+        20096,
+        1474,
+        262,
+        8946
+      ]
+    },
+    {
+      "case_id": "discovery_target_f0_c1_n0_this",
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "Before breakfast, this sheep near the gate",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        428,
+        15900,
+        1474,
+        262,
+        8946
+      ]
+    },
+    {
+      "case_id": "discovery_target_f0_c1_n0_these",
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "Before breakfast, these sheep near the gate",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        777,
+        15900,
+        1474,
+        262,
+        8946
+      ]
+    },
+    {
+      "case_id": "discovery_fragment_f1_c1",
+      "context_index": 1,
+      "determiner": null,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": null,
+      "role": "fragment",
+      "split": "discovery",
+      "text": "After dinner, near the lamp",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        1474,
+        262,
+        20450
+      ]
+    },
+    {
+      "case_id": "discovery_target_f0_c0_n1_these",
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 1,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "Before breakfast, these deer nearby",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        777,
+        20096,
+        6716
+      ]
+    },
+    {
+      "case_id": "discovery_target_f0_c0_n1_this",
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 1,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "Before breakfast, this deer nearby",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        428,
+        20096,
+        6716
+      ]
+    },
+    {
+      "case_id": "discovery_target_f0_c0_n0_this",
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 0,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "Before breakfast, this sheep nearby",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        428,
+        15900,
+        6716
+      ]
+    },
+    {
+      "case_id": "discovery_target_f0_c0_n0_these",
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 0,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "Before breakfast, these sheep nearby",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        777,
+        15900,
+        6716
+      ]
+    },
+    {
+      "case_id": "discovery_fragment_f1_c2",
+      "context_index": 2,
+      "determiner": null,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": null,
+      "role": "fragment",
+      "split": "discovery",
+      "text": "After dinner, near the lamps",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        1474,
+        262,
+        32209
+      ]
+    },
+    {
+      "case_id": "discovery_target_f1_c0_n1_this",
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 1,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "After dinner, this deer nearby",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        428,
+        20096,
+        6716
+      ]
+    },
+    {
+      "case_id": "discovery_target_f1_c0_n1_these",
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 1,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "After dinner, these deer nearby",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        777,
+        20096,
+        6716
+      ]
+    },
+    {
+      "case_id": "discovery_target_f0_c2_n1_these",
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "Before breakfast, these deer near the gates",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        777,
+        20096,
+        1474,
+        262,
+        17435
+      ]
+    },
+    {
+      "case_id": "discovery_target_f0_c2_n1_this",
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "Before breakfast, this deer near the gates",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        428,
+        20096,
+        1474,
+        262,
+        17435
+      ]
+    },
+    {
+      "case_id": "discovery_fragment_f1_c0",
+      "context_index": 0,
+      "determiner": null,
+      "final_index": 3,
+      "frame_index": 1,
+      "noun_index": null,
+      "role": "fragment",
+      "split": "discovery",
+      "text": "After dinner, nearby",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        6716
+      ]
+    },
+    {
+      "case_id": "discovery_demonstrative_f0_this",
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 4,
+      "frame_index": 0,
+      "noun_index": null,
+      "role": "demonstrative",
+      "split": "discovery",
+      "text": "Before breakfast, this nearby",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        428,
+        6716
+      ]
+    },
+    {
+      "case_id": "discovery_demonstrative_f0_these",
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 4,
+      "frame_index": 0,
+      "noun_index": null,
+      "role": "demonstrative",
+      "split": "discovery",
+      "text": "Before breakfast, these nearby",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        777,
+        6716
+      ]
+    },
+    {
+      "case_id": "discovery_target_f1_c1_n1_this",
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "After dinner, this deer near the lamp",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        428,
+        20096,
+        1474,
+        262,
+        20450
+      ]
+    },
+    {
+      "case_id": "discovery_target_f1_c1_n1_these",
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "After dinner, these deer near the lamp",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        777,
+        20096,
+        1474,
+        262,
+        20450
+      ]
+    },
+    {
+      "case_id": "discovery_fragment_f0_c2",
+      "context_index": 2,
+      "determiner": null,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": null,
+      "role": "fragment",
+      "split": "discovery",
+      "text": "Before breakfast, near the gates",
+      "token_ids": [
+        8421,
+        12607,
+        11,
+        1474,
+        262,
+        17435
+      ]
+    },
+    {
+      "case_id": "discovery_target_f1_c1_n0_these",
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "After dinner, these sheep near the lamp",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        777,
+        15900,
+        1474,
+        262,
+        20450
+      ]
+    },
+    {
+      "case_id": "discovery_target_f1_c1_n0_this",
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "After dinner, this sheep near the lamp",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        428,
+        15900,
+        1474,
+        262,
+        20450
+      ]
+    },
+    {
+      "case_id": "discovery_target_f1_c2_n1_this",
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "After dinner, this deer near the lamps",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        428,
+        20096,
+        1474,
+        262,
+        32209
+      ]
+    },
+    {
+      "case_id": "discovery_target_f1_c2_n1_these",
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "role": "target",
+      "split": "discovery",
+      "subject_index": 4,
+      "text": "After dinner, these deer near the lamps",
+      "token_ids": [
+        3260,
+        8073,
+        11,
+        777,
+        20096,
+        1474,
+        262,
+        32209
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f1_c2_n1_these",
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "During autumn, these shrimp near the boxes",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        777,
+        30060,
+        1474,
+        262,
+        10559
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f1_c2_n1_this",
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "During autumn, this shrimp near the boxes",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        428,
+        30060,
+        1474,
+        262,
+        10559
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f1_c2_n0_this",
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "During autumn, this squid near the boxes",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        428,
+        45126,
+        1474,
+        262,
+        10559
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f1_c2_n0_these",
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "During autumn, these squid near the boxes",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        777,
+        45126,
+        1474,
+        262,
+        10559
+      ]
+    },
+    {
+      "case_id": "evaluation_fragment_f0_c2",
+      "context_index": 2,
+      "determiner": null,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": null,
+      "role": "fragment",
+      "split": "evaluation",
+      "text": "At midnight, near the rocks",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        1474,
+        262,
+        12586
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f0_c1_n0_these",
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "At midnight, these squid near the rock",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        777,
+        45126,
+        1474,
+        262,
+        3881
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f0_c1_n0_this",
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "At midnight, this squid near the rock",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        428,
+        45126,
+        1474,
+        262,
+        3881
+      ]
+    },
+    {
+      "case_id": "evaluation_demonstrative_f0_these",
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 4,
+      "frame_index": 0,
+      "noun_index": null,
+      "role": "demonstrative",
+      "split": "evaluation",
+      "text": "At midnight, these nearby",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        777,
+        6716
+      ]
+    },
+    {
+      "case_id": "evaluation_demonstrative_f0_this",
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 4,
+      "frame_index": 0,
+      "noun_index": null,
+      "role": "demonstrative",
+      "split": "evaluation",
+      "text": "At midnight, this nearby",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        428,
+        6716
+      ]
+    },
+    {
+      "case_id": "evaluation_fragment_f1_c1",
+      "context_index": 1,
+      "determiner": null,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": null,
+      "role": "fragment",
+      "split": "evaluation",
+      "text": "During autumn, near the box",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        1474,
+        262,
+        3091
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f1_c1_n1_these",
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "During autumn, these shrimp near the box",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        777,
+        30060,
+        1474,
+        262,
+        3091
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f1_c1_n1_this",
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "During autumn, this shrimp near the box",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        428,
+        30060,
+        1474,
+        262,
+        3091
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f0_c2_n1_this",
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "At midnight, this shrimp near the rocks",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        428,
+        30060,
+        1474,
+        262,
+        12586
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f0_c2_n1_these",
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "At midnight, these shrimp near the rocks",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        777,
+        30060,
+        1474,
+        262,
+        12586
+      ]
+    },
+    {
+      "case_id": "evaluation_fragment_f1_c2",
+      "context_index": 2,
+      "determiner": null,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": null,
+      "role": "fragment",
+      "split": "evaluation",
+      "text": "During autumn, near the boxes",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        1474,
+        262,
+        10559
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f0_c0_n0_these",
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 0,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "At midnight, these squid nearby",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        777,
+        45126,
+        6716
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f0_c0_n0_this",
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 0,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "At midnight, this squid nearby",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        428,
+        45126,
+        6716
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f1_c0_n1_these",
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 1,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "During autumn, these shrimp nearby",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        777,
+        30060,
+        6716
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f1_c0_n1_this",
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 1,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "During autumn, this shrimp nearby",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        428,
+        30060,
+        6716
+      ]
+    },
+    {
+      "case_id": "evaluation_fragment_f1_c0",
+      "context_index": 0,
+      "determiner": null,
+      "final_index": 3,
+      "frame_index": 1,
+      "noun_index": null,
+      "role": "fragment",
+      "split": "evaluation",
+      "text": "During autumn, nearby",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        6716
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f1_c0_n0_this",
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 0,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "During autumn, this squid nearby",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        428,
+        45126,
+        6716
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f1_c0_n0_these",
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 0,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "During autumn, these squid nearby",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        777,
+        45126,
+        6716
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f0_c2_n0_these",
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "At midnight, these squid near the rocks",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        777,
+        45126,
+        1474,
+        262,
+        12586
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f0_c2_n0_this",
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "At midnight, this squid near the rocks",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        428,
+        45126,
+        1474,
+        262,
+        12586
+      ]
+    },
+    {
+      "case_id": "evaluation_fragment_f0_c0",
+      "context_index": 0,
+      "determiner": null,
+      "final_index": 3,
+      "frame_index": 0,
+      "noun_index": null,
+      "role": "fragment",
+      "split": "evaluation",
+      "text": "At midnight, nearby",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        6716
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f1_c1_n0_this",
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "During autumn, this squid near the box",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        428,
+        45126,
+        1474,
+        262,
+        3091
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f1_c1_n0_these",
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "During autumn, these squid near the box",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        777,
+        45126,
+        1474,
+        262,
+        3091
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f0_c1_n1_this",
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "At midnight, this shrimp near the rock",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        428,
+        30060,
+        1474,
+        262,
+        3881
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f0_c1_n1_these",
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "At midnight, these shrimp near the rock",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        777,
+        30060,
+        1474,
+        262,
+        3881
+      ]
+    },
+    {
+      "case_id": "evaluation_fragment_f0_c1",
+      "context_index": 1,
+      "determiner": null,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": null,
+      "role": "fragment",
+      "split": "evaluation",
+      "text": "At midnight, near the rock",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        1474,
+        262,
+        3881
+      ]
+    },
+    {
+      "case_id": "evaluation_demonstrative_f1_this",
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 4,
+      "frame_index": 1,
+      "noun_index": null,
+      "role": "demonstrative",
+      "split": "evaluation",
+      "text": "During autumn, this nearby",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        428,
+        6716
+      ]
+    },
+    {
+      "case_id": "evaluation_demonstrative_f1_these",
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 4,
+      "frame_index": 1,
+      "noun_index": null,
+      "role": "demonstrative",
+      "split": "evaluation",
+      "text": "During autumn, these nearby",
+      "token_ids": [
+        7191,
+        23608,
+        11,
+        777,
+        6716
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f0_c0_n1_this",
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 1,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "At midnight, this shrimp nearby",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        428,
+        30060,
+        6716
+      ]
+    },
+    {
+      "case_id": "evaluation_target_f0_c0_n1_these",
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 1,
+      "role": "target",
+      "split": "evaluation",
+      "subject_index": 4,
+      "text": "At midnight, these shrimp nearby",
+      "token_ids": [
+        2953,
+        15896,
+        11,
+        777,
+        30060,
+        6716
+      ]
+    }
+  ],
+  "expected_forwards": 612,
+  "inventory_revision": "f05992b42b0d5fd009d4f98c3f68b1bc03b58c73",
+  "inventory_sequences_checked": 4899,
+  "inventory_sha256": "f3a500dc02d85b8f004275ba2edd74febf9cec138e83755568e5be31045898a9",
+  "inventory_version": "distilgpt2-development-exposures-v38",
+  "model_id": "distilbert/distilgpt2",
+  "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "ordered_rows_sha256": "54eb514e8afbb82ca3e341893b452c7ea926a8bd40489851b3e5bc0d07332161",
+  "pending_and_custody": "Separate public pending-input comparisons and fresh custody required.",
+  "prior_bundle_sha256": [
+    "23575704f3e55d741123d3c1024accfb15aa0a048a84ce415bc765573d913ba0",
+    "a68aa63ff06aa97c5c68d941fe27160c4c4698cdf070325b3cefa2b29ec58b13",
+    "5f3a2c850454e74da2bdc3819d492357f829994c126e1ac95d90ca3813b0643e",
+    "94910e59415936a09c18f81478e0eaffb790c9b69d0962ab3f6b70947fbe1dfe"
+  ],
+  "protocol_revision": "f404c5bf8446457275bcab046c4ecedbb5a83687",
+  "protocol_sha256": "be7ab65c18fb706cd7e833edc0c32a6b833172b3b1996ac3ec94f268f1c39147",
+  "public_support_sha256": [
+    "5638b5ccc1d6585184fcd359e825ac3c2f6a1e377e24afde78bc5a9a2fc845d6",
+    "6303eb0713d64b020eea3fe491a686c9020ea424754443372aef73749bc87bc4"
+  ],
+  "schema": "agreement-invariant-noun-cases-v1",
+  "selection": {
+    "attractor_decisions": [
+      {
+        "decision": "selected",
+        "forms": [
+          "gate",
+          "gates"
+        ],
+        "ids": [
+          [
+            8946
+          ],
+          [
+            17435
+          ]
+        ]
+      },
+      {
+        "decision": "selected",
+        "forms": [
+          "lamp",
+          "lamps"
+        ],
+        "ids": [
+          [
+            20450
+          ],
+          [
+            32209
+          ]
+        ]
+      },
+      {
+        "decision": "selected",
+        "forms": [
+          "rock",
+          "rocks"
+        ],
+        "ids": [
+          [
+            3881
+          ],
+          [
+            12586
+          ]
+        ]
+      },
+      {
+        "decision": "previous_or_selected_token",
+        "forms": [
+          "tree",
+          "trees"
+        ],
+        "ids": [
+          [
+            5509
+          ],
+          [
+            7150
+          ]
+        ]
+      },
+      {
+        "decision": "not_one_token",
+        "forms": [
+          "arch",
+          "arches"
+        ],
+        "ids": [
+          [
+            3934
+          ],
+          [
+            610,
+            2052
+          ]
+        ]
+      },
+      {
+        "decision": "selected",
+        "forms": [
+          "box",
+          "boxes"
+        ],
+        "ids": [
+          [
+            3091
+          ],
+          [
+            10559
+          ]
+        ]
+      }
+    ],
+    "attractors": [
+      {
+        "forms": [
+          "gate",
+          "gates"
+        ],
+        "token_ids": [
+          8946,
+          17435
+        ]
+      },
+      {
+        "forms": [
+          "lamp",
+          "lamps"
+        ],
+        "token_ids": [
+          20450,
+          32209
+        ]
+      },
+      {
+        "forms": [
+          "rock",
+          "rocks"
+        ],
+        "token_ids": [
+          3881,
+          12586
+        ]
+      },
+      {
+        "forms": [
+          "box",
+          "boxes"
+        ],
+        "token_ids": [
+          3091,
+          10559
+        ]
+      }
+    ],
+    "noun_decisions": {
+      "discovery": [
+        {
+          "decision": "selected",
+          "form": "sheep",
+          "ids": [
+            15900
+          ]
+        },
+        {
+          "decision": "selected",
+          "form": "deer",
+          "ids": [
+            20096
+          ]
+        }
+      ],
+      "evaluation": [
+        {
+          "decision": "not_one_token",
+          "form": "bison",
+          "ids": [
+            275,
+            1653
+          ]
+        },
+        {
+          "decision": "selected",
+          "form": "squid",
+          "ids": [
+            45126
+          ]
+        },
+        {
+          "decision": "selected",
+          "form": "shrimp",
+          "ids": [
+            30060
+          ]
+        }
+      ]
+    },
+    "nouns": {
+      "discovery": [
+        {
+          "form": "sheep",
+          "token_id": 15900
+        },
+        {
+          "form": "deer",
+          "token_id": 20096
+        }
+      ],
+      "evaluation": [
+        {
+          "form": "squid",
+          "token_id": 45126
+        },
+        {
+          "form": "shrimp",
+          "token_id": 30060
+        }
+      ]
+    }
+  },
+  "tokenizer_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+  "tokenizers_version": "0.22.2"
+}

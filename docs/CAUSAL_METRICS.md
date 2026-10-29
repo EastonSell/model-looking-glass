@@ -1,9 +1,10 @@
 # Held-out intervention metrics, contract v1
 
-This document specifies an evaluation utility, not an experimental result. Its
+This document specifies utilities, not an experimental result. The prediction
 metrics measure whether **preregistered scalar predictions** match held-out
-intervention effects. A good score does not, by itself, establish a mechanism or
-show that an activation trace explains a model's reasoning.
+intervention effects. A separate descriptive helper summarizes measured paired
+interventions. Neither establishes a mechanism or shows that an activation
+trace explains a model's reasoning.
 
 Before looking at held-out outcomes, save the hypothesis, intervention,
 measurement and sign convention, independent case IDs, predicted effects,
@@ -33,6 +34,57 @@ seeds per independent unit. Do not label correlated rows as separate cases.
 Aggregating rows changes the estimand; prespecify and justify any aggregation,
 or use a suitable cluster-aware analysis. A case bootstrap under one checkpoint
 does not measure uncertainty across checkpoints or model seeds.
+
+## Descriptive candidate-versus-control summary
+
+`summarize_interventions` accepts one `InterventionCase` per case. The three
+readouts must be matched scalar measurements in the same units: a common
+reference and the candidate and control interventions. Supply the same metric,
+sign convention, case alignment and fixed eligibility rule used by the study.
+For example:
+
+```python
+from looking_glass.causal_metrics import InterventionCase, summarize_interventions
+
+summary = summarize_interventions([
+    InterventionCase('case-a', 'supported', 'eligible', 2.0, 5.0, 3.0),
+    InterventionCase('case-b', 'unsupported', 'eligible', 1.0, 4.0, 2.0),
+    InterventionCase('case-c', 'supported', 'eligible', 0.0, None, 1.0),
+])
+print(summary['paired_cases'])  # 1 included, 2 excluded, with reasons
+print(summary['cases'][0]['candidate_effect'])  # +3.0, relative to reference
+print(summary['cases'][0]['candidate_minus_control'])  # +2.0
+```
+
+`baseline_status` must be `supported`, `unsupported` or `unverified`;
+`eligibility` must be `eligible`, `ineligible` or `unverified`. These are
+caller-supplied assessments, not conclusions the helper derives from the
+readouts; `eligibility` concerns the complete candidate/control comparison.
+Use `None` for an unavailable readout. Each input case is retained in
+the original order, with its raw values, statuses, available signed effects
+(`candidate - reference`, `control - reference`) and direct
+`candidate - control` contrast. A contrast can be available even when the
+reference is missing. A positive contrast means a larger scalar readout for the
+candidate; it does not by itself mean a better or more causal intervention.
+
+All three finite readouts, a supported baseline and an eligible status are
+required for a case to enter the paired summary. Each excluded case receives
+one reason, in this order: unsupported or unverified baseline; ineligible or
+unverified intervention; missing readout. `paired_cases` reports included and
+excluded denominators and these mutually exclusive reason counts. The separate
+baseline, eligibility and missing-readout counts retain the overlapping facts.
+All three means and the above/equal/below counts use the **same** included
+cases; when none qualify, means are `None` and all three counts are zero. The
+means sum the rounded finite binary64 per-case values exactly before the final
+rounding. The directly computed paired contrast can differ slightly from
+subtracting the displayed mean effects due to floating-point rounding.
+
+An empty case list, duplicate or empty IDs, unsupported status strings, booleans, nonfinite
+readouts and differences that overflow raise `ValueError`, including on excluded
+cases. The helper performs no model call, resampling, normalization by a
+baseline gap or significance test. It cannot establish that a case was held
+out, that its values are aligned, that observations are independent, or that a
+control is matched; retain the study's raw evidence and exclusions separately.
 
 ## Point metrics
 

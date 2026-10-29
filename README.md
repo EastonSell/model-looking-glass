@@ -7,7 +7,7 @@ The long-term goal is to turn internal observations into explanations that predi
 - [Research roadmap: observation → tracing → tested explanations → targeted changes](docs/RESEARCH_ROADMAP.md)
 - [Efficiency plan: parallel agent teams and a shared GPU experiment service](docs/EFFICIENCY_PLAN.md)
 
-The roadmap is a research plan, not a claim that its milestones are complete. The original `TraceSession` remains single-threaded. Separate components now provide bounded trace snapshots, trace metadata, experiment records, localization, causal metrics, and GPU scheduling primitives; they do not yet constitute a validated shared GPU service. No pretrained-model study, tested causal explanation, or model repair result is claimed by the initial experiment.
+The roadmap is a research plan, not a claim that its milestones are complete. The original `TraceSession` remains single-threaded. Separate components provide bounded trace snapshots, trace metadata, experiment records, localization, causal metrics, and GPU scheduling primitives. A fixed-input, serial two-client GPU bootstrap has been exercised; a general shared GPU service has not yet been validated. No pretrained-model study, tested causal explanation, or model repair result is claimed by the initial experiment.
 
 ## Current building blocks
 
@@ -15,16 +15,20 @@ The roadmap is a research plan, not a claim that its milestones are complete. Th
 - The [GPT-2 trace adapter](docs/TRANSFORMER_TRACE.md) captures selected layer, module, local token and invocation coordinates; generation and cache positions remain unknown unless established separately. The [ordered intervention plan](docs/INTERVENTION_PLANS.md) can capture, inject and patch at specified boundaries.
 - The [DistilBERT masked-LM trace adapter](docs/DISTILBERT_TRACE.md) records bounded eager CPU snapshots at selected attention, FFN and block outputs. Its [intervention workflow](docs/DISTILBERT_INTERVENTION_WORKFLOW.md) tests a known artificial injection with restoration and an off-target comparison.
 - The [T5 trace adapter](docs/FLAN_T5_TRACE.md) captures selected encoder and decoder outputs in one uncached forward with explicit masks. It does not trace generation or a separate cross-attention output. Its [donor-patch workflow](docs/FLAN_T5_INTERVENTION_WORKFLOW.md) checks specified state transfers and self/off-target controls on CPU.
+- The [ViT trace adapter](docs/VIT_TRACE.md) captures bounded CLS and patch-token observations on CPU, with coordinates in the processed image grid. Its [donor-patch workflow](docs/VIT_DONOR_PATCH.md) checks specified CLS and patch-position transfers and controls on CPU. Neither infers original-image boxes or causal localization.
 - The [fair queue](docs/FAIR_QUEUE.md) rotates among admitted teams; it does not by itself guarantee admission fairness or equal GPU time.
-- The [memory budget](docs/MEMORY_BUDGET.md) and [resource profiles](docs/RESOURCE_PROFILE.md) track conservative leases, trace allowances and workload-specific measurements. Estimates and logical byte counts are not peak-memory guarantees or proof of device enforcement; no shared-service GPU workload profile has yet been approved.
+- The [memory budget](docs/MEMORY_BUDGET.md) and [resource profiles](docs/RESOURCE_PROFILE.md) track conservative leases, trace allowances and workload-specific measurements. Source-specific profiles were used to admit a fixed 1 × 2, zero-trace serial GPU bootstrap; they do not transfer to changed sources or workloads. Estimates and logical byte counts are not peak-memory guarantees or proof of device enforcement.
 - The [resident worker](docs/RESIDENT_WORKER.md) and [broker](docs/BROKER.md) reuse one trusted model for queued forwards. Their current execution is serial; GPU-wide admission and concurrent device throughput require separate integration and validation.
 - The [local CPU service](docs/SERVICE.md) exposes the pinned DistilGPT2 model to authenticated clients, with a two-token input limit and serial execution. A separate [microbatch primitive](docs/MICROBATCH.md) and [sampled batch validator](docs/BATCH_VALIDATION.md) are not yet integrated into that service.
-- The [device supervisor](docs/SUPERVISOR.md) coordinates a cooperative owner process, a device lease, and a sticky quarantine marker. It has CPU tests, but has not yet been integrated and validated as a shared GPU service.
-- The [local transport](docs/IPC.md) lets authenticated cooperating client processes submit bounded forwards over loopback. It does not by itself enforce GPU budgets or provide trace delivery.
+- The [device supervisor](docs/SUPERVISOR.md) coordinates a cooperative owner process, a device lease, and a sticky quarantine marker. A [fixed two-client GPU bootstrap](results/serial-two-client-gpu-bootstrap-v1-20261029/README.md) exercised supervised serial execution; this is not validation of a general shared service.
+- The [forward-only IPC v1](docs/IPC.md) lets authenticated cooperating client processes submit bounded forwards over loopback. It does not by itself enforce GPU budgets or provide trace delivery.
 - The [experimental fair IPC bridge](docs/IPC_FAIR_BRIDGE.md) joins bounded forward-only admission and receipt custody in CPU tests. GPU service composition requires separate admission and supervision.
-- The [trace delivery prototype](docs/TRACE_TRANSPORT.md) tests bounded, single-event custody on CPU. The service does not yet send traces through IPC or provide a complete multi-event publication protocol.
-- A [CPU trace owner](docs/CPU_TRACE_OWNER.md) composes the [traced worker](docs/TRACED_WORKER.md), [producer envelope](docs/TRACE_PRODUCER.md) and [host custody ledger](docs/HOST_BUDGET.md) for private in-process jobs. They do not yet form a live broker-to-IPC trace path or a physical memory limit.
+- The [trace delivery prototype](docs/TRACE_TRANSPORT.md) tests bounded, single-event custody on CPU. The original forward-only service does not deliver traces.
+- The separate [CPU trace IPC v2](docs/TRACE_IPC_V2.md) delivers bounded multi-event traces to two trusted local client processes. Host budgets are independent per process and release is cooperative; it does not enable GPU tracing.
+- The [broker-owned CPU trace service](docs/BROKERED_CPU_TRACE_IPC.md) can optionally deliver bounded logits from the same forward. In a [two-client pretrained smoke](results/brokered-cpu-trace-output-smoke-v1-20261029/README.md), both logit outputs and four captures matched separate direct-hook reference forwards; this small serial CPU result is not a GPU or throughput validation.
+- A [CPU trace owner](docs/CPU_TRACE_OWNER.md) composes the [traced worker](docs/TRACED_WORKER.md), [producer envelope](docs/TRACE_PRODUCER.md) and [host custody ledger](docs/HOST_BUDGET.md) for private in-process jobs. It also underpins the separate CPU trace IPC v2; it is not integrated with the existing forward-only broker and does not impose a physical memory limit.
 - The [experiment registry](docs/REGISTRY.md) records manifests, artifacts and terminal states. [Research cases](docs/RESEARCH_CASES.md), [localization](docs/LOCALIZATION.md), and [causal metrics](docs/CAUSAL_METRICS.md) support controlled evaluations; the public held-out cases are not a protected blind benchmark. [Transformer trace comparison](docs/TRANSFORMER_LOCALIZATION.md) requires independently verified pairing and execution context.
+- The [behavioral edit evaluator](docs/BEHAVIORAL_EDIT_EVALUATION.md) reports paired target and locality observations, supplied distribution changes, and scoped rollback evidence. It does not establish semantic damage or prescribe success thresholds.
 
 These components have their own tests and limits; their presence alone does not establish a validated shared GPU service, causal discovery, or a general throughput claim.
 
@@ -78,6 +82,8 @@ On six public nonblind contexts from one template, [DistilBERT negation-cue tran
 
 The [cue-class follow-up](results/bert-cue-class-cpu-v1-20261029/README.md) passed its fixed specificity rule in all three frames: seven of nine new public evaluation contexts passed, and all nine were eligible. Each template also had a development context; the cues differ in lexical identity and frequency, so the result does not establish general negation understanding or unique localization. The full journal is locally retained but omitted from the repository.
 
+The [held-out-frame follow-up](results/bert-cue-heldout-frames-cpu-v1-20261029/README.md) failed that specificity rule in all six eligible contexts; cue words and frames changed together. In the [cue-set × placement factorial](results/bert-cue-factorial-cpu-v1-20261029/README.md), all four cells failed the fixed rule (0/3 cases each), although 11 of 12 worst-target margins remained positive. The factorial used a lower common dose than the earlier study and changed the template, so it cannot determine the cause of the earlier difference or establish zero effect.
+
 In a [matched-dose taste follow-up](results/bert-taste-matched-dose-v1-20261029/RESULTS.md), 29 of 30 directional comparisons across blocks 0–4 favored the ingredient patch over the position control. Only three of six frames met the baseline rule, all using the same template; the comparisons are dependent and do not establish a general taste mechanism.
 
 The [crossed-template taste study](results/bert_taste_template_direction_v1/RESULTS.md) compared six public stems under two templates. Its mean ingredient-versus-`the` donor-signed contrasts were +0.085 for `after adding` and +0.068 for `with some`; the `the` control itself moved opposite the donor in all 24 comparisons. These dependent, nonblind comparisons do not establish a general taste mechanism.
@@ -86,11 +92,23 @@ The [DistilBERT exposed-pair GPU observation](results/bert-gpu-exposed-pair-v1-2
 
 The [grouped DistilGPT2 GPU pilot](results/grouped-gpu-resource-v3-20261029/README.md) used one resident model for eight single-row and four two-row calls. The owner reported that the grouped samples matched their serial references; logits were not retained for independent recomputation. The largest recorded per-forward PyTorch allocated/reserved peaks were 353/388 MiB, and current allocated and reserved bytes were zero after cleanup. These sampled, shape-specific observations are not a throughput result or a general memory bound; activation tracing was disabled.
 
+The [two-client GPU bootstrap](results/serial-two-client-gpu-bootstrap-v1-20261029/README.md) completed two fixed requests with overlapping outstanding client work but serial broker service. It did not retain serving-time GPU memory, independent full-logit correctness checks, or a matched throughput baseline. Its source-specific, zero-trace results do not establish sustained fairness, batching performance, or a general memory bound.
+
+A [later two-client serving-memory observation](results/serial-two-client-serving-memory-v1-20261029/README.md) recorded six device-wide free-memory points and process-local allocator peaks for the same fixed input shape. It is not a throughput benchmark or a general memory bound.
+
 The [DistilGPT2 agreement preflight](results/distilgpt2-agreement-preflight-v1-20261028/README.md) found the grammatical verb preferred on all 16 fixed public development prompts; it establishes a small behavior to investigate, not a held-out or causal result.
 
 The independently audited [agreement discovery](results/distilgpt2-natural-agreement-v1-20261028/README.md) selected the layer 3 attention output at the final token. Across four public families, opposite-number donors caused a mean 3.095-logit greater shift away from the target's present-tense agreement margin than same-number donors. They reversed the margin in 10 of 32 donor–target pairs involving six distinct targets, versus none of 32 same-number pairs. These are development results, and a shift can reflect weakening rather than transfer of number information; held-out prediction remains to be tested.
 
 On fixed public nonblind cases, both exploratory [agreement-direction rules](results/distilgpt2-agreement-direction-study-v1/RESULTS.md) passed (8/8 families and 16/16 pairs). Subject-free but number-marked context fragments also showed a substantial response, so the result does not establish an abstract number feature or unique circuit.
+
+The [subject-form sensitivity study](results/distilgpt2-agreement-subject-dependence-v1/RESULTS.md) found a larger signed response for the singular member in 31/32 public matched pairs, while subjectless fragments also responded. The cases are dependent and nonblind; morphology, lexical identity and context-dependent gain remain possible explanations.
+
+The [noun-substitution follow-up](results/distilgpt2-agreement-noun-substitution-study-v1/README.md) found a larger opposite-number than same-number different-noun response distance in 11 of 12 fixed cells, while all six subjectless fragments also responded. These public nonblind cases do not rule out surface morphology, lexical differences or context-dependent gain.
+
+A [cross-model agreement intervention](results/cross-model-agreement-cpu-v1-20261029/README.md) found opposite-number subject-state patches shifted the `is`/`are` margin toward the donor more than matched same-number and one fixed random-direction control in 32/32 fixed cases for each of DistilGPT-2 and DistilBERT. No active arm changed the unique full-vocabulary top token, and the two verbs had only 0.141% median combined clean probability in BERT. The public cases reuse four lemmas and two frames, so the result does not establish a shared or uniquely localized mechanism.
+
+The [two-attractor patch follow-up](results/public-two-attractor-patch-v1-20261029/README.md) found a near-zero pooled clean interaction that concealed opposite subject-specific means. Its donor displacements were unequal and some donors changed local lexical identity, so these descriptive results do not establish independent attractor channels or additivity.
 
 The [natural-agreement held-out attempt](results/distilgpt2-natural-agreement-v1-20261028/heldout-attempt-status-v1.md) stopped without an evaluable result. Its one-use claim and sealed split remain preserved; the recorded RuntimeError and a no-model startup reproduction support, but do not prove, a missing dependency-path diagnosis. An [independent held-out auditor](docs/INDEPENDENT_NATURAL_HELDOUT_AUDIT.md) is prepared for saved controls and frozen-prediction errors after a valid reveal.
 
@@ -105,6 +123,10 @@ A [post-hoc full-vocabulary analysis](results/distilgpt2-copy-head-followup-v2-2
 The [matched-dose copying factorial](results/distilgpt2-copy-head-factorial-v1-20261028/README.md) compared single-head and joint interventions on 32 public prompts. Both candidate heads affected the repeated-versus-shuffled contrast, with variation across families. The joint intervention had a larger total input dose than either single intervention, and downstream nonlinearities can contribute to the observed output interaction; the result does not establish direct cooperation between heads.
 
 The [copying dose follow-up](results/distilgpt2-copy-head-pairs-dose-v1-20261028/README.md) found a mean high-dose contrast change of −0.138 nats for the H2+H10 pair on eight public families, with seven negative family effects and one positive. Target top-one status remained unchanged in all 480 intervention comparisons. Different total doses at matched per-head scale and output nonlinearities limit the interaction's interpretation; equal-total-dose singles and additive-logit comparators are also reported.
+
+The [per-prompt matched-dose copying follow-up](results/distilgpt2-copy-head-prompt-dose-v1-20261029/README.md) found the prespecified head-2 versus head-10 advantage in four of eight families, below the 75% criterion. The fixed head-7 control and full-vocabulary effects are reported; matching removed pre-projection norms did not equalize downstream effects.
+
+The [projection-output-matched copying follow-up](results/distilgpt2-copy-head-output-dose-v1-20261029/README.md) found its fixed H2-versus-H10 contrast positive in five of eight families, below the 75% criterion. The H7 control and full-vocabulary shifts are reported; equal projection-output norms do not equal directions or downstream effects.
 
 In a [recipient-name screen](results/distilgpt2-recipient-screen-v1-20261028/README.md), only three of 32 matched prompt pairs met the baseline rule, so the planned patches were not run. A separate [year-comparison screen](results/distilgpt2-greater-than-screen-v1-20261028/README.md) found a wording-dependent shift but a later-year preference even in all reverse and neutral prompts; it does not establish a general temporal comparator.
 
@@ -126,6 +148,10 @@ The [same-site small-dose ViT follow-up](results/vision-coco-same-site-v3-202610
 
 The [recognized-donor ViT follow-up](results/vision-coco-recognized-v4-20261029/README.md) was negative under its preset composite: all four selected pairs were eligible, and none passed both directional side rules. The screen was conditioned on model recognition, and two cat donors were reused, so the comparisons are dependent and do not establish spatial localization.
 
+In the [CLS versus spatial follow-up](results/vision-coco-cls-v5-20261029/README.md), both screened pairs were eligible but neither passed the fixed two-sided composite. Active controls sometimes had larger effects, and one spatial intervention changed top-1; the result does not imply no effect or equivalence. The pairs reused both donors and were conditioned on model recognition.
+
+In the [spatial ViT dose-response follow-up](results/vision-coco-spatial-dose-v6-20261029/README.md), all four model-screened pairs were evaluable, but none met the fixed control-adjusted low/high-dose composite. Some opposite-donor effects grew with dose while matched same-species or random controls were larger; a shared cat donor makes the observations dependent. The result does not establish absence of spatial information or class-specific localization.
+
 A [targeted parameter-edit experiment](results/targeted-edit-cpu-v1-20261028/README.md) changed the intended answer preference but failed its preset locality thresholds on public probes. The negative result and a same-host replay are preserved; the study does not establish general capability preservation.
 
 The [projected-edit follow-up](results/targeted-edit-projected-cpu-v1-20261028/README.md) was ineligible because only two of four targets had the required baseline preference; neither reversed. The projected and unprojected edits had different target effects, and the nine locality probes cannot establish broad capability preservation.
@@ -133,6 +159,8 @@ The [projected-edit follow-up](results/targeted-edit-projected-cpu-v1-20261028/R
 In the [screened-edit follow-up](results/targeted-edit-screened-matched-v1-20261029/README.md), both preset projected-edit comparisons were negative on eight baseline-selected public targets and twelve locality prompts: one target margin reversed, and one locality top-token ID changed from ` euro` to ` Euro`. These fixed probes do not establish broad capability preservation.
 
 The [full-vocabulary targeted-edit screen](results/targeted-edit-full-top-cpu-v1-20261029/screen/README.md) was ineligible: none of four facts met the fixed baseline selection rule across its public prompts. No edit or locality prompt was run, so this is a feasibility outcome rather than a negative edit result.
+
+The [answer-format feasibility study](results/answer-format-feasibility-cpu-v1-20261029/README.md) also selected no edit target: neither development nor held-out family met the fixed full-vocabulary baseline. The held-out examples instead showed a strong response to the two supplied demonstrations; they reused the development facts and do not identify a copying mechanism.
 
 The preserved v1 runner has a [cleanup compatibility limitation](docs/TARGETED_EDIT_V2_OWNER.md#historical-v1-cleanup-limitations) in Python 3.10 and when called while an unrelated exception is being handled. The recorded run used Python 3.11; this limitation does not reclassify its result.
 
@@ -148,6 +176,8 @@ The [pretrained trace smoke](results/pretrained-trace-cpu-v1-20261028/README.md)
 
 The [pretrained intervention smoke](results/distilgpt2-intervention-dev-cpu-v1-20261028/README.md) checks a known injection and same-site activation restoration on one public input, with an independent same-host replay. It tests intervention mechanics, not a held-out behavioral explanation.
 
+The [public known-injection localization study](results/public-known-injection-v1-20261029/README.md) identified both fixed injected sites; first-change and magnitude controls also did, while constant and fixed random controls each hit one. The selected held-out predictions beat zero, and a wrong-site patch partially restored logits. This is a two-site instrumentation check, not a natural-circuit claim.
+
 The [pretrained trace and intervention example](docs/PRETRAINED_TRACE_INTERVENTION_EXAMPLE.md) shows how to use the APIs directly on a short CPU input, with a bounded trace, self-patch control and saved explanatory output. Its known artificial edit demonstrates the tools; it is not an explanation of the model's ordinary behavior.
 
 The [clean-versus-corrupted trace workflow](docs/GPT2_TRACE_WORKFLOW.md) compares selected observations after a known embedding edit and tests same-site restoration against controls. The example is a mechanics check, not a causal discovery.
@@ -159,8 +189,9 @@ The [grouped-broker CPU development replay](results/grouped-broker-cpu-dev-v3/RE
 The recorded original experiment used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records that run's installed versions; it is not a cross-platform dependency lock. Later experiments record their own environments. To install the original run's PyTorch version in an isolated environment, use `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
 
 Install the test and transformer extras and use pytest to discover both
-`unittest` cases and pytest-style tests. Some checks require optional local
-model assets and will be skipped when those assets are unavailable. Set
+`unittest` cases and pytest-style tests. The test extra pins Pillow 11.3.0
+for the vision selectors' fixed polygon rasterization. Some checks require
+optional local model assets and will be skipped when those assets are unavailable. Set
 `CUDA_VISIBLE_DEVICES=-1` before testing to keep the run CPU-only.
 
 ```bash

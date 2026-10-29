@@ -1,0 +1,2271 @@
+{
+  "actions_checked": 448,
+  "binding": {
+    "freeze_sha256": "6f93c91430ff7c5cd1dcc7a764e34e52b9cbd854cdea12a30bce7a1b7b88b6e4",
+    "pre_run_sha256": "3cffd5c7ebedc35506fc2c64a14d00eb8a5dd8c4f9c94d59446c00c1943cb33f",
+    "receipt_sha256": {
+      "discovery": "da8d176c76418cacc6d82c80bdd1f545cbbeeb00ca13fa086dfe7077e6c297ab",
+      "held-out": "19928d29ae432c14da6d87c5b504ee160496799c2d89197c5f2235ceff4e1c3e"
+    },
+    "result_sha256": "17232b7b29e8963cf2704f91c46a23eb532d84a70ee8f1871c553c2dd2c15c78",
+    "scope": "saved cooperative direct-child receipts; not independent process attestation"
+  },
+  "cases_sha256": "811a1f0251ff21ddaa1869ee96c80dfa47beb87a6b6c2f1e3b6505728fee1825",
+  "evidence": {
+    "discovery": {
+      "actions": 224,
+      "events_sha256": "4f15b75602a14c8ab2e1d69aa123fa95924126de88f45fbdbd3c7e2fedc0f624",
+      "raw_bytes": 122973952,
+      "raw_files": {
+        "distractor-repair-01.f32": {
+          "bytes": 16102112,
+          "sha256": "7e8382f926ce37f9d17f59e99d1006422f0ce51e5af992afdb68fa4b1cc716bc"
+        },
+        "distractor-repair-01.f64": {
+          "bytes": 18432,
+          "sha256": "3fa2f5d368917269efba7d016d8612c4a004d8f8cc7ce0aa8606b163d29c8c57"
+        },
+        "distractor-repair-02.f32": {
+          "bytes": 15303392,
+          "sha256": "0159e19d2a18cb8691e40231f2f30f065c334cffb68ecab8c5224ae709045d22"
+        },
+        "distractor-repair-02.f64": {
+          "bytes": 18432,
+          "sha256": "392981a586e00b22b74fad4abdacdd0f1cb542b1740fbf8fa8dc10aadd5b27ea"
+        },
+        "distractor-repair-03.f32": {
+          "bytes": 15303392,
+          "sha256": "f4dbc164037ed7742bd16a7d3868e808e97a45a70451e0fef4aa225fe1fe2a07"
+        },
+        "distractor-repair-03.f64": {
+          "bytes": 18432,
+          "sha256": "5d952aa0715b36f01a3736afa76574b586167568960f04c3b9094b6191bfa203"
+        },
+        "distractor-repair-04.f32": {
+          "bytes": 15303392,
+          "sha256": "8ae753010ab569a98f668837a36a8d7cc945c708053173cec4fdf8a9ad5bbc6c"
+        },
+        "distractor-repair-04.f64": {
+          "bytes": 18432,
+          "sha256": "35a3d4f1f25224cd95fd99f5072bf27f3361637accd2ac5ac090c101609f9d6f"
+        },
+        "distractor-repair-05.f32": {
+          "bytes": 14904032,
+          "sha256": "1301619e61e0d2689347081878424eace8801806e441faae6c2c6926f48fa2fd"
+        },
+        "distractor-repair-05.f64": {
+          "bytes": 18432,
+          "sha256": "d42a23ba377c7097eca759cc2ac40a2ac81fcfc2f612f169f8b7efe69ba0d567"
+        },
+        "distractor-repair-06.f32": {
+          "bytes": 15303392,
+          "sha256": "3e3ad7a4c8348d91e4baf6037cd8a39e9fcc693c6fc1cfcd411d4584cc8554d9"
+        },
+        "distractor-repair-06.f64": {
+          "bytes": 18432,
+          "sha256": "9fa1aa3fb927237ac8a7df5ecf13e042e4884ef97a545c7aacc781d217486aec"
+        },
+        "distractor-repair-07.f32": {
+          "bytes": 15702752,
+          "sha256": "ccb1dd77bf3e8935aa0b894fd04a302c0f99d07cca26ff6bcb98db0fc702d8d7"
+        },
+        "distractor-repair-07.f64": {
+          "bytes": 18432,
+          "sha256": "6eb12620078b1f07480d10aa42c1a41e423f6549eebcfde7542665d36262f553"
+        },
+        "distractor-repair-08.f32": {
+          "bytes": 14904032,
+          "sha256": "c1aba96276ad05835850a6b4328530ff46cf6b2955486b02cc964ffad6a28415"
+        },
+        "distractor-repair-08.f64": {
+          "bytes": 18432,
+          "sha256": "d36de0e4aa2984531c133b0d1043d542054d2d8578d90ab7a9ab8910ad961c32"
+        }
+      }
+    },
+    "held-out": {
+      "actions": 224,
+      "events_sha256": "c9fac03fb8f272a385d68ccc7bbd3c4d47b9259e55b3a948d0ec3c7b768d66ad",
+      "raw_bytes": 125370112,
+      "raw_files": {
+        "distractor-repair-09.f32": {
+          "bytes": 16102112,
+          "sha256": "ac2008bad54ac589188016a0ef797c1e2bf68dd65b30b0ff6c4b1239721acaa0"
+        },
+        "distractor-repair-09.f64": {
+          "bytes": 18432,
+          "sha256": "6c3a831e0a4d6fd0336bd7ec98f1e2fed240c5fc61403c2a3f972bfcced84ae4"
+        },
+        "distractor-repair-10.f32": {
+          "bytes": 16102112,
+          "sha256": "5182437451a20399bce535c5388853757f1f30b1759c4a45a09d6a8968e4c0ba"
+        },
+        "distractor-repair-10.f64": {
+          "bytes": 18432,
+          "sha256": "b70d2e3c4711a96aa4a3498a4e43ffe8acf8d0609ffb2c2113fc6bd9eae26339"
+        },
+        "distractor-repair-11.f32": {
+          "bytes": 15303392,
+          "sha256": "78983b62aed90d46be86ac8c9be10dcec66a4d23671359844dfa8748e491839a"
+        },
+        "distractor-repair-11.f64": {
+          "bytes": 18432,
+          "sha256": "a493a23820227a8c44d6a6dc83406de2f043f7bf271876910e49ca8203357eff"
+        },
+        "distractor-repair-12.f32": {
+          "bytes": 15702752,
+          "sha256": "c849e09c11e5500fedd6bc045776a732a2dc32ea1339d60293d26889469e1b5e"
+        },
+        "distractor-repair-12.f64": {
+          "bytes": 18432,
+          "sha256": "24761f5f90bb4174d8d00cba966d88e3bf42e1c39d5c1f4dd5b11c732108b995"
+        },
+        "distractor-repair-13.f32": {
+          "bytes": 15702752,
+          "sha256": "57f6665a3ced80cfa5a5101c63884da0d460376635c811323dea7542be502c08"
+        },
+        "distractor-repair-13.f64": {
+          "bytes": 18432,
+          "sha256": "78dc7464a4e18f69f2e3ddd4df77531e68900e683a3efa4b0604a2dbdbeed4fb"
+        },
+        "distractor-repair-14.f32": {
+          "bytes": 14904032,
+          "sha256": "69ced018c726cede0b30c699dbd14ede96e3874a5f6fa5b8f5e0c36b8526054b"
+        },
+        "distractor-repair-14.f64": {
+          "bytes": 18432,
+          "sha256": "e3ee1feb071c65f7aa4377a5aa1f0483f2b799b8fa628e4cb8a21c975a9701dd"
+        },
+        "distractor-repair-15.f32": {
+          "bytes": 16102112,
+          "sha256": "f305e27f13fb9de47e3150ef06231d1e3326380afe5a38a1b7cb3d3ec1b3704c"
+        },
+        "distractor-repair-15.f64": {
+          "bytes": 18432,
+          "sha256": "5ad19690b35dcffcecd2070e0fe7588ff3470a32afe0782bee51279ea9b6750a"
+        },
+        "distractor-repair-16.f32": {
+          "bytes": 15303392,
+          "sha256": "b05ced523d8e4e718194c520e817d61cd943a0b2f836c43493681e48a32d239f"
+        },
+        "distractor-repair-16.f64": {
+          "bytes": 18432,
+          "sha256": "e46b250f145a07a529a2c2ba9c73b0d67fc7f8e0054366e60ed7505489a23930"
+        }
+      }
+    }
+  },
+  "phase_results": {
+    "discovery": {
+      "distractor-repair-01": {
+        "1": {
+          "D_combined": 42.02930053847134,
+          "D_downstream": 22.149616425002584,
+          "D_rotated": 68.34045503494497,
+          "D_target": 42.02930053847134,
+          "Q_distances": [
+            22.149616425002584,
+            42.02930053847134,
+            0.0,
+            42.02930053847134
+          ],
+          "combined_final_vs_target": 112.95957848447743,
+          "decoy_final_distance": 112.18303417363846,
+          "effects": [
+            -0.01056671142578125,
+            0.0,
+            0.08676910400390625,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.1708433118932695,
+            4.000000178813934,
+            3.9999998807907104,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.1708433118932695,
+            "cosine": 0.0066114532595561585,
+            "matched": true,
+            "rotated_norm": 2.170843316107189
+          },
+          "target_margin_effect": -0.08676910400390625
+        },
+        "2": {
+          "D_combined": 16.716143441178776,
+          "D_downstream": 69.73183468561729,
+          "D_rotated": 37.44883310665376,
+          "D_target": 16.716143441178776,
+          "Q_distances": [
+            0.0,
+            16.716143441178776,
+            16.716143441178776,
+            69.73183468561729
+          ],
+          "combined_final_vs_target": 111.94242999187901,
+          "decoy_final_distance": 112.18303417363846,
+          "effects": [
+            0.09871673583984375,
+            0.0,
+            0.0,
+            -0.007999420166015625
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            3.9999998807907104,
+            0.0,
+            4.000000178813934,
+            2.4908495545129847
+          ],
+          "rotation": {
+            "clean_norm": 2.4908495545129847,
+            "cosine": 0.02617362778791873,
+            "matched": true,
+            "rotated_norm": 2.490849552248034
+          },
+          "target_margin_effect": -0.09871673583984375
+        },
+        "3": {
+          "D_combined": 50.608494389274554,
+          "D_downstream": 12.658916385292043,
+          "D_rotated": 52.33461266211888,
+          "D_target": 50.608494389274554,
+          "Q_distances": [
+            50.608494389274554,
+            12.658916385292043,
+            0.0,
+            50.608494389274554
+          ],
+          "combined_final_vs_target": 111.73320714920594,
+          "decoy_final_distance": 112.18303417363846,
+          "effects": [
+            0.0,
+            0.049098968505859375,
+            0.11319732666015625,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            2.2172629515511586,
+            4.0,
+            4.000000178813934
+          ],
+          "rotation": {
+            "clean_norm": 2.2172629515511586,
+            "cosine": 0.036575480744766097,
+            "matched": true,
+            "rotated_norm": 2.21726292145938
+          },
+          "target_margin_effect": -0.11319732666015625
+        }
+      },
+      "distractor-repair-02": {
+        "1": {
+          "D_combined": 56.71495765174159,
+          "D_downstream": 60.39849284172988,
+          "D_rotated": 142.76718754924067,
+          "D_target": 56.71495765174159,
+          "Q_distances": [
+            60.39849284172988,
+            56.71495765174159,
+            0.0,
+            56.71495765174159
+          ],
+          "combined_final_vs_target": 68.50278003606665,
+          "decoy_final_distance": 70.99837208086991,
+          "effects": [
+            -0.04381561279296875,
+            0.0,
+            -0.010528564453125,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.446324036310213,
+            3.9999998211860657,
+            4.000000111758709,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.446324036310213,
+            "cosine": 0.012569981631305224,
+            "matched": true,
+            "rotated_norm": 2.4463240362098935
+          },
+          "target_margin_effect": 0.010528564453125
+        },
+        "2": {
+          "D_combined": 43.758245312132566,
+          "D_downstream": 28.082023596295727,
+          "D_rotated": 17.781720412823145,
+          "D_target": 43.758245312132566,
+          "Q_distances": [
+            0.0,
+            43.758245312132566,
+            43.758245312132566,
+            28.082023596295727
+          ],
+          "combined_final_vs_target": 70.5078280871978,
+          "decoy_final_distance": 70.99837208086991,
+          "effects": [
+            0.04244232177734375,
+            0.0,
+            0.0,
+            -0.05538177490234375
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            3.999999910593033,
+            0.0,
+            3.9999998211860657,
+            2.233724171823771
+          ],
+          "rotation": {
+            "clean_norm": 2.233724171823771,
+            "cosine": -0.017677906108089156,
+            "matched": true,
+            "rotated_norm": 2.233724133994104
+          },
+          "target_margin_effect": -0.04244232177734375
+        },
+        "3": {
+          "D_combined": 16.300967446148107,
+          "D_downstream": 16.69891651717405,
+          "D_rotated": 34.61945865655703,
+          "D_target": 16.300967446148107,
+          "Q_distances": [
+            16.300967446148107,
+            16.69891651717405,
+            0.0,
+            16.300967446148107
+          ],
+          "combined_final_vs_target": 71.31798322861259,
+          "decoy_final_distance": 70.99837208086991,
+          "effects": [
+            0.0,
+            0.00302886962890625,
+            0.1149139404296875,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            2.0371444337272253,
+            4.000000059604645,
+            3.9999998211860657
+          ],
+          "rotation": {
+            "clean_norm": 2.0371444337272253,
+            "cosine": -0.05523384244281007,
+            "matched": true,
+            "rotated_norm": 2.037144441540072
+          },
+          "target_margin_effect": -0.1149139404296875
+        }
+      },
+      "distractor-repair-03": {
+        "1": {
+          "D_combined": 68.47885154964882,
+          "D_downstream": 77.86855484286983,
+          "D_rotated": 131.54887622772816,
+          "D_target": 68.47885154964882,
+          "Q_distances": [
+            77.86855484286983,
+            68.47885154964882,
+            0.0,
+            68.47885154964882
+          ],
+          "combined_final_vs_target": 29.434870458159295,
+          "decoy_final_distance": 28.20974344122243,
+          "effects": [
+            -0.02436065673828125,
+            0.0,
+            -0.003841400146484375,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.289638058509785,
+            3.9999999403953552,
+            4.0,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.289638058509785,
+            "cosine": -0.0008711496150250358,
+            "matched": true,
+            "rotated_norm": 2.2896380633094195
+          },
+          "target_margin_effect": 0.003841400146484375
+        },
+        "2": {
+          "D_combined": 67.92733813849024,
+          "D_downstream": 49.36934804431587,
+          "D_rotated": 34.46138997474816,
+          "D_target": 67.92733813849024,
+          "Q_distances": [
+            0.0,
+            67.92733813849024,
+            67.92733813849024,
+            49.36934804431587
+          ],
+          "combined_final_vs_target": 27.8843602500249,
+          "decoy_final_distance": 28.20974344122243,
+          "effects": [
+            0.019916534423828125,
+            0.0,
+            0.0,
+            -0.0530853271484375
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            3.999999925494194,
+            0.0,
+            3.9999999403953552,
+            2.2990006470973983
+          ],
+          "rotation": {
+            "clean_norm": 2.2990006470973983,
+            "cosine": 0.006803763739991897,
+            "matched": true,
+            "rotated_norm": 2.299000667586704
+          },
+          "target_margin_effect": -0.019916534423828125
+        },
+        "3": {
+          "D_combined": 38.57270357505089,
+          "D_downstream": 15.165985262999714,
+          "D_rotated": 26.35450501574736,
+          "D_target": 38.57270357505089,
+          "Q_distances": [
+            38.57270357505089,
+            15.165985262999714,
+            0.0,
+            38.57270357505089
+          ],
+          "combined_final_vs_target": 28.02073170034816,
+          "decoy_final_distance": 28.20974344122243,
+          "effects": [
+            0.0,
+            0.00316619873046875,
+            0.086639404296875,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            2.031926590886984,
+            3.9999998807907104,
+            3.9999999403953552
+          ],
+          "rotation": {
+            "clean_norm": 2.031926590886984,
+            "cosine": 0.014329299741580323,
+            "matched": true,
+            "rotated_norm": 2.031926613503407
+          },
+          "target_margin_effect": -0.086639404296875
+        }
+      },
+      "distractor-repair-04": {
+        "1": {
+          "D_combined": 22.12566805204064,
+          "D_downstream": 45.712314375357806,
+          "D_rotated": 72.77498641245235,
+          "D_target": 22.12566805204064,
+          "Q_distances": [
+            45.712314375357806,
+            22.12566805204064,
+            0.0,
+            22.12566805204064
+          ],
+          "combined_final_vs_target": 17.301777153792287,
+          "decoy_final_distance": 17.089742541462222,
+          "effects": [
+            -0.038726806640625,
+            0.0,
+            -0.1548004150390625,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.5736490526096203,
+            4.000000238418579,
+            4.0000001192092896,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.5736490526096203,
+            "cosine": -0.026018331496253714,
+            "matched": true,
+            "rotated_norm": 2.573649041888019
+          },
+          "target_margin_effect": 0.1548004150390625
+        },
+        "2": {
+          "D_combined": 25.826149145992908,
+          "D_downstream": 40.858487317583865,
+          "D_rotated": 45.11344416742002,
+          "D_target": 25.826149145992908,
+          "Q_distances": [
+            0.0,
+            25.826149145992908,
+            25.826149145992908,
+            40.858487317583865
+          ],
+          "combined_final_vs_target": 17.17560319703878,
+          "decoy_final_distance": 17.089742541462222,
+          "effects": [
+            -0.11524200439453125,
+            0.0,
+            0.0,
+            -0.09145355224609375
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            4.000000059604645,
+            0.0,
+            4.000000238418579,
+            2.4503112813780925
+          ],
+          "rotation": {
+            "clean_norm": 2.4503112813780925,
+            "cosine": 0.009543322930094258,
+            "matched": true,
+            "rotated_norm": 2.450311252307989
+          },
+          "target_margin_effect": 0.11524200439453125
+        },
+        "3": {
+          "D_combined": 18.546915805697584,
+          "D_downstream": 20.390096402888624,
+          "D_rotated": 17.868832924293887,
+          "D_target": 18.546915805697584,
+          "Q_distances": [
+            18.546915805697584,
+            20.390096402888624,
+            0.0,
+            18.546915805697584
+          ],
+          "combined_final_vs_target": 16.840054671242637,
+          "decoy_final_distance": 17.089742541462222,
+          "effects": [
+            0.0,
+            -0.0587615966796875,
+            0.062713623046875,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            2.3961629937182307,
+            4.0,
+            4.000000238418579
+          ],
+          "rotation": {
+            "clean_norm": 2.3961629937182307,
+            "cosine": -0.030713772640374795,
+            "matched": true,
+            "rotated_norm": 2.3961629719558237
+          },
+          "target_margin_effect": -0.062713623046875
+        }
+      },
+      "distractor-repair-05": {
+        "1": {
+          "D_combined": 90.45146916571919,
+          "D_downstream": 53.47311128058899,
+          "D_rotated": 229.23375501088472,
+          "D_target": 90.45146916571919,
+          "Q_distances": [
+            53.47311128058899,
+            90.45146916571919,
+            0.0,
+            90.45146916571919
+          ],
+          "combined_final_vs_target": 42.578848207144006,
+          "decoy_final_distance": 40.77828012460283,
+          "effects": [
+            0.002681732177734375,
+            0.0,
+            0.01674652099609375,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.7685753386708014,
+            3.9999999701976776,
+            4.000000059604645,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.7685753386708014,
+            "cosine": 0.014927676701037177,
+            "matched": true,
+            "rotated_norm": 2.7685753370258555
+          },
+          "target_margin_effect": -0.01674652099609375
+        },
+        "2": {
+          "D_combined": 32.48084445527014,
+          "D_downstream": 82.06747019487216,
+          "D_rotated": 79.49761467062817,
+          "D_target": 32.48084445527014,
+          "Q_distances": [
+            0.0,
+            32.48084445527014,
+            32.48084445527014,
+            82.06747019487216
+          ],
+          "combined_final_vs_target": 41.14354523802327,
+          "decoy_final_distance": 40.77828012460283,
+          "effects": [
+            0.0125732421875,
+            0.0,
+            0.0,
+            -0.061801910400390625
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            4.000000208616257,
+            0.0,
+            3.9999999701976776,
+            2.3256930897146773
+          ],
+          "rotation": {
+            "clean_norm": 2.3256930897146773,
+            "cosine": -0.08436744271663107,
+            "matched": true,
+            "rotated_norm": 2.3256930867424974
+          },
+          "target_margin_effect": -0.0125732421875
+        },
+        "3": {
+          "D_combined": 66.89354866500712,
+          "D_downstream": 18.200340636742446,
+          "D_rotated": 48.881890712369696,
+          "D_target": 66.89354866500712,
+          "Q_distances": [
+            66.89354866500712,
+            18.200340636742446,
+            0.0,
+            66.89354866500712
+          ],
+          "combined_final_vs_target": 40.733978144946164,
+          "decoy_final_distance": 40.77828012460283,
+          "effects": [
+            0.0,
+            0.033596038818359375,
+            0.06444168090820312,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            2.012335626029797,
+            4.000000059604645,
+            3.9999999701976776
+          ],
+          "rotation": {
+            "clean_norm": 2.012335626029797,
+            "cosine": -0.01732424439464471,
+            "matched": true,
+            "rotated_norm": 2.012335660393006
+          },
+          "target_margin_effect": -0.06444168090820312
+        }
+      },
+      "distractor-repair-06": {
+        "1": {
+          "D_combined": 68.53851389515336,
+          "D_downstream": 34.47521862557497,
+          "D_rotated": 139.69857601977125,
+          "D_target": 68.53851389515336,
+          "Q_distances": [
+            34.47521862557497,
+            68.53851389515336,
+            0.0,
+            68.53851389515336
+          ],
+          "combined_final_vs_target": 133.4894173667753,
+          "decoy_final_distance": 132.16495348601225,
+          "effects": [
+            -0.048297882080078125,
+            0.0,
+            -0.04012298583984375,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.3947188427374835,
+            4.00000006146729,
+            4.000000029802322,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.3947188427374835,
+            "cosine": 0.023488994763402438,
+            "matched": true,
+            "rotated_norm": 2.394718829719682
+          },
+          "target_margin_effect": 0.04012298583984375
+        },
+        "2": {
+          "D_combined": 18.53287461773778,
+          "D_downstream": 107.77980562434679,
+          "D_rotated": 18.492270878964,
+          "D_target": 18.53287461773778,
+          "Q_distances": [
+            0.0,
+            18.53287461773778,
+            18.53287461773778,
+            107.77980562434679
+          ],
+          "combined_final_vs_target": 133.42486779139566,
+          "decoy_final_distance": 132.16495348601225,
+          "effects": [
+            0.0044708251953125,
+            0.0,
+            0.0,
+            -0.041378021240234375
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            3.9999998956918716,
+            0.0,
+            4.00000006146729,
+            2.1044175367118725
+          ],
+          "rotation": {
+            "clean_norm": 2.1044175367118725,
+            "cosine": -0.03231763326188224,
+            "matched": true,
+            "rotated_norm": 2.104417526549718
+          },
+          "target_margin_effect": -0.0044708251953125
+        },
+        "3": {
+          "D_combined": 91.98947475179708,
+          "D_downstream": 14.884846610954206,
+          "D_rotated": 21.49477509287394,
+          "D_target": 91.98947475179708,
+          "Q_distances": [
+            91.98947475179708,
+            14.884846610954206,
+            0.0,
+            91.98947475179708
+          ],
+          "combined_final_vs_target": 132.1836954562811,
+          "decoy_final_distance": 132.16495348601225,
+          "effects": [
+            0.0,
+            -0.0571441650390625,
+            0.054615020751953125,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            1.9782879174616923,
+            3.999999910593033,
+            4.00000006146729
+          ],
+          "rotation": {
+            "clean_norm": 1.9782879174616923,
+            "cosine": -0.039438143554080596,
+            "matched": true,
+            "rotated_norm": 1.9782879091814882
+          },
+          "target_margin_effect": -0.054615020751953125
+        }
+      },
+      "distractor-repair-07": {
+        "1": {
+          "D_combined": 25.54542755401583,
+          "D_downstream": 26.150478414459243,
+          "D_rotated": 27.51223505591213,
+          "D_target": 25.54542755401583,
+          "Q_distances": [
+            26.150478414459243,
+            25.54542755401583,
+            0.0,
+            25.54542755401583
+          ],
+          "combined_final_vs_target": 55.337891858988556,
+          "decoy_final_distance": 58.35434474470018,
+          "effects": [
+            -0.01824188232421875,
+            0.0,
+            0.12707138061523438,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.563425599252742,
+            3.9999998807907104,
+            4.0000001192092896,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.563425599252742,
+            "cosine": -0.0177509571672981,
+            "matched": true,
+            "rotated_norm": 2.563425600846368
+          },
+          "target_margin_effect": -0.12707138061523438
+        },
+        "2": {
+          "D_combined": 20.645695871824458,
+          "D_downstream": 31.3910902215999,
+          "D_rotated": 17.768176418844703,
+          "D_target": 20.645695871824458,
+          "Q_distances": [
+            0.0,
+            20.645695871824458,
+            20.645695871824458,
+            31.3910902215999
+          ],
+          "combined_final_vs_target": 59.73076009675279,
+          "decoy_final_distance": 58.35434474470018,
+          "effects": [
+            0.13160324096679688,
+            0.0,
+            0.0,
+            -0.014354705810546875
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            3.9999999403953552,
+            0.0,
+            3.9999998807907104,
+            2.1696151032511666
+          ],
+          "rotation": {
+            "clean_norm": 2.1696151032511666,
+            "cosine": -0.018698422302880543,
+            "matched": true,
+            "rotated_norm": 2.169615124518117
+          },
+          "target_margin_effect": -0.13160324096679688
+        },
+        "3": {
+          "D_combined": 24.178663681781213,
+          "D_downstream": 38.601051981112974,
+          "D_rotated": 94.07819818151376,
+          "D_target": 24.178663681781213,
+          "Q_distances": [
+            24.178663681781213,
+            38.601051981112974,
+            0.0,
+            24.178663681781213
+          ],
+          "combined_final_vs_target": 58.59071430374794,
+          "decoy_final_distance": 58.35434474470018,
+          "effects": [
+            0.0,
+            0.030139923095703125,
+            0.11248016357421875,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            2.3888296919875716,
+            3.9999999701976776,
+            3.9999998807907104
+          ],
+          "rotation": {
+            "clean_norm": 2.3888296919875716,
+            "cosine": -0.047202740802416814,
+            "matched": true,
+            "rotated_norm": 2.3888296473408595
+          },
+          "target_margin_effect": -0.11248016357421875
+        }
+      },
+      "distractor-repair-08": {
+        "1": {
+          "D_combined": 71.92634050893308,
+          "D_downstream": 107.35286547240473,
+          "D_rotated": 173.90070633547634,
+          "D_target": 71.92634050893308,
+          "Q_distances": [
+            107.35286547240473,
+            71.92634050893308,
+            0.0,
+            71.92634050893308
+          ],
+          "combined_final_vs_target": 12.102755872443138,
+          "decoy_final_distance": 12.084659070682065,
+          "effects": [
+            -0.10557937622070312,
+            0.0,
+            -0.07402420043945312,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.467129229501347,
+            3.9999999403953552,
+            4.000000208616257,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.467129229501347,
+            "cosine": -0.0017456858344538837,
+            "matched": true,
+            "rotated_norm": 2.467129241758245
+          },
+          "target_margin_effect": 0.07402420043945312
+        },
+        "2": {
+          "D_combined": 67.81168771254121,
+          "D_downstream": 47.146046843012705,
+          "D_rotated": 85.86774906870511,
+          "D_target": 67.81168771254121,
+          "Q_distances": [
+            0.0,
+            67.81168771254121,
+            67.81168771254121,
+            47.146046843012705
+          ],
+          "combined_final_vs_target": 12.033842991336893,
+          "decoy_final_distance": 12.084659070682065,
+          "effects": [
+            0.04369354248046875,
+            0.0,
+            0.0,
+            -0.06869888305664062
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            4.000000029802322,
+            0.0,
+            3.9999999403953552,
+            2.161753690676817
+          ],
+          "rotation": {
+            "clean_norm": 2.161753690676817,
+            "cosine": 0.027139289413958045,
+            "matched": true,
+            "rotated_norm": 2.1617537062576915
+          },
+          "target_margin_effect": -0.04369354248046875
+        },
+        "3": {
+          "D_combined": 23.219008936938913,
+          "D_downstream": 27.44902915850791,
+          "D_rotated": 46.4636520798598,
+          "D_target": 23.219008936938913,
+          "Q_distances": [
+            23.219008936938913,
+            27.44902915850791,
+            0.0,
+            23.219008936938913
+          ],
+          "combined_final_vs_target": 12.054409901980554,
+          "decoy_final_distance": 12.084659070682065,
+          "effects": [
+            0.0,
+            0.021289825439453125,
+            0.16824722290039062,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            2.1176945881265827,
+            4.000000059604645,
+            3.9999999403953552
+          ],
+          "rotation": {
+            "clean_norm": 2.1176945881265827,
+            "cosine": 0.02832985622232781,
+            "matched": true,
+            "rotated_norm": 2.1176946053191434
+          },
+          "target_margin_effect": -0.16824722290039062
+        }
+      }
+    },
+    "held-out": {
+      "distractor-repair-09": {
+        "1": {
+          "D_combined": 16.765550965755434,
+          "D_downstream": 35.28241748092757,
+          "D_rotated": 66.74410873154865,
+          "D_target": 16.765550965755434,
+          "Q_distances": [
+            35.28241748092757,
+            16.765550965755434,
+            0.0,
+            16.765550965755434
+          ],
+          "combined_final_vs_target": 15.765343727313336,
+          "decoy_final_distance": 15.629813461402534,
+          "effects": [
+            -0.00421905517578125,
+            0.0,
+            0.080322265625,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.344645651594852,
+            3.9999998584389687,
+            4.000000238418579,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.344645651594852,
+            "cosine": -0.003605165815315489,
+            "matched": true,
+            "rotated_norm": 2.34464567719103
+          },
+          "target_margin_effect": -0.080322265625
+        },
+        "2": {
+          "D_combined": 26.33853886821057,
+          "D_downstream": 105.96057398515609,
+          "D_rotated": 28.719619553209768,
+          "D_target": 26.33853886821057,
+          "Q_distances": [
+            0.0,
+            26.33853886821057,
+            26.33853886821057,
+            105.96057398515609
+          ],
+          "combined_final_vs_target": 15.58915505772312,
+          "decoy_final_distance": 15.629813461402534,
+          "effects": [
+            0.0850830078125,
+            0.0,
+            0.0,
+            -0.008941650390625
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            4.0,
+            0.0,
+            3.9999998584389687,
+            2.1864546897883184
+          ],
+          "rotation": {
+            "clean_norm": 2.1864546897883184,
+            "cosine": 0.0030448109737575197,
+            "matched": true,
+            "rotated_norm": 2.186454705583786
+          },
+          "target_margin_effect": -0.0850830078125
+        },
+        "3": {
+          "D_combined": 80.89856497672461,
+          "D_downstream": 15.880295645372538,
+          "D_rotated": 44.6414294809185,
+          "D_target": 80.89856497672461,
+          "Q_distances": [
+            80.89856497672461,
+            15.880295645372538,
+            0.0,
+            80.89856497672461
+          ],
+          "combined_final_vs_target": 15.620001678448315,
+          "decoy_final_distance": 15.629813461402534,
+          "effects": [
+            0.0,
+            0.03734588623046875,
+            0.103546142578125,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            1.94921893296217,
+            3.9999999403953552,
+            3.9999998584389687
+          ],
+          "rotation": {
+            "clean_norm": 1.94921893296217,
+            "cosine": 0.04588285233714657,
+            "matched": true,
+            "rotated_norm": 1.9492189422710917
+          },
+          "target_margin_effect": -0.103546142578125
+        }
+      },
+      "distractor-repair-10": {
+        "1": {
+          "D_combined": 81.39895100037077,
+          "D_downstream": 55.820183685888544,
+          "D_rotated": 196.16491137222437,
+          "D_target": 81.39895100037077,
+          "Q_distances": [
+            55.820183685888544,
+            81.39895100037077,
+            0.0,
+            81.39895100037077
+          ],
+          "combined_final_vs_target": 14.650974227853606,
+          "decoy_final_distance": 14.941354568446993,
+          "effects": [
+            -0.07523345947265625,
+            0.0,
+            0.006511688232421875,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.538660686447116,
+            4.000000238418579,
+            3.9999999403953552,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.538660686447116,
+            "cosine": -0.008992393275979097,
+            "matched": true,
+            "rotated_norm": 2.5386606936677407
+          },
+          "target_margin_effect": -0.006511688232421875
+        },
+        "2": {
+          "D_combined": 50.459410448474564,
+          "D_downstream": 17.167956270620063,
+          "D_rotated": 18.119858888508443,
+          "D_target": 50.459410448474564,
+          "Q_distances": [
+            0.0,
+            50.459410448474564,
+            50.459410448474564,
+            17.167956270620063
+          ],
+          "combined_final_vs_target": 14.402512522797048,
+          "decoy_final_distance": 14.941354568446993,
+          "effects": [
+            0.10381317138671875,
+            0.0,
+            0.0,
+            -0.057216644287109375
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            4.000000029802322,
+            0.0,
+            4.000000238418579,
+            2.322749181437677
+          ],
+          "rotation": {
+            "clean_norm": 2.322749181437677,
+            "cosine": -0.013178446532318417,
+            "matched": true,
+            "rotated_norm": 2.322749184717938
+          },
+          "target_margin_effect": -0.10381317138671875
+        },
+        "3": {
+          "D_combined": 16.272456130416256,
+          "D_downstream": 38.527164869076564,
+          "D_rotated": 73.65989190475446,
+          "D_target": 16.272456130416256,
+          "Q_distances": [
+            16.272456130416256,
+            38.527164869076564,
+            0.0,
+            16.272456130416256
+          ],
+          "combined_final_vs_target": 15.036519439858324,
+          "decoy_final_distance": 14.941354568446993,
+          "effects": [
+            0.0,
+            0.062397003173828125,
+            0.18459320068359375,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            2.118528580513991,
+            4.0000001192092896,
+            4.000000238418579
+          ],
+          "rotation": {
+            "clean_norm": 2.118528580513991,
+            "cosine": -0.034319731465582946,
+            "matched": true,
+            "rotated_norm": 2.118528633681469
+          },
+          "target_margin_effect": -0.18459320068359375
+        }
+      },
+      "distractor-repair-11": {
+        "1": {
+          "D_combined": 76.3966465959312,
+          "D_downstream": 47.2288580130533,
+          "D_rotated": 33.64138270208196,
+          "D_target": 76.3966465959312,
+          "Q_distances": [
+            47.2288580130533,
+            76.3966465959312,
+            0.0,
+            76.3966465959312
+          ],
+          "combined_final_vs_target": 23.35438404601704,
+          "decoy_final_distance": 21.4872626021867,
+          "effects": [
+            0.024913787841796875,
+            0.0,
+            0.026386260986328125,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.45803513022873,
+            4.0,
+            3.9999999403953552,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.45803513022873,
+            "cosine": 0.015059483778038925,
+            "matched": true,
+            "rotated_norm": 2.4580351279354233
+          },
+          "target_margin_effect": -0.026386260986328125
+        },
+        "2": {
+          "D_combined": 25.944215468031604,
+          "D_downstream": 64.00416849888825,
+          "D_rotated": 37.09556737808505,
+          "D_target": 25.944215468031604,
+          "Q_distances": [
+            0.0,
+            25.944215468031604,
+            25.944215468031604,
+            64.00416849888825
+          ],
+          "combined_final_vs_target": 22.14737651332575,
+          "decoy_final_distance": 21.4872626021867,
+          "effects": [
+            -0.00630950927734375,
+            0.0,
+            0.0,
+            -0.02036285400390625
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            4.000000208616257,
+            0.0,
+            4.0,
+            2.2045101211752405
+          ],
+          "rotation": {
+            "clean_norm": 2.2045101211752405,
+            "cosine": -0.016690410089353618,
+            "matched": true,
+            "rotated_norm": 2.204510163736001
+          },
+          "target_margin_effect": 0.00630950927734375
+        },
+        "3": {
+          "D_combined": 46.76613682064017,
+          "D_downstream": 11.868079825460473,
+          "D_rotated": 12.900239150278715,
+          "D_target": 46.76613682064017,
+          "Q_distances": [
+            46.76613682064017,
+            11.868079825460473,
+            0.0,
+            46.76613682064017
+          ],
+          "combined_final_vs_target": 21.79991783056818,
+          "decoy_final_distance": 21.4872626021867,
+          "effects": [
+            0.0,
+            -0.004241943359375,
+            0.01566314697265625,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            1.784856950892948,
+            3.9999998807907104,
+            4.0
+          ],
+          "rotation": {
+            "clean_norm": 1.784856950892948,
+            "cosine": -0.014269468302953477,
+            "matched": true,
+            "rotated_norm": 1.7848569526839126
+          },
+          "target_margin_effect": -0.01566314697265625
+        }
+      },
+      "distractor-repair-12": {
+        "1": {
+          "D_combined": 119.44240284645366,
+          "D_downstream": 40.01992986684688,
+          "D_rotated": 204.27222872755442,
+          "D_target": 119.44240284645366,
+          "Q_distances": [
+            40.01992986684688,
+            119.44240284645366,
+            0.0,
+            119.44240284645366
+          ],
+          "combined_final_vs_target": 75.40916026983871,
+          "decoy_final_distance": 78.9259071281362,
+          "effects": [
+            -0.19360733032226562,
+            0.0,
+            -0.1904449462890625,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.8380663905189034,
+            4.000000074505806,
+            3.9999999701976776,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.8380663905189034,
+            "cosine": -0.001106967704570094,
+            "matched": true,
+            "rotated_norm": 2.8380663891720848
+          },
+          "target_margin_effect": 0.1904449462890625
+        },
+        "2": {
+          "D_combined": 37.44529144796337,
+          "D_downstream": 30.55205929542222,
+          "D_rotated": 49.545586014516815,
+          "D_target": 37.44529144796337,
+          "Q_distances": [
+            0.0,
+            37.44529144796337,
+            37.44529144796337,
+            30.55205929542222
+          ],
+          "combined_final_vs_target": 79.77206898437328,
+          "decoy_final_distance": 78.9259071281362,
+          "effects": [
+            0.007854461669921875,
+            0.0,
+            0.0,
+            -0.12316513061523438
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            4.000000007450581,
+            0.0,
+            4.000000074505806,
+            2.955962258333857
+          ],
+          "rotation": {
+            "clean_norm": 2.955962258333857,
+            "cosine": -0.052597541858292594,
+            "matched": true,
+            "rotated_norm": 2.9559622737088147
+          },
+          "target_margin_effect": -0.007854461669921875
+        },
+        "3": {
+          "D_combined": 18.536836361195547,
+          "D_downstream": 15.194121329941684,
+          "D_rotated": 117.93019571968065,
+          "D_target": 18.536836361195547,
+          "Q_distances": [
+            18.536836361195547,
+            15.194121329941684,
+            0.0,
+            18.536836361195547
+          ],
+          "combined_final_vs_target": 80.28153738404859,
+          "decoy_final_distance": 78.9259071281362,
+          "effects": [
+            0.0,
+            0.065277099609375,
+            0.17513275146484375,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            2.717886370609029,
+            3.9999998807907104,
+            4.000000074505806
+          ],
+          "rotation": {
+            "clean_norm": 2.717886370609029,
+            "cosine": -0.002026949219084316,
+            "matched": true,
+            "rotated_norm": 2.7178863112539875
+          },
+          "target_margin_effect": -0.17513275146484375
+        }
+      },
+      "distractor-repair-13": {
+        "1": {
+          "D_combined": 146.18155124005412,
+          "D_downstream": 61.748033729470514,
+          "D_rotated": 165.1706768723419,
+          "D_target": 146.18155124005412,
+          "Q_distances": [
+            61.748033729470514,
+            146.18155124005412,
+            0.0,
+            146.18155124005412
+          ],
+          "combined_final_vs_target": 40.93822082370304,
+          "decoy_final_distance": 41.28403792273867,
+          "effects": [
+            0.07170867919921875,
+            0.0,
+            0.2763557434082031,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.028537991272407,
+            3.9999998807907104,
+            4.000000029802322,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.028537991272407,
+            "cosine": 0.055119786458761776,
+            "matched": true,
+            "rotated_norm": 2.0285379885604753
+          },
+          "target_margin_effect": -0.2763557434082031
+        },
+        "2": {
+          "D_combined": 57.65077489378638,
+          "D_downstream": 81.28796558885777,
+          "D_rotated": 141.55535202858758,
+          "D_target": 57.65077489378638,
+          "Q_distances": [
+            0.0,
+            57.65077489378638,
+            57.65077489378638,
+            81.28796558885777
+          ],
+          "combined_final_vs_target": 41.80226112599906,
+          "decoy_final_distance": 41.28403792273867,
+          "effects": [
+            0.21844863891601562,
+            0.0,
+            0.0,
+            0.076904296875
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            4.0000001192092896,
+            0.0,
+            3.9999998807907104,
+            2.246933151857409
+          ],
+          "rotation": {
+            "clean_norm": 2.246933151857409,
+            "cosine": 0.026487178419287796,
+            "matched": true,
+            "rotated_norm": 2.2469331701568143
+          },
+          "target_margin_effect": -0.21844863891601562
+        },
+        "3": {
+          "D_combined": 76.81595075657104,
+          "D_downstream": 16.006530691597135,
+          "D_rotated": 51.39440113043524,
+          "D_target": 76.81595075657104,
+          "Q_distances": [
+            76.81595075657104,
+            16.006530691597135,
+            0.0,
+            76.81595075657104
+          ],
+          "combined_final_vs_target": 41.38369514076455,
+          "decoy_final_distance": 41.28403792273867,
+          "effects": [
+            0.0,
+            0.004909515380859375,
+            0.12706375122070312,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            2.19385109537138,
+            3.9999998807907104,
+            3.9999998807907104
+          ],
+          "rotation": {
+            "clean_norm": 2.19385109537138,
+            "cosine": 0.01384902644860388,
+            "matched": true,
+            "rotated_norm": 2.1938512044928222
+          },
+          "target_margin_effect": -0.12706375122070312
+        }
+      },
+      "distractor-repair-14": {
+        "1": {
+          "D_combined": 28.993629692065152,
+          "D_downstream": 31.654595509629456,
+          "D_rotated": 45.359927221745636,
+          "D_target": 28.993629692065152,
+          "Q_distances": [
+            31.654595509629456,
+            28.993629692065152,
+            0.0,
+            28.993629692065152
+          ],
+          "combined_final_vs_target": 50.38827990418791,
+          "decoy_final_distance": 53.528427339232415,
+          "effects": [
+            -0.22491455078125,
+            0.0,
+            -0.14150238037109375,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.2598829267629,
+            3.9999999329447746,
+            4.0000001192092896,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.2598829267629,
+            "cosine": -0.011598701473026607,
+            "matched": true,
+            "rotated_norm": 2.2598829220261387
+          },
+          "target_margin_effect": 0.14150238037109375
+        },
+        "2": {
+          "D_combined": 22.36778448542323,
+          "D_downstream": 90.02885681780744,
+          "D_rotated": 72.16426858027185,
+          "D_target": 22.36778448542323,
+          "Q_distances": [
+            0.0,
+            22.36778448542323,
+            22.36778448542323,
+            90.02885681780744
+          ],
+          "combined_final_vs_target": 54.47597933212196,
+          "decoy_final_distance": 53.528427339232415,
+          "effects": [
+            0.12766647338867188,
+            0.0,
+            0.0,
+            -0.09814071655273438
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            4.0,
+            0.0,
+            3.9999999329447746,
+            2.5946707551556982
+          ],
+          "rotation": {
+            "clean_norm": 2.5946707551556982,
+            "cosine": -0.007970415293786767,
+            "matched": true,
+            "rotated_norm": 2.5946707612609705
+          },
+          "target_margin_effect": -0.12766647338867188
+        },
+        "3": {
+          "D_combined": 88.42099659347018,
+          "D_downstream": 24.0272828670614,
+          "D_rotated": 44.90942335734846,
+          "D_target": 88.42099659347018,
+          "Q_distances": [
+            88.42099659347018,
+            24.0272828670614,
+            0.0,
+            88.42099659347018
+          ],
+          "combined_final_vs_target": 52.59312594708578,
+          "decoy_final_distance": 53.528427339232415,
+          "effects": [
+            0.0,
+            0.09774398803710938,
+            0.23276519775390625,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            2.404142750241212,
+            4.000000014901161,
+            3.9999999329447746
+          ],
+          "rotation": {
+            "clean_norm": 2.404142750241212,
+            "cosine": 0.04524135546965148,
+            "matched": true,
+            "rotated_norm": 2.404142707001989
+          },
+          "target_margin_effect": -0.23276519775390625
+        }
+      },
+      "distractor-repair-15": {
+        "1": {
+          "D_combined": 189.05332606343646,
+          "D_downstream": 110.4006927209093,
+          "D_rotated": 293.3895189598412,
+          "D_target": 189.05332606343646,
+          "Q_distances": [
+            110.4006927209093,
+            189.05332606343646,
+            0.0,
+            189.05332606343646
+          ],
+          "combined_final_vs_target": 17.84161262776104,
+          "decoy_final_distance": 19.057278636987327,
+          "effects": [
+            0.01515960693359375,
+            0.0,
+            -0.00530242919921875,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.6829235891047527,
+            3.9999999701976776,
+            3.9999999403953552,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.6829235891047527,
+            "cosine": 0.023778016655609253,
+            "matched": true,
+            "rotated_norm": 2.682923580234882
+          },
+          "target_margin_effect": 0.00530242919921875
+        },
+        "2": {
+          "D_combined": 123.29833882676148,
+          "D_downstream": 14.210885472684772,
+          "D_rotated": 94.3437432409864,
+          "D_target": 123.29833882676148,
+          "Q_distances": [
+            0.0,
+            123.29833882676148,
+            123.29833882676148,
+            14.210885472684772
+          ],
+          "combined_final_vs_target": 20.459929026469855,
+          "decoy_final_distance": 19.057278636987327,
+          "effects": [
+            -0.02178192138671875,
+            0.0,
+            0.0,
+            -0.07487869262695312
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            4.0,
+            0.0,
+            3.9999999701976776,
+            2.6082273232296895
+          ],
+          "rotation": {
+            "clean_norm": 2.6082273232296895,
+            "cosine": 0.01599987026681669,
+            "matched": true,
+            "rotated_norm": 2.6082273330613543
+          },
+          "target_margin_effect": 0.02178192138671875
+        },
+        "3": {
+          "D_combined": 33.549278110351224,
+          "D_downstream": 13.152370287376847,
+          "D_rotated": 75.42107982431494,
+          "D_target": 33.549278110351224,
+          "Q_distances": [
+            33.549278110351224,
+            13.152370287376847,
+            0.0,
+            33.549278110351224
+          ],
+          "combined_final_vs_target": 19.293394258241616,
+          "decoy_final_distance": 19.057278636987327,
+          "effects": [
+            0.0,
+            -0.01673126220703125,
+            0.034610748291015625,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            2.0912144101957675,
+            3.9999998807907104,
+            3.9999999701976776
+          ],
+          "rotation": {
+            "clean_norm": 2.0912144101957675,
+            "cosine": -0.030285214240494938,
+            "matched": true,
+            "rotated_norm": 2.0912144466303477
+          },
+          "target_margin_effect": -0.034610748291015625
+        }
+      },
+      "distractor-repair-16": {
+        "1": {
+          "D_combined": 112.79098102345672,
+          "D_downstream": 56.73803324788673,
+          "D_rotated": 158.11451768493748,
+          "D_target": 112.79098102345672,
+          "Q_distances": [
+            56.73803324788673,
+            112.79098102345672,
+            0.0,
+            112.79098102345672
+          ],
+          "combined_final_vs_target": 13.707219285838574,
+          "decoy_final_distance": 13.862216816045478,
+          "effects": [
+            0.0094146728515625,
+            0.0,
+            0.0116119384765625,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            2.660120571118683,
+            3.9999999552965164,
+            3.9999998211860657,
+            0.0
+          ],
+          "rotation": {
+            "clean_norm": 2.660120571118683,
+            "cosine": 0.007264080298799247,
+            "matched": true,
+            "rotated_norm": 2.660120557990097
+          },
+          "target_margin_effect": -0.0116119384765625
+        },
+        "2": {
+          "D_combined": 37.481766639344094,
+          "D_downstream": 14.974177282696564,
+          "D_rotated": 42.764910072542165,
+          "D_target": 37.481766639344094,
+          "Q_distances": [
+            0.0,
+            37.481766639344094,
+            37.481766639344094,
+            14.974177282696564
+          ],
+          "combined_final_vs_target": 13.601754341824359,
+          "decoy_final_distance": 13.862216816045478,
+          "effects": [
+            0.00719451904296875,
+            0.0,
+            0.0,
+            -0.0749969482421875
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            3.999999925494194,
+            0.0,
+            3.9999999552965164,
+            2.3141479537482916
+          ],
+          "rotation": {
+            "clean_norm": 2.3141479537482916,
+            "cosine": 0.008606244880802994,
+            "matched": true,
+            "rotated_norm": 2.3141479437659176
+          },
+          "target_margin_effect": -0.00719451904296875
+        },
+        "3": {
+          "D_combined": 36.93138157232465,
+          "D_downstream": 43.173690230454696,
+          "D_rotated": 57.512745798401895,
+          "D_target": 36.93138157232465,
+          "Q_distances": [
+            36.93138157232465,
+            43.173690230454696,
+            0.0,
+            36.93138157232465
+          ],
+          "combined_final_vs_target": 13.509769031060982,
+          "decoy_final_distance": 13.862216816045478,
+          "effects": [
+            0.0,
+            -0.01816558837890625,
+            0.0907135009765625,
+            0.0
+          ],
+          "first_changed": [
+            0,
+            "f"
+          ],
+          "magnitude": [
+            0.0,
+            2.261055102557522,
+            4.000000178813934,
+            3.9999999552965164
+          ],
+          "rotation": {
+            "clean_norm": 2.261055102557522,
+            "cosine": -0.0334728645140805,
+            "matched": true,
+            "rotated_norm": 2.2610550921857286
+          },
+          "target_margin_effect": -0.0907135009765625
+        }
+      }
+    }
+  },
+  "primary_pattern_supported": true,
+  "producer_report_comparison": "matched independently computed fields",
+  "scope": "saved-byte numerical and structural checks; not execution or publication attestation",
+  "summary": {
+    "1": {
+      "causal_mask_reference": [
+        1,
+        3,
+        4
+      ],
+      "constant_Q": 3,
+      "first_changed_Q": 2,
+      "first_changed_discovery": [
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ]
+      ],
+      "first_changed_votes": [
+        0,
+        8,
+        0,
+        0
+      ],
+      "heldout_prediction_mae": [
+        0.08530747890472412,
+        0.0,
+        0.09427475929260254,
+        0.0
+      ],
+      "heldout_zero_mae": [
+        0.07739639282226562,
+        0.0,
+        0.09230470657348633,
+        0.0
+      ],
+      "magnitude_Q": 3,
+      "magnitude_scores": [
+        2.459287933685658,
+        4.000000003958121,
+        4.000000066123903,
+        0.0
+      ],
+      "max_tie": [
+        3
+      ],
+      "mean_absolute_patch_effect": [
+        0.03653383255004883,
+        0.0,
+        0.06423807144165039,
+        0.0
+      ],
+      "mean_distances": {
+        "D_combined": 96.37787992844044,
+        "D_downstream": 54.86159303182654,
+        "D_rotated": 145.35715903403445
+      },
+      "random_Q": 1,
+      "ranking": [
+        3,
+        1,
+        2,
+        4
+      ],
+      "repair_fraction": 0.43076572059314133,
+      "rotated_fraction": -0.5082004204902684,
+      "selected_Q": 3,
+      "signed_predictions": [
+        -0.035863399505615234,
+        0.0,
+        -0.006591320037841797,
+        0.0
+      ]
+    },
+    "2": {
+      "causal_mask_reference": [
+        1,
+        2,
+        4
+      ],
+      "constant_Q": 3,
+      "first_changed_Q": 3,
+      "first_changed_discovery": [
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ]
+      ],
+      "first_changed_votes": [
+        0,
+        0,
+        8,
+        0
+      ],
+      "heldout_prediction_mae": [
+        0.06850671768188477,
+        0.0,
+        0.0,
+        0.047182440757751465
+      ],
+      "heldout_zero_mae": [
+        0.07226896286010742,
+        0.0,
+        0.0,
+        0.06682586669921875
+      ],
+      "magnitude_Q": 3,
+      "magnitude_scores": [
+        3.9999999813735485,
+        0.0,
+        4.000000003958121,
+        2.2794206343958474
+      ],
+      "max_tie": [
+        1
+      ],
+      "mean_absolute_patch_effect": [
+        0.058582305908203125,
+        0.0,
+        0.0,
+        0.04926919937133789
+      ],
+      "mean_distances": {
+        "D_combined": 47.62326513474941,
+        "D_downstream": 52.273330401516645,
+        "D_rotated": 60.538613219588505
+      },
+      "random_Q": 1,
+      "ranking": [
+        1,
+        4,
+        2,
+        3
+      ],
+      "repair_fraction": -0.09764272259808182,
+      "rotated_fraction": -0.27119829033761733,
+      "selected_Q": 1,
+      "signed_predictions": [
+        0.029771804809570312,
+        0.0,
+        0.0,
+        -0.04926919937133789
+      ]
+    },
+    "3": {
+      "causal_mask_reference": [
+        1,
+        2,
+        3
+      ],
+      "constant_Q": 3,
+      "first_changed_Q": 4,
+      "first_changed_discovery": [
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ],
+        [
+          0,
+          "f"
+        ]
+      ],
+      "first_changed_votes": [
+        0,
+        0,
+        0,
+        8
+      ],
+      "heldout_prediction_mae": [
+        0.0,
+        0.03758859634399414,
+        0.06097519397735596,
+        0.0
+      ],
+      "heldout_zero_mae": [
+        0.0,
+        0.03835153579711914,
+        0.12051105499267578,
+        0.0
+      ],
+      "magnitude_Q": 4,
+      "magnitude_scores": [
+        0.0,
+        2.1474555991861553,
+        3.9999999925494194,
+        4.000000003958121
+      ],
+      "max_tie": [
+        3
+      ],
+      "mean_absolute_patch_effect": [
+        0.0,
+        0.0320281982421875,
+        0.09715604782104492,
+        0.0
+      ],
+      "mean_distances": {
+        "D_combined": 49.77395016521171,
+        "D_downstream": 22.228691968292665,
+        "D_rotated": 59.79617579576661
+      },
+      "random_Q": 4,
+      "ranking": [
+        3,
+        2,
+        1,
+        4
+      ],
+      "repair_fraction": 0.5534071156797824,
+      "rotated_fraction": -0.20135483716459568,
+      "selected_Q": 3,
+      "signed_predictions": [
+        0.0,
+        0.0030517578125,
+        0.09715604782104492,
+        0.0
+      ]
+    }
+  }
+}

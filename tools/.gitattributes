@@ -1,2 +1,4 @@
 injection_comparison_operator.py -text
 audit_agreement_subject_v1.py -text
+audit_agreement_substitution_v1.py -text
+audit_agreement_invariant_v1.py -text

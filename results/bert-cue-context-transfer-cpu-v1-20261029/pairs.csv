@@ -1,0 +1,4 @@
+pair,split,context_a,context_b,baseline_eligible,dose_eligible,q,minimum_distance,same_cue_mean,same_class_mean,half_difference,status
+discovery-01,discovery,nurse/checked/charts,ranger/counted/birds,True,True,0.5,1.151180464112053,0.009644925594329834,0.019170105457305908,5.987286567687988e-05,at_least_half
+evaluation-01,evaluation,librarian/sorted/books,carpenter/built/shelves,True,True,0.5,0.9868126178779291,0.037220895290374756,0.022397279739379883,0.026022255420684814,at_least_half
+evaluation-02,evaluation,editor/revised/articles,musician/played/songs,True,True,0.5,1.3678931496593074,0.022663235664367676,0.021634042263031006,0.011846214532852173,at_least_half

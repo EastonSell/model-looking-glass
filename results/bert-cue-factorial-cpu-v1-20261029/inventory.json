@@ -1,0 +1,132 @@
+{
+  "files": [
+    {
+      "bytes": 10821,
+      "name": "README.md",
+      "sha256": "b5571c24f8bfe14373a52c34f7e2b09fa87c9fbcbae7f3b78b4e3a849da01bb4"
+    },
+    {
+      "bytes": 61148,
+      "name": "audit_full.json",
+      "sha256": "52795624199210a9072bba85d60ab13dec00e979758bdf7bcc9318092ca39351"
+    },
+    {
+      "bytes": 25913,
+      "name": "audit_full.py",
+      "sha256": "bdf949f0a515d5a917c01bc591ad0e9a846281d27154e4ebb2ac8d15fa9de6fa"
+    },
+    {
+      "bytes": 60141,
+      "name": "audit_scores.json",
+      "sha256": "7033eb0dae0c530d3d75810f3e4f832a8a734752775807339e1a324a9edbf7f4"
+    },
+    {
+      "bytes": 60340,
+      "name": "audit_subset.json",
+      "sha256": "670e89adcc7e25d66e3e4f53b6ba5ce09cff2ec72af8071d08f99c7e12e47b57"
+    },
+    {
+      "bytes": 3557,
+      "name": "audit_subset.py",
+      "sha256": "da2f29a196352a258ac759b003cd56d9f3feb1f79e7773b84a851a33b2387a9e"
+    },
+    {
+      "bytes": 12606,
+      "name": "baselines.csv",
+      "sha256": "f487e1ab817418f108d879eac49a4b1521dc534c2fed529e5874ca36593256f5"
+    },
+    {
+      "bytes": 3403,
+      "name": "cases.csv",
+      "sha256": "dff463099a0d37cdd9b9df435565fa2cacea1bab2be7a9ba6e5b12aa94c93dda"
+    },
+    {
+      "bytes": 151,
+      "name": "cells.csv",
+      "sha256": "5ccb4680ef468b770d90a0783502de3d8371272c8d245db11481add51f60fad4"
+    },
+    {
+      "bytes": 1244,
+      "name": "contrasts.csv",
+      "sha256": "d7664ea485f6e77f9b7329b73c7f5d39264df5951ad098a38d467eda8ce791c4"
+    },
+    {
+      "bytes": 2879,
+      "name": "cpu-preflight.json",
+      "sha256": "27a04a0d6a2599308492d8d6b8f24a36218d82ad7dbc6733c6ea9f65acc7a72c"
+    },
+    {
+      "bytes": 2072,
+      "name": "cpu-preflight.py",
+      "sha256": "d1dd978da0ef6e4cc290406dee561351e9e69ef530d170b18dc90bd270776c5b"
+    },
+    {
+      "bytes": 3893,
+      "name": "derive_subset.py",
+      "sha256": "1a6956a1542741607459a7d12c14a11cb74484b32a3c1b1dd00e97338161d0c0"
+    },
+    {
+      "bytes": 49660,
+      "name": "effects.csv",
+      "sha256": "92d699f15166126764651ab061c4b416cc5f54bb54314a01fdd2341ca81cd553"
+    },
+    {
+      "bytes": 250,
+      "name": "exit.json",
+      "sha256": "98c6ba582e0ae331e06de65a539f425e5bc4b31d75b1587ffb9e01657df500bf"
+    },
+    {
+      "bytes": 6544,
+      "name": "make_tables.py",
+      "sha256": "8acf1061c2891693061052fc4d751d2d530b281298e9774ef9c86921d9da2015"
+    },
+    {
+      "bytes": 37810,
+      "name": "manifest.json",
+      "sha256": "b91eba1e0a52f6a183a59b0bfbb365dd54d67341bd74a4fb56325e72a7f45d4f"
+    },
+    {
+      "bytes": 9837,
+      "name": "protocol.md",
+      "sha256": "3ef1f80b1b2106de878a49be6ffdbcabd910b95f08725fe1763ebc323cf55dd4"
+    },
+    {
+      "bytes": 3117,
+      "name": "public-exposure-check.json",
+      "sha256": "92cc80c5ed2ca94b1976bb1693e4d1c1cd3a0059f350a0c881618fabf7916587"
+    },
+    {
+      "bytes": 256027,
+      "name": "result.json",
+      "sha256": "d3276451d0ee6793acd5f84063a65cf00ac6f511a0e0bad0048fa64e1da30caf"
+    },
+    {
+      "bytes": 12581,
+      "name": "review_bert_cue_factorial_saved_scores.py",
+      "sha256": "148eca2a3f910b71d8dd65b6dae4f5ae63c46a8ca8a5c90b5c26aca82ee104e5"
+    },
+    {
+      "bytes": 10748,
+      "name": "score-subset.jsonl.gz",
+      "sha256": "b8df06d2ab871523c1b5508ff8f42aaf965378808efc6d67b8c45caff1d69256"
+    },
+    {
+      "bytes": 2848,
+      "name": "started.json",
+      "sha256": "6c91962581e9cc2427427a64357dba838029336b093a39a45b07f44487e52b96"
+    },
+    {
+      "bytes": 467,
+      "name": "subset-derivation.json",
+      "sha256": "bf1529cd1dc8f786d209400d760463bd11f921af0ee8276166c4c55ad6e07ac6"
+    },
+    {
+      "bytes": 36352,
+      "name": "target_checks.csv",
+      "sha256": "35d506b837834e4cb4539eb54ce0606e50b858a2af3d6fad63a50e63cc8fb17c"
+    }
+  ],
+  "journal_included": false,
+  "journal_sha256": "667004f67abfae1fc97f66dd6a1061e352fc03a6d90c8ad47a49e862903520d9",
+  "schema": "bert-cue-factorial-evidence-inventory-v1"
+}

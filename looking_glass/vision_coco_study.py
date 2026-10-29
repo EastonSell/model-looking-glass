@@ -238,8 +238,11 @@ def forward(model, pixels, evidence, label, *, path=None, tokens=None, replaceme
             if action == "patch":
                 steps[-1]["value"] = replacement.to(pixels.device)
         else:
-            if len(tokens) != 4 or len(set(tokens)) != 4 or not all(1 <= t < 197 for t in tokens):
-                raise ValueError("invalid four-token intervention")
+            cls_token = len(tokens) == 1 and type(tokens[0]) is int and tokens[0] == 0
+            spatial_tokens = (len(tokens) == 4 and len(set(tokens)) == 4 and
+                              all(type(t) is int and 1 <= t < 197 for t in tokens))
+            if not (cls_token or spatial_tokens):
+                raise ValueError("invalid CLS or four-token intervention")
             for i, token in enumerate(tokens):
                 selected = dict(site, batch_index=0, token_index=token)
                 steps.extend([dict(name=f"before_{i}", operation="capture", **selected),

@@ -1,0 +1,17 @@
+{
+  "case_sha256": "94910e59415936a09c18f81478e0eaffb790c9b69d0962ab3f6b70947fbe1dfe",
+  "cross_model_case_sha256": "b1d6dbad76240f07be3a55196ace982767400b60e497d4e7fc75aaae82c8c503",
+  "cross_model_comparison_sha256": "babcbba9176beff42532c5ec81878ed55eea3ec73973a24b8780b5ed33152962",
+  "limitation": "Point-in-time public and operator reports; unknown exposure or later changes are not excluded.",
+  "observation": "The source-bound child reconstructs v35. The separately observed and independently reviewed v36 successor preserves all 1,055 v35 records, including the 54 planned cases and eight continuations, and its 32 new cross-model inputs and four continuations have no bidirectional prefix relations with the v35 sequences. The cross-model owner reports its 32 cases remain unforwarded; the known-injection owner reports no unreserved DistilGPT-2 inputs since v35. At the recorded official main revision v36 is the highest numbered exposure module and its blob matches the reviewed merged source.",
+  "official_main_observed_revision": "bbaf45fb89283c5a19ebd80ea2428b45c6c82233",
+  "operator_revision": "e35e236686907e3a0fb21b0d77fc91a029840e21",
+  "operator_sha256": "6f05f07a0fe6ed61ca00978ef4b225e43c9c71a4a8be05df33e8c7ed778d06b7",
+  "operator_version": "distilgpt2-development-exposures-v36",
+  "reconstructed_sha256": "3a7ecf81eb7f04759ed5b8ffd0607c5955b634b938756e76eb52d2435aef9610",
+  "refreshed_utc": "2026-10-29T11:51:18.680775+00:00",
+  "schema": "agreement-substitution-exposure-refresh-v1",
+  "status": "clear",
+  "v36_blob": "e4c636dc772072656eea5855a0b9cc1b52951b55",
+  "v36_module_sha256": "fb8a8b42186b868c857ac0ec28ba7a8eb30491d0292fb46db2b551b0d8635de0"
+}

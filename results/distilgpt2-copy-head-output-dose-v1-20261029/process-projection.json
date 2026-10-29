@@ -1,0 +1,234 @@
+{
+  "exit": {
+    "checkout_clean_after": true,
+    "cleanup_scope": "Returned direct child only; descendants are not attested.",
+    "exit_code": 0,
+    "observer_exception": null,
+    "reaped": true,
+    "run_id": "attempt-8a2a4bd244b44ab4b518af0a43146851",
+    "saved_attempt_files": [
+      {
+        "bytes": 972700,
+        "path": "attempt.jsonl",
+        "sha256": "b4f4b1a74dfb372d0bf3ea5c44f8d6b163e3d4c9e4c214374344c8eba0fbe6d0"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-01-0.f32",
+        "sha256": "5c2c55730e17de6f88c3a10124f7ee6f81e515d2ca4e489f757f612f1b6d6fb6"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-01-1.f32",
+        "sha256": "115d45e33e5244b4553eb1caf6e34d1745ed6bbe42fc27bfcb13d414125ccf03"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-01-2.f32",
+        "sha256": "0bf56e86d0fcea932b897677e0cf2dc264a417695dccd57cc5b698a1ce2d0661"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-01-3.f32",
+        "sha256": "d1987b92d9453b4b8112d725d7878a871d702df15f48f57add3bd0e40cc5cc3c"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-02-0.f32",
+        "sha256": "61d23dac3e08bc356a8b70fcf4ececb55fd11f3a88bf408d1a519551becf4ccc"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-02-1.f32",
+        "sha256": "48933e7b08e3466e1b89fbc93a8cea02002cdd2a2dcc0228826ae977c5c22517"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-02-2.f32",
+        "sha256": "7e0a2fca27b72c5582605b297b89cc072a2de8456da86873becc51964b7439e7"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-02-3.f32",
+        "sha256": "25d222b738e9919e8435f2306415aab9816f0e1c2e3c411356d3358cc3096e2f"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-03-0.f32",
+        "sha256": "dcdf339a7b26494f29eee3ca1862984befae793e377803bdf9ad2b8f9aad5da8"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-03-1.f32",
+        "sha256": "1e4fa4516f38e179c8fd4f9581221e86e5e31fea2d4ed55764a6d41a33ca65ae"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-03-2.f32",
+        "sha256": "8b7e22ea61f486ee78f50727ef6c4b03f0a9df1be143459bb99fd16da5d53466"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-03-3.f32",
+        "sha256": "47fac26efc959b2bfd9fd5d71667222aa4a4899f33890dedc89979656658681e"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-04-0.f32",
+        "sha256": "0ebb4fda4414b64ac817f9cc1341832e0fb2c255646aa45a92c6d586e920457f"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-04-1.f32",
+        "sha256": "37f62e5bda6c2e794ca4580f3feea412baf5291f6548f62ffbca29da394f6eb7"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-04-2.f32",
+        "sha256": "934b6734ab1dcec6a70920e951c43309bf3e7aa7bdcf29bcab2791710207eee7"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-04-3.f32",
+        "sha256": "be988153844a1d55a0f30bff09dd820b2093a39a055c2da5f5b6b3696b017549"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-05-0.f32",
+        "sha256": "0d186da08cce24da48d16571784ab9c50f19a59af4c331acb41467256d00fd5a"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-05-1.f32",
+        "sha256": "c3ade795726716cc7e7a190da17bc098cbb47db71b72ffcf7a1cc91ddcbf21a9"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-05-2.f32",
+        "sha256": "8278ecef91ec870ce1466210e821807ddba6272828c1edfd24fada6acc5ff0ea"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-05-3.f32",
+        "sha256": "9ca03f1abf566cd4974247ee5c1bd28de1d9fb3836cb8275d8e5b2e314ffba16"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-06-0.f32",
+        "sha256": "0fdd87e4d5b8f49205575fb164dda3a02480ef53193077c93681ea1f531274f7"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-06-1.f32",
+        "sha256": "d5b917325b6feaf38511a39818f0685c052191c32b73742b9587b5d3e0924a5d"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-06-2.f32",
+        "sha256": "ca862c9c56b38e4a001160b11ca454efc08d8fd54b25cc7e92b5d8d63e9190b1"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-06-3.f32",
+        "sha256": "892939ec0d1ac6e72ee559b2ff968c4ea3830537d0256ad2022d96e5fb85d1b6"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-07-0.f32",
+        "sha256": "9a3c2abd6f0b556857e564adf556ddf03e05c725b0bcf50a7b8eea0e4a60fb97"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-07-1.f32",
+        "sha256": "3c2a4de6b43670caf6a0b34d66f68e6b987f1ce3847f4545300b68e672859c6c"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-07-2.f32",
+        "sha256": "5453a9b933f69741450c5f04c7f6a01606737c7fb98b2b34dd3cd97e1323a95f"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-07-3.f32",
+        "sha256": "270fc673cfc94385876347ac14771082e4079751127eaed09ba8afcbd93502a2"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-08-0.f32",
+        "sha256": "94fadd6c706fdd6e847fdb2fb967dc38da0210b524ba557dc831668a8cc59c17"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-08-1.f32",
+        "sha256": "741d2fe77a253fd19fbeed26845e2936abf521df845f2fa949b3df28fb47dd44"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-08-2.f32",
+        "sha256": "17beb13848d1adb6d2195dd5dec17b4271cb18b20096c0831527c3525c19003d"
+      },
+      {
+        "bytes": 2518884,
+        "path": "copy-output-dose-08-3.f32",
+        "sha256": "5e28f66a4ccb6c28849ae7912110bd1186c1282278814be0279b599dd21c40ae"
+      },
+      {
+        "bytes": 12163,
+        "path": "manifest.json",
+        "sha256": "1f4b9d3c7d7cdd34c58ac5c4cb050bb8a971c6eb58747e0a9d23e000693cfbbe"
+      },
+      {
+        "bytes": 589824,
+        "path": "projection-weights.f32",
+        "sha256": "876cbaa9c1fb9b0f751d13d877c48b46561a2559d6bed99b4d5910675a0c55fd"
+      },
+      {
+        "bytes": 568097,
+        "path": "result.json",
+        "sha256": "c6347a9ff6ca606387c4fd799bf4bdd5455d6019b9494b59c226198aa7130e23"
+      }
+    ],
+    "schema": "copy-output-dose-process-exit-v1",
+    "scope": "Cooperative direct process observation; no interpreter, clock or outside-process attestation.",
+    "spawn_return_unbound_uncertain": false,
+    "start_record_sha256": "4d6bbfabab6d52238c4844244bb6d0f2780efabb85da8a8d1b41c4b64434431c",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_sha256": "bdbf9f62192fbde9129acf5ddd210ce0d8cd13da4cdae91523abf341b3df0813",
+    "timed_out": false,
+    "utc_clock_finished": "2026-10-29T12:17:50.331130+00:00"
+  },
+  "original_exit_sha256": "a4a9685720c011890bc5faccfd03fb93fc691214b56943aecdb2feebdcd9a300",
+  "original_start_sha256": "4d6bbfabab6d52238c4844244bb6d0f2780efabb85da8a8d1b41c4b64434431c",
+  "redactions": [
+    "absolute workspace paths",
+    "direct child PID"
+  ],
+  "schema": "copy-output-dose-process-projection-v1",
+  "scope": "sanitized projection of cooperative records; not independent authentication of the originals",
+  "start": {
+    "checkout_head": "ecb75b82aed89a7414e8f9329da4328a6835a840",
+    "environment_overrides": {
+      "CUDA_VISIBLE_DEVICES": "-1",
+      "HF_HUB_OFFLINE": "1",
+      "MKL_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "TRANSFORMERS_OFFLINE": "1"
+    },
+    "independent_reader_sha256": "c90eeef3530b3ef17bd3846f090389ab7db7c740246699832d61f5f6551d552e",
+    "manifest_sha256": "a3cd19642ec5d83b078f85f94c45f6768c3f701bbfcd009359b1e4dd74a707ca",
+    "observer_sha256": "f85a72d694b1ff2de0bb57af50fa083017d7b2ce53eef870f65b445aab5056a8",
+    "public_prelaunch_commit": "ecb75b82aed89a7414e8f9329da4328a6835a840",
+    "removed_environment_names": [
+      "MKL_CBWR",
+      "ATEN_CPU_CAPABILITY",
+      "PYTHONPATH",
+      "PYTHONHOME"
+    ],
+    "run_id": "attempt-8a2a4bd244b44ab4b518af0a43146851",
+    "schema": "copy-output-dose-process-start-v1",
+    "scope": "Cooperative direct process observation; no interpreter, clock or outside-process attestation.",
+    "timeout_seconds": 3600,
+    "utc_clock_started": "2026-10-29T12:14:10.040425+00:00",
+    "verify_only": false
+  }
+}
