@@ -30,6 +30,7 @@ LOAD_CASE_SHA256 = canonical_fingerprint(LOAD_CASE)
 FORWARD_CASE_SHA256 = canonical_fingerprint(FORWARD_CASE)
 LOAD_COMMITMENT = 2 * 1024 ** 3
 JOB_COMMITMENT = 512 * 1024 ** 2
+DIRECT_EXECUTION_PATH = 'looking_glass.resident_worker.ResidentWorker.execute'
 _FIXED_ENV = {'CUDA_DEVICE_ORDER': 'PCI_BUS_ID', 'PYTORCH_CUDA_ALLOC_CONF': 'backend:native',
               'CUBLAS_WORKSPACE_CONFIG': ':4096:8', 'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1',
               'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1', 'HF_HUB_DISABLE_TELEMETRY': '1'}
@@ -262,13 +263,23 @@ def _decode_canonical(data, schema):
 
 def resolve_trusted_service_profiles(registry, identity, approved_profile_ids):
     """Resolve exact pinned profiles and the prescribed case/seed evidence."""
+    return _resolve_service_profiles(registry, identity, approved_profile_ids,
+                                     'trusted-service-runtime-v1', DIRECT_EXECUTION_PATH)
+
+
+def _resolve_service_profiles(registry, identity, approved_profile_ids, runtime_schema, execution_path):
+    """Shared case/seed/pin checks; callers must validate their protocol first."""
     if type(registry) is not ProfileRegistry or type(identity) is not TrustedServiceIdentity:
         raise TypeError('a trusted registry and independently built service identity are required')
     if (type(approved_profile_ids) is not tuple or len(approved_profile_ids) != 3
             or len(set(approved_profile_ids)) != 3):
         raise ValueError('three separate approved profile pins are required')
     source = _decode_canonical(identity.source_manifest, 'trusted-service-source-v1')
-    runtime = _decode_canonical(identity.runtime_manifest, 'trusted-service-runtime-v1')
+    runtime = _decode_canonical(identity.runtime_manifest, runtime_schema)
+    if runtime.get('execution_path') != execution_path:
+        raise ValueError('runtime execution path differs from the selected protocol')
+    if runtime_schema == 'trusted-service-runtime-v1' and 'custody_execution' in runtime:
+        raise ValueError('direct-worker identity cannot include custody execution')
     if (type(source.get('base')) is not dict or 'assets' not in source['base']
             or _canonical_json_bytes(source['base']['assets']) != identity.asset_manifest):
         raise ValueError('recorded asset manifest does not match the source identity')
