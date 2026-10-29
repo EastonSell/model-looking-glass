@@ -467,7 +467,8 @@ def check_public_inputs(public, *, commitments, heldout, wrapper_bytes, reader=r
 
 
 def prepare_once(public, private_root, *, commitments, heldout, tokenizer,
-                 wrapper_bytes, claim_phase, observe_inventory, config_bytes, config_path, reader=read_public,
+                 wrapper_bytes, claim_phase, observe_inventory, verify_validation, config_bytes, config_path,
+                 reader=read_public,
                  nonce_source=secrets.token_bytes):
     """Claim once and privately seal one random split; never print its contents.
 
@@ -490,6 +491,15 @@ def prepare_once(public, private_root, *, commitments, heldout, tokenizer,
     root = _checked_path(private_root)
     if not root.is_dir():
         raise CustodyError('private custody root must already exist')
+    validation_root = root / ('natural-heldout-validation-' + _digest(public.operational_binding))
+    try:
+        if not callable(verify_validation) or Path(verify_validation(validation_root)) != validation_root:
+            raise CustodyError('the no-model validation receipt did not verify')
+        validation_sizes = account_phase(validation_root, reserve_side_bytes=8 * 1024 * 1024)
+    except (OSError, TypeError, ValueError) as error:
+        raise CustodyError('no-model validation evidence is unavailable or invalid') from error
+    if validation_sizes['tensor_bytes'] or validation_sizes['event_bytes']:
+        raise CustodyError('no-model validation unexpectedly contains model evidence')
     attempt = root / ('natural-heldout-' + freeze.sha256)
     grant = claim_phase('natural_heldout', output_path=attempt)
     if (grant.phase != 'natural_heldout' or Path(grant.output_path) != attempt
@@ -537,7 +547,7 @@ def prepare_once(public, private_root, *, commitments, heldout, tokenizer,
                       'deviation_sha256': _digest(public.deviation_bytes),
                       'operational_binding_sha256': _digest(public.operational_binding)}
         _write_new(attempt / 'commitment.json', _json_bytes(commitment))
-        account_phase(attempt, reserve_side_bytes=8 * 1024 * 1024)
+        account_phase(attempt, reserve_side_bytes=8 * 1024 * 1024, extra_side_roots=(validation_root,))
         _write_new(attempt / 'preparation-complete.json', _json_bytes({
             'schema': 'mlg-natural-heldout-preparation-complete-v1',
             'commitment_file_sha256': _digest(_json_bytes(commitment)),
@@ -590,7 +600,8 @@ def audit_preparation(attempt, public, wrapper_bytes, *, allow_owner=False):
                          'operational_binding_sha256': _digest(public.operational_binding)}
     if raw['preparation-complete.json'] != _json_bytes(expected_complete):
         raise CustodyError('preparation completion does not bind its commitment')
-    sizes = account_phase(attempt)
+    validation_root = Path(attempt).parent / ('natural-heldout-validation-' + _digest(public.operational_binding))
+    sizes = account_phase(attempt, extra_side_roots=(validation_root,))
     if not allow_owner and (sizes['tensor_bytes'] or sizes['event_bytes']):
         raise CustodyError('preparation unexpectedly contains model evidence')
     return {'status': 'evidence_complete', 'inventory': {'retained_tensor_bytes': 0},
@@ -657,8 +668,9 @@ def verify_preparation_supervisor(attempt, supervisor_dir, public, wrapper_bytes
                                     'operational_binding_sha256': _digest(public.operational_binding)}
             if observed != _json_bytes(expected_observation):
                 raise CustodyError('preparation supervisor exit was not observed')
+        validation_root = Path(attempt).parent / ('natural-heldout-validation-' + _digest(public.operational_binding))
         account_phase(attempt, reserve_side_bytes=4 * 1024 * 1024,
-                      extra_side_roots=(supervisor_dir, Path(claim['preparation_config_path'])))
+                      extra_side_roots=(supervisor_dir, Path(claim['preparation_config_path']), validation_root))
     except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
         raise CustodyError('preparation supervision is invalid') from error
     return expected
@@ -761,6 +773,13 @@ def observe_supervisor_process(command, attempt, supervisor_dir, public, wrapper
         reaped = True
         if type(code) is not int or code != 0:
             raise CustodyError('outer supervisor did not exit successfully')
+        active = job._accounting().active_processes
+        if type(active) is not int or active != 0:
+            job.terminate_and_wait()
+            drained = True
+            job.close()
+            closed = True
+            raise CustodyError('outer supervisor left active Job members')
         job.terminate_and_wait()
         drained = True
         job.close()
@@ -836,6 +855,133 @@ def observe_supervisor_process(command, attempt, supervisor_dir, public, wrapper
         if process is None and spawn_attempted:
             if not isinstance(primary_error, (KeyboardInterrupt, SystemExit)):
                 raise CustodyError('outer supervisor spawn return is unverified; stop and reconcile') from primary_error
+            raise
+        custody_state[2] = False
+        raise
+
+
+def observe_validation_process(command, validation_root, public, *, owner_path, config_path, config_sha256,
+                               verify_inner, job_factory, protect_process, custody_state=None, timeout=7200):
+    """Observe one gated no-model validation parent and bind its clean receipt."""
+    if (os.name != 'nt' or type(command) is not list or not command
+            or any(type(item) is not str or not item for item in command)
+            or not callable(verify_inner) or not callable(protect_process)
+            or type(timeout) is not int or not 1 <= timeout <= 7200):
+        raise CustodyError('invalid validation process observation')
+    root, owner_path, config_path = (_checked_path(validation_root), _checked_path(owner_path),
+                                     _checked_path(config_path))
+    config_bytes = _read_private(config_path, 65536)
+    if (not root.is_dir() or config_path != root / 'validation-config.json'
+            or type(config_sha256) is not str or re.fullmatch(r'[0-9a-f]{64}', config_sha256) is None
+            or _digest(config_bytes) != config_sha256 or len(command) != 11
+            or command[0] != sys.executable or command[1:5] != ['-I', '-S', '-B', '-X']
+            or not command[5].startswith('pycache_prefix=')
+            or not Path(command[5][len('pycache_prefix='):]).is_absolute()
+            or command[6:] != ['-c', OUTER_BOOTSTRAP, str(owner_path), '--validate-only', str(config_path)]
+            or os.path.lexists(root / 'parent-observation.json')):
+        raise CustodyError('validation parent command or protected configuration differs')
+    if custody_state is None:
+        custody_state = [None, None, False, False]
+    if type(custody_state) is not list or len(custody_state) != 4 or custody_state != [None, None, False, False]:
+        raise CustodyError('validation parent custody state is invalid')
+    process, job = None, None
+    reaped = drained = closed = spawn_attempted = gate_attempted = False
+    try:
+        job = job_factory()
+        custody_state[0] = job
+        custody_state[2] = True
+        spawn_attempted = True
+        process = subprocess.Popen(command, env=os.environ.copy(), stdin=subprocess.PIPE,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                   creationflags=subprocess.DETACHED_PROCESS)
+        custody_state[1] = process
+        if type(process.pid) is not int or not 0 < process.pid <= 0xffffffff:
+            raise CustodyError('invalid validation parent PID')
+        job.assign(process)
+        protect_process(process)
+        birth = _process_birth_100ns(process)
+        gate_attempted = True
+        token = b'MLG-natural-discovery-start-v1\n'
+        if process.stdin.write(token) != len(token):
+            raise CustodyError('validation parent start gate failed')
+        process.stdin.close()
+        code = process.wait(timeout=timeout)
+        reaped = True
+        if type(code) is not int or code != 0:
+            raise CustodyError('validation parent did not exit successfully')
+        active = job._accounting().active_processes
+        if type(active) is not int or active != 0:
+            # Drain the known outer Job, but do not infer anything about a
+            # separately breakaway child or publish a success observation.
+            job.terminate_and_wait()
+            drained = True
+            job.close()
+            closed = True
+            raise CustodyError('validation parent left active outer Job members')
+        job.terminate_and_wait()
+        drained = True
+        job.close()
+        closed = True
+        verify_inner(False)
+        if _read_private(config_path, 65536) != config_bytes:
+            raise CustodyError('validation configuration changed while running')
+        terminal_raw = _read_private(root / 'owner/owner-terminal.json', 65536)
+        supervisor_raw = _read_private(root / 'owner/supervisor.json', 2 * 1024 * 1024)
+        observation = {'schema': 'mlg-natural-heldout-validation-parent-observation-v1',
+                       'status': 'completed', 'exit_code': 0, 'parent_reaped': True,
+                       'outer_job_drained': True, 'outer_job_closed': True,
+                       'parent_pid': process.pid, 'parent_birth_100ns': birth, 'command': command,
+                       'validation_config_sha256': config_sha256,
+                       'owner_terminal_sha256': _digest(terminal_raw),
+                       'supervisor_sha256': _digest(supervisor_raw),
+                       'operational_binding_sha256': _digest(public.operational_binding)}
+        custody_state[3] = True
+        _write_new(root / 'parent-observation.json', _json_bytes(observation))
+        verify_inner(True)
+        return {'status': 'observed_validation_exit',
+                'parent_observation_sha256': _digest(_json_bytes(observation)),
+                'validation_config_sha256': config_sha256,
+                'operational_binding_sha256': _digest(public.operational_binding)}
+    except BaseException as primary_error:
+        if gate_attempted and not custody_state[3]:
+            raise
+        if job is not None or spawn_attempted:
+            custody_state[1] = process
+            custody_state[2] = True
+        cleanup_errors = []
+        if job is not None and not drained:
+            try:
+                job.terminate_and_wait()
+                drained = True
+            except BaseException as error:
+                cleanup_errors.append(error)
+        if job is not None and not closed:
+            try:
+                job.close()
+                closed = True
+            except BaseException as error:
+                cleanup_errors.append(error)
+        if process is not None and not reaped:
+            try:
+                if process.poll() is None:
+                    process.kill()
+                process.wait(timeout=10)
+            except BaseException as error:
+                cleanup_errors.append(error)
+        if cleanup_errors:
+            cleanup_error = next((error for error in cleanup_errors
+                                  if isinstance(error, (KeyboardInterrupt, SystemExit))), cleanup_errors[0])
+            selected = (primary_error if isinstance(primary_error, (KeyboardInterrupt, SystemExit))
+                        else cleanup_error if isinstance(cleanup_error, (KeyboardInterrupt, SystemExit))
+                        else primary_error)
+            if hasattr(selected, 'add_note'):
+                selected.add_note('validation parent cleanup is unverified; stop and reconcile')
+            if selected is primary_error:
+                raise primary_error from cleanup_errors[0]
+            raise selected from primary_error
+        if process is None and spawn_attempted:
+            if not isinstance(primary_error, (KeyboardInterrupt, SystemExit)):
+                raise CustodyError('validation parent spawn return is unverified; stop and reconcile') from primary_error
             raise
         custody_state[2] = False
         raise
@@ -1121,6 +1267,28 @@ def _verify_local_operational_sources(public, custody_root):
         raise CustodyError('local operational sources are invalid') from error
 
 
+def _validation_configuration(validation_root, config, public, child):
+    """Bind the no-model rehearsal's public files and runtime paths to this run."""
+    try:
+        validation_root = _checked_path(validation_root)
+        _, value = child._load_config(validation_root / 'validation-config.json')
+        if (Path(value['phase_dir']) != validation_root
+                or Path(value['frozen_root']) != Path(config['frozen_root'])
+                or Path(value['cache_dir']) != Path(config['cache_dir'])):
+            raise CustodyError('validation runtime paths differ from this preparation')
+        for name in ('binding', 'prediction', 'aggregate', 'inventory', 'v7_inventory',
+                     'inventory_source', 'operational_binding', 'deviation_bytes'):
+            if _read_private(value['public_files'][name], 8 * 1024 * 1024) != getattr(public, name):
+                raise CustodyError('validation public file differs from this preparation')
+        for name in ('binding_url', 'prediction_url', 'aggregate_url', 'inventory_source_url',
+                     'operational_binding_url', 'wrapper_url', 'deviation_url'):
+            if value['public_urls'][name] != getattr(public, name):
+                raise CustodyError('validation public URL differs from this preparation')
+        return value
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
+        raise CustodyError('validation configuration is invalid') from error
+
+
 def _install_frozen_finder(root, source_hashes):
     if any(name == 'looking_glass' or name.startswith('looking_glass.')
            or name == 'scripts' or name.startswith('scripts.') for name in sys.modules):
@@ -1147,9 +1315,9 @@ def _require_fresh_dependencies():
 
 def production_prepare(config_path, *, mode='validate', expected_config_sha=None):
     """Production path: fixed ledger, OS nonce, official observer and frozen code."""
-    if mode not in ('validate', 'prepare', 'supervise-prepare', 'observe-prepare'):
+    if mode not in ('validate', 'prepare', 'supervise-prepare', 'observe-prepare', 'observe-validation'):
         raise CustodyError('unknown preparation mode')
-    if mode in ('supervise-prepare', 'observe-prepare'):
+    if mode in ('supervise-prepare', 'observe-prepare', 'observe-validation'):
         _ignore_console_interrupts()
     if (not sys.flags.isolated or not sys.flags.no_site or sys.flags.optimize != 0 or not sys.dont_write_bytecode
             or not sys.pycache_prefix or not Path(sys.pycache_prefix).is_absolute()
@@ -1158,8 +1326,8 @@ def production_prepare(config_path, *, mode='validate', expected_config_sha=None
             or 'MKL_CBWR' in os.environ or 'ATEN_CPU_CAPABILITY' in os.environ):
         raise CustodyError('requires the frozen isolated CPU startup and unset numerical overrides')
     _require_fresh_dependencies()
-    if mode == 'prepare' and expected_config_sha is None:
-        raise CustodyError('supervised preparation requires a pinned configuration digest')
+    if mode in ('prepare', 'observe-validation') and expected_config_sha is None:
+        raise CustodyError('supervised preparation or validation requires a pinned configuration digest')
     config_bytes = _read_private(config_path, 64 * 1024)
     config_sha = _digest(config_bytes)
     if expected_config_sha is not None and config_sha != expected_config_sha:
@@ -1222,9 +1390,38 @@ def production_prepare(config_path, *, mode='validate', expected_config_sha=None
                     'not_checked': ['ledger capacity or phase claim', 'held-out commitment',
                                     'owner execution and scientific audit']}
         operational = json.loads(public.operational_binding)
+        private_root = _checked_path(config['private_root'])
+        attempt = private_root / ('natural-heldout-' + AGGREGATE_SHA256)
+        validation_root = private_root / ('natural-heldout-validation-' + _digest(public.operational_binding))
+        validation_child = _load_file_module('_mlg_validation_child', custody_root / SOURCE_SUFFIXES['child'],
+                                             operational['sources']['child']['sha256'])
+        validation_owner = _load_file_module('_mlg_validation_owner', custody_root / SOURCE_SUFFIXES['owner'],
+                                             operational['sources']['owner']['sha256'])
+        def verify_validation(require_observation=True):
+            validation_config = _validation_configuration(validation_root, config, public, validation_child)
+            return validation_owner._check_validation_receipt(
+                validation_child, attempt, validation_config, public.binding, public.operational_binding,
+                child_path=str(custody_root / SOURCE_SUFFIXES['child']), bootstrap=runtime['BOOTSTRAP'],
+                outer_bootstrap=OUTER_BOOTSTRAP, owner_path=str(custody_root / SOURCE_SUFFIXES['owner']),
+                interpreter=sys.executable, require_parent_observation=require_observation)
+        if mode == 'observe-validation':
+            validation_config_path = validation_root / 'validation-config.json'
+            _validation_configuration(validation_root, config, public, validation_child)
+            validation_config_sha = _digest(_read_private(validation_config_path, 65536))
+            owner_path = custody_root / SOURCE_SUFFIXES['owner']
+            outer_command = [sys.executable, '-I', '-S', '-B', '-X', 'pycache_prefix=' + sys.pycache_prefix,
+                             '-c', OUTER_BOOTSTRAP, str(owner_path), '--validate-only', str(validation_config_path)]
+            custody_state = [None, None, False, False]
+            try:
+                return observe_validation_process(outer_command, validation_root, public, owner_path=owner_path,
+                    config_path=validation_config_path, config_sha256=validation_config_sha,
+                    verify_inner=verify_validation, job_factory=lambda: _outer_supervisor_job(guards),
+                    protect_process=lambda process: guards.duplicate_to_process(
+                        frozen_lease.handles() + operational_lease.handles(), process), custody_state=custody_state)
+            finally:
+                _quarantine_state_if_needed(custody_state)
+        verify_validation()
         if mode in ('supervise-prepare', 'observe-prepare'):
-            private_root = _checked_path(config['private_root'])
-            attempt = private_root / ('natural-heldout-' + AGGREGATE_SHA256)
             supervisor_dir = private_root / ('natural-heldout-' + AGGREGATE_SHA256 + '-preparation-supervisor')
             if mode == 'observe-prepare':
                 outer_command = [sys.executable, '-I', '-S', '-B', '-X', 'pycache_prefix=' + sys.pycache_prefix,
@@ -1266,6 +1463,7 @@ def production_prepare(config_path, *, mode='validate', expected_config_sha=None
         _, commitment = prepare_once(public, config['private_root'], commitments=commitments,
                                      heldout=heldout, tokenizer=tokenizer, wrapper_bytes=wrapper_bytes,
                                      claim_phase=claim, observe_inventory=observe_with_cache,
+                                     verify_validation=lambda _path: verify_validation(),
                                      config_bytes=config_bytes, config_path=config_path,
                                      nonce_source=secrets.token_bytes)
         return {'status': 'sealed_private', 'heldout_commitment': commitment['heldout_commitment'],
@@ -1275,7 +1473,8 @@ def production_prepare(config_path, *, mode='validate', expected_config_sha=None
 def main():
     import argparse
     parser = argparse.ArgumentParser(description='Prepare one private, precommitted natural held-out split.')
-    parser.add_argument('mode', choices=('validate', 'prepare', 'supervise-prepare', 'observe-prepare'))
+    parser.add_argument('mode', choices=('validate', 'prepare', 'supervise-prepare', 'observe-prepare',
+                                         'observe-validation'))
     parser.add_argument('--config', required=True)
     parser.add_argument('--config-sha')
     args = parser.parse_args()
