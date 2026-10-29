@@ -32,7 +32,8 @@ _OP_KEYS = frozenset({'schema', 'protocol_sha256', 'checkpoint_revision',
     'auditor_source_sha256', 'gate_source_sha256', 'inventory_source_sha256',
     'inventory_source_commit', 'accounting_amendment_sha256', 'lease_source_sha256'})
 _OP_V2_KEYS = _OP_KEYS | {'preparation_child_source_sha256',
-                          'preparation_audit_source_sha256', 'outer_observer_source_sha256'}
+                          'preparation_audit_source_sha256', 'outer_observer_source_sha256',
+                          'gate_allocation_caller_source_sha256', 'gate_transition_caller_source_sha256'}
 _STUDY_FREEZE = 'c327e191214cfb661b429c6d0a66900ca773c148782e1cc88be669c54deaee98'
 _STUDY_SOURCE = 'e84f66ae63b6f20e6df81789f2e4741b13598fb1'
 _STUDY_RUNTIME = 'b6860ec21fe6f0ab626164b86b494d783f3c18c92a697744b118be4cdb33754e'
@@ -177,7 +178,8 @@ def _check_inputs(public, site_nonce, site_record_bytes, publication_check, sour
             _hex(binding[key])
         if schema == 'mlg-injection-heldout-operational-binding-v2':
             for key in ('preparation_child_source_sha256', 'preparation_audit_source_sha256',
-                        'outer_observer_source_sha256'):
+                        'outer_observer_source_sha256', 'gate_allocation_caller_source_sha256',
+                        'gate_transition_caller_source_sha256'):
                 _hex(binding[key])
         if type(binding['inventory_source_commit']) is not str or not _HEX40.fullmatch(binding['inventory_source_commit']):
             raise CustodyError('inventory source revision is invalid')

@@ -149,7 +149,9 @@ class InjectionCustodyTests(unittest.TestCase):
         binding.update({'schema': 'mlg-injection-heldout-operational-binding-v2',
             'preparation_child_source_sha256': '1' * 64,
             'preparation_audit_source_sha256': '2' * 64,
-            'outer_observer_source_sha256': '3' * 64})
+            'outer_observer_source_sha256': '3' * 64,
+            'gate_allocation_caller_source_sha256': '4' * 64,
+            'gate_transition_caller_source_sha256': '5' * 64})
         raw = canonical(binding)
         return replace(self.inputs, operational_binding_bytes=raw, operational_binding_sha256=digest(raw))
 
@@ -217,7 +219,8 @@ class InjectionCustodyTests(unittest.TestCase):
                 custody.prepare_study_once(self.inputs, self.root, self.root / 'fake-ledger', **options)
             self.assertEqual(self.claim.events, [])
             for field in ('preparation_child_source_sha256', 'preparation_audit_source_sha256',
-                          'outer_observer_source_sha256'):
+                          'outer_observer_source_sha256', 'gate_allocation_caller_source_sha256',
+                          'gate_transition_caller_source_sha256'):
                 with self.subTest(field=field):
                     altered = json.loads(self.v2_public().operational_binding_bytes)
                     altered[field] = 'NOT-A-SHA256'
