@@ -30,7 +30,10 @@ output. All four target doses and both controls' realized doses were nonzero
 and within the predeclared 5% matching tolerance. The reflected control moves
 opposite the clean-donor direction at the selected site; the off-target control
 scales its own clean-donor direction to the selected dose, and can extrapolate
-beyond the clean state. Neither is a null or a functionally matched control.
+beyond the clean state. In these four cases it extrapolated approximately
+682 to 50,480 times the natural off-target clean-donor displacement. Neither
+is a null or a functionally matched control; equal input-state L2 does not
+equalize downstream sensitivity or how natural the displaced states are.
 The off-target token is chosen with knowledge of the injected label solely for
 this evaluation. The selected patch is a later block output, not the actual
 embedding injection boundary. In particular, the large residual contribution
