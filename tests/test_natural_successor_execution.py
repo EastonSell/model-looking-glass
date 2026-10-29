@@ -42,13 +42,21 @@ def fabricated(monkeypatch):
     inventory = commitments.load_inventory_snapshot(exposures.canonical_inventory_bytes(),
                                                      exposures.INVENTORY_SHA256)
     old_commitment = 'b' * 64
-    receipt = canonical({'schema': 'mlg-natural-external-input-comparison-v1',
+    receipt = canonical({'schema': 'mlg-natural-successor-public-support-comparison-v1',
                          'status': 'clear', 'comparison': 'bidirectional-complete-row-prefix',
-                         'natural_heldout_commitment': old_commitment,
-                         'natural_prediction_freeze_sha256': freeze.sha256,
-                         'public_input_file_sha256': hashlib.sha256(input_bytes).hexdigest(),
-                         'natural_case_count': 16, 'public_case_count': 256,
-                         'comparator_source_sha256': 'c' * 64, 'observed_utc': 'fabricated'})
+                         'original_support_count': 128, 'successor_input_count': 256,
+                         'original_prefix_of_successor_count': 0, 'successor_prefix_of_original_count': 0,
+                         'original_sampler_source_commit': execution._OLD_SOURCE,
+                         'original_sampler_sha256': execution._OLD_SAMPLER,
+                         'original_binding_sha256': execution._OLD_BINDING,
+                         'original_commitment_file_sha256': execution._OLD_COMMITMENT_FILE,
+                         'original_heldout_commitment': old_commitment,
+                         'prediction_freeze_sha256': freeze.sha256, 'tokenizer_sha256': 'a' * 64,
+                         'original_support_sha256': execution._OLD_SUPPORT,
+                         'successor_pool_sha256': hashlib.sha256(pool_bytes).hexdigest(),
+                         'successor_inputs_sha256': hashlib.sha256(input_bytes).hexdigest(),
+                         'comparator_source_sha256': 'c' * 64,
+                         'scope': 'public conservative support only; no split, nonce, model or membership query'})
     pins = {'pool_sha256': hashlib.sha256(pool_bytes).hexdigest(),
             'protocol_sha256': 'd' * 64, 'exposure_sha256': inventory.sha256,
             'old_commitment': old_commitment, 'pool_clear_sha256': hashlib.sha256(receipt).hexdigest()}
@@ -87,6 +95,23 @@ def test_new_record_drives_exact_frozen_runner_without_reranking(fabricated, tmp
                           if row['case_id'] == f"heldout-{family['family_index']}-{index}")
             assert actual['input_ids'] == item['input_ids']
             assert actual['subject_index'] == item['subject_index']
+
+
+@pytest.mark.parametrize('field,value', [
+    ('status', 'collision'), ('original_support_count', True), ('successor_input_count', 255),
+    ('original_prefix_of_successor_count', 1), ('successor_prefix_of_original_count', False),
+    ('original_support_sha256', '0' * 64), ('original_heldout_commitment', '0' * 64),
+    ('successor_inputs_sha256', '0' * 64), ('tokenizer_sha256', '0' * 64),
+    ('comparator_source_sha256', '0' * 64), ('scope', 'private'),
+])
+def test_self_consistently_rehashed_bad_public_receipt_stops(fabricated, field, value):
+    receipt = json.loads(fabricated['pool_clearance_bytes'])
+    receipt[field] = value
+    raw = canonical(receipt)
+    pins = dict(fabricated['pins'], pool_clear_sha256=hashlib.sha256(raw).hexdigest())
+    with pytest.raises((ValueError, RuntimeError)):
+        execution._clearance(raw, pins, fabricated['input_sha256'], fabricated['tokenizer_sha256'],
+                             fabricated['comparator_sha256'], fabricated['freeze'].sha256)
 
 
 @pytest.mark.parametrize('change', [
