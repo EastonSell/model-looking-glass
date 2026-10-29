@@ -1,4 +1,4 @@
-"""Prospective noun-substitution CPU entry; real execution remains disabled.
+"""Source-bound entry for the prospective noun-substitution CPU study.
 
 The published case, exposure, custodian and prelaunch identities must be
 bound and independently reviewed before this entry can load a model or run.
