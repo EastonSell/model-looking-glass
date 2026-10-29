@@ -189,9 +189,9 @@ def _validate_rows(model, rows, heads, present_ids):
 def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata, phase,
          reference_observations=None):
     _validate_rows(model, rows, heads, present_ids)
-    if phase not in ("development", "evaluation", "exploratory") or type(metadata) is not dict:
+    if phase not in ("development", "evaluation", "exploratory", "fresh_context") or type(metadata) is not dict:
         raise ValueError("invalid phase or run metadata")
-    if phase in ("evaluation", "exploratory") and len(heads) != 2:
+    if phase != "development" and len(heads) != 2:
         raise ValueError("evaluation requires candidate and comparator heads")
     if phase == "exploratory" and (type(reference_observations) is not tuple or len(reference_observations) != 16
             or any(type(pair) is not tuple or len(pair) != 2 or any(type(value) is not bytes or not value for value in pair)
@@ -203,9 +203,11 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
             or any(type(i) is not int or not 0 <= i < model.config.vocab_size for i in secondary_ids)
             or secondary_ids[0] == secondary_ids[1])):
         raise ValueError("invalid secondary scored-token IDs")
-    version = "v3" if phase == "exploratory" else "v2"
-    opposite_xor = 3 if phase == "exploratory" else 1
-    protocol = "distilgpt2-agreement-heads-fixed-donor-v3" if phase == "exploratory" else "distilgpt2-agreement-heads-v2"
+    version = "v4-1" if phase == "fresh_context" else ("v3" if phase == "exploratory" else "v2")
+    opposite_xor = 3 if phase in ("exploratory", "fresh_context") else 1
+    protocol = ("distilgpt2-agreement-heads-fresh-context-v4-1" if phase == "fresh_context" else
+                "distilgpt2-agreement-heads-fixed-donor-v3" if phase == "exploratory" else
+                "distilgpt2-agreement-heads-v2")
     journal = AgreementJournal(directory, {"phase": phase, **metadata, "protocol": protocol},
                                max_total_bytes=128 * 1024 * 1024,
                                max_forward_bytes=1024 * 1024, max_events=1000,
@@ -296,7 +298,7 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
                 contrast = float(sign * (margins["same"] - margins["opposite"]))
                 binary64_rounding_probe()
                 effects[head].append(contrast)
-                details.append({"head": head, "target": target, "sign": sign,
+                detail = {"head": head, "target": target, "sign": sign,
                                 "clean_margin": _margin(observations[target][1], present_ids),
                                 "opposite_margin": margins["opposite"], "same_margin": margins["same"],
                                 "D": contrast, "receiver_norm": cell["receiver_norm"], "requested_q": q,
@@ -306,7 +308,12 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
                                 "secondary": (None if secondary_ids is None else
                                     {"clean_margin": _margin(observations[target][1], secondary_ids),
                                      "opposite_margin": secondary["opposite"], "same_margin": secondary["same"],
-                                     "D": float(sign * (secondary["same"] - secondary["opposite"]))})})
+                                     "D": float(sign * (secondary["same"] - secondary["opposite"]))})}
+                if phase == "fresh_context":
+                    distances = {item["kind"]: item["distance"] for item in cell["donors"]}
+                    detail["donor_distances"] = distances
+                    detail["interpolation_fractions"] = {name: q / distance for name, distance in distances.items()}
+                details.append(detail)
         for index in range(16):
             before, after, last = call(index, 0, "repeat")
             if (_bits(before) != _bits(observations[index][0]) or _bits(after) != _bits(before)
@@ -318,7 +325,7 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
                    "candidate": ranking[0]["head"] if phase == "development" else heads[0],
                    "comparator": ranking[1]["head"] if phase == "development" else heads[1],
                    "details": details}
-        if phase == "evaluation":
+        if phase in ("evaluation", "fresh_context"):
             summary["evaluation"] = _evaluation_rule(details, heads[0], heads[1])
         elif phase == "exploratory":
             summary["comparison"] = _exploratory_comparison(details, heads[0], heads[1])
@@ -358,3 +365,14 @@ def run_fixed_donor_exploration(model, rows, directory, *, candidate, comparator
     return _run(model, rows, directory, heads=(candidate, comparator), present_ids=present_ids,
                 secondary_ids=secondary_ids, metadata=metadata, phase="exploratory",
                 reference_observations=reference_observations)
+
+
+def run_fresh_context(model, rows, directory, *, candidate, comparator, metadata,
+                      present_ids=(318, 389), secondary_ids=(373, 547)):
+    """Run fixed fresh quartets using the same-other-lemma donor mapping.
+
+    The caller owns source, case, exposure and process admission; this primitive
+    alone does not establish that the supplied rows are fresh.
+    """
+    return _run(model, rows, directory, heads=(candidate, comparator), present_ids=present_ids,
+                secondary_ids=secondary_ids, metadata=metadata, phase="fresh_context")
