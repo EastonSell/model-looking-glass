@@ -332,6 +332,7 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
                     self.assertEqual(raw(row, "before"), reference["pre"])
                     self.assertEqual(raw(row, "after"), reference["post"])
                     self.assertEqual(reference["post"], reference["donor"])
+                    self.assertEqual(event["source_tensor_sha256"], hashlib.sha256(reference["donor"]).hexdigest())
                     self.check_whole_witness(row, raw, target, "last", reference["whole_pre"], reference["whole_post"])
                     if target == donor:
                         full = raw(row, "last_logits")

@@ -186,7 +186,8 @@ for enabled in (False, True):
             # The child without -X reads its default cache, even if the parent
             # test interpreter has its own pycache_prefix.
             default_cache = source.parent / "__pycache__" / f"{source.stem}.{sys.implementation.cache_tag}.pyc"
-            py_compile.compile(str(source), cfile=str(default_cache), doraise=True, optimize=0)
+            py_compile.compile(str(source), cfile=str(default_cache), doraise=True, optimize=0,
+                               invalidation_mode=py_compile.PycInvalidationMode.TIMESTAMP)
             stat = source.stat()
             source.write_text("VALUE = 2\n", encoding="utf-8")
             os.utime(source, ns=(stat.st_atime_ns, stat.st_mtime_ns))
@@ -206,6 +207,7 @@ for enabled in (False, True):
             environment = os.environ.copy()
             environment["PYTHONPYCACHEPREFIX"] = str(Path(tmp) / "environment-cache")
             environment["PYTHONOPTIMIZE"] = "1"
+            environment["SOURCE_DATE_EPOCH"] = "946684800"
             result = subprocess.run([
                 sys.executable, "-B", "-X", f"pycache_prefix={parent_prefix}",
                 "-m", "unittest", "discover", "-s", "tests",
