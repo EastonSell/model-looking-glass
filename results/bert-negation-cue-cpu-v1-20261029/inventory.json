@@ -1,0 +1,61 @@
+{
+  "files": {
+    "README.md": {
+      "bytes": 7677,
+      "sha256": "cb8e6a5433c1d0450a483bf4cf2e910951d82b2af8f912931f952b378f155d41"
+    },
+    "audit_full.py": {
+      "bytes": 12931,
+      "sha256": "46569d7aa5dd80ff9424170c9fbd65da049edb0e50f72f24fddbc304969b0c75"
+    },
+    "audit_scores.py": {
+      "bytes": 8094,
+      "sha256": "482ecf5b523761dd3c249d430350696bd2ff663f15a8538c33ad2af3a249fef7"
+    },
+    "controller-stdout.txt": {
+      "bytes": 134,
+      "sha256": "d9c47df4fc2845b39beba9483f8e0a1621b9ca3a024b127ca5391d715e13615d"
+    },
+    "descriptive-summary.json": {
+      "bytes": 27298,
+      "sha256": "0820478e3b2f4ef8f1d942a63a8a2614cbcfb6379fe721482596f2bf7f0c8bcc"
+    },
+    "exit-observation.json": {
+      "bytes": 162,
+      "sha256": "4394636687c2ef023bd8a5ddebf1dd7e1e03ffca151ab3b1a47a396765d67bb2"
+    },
+    "full-audit.json": {
+      "bytes": 2785,
+      "sha256": "dab44c314c5c09c306c1c64aed794d147b2197079ddd921a2c22eebcddffc4f1"
+    },
+    "manifest.json": {
+      "bytes": 2089,
+      "sha256": "4308e7977e36eb731948193cce27ffa399421bf1bd8bbdd4e42dfa7cc6f4a8ff"
+    },
+    "no-forward-preflight.json": {
+      "bytes": 2191,
+      "sha256": "16637b79af5a649ed44ba0377217d1085a63e84c4b5e375e8fdf58d9a55f050f"
+    },
+    "no-forward-preflight.py": {
+      "bytes": 2822,
+      "sha256": "dd0a546f062518b7b4e0ed53d1177ffb56ba7906fdab81c19f21980183d4eb7d"
+    },
+    "protocol.md": {
+      "bytes": 9722,
+      "sha256": "624210b55973b79b421256481da231b3c7ae5268ef43c9fd8d30f6b6caf5d96d"
+    },
+    "result.json": {
+      "bytes": 84217,
+      "sha256": "20bcd1777e343a268e73042e664bfeb0603a01791ae0b16d908f5d5ea6d08f9b"
+    },
+    "scalar-audit.json": {
+      "bytes": 5555,
+      "sha256": "6ccca61ccb155d4f4cd14556a89065ee5d7430f6d481c9dac8875e2a8304de34"
+    },
+    "started.json": {
+      "bytes": 2041,
+      "sha256": "f6f27ad1c38b830a8b605cd544ea45cb4282271b69d10bf9678c82a2d6a33681"
+    }
+  },
+  "schema": "bert-negation-compact-public-inventory"
+}
