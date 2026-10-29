@@ -23,7 +23,8 @@ import weakref
 
 from .device_lease import DeviceLease
 from .device_identity import resolve_device_identity
-from .gpu_oneshot import (_runtime_uuid, _write_json, _smi_snapshot,
+from .bert_gpu_evidence import write_json_new as _write_json
+from .gpu_oneshot import (_runtime_uuid, _smi_snapshot,
                           _owner_presence_after_exit, _verify_controller_import_mode)
 from .memory_budget import CudaMemorySnapshot, MemoryBudget
 from .supervisor import OwnerSession, run_supervised
@@ -655,6 +656,7 @@ def owner_main(run_dir, cache_dir, run_id):
 
 
 _SOURCE_PATHS = ("looking_glass/__init__.py", "looking_glass/bert_gpu_calibration.py",
+                 "looking_glass/bert_gpu_evidence.py", "docs/BERT_GPU_DIAGNOSTIC_WRITER_V2.md",
                  "looking_glass/gpu_oneshot.py", "looking_glass/device_identity.py",
                  "looking_glass/device_lease.py", "looking_glass/supervisor.py",
                  "looking_glass/memory_budget.py", "looking_glass/intervention_plan.py",
