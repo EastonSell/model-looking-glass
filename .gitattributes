@@ -18,3 +18,12 @@
 /tests/test_france_baseline_audit_v2.py -text
 /looking_glass/targeted_edit_france_baseline_once_v2.py -text
 /tests/test_france_baseline_once_v2.py -text
+/scripts/france_baseline_cpu_owner_v2.py -text
+/scripts/observe_france_baseline_v2.py -text
+/tests/test_france_cpu_owner_v2.py -text
+/tests/test_france_outer_observer_v2.py -text
+/experiments/france_full_top_public_exposure_v4.json -text
+/experiments/france_full_top_public_v44_addendum_v1.json -text
+/experiments/france_full_top_public_mask_addendum_v1.json -text
+/experiments/france_full_top_public_support_v1.json -text
+/experiments/france_full_top_public_copy_addendum_v1.json -text

@@ -47,7 +47,7 @@ The [single-use call boundary](../looking_glass/targeted_edit_france_baseline_on
 fences the model even if the Python return is interrupted. The separate
 [stdlib saved-byte auditor](../looking_glass/targeted_edit_france_baseline_audit_v2.py)
 reconstructs all baseline tops and gates from the retained binary32 words.
-These are components, not a source-bound model-loading supervisor. A saved
+A separate supervised CPU owner and outer observer now bind these components to a recorded source inventory; an independent public-blob check remains necessary. A saved
 `completed.json` or `owner-return.json` remains provisional until a direct
 child exit and all required source, public-input and cleanup checks have been
 independently assessed. An uncertain call is never retried.
@@ -59,3 +59,7 @@ the declared Torch and NumPy dependencies. The three `test_france_baseline_*`
 files exercise the journal, independent auditor and return boundary. They use
 small fabricated tensors and never load a checkpoint. The tokenizer observations, scientific
 reviews and executable source must be bound independently before a model run.
+
+The [CPU parent and child](../scripts/france_baseline_cpu_owner_v2.py) use a fixed, dedicated study root, a durable one-shot claim, and an independently observed direct-process [start gate and exit](../scripts/observe_france_baseline_v2.py). This root coordinates this study, not unrelated CPU work. The source revision is an operator-reported label until the checked source bytes are compared separately with public Git blobs. A no-model rehearsal and small synthetic failure tests do not establish a pretrained run.
+
+The [public inventory comparison](../experiments/france_full_top_public_exposure_v4.json), [v44 additions](../experiments/france_full_top_public_v44_addendum_v1.json), [active-mask supplement](../experiments/france_full_top_public_mask_addendum_v1.json), [public support comparison](../experiments/france_full_top_public_support_v1.json), and [pending copying comparison](../experiments/france_full_top_public_copy_addendum_v1.json) cover their named public inputs only. Later additions require fresh checks. Unknown, protected and pretraining history remains unverified; no protected or flagged split was queried.
