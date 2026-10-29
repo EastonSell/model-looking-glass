@@ -71,6 +71,15 @@ def _digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
+def _same_json(left, right):
+    """Compare JSON values with exact scalar types, including int versus float."""
+    try:
+        options = {'sort_keys': True, 'ensure_ascii': True, 'allow_nan': False, 'separators': (',', ':')}
+        return json.dumps(left, **options) == json.dumps(right, **options)
+    except (TypeError, ValueError, RecursionError):
+        return False
+
+
 def _bootstrap_child(config_path, operational_root):
     """Authenticate the published operation and compile exactly its child bytes."""
     config = _json(_read(config_path, 32768))
@@ -296,11 +305,15 @@ def _write_new(path, value):
     return raw
 
 
-def _side_roots(child, config, config_path):
+def _validation_root(phase, operation_bytes):
+    return Path(phase).parent / ('natural-heldout-validation-' + _digest(operation_bytes))
+
+
+def _side_roots(child, config, config_path, validation_root):
     phase = Path(config['phase_dir'])
     claim = _json(child._read(phase / 'claim.json', 8192))
     paths = [Path(config['preparation_supervisor']), Path(config_path),
-             Path(claim['preparation_config_path'])]
+             Path(claim['preparation_config_path']), Path(validation_root)]
     result = []
     for path in paths:
         if path not in result:
@@ -312,9 +325,144 @@ def _verify_public_commitment(child, config, operation_bytes):
     child._check_public_operation(config, operation_bytes, require_commitment=True)
 
 
-def execute(config_path):
+def _validation_account(phase, *, supervisor_record, terminal_record=False, reserve=0):
+    """Bound the separate rehearsal; it may contain only its fixed metadata."""
+    phase = Path(phase)
+    info = phase.lstat()
+    if (not stat.S_ISDIR(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400
+            or {path.name for path in phase.iterdir()} != {'owner', 'validation-config.json'}):
+        raise OwnerError('validation requires a separate unclaimed directory')
+    directory = phase / 'owner'
+    info = directory.lstat()
+    if not stat.S_ISDIR(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+        raise OwnerError('validation output is not an ordinary directory')
+    expected = {'stdout.txt', 'stderr.txt', 'runtime-overrides.json',
+                'checkpoint-staging-before.json', 'checkpoint-staging-after.json'}
+    if supervisor_record:
+        expected.add('supervisor.json')
+    if terminal_record:
+        expected.add('owner-terminal.json')
+    if {path.name for path in directory.iterdir()} != expected:
+        raise OwnerError('validation output contains an unexpected artifact')
+    total = len(_read(phase / 'validation-config.json', 32768))
+    total += sum(len(_read(directory / name, 2 * 1024 * 1024)) for name in expected)
+    if type(reserve) is not int or reserve < 0 or total + reserve > 16 * 1024 * 1024:
+        raise OwnerError('validation metadata exceeds its bound')
+    return {'apparent_bytes': total, 'tensor_bytes': 0, 'phase_claim': False}
+
+
+def _staging_names(entries):
+    if type(entries) is not list or len(entries) > 4096:
+        raise OwnerError('validation staging inventory is malformed')
+    names = []
+    for item in entries:
+        if (type(item) is not dict or set(item) != {'name', 'directory', 'reparse', 'mtime_ns'}
+                or type(item['name']) is not str
+                or not item['name'].startswith(('looking-glass-stage-', 'agreement-tokenizer-'))
+                or type(item['directory']) is not bool or type(item['reparse']) is not bool
+                or type(item['mtime_ns']) is not int or item['mtime_ns'] < 0):
+            raise OwnerError('validation staging entry is malformed')
+        names.append(item['name'])
+    if names != sorted(set(names)):
+        raise OwnerError('validation staging entries are not unique and ordered')
+    return set(names)
+
+
+def _check_validation_artifacts(phase, directory, exit_code, reaped):
+    output = Path(phase) / 'owner'
+    if (type(exit_code) is not int or exit_code != 0 or reaped is not True
+            or os.path.lexists(directory)
+            or _json(_read(output / 'stdout.txt', 1024 * 1024)) != {'status': 'validated_no_model_forward'}
+            or _read(output / 'stderr.txt', 1024 * 1024) != b''):
+        raise OwnerError('validation child did not finish cleanly')
+    overrides = _json(_read(output / 'runtime-overrides.json', 8192))
+    before = _json(_read(output / 'checkpoint-staging-before.json', 512 * 1024))
+    after = _json(_read(output / 'checkpoint-staging-after.json', 512 * 1024))
+    if (overrides != {'schema': 'mlg-natural-heldout-runtime-overrides-v1',
+                      'MKL_CBWR': None, 'ATEN_CPU_CAPABILITY': None}
+            or type(before) is not dict or type(before.get('cache_free_bytes')) is not int
+            or type(before.get('destination_free_bytes')) is not int
+            or type(before.get('required_free_bytes')) is not int
+            or before['required_free_bytes'] != 3 * 1024 * 1024 * 1024
+            or min(before['cache_free_bytes'], before['destination_free_bytes']) < before['required_free_bytes']
+            or type(before.get('entries')) is not list or type(after) is not dict
+            or type(after.get('entries')) is not list or after.get('new_unresolved_names') != []):
+        raise OwnerError('validation runtime or staging observation differs')
+    if _staging_names(after['entries']) - _staging_names(before['entries']):
+        raise OwnerError('validation left a new cache staging entry')
+    return None
+
+
+def audit_validation(phase, directory, exit_code, reaped):
+    _check_validation_artifacts(phase, directory, exit_code, reaped)
+    accounting = _validation_account(phase, supervisor_record=False, reserve=4 * 1024 * 1024)
+    return {'status': 'incomplete', 'inventory': {'retained_tensor_bytes': 0},
+            'validation_only': True, 'validation_accounting': accounting}
+
+
+def _check_validation_receipt(child, phase, config, binding_raw, operation_bytes, *, child_path, bootstrap, interpreter):
+    validation = _validation_root(phase, operation_bytes)
+    config_path = validation / 'validation-config.json'
+    validation_raw, validation_config = child._load_config(config_path)
+    for key in ('frozen_root', 'cache_dir', 'public_files'):
+        if validation_config[key] != config[key]:
+            raise OwnerError('validation configuration differs from this owner')
+    left, right = dict(validation_config['public_urls']), dict(config['public_urls'])
+    left.pop('commitment_url'); right.pop('commitment_url')
+    if left != right or Path(validation_config['phase_dir']) != validation:
+        raise OwnerError('validation publication or directory differs from this owner')
+    output = validation / 'owner'
+    _check_validation_artifacts(validation, output / 'attempt', 0, True)
+    terminal_raw = _read(output / 'owner-terminal.json', 65536)
+    terminal = _json(terminal_raw)
+    supervisor_raw = _read(output / 'supervisor.json', 2 * 1024 * 1024)
+    supervisor = _json(supervisor_raw)
+    command = supervisor.get('command') if type(supervisor) is dict else None
+    if (type(terminal) is not dict or terminal.get('schema') != 'mlg-natural-heldout-owner-validation-v1'
+            or terminal.get('status') != 'validated_no_model_forward' or terminal.get('cleanup_verified') is not True
+            or terminal.get('binding_sha256') != _digest(binding_raw)
+            or terminal.get('operational_binding_sha256') != _digest(operation_bytes)
+            or terminal.get('validation_config_sha256') != _digest(validation_raw)
+            or terminal.get('supervisor_sha256') != _digest(supervisor_raw)
+            or terminal.get('scientific_validation') != 'not applicable; no held-out evidence'
+            or type(supervisor) is not dict or supervisor.get('status') != 'incomplete'
+            or type(supervisor.get('exit_code')) is not int or supervisor['exit_code'] != 0
+            or type(supervisor.get('child_pid')) is not int or not 0 < supervisor['child_pid'] <= 0xffffffff
+            or any(supervisor.get(key) is not True for key in
+                   ('child_reaped', 'job_drained', 'job_closed', 'logs_complete', 'cleanup_verified'))
+            or supervisor.get('quarantined') is not False or supervisor.get('retry_safe') is not False
+            or type(supervisor.get('postexit_active_processes')) is not int
+            or supervisor['postexit_active_processes'] != 0 or supervisor.get('supervisor_error') is not None
+            or supervisor.get('log_overflow') is not False or supervisor.get('cancellation_requested') is not False
+            or supervisor.get('audit', {}).get('validation_only') is not True
+            or supervisor.get('audit', {}).get('status') != 'incomplete'
+            or not _same_json(supervisor.get('audit', {}).get('inventory'), {'retained_tensor_bytes': 0})
+            or supervisor.get('retained_tensor_files', {}).get('accounting_complete') is not True
+            or type(supervisor['retained_tensor_files'].get('total_bytes')) is not int
+            or supervisor['retained_tensor_files']['total_bytes'] != 0
+            or type(command) is not list or len(command) != 11
+            or command[0] != interpreter or command[1:5] != ['-I', '-S', '-B', '-X']
+            or type(command[5]) is not str or not command[5].startswith('pycache_prefix=')
+            or not Path(command[5][len('pycache_prefix='):]).is_absolute()
+            or command[6:] != ['-c', bootstrap, child_path, '--validate-only', str(config_path)]):
+        raise OwnerError('validation receipt is incomplete or mismatched')
+    for name in ('stdout', 'stderr'):
+        if supervisor.get(name + '_sha256') != _digest(_read(output / (name + '.txt'), 1024 * 1024)):
+            raise OwnerError('validation log differs from its supervisor')
+    accounting = _validation_account(validation, supervisor_record=True, terminal_record=True)
+    prior = dict(accounting)
+    prior['apparent_bytes'] -= len(terminal_raw)
+    callback_accounting = dict(prior)
+    callback_accounting['apparent_bytes'] -= len(supervisor_raw)
+    if (not _same_json(prior, terminal.get('validation_accounting_before_terminal'))
+            or not _same_json(callback_accounting, supervisor.get('audit', {}).get('validation_accounting'))):
+        raise OwnerError('validation accounting differs from its receipt')
+    return validation
+
+
+def execute(config_path, *, validation_only=False):
     """Run a previously committed phase; all paths and logs remain private."""
-    if _QUARANTINED:
+    if _QUARANTINED or type(validation_only) is not bool:
         raise OwnerError('source or process custody is unverified; stop')
     operational_root = Path(__file__).resolve(strict=True).parents[1]
     child, operation_bytes, source_bytes = _bootstrap_child(config_path, operational_root)
@@ -353,7 +501,10 @@ def execute(config_path):
                 raise OwnerError('operational source changed before protection')
         if child._read(config['public_files']['operational_binding'], 2 * 1024 * 1024) != operation_bytes:
             raise OwnerError('operational binding changed before protection')
-        _verify_public_commitment(child, config, operation_bytes)
+        if validation_only:
+            child._check_public_operation(config, operation_bytes, require_commitment=False)
+        else:
+            _verify_public_commitment(child, config, operation_bytes)
         custody = child._load_custody(operational_root / SOURCE_FILES['custody'], source_bytes['custody'])
         if custody.SOURCE_SUFFIXES != SOURCE_FILES:
             raise OwnerError('custodian operational source schema differs')
@@ -363,8 +514,8 @@ def execute(config_path):
         custody._verify_local_operational_sources(public, operational_root)
         frozen['_configure_runtime']()
         frozen['_published'](binding_raw, config['public_urls']['binding_url'])
-        if frozen['_bytes'](frozen['build_binding'](config['cache_dir'], expected_source=initial)) != binding_raw:
-            raise OwnerError('runtime, assets or source differ from discovery')
+        # The child checks the full runtime, tokenizer and asset binding before
+        # model loading. Do not create an unobserved parent tokenizer stage.
         from looking_glass import pretrained_number_commitments as commitments
         from looking_glass import agreement_heldout as heldout
         _, _, snapshot = custody.check_public_inputs(public, commitments=commitments, heldout=heldout,
@@ -373,20 +524,38 @@ def execute(config_path):
         if (observed.get('inventory_sha256') != snapshot.sha256
                 or observed.get('source_sha256') != custody.CURRENT_INVENTORY_SOURCE_SHA256):
             raise OwnerError('current exposure inventory changed before owner')
-        custody.verify_preparation_supervisor(phase, config['preparation_supervisor'], public,
-                                               source_bytes['custody'])
-        if os.path.lexists(output) or os.path.lexists(phase / 'owner-started.json'):
-            raise OwnerError('held-out owner is already present or started')
-        side_roots = _side_roots(child, config, config_path)
-        custody.account_phase(phase, reserve_side_bytes=4 * 1024 * 1024, extra_side_roots=side_roots)
+        custody.inspect_cache_staging(config['cache_dir'])
+        custody.inspect_evidence_destination(phase)
+        if validation_only:
+            if (phase != _validation_root(phase, operation_bytes)
+                    or Path(config_path) != phase / 'validation-config.json'
+                    or not phase.is_dir()
+                    or {path.name for path in phase.iterdir()} != {'validation-config.json'}
+                    or any(os.path.lexists(phase / name) for name in
+                           ('claim.json', 'nonce.bin', 'heldout-record.json', 'commitment.json', 'owner-started.json'))):
+                raise OwnerError('validation requires a fresh unclaimed directory')
+            side_roots = ()
+        else:
+            validation = _check_validation_receipt(child, phase, config, binding_raw, operation_bytes,
+                                                    child_path=str(operational_root / SOURCE_FILES['child']),
+                                                    bootstrap=frozen['BOOTSTRAP'], interpreter=sys.executable)
+            custody.verify_preparation_supervisor(phase, config['preparation_supervisor'], public,
+                                                   source_bytes['custody'])
+            if os.path.lexists(output) or os.path.lexists(phase / 'owner-started.json'):
+                raise OwnerError('held-out owner is already present or started')
+            side_roots = _side_roots(child, config, config_path, validation)
+            custody.account_phase(phase, reserve_side_bytes=4 * 1024 * 1024, extra_side_roots=side_roots)
         supervisor = custody._load_file_module('_mlg_natural_heldout_supervisor_owner',
                                                 operational_root / SOURCE_FILES['supervisor'],
                                                 _digest(source_bytes['supervisor']))
         state.update({'custody': custody, 'public': public, 'commitments': commitments,
-                      'supervisor': supervisor, 'side_roots': side_roots,
-                      'commitment': child._read(phase / 'commitment.json', 8192)})
+                      'supervisor': supervisor, 'side_roots': side_roots})
+        if not validation_only:
+            state['commitment'] = child._read(phase / 'commitment.json', 8192)
 
     def callback(directory, exit_code, reaped):
+        if validation_only:
+            return audit_validation(phase, directory, exit_code, reaped)
         if (child._read(phase / 'commitment.json', 8192) != state['commitment']
                 or child._read(config_path, 32768) != config_raw):
             raise OwnerError('commitment or configuration changed during execution')
@@ -406,7 +575,10 @@ def execute(config_path):
         acquired.append(duplicates)
         inherited = duplicates.__enter__()
         command = [sys.executable, '-I', '-S', '-B', '-X', 'pycache_prefix=' + sys.pycache_prefix,
-                   '-c', frozen['BOOTSTRAP'], str(operational_root / SOURCE_FILES['child']), str(config_path)]
+                   '-c', frozen['BOOTSTRAP'], str(operational_root / SOURCE_FILES['child'])]
+        if validation_only:
+            command.append('--validate-only')
+        command.append(str(config_path))
         return state['supervisor'].supervise_heldout(command, output, os.environ.copy(),
                                                       audit_result=callback, inherited_handles=inherited)
 
@@ -420,6 +592,22 @@ def execute(config_path):
         receipt_raw = child._read(output / 'supervisor.json', 2 * 1024 * 1024)
         if not control._same_json(_json(receipt_raw), verdict):
             raise OwnerError('supervisor receipt differs')
+        if validation_only:
+            if (verdict.get('status') != 'incomplete' or verdict.get('exit_code') != 0
+                    or verdict.get('child_reaped') is not True or verdict.get('job_drained') is not True
+                    or verdict.get('job_closed') is not True or verdict.get('logs_complete') is not True
+                    or verdict.get('supervisor_error') is not None or verdict.get('log_overflow') is not False
+                    or verdict.get('audit', {}).get('validation_only') is not True
+                    or type(verdict.get('postexit_active_processes')) is not int
+                    or verdict['postexit_active_processes'] != 0):
+                raise OwnerError('validation process cleanup or marker differs')
+            accounting = _validation_account(phase, supervisor_record=True, reserve=65536)
+            return {'schema': 'mlg-natural-heldout-owner-validation-v1',
+                    'status': 'validated_no_model_forward', 'supervisor_sha256': _digest(receipt_raw),
+                    'binding_sha256': _digest(binding_raw), 'operational_binding_sha256': _digest(operation_bytes),
+                    'validation_config_sha256': _digest(config_raw),
+                    'cleanup_verified': True, 'validation_accounting_before_terminal': accounting,
+                    'scientific_validation': 'not applicable; no held-out evidence'}
         if (verdict.get('status') == 'evidence_complete'
                 and (type(verdict.get('postexit_active_processes')) is not int
                      or verdict['postexit_active_processes'] != 0)):
@@ -483,9 +671,12 @@ def main():
     previous = _ignore_console_interrupts()
     try:
         try:
-            if len(sys.argv) != 2:
+            if len(sys.argv) == 2:
+                result = execute(sys.argv[1])
+            elif len(sys.argv) == 3 and sys.argv[1] == '--validate-only':
+                result = execute(sys.argv[2], validation_only=True)
+            else:
                 raise OwnerError('one private configuration path is required')
-            result = execute(sys.argv[1])
         except BaseException as error:
             cancelled = isinstance(error, KeyboardInterrupt)
             try:
@@ -499,7 +690,7 @@ def main():
             raise SystemExit(130 if cancelled else 1) from None
         print(json.dumps({'status': result['status'], 'scientific_validation': result['scientific_validation']}),
               flush=True)
-        raise SystemExit(0 if result['status'] == 'evidence_complete' else 1)
+        raise SystemExit(0 if result['status'] in ('evidence_complete', 'validated_no_model_forward') else 1)
     finally:
         if not _QUARANTINED:
             for number, old in reversed(previous):
