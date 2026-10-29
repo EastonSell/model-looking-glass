@@ -1,0 +1,388 @@
+{
+  "receipt_sha256": "2ffc6adc91d51b3b6b91db587ad011d11eb72efc8d1eb614d0868fc1cff38ea9",
+  "result_sha256": "4a6c9251a5752714525836df2c29c9e1a8c8659430720a79da47e5f4f3fc18f1",
+  "families": [
+    {
+      "group": 1,
+      "arms": {
+        "h10_final": {
+          "repeat_delta": 0.003931938779260125,
+          "shuffle_mean_delta": 0.11420304746922276,
+          "contrast": -0.11027110868996264
+        },
+        "h2_final": {
+          "repeat_delta": -0.0297523340720674,
+          "shuffle_mean_delta": 0.21769606599173277,
+          "contrast": -0.24744840006380017
+        },
+        "h7_final": {
+          "repeat_delta": 0.019222602840172742,
+          "shuffle_mean_delta": 0.09075067523356554,
+          "contrast": -0.0715280723933928
+        },
+        "h3_final": {
+          "repeat_delta": 0.014636137734950982,
+          "shuffle_mean_delta": -0.05387631756759603,
+          "contrast": 0.06851245530254702
+        },
+        "h1_final": {
+          "repeat_delta": -0.03105261259115255,
+          "shuffle_mean_delta": 0.05806998397647408,
+          "contrast": -0.08912259656762664
+        },
+        "h10_target": {
+          "repeat_delta": 0.0032745458812433736,
+          "shuffle_mean_delta": 0.00940844409041001,
+          "contrast": -0.006133898209166636
+        }
+      },
+      "candidate_minus_arm": {
+        "h2_final": 0.13717729137383755,
+        "h7_final": -0.03874303629656983,
+        "h3_final": -0.17878356399250966,
+        "h1_final": -0.021148512122335997,
+        "h10_target": -0.104137210480796
+      }
+    },
+    {
+      "group": 2,
+      "arms": {
+        "h10_final": {
+          "repeat_delta": -0.3848137938011016,
+          "shuffle_mean_delta": 0.0036459203637813076,
+          "contrast": -0.3884597141648829
+        },
+        "h2_final": {
+          "repeat_delta": -0.8671513530700101,
+          "shuffle_mean_delta": 0.5700617476515445,
+          "contrast": -1.4372131007215545
+        },
+        "h7_final": {
+          "repeat_delta": -0.012324273236115069,
+          "shuffle_mean_delta": 0.01084709680070084,
+          "contrast": -0.023171370036815908
+        },
+        "h3_final": {
+          "repeat_delta": 0.14834509175129906,
+          "shuffle_mean_delta": -0.031043628095270986,
+          "contrast": 0.17938871984657004
+        },
+        "h1_final": {
+          "repeat_delta": -0.044991843519048724,
+          "shuffle_mean_delta": 0.007809042563961792,
+          "contrast": -0.05280088608301051
+        },
+        "h10_target": {
+          "repeat_delta": -0.015469809412417268,
+          "shuffle_mean_delta": 2.673951907331921e-05,
+          "contrast": -0.015496548931490587
+        }
+      },
+      "candidate_minus_arm": {
+        "h2_final": 1.0487533865566716,
+        "h7_final": -0.365288344128067,
+        "h3_final": -0.5678484340114529,
+        "h1_final": -0.33565882808187236,
+        "h10_target": -0.3729631652333923
+      }
+    },
+    {
+      "group": 3,
+      "arms": {
+        "h10_final": {
+          "repeat_delta": -0.25112774660045734,
+          "shuffle_mean_delta": 0.4703697724155642,
+          "contrast": -0.7214975190160215
+        },
+        "h2_final": {
+          "repeat_delta": -0.84388630969979,
+          "shuffle_mean_delta": -0.10334224311243083,
+          "contrast": -0.7405440665873592
+        },
+        "h7_final": {
+          "repeat_delta": 0.19500212411963003,
+          "shuffle_mean_delta": 0.22033152289878158,
+          "contrast": -0.025329398779151552
+        },
+        "h3_final": {
+          "repeat_delta": 0.2795872117033251,
+          "shuffle_mean_delta": 0.00872396806021758,
+          "contrast": 0.27086324364310754
+        },
+        "h1_final": {
+          "repeat_delta": 0.007697223551546006,
+          "shuffle_mean_delta": -0.007109996226509985,
+          "contrast": 0.014807219778055991
+        },
+        "h10_target": {
+          "repeat_delta": -0.01917719850761368,
+          "shuffle_mean_delta": 0.012548346271522052,
+          "contrast": -0.03172554477913573
+        }
+      },
+      "candidate_minus_arm": {
+        "h2_final": 0.019046547571337613,
+        "h7_final": -0.69616812023687,
+        "h3_final": -0.9923607626591291,
+        "h1_final": -0.7363047387940775,
+        "h10_target": -0.6897719742368859
+      }
+    },
+    {
+      "group": 4,
+      "arms": {
+        "h10_final": {
+          "repeat_delta": -0.3904771507104132,
+          "shuffle_mean_delta": 0.4694566824676141,
+          "contrast": -0.8599338331780273
+        },
+        "h2_final": {
+          "repeat_delta": -2.4082595621977436,
+          "shuffle_mean_delta": 0.33382539858074595,
+          "contrast": -2.7420849607784894
+        },
+        "h7_final": {
+          "repeat_delta": 0.12108101624504108,
+          "shuffle_mean_delta": 0.40476332351752004,
+          "contrast": -0.28368230727247895
+        },
+        "h3_final": {
+          "repeat_delta": 0.17610254115652246,
+          "shuffle_mean_delta": -0.1982772970171108,
+          "contrast": 0.3743798381736333
+        },
+        "h1_final": {
+          "repeat_delta": 0.027504519386581272,
+          "shuffle_mean_delta": 0.08514919273076386,
+          "contrast": -0.05764467334418259
+        },
+        "h10_target": {
+          "repeat_delta": 0.11711703640856008,
+          "shuffle_mean_delta": 0.04749885569630082,
+          "contrast": 0.06961818071225925
+        }
+      },
+      "candidate_minus_arm": {
+        "h2_final": 1.882151127600462,
+        "h7_final": -0.5762515259055483,
+        "h3_final": -1.2343136713516607,
+        "h1_final": -0.8022891598338447,
+        "h10_target": -0.9295520138902865
+      }
+    },
+    {
+      "group": 5,
+      "arms": {
+        "h10_final": {
+          "repeat_delta": 0.025166840035849333,
+          "shuffle_mean_delta": 0.25389661770736477,
+          "contrast": -0.22872977767151542
+        },
+        "h2_final": {
+          "repeat_delta": -0.06906375126152996,
+          "shuffle_mean_delta": 0.5347459773290474,
+          "contrast": -0.6038097285905774
+        },
+        "h7_final": {
+          "repeat_delta": -0.10068415009014627,
+          "shuffle_mean_delta": -0.6252693743915104,
+          "contrast": 0.5245852243013641
+        },
+        "h3_final": {
+          "repeat_delta": 0.043201839745517695,
+          "shuffle_mean_delta": -0.04217234176480537,
+          "contrast": 0.08537418151032306
+        },
+        "h1_final": {
+          "repeat_delta": -0.0018091066267011957,
+          "shuffle_mean_delta": 0.09259731359190315,
+          "contrast": -0.09440642021860435
+        },
+        "h10_target": {
+          "repeat_delta": -0.00218086429677522,
+          "shuffle_mean_delta": 0.0007337164521189857,
+          "contrast": -0.0029145807488942057
+        }
+      },
+      "candidate_minus_arm": {
+        "h2_final": 0.37507995091906193,
+        "h7_final": -0.7533150019728796,
+        "h3_final": -0.3141039591818385,
+        "h1_final": -0.13432335745291107,
+        "h10_target": -0.22581519692262123
+      }
+    },
+    {
+      "group": 6,
+      "arms": {
+        "h10_final": {
+          "repeat_delta": -0.01306087734384942,
+          "shuffle_mean_delta": 0.023394273205383342,
+          "contrast": -0.03645515054923276
+        },
+        "h2_final": {
+          "repeat_delta": -0.5332853937673652,
+          "shuffle_mean_delta": -0.06868193537339999,
+          "contrast": -0.46460345839396516
+        },
+        "h7_final": {
+          "repeat_delta": -0.3888863725198748,
+          "shuffle_mean_delta": -0.33317588858108066,
+          "contrast": -0.05571048393879413
+        },
+        "h3_final": {
+          "repeat_delta": 0.1920851638317922,
+          "shuffle_mean_delta": 0.07626896451686586,
+          "contrast": 0.11581619931492633
+        },
+        "h1_final": {
+          "repeat_delta": 0.09954942860851856,
+          "shuffle_mean_delta": 0.051468005852970254,
+          "contrast": 0.04808142275554831
+        },
+        "h10_target": {
+          "repeat_delta": 0.07945921999449457,
+          "shuffle_mean_delta": 0.027594361178284732,
+          "contrast": 0.051864858816209836
+        }
+      },
+      "candidate_minus_arm": {
+        "h2_final": 0.4281483078447324,
+        "h7_final": 0.01925533338956137,
+        "h3_final": -0.15227134986415908,
+        "h1_final": -0.08453657330478107,
+        "h10_target": -0.0883200093654426
+      }
+    },
+    {
+      "group": 7,
+      "arms": {
+        "h10_final": {
+          "repeat_delta": -0.14043789894431685,
+          "shuffle_mean_delta": 0.6332873651808872,
+          "contrast": -0.7737252641252041
+        },
+        "h2_final": {
+          "repeat_delta": -0.24807207979258672,
+          "shuffle_mean_delta": 0.5150673587543108,
+          "contrast": -0.7631394385468975
+        },
+        "h7_final": {
+          "repeat_delta": 0.04378067636932714,
+          "shuffle_mean_delta": -0.05661646765755964,
+          "contrast": 0.10039714402688679
+        },
+        "h3_final": {
+          "repeat_delta": 0.04445647164840469,
+          "shuffle_mean_delta": 0.041837821995095524,
+          "contrast": 0.0026186496533091644
+        },
+        "h1_final": {
+          "repeat_delta": -0.024043759807298393,
+          "shuffle_mean_delta": -0.08952575852153337,
+          "contrast": 0.06548199871423498
+        },
+        "h10_target": {
+          "repeat_delta": -0.0039405878229559765,
+          "shuffle_mean_delta": 0.0026474586375622167,
+          "contrast": -0.006588046460518193
+        }
+      },
+      "candidate_minus_arm": {
+        "h2_final": -0.010585825578306673,
+        "h7_final": -0.874122408152091,
+        "h3_final": -0.7763439137785133,
+        "h1_final": -0.8392072628394391,
+        "h10_target": -0.767137217664686
+      }
+    },
+    {
+      "group": 8,
+      "arms": {
+        "h10_final": {
+          "repeat_delta": -0.4575709605290561,
+          "shuffle_mean_delta": 0.2485577743668109,
+          "contrast": -0.706128734895867
+        },
+        "h2_final": {
+          "repeat_delta": -1.0927444531930923,
+          "shuffle_mean_delta": 0.20173118982414184,
+          "contrast": -1.2944756430172342
+        },
+        "h7_final": {
+          "repeat_delta": 0.18140028129109798,
+          "shuffle_mean_delta": 0.40517696998472247,
+          "contrast": -0.2237766886936245
+        },
+        "h3_final": {
+          "repeat_delta": -0.008790569467086007,
+          "shuffle_mean_delta": -0.1762444084946765,
+          "contrast": 0.1674538390275905
+        },
+        "h1_final": {
+          "repeat_delta": -0.152093920040399,
+          "shuffle_mean_delta": -0.05749427601043392,
+          "contrast": -0.0945996440299651
+        },
+        "h10_target": {
+          "repeat_delta": 0.0036113209270698388,
+          "shuffle_mean_delta": 0.005746103940861798,
+          "contrast": -0.0021347830137919592
+        }
+      },
+      "candidate_minus_arm": {
+        "h2_final": 0.5883469081213671,
+        "h7_final": -0.48235204620224253,
+        "h3_final": -0.8735825739234575,
+        "h1_final": -0.6115290908659019,
+        "h10_target": -0.703993951882075
+      }
+    }
+  ],
+  "means": {
+    "h10_final": -0.4781501377863392,
+    "h2_final": -1.0366648495874846,
+    "h7_final": -0.007276994098250866,
+    "h3_final": 0.15805089080900087,
+    "h1_final": -0.03252544737444374,
+    "h10_target": 0.007061204673183973
+  },
+  "paired": {
+    "h2_final": 0.5585147118011454,
+    "h7_final": -0.47087314368808836,
+    "h3_final": -0.6362010285953401,
+    "h1_final": -0.44562469041189545,
+    "h10_target": -0.4852113424595232
+  },
+  "top1": {
+    "clean": {
+      "repeated": 6,
+      "shuffled": 1
+    },
+    "h10_final": {
+      "repeated": 6,
+      "shuffled": 1
+    },
+    "h2_final": {
+      "repeated": 5,
+      "shuffled": 1
+    },
+    "h7_final": {
+      "repeated": 6,
+      "shuffled": 1
+    },
+    "h3_final": {
+      "repeated": 6,
+      "shuffled": 1
+    },
+    "h1_final": {
+      "repeated": 6,
+      "shuffled": 1
+    },
+    "h10_target": {
+      "repeated": 6,
+      "shuffled": 1
+    }
+  },
+  "scope": "32 fixed public inputs, 288 CPU forwards, saved-byte replay; not held out"
+}
