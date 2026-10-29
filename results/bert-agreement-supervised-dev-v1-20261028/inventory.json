@@ -1,0 +1,44 @@
+{
+  "controller_exit_observation_scope": "separate local wrapper observation; not independent process attestation",
+  "files": {
+    "controller-exit-capture.redacted.ps1": {
+      "bytes": 1399,
+      "sha256": "7bf18bfa73a86699c13142454217a1ac3131d3f8f57fe2b2ceee0f21e148b8ab"
+    },
+    "controller-exit.json": {
+      "bytes": 68,
+      "sha256": "80aa7448eb1d489c37b8f351a58642c2d1ae652ea50d2df5f10848af24117cc7"
+    },
+    "owner-candidate.json": {
+      "bytes": 13285,
+      "sha256": "7b9283ac94423bce2205a688031fcc452271df3cda4a6f7d57095f528b769550"
+    },
+    "owner-started.json": {
+      "bytes": 417,
+      "sha256": "27b2ce9a899d6175259d6d64f7819c52dfc793cee1c4fbf64b63d21b49b15461"
+    },
+    "preflight.json": {
+      "bytes": 2591,
+      "sha256": "3a2222536060c5754a57a7f0f8e2cf81c26c97af5310e2b7806eb2888f91bf5c"
+    },
+    "result.json": {
+      "bytes": 14355,
+      "sha256": "552b09905b977cce3ba76a9aa58ec49f18f44f28864b4fcae16c838de5853493"
+    },
+    "started.json": {
+      "bytes": 233,
+      "sha256": "770d9d0fef94168cc202c7eaab72936f5f5b70ad1e5003394956a033bedc6a2c"
+    }
+  },
+  "journal": {
+    "compressed_sha256": "d19b7ee06f400afa504e13f7140f0d9be030f8f89291b8fbe5c9ad9ada9140b1",
+    "shared_repository_path": "results/bert-agreement-dev-v1-20261028/attempt-01/events.jsonl.gz",
+    "uncompressed_bytes": 1187199,
+    "uncompressed_sha256": "ff14574bf1b35058b3cff51e4752180ec589982cf3a547baba318a9591af8b67"
+  },
+  "run_id": "bb4d5c3acc37d606b527d1b1fd6b46b1",
+  "schema": "bert-agreement-supervised-development-evidence-v1",
+  "source_commit": "b0dde0dd66712771a3a5b314dd4f2431c73f852c",
+  "wrapper_original_local_sha256": "3f3727f0f8fae2a0aa45aafe28507847eb6df0528b3c9120ed1b273faf386ed2",
+  "wrapper_redaction": "Only the absolute base-interpreter path was replaced in the published copy."
+}
