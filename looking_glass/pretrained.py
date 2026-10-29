@@ -163,4 +163,14 @@ def load_distilgpt2(*, cache_dir, allow_download=False):
             "use_cache": False,
             "parameter_count": sum(parameter.numel() for parameter in model.parameters()),
         }
-        return LoadedPretrained(model=model, tokenizer=tokenizer, metadata=metadata)
+        # A completed loader frame can remain reachable through imported
+        # library traceback cycles when cyclic GC is deliberately disabled.
+        # Transfer the successful result without leaving an extra model alias
+        # in that frame. Failures before construction still retain their
+        # original frame locals for the caller's failure custody.
+        result = LoadedPretrained(model=model, tokenizer=tokenizer, metadata=metadata)
+        model = None
+        try:
+            return result
+        finally:
+            result = None
