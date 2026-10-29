@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 
 
@@ -21,11 +22,21 @@ def main():
             raw = (args.index.parent / item['file']).read_bytes()
             if len(raw) != item['bytes'] or hashlib.sha256(raw).hexdigest() != item['sha256']:
                 raise ValueError('part size or hash differs')
-            output.write(raw)
+            if output.write(raw) != len(raw):
+                raise ValueError('short output write')
             total += len(raw)
             digest.update(raw)
         if total != index['archive_bytes'] or digest.hexdigest() != index['archive_sha256']:
             raise ValueError('archive size or hash differs')
+        output.flush()
+        os.fsync(output.fileno())
+    written_digest, written_bytes = hashlib.sha256(), 0
+    with args.output.open('rb') as output:
+        for raw in iter(lambda: output.read(1024 * 1024), b''):
+            written_digest.update(raw)
+            written_bytes += len(raw)
+    if written_bytes != total or written_digest.hexdigest() != digest.hexdigest():
+        raise ValueError('written archive differs')
     print(f'restored {total} bytes; sha256={digest.hexdigest()}')
 
 
