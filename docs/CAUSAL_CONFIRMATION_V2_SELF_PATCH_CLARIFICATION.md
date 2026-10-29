@@ -73,14 +73,11 @@ Keep hidden target-identifying diagnostics private until reveal. Held-out
 post-action/self-source captures and control logits are held-out outcomes;
 retain them in the private custodian record until evaluation finishes and the
 protocol permits reveal, even when metadata does not identify the hidden site.
-Include all serialized captures, source references, metadata and other artifacts in the
-original 64 MiB total cap; if they do not fit, stop rather than silently
-discard evidence. Budget the registry manifest and terminal outcome as well
-as declared artifact files, with an explicit reserve for completion and failure
-records; the registry's artifact-byte limit alone does not include those files.
-If an unexpectedly large failure cannot be retained within the cap, preserve
-the incomplete/over-cap state rather than call the run complete or silently
-truncate the evidence. Sparse traces and private integrity captures remain separate
+Include all serialized captures, source references, metadata and other artifacts
+in the [1 GiB host-disk evidence budget](CAUSAL_CONFIRMATION_V2_RESOURCE_CLARIFICATION.md),
+which supersedes the earlier 64 MiB proposal and is separate from GPU VRAM.
+Retain complete raw evidence when it fits, with space reserved for completion
+and failure records. Sparse traces and private integrity captures remain separate
 exclusive sessions. The three self-patches replace the three identity-patch
 forwards already counted in each condition, so the planned root-forward count
 remains **57,408** and the cap remains **60,000**. The ordered plan's additional
@@ -89,9 +86,9 @@ or peak memory. Before sealing, test the exact control and failure cleanup on
 development-only models and inputs, and assess resources without using any v2
 held-out cases. The 16 retained 32-byte snapshots per active condition imply
 1,769,472 raw tensor bytes over 3,456 conditions, before metadata, source
-references, serialization and all other evidence. Test the full proposed
-serialized artifact schema against the 64 MiB cap; raw tensor bytes alone do
-not establish fit. Any added development vectors must join the exclusion inventory
+references, serialization and all other evidence. Check the actual output
+layout against the host-disk budget; raw tensor bytes alone do not establish
+fit. Any added development vectors must join the exclusion inventory
 for both future splits. Before preparation, construct and publish a canonical
 UTF-8 compact JSON union record `{"inputs":[{"case_id":...,"values":[...]},...]}`
 sorted by case ID, with unique IDs and unique float32 tuples treating signed
