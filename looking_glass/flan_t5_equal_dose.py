@@ -174,13 +174,16 @@ def aggregate_decision(cells):
 
 
 class Evidence:
-    def __init__(self, path):
+    def __init__(self, path, *, limit=MAX_BYTES):
+        if type(limit) is not int or limit <= 0:
+            raise ValueError('invalid retained-evidence limit')
         path.mkdir(parents=True, exist_ok=False)
         self.path = path
         self.used = 0
+        self.limit = limit
 
     def write(self, name, raw, reserve=65536):
-        if self.used + len(raw) + reserve > MAX_BYTES:
+        if self.used + len(raw) + reserve > self.limit:
             raise ValueError('retained evidence cap exceeded')
         destination = self.path / name
         with destination.open('xb') as stream:
@@ -198,7 +201,7 @@ class Evidence:
                                             separators=(',', ':')) + '\n').encode(), reserve)
 
     def reserve_forward(self):
-        if self.used + MAX_RETURN_BYTES + 3 * 65536 > MAX_BYTES:
+        if self.used + MAX_RETURN_BYTES + 3 * 65536 > self.limit:
             raise ValueError('insufficient evidence capacity for another bounded forward')
 
 
@@ -343,13 +346,13 @@ def validate_landing(condition, action, pos, own, donor, expected, value, state,
 
 
 def run_forward(model, evidence, records, active, source, target, name, action='clean', value=None,
-                token_index=None):
+                token_index=None, *, forward_limit=MAX_FORWARDS):
     """Execute one bounded forward and save returned bytes before validating them."""
     import torch
     from .interventions import ActivationCapture
     from .intervention_plan import ActivationPlan
 
-    if len(records) >= MAX_FORWARDS:
+    if type(forward_limit) is not int or forward_limit <= 0 or len(records) >= forward_limit:
         raise ValueError('forward cap exceeded')
     evidence.reserve_forward()
     source_ids = torch.tensor([source['input_ids']], dtype=torch.long)
