@@ -58,3 +58,14 @@ later gate decision. Its trusted operator must source-verify the adapter and
 its dependencies, protect the actual paths and leases, and independently
 observe the adapter process's own clean exit. The observer's saved record is
 not self-authenticating and neither record announces a model forward.
+
+`tools/injection_comparison_exit.py` supplies the separate operator terminal
+and outer-observation handoff. It binds the operator's native Windows PID and
+creation time to the exact configuration, operation, comparator command,
+inner observation and receipt. The outer observer must retain and reap that
+operator process, check its terminal against the observed identity, and
+verify Job cleanup. The configured receipt path must match the fresh path used
+by both observations. The source-bound caller still has to establish the
+meaning of the operation, public receipt verification and protected source
+leases; a saved terminal alone is not an exit observation. Use the direct base
+Python interpreter so the observed PID is the process writing the terminal.
