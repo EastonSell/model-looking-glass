@@ -113,8 +113,16 @@ def _git(checkout, *args):
     executable = shutil.which("git")
     if not executable:
         raise LaunchError("git is unavailable")
-    result = subprocess.run([executable, "-C", str(checkout), *args],
-                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15)
+    # The revision/tree must describe this checkout even when the parent has
+    # Git redirection variables or the repository has replacement refs. This
+    # remains an operational check, not an attestation of the Git executable.
+    env = {key: value for key, value in os.environ.items()
+           if not key.upper().startswith("GIT_")}
+    env.update({"GIT_NO_REPLACE_OBJECTS": "1", "GIT_GRAFT_FILE": os.devnull,
+                "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull,
+                "GIT_TERMINAL_PROMPT": "0"})
+    result = subprocess.run([executable, "--no-replace-objects", "-C", str(checkout), *args],
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=15, env=env)
     if result.returncode or len(result.stdout) > 8 * 1024 * 1024:
         raise LaunchError("cannot inspect the committed checkout")
     return result.stdout
