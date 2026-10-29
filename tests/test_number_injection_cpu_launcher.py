@@ -476,7 +476,7 @@ def test_phase_share_includes_launcher_markers_on_a_failed_supervisor_attempt(tm
     assert events == ['claim', 'load']
     assert forward.call_args.kwargs['logical_limit_bytes'] == grant.logical_limit_bytes
     assert forward.call_args.kwargs['disk_limit_bytes'] == (
-        grant.disk_limit_bytes - marker.stat().st_size - 4096 - 1024 ** 2)
+        grant.disk_limit_bytes - marker.stat().st_size - 4096 - 1024 ** 2 - 8 * 1024 ** 2)
     assert terminal.stat().st_size <= 4096
     assert json.loads(terminal.read_bytes())['status'] == 'incomplete'
 
