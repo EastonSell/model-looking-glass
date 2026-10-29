@@ -372,13 +372,45 @@ def validation_receipt_fixture(tmp_path, fault=None):
         terminal['binding_sha256'] = '0' * 64
     if fault == 'supervisor-digest':
         terminal['supervisor_sha256'] = '0' * 64
-    (output / 'owner-terminal.json').write_bytes(encoded(terminal))
+    terminal_raw = encoded(terminal)
+    (output / 'owner-terminal.json').write_bytes(terminal_raw)
+    owner_path, outer_bootstrap = str(tmp_path / 'owner.py'), 'fabricated outer gate'
+    observation = {'schema': 'mlg-natural-heldout-validation-parent-observation-v1', 'status': 'completed',
+                   'exit_code': 0, 'parent_reaped': True, 'outer_job_drained': True, 'outer_job_closed': True,
+                   'parent_pid': 456, 'parent_birth_100ns': 123456789,
+                   'command': [interpreter, '-I', '-S', '-B', '-X', 'pycache_prefix=' + str(tmp_path / 'pycache2'),
+                               '-c', outer_bootstrap, owner_path, '--validate-only', str(config_path)],
+                   'validation_config_sha256': owner._digest(config_path.read_bytes()),
+                   'owner_terminal_sha256': owner._digest(terminal_raw),
+                   'supervisor_sha256': owner._digest(supervisor_raw),
+                   'operational_binding_sha256': owner._digest(operation)}
+    if fault == 'parent-pid':
+        observation['parent_pid'] = True
+    elif fault == 'parent-child-pid':
+        observation['parent_pid'] = supervisor['child_pid']
+    elif fault == 'parent-birth':
+        observation['parent_birth_100ns'] = 1.0
+    elif fault == 'parent-exit':
+        observation['exit_code'] = 1
+    elif fault == 'parent-unreaped':
+        observation['parent_reaped'] = False
+    elif fault == 'parent-job':
+        observation['outer_job_drained'] = False
+    elif fault == 'parent-command':
+        observation['command'][9] = '--other-mode'
+    elif fault == 'parent-terminal-digest':
+        observation['owner_terminal_sha256'] = '0' * 64
+    elif fault == 'parent-extra':
+        observation['unexpected'] = True
+    if fault != 'parent-missing':
+        (validation / 'parent-observation.json').write_bytes(encoded(observation))
     if fault == 'extra-artifact':
         (output / 'extra.txt').write_bytes(b'extra')
     if fault == 'claim':
         (validation / 'claim.json').write_bytes(b'no claim is allowed')
     args = (child, phase, config, binding, operation)
-    kwargs = {'child_path': child_path, 'bootstrap': bootstrap, 'interpreter': interpreter}
+    kwargs = {'child_path': child_path, 'bootstrap': bootstrap, 'outer_bootstrap': outer_bootstrap,
+              'owner_path': owner_path, 'interpreter': interpreter}
     return validation, args, kwargs
 
 
@@ -387,6 +419,13 @@ def test_validation_receipt_can_be_checked_without_a_claim_or_commitment(tmp_pat
     assert owner._check_validation_receipt(*args, **kwargs) == validation
     assert not (validation / 'claim.json').exists()
     assert not (validation / 'commitment.json').exists()
+
+
+def test_observer_can_check_inner_receipt_before_writing_parent_observation(tmp_path):
+    validation, args, kwargs = validation_receipt_fixture(tmp_path, 'parent-missing')
+    with pytest.raises(FileNotFoundError):
+        owner._check_validation_receipt(*args, **kwargs)
+    assert owner._check_validation_receipt(*args, **kwargs, require_parent_observation=False) == validation
 
 
 @pytest.mark.skipif(os.name != 'nt', reason='Windows Job and source handles')
@@ -449,8 +488,21 @@ print(json.dumps({'status':'validated_no_model_forward'}))
                 'scientific_validation': 'not applicable; no held-out evidence'}
     terminal = owner.under_source_leases(leases, lambda: None, launch, postcheck)
     owner._write_new(validation / 'owner/owner-terminal.json', terminal)
+    terminal_raw = (validation / 'owner/owner-terminal.json').read_bytes()
+    supervisor_raw = (validation / 'owner/supervisor.json').read_bytes()
+    owner_path, outer_bootstrap = str(tmp_path / 'owner.py'), 'fabricated outer gate'
+    (validation / 'parent-observation.json').write_bytes(encoded({
+        'schema': 'mlg-natural-heldout-validation-parent-observation-v1', 'status': 'completed',
+        'exit_code': 0, 'parent_reaped': True, 'outer_job_drained': True, 'outer_job_closed': True,
+        'parent_pid': 456, 'parent_birth_100ns': 123456789,
+        'command': [interpreter, '-I', '-S', '-B', '-X', 'pycache_prefix=' + str(tmp_path / 'outer-pycache'),
+                    '-c', outer_bootstrap, owner_path, '--validate-only', str(config_path)],
+        'validation_config_sha256': owner._digest(config_path.read_bytes()),
+        'owner_terminal_sha256': owner._digest(terminal_raw), 'supervisor_sha256': owner._digest(supervisor_raw),
+        'operational_binding_sha256': owner._digest(operation)}))
     assert owner._check_validation_receipt(child, phase, config, binding, operation,
                                             child_path=child_path, bootstrap=bootstrap,
+                                            outer_bootstrap=outer_bootstrap, owner_path=owner_path,
                                             interpreter=interpreter) == validation
     assert not (validation / 'claim.json').exists() and not (validation / 'owner/attempt').exists()
 
@@ -458,7 +510,9 @@ print(json.dumps({'status':'validated_no_model_forward'}))
 @pytest.mark.parametrize('fault', ['config', 'pid', 'exit', 'active', 'cancelled', 'unreaped', 'command',
                                    'stdout-digest', 'callback-accounting-type', 'callback-inventory-type',
                                    'terminal-accounting-type', 'binding', 'supervisor-digest', 'extra-artifact',
-                                   'claim'])
+                                   'claim', 'parent-pid', 'parent-child-pid', 'parent-birth', 'parent-exit',
+                                   'parent-unreaped', 'parent-job', 'parent-command', 'parent-terminal-digest',
+                                   'parent-extra'])
 def test_validation_receipt_rejects_mismatches(tmp_path, fault):
     _, args, kwargs = validation_receipt_fixture(tmp_path, fault)
     with pytest.raises(owner.OwnerError):

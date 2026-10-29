@@ -325,12 +325,15 @@ def _verify_public_commitment(child, config, operation_bytes):
     child._check_public_operation(config, operation_bytes, require_commitment=True)
 
 
-def _validation_account(phase, *, supervisor_record, terminal_record=False, reserve=0):
+def _validation_account(phase, *, supervisor_record, terminal_record=False, parent_record=False, reserve=0):
     """Bound the separate rehearsal; it may contain only its fixed metadata."""
     phase = Path(phase)
     info = phase.lstat()
+    root_entries = {'owner', 'validation-config.json'}
+    if parent_record:
+        root_entries.add('parent-observation.json')
     if (not stat.S_ISDIR(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400
-            or {path.name for path in phase.iterdir()} != {'owner', 'validation-config.json'}):
+            or {path.name for path in phase.iterdir()} != root_entries):
         raise OwnerError('validation requires a separate unclaimed directory')
     directory = phase / 'owner'
     info = directory.lstat()
@@ -345,6 +348,8 @@ def _validation_account(phase, *, supervisor_record, terminal_record=False, rese
     if {path.name for path in directory.iterdir()} != expected:
         raise OwnerError('validation output contains an unexpected artifact')
     total = len(_read(phase / 'validation-config.json', 32768))
+    if parent_record:
+        total += len(_read(phase / 'parent-observation.json', 65536))
     total += sum(len(_read(directory / name, 2 * 1024 * 1024)) for name in expected)
     if type(reserve) is not int or reserve < 0 or total + reserve > 16 * 1024 * 1024:
         raise OwnerError('validation metadata exceeds its bound')
@@ -400,7 +405,10 @@ def audit_validation(phase, directory, exit_code, reaped):
             'validation_only': True, 'validation_accounting': accounting}
 
 
-def _check_validation_receipt(child, phase, config, binding_raw, operation_bytes, *, child_path, bootstrap, interpreter):
+def _check_validation_receipt(child, phase, config, binding_raw, operation_bytes, *, child_path, bootstrap,
+                              outer_bootstrap, owner_path, interpreter, require_parent_observation=True):
+    if type(require_parent_observation) is not bool:
+        raise OwnerError('invalid validation observation requirement')
     validation = _validation_root(phase, operation_bytes)
     config_path = validation / 'validation-config.json'
     validation_raw, validation_config = child._load_config(config_path)
@@ -449,9 +457,37 @@ def _check_validation_receipt(child, phase, config, binding_raw, operation_bytes
     for name in ('stdout', 'stderr'):
         if supervisor.get(name + '_sha256') != _digest(_read(output / (name + '.txt'), 1024 * 1024)):
             raise OwnerError('validation log differs from its supervisor')
-    accounting = _validation_account(validation, supervisor_record=True, terminal_record=True)
+    observation_raw = b''
+    if require_parent_observation:
+        observation_raw = _read(validation / 'parent-observation.json', 65536)
+        observation = _json(observation_raw)
+        outer_command = observation.get('command') if type(observation) is dict else None
+        parent_pid = observation.get('parent_pid') if type(observation) is dict else None
+        birth = observation.get('parent_birth_100ns') if type(observation) is dict else None
+        if (type(parent_pid) is not int or not 0 < parent_pid <= 0xffffffff
+                or parent_pid == supervisor['child_pid'] or type(birth) is not int or not 0 < birth < 2 ** 64
+                or type(outer_command) is not list or len(outer_command) != 11
+                or outer_command[0] != interpreter or outer_command[1:5] != ['-I', '-S', '-B', '-X']
+                or type(outer_command[5]) is not str or not outer_command[5].startswith('pycache_prefix=')
+                or not Path(outer_command[5][len('pycache_prefix='):]).is_absolute()
+                or outer_command[6:] != ['-c', outer_bootstrap, owner_path, '--validate-only', str(config_path)]):
+            raise OwnerError('validation parent identity or command differs')
+        expected_observation = {'schema': 'mlg-natural-heldout-validation-parent-observation-v1',
+                                'status': 'completed', 'exit_code': 0, 'parent_reaped': True,
+                                'outer_job_drained': True, 'outer_job_closed': True,
+                                'parent_pid': parent_pid, 'parent_birth_100ns': birth, 'command': outer_command,
+                                'validation_config_sha256': _digest(validation_raw),
+                                'owner_terminal_sha256': _digest(terminal_raw),
+                                'supervisor_sha256': _digest(supervisor_raw),
+                                'operational_binding_sha256': _digest(operation_bytes)}
+        expected_raw = json.dumps(expected_observation, sort_keys=True, ensure_ascii=True, allow_nan=False,
+                                  separators=(',', ':')).encode('utf-8')
+        if observation_raw != expected_raw:
+            raise OwnerError('validation parent exit was not observed')
+    accounting = _validation_account(validation, supervisor_record=True, terminal_record=True,
+                                     parent_record=require_parent_observation)
     prior = dict(accounting)
-    prior['apparent_bytes'] -= len(terminal_raw)
+    prior['apparent_bytes'] -= len(terminal_raw) + len(observation_raw)
     callback_accounting = dict(prior)
     callback_accounting['apparent_bytes'] -= len(supervisor_raw)
     if (not _same_json(prior, terminal.get('validation_accounting_before_terminal'))
@@ -538,7 +574,9 @@ def execute(config_path, *, validation_only=False):
         else:
             validation = _check_validation_receipt(child, phase, config, binding_raw, operation_bytes,
                                                     child_path=str(operational_root / SOURCE_FILES['child']),
-                                                    bootstrap=frozen['BOOTSTRAP'], interpreter=sys.executable)
+                                                    bootstrap=frozen['BOOTSTRAP'], outer_bootstrap=custody.OUTER_BOOTSTRAP,
+                                                    owner_path=str(operational_root / SOURCE_FILES['owner']),
+                                                    interpreter=sys.executable)
             custody.verify_preparation_supervisor(phase, config['preparation_supervisor'], public,
                                                    source_bytes['custody'])
             if os.path.lexists(output) or os.path.lexists(phase / 'owner-started.json'):
