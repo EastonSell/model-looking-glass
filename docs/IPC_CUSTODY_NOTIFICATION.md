@@ -69,23 +69,32 @@ state after the join and establish broker, worker, device and external-alias
 disposal separately. Exceptions escaping the protected handler call are marked
 by its wrapper.
 
-For an authority-bound server, each handler has a preallocated fault slot
-rooted before its thread starts. On supported GIL-enabled CPython 3.10 through
-3.13, a per-thread wrapper of CPython's private `_invoke_excepthook` roots the
-exact exception and its original traceback separately, then marks the
-authority before invoking the existing application exception hook. It takes
-no server lock. The traceback comes from the active interpreter exception
+For an authority-bound server, each handler and the single acceptor have
+separate preallocated fault slots rooted before their threads start. On
+supported GIL-enabled CPython 3.10 through
+3.13, a per-thread wrapper of CPython's private `_invoke_excepthook` marks the
+exact authority unsafe before attempting capture, event signaling, or invoking
+the existing application hook. A stalled capture therefore cannot allow a
+later owner success decision. The wrapper then roots the exact exception and
+its original traceback separately. It takes no server lock. The traceback
+comes from the active interpreter exception
 context and must be an actual traceback for the same exception; a subclass's
 overridden `__traceback__` property is not trusted. `retained_handler_faults`
-returns trusted-local snapshots;
+returns trusted-local handler snapshots;
 `capture_complete` stays false until both references are rooted, including
-when capture is interrupted. The property does not wait for the server lock
+when capture is interrupted. An observer failure is separately retained in
+the same slot; under CPython's ordinary exception chaining it also roots the
+original target fault if signaling or capture was interrupted. An incomplete
+snapshot is still uncertain and requires recovery. The property does not wait for the server lock
 and raises `IPCError` if it is unavailable. An in-flight snapshot can be
-incomplete; join the handler before interpreting it. Do not send these
+incomplete; join the handler before interpreting it. Without taking the server
+lock, `retained_acceptor_fault` returns the corresponding acceptor snapshot or
+`None` if no fault has been observed; join the acceptor before interpreting
+it. An observed acceptor fault also makes shutdown incomplete. Do not send these
 exceptions or their potentially sensitive frames over IPC.
 
-The existing application hook and supervisor are trusted to preserve any
-traceback frames, exception attributes and payload aliases needed for
+The existing application hook, unraisable hook and supervisor are trusted to
+preserve any traceback frames, exception chains, attributes and payload aliases needed for
 custody. Rooting the traceback separately survives clearing the exception's
 `__traceback__` attribute, but cannot prevent `traceback.clear_frames` or
 other mutation of the frames and aliases. An untrusted or noncompliant hook
@@ -99,20 +108,21 @@ root on `close` or `drain`. The supervisor must retain the server graph and
 perform separate custody reconciliation or process-level recovery. The slot
 does not itself identify a connection, job or client: the owner must reconcile
 all potentially affected records unless it has a separately trusted binding.
+A faulted acceptor retains its separate single bounded slot and exception root
+until process replacement; it is not counted as a client connection.
 A `True` shutdown return reports thread exit, not exception or payload disposal.
 Unbound legacy servers do not install this observer, and accessing their
-`retained_handler_faults` raises `IPCError` rather than reporting an empty
+`retained_handler_faults` or `retained_acceptor_fault` raises `IPCError` rather than reporting an empty
 inventory. Authority binding rejects
 unsupported interpreters, free-threaded builds and versions; the runtime check
 only verifies the expected CPython bootstrap hook name, not protection
 against trusted-process mutation of private machinery or runtime GIL changes.
 
-The observer covers handler exceptions delivered to that CPython hook,
-including an exception escaping the handler wrapper's return; it does not
-observe the separate acceptor thread. An interruption at hook entry
+The observer covers handler and acceptor exceptions delivered to that CPython
+hook, including exceptions escaping their wrappers' returns. An interruption at hook entry
 or in later Python bootstrap, exception reporting, or finalizer code can escape
 it. A joined thread and a clear flag therefore do not prove that every possible
-handler fault was observed. The owner needs separately reviewed fault
+thread fault was observed. The owner needs separately reviewed fault
 supervision and, when its outcome is uncertain, process-level recovery before
 a clean attestation. The live service remains gated until the complete owner
 lifecycle is reviewed and composed.
