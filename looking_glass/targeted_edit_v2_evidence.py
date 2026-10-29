@@ -128,7 +128,7 @@ def _check_runtime_settings(value, environment):
             type(value["interop_threads"]) is not int or value["interop_threads"] != 1 or
             value["deterministic_warn_only"] is not False or value["deterministic_algorithms"] is not True or
             value["cpu_autocast_enabled"] is not False or value["inference_mode_enabled"] is not False or
-            value["cuda_initialized"] is not False or value["cuda_visibility"] != "" or
+            value["cuda_initialized"] is not False or value["cuda_visibility"] != "-1" or
             value["hf_hub_offline"] != "1" or value["transformers_offline"] != "1" or
             any(value[key] is not None and type(value[key]) is not str
                 for key in ("omp_num_threads", "mkl_num_threads"))):
