@@ -29,7 +29,7 @@ Can many transparent observation points help us follow a model's internal comput
 
 This repository compares two reporting channels at the **same named observation points**, plus an ID-only baseline. It also separates a vector's contents from its execution metadata and tests how sparse versus dense observation changes where an introduced numerical difference first becomes visible.
 
-**Initial result:** the observation API works on the tested synthetic model, but the gradient reporting channel adds **no vector information** over direct capture and takes **2.60–3.81× its latency** (median paired ratios across seeds) in this small CPU experiment. Dense taps narrow the first-observed difference to the injected tap; sparse taps report a later block output. All 48 training-transparency comparisons passed exactly, and all 26 unit tests passed. See [RESULTS.md](RESULTS.md) for measurements, raw evidence and limitations—not an LLM-scale claim.
+**Initial result:** the observation API works on the tested synthetic model, but the gradient reporting channel adds **no vector information** over direct capture and takes **2.60–3.81× its latency** (median paired ratios across seeds) in this small CPU experiment. Dense taps narrow the first-observed difference to the injected tap; sparse taps report a later block output. All 48 training-transparency comparisons passed the recorded floating-point checks, and all 26 unit tests passed. The run did not record denormal mode or preserve tensor bits, so those checks do not establish bitwise equality. See [RESULTS.md](RESULTS.md) for measurements, raw evidence and limitations—not an LLM-scale claim.
 
 ## The three channels
 
@@ -38,6 +38,8 @@ This repository compares two reporting channels at the **same named observation 
 - **ID-only:** log node labels and invocation counts without saving tensor values.
 
 All channels use genuine identity taps. There is no floating-point cancellation gate or hidden payload. The gradient channel already reads the activation to form its reporting objective; it does not gain information unavailable to direct capture. Its reliability and overhead are the experiment, not an assumed benefit.
+
+The identity is mathematical; a [CPU denormal control](docs/GRADIENT_DENORMAL_V1.md) shows that floating-point gradient readout can lose subnormal bits while `torch.equal` still reports equality. Use raw-bit checks when bitwise fidelity matters.
 
 ## What the experiment checks
 
