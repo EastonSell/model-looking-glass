@@ -9,6 +9,7 @@ import gc
 import hashlib
 import io
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -232,7 +233,7 @@ def parse_telemetry_line(line, observed_ns):
         total, used, free, utilization = (int(value) for value in fields[2:])
     except ValueError as exc:
         raise ValueError("unavailable nvidia-smi telemetry value") from exc
-    if min(total, used, free, utilization) < 0 or utilization > 100:
+    if total <= 0 or min(used, free, utilization) < 0 or used > total or free > total or utilization > 100:
         raise ValueError("invalid nvidia-smi telemetry value")
     return {"observed_monotonic_ns": observed_ns, "gpu_timestamp": fields[0],
             "gpu_uuid": fields[1], "total_bytes": total * 1024 * 1024,
@@ -243,19 +244,32 @@ def parse_telemetry_line(line, observed_ns):
 def classify_isolation(exclusive, observations, started_ns, ended_ns, process_queries,
                        own_pid, gpu_uuid, telemetry_errors):
     """Apply the prespecified idle screen without claiming proof of exclusivity."""
-    selected = sorted((row for row in observations if row["gpu_uuid"] == gpu_uuid),
+    def valid_metrics(row):
+        if not isinstance(row, dict) or not isinstance(row.get("gpu_uuid"), str):
+            return False
+        total, used, free, utilization, observed = (row.get(name) for name in
+            ("total_bytes", "used_bytes", "free_bytes", "utilization_percent", "observed_monotonic_ns"))
+        return (all(type(value) is int for value in (total, used, free, utilization, observed))
+                and total > 0 and 0 <= used <= total and 0 <= free <= total
+                and 0 <= utilization <= 100 and observed >= 0)
+    valid_rows = [row for row in observations if valid_metrics(row)]
+    selected = sorted((row for row in valid_rows if row["gpu_uuid"] == gpu_uuid),
                       key=lambda row: row["observed_monotonic_ns"])
     before = [row for row in selected if row["observed_monotonic_ns"] < started_ns][-3:]
     after = [row for row in selected
              if type(row.get("query_started_monotonic_ns")) is int
              and row["query_started_monotonic_ns"] >= ended_ns + 1_000_000_000][-3:]
     unavailable, contaminated = [], []
+    if len(valid_rows) != len(observations):
+        unavailable.append("telemetry contains invalid memory or utilization values")
     if not exclusive:
         unavailable.append("exclusive reservation was not attested")
     if len(before) < 3 or len(after) < 3:
         unavailable.append("fewer than three idle samples before or after workload")
-    if any(row["gpu_uuid"] != gpu_uuid for row in observations) or not selected:
+    if any(row["gpu_uuid"] != gpu_uuid for row in valid_rows) or not selected:
         unavailable.append("telemetry GPU identity does not match the selected device")
+    if len({row["total_bytes"] for row in selected}) > 1:
+        unavailable.append("telemetry reported inconsistent total device memory")
     if telemetry_errors:
         unavailable.append("telemetry query failed")
     if before and after:
@@ -278,7 +292,9 @@ def classify_isolation(exclusive, observations, started_ns, ended_ns, process_qu
     if foreign:
         contaminated.append("other compute processes were observed")
     status = "contaminated" if contaminated else ("unverified" if unavailable else "no_contamination_observed")
-    return {"status": status, "reasons": contaminated + unavailable,
+    return {"status": status, "availability": "complete" if not unavailable else "unverified",
+            "contamination_reasons": contaminated, "unavailable_reasons": unavailable,
+            "reasons": contaminated + unavailable,
             "before_idle_samples": before, "after_idle_samples": after,
             "foreign_compute_pids": foreign,
             "limitation": "sampling and endpoint-only WDDM process reporting can miss activity"}
@@ -314,6 +330,8 @@ def _gpu_inventory(smi, cuda_count=None):
         total_bytes = int(total) * 1024 * 1024
     except ValueError as exc:
         raise RuntimeError("GPU inventory did not report total memory") from exc
+    if total_bytes <= 0:
+        raise RuntimeError("GPU inventory reported invalid total memory")
     return {"ok": True, "uuid": uuid, "name": name, "total_bytes": total_bytes,
             "driver_version": driver, "mapping": "sole physical GPU; CUDA binding verified separately"}
 
@@ -342,7 +360,7 @@ def _cuda_runtime_uuid(value):
 
 
 def _query_compute_processes(smi, gpu_uuid, phase):
-    result = {"phase": phase, "observed_monotonic_ns": time.monotonic_ns(),
+    result = {"phase": phase, "observed_monotonic_ns": time.perf_counter_ns(),
               "ok": False, "pids": [], "processes": []}
     if not smi or not gpu_uuid:
         result["error"] = "nvidia-smi or GPU UUID unavailable"
@@ -354,8 +372,9 @@ def _query_compute_processes(smi, gpu_uuid, phase):
         result["error"] = str(exc)
         return result
     result["returncode"] = command.returncode
-    result["stderr"] = command.stderr.strip()
+    result["stderr"] = command.stderr.strip()[:4096]
     if command.returncode:
+        result["stdout"] = command.stdout.strip()[:4096]
         result["error"] = "compute process query failed"
         return result
     try:
@@ -386,7 +405,7 @@ class _NvidiaMonitor:
 
     def start(self):
         if not self.smi:
-            self.errors.append({"observed_monotonic_ns": time.monotonic_ns(),
+            self.errors.append({"observed_monotonic_ns": time.perf_counter_ns(),
                                 "error": "nvidia-smi unavailable"})
             return
         self._thread = threading.Thread(target=self._poll, name="cuda-benchmark-telemetry", daemon=True)
@@ -394,12 +413,13 @@ class _NvidiaMonitor:
 
     def _poll(self):
         while not self._stop.is_set():
-            started = time.monotonic_ns()
+            started = time.perf_counter_ns()
+            command = None
             try:
                 command = _command([self.smi,
                     "--query-gpu=timestamp,uuid,memory.total,memory.used,memory.free,utilization.gpu",
                     "--format=csv,noheader,nounits"])
-                ended = time.monotonic_ns()
+                ended = time.perf_counter_ns()
                 if command.returncode:
                     raise RuntimeError(command.stderr.strip() or "telemetry command failed")
                 rows = [parse_telemetry_line(line, ended) for line in command.stdout.splitlines() if line.strip()]
@@ -410,9 +430,13 @@ class _NvidiaMonitor:
                     row["query_ended_monotonic_ns"] = ended
                 self.observations.extend(rows)
             except (OSError, subprocess.TimeoutExpired, RuntimeError, ValueError) as exc:
-                self.errors.append({"query_started_monotonic_ns": started,
-                                    "observed_monotonic_ns": time.monotonic_ns(),
-                                    "error_type": type(exc).__name__, "message": str(exc)})
+                error = {"query_started_monotonic_ns": started,
+                                    "observed_monotonic_ns": time.perf_counter_ns(),
+                                    "error_type": type(exc).__name__, "message": str(exc)}
+                if command is not None:
+                    error.update({"returncode": command.returncode, "stdout": command.stdout[:4096],
+                                  "stderr": command.stderr[:4096]})
+                self.errors.append(error)
             self._stop.wait(self.interval_seconds)
 
     def stop(self):
@@ -420,7 +444,7 @@ class _NvidiaMonitor:
         if self._thread is not None:
             self._thread.join(timeout=6)
             if self._thread.is_alive():
-                self.errors.append({"observed_monotonic_ns": time.monotonic_ns(),
+                self.errors.append({"observed_monotonic_ns": time.perf_counter_ns(),
                                     "error": "telemetry thread did not stop"})
         return {"configured_interval_seconds": self.interval_seconds,
                 "observations": list(self.observations), "errors": list(self.errors),
@@ -429,7 +453,7 @@ class _NvidiaMonitor:
                     "WDDM and endpoint-only process reporting can miss activity"]}
 
 
-def verify_equivalence(invoke, session_factory, identity):
+def verify_equivalence(invoke, session_factory, identity, completion=None):
     """Require matching outputs and captures under torch.equal before timing.
 
     This is numeric equality without a tolerance, not stored-bit identity.
@@ -441,11 +465,13 @@ def verify_equivalence(invoke, session_factory, identity):
     sessions = {}
     with torch.no_grad():
         baseline = invoke()
+        outputs = [baseline]
         if not bool(torch.isfinite(baseline).all()):
             raise AssertionError("baseline model output contains non-finite values")
         for mode in ("id", "direct", "gradient"):
             with session_factory(mode) as session:
                 output = invoke()
+            outputs.append(output)
             if not bool(torch.isfinite(output).all()):
                 raise AssertionError(f"model output for mode {mode} contains non-finite values")
             if (baseline.dtype != output.dtype or baseline.device != output.device
@@ -480,6 +506,10 @@ def verify_equivalence(invoke, session_factory, identity):
             raise AssertionError("direct and gradient values differ")
     if sessions["direct"].tensor_bytes != sessions["gradient"].tensor_bytes:
         raise AssertionError("direct and gradient retained bytes differ")
+    # A caller that uses a device must synchronize while the baseline, final
+    # output and both captured sessions are still rooted in this frame.
+    if completion is not None:
+        completion()
     return {"events_per_mode": len(reference),
             "value_tensor_bytes": sessions["direct"].tensor_bytes,
             "event_identities": keys,
@@ -492,19 +522,58 @@ def verify_equivalence(invoke, session_factory, identity):
             "outputs_exact": True, "values_exact": True}
 
 
-def measure_sample(invoke, session_factory, mode, device, cuda, start_event, end_event):
+def _validate_memory_snapshot(free, total, allocated, reserved):
+    if (any(type(value) is not int for value in (free, total, allocated, reserved))
+            or total <= 0 or not 0 <= free <= total or not 0 <= allocated <= reserved <= total):
+        raise ValueError("invalid CUDA memory snapshot")
+
+
+def validate_measurement(row):
+    """Reject internally contradictory timing or process allocator counters."""
+    total = row["device_total_bytes"]
+    before = (row["device_free_before_bytes"], total, row["allocated_before_bytes"],
+              row["reserved_before_bytes"])
+    after = (row["device_free_after_bytes"], total, row["allocated_after_bytes"],
+             row["reserved_after_bytes"])
+    _validate_memory_snapshot(*before)
+    _validate_memory_snapshot(*after)
+    peak_allocated, peak_reserved = row["peak_allocated_bytes"], row["peak_reserved_bytes"]
+    if (type(peak_allocated) is not int or type(peak_reserved) is not int
+            or not 0 <= peak_allocated <= peak_reserved <= total
+            or peak_allocated < max(before[2], after[2])
+            or peak_reserved < max(before[3], after[3])):
+        raise ValueError("invalid CUDA process allocator peaks")
+    start, end, wall, event_ms = (row[name] for name in
+        ("started_monotonic_ns", "ended_monotonic_ns", "wall_ns", "cuda_ms"))
+    if (type(start) is not int or type(end) is not int or type(wall) is not int
+            or start < 0 or wall <= 0 or end - start != wall
+            or type(event_ms) not in (int, float) or not math.isfinite(event_ms) or event_ms < 0):
+        raise ValueError("invalid CUDA timing measurement")
+    if any(type(row[name]) is not int or row[name] < 0
+           for name in ("events", "recorded_tensor_bytes")):
+        raise ValueError("invalid CUDA trace measurement")
+
+
+def measure_sample(invoke, session_factory, mode, device, cuda, start_event, end_event,
+                   validate=None, memory_check=None):
     """Measure one operation with the trace alive across its completion boundary."""
     import torch
 
     if mode not in MODES:
         raise ValueError("unsupported capture mode")
     cuda.synchronize(device)
+    stream = cuda.current_stream(device)
+    if stream != cuda.default_stream(device):
+        raise RuntimeError("benchmark sample requires the selected device's default stream")
     cuda.reset_peak_memory_stats(device)
     free_before, total = cuda.mem_get_info(device)
     allocated_before = cuda.memory_allocated(device)
     reserved_before = cuda.memory_reserved(device)
-    started_ns = time.monotonic_ns()
-    start_event.record()
+    _validate_memory_snapshot(free_before, total, allocated_before, reserved_before)
+    if memory_check is not None:
+        memory_check(free_before, total, allocated_before, reserved_before)
+    started_ns = time.perf_counter_ns()
+    start_event.record(stream)
     session = None
     with torch.no_grad():
         if mode == "none":
@@ -515,44 +584,62 @@ def measure_sample(invoke, session_factory, mode, device, cuda, start_event, end
             with session:
                 output = invoke()
             events, value_bytes = len(session.events), session.tensor_bytes
-    end_event.record()
+    if validate is not None:
+        validate(mode, output, session)
+    output_metadata = {"output_shape": list(output.shape), "output_dtype": str(output.dtype),
+                       "output_device": str(output.device)}
+    if cuda.current_stream(device) != stream:
+        raise RuntimeError("benchmark sample changed the selected device's current stream")
+    end_event.record(stream)
     cuda.synchronize(device)
     cuda_ms = start_event.elapsed_time(end_event)
     del output, session
     cuda.synchronize(device)
-    ended_ns = time.monotonic_ns()
+    ended_ns = time.perf_counter_ns()
     free_after, total_after = cuda.mem_get_info(device)
     if total != total_after:
         raise RuntimeError("CUDA device total memory changed during a sample")
-    return {"started_monotonic_ns": started_ns, "ended_monotonic_ns": ended_ns,
+    allocated_after, reserved_after = cuda.memory_allocated(device), cuda.memory_reserved(device)
+    row = {"started_monotonic_ns": started_ns, "ended_monotonic_ns": ended_ns,
             "wall_ns": ended_ns - started_ns, "cuda_ms": cuda_ms,
             "events": events, "recorded_tensor_bytes": value_bytes,
+            **output_metadata,
+            "cuda_stream_is_default": True,
             "allocated_before_bytes": allocated_before,
             "reserved_before_bytes": reserved_before,
             "peak_allocated_bytes": cuda.max_memory_allocated(device),
             "peak_reserved_bytes": cuda.max_memory_reserved(device),
-            "allocated_after_bytes": cuda.memory_allocated(device),
-            "reserved_after_bytes": cuda.memory_reserved(device),
+            "allocated_after_bytes": allocated_after,
+            "reserved_after_bytes": reserved_after,
             "device_free_before_bytes": free_before,
             "device_free_after_bytes": free_after,
             "device_total_bytes": total}
+    validate_measurement(row)
+    return row
 
 
 def collect_trials(invoke, factory, device, cuda, start_event, end_event,
-                   seed, warmup_rounds, measured_rounds, progress, guard=None):
-    """Warm each mode, then retain every interleaved measurement as it finishes."""
-    for row in make_schedule(seed ^ 0x5A17, warmup_rounds):
-        if guard is not None:
-            guard()
-        measure_sample(invoke, factory, row["mode"], device, cuda, start_event, end_event)
-    for row in make_schedule(seed, measured_rounds):
-        if guard is not None:
-            guard()
-        measurement = measure_sample(invoke, factory, row["mode"], device, cuda, start_event, end_event)
-        sample = {"seed": seed, **row,
-                  "phase": "forward_only" if row["mode"] == "none" else "forward_plus_capture",
-                  **measurement}
-        progress.get("record_sample", progress["raw"].append)(sample)
+                   seed, warmup_rounds, measured_rounds, progress, guard=None, validate=None):
+    """Retain warmup and measured rows separately in their actual order."""
+    for kind, schedule_seed, rounds in (("warmup", seed ^ 0x5A17, warmup_rounds),
+                                        ("measured", seed, measured_rounds)):
+        for row in make_schedule(schedule_seed, rounds):
+            if guard is not None:
+                guard()
+            measurement = measure_sample(invoke, factory, row["mode"], device, cuda,
+                                         start_event, end_event, validate=validate)
+            sample = {"seed": seed, "schedule_seed": schedule_seed, "sample_kind": kind, **row,
+                      "phase": ("forward_only_with_output_validation" if row["mode"] == "none"
+                                else "forward_plus_capture_with_validation"),
+                      **measurement}
+            if kind == "warmup":
+                record = progress.get("record_warmup")
+                if record is None:
+                    progress.setdefault("warmups", []).append(sample)
+                else:
+                    record(sample)
+            else:
+                progress.get("record_sample", progress["raw"].append)(sample)
 
 
 def _git_provenance(project):
@@ -632,6 +719,44 @@ def _transformer_workload(model, input_ids):
                 tuple(event.token_positions))
 
     return invoke, factory, identity
+
+
+def validate_transformer_sample(mode, output, session, *, identity, identities, device):
+    """Check the frozen output and every captured location during each trial."""
+    import torch
+
+    if mode not in MODES or len(identities) != 18:
+        raise AssertionError("sample has an invalid mode or expected event count")
+    if (not isinstance(output, torch.Tensor) or tuple(output.shape) != (1, 8, 50257)
+            or output.dtype != torch.float32 or str(output.device) != str(device)):
+        raise AssertionError("sample output does not match the frozen tensor layout")
+    if not bool(torch.isfinite(output).all()):
+        raise AssertionError("sample output contains non-finite values")
+    if mode == "none":
+        if session is not None:
+            raise AssertionError("uninstrumented sample unexpectedly has a trace session")
+        return
+    if session is None or session.successful is not True:
+        raise AssertionError("sample trace session did not complete successfully")
+    events = session.events
+    if len(events) != 18 or tuple(identity(event) for event in events) != tuple(identities):
+        raise AssertionError("sample trace locations differ from the frozen preflight")
+    expected_bytes = 0 if mode == "id" else 18 * 3 * 768 * 4
+    if session.tensor_bytes != expected_bytes:
+        raise AssertionError("sample trace bytes differ from the frozen capture")
+    for index, event in enumerate(events):
+        if (event.sequence != index or event.run_id != PROTOCOL or event.capture_mode != mode
+                or tuple(event.shape) != (1, 8, 768) or event.dtype != "torch.float32"
+                or event.device != str(device)):
+            raise AssertionError("sample trace source metadata differs from the frozen capture")
+        value = event.value
+        if mode == "id":
+            if value is not None or event.tensor_bytes != 0:
+                raise AssertionError("ID sample unexpectedly retained a value")
+        elif (not isinstance(value, torch.Tensor) or tuple(value.shape) != (1, 3, 768)
+              or value.dtype != torch.float32 or str(value.device) != str(device)
+              or event.tensor_bytes != 3 * 768 * 4):
+            raise AssertionError("sample trace value layout differs from the frozen capture")
 
 
 def validate_transformer_coverage(identities):
@@ -780,6 +905,7 @@ def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
         "seeds": seeds, "warmup_rounds_per_seed": warmup_rounds,
         "torch_rng_seed": 20261028,
         "measured_rounds_per_seed": measured_rounds, "warmup_seed_xor": 0x5A17,
+        "cuda_event_stream_policy": "selected-device default stream checked before and after each sample",
         "monitor_interval_seconds": 0.2, "journal_fsync_each_sample": True}
     with torch.cuda.device(device):
         free, total = torch.cuda.mem_get_info(device)
@@ -795,6 +921,10 @@ def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
         admission["pytorch_allocator_fraction_limit"] = fraction
         environment = {
             "python_version": platform.python_version(), "platform": platform.platform(),
+            "monotonic_clock": {"name": "perf_counter_ns",
+                                "implementation": time.get_clock_info("perf_counter").implementation,
+                                "resolution_seconds": time.get_clock_info("perf_counter").resolution,
+                                "monotonic": time.get_clock_info("perf_counter").monotonic},
             "python_executable": sys.executable, "python_base_executable": sys._base_executable,
             "python_prefix": sys.prefix, "python_base_prefix": sys.base_prefix,
             "python_search_path": list(sys.path),
@@ -846,10 +976,16 @@ def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
         expected_bytes = expected_events * 3 * 768 * 4
         if preflight["events_per_mode"] != expected_events or preflight["value_tensor_bytes"] != expected_bytes:
             raise AssertionError("preflight trace does not match the frozen event and byte counts")
+        def validate_sample(mode, output, session):
+            validate_transformer_sample(mode, output, session, identity=identity,
+                                        identities=preflight["event_identities"], device=device)
         torch.cuda.synchronize(device)
         start_event, end_event = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
-        start_event.record()
-        end_event.record()
+        prime_stream = torch.cuda.current_stream(device)
+        if prime_stream != torch.cuda.default_stream(device):
+            raise RuntimeError("benchmark event priming requires the selected device's default stream")
+        start_event.record(prime_stream)
+        end_event.record(prime_stream)
         torch.cuda.synchronize(device)
         manifest = {**stage,
             "preflight": preflight, "loaded_module_sha256_before_trials": _loaded_module_hashes(),
@@ -868,12 +1004,13 @@ def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
         try:
             _wait_for_observations(monitor)
             before_query = _query_compute_processes(smi, inventory.get("uuid"), "before")
-            workload_started = time.monotonic_ns()
+            workload_started = time.perf_counter_ns()
             for seed in seeds:
                 collect_trials(invoke, factory, device, torch.cuda, start_event, end_event,
-                               seed, warmup_rounds, measured_rounds, progress, guard=guard)
+                               seed, warmup_rounds, measured_rounds, progress, guard=guard,
+                               validate=validate_sample)
             guard()
-            workload_ended = time.monotonic_ns()
+            workload_ended = time.perf_counter_ns()
             _wait_for_observations(monitor, threshold_ns=workload_ended + 1_000_000_000)
             after_query = _query_compute_processes(smi, inventory.get("uuid"), "after")
         finally:
@@ -898,6 +1035,7 @@ def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
         final_guard()
         return {"protocol": PROTOCOL, "protocol_mode": "smoke" if quick else "full",
             "manifest": manifest, "raw": progress["raw"], "timing_summary": summarize(progress["raw"]),
+            "warmup_samples": len(progress["warmups"]),
             "paired_ratios": summarize_paired_ratios(progress["raw"]),
             "telemetry_summary": telemetry_summary,
             "loaded_module_sha256_after_trials": module_hashes,
@@ -909,6 +1047,16 @@ def _write_json(path, value):
     _write_bytes(path, encoded)
 
 
+def _write_all(handle, value):
+    """Write all bytes or fail; a successful short write is not a full record."""
+    view = memoryview(value)
+    while view:
+        count = handle.write(view)
+        if type(count) is not int or count <= 0 or count > len(view):
+            raise OSError("evidence write made no valid progress")
+        view = view[count:]
+
+
 def _write_bytes(path, value):
     temporary = path.with_name(path.name + ".partial")
     created, linked = False, False
@@ -916,7 +1064,7 @@ def _write_bytes(path, value):
     try:
         with temporary.open("xb") as handle:
             created = True
-            handle.write(value)
+            _write_all(handle, value)
             handle.flush()
             os.fsync(handle.fileno())
         os.link(temporary, path)
@@ -1047,7 +1195,7 @@ def run_benchmark(output_dir, quick=False, exclusive=False, cache_dir=None,
         if stored != _public_evidence(cpu_preflight):
             raise RuntimeError("stored CPU preflight differs from the owner input")
     owner = {"run_id": getattr(owner_session, "run_id", None), "pid": os.getpid()}
-    progress = {"raw": [], "metadata": {}, "source_bundle": None, "telemetry": None,
+    progress = {"raw": [], "warmups": [], "metadata": {}, "source_bundle": None, "telemetry": None,
                 "cpu_preflight": cpu_preflight,
                 "owner_session": owner_session, "candidate_only": candidate_only}
     journal = None
@@ -1055,19 +1203,20 @@ def run_benchmark(output_dir, quick=False, exclusive=False, cache_dir=None,
         _write_json(output_dir / "started.json", {"protocol": PROTOCOL, "status": "started",
             "quick": quick, "exclusive_requested": exclusive, "pid": os.getpid(),
             "started_utc": datetime.now(timezone.utc).isoformat(),
-            "started_monotonic_ns": time.monotonic_ns(),
+            "started_monotonic_ns": time.perf_counter_ns(),
             "owner": owner,
             "cpu_preflight": cpu_preflight,
             "cache_dir": None if cache_dir is None else str(cache_dir),
             "lease_path": None if lease_path is None else str(lease_path),
             "lease_timeout_seconds": lease_timeout})
         journal = (output_dir / "raw_progress.jsonl").open("x", encoding="utf-8", newline="\n")
-        def record_sample(row):
+        def record(row, bucket):
             journal.write(json.dumps(_public_evidence(row), allow_nan=False, separators=(",", ":")) + "\n")
             journal.flush()
             os.fsync(journal.fileno())
-            progress["raw"].append(row)
-        progress["record_sample"] = record_sample
+            progress[bucket].append(row)
+        progress["record_sample"] = lambda row: record(row, "raw")
+        progress["record_warmup"] = lambda row: record(row, "warmups")
         progress["record_source"] = lambda bundle: _write_bytes(output_dir / "source_bundle.zip", bundle)
         progress["record_manifest"] = lambda manifest: _write_json(output_dir / "manifest.json", manifest)
         progress["record_stage"] = lambda name, value: _write_json(output_dir / (name + ".json"), value)
@@ -1082,6 +1231,8 @@ def run_benchmark(output_dir, quick=False, exclusive=False, cache_dir=None,
             _write_bytes(output_dir / "source_bundle.zip", progress["source_bundle"])
         if rows:
             _write_csv(output_dir / "raw_timing.csv", rows)
+        if progress["warmups"]:
+            _write_csv(output_dir / "warmup_timing.csv", progress["warmups"])
         if progress["telemetry"] is not None:
             _write_json(output_dir / "telemetry.json", progress["telemetry"])
         if "final_guard" in progress:
@@ -1110,6 +1261,8 @@ def run_benchmark(output_dir, quick=False, exclusive=False, cache_dir=None,
             preserve("source_bundle.zip", lambda: _write_bytes(output_dir / "source_bundle.zip", progress["source_bundle"]))
         if progress["raw"]:
             preserve("partial_raw_timing.csv", lambda: _write_csv(output_dir / "partial_raw_timing.csv", progress["raw"]))
+        if progress["warmups"]:
+            preserve("partial_warmup_timing.csv", lambda: _write_csv(output_dir / "partial_warmup_timing.csv", progress["warmups"]))
         if progress["telemetry"] is not None:
             preserve("partial_telemetry.json", lambda: _write_json(output_dir / "partial_telemetry.json", progress["telemetry"]))
         if (output_dir / ("candidate.json" if candidate_only else "results.json")).exists():
@@ -1121,7 +1274,9 @@ def run_benchmark(output_dir, quick=False, exclusive=False, cache_dir=None,
                    "status": "cancelled" if isinstance(exc, (KeyboardInterrupt, SystemExit)) else "failed",
                    "owner": owner,
                    "error_type": type(exc).__name__, "message": str(exc),
-                   "partial_samples": len(progress["raw"]), "metadata": progress["metadata"],
+                   "partial_samples": len(progress["raw"]), "partial_warmups": len(progress["warmups"]),
+                   "partial_counts_scope": "rows acknowledged after journal fsync; a final complete-looking line after an I/O error may have unknown durability",
+                   "metadata": progress["metadata"],
                    "artifact_errors": [{"artifact": name, "error_type": type(error).__name__,
                                         "message": str(error)} for name, error in recording_errors]}
         try:
