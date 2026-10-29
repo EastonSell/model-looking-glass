@@ -81,8 +81,10 @@ def _slice(full, head, heads):
     return full[0, -1, head * width:(head + 1) * width]
 
 
-def _dose_plan(observations, heads, targets, nheads):
+def _dose_plan(observations, heads, targets, nheads, *, opposite_xor=1):
     """Precompute every replacement before allowing any patch forward."""
+    if type(opposite_xor) is not int or opposite_xor not in (1, 3):
+        raise ValueError("invalid fixed donor mapping")
     records, ready = [], {}
     for head in heads:
         cells, proposed = [], {}
@@ -93,7 +95,7 @@ def _dose_plan(observations, heads, targets, nheads):
             if not math.isfinite(norm):
                 raise ValueError("nonfinite receiver norm")
             q = RELATIVE_DOSE * norm
-            pairs = (("opposite", group + (local ^ 1)), ("same", group + (local ^ 2)))
+            pairs = (("opposite", group + (local ^ opposite_xor)), ("same", group + (local ^ 2)))
             donors = []
             for name, donor in pairs:
                 other = _slice(observations[donor][0], head, nheads)
@@ -155,6 +157,16 @@ def _evaluation_rule(details, candidate, comparator):
                        ("passes_fixed_rule" if criterion else "does_not_pass_fixed_rule")}
 
 
+def _exploratory_comparison(details, candidate, comparator):
+    """Describe the exposed-input follow-up without a new pass/fail claim."""
+    result = _evaluation_rule(details, candidate, comparator)
+    result.pop("criterion")
+    result.pop("status")
+    for frame in result["frames"]:
+        frame.pop("criterion")
+    return result
+
+
 def _validate_rows(model, rows, heads, present_ids):
     if (type(rows) not in (list, tuple) or len(rows) != 16
             or any(type(row) not in (list, tuple) or not row or len(row) > 12
@@ -174,17 +186,27 @@ def _validate_rows(model, rows, heads, present_ids):
             raise ValueError("quartet must vary at exactly one distinct subject-token position")
 
 
-def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata, phase):
+def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata, phase,
+         reference_observations=None):
     _validate_rows(model, rows, heads, present_ids)
-    if phase not in ("development", "evaluation") or type(metadata) is not dict:
+    if phase not in ("development", "evaluation", "exploratory") or type(metadata) is not dict:
         raise ValueError("invalid phase or run metadata")
-    if phase == "evaluation" and len(heads) != 2:
+    if phase in ("evaluation", "exploratory") and len(heads) != 2:
         raise ValueError("evaluation requires candidate and comparator heads")
+    if phase == "exploratory" and (type(reference_observations) is not tuple or len(reference_observations) != 16
+            or any(type(pair) is not tuple or len(pair) != 2 or any(type(value) is not bytes or not value for value in pair)
+                   for pair in reference_observations)):
+        raise ValueError("exploration requires the 16 retained prior clean witnesses")
+    if phase != "exploratory" and reference_observations is not None:
+        raise ValueError("prior witnesses are only supported by the exploratory protocol")
     if (secondary_ids is not None and (type(secondary_ids) is not tuple or len(secondary_ids) != 2
             or any(type(i) is not int or not 0 <= i < model.config.vocab_size for i in secondary_ids)
             or secondary_ids[0] == secondary_ids[1])):
         raise ValueError("invalid secondary scored-token IDs")
-    journal = AgreementJournal(directory, {"phase": phase, **metadata, "protocol": "distilgpt2-agreement-heads-v2"},
+    version = "v3" if phase == "exploratory" else "v2"
+    opposite_xor = 3 if phase == "exploratory" else 1
+    protocol = "distilgpt2-agreement-heads-fixed-donor-v3" if phase == "exploratory" else "distilgpt2-agreement-heads-v2"
+    journal = AgreementJournal(directory, {"phase": phase, **metadata, "protocol": protocol},
                                max_total_bytes=128 * 1024 * 1024,
                                max_forward_bytes=1024 * 1024, max_events=1000,
                                max_event_log_bytes=8 * 1024 * 1024)
@@ -197,7 +219,7 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
         journal.record({"type": "forward_begin", "binary64_before": "nearest-even-probes-passed", **identity}, {})
         ids = torch.tensor([rows[row_index]], dtype=torch.long)
         point = GPT2HeadSlicePoint(layer=3, token=len(rows[row_index]) - 1, head=head)
-        result = run_gpt2_head_slice(model, ids, point=point, run_id=f"{phase}-v2-{count}", replacement=replacement,
+        result = run_gpt2_head_slice(model, ids, point=point, run_id=f"{phase}-{version}-{count}", replacement=replacement,
                                      max_input_bytes=1024, max_tensor_bytes=64 * 1024,
                                      max_capture_bytes=192 * 1024, max_source_bytes=4096,
                                      max_logits_bytes=4 * 1024 * 1024)
@@ -224,17 +246,19 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
             before, after, last = call(index, 0, "observe")
             if _bits(before) != _bits(after):
                 raise RuntimeError("observe changed projection-input bits")
+            if phase == "exploratory" and (_bits(before), _bits(last)) != reference_observations[index]:
+                raise RuntimeError("clean observation differs from the prior exposed evaluation")
             observations.append((before, last))
         binary64_rounding_probe()
-        targets = [i for i in range(16) if phase == "evaluation" or i % 4 < 2]
-        plan, replacements = _dose_plan(observations, heads, targets, model.config.n_head)
+        targets = [i for i in range(16) if phase != "development" or i % 4 < 2]
+        plan, replacements = _dose_plan(observations, heads, targets, model.config.n_head, opposite_xor=opposite_xor)
         binary64_rounding_probe()
         journal.record({"type": "dose_plan", **plan}, {})
         active = tuple(entry["head"] for entry in plan["heads"] if entry["eligible"])
-        if len(active) < 2 or (phase == "evaluation" and active != heads):
+        if len(active) < 2 or (phase != "development" and active != heads):
             raise DoseIneligible("required heads do not meet the fixed dose plan")
         cells = {(entry["head"], cell["target"]): cell for entry in plan["heads"] for cell in entry["targets"]}
-        self_targets = targets if phase == "evaluation" else targets[:1]
+        self_targets = targets if phase != "development" else targets[:1]
         for head in active:
             for target in self_targets:
                 selected = _slice(observations[target][0], head, model.config.n_head)
@@ -251,7 +275,7 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
                 doses = {}
                 cell = cells[(head, target)]
                 q = cell["requested_q"]
-                for name, donor in (("opposite", group + (local ^ 1)), ("same", group + (local ^ 2))):
+                for name, donor in (("opposite", group + (local ^ opposite_xor)), ("same", group + (local ^ 2))):
                     binary64_rounding_probe()
                     replacement, d, actual = replacements[(head, target, name)]
                     before, after, last = call(target, head, name, replacement, donor=donor,
@@ -296,6 +320,8 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
                    "details": details}
         if phase == "evaluation":
             summary["evaluation"] = _evaluation_rule(details, heads[0], heads[1])
+        elif phase == "exploratory":
+            summary["comparison"] = _exploratory_comparison(details, heads[0], heads[1])
         binary64_rounding_probe()
         journal.record({"type": "summary", **summary}, {})
         journal.finish("complete", summary)
@@ -324,3 +350,11 @@ def run_evaluation(model, rows, directory, *, candidate, comparator, metadata,
     """Run fixed evaluation quartets after external source/exposure admission."""
     return _run(model, rows, directory, heads=(candidate, comparator), present_ids=present_ids,
                 secondary_ids=secondary_ids, metadata=metadata, phase="evaluation")
+
+
+def run_fixed_donor_exploration(model, rows, directory, *, candidate, comparator, metadata, reference_observations,
+                                present_ids=(318, 389), secondary_ids=(373, 547)):
+    """Compare number variants of the same other donor on exposed quartets."""
+    return _run(model, rows, directory, heads=(candidate, comparator), present_ids=present_ids,
+                secondary_ids=secondary_ids, metadata=metadata, phase="exploratory",
+                reference_observations=reference_observations)
