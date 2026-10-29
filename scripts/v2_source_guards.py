@@ -12,6 +12,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 
 
 class SourceGuardError(RuntimeError):
@@ -70,6 +71,13 @@ class _JobExtendedLimits(ctypes.Structure):
                 ("peak_process_memory", ctypes.c_size_t), ("peak_job_memory", ctypes.c_size_t)]
 
 
+class _JobAccounting(ctypes.Structure):
+    _fields_ = [("total_user", ctypes.c_int64), ("total_kernel", ctypes.c_int64),
+                ("period_user", ctypes.c_int64), ("period_kernel", ctypes.c_int64),
+                ("page_faults", wintypes.DWORD), ("total_processes", wintypes.DWORD),
+                ("active_processes", wintypes.DWORD), ("terminated_processes", wintypes.DWORD)]
+
+
 class WindowsJob:
     """Kill assigned children when the owning process closes its job handle.
 
@@ -86,6 +94,12 @@ class WindowsJob:
         self._kernel.SetInformationJobObject.restype = wintypes.BOOL
         self._kernel.AssignProcessToJobObject.argtypes = (wintypes.HANDLE, wintypes.HANDLE)
         self._kernel.AssignProcessToJobObject.restype = wintypes.BOOL
+        self._kernel.TerminateJobObject.argtypes = (wintypes.HANDLE, wintypes.UINT)
+        self._kernel.TerminateJobObject.restype = wintypes.BOOL
+        self._kernel.QueryInformationJobObject.argtypes = (wintypes.HANDLE, wintypes.INT,
+                                                            wintypes.LPVOID, wintypes.DWORD,
+                                                            ctypes.POINTER(wintypes.DWORD))
+        self._kernel.QueryInformationJobObject.restype = wintypes.BOOL
         self._handle = self._kernel.CreateJobObjectW(None, None)
         if not self._handle:
             raise SourceGuardError("cannot create the process job")
@@ -106,6 +120,24 @@ class WindowsJob:
             raise SourceGuardError("job or child is not active")
         if not self._kernel.AssignProcessToJobObject(self._handle, int(process._handle)):
             raise SourceGuardError("cannot assign the child to the process job")
+
+    def terminate_and_wait(self, timeout=5):
+        """Terminate assigned processes and wait for the entire job to drain."""
+        if self._handle is None or not 0 < timeout <= 10:
+            raise SourceGuardError("invalid job termination or timeout")
+        if not self._kernel.TerminateJobObject(self._handle, 1):
+            raise SourceGuardError("cannot terminate the process job")
+        deadline = time.monotonic() + timeout
+        while True:
+            info = _JobAccounting()
+            if not self._kernel.QueryInformationJobObject(self._handle, 1, ctypes.byref(info),
+                                                          ctypes.sizeof(info), None):
+                raise SourceGuardError("cannot inspect process job termination")
+            if info.active_processes == 0:
+                return
+            if time.monotonic() >= deadline:
+                raise SourceGuardError("process job did not drain")
+            time.sleep(0.05)
 
     def close(self):
         if self._handle is not None:
@@ -348,3 +380,34 @@ class InheritableHandles:
     def __exit__(self, exc_type, exc, tb):
         self.close()
         return False
+
+
+def duplicate_to_process(handles, process):
+    """Duplicate protections directly into a live child, noninheritable there.
+
+    No inheritable parent duplicates are created. On partial failure the child
+    owns any handles already duplicated; the caller must terminate and reap it
+    before releasing the original protections.
+    """
+    if (type(handles) not in (tuple, list) or not 0 < len(handles) <= 8193 or
+            any(type(handle) is not int or handle <= 0 for handle in handles) or
+            len(set(handles)) != len(handles) or process.poll() is not None):
+        raise SourceGuardError("a bounded set of live handles and a live child are required")
+    kernel = _kernel()
+    kernel.GetCurrentProcess.argtypes = ()
+    kernel.GetCurrentProcess.restype = wintypes.HANDLE
+    kernel.DuplicateHandle.argtypes = (wintypes.HANDLE, wintypes.HANDLE, wintypes.HANDLE,
+                                       ctypes.POINTER(wintypes.HANDLE), wintypes.DWORD,
+                                       wintypes.BOOL, wintypes.DWORD)
+    kernel.DuplicateHandle.restype = wintypes.BOOL
+    current = kernel.GetCurrentProcess()
+    result = []
+    for handle in handles:
+        if os.get_handle_inheritable(handle):
+            raise SourceGuardError("parent protection handles must not be inheritable")
+        duplicate = wintypes.HANDLE()
+        if not kernel.DuplicateHandle(current, handle, int(process._handle),
+                                      ctypes.byref(duplicate), 0, False, 2):
+            raise SourceGuardError("cannot duplicate protection into child")
+        result.append(duplicate.value)
+    return tuple(result)
