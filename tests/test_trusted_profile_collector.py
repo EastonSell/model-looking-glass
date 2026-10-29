@@ -89,6 +89,20 @@ class TrustedProfileCollectorTests(unittest.TestCase):
         self.addCleanup(self.custody_patch.stop)
         self.addCleanup(self.claim_patch.stop)
 
+    def test_contract_can_be_checked_without_loading_gpu_dependencies(self):
+        repo = Path(__file__).resolve().parents[1]
+        program = ("import sys; sys.path.append(sys.argv[1]); "
+                   "import looking_glass.trusted_profile_collector as collector; "
+                   "assert collector.TRUSTED_SERVICE_COLLECTOR_CONTRACT == 'two-token-worker-profile-v1'; "
+                   "assert 'torch' not in sys.modules and 'transformers' not in sys.modules")
+        env = dict(os.environ)
+        env.pop('PYTHONPATH', None)
+        env.pop('PYTHONHOME', None)
+        env['CUDA_VISIBLE_DEVICES'] = ''
+        result = subprocess.run([sys.executable, '-B', '-S', '-P', '-c', program, str(repo)],
+                                cwd=repo, env=env, capture_output=True, text=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_assembled_profiles_bind_order_cases_source_and_margins(self):
         identity, samples = identity_and_samples()
         profiles, evidence = assemble_profiles(identity, samples, collected_utc='2026-10-29T00:00:00Z')

@@ -1,17 +1,18 @@
 # Experimental fair-admission adapter
 
 `looking_glass.fair_adapter.ExperimentalFairAdapter` is an experimental,
-in-process waiting layer. It is **not connected to the current Broker or IPC
-server**, and it does not run models or manage GPU memory. The current Broker
-lacks the required atomic handoff interface and is rejected as a target. The
-example target in tests is a CPU-only simulation, not a broker implementation.
+in-process waiting layer. It does not run models or manage GPU memory. The
+optional [broker fair handoff](BROKER_FAIR_HANDOFF.md) supplies a target for
+trusted in-process service owners; the broker itself remains rejected as a
+target, and the IPC server does not use this handoff. The example target in the
+adapter's isolated tests is a CPU-only simulation.
 
 The adapter combines the protected team waiter positions described in
 [FAIR_ADMISSION.md](FAIR_ADMISSION.md) with a trusted identity verifier,
 owner-scoped cancellation, immutable payloads, and byte limits. It exposes no
 network endpoint. Only `bytes` payloads are accepted; mutable arrays, tensors,
-and bytearrays are rejected. A production integration would need a bounded,
-validated decoder and a separately budgeted snapshot before model execution.
+and bytearrays are rejected. The optional broker target requires a trusted,
+bounded decoder and a separately declared host-input commitment.
 
 The verifier is injected by the trusted owner and must authenticate the supplied
 credential before returning an exact configured principal ID. The adapter checks
@@ -19,13 +20,18 @@ that the returned ID is a configured string; it cannot prove that the verifier
 authenticates, that credentials have been distributed securely, or that the
 principal mapping assigns aliases to the correct canonical team. Never pass a
 caller-supplied identity through an identity function and call it authenticated.
+Verifier failures can retain credential arguments in Python traceback frames;
+a service boundary must sanitize errors and avoid logging traceback locals or
+otherwise retaining those secrets.
 The adapter and its target must remain inaccessible to untrusted clients except
 through an authenticated, authorized service. Direct access to a broker's
 submission API bypasses this admission policy.
 
-`transfer_next()` and `close()` are trusted service-internal operations. Neither
-authenticates a caller; their receipts and canceled-ticket lists can refer to
-other principals, so they must never be exposed as untrusted client methods.
+`transfer_next()`, `close()`, `recover_receipt()`, and `acknowledge_receipt()`
+are trusted service-internal operations. None authenticates a caller; their
+receipts and ticket lists can refer to other principals, so they must never be
+exposed as untrusted client methods. Receipt recovery is supported only by a
+target that implements it.
 
 `submit(credential, payload)` returns a ticket containing a random queue-instance
 namespace and a monotonically increasing sequence. A ticket from another
@@ -67,13 +73,15 @@ not proof that an implementation obeys the contract. The target must:
 4. For a claimed request, atomically record global and per-team reservations
    before releasing the broker lock, retain or defensively snapshot the payload
    within the target's memory budget, register a terminal outcome owner, and
-   return a non-`None` receipt. Adjust a conservative byte reservation to the
-   actual payload size without ever leaving the payload unaccounted.
-5. If anything fails after claim, record a terminal failure or cancellation for
-   that ticket and release the target's reservations exactly once. Retained
-   exceptions and tracebacks may themselves keep the request alive; the target
-   must bound their memory and retention, too. Apply the same cleanup to OOM,
-   cancellation, worker poison, and shutdown.
+   return a non-`None` receipt. A conservative fixed reservation may be held
+   throughout the lifetime; any adjustment must keep the payload accounted.
+5. On a known pre-publication failure, route a terminal failure or cancellation
+   and release reservations only after covered references are disposed. If
+   publication or cleanup is uncertain, retain the affected claims, stop the
+   owner, and reconcile the ticket or recover a published handle. Retained
+   exceptions and tracebacks may keep the request alive and need separate
+   limits. Apply the same ownership rules to OOM, cancellation, poison, and
+   shutdown.
 
 A concrete target can advertise `max_item_bytes`; the adapter rejects a larger
 configured item limit. A target that exposes `bind_waiting_queue(teams,
@@ -92,8 +100,12 @@ and all other target methods must remain consistent with this arrangement.
 is eligible. On success it returns a ticket and opaque target receipt. A target
 exception after claim becomes `HandoffFailure` with the claimed ticket; a fatal
 `BaseException` becomes `FatalHandoffFailure`, which is also a `BaseException`.
-The dispatch caller must route that ticket to terminal failure, and the target
-must clean up its reservations. A callback invoked twice, later, or from another
-thread is rejected. These checks cannot protect against a target that lies about
-its lock, reservation, exclusivity, or terminal bookkeeping; the target and
-verifier are trusted dependencies and require integration tests and review.
+Either exception may occur after a job was published, so it does not establish
+terminal failure. A recoverable target must let the trusted owner retrieve the
+handle and reconcile the outcome. If the queue claim itself raises unexpectedly,
+the adapter fails closed and the owner must call `close()` to recover its
+outstanding ticket IDs for reconciliation. A callback invoked twice, later, or
+from another thread is rejected. These checks cannot protect against a target
+that lies about its lock, reservation, exclusivity, or terminal bookkeeping;
+the target and verifier are trusted dependencies and require integration tests
+and review.

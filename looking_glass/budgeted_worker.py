@@ -244,6 +244,12 @@ class BudgetedWorker:
         self._check_available()
         return self._binding[4]
 
+    @property
+    def max_output_bytes(self):
+        """Per-result logical tensor limit; not a transient-memory cap."""
+        self._check_available()
+        return self._binding[5]
+
     def _process_is_quarantined(self):
         try:
             return bool(self._worker.quarantined)
