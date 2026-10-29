@@ -649,7 +649,10 @@ def run_protocol(output_dir, broker, jobs, *, input_digest, output_digest, rejec
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=False)
     clock = time.get_clock_info('perf_counter')
+    admission_status = metadata.get('admission_status')
+    evidence_label = {'admission_status': admission_status} if admission_status is not None else {}
     result = {'protocol': 'shared-model-throughput-v1', 'status': 'running',
+              'admission_status': admission_status,
               'benchmark_session_id': uuid.uuid4().hex, 'broker_id': getattr(broker, 'broker_id', None),
               'metadata': metadata, 'model_spec': model_spec, 'unit_name': unit_name,
               'manifest': manifest, 'manifest_sha256': manifest_hash,
@@ -691,7 +694,7 @@ def run_protocol(output_dir, broker, jobs, *, input_digest, output_digest, rejec
                     for sample in warmup['samples']:
                         _append_jsonl(output_dir / 'warmup_samples.jsonl',
                                       {'benchmark_session_id': result['benchmark_session_id'], 'repetition': repetition, 'mode': mode,
-                                       'warmup_round': warmup_round, **sample})
+                                       'warmup_round': warmup_round, **evidence_label, **sample})
                     if warmup['manifest_sha256'] != manifest_hash:
                         raise RuntimeError('workload manifest changed during warmup')
                     verify_frozen()
@@ -702,9 +705,11 @@ def run_protocol(output_dir, broker, jobs, *, input_digest, output_digest, rejec
                 before = telemetry.before()
                 window = run_window(broker, jobs, mode=mode, **kwargs)
                 window['repetition'] = repetition
+                window.update(evidence_label)
                 for sample in window['samples']:
                     _append_jsonl(output_dir / 'raw_samples.jsonl',
-                                  {'benchmark_session_id': result['benchmark_session_id'], 'repetition': repetition, 'mode': mode, **sample})
+                                  {'benchmark_session_id': result['benchmark_session_id'], 'repetition': repetition,
+                                   'mode': mode, **evidence_label, **sample})
                 if window['status'] != 'complete':
                     window['memory'] = {'before': before, 'after': None}
                     _append_jsonl(output_dir / 'partial_windows.jsonl', window)
@@ -733,16 +738,18 @@ def run_protocol(output_dir, broker, jobs, *, input_digest, output_digest, rejec
             partial = getattr(exc, 'throughput_partial', None)
             if partial is not None:
                 _append_jsonl(output_dir / 'interrupted_windows.jsonl',
-                              {'benchmark_session_id': result['benchmark_session_id'], **active_context, **partial})
+                              {'benchmark_session_id': result['benchmark_session_id'], **active_context,
+                               **evidence_label, **partial})
                 path = output_dir / ('warmup_samples.jsonl' if active_context['phase'] == 'warmup' else 'raw_samples.jsonl')
                 for sample in partial['samples']:
                     _append_jsonl(path, {'benchmark_session_id': result['benchmark_session_id'],
-                                        **active_context, 'partial': True, **sample})
+                                        **active_context, **evidence_label, 'partial': True, **sample})
             try:
                 evidence_hashes, hash_error = _evidence_hashes(output_dir), None
             except Exception as digest_error:
                 evidence_hashes, hash_error = None, _describe_error(digest_error)
             _atomic_write_json(output_dir / 'failure.json', {'status': 'cancelled' if isinstance(exc, KeyboardInterrupt) else 'failed',
+                'admission_status': admission_status,
                 'type': type(exc).__name__, 'message': str(exc), 'completed_windows': len(result['windows']),
                 'work_may_still_be_running': True, 'evidence_sha256': evidence_hashes,
                 'evidence_hash_error': hash_error})
@@ -1099,7 +1106,8 @@ def _normalized_model_metadata(metadata):
 
 
 def run_distilgpt2_benchmark(output_dir, *, cache_dir, device='cpu', gpu_activity='unknown',
-                              repetitions=3, protocol_seed=0, quick=False):
+                              repetitions=3, protocol_seed=0, quick=False,
+                              development_unprofiled=False):
     """Run the pinned offline DistilGPT2 workload through one resident broker.
 
     A CUDA caller must be a supervised child with the physical-device lease.
@@ -1111,6 +1119,14 @@ def run_distilgpt2_benchmark(output_dir, *, cache_dir, device='cpu', gpu_activit
         device_name = 'cuda:0'
     if device_name not in ('cpu', 'cuda:0'):
         raise ValueError('device must be cpu or supervised cuda:0')
+    if type(development_unprofiled) is not bool:
+        raise ValueError('development_unprofiled must be a boolean')
+    if device_name == 'cuda:0' and not development_unprofiled:
+        raise RuntimeError('unprofiled GPU workload is disabled; a measured admission profile is required')
+    if device_name == 'cuda:0' and development_unprofiled and quick is not True:
+        raise ValueError('unprofiled GPU development is limited to the quick workload')
+    if device_name == 'cpu' and development_unprofiled:
+        raise ValueError('development_unprofiled applies only to GPU development runs')
     if type(quick) is not bool or type(gpu_activity) is not str or not gpu_activity.strip():
         raise ValueError('record observed external GPU activity and use a boolean quick flag')
     if type(repetitions) is not int or not 1 <= repetitions <= 10 or type(protocol_seed) is not int:
@@ -1184,6 +1200,7 @@ def run_distilgpt2_benchmark(output_dir, *, cache_dir, device='cpu', gpu_activit
             environment['compute_capability'] = list(torch.cuda.get_device_capability(resolved_device))
         setup = {'protocol': 'shared-model-throughput-v1', 'status': 'initializing',
                  'smoke_only': quick, 'source': source, 'environment': environment,
+                 'admission_status': 'development_unprofiled' if resolved_device.type == 'cuda' else None,
                  'owner_run_id': owner_session.run_id if owner_session is not None else None,
                  'owner_pid': os.getpid() if owner_session is not None else None,
                  'external_gpu_activity': gpu_activity, 'model_id': MODEL_ID, 'revision': REVISION,
@@ -1238,12 +1255,13 @@ def run_distilgpt2_benchmark(output_dir, *, cache_dir, device='cpu', gpu_activit
             budgeted = BudgetedWorker(worker, admission, profiles)
             setup['limits']['profiles'] = [asdict(profile) for profile in profiles]
             _atomic_write_json(output_dir / 'admission_profiles.json', {
-                'status': 'provisional_unmeasured_estimates', 'profiles': setup['limits']['profiles']})
+                'status': 'provisional_unmeasured_estimates', 'admission_status': setup['admission_status'],
+                'profiles': setup['limits']['profiles']})
         proxy = SynchronizedWorker(budgeted if budgeted is not None else worker, synchronize)
         broker = Broker(proxy, max_pending=4, max_pending_per_team=1)
         metadata = {**source, 'external_gpu_activity': gpu_activity, 'environment': environment,
                     'workload_replay': setup['workload_replay'], 'smoke_only': quick,
-                    'memory_policy': setup['limits']}
+                    'memory_policy': setup['limits'], 'admission_status': setup['admission_status']}
         measurement_started = True
         measurement_result = run_protocol(output_dir / 'measurements', broker, jobs,
                             input_digest=canonical_digest,
@@ -1259,6 +1277,7 @@ def run_distilgpt2_benchmark(output_dir, *, cache_dir, device='cpu', gpu_activit
         try:
             _atomic_write_json(output_dir / 'failure.json', {
                 'status': 'cancelled' if isinstance(exc, KeyboardInterrupt) else 'failed',
+                'admission_status': 'development_unprofiled' if device_name == 'cuda:0' else None,
                 'type': type(exc).__name__, 'message': str(exc),
                 'measurement_started': measurement_started,
                 'nested_failure_recorded': (output_dir / 'measurements' / 'failure.json').exists(),
@@ -1304,6 +1323,7 @@ def run_distilgpt2_benchmark(output_dir, *, cache_dir, device='cpu', gpu_activit
                    if cleanup_error is None else
                    {'status': 'failed', 'type': type(cleanup_error).__name__, 'message': str(cleanup_error),
                     'work_may_still_be_running': True})
+        cleanup['admission_status'] = 'development_unprofiled' if device_name == 'cuda:0' else None
         publication_errors = []
         try:
             _atomic_write_json(output_dir / 'cleanup.json', cleanup)
@@ -1320,6 +1340,7 @@ def run_distilgpt2_benchmark(output_dir, *, cache_dir, device='cpu', gpu_activit
             final_status = measurement_status
         try:
             _atomic_write_json(output_dir / 'run_status.json', {'status': final_status,
+                'admission_status': 'development_unprofiled' if device_name == 'cuda:0' else None,
                 'measurement_status': measurement_status, 'cleanup_status': cleanup['status'],
                 'work_may_still_be_running': cleanup_error is not None})
         except Exception as exc:
@@ -1465,6 +1486,9 @@ def _direct_python_module(module, arguments, *, pycache_prefix, project=None, si
 def _validate_recorded_windows(directory, result, *, jobs, repetitions, protocol_seed):
     """Reconcile every raw attempt with the saved windows and recompute them."""
     expected_jobs = {job['job_id']: job for job in jobs}
+    admission_status = result.get('admission_status')
+    if admission_status != result.get('metadata', {}).get('admission_status'):
+        raise ValueError('measurement admission status differs from metadata')
     session_id, broker_id = result.get('benchmark_session_id'), result.get('broker_id')
     if any(type(value) is not str or re.fullmatch(r'[0-9a-f]{32}', value) is None
            for value in (session_id, broker_id)):
@@ -1499,6 +1523,8 @@ def _validate_recorded_windows(directory, result, *, jobs, repetitions, protocol
             row = dict(original)
             if row.pop('benchmark_session_id', None) != session_id:
                 raise ValueError('attempt session identity differs')
+            if row.pop('admission_status', None) != admission_status:
+                raise ValueError('attempt admission status differs from measurement')
             repetition, mode = row.pop('repetition', None), row.pop('mode', None)
             if type(repetition) is not int or repetition not in range(repetitions) or mode not in ('serial', 'shared'):
                 raise ValueError('attempt repetition or mode is invalid')
@@ -1560,7 +1586,8 @@ def _validate_recorded_windows(directory, result, *, jobs, repetitions, protocol
                 or key[1] not in ('serial', 'shared')
                 or window.get('status') != 'complete' or window.get('unattempted_job_ids') != []
                 or window.get('fatal_errors') != [] or window.get('manifest') != result['manifest']
-                or window.get('manifest_sha256') != result['manifest_sha256']):
+                or window.get('manifest_sha256') != result['manifest_sha256']
+                or window.get('admission_status') != admission_status):
             raise ValueError('window identity or manifest is invalid')
         samples = window.get('samples')
         if type(samples) is not list or len(samples) != len(jobs):
@@ -1635,6 +1662,9 @@ def _validate_owner_evidence(owner_dir, *, supervision, preflight, gpu_uuid, rep
     if (setup.get('owner_run_id') != supervision.run_id or setup.get('owner_pid') != supervision.pid
             or setup.get('environment', {}).get('runtime_gpu_uuid') != gpu_uuid):
         raise ValueError('owner run or verified GPU identity differs from the supervisor')
+    if any(record.get('admission_status') != 'development_unprofiled'
+           for record in (setup, cleanup, final, result, initial)):
+        raise ValueError('owner evidence must identify unprofiled development admission')
     allocator = cleanup.get('cuda_allocator_after_cleanup')
     if (cleanup.get('status') != 'complete' or cleanup.get('owner_attested_clean') is not True
             or cleanup.get('broker_state') != 'stopped' or cleanup.get('memory_lease_released') is not True
@@ -1707,7 +1737,8 @@ def _validate_owner_evidence(owner_dir, *, supervision, preflight, gpu_uuid, rep
     if any(type(limits.get(key)) is not int or limits[key] != value for key, value in expected_limits.items()):
         raise ValueError('owner memory or queue policy differs from the fixed protocol')
     profile_record = read('admission_profiles.json')
-    if profile_record.get('status') != 'provisional_unmeasured_estimates':
+    if (profile_record.get('status') != 'provisional_unmeasured_estimates'
+            or profile_record.get('admission_status') != 'development_unprofiled'):
         raise ValueError('admission estimate status is missing')
     signatures = {job['units'] for job in preflight['manifest_jobs']}
     dtypes = (('attention_mask', 'torch.int64'), ('input_ids', 'torch.int64'))
@@ -1723,7 +1754,8 @@ def _validate_owner_evidence(owner_dir, *, supervision, preflight, gpu_uuid, rep
         raise ValueError('admission profiles differ from the fixed workload')
     expected_metadata = {**setup['source'], 'external_gpu_activity': setup['external_gpu_activity'],
         'environment': setup['environment'], 'workload_replay': setup['workload_replay'],
-        'smoke_only': quick, 'memory_policy': {**setup['limits'], 'profiles': profiles}}
+        'smoke_only': quick, 'memory_policy': {**setup['limits'], 'profiles': profiles},
+        'admission_status': 'development_unprofiled'}
     if (result.get('metadata') != expected_metadata or initial.get('metadata') != expected_metadata
             or initial.get('model_spec') != result.get('model_spec')
             or initial.get('unit_name') != result.get('unit_name')
@@ -1773,17 +1805,20 @@ def _controller_evidence_hashes(output_dir):
 
 def run_supervised_distilgpt2_benchmark(output_dir, *, cache_dir, device_root, gpu_uuid,
                                         gpu_activity='unknown', repetitions=3, protocol_seed=0,
-                                        quick=False, timeout=600):
+                                        quick=False, timeout=600, development_unprofiled=False):
     """Preflight on CPU, then supervise one UUID-bound GPU owner process."""
     import sys
     from .device_identity import resolve_device_identity
     from .supervisor import run_supervised
-    if type(quick) is not bool or type(gpu_activity) is not str or not gpu_activity.strip():
+    if (type(quick) is not bool or type(development_unprofiled) is not bool
+            or type(gpu_activity) is not str or not gpu_activity.strip()):
         raise ValueError('record GPU activity and use a boolean quick flag')
     if type(repetitions) is not int or not 1 <= repetitions <= 10 or type(protocol_seed) is not int:
         raise ValueError('repetitions must be 1 through 10 and the protocol seed must be an integer')
     if type(timeout) not in (int, float) or not isfinite(timeout) or timeout <= 0:
         raise ValueError('supervision timeout must be finite and positive')
+    if development_unprofiled and not quick:
+        raise ValueError('unprofiled GPU development is limited to the quick workload')
     output_dir = Path(output_dir).resolve()
     if output_dir.exists():
         raise FileExistsError('the benchmark output directory already exists')
@@ -1794,7 +1829,10 @@ def run_supervised_distilgpt2_benchmark(output_dir, *, cache_dir, device_root, g
             'protocol': 'supervised-shared-model-throughput-v1', 'status': 'initializing',
             'smoke_only': quick, 'repetitions': 1 if quick else repetitions,
             'protocol_seed': protocol_seed, 'external_gpu_activity': gpu_activity,
+            'admission_status': 'development_unprofiled' if development_unprofiled else 'disabled_unprofiled',
             'bytecode_policy': 'empty_prefix_no_writes'})
+        if not development_unprofiled:
+            raise RuntimeError('unprofiled GPU workload is disabled; a measured admission profile is required')
         _require_fresh_bytecode_prefix(sys)
         runtime_environment = _configure_cuda_environment(os.environ)
         preflight = _preflight_distilgpt2(cache_dir, quick=quick)
@@ -1805,7 +1843,7 @@ def run_supervised_distilgpt2_benchmark(output_dir, *, cache_dir, device_root, g
         _atomic_write_json(output_dir / 'preflight.json', preflight)
         inventory = _physical_gpu_inventory()
         identity = resolve_device_identity(device_root, gpu_uuid, physical_uuids=inventory)
-        arguments = ['--owner-child', '--output', str(output_dir / 'owner'),
+        arguments = ['--owner-child', '--development-unprofiled', '--output', str(output_dir / 'owner'),
                    '--cache-dir', str(Path(cache_dir).resolve()), '--device', 'cuda:0',
                    '--gpu-activity', gpu_activity, '--repetitions', str(repetitions),
                    '--protocol-seed', str(protocol_seed)]
@@ -1823,7 +1861,8 @@ def run_supervised_distilgpt2_benchmark(output_dir, *, cache_dir, device_root, g
             inherit_environment=False)
         health = {key: getattr(supervision, key) for key in
                   ('run_id', 'pid', 'exit_code', 'clean', 'timed_out', 'reason')}
-        record = {'status': 'failed', 'supervisor': health, 'runtime_gpu_uuid': identity.gpu_uuid,
+        record = {'status': 'failed', 'admission_status': 'development_unprofiled',
+                  'supervisor': health, 'runtime_gpu_uuid': identity.gpu_uuid,
                   'evidence': None, 'error': None, 'owner_reported_status': None}
         if (supervision.clean is True and supervision.timed_out is False
                 and type(supervision.exit_code) is int and supervision.exit_code == 0):
@@ -1833,7 +1872,7 @@ def run_supervised_distilgpt2_benchmark(output_dir, *, cache_dir, device_root, g
                     repetitions=1 if quick else repetitions, quick=quick, protocol_seed=protocol_seed)
                 if record['evidence'].get('status') != 'complete':
                     raise ValueError('owner evidence validation did not complete')
-                record['status'] = 'complete'
+                record['status'] = 'development_only'
             except Exception as exc:
                 record['error'] = _describe_error(exc)
         else:
@@ -1867,6 +1906,7 @@ def run_supervised_distilgpt2_benchmark(output_dir, *, cache_dir, device_root, g
                     hashes, hash_errors = {}, {'controller': _describe_error(hash_error)}
                 _atomic_write_json(output_dir / 'controller_failure.json', {
                     'status': 'cancelled' if isinstance(exc, KeyboardInterrupt) else 'failed',
+                    'admission_status': 'development_unprofiled' if development_unprofiled else 'disabled_unprofiled',
                     'error': _describe_error(exc),
                     'controller_evidence_sha256': hashes, 'controller_evidence_hash_errors': hash_errors,
                     'device_state_may_be_unsafe': supervision_started})
@@ -1888,6 +1928,8 @@ def main():
     parser.add_argument('--gpu-uuid', help='full physical GPU UUID for the supervised controller')
     parser.add_argument('--device-root', type=Path, help='shared local device-coordination root')
     parser.add_argument('--supervision-timeout', type=float, default=600)
+    parser.add_argument('--development-unprofiled', action='store_true',
+                        help='allow a supervised development run using unmeasured estimates')
     parser.add_argument('--owner-child', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.device in ('cuda', 'cuda:0') and not args.owner_child:
@@ -1896,15 +1938,18 @@ def main():
         result = run_supervised_distilgpt2_benchmark(args.output, cache_dir=args.cache_dir,
             device_root=args.device_root, gpu_uuid=args.gpu_uuid, gpu_activity=args.gpu_activity,
             repetitions=args.repetitions, protocol_seed=args.protocol_seed, quick=args.quick,
-            timeout=args.supervision_timeout)
-        print(json.dumps({'output': str(args.output), 'status': result['status'], 'smoke_only': args.quick}))
+            timeout=args.supervision_timeout, development_unprofiled=args.development_unprofiled)
+        print(json.dumps({'output': str(args.output), 'status': result['status'],
+                          'admission_status': result['admission_status'], 'smoke_only': args.quick}))
         return 0 if result['status'] == 'complete' else 1
     if args.owner_child and args.device not in ('cuda', 'cuda:0'):
         parser.error('the owner child must use cuda:0')
     result = run_distilgpt2_benchmark(args.output, cache_dir=args.cache_dir, device=args.device,
                                      gpu_activity=args.gpu_activity, repetitions=args.repetitions,
-                                     protocol_seed=args.protocol_seed, quick=args.quick)
+                                     protocol_seed=args.protocol_seed, quick=args.quick,
+                                     development_unprofiled=args.development_unprofiled)
     print(json.dumps({'output': str(args.output), 'status': result['status'],
+                      'admission_status': result.get('admission_status'),
                       'smoke_only': args.quick, 'comparisons': result['comparisons']}))
     return 0 if result['status'] == 'complete' else 1
 

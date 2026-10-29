@@ -543,7 +543,8 @@ class ProtocolArtifactTests(unittest.TestCase):
         replay = {'public_prompts': ['fixture']}
         run_metadata = {**source, 'external_gpu_activity': 'fixture', 'environment': environment,
                         'workload_replay': replay, 'smoke_only': True,
-                        'memory_policy': {**limits, 'profiles': profiles}}
+                        'memory_policy': {**limits, 'profiles': profiles},
+                        'admission_status': 'development_unprofiled'}
         supervision = SimpleNamespace(run_id='a' * 32, pid=123)
         with tempfile.TemporaryDirectory() as temp:
             owner = Path(temp) / 'owner'
@@ -557,14 +558,18 @@ class ProtocolArtifactTests(unittest.TestCase):
                          'cuda_environment': environment['cuda_environment']}
             setup = {'protocol': 'shared-model-throughput-v1', 'owner_run_id': supervision.run_id,
                      'owner_pid': supervision.pid, 'environment': environment, 'source': source,
+                     'admission_status': 'development_unprofiled',
                      'smoke_only': True, 'repetitions': 1, 'protocol_seed': 3,
                      'external_gpu_activity': 'fixture', 'workload_replay': replay, 'limits': limits}
             for name, data in (('setup.json', setup), ('admission_profiles.json',
-                    {'status': 'provisional_unmeasured_estimates', 'profiles': profiles}),
+                    {'status': 'provisional_unmeasured_estimates', 'admission_status': 'development_unprofiled',
+                     'profiles': profiles}),
                     ('cleanup.json', {'status': 'complete', 'broker_state': 'stopped',
+                        'admission_status': 'development_unprofiled',
                         'memory_lease_released': True, 'owner_attested_clean': True,
                         'cuda_allocator_after_cleanup': {'allocated_bytes': 0, 'reserved_bytes': 0}}),
                     ('run_status.json', {'status': 'complete', 'measurement_status': 'complete',
+                                         'admission_status': 'development_unprofiled',
                                          'cleanup_status': 'complete', 'work_may_still_be_running': False})):
                 (owner / name).write_text(json.dumps(data))
             def validate():
@@ -572,6 +577,26 @@ class ProtocolArtifactTests(unittest.TestCase):
                     preflight=preflight, gpu_uuid=gpu, repetitions=1, quick=True, protocol_seed=3)
             with patch.object(benchmark, '_validate_preflight'):
                 self.assertEqual(validate()['status'], 'complete')
+                setup_path = owner / 'setup.json'
+                original_setup = setup_path.read_text()
+                bad_setup = json.loads(original_setup)
+                bad_setup['admission_status'] = 'measured'
+                setup_path.write_text(json.dumps(bad_setup))
+                with self.assertRaisesRegex(ValueError, 'unprofiled development'):
+                    validate()
+                setup_path.write_text(original_setup)
+                raw = owner / 'measurements' / 'raw_samples.jsonl'
+                original_raw = raw.read_text()
+                rows = [json.loads(line) for line in original_raw.splitlines()]
+                rows[0].pop('admission_status')
+                raw.write_text(''.join(json.dumps(row) + '\n' for row in rows))
+                result['evidence_sha256'] = benchmark._evidence_hashes(owner / 'measurements')
+                (owner / 'measurements' / 'results.json').write_text(json.dumps(result))
+                with self.assertRaisesRegex(ValueError, 'attempt admission status'):
+                    validate()
+                raw.write_text(original_raw)
+                result['evidence_sha256'] = benchmark._evidence_hashes(owner / 'measurements')
+                (owner / 'measurements' / 'results.json').write_text(json.dumps(result))
                 status_path = owner / 'run_status.json'
                 original_status = status_path.read_text()
                 status = json.loads(original_status)
@@ -580,7 +605,6 @@ class ProtocolArtifactTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'cleanup did not complete'):
                     validate()
                 status_path.write_text(original_status)
-                raw = owner / 'measurements' / 'raw_samples.jsonl'
                 records = [json.loads(line) for line in raw.read_text().splitlines()]
                 records[0].update(state='failed', error='injected', output_digest=None)
                 raw.write_text(''.join(json.dumps(row) + '\n' for row in records))
@@ -632,13 +656,17 @@ class FailureArtifactTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'did not drain'):
                 benchmark.run_protocol(output, broker, jobs, input_digest=digest, output_digest=digest,
                     rejection_errors=(Full,), model_spec={'id': 'fake'}, unit_name='tokens',
-                    metadata={'external_gpu_activity': 'cpu', 'source_commit': 'fixture'},
+                    metadata={'external_gpu_activity': 'cpu', 'source_commit': 'fixture',
+                              'admission_status': 'development_unprofiled'},
                     telemetry=Memory(), repetitions=1)
             self.assertEqual(broker.calls, 2)
             self.assertTrue((output / 'manifest.json').exists())
             raw = [json.loads(line) for line in (output / 'raw_samples.jsonl').read_text().splitlines()]
             self.assertEqual(raw[0]['state'], 'unresolved')
-            self.assertEqual(json.loads((output / 'failure.json').read_text())['completed_windows'], 0)
+            self.assertEqual(raw[0]['admission_status'], 'development_unprofiled')
+            failure = json.loads((output / 'failure.json').read_text())
+            self.assertEqual(failure['completed_windows'], 0)
+            self.assertEqual(failure['admission_status'], 'development_unprofiled')
             self.assertFalse((output / 'results.json').exists())
 
 class ComparisonEvidenceTests(unittest.TestCase):
@@ -1061,6 +1089,19 @@ class SyncQuarantineTests(unittest.TestCase):
         self.assertFalse(worker.closed)
 
 class DriverExitAndCudaConfigTests(unittest.TestCase):
+    def test_development_only_controller_status_returns_nonzero(self):
+        import contextlib
+        import io
+        from unittest.mock import patch
+        args = ['driver', '--output', 'unused', '--cache-dir', 'unused', '--device', 'cuda:0',
+                '--device-root', 'unused', '--gpu-uuid', 'GPU-01234567-89ab-cdef-0123-456789abcdef',
+                '--quick', '--development-unprofiled']
+        with patch('sys.argv', args), patch.object(benchmark, 'run_supervised_distilgpt2_benchmark',
+                return_value={'status': 'development_only', 'admission_status': 'development_unprofiled'}) as run:
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(benchmark.main(), 1)
+            self.assertTrue(run.call_args.kwargs['development_unprofiled'])
+
     def test_invalid_comparison_returns_nonzero_exit_status(self):
         if benchmark is None:
             self.fail('throughput benchmark module is missing')
@@ -1213,6 +1254,46 @@ class DriverFinalStatusTests(unittest.TestCase):
             self.assertEqual(json.loads((output / 'run_status.json').read_text())['status'], 'cleanup_failed')
 
 class GpuGateTests(unittest.TestCase):
+    def test_unprofiled_gpu_is_disabled_before_owner_or_model_access(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp) / 'controller'
+            with patch.object(benchmark, '_preflight_distilgpt2') as preflight, \
+                 patch.object(benchmark, '_physical_gpu_inventory') as inventory, \
+                 patch.object(benchmark, '_claim_supervised_owner') as owner:
+                with self.assertRaisesRegex(RuntimeError, 'unprofiled'):
+                    benchmark.run_supervised_distilgpt2_benchmark(output, cache_dir='unused',
+                        device_root=temp, gpu_uuid='GPU-01234567-89ab-cdef-0123-456789abcdef')
+                with self.assertRaisesRegex(RuntimeError, 'unprofiled'):
+                    benchmark.run_distilgpt2_benchmark(Path(temp) / 'owner', cache_dir='unused',
+                                                       device='cuda:0')
+            preflight.assert_not_called()
+            inventory.assert_not_called()
+            owner.assert_not_called()
+            failure = json.loads((output / 'controller_failure.json').read_text())
+            self.assertEqual(failure['status'], 'failed')
+            self.assertFalse(failure['device_state_may_be_unsafe'])
+
+    def test_unprofiled_development_is_limited_to_the_quick_workload(self):
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as temp:
+            with patch.object(benchmark, '_preflight_distilgpt2') as preflight, \
+                 patch.object(benchmark, '_claim_supervised_owner') as owner:
+                with self.assertRaisesRegex(ValueError, 'quick workload'):
+                    benchmark.run_supervised_distilgpt2_benchmark(Path(temp) / 'controller',
+                        cache_dir='unused', device_root=temp,
+                        gpu_uuid='GPU-01234567-89ab-cdef-0123-456789abcdef', development_unprofiled=True)
+                with self.assertRaisesRegex(ValueError, 'quick workload'):
+                    benchmark.run_distilgpt2_benchmark(Path(temp) / 'owner', cache_dir='unused',
+                        device='cuda:0', development_unprofiled=True)
+            preflight.assert_not_called()
+            owner.assert_not_called()
+
     def test_cuda_driver_requires_supervised_owner_before_device_access(self):
         if benchmark is None:
             self.fail('throughput benchmark module is missing')
@@ -1234,7 +1315,8 @@ class GpuGateTests(unittest.TestCase):
                  patch('looking_glass.supervisor.OwnerSession.from_environment', side_effect=RuntimeError('supervised owner required')) as owner:
                 with patch.object(torch.cuda, 'is_available', side_effect=AssertionError('must not access CUDA')):
                     with self.assertRaisesRegex(RuntimeError, 'supervised'):
-                        benchmark.run_distilgpt2_benchmark(output, cache_dir='unused', device='cuda:0', quick=True)
+                        benchmark.run_distilgpt2_benchmark(output, cache_dir='unused', device='cuda:0', quick=True,
+                                                           development_unprofiled=True)
             owner.assert_called_once()
             self.assertFalse(output.exists())
 
@@ -1652,7 +1734,8 @@ class SupervisedIdentityTests(unittest.TestCase):
                 for item in patches:
                     stack.enter_context(item)
                 result = benchmark.run_distilgpt2_benchmark(output, cache_dir='unused',
-                                                          device='cuda:0', quick=True)
+                                                          device='cuda:0', quick=True,
+                                                          development_unprofiled=True)
             self.assertEqual(result['status'], 'complete')
             self.assertLess(events.index('claim'), events.index('bind'))
             self.assertLess(events.index('bind'), events.index(('model_to', 'cuda:0')))
@@ -1679,7 +1762,8 @@ class SupervisedIdentityTests(unittest.TestCase):
                  patch('looking_glass.pretrained.load_distilgpt2', side_effect=AssertionError('model load')), \
                  patch.object(torch.cuda, 'synchronize', side_effect=AssertionError('wrong GPU touched')):
                 with self.assertRaisesRegex(ValueError, 'UUID mismatch'):
-                    benchmark.run_distilgpt2_benchmark(output, cache_dir='unused', device='cuda:0', quick=True)
+                    benchmark.run_distilgpt2_benchmark(output, cache_dir='unused', device='cuda:0', quick=True,
+                                                       development_unprofiled=True)
             self.assertEqual(calls, [])
             self.assertEqual(json.loads((output / 'cleanup.json').read_text())['status'], 'failed')
 
@@ -1707,9 +1791,10 @@ class SupervisedIdentityTests(unittest.TestCase):
                  patch('looking_glass.supervisor.run_supervised', return_value=supervision) as run, \
                  patch.object(benchmark, '_validate_owner_evidence', return_value={'status': 'complete'}) as validate:
                 result = benchmark.run_supervised_distilgpt2_benchmark(output, cache_dir='cache',
-                    device_root=temp, gpu_uuid=identity.gpu_uuid, quick=True)
-            self.assertEqual(result['status'], 'complete')
-            self.assertEqual(json.loads((output / 'controller_status.json').read_text())['status'], 'complete')
+                    device_root=temp, gpu_uuid=identity.gpu_uuid, quick=True, development_unprofiled=True)
+            self.assertEqual(result['status'], 'development_only')
+            self.assertEqual(result['admission_status'], 'development_unprofiled')
+            self.assertEqual(json.loads((output / 'controller_status.json').read_text())['status'], 'development_only')
             self.assertEqual(run.call_args.kwargs['device_lease_path'], identity.lock_path)
             self.assertEqual(run.call_args.kwargs['identity'], identity)
             self.assertIs(run.call_args.kwargs['inherit_environment'], False)
@@ -1739,7 +1824,8 @@ class SupervisedIdentityTests(unittest.TestCase):
                      patch('looking_glass.supervisor.run_supervised', return_value=supervision), \
                      patch.object(benchmark, '_validate_owner_evidence') as validate:
                     result = benchmark.run_supervised_distilgpt2_benchmark(Path(temp) / 'run',
-                        cache_dir='cache', device_root=temp, gpu_uuid=identity.gpu_uuid, quick=True)
+                        cache_dir='cache', device_root=temp, gpu_uuid=identity.gpu_uuid, quick=True,
+                        development_unprofiled=True)
                 self.assertEqual(result['status'], 'failed')
                 validate.assert_not_called()
 
@@ -1755,7 +1841,8 @@ class SupervisedIdentityTests(unittest.TestCase):
                  patch.object(benchmark, '_preflight_distilgpt2', side_effect=KeyboardInterrupt):
                 with self.assertRaises(KeyboardInterrupt):
                     benchmark.run_supervised_distilgpt2_benchmark(output, cache_dir='cache',
-                        device_root=temp, gpu_uuid='GPU-01234567-89ab-cdef-0123-456789abcdef', quick=True)
+                        device_root=temp, gpu_uuid='GPU-01234567-89ab-cdef-0123-456789abcdef', quick=True,
+                        development_unprofiled=True)
             self.assertEqual(json.loads((output / 'controller_manifest.json').read_text())['status'], 'initializing')
             failure = json.loads((output / 'controller_failure.json').read_text())
             self.assertEqual(failure['status'], 'cancelled')
@@ -1776,7 +1863,8 @@ class SupervisedIdentityTests(unittest.TestCase):
                  patch.object(benchmark, '_physical_gpu_inventory', side_effect=OSError('inventory failed')):
                 with self.assertRaisesRegex(OSError, 'inventory failed'):
                     benchmark.run_supervised_distilgpt2_benchmark(output, cache_dir='cache',
-                        device_root=temp, gpu_uuid='GPU-01234567-89ab-cdef-0123-456789abcdef', quick=True)
+                        device_root=temp, gpu_uuid='GPU-01234567-89ab-cdef-0123-456789abcdef', quick=True,
+                        development_unprofiled=True)
             preflight = output / 'preflight.json'
             self.assertEqual(json.loads(preflight.read_text()), {'identity': 'test', 'cuda_environment': {}})
             failure = json.loads((output / 'controller_failure.json').read_text())
@@ -2043,7 +2131,7 @@ class SupervisedIdentityTests(unittest.TestCase):
                  patch.object(benchmark, '_atomic_write_json', side_effect=publish_then_interrupt):
                 with self.assertRaises(KeyboardInterrupt):
                     benchmark.run_supervised_distilgpt2_benchmark(output, cache_dir='cache',
-                        device_root=temp, gpu_uuid=identity.gpu_uuid, quick=True)
+                        device_root=temp, gpu_uuid=identity.gpu_uuid, quick=True, development_unprofiled=True)
             self.assertTrue((output / 'controller_status.json').exists())
             self.assertFalse((output / 'controller_failure.json').exists())
 

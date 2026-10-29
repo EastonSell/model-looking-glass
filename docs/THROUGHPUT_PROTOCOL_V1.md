@@ -215,7 +215,14 @@ trusted operational inputs rather than authenticated binaries.
 The child also holds a 2 GiB model-load estimate and separately admits each
 fixed-shape forward with a 1 GiB estimate, the budget's reserve, and zero GPU and
 host trace caps. These are provisional, unmeasured estimates, not hard allocation
-limits or proof that OOM cannot occur. Device-wide free memory and process allocator
+limits or proof that OOM cannot occur. Normal GPU admission is disabled until a
+reviewed measured profile matches this exact workload and runtime. The explicit
+`--development-unprofiled` flag permits only a coordinated `--quick` development run;
+even a clean, internally valid run is reported as `development_only` by the
+controller and its command exits nonzero. Its records cannot establish a normal
+admission profile or authorize other workloads. Owner records, raw attempts and
+measurement artifacts also carry the unprofiled development label, while their
+internal completion statuses only describe execution and cleanup. Device-wide free memory and process allocator
 counters are recorded. The broker uses one resident model and execution thread,
 four pending slots and one pending slot per team; it neither batches nor overlaps
 model forwards. External applications can still allocate GPU memory.
@@ -239,7 +246,7 @@ python -I -S -B -X "pycache_prefix=$cachePrefix" scripts\throughput_bootstrap.py
   --bootstrap-site C:\path\to\venv\Lib\site-packages `
   --output C:\path\to\private-output --cache-dir C:\path\to\hf-cache\hub `
   --device cuda:0 --device-root C:\path\to\shared-device-root `
-  --gpu-uuid GPU-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx --quick
+  --gpu-uuid GPU-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx --quick --development-unprofiled
 ```
 
 The fixed v1 driver permits at most ten repetitions. Its JSONL and JSON reads
