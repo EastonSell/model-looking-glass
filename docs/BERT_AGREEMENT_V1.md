@@ -3,7 +3,8 @@
 Status: **frozen before evaluation.**
 The public development probe used four exposed prompts and motivated the
 candidate location below. It is exploratory and does not establish a general
-mechanism. No held-out model forward has run at this source freeze.
+mechanism. No evaluation attempt on these cases is known from the cited records
+at this source freeze; exposure outside those records remains unverified.
 
 ## Question and model
 
