@@ -46,9 +46,20 @@ frame. The child verifies its handles and rejects EOF, a partial frame or
 invalid values before project imports. No temporary inheritable protection
 copies are created in the parent. Run the diagnostic in a fresh dedicated
 process: a check for Python-managed threads catches routine misuse but cannot
-prove that no native or low-level thread exists. On normal and failed returns
-the parent terminates and drains the job before releasing protection;
-assignment failure kills and reaps the still-unassigned interpreter.
+prove that no native or low-level thread exists. The child is started detached,
+with standard streams redirected, to avoid an additional console host. Before
+releasing protection, the parent terminates the job and confirms termination
+using retained process handles. Zero active job accounting alone is not a
+process-handle completion barrier. The guard checks a bounded complete member
+inventory against the job's lifetime process count, verifies membership, and
+fails closed if an earlier unobserved process, a race, inaccessible handle or
+timeout prevents confirmation. Handles remain available for retry when their
+state is known; missing lifetime history cannot be repaired by an empty job.
+If an interrupt makes a handle-close outcome ambiguous, cleanup remains
+quarantined: retrying that numeric handle could close an unrelated object after
+Windows reuses its value. An explicit failed close with a known return can be
+retried.
+Assignment failure kills and reaps the still-unassigned interpreter.
 Subprocess tests exercise a fabricated Git checkout, dirty sources, source
 locks, parent interruption, assignment failure and unknown bytecode. The
 host's versioned interpreter alias is a Windows junction, so this diagnostic
@@ -69,8 +80,11 @@ the CLI cannot clean up after a retry, it reports protection as unknown on
 process exit. Owner death can
 close the job and parent handles in an unspecified order; for a project that
 spawns descendants, this implementation has not established that every
-descendant retains protection until it exits. A study launcher must address
-that limitation or prohibit descendant processes, and be reviewed separately.
+descendant retains protection until it exits. The inventory covers only members
+of this job: Windows does not automatically associate processes created via
+`Win32_Process.Create`, and breakaway processes are outside its accounting.
+A study launcher must address those limitations or prohibit such descendants,
+and be reviewed separately.
 These checks do not authorize a v2 run.
 
 Use the tested direct-script invocation with the canonical base interpreter
