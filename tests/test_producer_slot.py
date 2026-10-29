@@ -4,6 +4,7 @@ import importlib
 import inspect
 import sys
 import threading
+import time
 import unittest
 from unittest.mock import patch
 
@@ -107,6 +108,21 @@ class ProducerSlotTests(unittest.TestCase):
         registry.lookup("job", 2).cancel()
         registry.lookup("job", 2).retire()
 
+    def test_interrupted_preinsertion_consumes_generation_without_opening_slot(self):
+        slots = slot_module()
+        registry = slots.ProducerSlotRegistry(max_slots=1)
+        with self.assertRaises(KeyboardInterrupt):
+            interrupt_at(type(registry).register, "self._slots[slot_id] = slot",
+                         "STORE_SUBSCR", lambda: registry.register("job", 1))
+        with self.assertRaises(slots.ProducerSlotError):
+            registry.lookup("job", 1)
+        with self.assertRaises(slots.ProducerSlotError):
+            registry.register("job", 1)
+        registry.register("job", 2)
+        slot = registry.lookup("job", 2)
+        slot.cancel()
+        slot.retire()
+
     def test_interrupted_envelope_close_can_be_retried_before_retirement(self):
         slots = slot_module()
         registry = slots.ProducerSlotRegistry(max_slots=1)
@@ -176,6 +192,29 @@ class ProducerSlotTests(unittest.TestCase):
         child = slot.owned_envelope()
         with self.assertRaises(ProducerCancelled):
             child.run(lambda: None)
+        dispose(child)
+        self.assertTrue(slot.retire())
+
+    def test_cancellation_can_block_without_releasing_or_allowing_adoption(self):
+        slots = slot_module()
+        registry = slots.ProducerSlotRegistry(max_slots=1)
+        registry.register("job", 1)
+        slot = registry.lookup("job", 1)
+        budget = ledger()
+        slot.construct(budget, "request", profile())
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            with budget._lock:
+                future = pool.submit(slot.cancel)
+                deadline = time.monotonic() + 5
+                while slot.state != "cancelling" and time.monotonic() < deadline:
+                    time.sleep(0.005)
+                self.assertEqual(slot.state, "cancelling")
+                self.assertFalse(future.done())
+                with self.assertRaises(slots.ProducerSlotError):
+                    slot.adopt()
+                self.assertEqual(budget.snapshot().used_bytes, 30)
+            self.assertTrue(future.result(timeout=5))
+        child = slot.owned_envelope()
         dispose(child)
         self.assertTrue(slot.retire())
 

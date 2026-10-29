@@ -10,9 +10,13 @@ recover a lost `acquire()` return from ledger claims alone.
 
 The trusted coordinator records a bounded `slot_id` and a positive, globally
 increasing generation **before** registration. `register()` returns no slot;
-use `lookup(slot_id, generation)` to retrieve the retained capability even if
-registration or caller assignment was interrupted. Generations are consumed
-monotonically within one registry. Generation allocation and registration
+use `lookup(slot_id, generation)` to retrieve a capability that was installed
+even if registration or caller assignment was interrupted. If lookup finds no
+slot and the registry is responsive, a pre-insertion interruption may have
+consumed the generation without creating a slot. After checking whether another
+owner installed it, retry with a newer generation. No producer admission can
+occur before insertion. Generations are consumed monotonically within one
+registry. Generation allocation and registration
 must be serialized, or retried with a newer generation if a later one wins
 first. Bind any external identity to a registry/process epoch: a generation is
 not durable or unique across registry reconstruction, process restarts, or
@@ -46,9 +50,17 @@ Unrelated or transferred claims remain charged and prevent a clean close.
 
 Cancellation blocks further adoption; a cancellation during construction is
 remembered until the constructor finishes, then signals the envelope. It does
-not release claims or stop a running forward. `owned_envelope()` and `guards()`
-are for trusted supervision after the slot is quiescent. A quarantined child
-may be only partially initialized; its methods are not necessarily safe. A
+not release claims or stop a running forward. Once construction completes,
+`slot.cancel()` synchronously calls the envelope's cancellation method, which
+can block on the producer or ledger lock. A coordinator should not hold its
+publication or control lock across this call; it may need a separate worker to
+signal cancellation. Cancellation or a timeout does not establish completion.
+`owned_envelope()` and `guards()`
+only establish that slot construction and signaling have stopped; they do not
+check whether an adopted envelope is running a forward. A trusted supervisor
+must independently establish child quiescence before disposal or recovery. A
+quarantined child may be only partially initialized; its methods are not
+necessarily safe. A
 quarantined slot cannot be retired through this API. A supervisor must first
 establish work completion, ownership, and disposal, using exact retained guards
 or ledger recovery capabilities; process-level cleanup may be necessary.
