@@ -478,6 +478,8 @@ def audit_records(records, cases, tensor_dir, directions, reference, *, expected
                                         - details[pair['plural_case']]['reference']['odd_present'])
     valid_cosines = sum(row['centered_slope_alignment']['cosine'] is not None for row in report['cases'])
     report.update({'cosine_valid_count': valid_cosines, 'cosine_undefined_count': 80 - valid_cosines,
+        'schedule': {'sha256': hashlib.sha256(schedule_raw).hexdigest(),
+                     'arm_placement_counts': placement, 'actions': schedule},
         'source_tensor_files': len(seen), 'source_tensor_bytes': sum(seen.values()),
         'dimensions': {'width': width, 'vocabulary': vocabulary},
         'scope': ('Saved-byte numerical consistency only; recorded full-sequence finiteness, process exit '

@@ -234,6 +234,9 @@ def test_saved_journal_replay_checks_all_actions_and_controls(tmp_path):
     assert report['constant_additive']['passes'] is True
     assert report['specific_reference']['passes'] is False
     assert report['baseline']['adequate'] is True
+    assert report['schedule']['actions'] == reader.expected_schedule(rows)
+    assert report['schedule']['sha256'] == records[0]['event']['schedule_sha256']
+    assert report['schedule']['arm_placement_counts'] == records[0]['event']['arm_placement_counts']
     assert report['source_tensor_files'] == len(seen)
 
 
