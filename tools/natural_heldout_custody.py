@@ -15,6 +15,7 @@ import re
 import runpy
 import secrets
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -822,21 +823,35 @@ def observe_supervisor_process(command, attempt, supervisor_dir, public, wrapper
 
 def _hold_unverified_process(custody, *, _test_release=None):
     """Keep source leases and unknown process/job handles rooted for recovery."""
-    try:
-        print(json.dumps({'status': 'quarantined', 'reason': 'process cleanup unverified'}),
-              file=sys.stderr, flush=True)
-    except BaseException:
-        pass
+    handlers = []
+    for name in ('SIGINT', 'SIGBREAK'):
+        try:
+            kind = getattr(signal, name)
+            handlers.append((kind, signal.getsignal(kind)))
+            signal.signal(kind, signal.SIG_IGN)
+        except BaseException:
+            pass
     # The enclosing production stack keeps both SourceFileLease instances and
     # these strong references alive. A trusted operator must independently
     # establish process-tree termination before explicitly ending quarantine.
     while True:
         try:
-            time.sleep(30)
+            try:
+                print(json.dumps({'status': 'quarantined', 'reason': 'process cleanup unverified'}),
+                      file=sys.stderr, flush=True)
+            except BaseException:
+                pass
+            while True:
+                try:
+                    time.sleep(30)
+                    if _test_release is not None and _test_release(custody):
+                        for kind, previous in handlers:
+                            signal.signal(kind, previous)
+                        return
+                except BaseException:
+                    continue
         except BaseException:
             continue
-        if _test_release is not None and _test_release(custody):
-            return
 
 
 def _supervise_preparation(supervisor, command, directory, audit_result):
@@ -844,8 +859,11 @@ def _supervise_preparation(supervisor, command, directory, audit_result):
     try:
         verdict = supervisor.supervise_heldout(command, directory, os.environ.copy(), audit_result=audit_result)
     finally:
-        if supervisor._QUARANTINED:
-            _hold_unverified_process(supervisor)
+        while supervisor._QUARANTINED:
+            try:
+                _hold_unverified_process(supervisor)
+            except BaseException:
+                continue
     if type(verdict) is not dict or verdict.get('cleanup_verified') is not True:
         _hold_unverified_process(supervisor)
     return verdict
@@ -1163,8 +1181,11 @@ def production_prepare(config_path, *, mode='validate', expected_config_sha=None
                                                       job_factory=lambda: _outer_supervisor_job(guards),
                                                       custody_state=custody_state)
                 finally:
-                    if custody_state[2] and not custody_state[3]:
-                        _hold_unverified_process(custody_state)
+                    while custody_state[2] and not custody_state[3]:
+                        try:
+                            _hold_unverified_process(custody_state)
+                        except BaseException:
+                            continue
             supervisor = _load_file_module('_mlg_natural_heldout_supervisor',
                                            custody_root / SOURCE_SUFFIXES['supervisor'],
                                            operational['sources']['supervisor']['sha256'])
