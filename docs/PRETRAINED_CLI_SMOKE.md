@@ -65,3 +65,16 @@ python -m unittest discover -s tests -p test_pretrained_cli.py -v
 `LOOKING_GLASS_CLI_SUMMARY=1` emits aggregate errors, output shape, broker/job
 IDs and process/setup counts after clean shutdown. It does not emit tokens,
 input text, credentials, logits or activations.
+
+## Saved CPU checks
+
+The separately versioned [v1](../evidence/pretrained-cli-cpu-v1.json),
+[v2](../evidence/pretrained-cli-cpu-v2.json) and
+[v3](../evidence/pretrained-cli-cpu-v3.json) records each identify the exact
+clean source commit, checkpoint and input hashes, runtime, limits, command,
+and aggregate outcome. All three checks passed on CPU: in each run the maximum
+absolute error was 0.0 for both inputs. V2 includes additional ownership
+safeguards, and v3 includes subsequent resident-worker changes. Later records
+do not replace the earlier ones.
+These are two-case correctness checks, not latency or throughput benchmarks,
+and they do not establish a causal explanation for model behavior.
