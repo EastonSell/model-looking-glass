@@ -160,6 +160,30 @@ class CpuEvaluationIntegrationTest(unittest.TestCase):
         self.assertFalse(complete)
         ledger.release()
 
+    def test_known_inner_quarantine_rejects_before_reservation_and_attests_no_start(self):
+        output = self.ledger_root / ('7' * 32)
+        (self.custody / 'cpu-study.unsafe.json').write_bytes(b'{}\n')
+        attestations, lease = [], object()
+        session = SimpleNamespace(run_id='f' * 32, check=lambda value: None,
+                                  attest_clean=lambda value: attestations.append(value))
+        with patch.object(study, '_require_bootstrap'), patch.object(study, '_require_checkout', return_value=self.repo), \
+             patch.object(study, 'EVALUATION_ENABLED', True), \
+             patch.object(study, '_checked_manifest', return_value=(self.hashes, self.manifest, self.manifest_sha)), \
+             patch.object(study, '_run_cpu_controller') as run, \
+             patch('looking_glass.cpu_study_supervision.claim_cpu_study', return_value=(session, lease)), \
+             patch('shutil.which', return_value='git'):
+            with self.assertRaisesRegex(RuntimeError, 'no evaluation attempt was reserved'):
+                study.run_cpu_controller(repo=self.repo, cache=self.cache, output_dir=output, commit='a' * 40,
+                                         split='evaluation', custody_root=self.custody, ledger_root=self.ledger_root,
+                                         controller_custody_root=self.controller_custody)
+            run.assert_not_called()
+        self.assertFalse(output.exists())
+        self.assertEqual(attestations, [lease])
+        binding = self.binding()
+        ledger = EvaluationLedger.acquire(self.ledger_root, binding['ledger_root_sha256'], binding)
+        self.assertEqual(ledger.prior_attempts(), ([], False))
+        ledger.release()
+
     def test_launcher_waits_for_controller_then_records_actual_exit(self):
         script = Path(__file__).resolve().parents[1] / 'scripts/bert_agreement_cpu_evaluation.py'
         spec = importlib.util.spec_from_file_location('bert_cpu_eval_launcher_test', script)
@@ -172,6 +196,7 @@ class CpuEvaluationIntegrationTest(unittest.TestCase):
         commands, records = [], []
         def fake_run(command, **kwargs):
             commands.append((command, kwargs))
+            Path(command[command.index('--output') + 1]).mkdir()
             return SupervisionResult('6' * 32, 123, 0, True, False, 'synthetic clean')
         args = ['--repo', str(actual_repo), '--cache', str(self.cache), '--site', str(site),
                 '--commit', 'a' * 40, '--custody-root', str(self.custody), '--ledger-root', str(self.ledger_root),
@@ -222,6 +247,13 @@ class CpuEvaluationIntegrationTest(unittest.TestCase):
                    return_value=SupervisionResult('6' * 32, 123, 1, False, True, 'timeout')), \
              patch.object(study, 'record_cpu_evaluation_exit') as record:
             self.assertEqual(launcher.main(arguments('timeout')), 1)
+            record.assert_not_called()
+        with patch.object(launcher, '_require_isolation'), patch.object(study, 'EVALUATION_ENABLED', True), \
+             patch.dict(os.environ, {'LOOKING_GLASS_BERT_SITE': str(site)}), \
+             patch('looking_glass.cpu_study_supervision.run_cpu_study',
+                   return_value=SupervisionResult('6' * 32, 123, 1, True, False, 'clean no-start')), \
+             patch.object(study, 'record_cpu_evaluation_exit') as record:
+            self.assertEqual(launcher.main(arguments('no-start')), 1)
             record.assert_not_called()
         nested = arguments('unused')
         nested[-1] = str(site / 'nested-work')

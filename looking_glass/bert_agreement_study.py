@@ -1183,21 +1183,32 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
             or re.fullmatch('[0-9a-f]{32}', destination.name) is None or destination.exists()):
         raise ValueError('evaluation output must name a new attempt within the frozen ledger root')
     ledger = EvaluationLedger.acquire(root, binding['ledger_root_sha256'], binding)
+    known_inner_quarantine = False
     try:
         session.check(controller_lease)
-        directory, reservation_sha, _ = ledger.reserve(destination.name, controller_supervision_run_id=session.run_id)
-        reservation, checked_sha = verify_reservation(directory, destination.name, binding)
-        if checked_sha != reservation_sha:
-            raise RuntimeError('evaluation reservation changed during publication')
-        context = {'ledger': ledger, 'directory': directory, 'reservation': reservation,
-                   'reservation_sha256': reservation_sha, 'binding': binding,
-                   'controller_session': session, 'controller_lease': controller_lease}
-        result = _run_cpu_controller(repo=repo, cache=cache, output_dir=directory, commit=commit, split=split,
-                                     family=family, timeout=timeout, custody_root=custody_root,
-                                     ledger_root=root, ledger_context=context,
-                                     controller_custody_root=controller_custody_root)
+        marker = Path(custody_root).resolve(strict=True) / 'cpu-study.unsafe.json'
+        # Avoid consuming an attempt for a quarantine already visible while
+        # the ledger lock is held. This is not atomic admission against other
+        # users of the owner root; its supervisor remains authoritative.
+        known_inner_quarantine = os.path.lexists(marker) or os.path.lexists(str(marker) + '.attestation')
+        if not known_inner_quarantine:
+            directory, reservation_sha, _ = ledger.reserve(destination.name, controller_supervision_run_id=session.run_id)
+            reservation, checked_sha = verify_reservation(directory, destination.name, binding)
+            if checked_sha != reservation_sha:
+                raise RuntimeError('evaluation reservation changed during publication')
+            context = {'ledger': ledger, 'directory': directory, 'reservation': reservation,
+                       'reservation_sha256': reservation_sha, 'binding': binding,
+                       'controller_session': session, 'controller_lease': controller_lease}
+            result = _run_cpu_controller(repo=repo, cache=cache, output_dir=directory, commit=commit, split=split,
+                                         family=family, timeout=timeout, custody_root=custody_root,
+                                         ledger_root=root, ledger_context=context,
+                                         controller_custody_root=controller_custody_root)
     finally:
         ledger.release()
+    if known_inner_quarantine:
+        # No reservation or inner launch occurred in this controller.
+        session.attest_clean(controller_lease)
+        raise RuntimeError('inner CPU owner is quarantined; no evaluation attempt was reserved')
     # Only attest after the inner owner is known reaped or never started and
     # the ledger lock is released. Retain the outer lease until process exit.
     if result.get('owner_state') not in ('not_started', 'reaped'):

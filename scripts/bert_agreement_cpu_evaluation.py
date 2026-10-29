@@ -94,6 +94,10 @@ def main(argv=None):
         # In particular, do not fabricate an exit after a lost/uncertain
         # supervisor return or after controller teardown failed.
         return 1
+    if not destination.exists():
+        # A clean no-start controller can reject a known inner quarantine
+        # before making any reservation; there is no attempt to record.
+        return 1
     supervision = {'scope': 'cooperative-cpu-controller-custody-only', 'run_id': observed.run_id,
                    'pid': observed.pid, 'exit_code': observed.exit_code, 'clean': observed.clean,
                    'timed_out': observed.timed_out, 'reason': observed.reason}

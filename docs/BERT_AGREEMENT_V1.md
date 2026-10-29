@@ -320,6 +320,11 @@ records. At most 32 attempts are allowed. A possibly started attempt makes all
 64 rows potentially exposed; completed-forward records describe a narrower
 observed subset and must not erase that conservative accounting.
 
+Under the ledger lock the controller first refuses an already visible inner
+owner unsafe marker or attestation without reserving an attempt. The check is
+not atomic with other users of the inner root: its own supervisor remains the
+admission authority, and an uncertain later launch stays blocked for recovery.
+
 The source-isolated launcher uses the separate controller root and the reviewed
 private launch grant before the controller can claim its lease. The controller
 claims before source preflight, reservation, or model-capable imports. The
