@@ -105,8 +105,10 @@ def fake_child(output, scenario):
          patch.object(transformers.AutoTokenizer, "from_pretrained", return_value=T5TokenizerFast()), \
          patch.object(real_t5, "from_pretrained", return_value=(T5ForConditionalGeneration(), {})), \
          (patch.object(torch, "log_softmax", side_effect=RuntimeError("synthetic scoring failure"))
-          if scenario == "bad_score" else nullcontext()):
-        if scenario in ("bad_control", "bad_capture", "nonfinite", "non_tensor", "bad_score"):
+          if scenario == "bad_score" else
+          patch.object(torch, "isfinite", side_effect=RuntimeError("synthetic validation failure"))
+          if scenario == "bad_validate" else nullcontext()):
+        if scenario in ("bad_control", "bad_capture", "nonfinite", "non_tensor", "bad_score", "bad_validate"):
             try:
                 runner.run(Path(output).parent, Path(output))
                 raise AssertionError("fault scenario did not fail")
@@ -116,6 +118,9 @@ def fake_child(output, scenario):
                 if scenario == "bad_score":
                     info = json.loads((Path(output) / "forward-000-scoring-failed.json").read_bytes())
                     assert failed["failed_forward"]["phase"] == "scoring" and (Path(output) / info["file"]).exists()
+                elif scenario == "bad_validate":
+                    info = json.loads((Path(output) / "forward-000-failed.json").read_bytes())
+                    assert failed["failed_forward"]["phase"] == "post-return-validation" and (Path(output) / info["file"]).exists()
                 elif scenario in ("nonfinite", "non_tensor"):
                     info = json.loads((Path(output) / "forward-000-failed.json").read_bytes())
                     assert info["encoder_available"] and (Path(output) / info["file"]).exists()
@@ -143,7 +148,7 @@ def fake_child(output, scenario):
 class FlanT5FeasibilityTests(unittest.TestCase):
     def test_full_synthetic_control_path(self):
         workspace = REPO.parent.parent
-        scenarios = ("positive", "negative", "unsupported", "bad_control", "bad_capture", "nonfinite", "non_tensor", "bad_score", "bounds")
+        scenarios = ("positive", "negative", "unsupported", "bad_control", "bad_capture", "nonfinite", "non_tensor", "bad_score", "bad_validate", "bounds")
         def execute(scenario):
             with tempfile.TemporaryDirectory(prefix="t5-fake-test-", dir=workspace) as root:
                 out = Path(root).resolve() / "output"

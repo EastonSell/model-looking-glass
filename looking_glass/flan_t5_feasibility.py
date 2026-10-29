@@ -161,6 +161,8 @@ def run(asset_dir, output):
                                    "max_forwards": MAX_FORWARDS})
     active_forward = {"name": None, "index": None, "phase": "startup"}
     try:
+        numeric_environment = {name: os.environ.get(name) for name in
+                               ("MKL_CBWR", "ATEN_CPU_CAPABILITY", "OMP_NUM_THREADS", "MKL_NUM_THREADS")}
         import torch
         import tokenizers
         import transformers
@@ -204,6 +206,8 @@ def run(asset_dir, output):
                        "system": platform.system(), "system_release": platform.release(),
                        "processor": platform.processor(), "cpu_count": os.cpu_count(),
                        "mkldnn_enabled": torch.backends.mkldnn.enabled,
+                       "numeric_environment_before_torch": numeric_environment,
+                       "attention_implementation": getattr(model.config, "_attn_implementation", None),
                        "torch_build_config": torch.__config__.show(),
                        "subnormal_multiply_bits": subnormal_bits,
                        "before_load": before_load, "after_load": after_load,
@@ -270,17 +274,32 @@ def run(asset_dir, output):
                     raise ValueError("non-tensor model output")
                 logits = raw_logits.detach().contiguous()
                 state = raw_state.detach().contiguous()
-                if (logits.dtype != torch.float32 or state.dtype != torch.float32
-                        or logits.shape != (1, len(target_ids), 32128)
-                        or state.shape != (1, len(source["input_ids"]), 512)
-                        or not bool(torch.isfinite(logits).all()) or not bool(torch.isfinite(state).all())):
-                    save_failed_output(logits, state, name, "malformed-or-nonfinite")
-                    raise ValueError("nonfinite or malformed model output")
+                if (logits.device.type != "cpu" or state.device.type != "cpu"
+                        or logits.dtype != torch.float32 or state.dtype != torch.float32
+                        or not 0 < logits.numel() <= 8 * 32128 or not 0 < state.numel() <= 32 * 512):
+                    save_failed_output(logits, state, name, "unavailable-or-unbounded-output")
+                    raise ValueError("unavailable or unbounded model output")
                 log_bytes = logits.numpy().astype("<f4", copy=False).tobytes(order="C")
                 state_bytes = state.numpy().astype("<f4", copy=False).tobytes(order="C")
                 index = len(records)
                 filename = f"forward-{index:03d}.bin"
                 sha = evidence.write(filename, log_bytes + state_bytes)
+                active_forward.update(phase="post-return-validation")
+                try:
+                    if (logits.shape != (1, len(target_ids), 32128)
+                            or state.shape != (1, len(source["input_ids"]), 512)
+                            or not bool(torch.isfinite(logits).all()) or not bool(torch.isfinite(state).all())):
+                        raise ValueError("nonfinite or malformed model output")
+                except BaseException:
+                    try:
+                        evidence.json(f"forward-{index:03d}-failed.json",
+                                      {"name": name, "status": "post-return-validation-failed", "file": filename,
+                                       "sha256": sha, "logits_bytes": len(log_bytes), "encoder_bytes": len(state_bytes),
+                                       "logits_shape": list(logits.shape), "encoder_shape": list(state.shape),
+                                       "logits_available": True, "encoder_available": True})
+                    except Exception:
+                        pass
+                    raise
                 active_forward.update(phase="scoring")
                 try:
                     selected = torch.log_softmax(logits[0], dim=-1)[torch.arange(len(target_ids)),
