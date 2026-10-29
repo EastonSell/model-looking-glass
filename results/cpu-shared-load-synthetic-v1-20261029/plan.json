@@ -1,0 +1,167 @@
+{
+  "plan": {
+    "jobs": [
+      {
+        "expected_output_sha256": "d5aece3a833fc8b1a78d5bbeb8e44b46a51f7a446a218a7aeb7527801aeffe3a",
+        "input_ids": [
+          1,
+          1001
+        ],
+        "input_sha256": "8aaf2c3a17efeb952ee6dfca64732b94c91afe377b93572c167d6453bf744512",
+        "job_id": "job-0001",
+        "request_sha256": "98d33029407afb2e710e47f119313a95dd1d0308c0f93f7fa6c62fe909262701",
+        "team_id": "alpha"
+      },
+      {
+        "expected_output_sha256": "cc2c72f1c86c1a9973d47893b3981a5d3da7317d4b118aca616de658d50ff5ad",
+        "input_ids": [
+          2,
+          1002
+        ],
+        "input_sha256": "861959a45979cdb6dd623f9960cf9916213b8200776b316790346a8f77a2036e",
+        "job_id": "job-0002",
+        "request_sha256": "d92ecd680e8125ae8ba38630e2e74d949f43e1147ff8cdcd645ddc4bd5b10e93",
+        "team_id": "alpha"
+      },
+      {
+        "expected_output_sha256": "4f9df62adfcc37c4a3d9b5d0163fffec27cf25e8b0bd56d5f2bb017579baf50a",
+        "input_ids": [
+          3,
+          1003
+        ],
+        "input_sha256": "3df6bf02b6f79dec9ddadea816ecf617de42eabb1c240021abf6d3bfdf31cd23",
+        "job_id": "job-0003",
+        "request_sha256": "306b61f341ff28e21f44c05421ef17e4450212b2bf3b200a297b4f47d3b1091f",
+        "team_id": "alpha"
+      },
+      {
+        "expected_output_sha256": "e1f1356d3315ff88b96493b327e469d4ceed80e92b3911c592fc475aaf57e0b1",
+        "input_ids": [
+          4,
+          1004
+        ],
+        "input_sha256": "17e7c77f008f738bbf4a815beecb86b8b13f730f92019286f1a316793d8ffd69",
+        "job_id": "job-0004",
+        "request_sha256": "df422bfb9e7b71fd8736cb9cbdd3f2a9512ba7545f5088bc9397596806d7c368",
+        "team_id": "alpha"
+      },
+      {
+        "expected_output_sha256": "58d5cc18045b8d60e0adf8737caceff2ed3fc9b128d15dc632dcca61eda4ff23",
+        "input_ids": [
+          5,
+          1005
+        ],
+        "input_sha256": "2067959cbb5e92b674f49ef30e570b5c088960d5cf723d19b3466c6a0e1ce367",
+        "job_id": "job-0005",
+        "request_sha256": "b459adcfa3976a67351895d2d699865957630f22d41a8945d9ddca1b8118c850",
+        "team_id": "beta"
+      },
+      {
+        "expected_output_sha256": "e0b846f394bc69aead75bd377ffb09a5f4e2bf4e61c9636affb5ecfda5d3f710",
+        "input_ids": [
+          6,
+          1006
+        ],
+        "input_sha256": "c1458895a7a0a0c8424a3f2fe1b95bb099a6451f11872c2aa31c9a7375432520",
+        "job_id": "job-0006",
+        "request_sha256": "45729de130a536390d45ecc01b48ce6c91a6bab98010440eaaa93a779949f141",
+        "team_id": "beta"
+      },
+      {
+        "expected_output_sha256": "b8909d761baa72bf150dee9241b0c8f5054ab6eff900860e2bb588adfeae8f4c",
+        "input_ids": [
+          7,
+          1007
+        ],
+        "input_sha256": "1910f0ed0782231d0589669d8ad612bc1245c6ffe0fc60598f56c1db276105fc",
+        "job_id": "job-0007",
+        "request_sha256": "f3c593f73308f761d60a2bc81e3cd2e3a2b9e731b3743af85223d60fec4761d8",
+        "team_id": "beta"
+      },
+      {
+        "expected_output_sha256": "54261ae934da82e1308339b290315f16d78665a7b0215041c424e4cee4e4def1",
+        "input_ids": [
+          8,
+          1008
+        ],
+        "input_sha256": "10b4abee46272781518d7a5f588b4f9cef8de475e31cf75fed62893442bd9d0b",
+        "job_id": "job-0008",
+        "request_sha256": "2b8d70d39d291949c1370948388ce24e131a499725c1898a016126613b49e4b7",
+        "team_id": "beta"
+      },
+      {
+        "expected_output_sha256": "de2c8c76b29dfbf2be88d9ef69b0f7c8b2c66538e706b34ab6d6bb5a92ff29e4",
+        "input_ids": [
+          9,
+          1009
+        ],
+        "input_sha256": "30c4c88c63107e4e1a28b860f78635fd4736b6b353655fe42935cfbf9d258e0f",
+        "job_id": "job-0009",
+        "request_sha256": "e397ecf66a4eafa00983e6a17d1ffe45ede7bfa40068bb1d147192adcb1b1f30",
+        "team_id": "gamma"
+      },
+      {
+        "expected_output_sha256": "290444a5f29169eceeec41f6b3e1af2d15f114c2561ab0cebddda6ceb293403e",
+        "input_ids": [
+          10,
+          1010
+        ],
+        "input_sha256": "1546b8bc92b5e90a2e162075dc7a6a5a54169ad10fcbcaeb2993108f4aba35d5",
+        "job_id": "job-0010",
+        "request_sha256": "27bf394d5bafeb29bc3e36ea2d6531f88084623208943fe3b83c8622783dd372",
+        "team_id": "gamma"
+      },
+      {
+        "expected_output_sha256": "ae153fbd147d8c5719ec26cc01fa26c6667a78f7a64ea23b3e1a628d43938dd3",
+        "input_ids": [
+          11,
+          1011
+        ],
+        "input_sha256": "614ce7e12c5e042039f0e040791416700abd30fd9abf8cab09b289936c335b43",
+        "job_id": "job-0011",
+        "request_sha256": "131e3c3e1c78c716b8e3e0aa007c87e0f5c6812cf05673761752fcafb740bbce",
+        "team_id": "gamma"
+      },
+      {
+        "expected_output_sha256": "1f6b47111cc8eb3e1901a664f203c78284aef53ee20bdea6e4f93ed056b6dd9b",
+        "input_ids": [
+          12,
+          1012
+        ],
+        "input_sha256": "e69ce9ba176b98a0b1f0949c9a91fbf97869f03748482e14ef9104c69a9664f4",
+        "job_id": "job-0012",
+        "request_sha256": "6c33bebc19d239a325712ad0bed7676bda547f7334c67183681a4c3d9e706131",
+        "team_id": "gamma"
+      }
+    ],
+    "jobs_per_team": 4,
+    "max_pending": 3,
+    "max_pending_per_team": 1,
+    "model_hold_us": 20000,
+    "model_sha256": "d87f7223ab947d59971980e399b0e662ae3a4ad16fd4f1049e589f5488cb5f4b",
+    "model_spec": {
+      "dtype": "float32",
+      "input_shape": [
+        1,
+        2
+      ],
+      "kind": "synthetic-input-to-float32",
+      "model_hold_us": 20000,
+      "output_shape": [
+        1,
+        2,
+        1
+      ]
+    },
+    "profile_sha256": "ec3dc50685a7e8889249cf030201178a412ca359ae97e6be914ac9dc72a5cad7",
+    "seed": 17,
+    "start_spacing_us": 0,
+    "teams": [
+      "alpha",
+      "beta",
+      "gamma"
+    ],
+    "version": "synthetic-cpu-shared-load-v1"
+  },
+  "plan_sha256": "18e23e94fd4263f2db5bc18794159063f34fcf34a2942134e5f83bc6ecdb2e2d"
+}

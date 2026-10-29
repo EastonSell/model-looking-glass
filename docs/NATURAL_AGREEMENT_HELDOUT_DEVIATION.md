@@ -38,6 +38,17 @@ filesystem overhead against the study's unallocated headroom before execution;
 if retained study evidence exceeds the earlier allowance, a larger measured
 allowance will be versioned before the next phase.
 
+The operational binding also identifies the published evidence-scope
+clarification and the independently reviewed ledger reconciliation. Immediately
+before and after its one-use phase claim, the custodian checks the exact v6
+ledger's normalized production-path digest, metadata and inventory digest,
+reconciliation history, original claim rows, initial-gap disclosure and scope
+digest. A mismatch after the claim stops
+before nonce generation and leaves the claim consumed. Other phases may make
+their own claims without changing those original rows. These checks do not prove
+the underlying inventory was complete, prevent same-account file replacement
+or rollback, or reserve free disk against other users.
+
 The frozen pretrained loader separately stages a temporary checkpoint copy
 of approximately 356 MB under the model cache. This transient copy is outside
 the held-out evidence-file cap. Check free space on both the cache and evidence
@@ -65,6 +76,20 @@ All completed and available partial evidence remains retained on failure. A
 successful owner exit and resource accounting do not establish scientific
 success: an independent audit must recompute landing, controls and frozen
 scoring from retained bytes.
+
+The injection track has a separate prediction freeze and split. Either track
+may proceed independently if the other split is not allocated. When both
+protected splits exist, a separately reviewed trusted custodian verifies both
+commitments and privately checks each complete token row against the other
+split in both prefix directions before the later affected evaluation. Its
+bounded receipt binds the two freeze and commitment identities and reports
+only clear or collision; it does not disclose rows, nonces or the injection
+site. A collision stops the affected fixed evaluation without a replacement
+draw and does not invalidate a previously completed independent track. This is
+an additional prospective custody check, not a modification of either track's
+frozen selection. The bound natural owner does not itself authenticate that
+later receipt: the trusted custodian must establish the clear result before
+any evaluation that depends on both protected splits.
 
 Before the natural held-out claim, the source-bound owner performs a separate
 no-model validation using the same public inputs and current exposure snapshot.
@@ -121,12 +146,13 @@ unobserved or failed process. A missing or partial file is not authorization,
 and no failure permits another draw. These records provide cooperative process
 custody, not independent attestation against a writer with the same account.
 
-At publication of this notice, the reviewed v12 inventory reserves the 13
-public projected-edit proposals and 32 factorial prompts, and records the
-completed copying follow-up rows as observed. The operator must re-observe the
-latest reviewed inventory and coordinate against new exposures before the
-single draw; version enumeration alone cannot prove that every public case or
-unknown exposure was inventoried.
+At publication of this notice, the reviewed v15 inventory retains the 13
+public projected-edit proposals, records the completed copying and factorial
+rows as observed, includes the 64 completed public recipient inputs and 48
+greater-than inputs, and reserves 32 public pairs/dose inputs. The operator must
+re-observe the latest reviewed inventory and coordinate against new exposures
+before the single draw; version enumeration alone cannot prove that every
+public case or unknown exposure was inventoried.
 
 Start the observer with the direct base interpreter in isolated, no-site,
 no-bytecode mode and a fresh nonexistent absolute bytecode-cache prefix. Its

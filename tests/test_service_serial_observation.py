@@ -649,7 +649,7 @@ class ServiceSerialObservationTests(unittest.TestCase):
             with self.subTest(shared_token=shared_token):
                 _, worker, broker, authority, observation, _, _ = service_stack(bind=False)
                 server = IPCServer(broker, team_ids=None if shared_token else ('team-a',),
-                                   max_batch=1, max_tokens=2)
+                                   max_batch=1, max_tokens=2, completion_authority=authority)
                 if not shared_token:
                     server.start()
                 try:
@@ -698,7 +698,8 @@ class ServiceSerialObservationTests(unittest.TestCase):
 
     def test_real_ipc_polling_preserves_source_events_and_fixed_worker(self):
         model, worker, broker, authority, observation, _, guard_times = service_stack(bind=False)
-        server = IPCServer(broker, team_ids=('team-a',), max_batch=1, max_tokens=2)
+        server = IPCServer(broker, team_ids=('team-a',), max_batch=1, max_tokens=2,
+                           completion_authority=authority)
         observation.bind_service(worker, broker, server)
         polled_twice = threading.Event()
         polls = []
@@ -804,7 +805,8 @@ class ServiceSerialObservationTests(unittest.TestCase):
 
     def test_two_team_ipc_pending_cancel_keeps_owner_and_peer_results_separate(self):
         model, worker, broker, authority, observation, _, _ = service_stack(bind=False)
-        server = IPCServer(broker, team_ids=('team-a', 'team-b'), max_batch=1, max_tokens=2)
+        server = IPCServer(broker, team_ids=('team-a', 'team-b'), max_batch=1, max_tokens=2,
+                           completion_authority=authority)
         observation.bind_service(worker, broker, server)
         server.start()
         try:
@@ -839,7 +841,8 @@ class ServiceSerialObservationTests(unittest.TestCase):
     def test_ipc_recorder_failure_preserves_real_result_and_invalidates_report(self):
         model, worker, broker, authority, observation, recorder, _ = service_stack(bind=False)
         model.release.set()
-        server = IPCServer(broker, team_ids=('team-a',), max_batch=1, max_tokens=2)
+        server = IPCServer(broker, team_ids=('team-a',), max_batch=1, max_tokens=2,
+                           completion_authority=authority)
         observation.bind_service(worker, broker, server)
         original = recorder.record
 
@@ -864,9 +867,10 @@ class ServiceSerialObservationTests(unittest.TestCase):
         self.assertFalse(observation.seal(producers_stopped=True)['events_complete'])
 
     def test_window_end_during_ipc_capture_invalidates_the_recording(self):
-        model, worker, broker, _, observation, _, _ = service_stack(bind=False)
+        model, worker, broker, authority, observation, _, _ = service_stack(bind=False)
         model.release.set()
-        server = IPCServer(broker, team_ids=('team-a',), max_batch=1, max_tokens=2)
+        server = IPCServer(broker, team_ids=('team-a',), max_batch=1, max_tokens=2,
+                           completion_authority=authority)
         observation.bind_service(worker, broker, server)
         copying, resume = threading.Event(), threading.Event()
         original = observation._capture

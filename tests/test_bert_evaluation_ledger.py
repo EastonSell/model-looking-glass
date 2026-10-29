@@ -1,6 +1,7 @@
 """CPU-only failure and custody tests for the BERT evaluation ledger."""
 import json
 import hashlib
+from functools import wraps
 import os
 from pathlib import Path
 import platform
@@ -17,6 +18,34 @@ from looking_glass.bert_evaluation_ledger import (
     reservation_binding, verify_reservation, write_record,
 )
 from looking_glass.bert_agreement_cases import build_manifest, manifest_digest
+
+
+_ISOLATED_TEST = r'''
+import importlib.util, sys, unittest
+assert 'transformers' not in sys.modules
+spec = importlib.util.spec_from_file_location('ledger_test_isolated', sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+assert 'transformers' not in sys.modules
+suite = unittest.TestSuite([module.EvaluationLedgerTest(sys.argv[2])])
+result = unittest.TextTestRunner(verbosity=2).run(suite)
+raise SystemExit(not result.wasSuccessful())
+'''
+
+
+def requires_clean_model_dependencies(test):
+    """Keep the real controller's model-dependency guard in a fresh process."""
+    @wraps(test)
+    def run(self):
+        if 'transformers' not in sys.modules:
+            return test(self)
+        source = Path(__file__).resolve()
+        result = subprocess.run([sys.executable, '-B', '-c', _ISOLATED_TEST,
+                                 str(source), test.__name__], cwd=source.parents[1],
+                                capture_output=True, text=True, timeout=90,
+                                env=dict(os.environ, CUDA_VISIBLE_DEVICES='-1'))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+    return run
 
 
 def record_controller_exit(root, expected_root_sha256, run_id, binding, exit_code):
@@ -56,11 +85,56 @@ class EvaluationLedgerTest(unittest.TestCase):
         self.addCleanup(self.audit_patch.stop)
 
     def acquire(self, binding=None, timeout=5):
-        return EvaluationLedger.acquire(self.root, self.identity, binding or self.binding, timeout=timeout)
+        ledger = EvaluationLedger.acquire(self.root, self.identity, binding or self.binding, timeout=timeout)
+        def release_if_open():
+            if not ledger._closed:
+                ledger.release()
+        self.addCleanup(release_if_open)
+        return ledger
 
     @staticmethod
     def run_id(number):
         return format(number, '032x')
+
+    def test_prior_audit_runs_with_model_dependencies_in_parent(self):
+        # Collection of unrelated tests may import the model package. The
+        # controller's production guard still requires a clean process.
+        code = r'''
+import importlib.util, sys, types, unittest
+sys.modules['transformers'] = types.ModuleType('transformers')
+spec = importlib.util.spec_from_file_location('ledger_test_child', sys.argv[1])
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+suite = unittest.TestSuite([module.EvaluationLedgerTest(
+    'test_completed_prior_audit_can_enter_the_real_replay_controller')])
+result = unittest.TextTestRunner(verbosity=2).run(suite)
+raise SystemExit(not result.wasSuccessful())
+'''
+        result = subprocess.run([sys.executable, '-B', '-c', code, str(Path(__file__).resolve())],
+                                capture_output=True, text=True, timeout=60,
+                                cwd=Path(__file__).resolve().parents[1],
+                                env=dict(os.environ, CUDA_VISIBLE_DEVICES='-1'))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_prior_audit_rejects_model_dependencies_in_its_own_process(self):
+        from looking_glass.bert_agreement_study import audit_cpu_evaluation_journal
+        with patch.dict(sys.modules, {'transformers': object()}):
+            with self.assertRaisesRegex(RuntimeError, 'must not import model dependencies'):
+                audit_cpu_evaluation_journal(None, None, None)
+
+    def test_failed_test_body_releases_its_owned_ledger(self):
+        class FailedBody(EvaluationLedgerTest):
+            def runTest(inner):
+                inner.test_ledger = inner.acquire()
+                raise AssertionError('injected test failure')
+
+        case = FailedBody()
+        result = unittest.TestResult()
+        case.run(result)
+        self.assertEqual(len(result.failures), 1)
+        self.assertFalse(result.errors, result.errors)
+        self.assertTrue(case.test_ledger._closed)
+        self.assertTrue(case.test_ledger.lease._released)
 
     def terminal(self, directory, run_id, status, owner_state='reaped'):
         value = {'schema': 'bert-agreement-controller-result-v1', 'run_id': run_id,
@@ -124,6 +198,7 @@ class EvaluationLedgerTest(unittest.TestCase):
                           'journal_sha256': artifacts['events.jsonl']['sha256'], 'artifacts': artifacts})
         write_record(directory / 'result.json', value)
 
+    @requires_clean_model_dependencies
     def test_reservation_blocks_retry_until_separate_exit_and_preserves_order(self):
         first, second = self.run_id(1), self.run_id(2)
         ledger = self.acquire()
@@ -159,6 +234,7 @@ class EvaluationLedgerTest(unittest.TestCase):
         self.assertTrue(complete)
         ledger.release()
 
+    @requires_clean_model_dependencies
     def test_completed_prior_audit_can_enter_the_real_replay_controller(self):
         """A read-only prior audit may import Torch after the outer claim."""
         from looking_glass import bert_agreement_study as study
@@ -227,6 +303,7 @@ class EvaluationLedgerTest(unittest.TestCase):
         self.assertFalse(prior_complete)
         ledger.release()
 
+    @requires_clean_model_dependencies
     def test_first_complete_after_partial_is_labeled_as_a_repeat_exposure(self):
         first, second = self.run_id(23), self.run_id(24)
         ledger = self.acquire()
@@ -368,6 +445,7 @@ class EvaluationLedgerTest(unittest.TestCase):
             ledger.prior_attempts()
         ledger.release()
 
+    @requires_clean_model_dependencies
     def test_malformed_journal_is_rejected_by_the_real_closed_journal_auditor(self):
         first = self.run_id(19)
         ledger = self.acquire()
@@ -381,6 +459,7 @@ class EvaluationLedgerTest(unittest.TestCase):
                 ledger.prior_attempts()
         ledger.release()
 
+    @requires_clean_model_dependencies
     def test_replay_prior_audit_does_not_call_a_model_forward(self):
         import torch
         first = self.run_id(20)

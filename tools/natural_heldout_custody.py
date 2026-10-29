@@ -16,6 +16,7 @@ import runpy
 import secrets
 import shutil
 import signal
+import sqlite3
 import stat
 import subprocess
 import sys
@@ -28,11 +29,20 @@ SOURCE_COMMIT = 'def07cbb168408a12c76ba30f196af45149e111d'
 BINDING_SHA256 = '23575704f3e55d741123d3c1024accfb15aa0a048a84ce415bc765573d913ba0'
 PREDICTION_SHA256 = 'eaac12d7229b2ae5615832bc9b58c7e5b2404c5866b5079295e72b0a54a4c545'
 AGGREGATE_SHA256 = '35138307572410466d7cd1e1632bdfdfb9474562e9916fb48a0669a3478c6eeb'
+EVIDENCE_SCOPE_PATH = 'experiments/agreement_evidence_scope_v1.json'
+EVIDENCE_SCOPE_SHA256 = '9cfb9e89b6f1fb9fd64e7abd8bf9e8cd1126b30bdc022a3a8c0ef64c59140775'
+LEDGER_SHA256 = 'a6d80f2a6062a7e594917ffbcf1c430561ab3ebbca08511ec383ceb11490cb10'
+INITIAL_GAP_SHA256 = 'fd010b515395dab724d056f0e236cee1602965a7052e489ff817ffe586f44c3f'
+RECONCILED_STATE_SHA256 = 'f0836a53cb9646df8099afdf9fd1367023446dbd61a8cef3102d972798bc66e0'
+RECONCILED_HISTORY_SHA256 = '672720986dc107827834dd114a3af5125acf7b47510922e54c23c1628b71dbbd'
+RECONCILED_MANIFEST_SHA256 = 'e2f9f2d5b94e043ee3dd7c0477b253329038925bb0e3b12a7016e6371842f62e'
+ORIGINAL_CLAIMS_SHA256 = '9d81510a845eb6c6c072b3d6c9ecb375c1811f1720e9ebec9dbec9809390d914'
+RECONCILED_LEDGER_PATH_SHA256 = 'fad834dc459dbef8dc05147308a08e64dfcef938500ad476f90c015bfdadb308'
 V7_INVENTORY_SHA256 = 'e5feaccfeaed288bd53509ee4d68675d6b00ddb1a876279d5c42465010c63344'
-# Reviewed v12 reserves the public factorial inputs and preserves v11.
-CURRENT_INVENTORY_VERSION = 12
-CURRENT_INVENTORY_SHA256 = 'af374aaceb708b3b38e06b3955ca975467b048162ee105cbfcc9452a8a600e49'
-CURRENT_INVENTORY_SOURCE_SHA256 = '6f8d3058fba976f21e70e519be563f61285b5035415373bafd3a496564acaac5'
+# V15 additionally covers the completed greater-than inputs and planned dose rows.
+CURRENT_INVENTORY_VERSION = 15
+CURRENT_INVENTORY_SHA256 = '6c6ed34755dd9daebdde9a2de07f65c0c5d20301656416d873f321fa2c146d34'
+CURRENT_INVENTORY_SOURCE_SHA256 = '42324ce5697fb718fb6d230f7c89bc0fb1055c1fdea258f7167152d7cf98a397'
 CHECKPOINT = '2290a62682d06624634c1f46a6ad5be0f47f38aa'
 TARGETS = {' is': 318, ' are': 389, ' was': 373, ' were': 547}
 LOGICAL_LIMIT = 160 * 1024 * 1024
@@ -303,6 +313,59 @@ def require_published(local, url, suffix, *, reader=read_public):
     return _digest(local)
 
 
+def reconciliation_identity():
+    return {'state_sha256': RECONCILED_STATE_SHA256,
+            'history_sha256': RECONCILED_HISTORY_SHA256,
+            'manifest_sha256': RECONCILED_MANIFEST_SHA256,
+            'original_claims_sha256': ORIGINAL_CLAIMS_SHA256,
+            'ledger_path_sha256': RECONCILED_LEDGER_PATH_SHA256}
+
+
+def verify_reconciled_ledger(ledger, ledger_path):
+    """Verify the reviewed scope and retained history in a read-only snapshot."""
+    path = _checked_path(ledger_path)
+    normalized_path = os.path.normcase(os.path.abspath(str(path))).encode('utf-8')
+    if _digest(normalized_path) != RECONCILED_LEDGER_PATH_SHA256 or not path.is_file():
+        raise CustodyError('reconciled ledger is unavailable')
+    try:
+        db = sqlite3.connect(path.as_uri() + '?mode=ro', uri=True, timeout=30, isolation_level=None)
+        try:
+            db.execute('BEGIN')
+            row = db.execute('SELECT data, inventory FROM meta WHERE id=1').fetchone()
+            if row is None:
+                raise CustodyError('reconciled ledger has no metadata')
+            ledger._check_metadata_bound(*row)
+            meta = json.loads(row[0])
+            if (type(meta) is not dict or meta.get('schema') != 'mlg-agreement-phase-ledger-v6'
+                    or meta.get('evidence_scope_amendment_sha256') != EVIDENCE_SCOPE_SHA256
+                    or meta.get('initial_gap_record_sha256') != INITIAL_GAP_SHA256
+                    or meta.get('current_reviewed_manifest_sha256') != RECONCILED_MANIFEST_SHA256
+                    or meta.get('current_history_sha256') != RECONCILED_HISTORY_SHA256
+                    or ledger._snapshot_digest(*row) != RECONCILED_STATE_SHA256
+                    or ledger._history_digest(db) != RECONCILED_HISTORY_SHA256):
+                raise CustodyError('reconciled ledger scope, inventory or history differs')
+            claims = db.execute("SELECT phase, output, logical, disk, free FROM claims "
+                                "WHERE phase IN ('natural_discovery', 'injection_discovery') "
+                                "ORDER BY phase").fetchall()
+            if (len(claims) != 2 or {claim[0] for claim in claims} !=
+                    {'natural_discovery', 'injection_discovery'}
+                    or ledger._claims_digest(claims) != ORIGINAL_CLAIMS_SHA256):
+                raise CustodyError('the original discovery claims differ')
+        finally:
+            db.close()
+    except (sqlite3.Error, ValueError, TypeError, OSError) as error:
+        raise CustodyError('cannot verify the reconciled ledger') from error
+
+
+def claim_reconciled_phase(ledger, ledger_path, phase, *, output_path):
+    """Consume the unique grant only while the reviewed ledger identity holds."""
+    verify_reconciled_ledger(ledger, ledger_path)
+    grant = ledger.claim_phase(ledger_path, phase, output_path=output_path)
+    # If this fails the durable grant remains consumed, and no nonce is drawn.
+    verify_reconciled_ledger(ledger, ledger_path)
+    return grant
+
+
 def tokenize_assignment(allocation, tokenizer):
     """Validate every full text, single subject and continuation without a model."""
     prefix = tokenizer.encode('The', add_special_tokens=False)
@@ -414,7 +477,7 @@ def check_public_inputs(public, *, commitments, heldout, wrapper_bytes, reader=r
                 or set(operation) != {'schema', 'core_source_commit', 'binding_sha256',
                                       'prediction_sha256', 'aggregate_sha256', 'inventory_version',
                                       'inventory_sha256', 'inventory_source_sha256', 'runtime_overrides',
-                                      'limits', 'sources'}
+                                      'limits', 'sources', 'evidence_scope', 'ledger_reconciliation'}
                 or operation['schema'] != 'mlg-natural-heldout-operational-binding-v1'
                 or operation['core_source_commit'] != SOURCE_COMMIT
                 or operation['binding_sha256'] != BINDING_SHA256
@@ -424,6 +487,7 @@ def check_public_inputs(public, *, commitments, heldout, wrapper_bytes, reader=r
                 or operation['inventory_version'] != CURRENT_INVENTORY_VERSION
                 or operation['inventory_sha256'] != CURRENT_INVENTORY_SHA256
                 or operation['inventory_source_sha256'] != CURRENT_INVENTORY_SOURCE_SHA256
+                or operation['ledger_reconciliation'] != reconciliation_identity()
                 or operation['runtime_overrides'] != {'MKL_CBWR': None, 'ATEN_CPU_CAPABILITY': None}
                 or operation['limits'] != {'tensor_bytes': LOGICAL_LIMIT, 'event_bytes': EVENT_LIMIT,
                                            'side_bytes': SIDE_LIMIT}
@@ -439,7 +503,15 @@ def check_public_inputs(public, *, commitments, heldout, wrapper_bytes, reader=r
             remote = reader(_official_url(entry['url'], suffix), suffix)
             if type(remote) is not bytes or _digest(remote) != entry['sha256']:
                 raise CustodyError('operational source is not published as bound')
+        scope = operation['evidence_scope']
+        if (type(scope) is not dict or set(scope) != {'url', 'sha256'}
+                or scope['sha256'] != EVIDENCE_SCOPE_SHA256):
+            raise CustodyError('reviewed evidence scope is not bound')
+        scope_bytes = reader(_official_url(scope['url'], EVIDENCE_SCOPE_PATH), EVIDENCE_SCOPE_PATH)
+        if type(scope_bytes) is not bytes or _digest(scope_bytes) != EVIDENCE_SCOPE_SHA256:
+            raise CustodyError('reviewed evidence scope is not published as bound')
         if (operation['sources']['custody'] != {'url': public.wrapper_url, 'sha256': _digest(wrapper_bytes)}
+                or operation['sources']['ledger']['sha256'] != LEDGER_SHA256
                 or operation['sources']['deviation'] != {'url': public.deviation_url,
                                                          'sha256': _digest(public.deviation_bytes)}):
             raise CustodyError('operational binding does not name this custody source and deviation')
@@ -1459,7 +1531,8 @@ def production_prepare(config_path, *, mode='validate', expected_config_sha=None
         ledger = _load_file_module('_mlg_natural_heldout_ledger', custody_root / SOURCE_SUFFIXES['ledger'],
                                    operational['sources']['ledger']['sha256'])
         tokenizer = preflight._tokenizer(config['cache_dir'])
-        claim = lambda phase, *, output_path: ledger.claim_phase(config['ledger_path'], phase, output_path=output_path)
+        claim = lambda phase, *, output_path: claim_reconciled_phase(
+            ledger, config['ledger_path'], phase, output_path=output_path)
         _, commitment = prepare_once(public, config['private_root'], commitments=commitments,
                                      heldout=heldout, tokenizer=tokenizer, wrapper_bytes=wrapper_bytes,
                                      claim_phase=claim, observe_inventory=observe_with_cache,

@@ -1,0 +1,28 @@
+{
+  "child_reaped": true,
+  "cuda_visible_devices": "-1",
+  "elapsed_watchdog_ns": 4435041000,
+  "finished_utc": "2026-10-29T05:55:20.313875+00:00",
+  "mode": "backlog",
+  "plan_canonical_sha256": "57e8b0a98f64e7bfb5ec3aa04a97bfb21c14a0af15772227264f033523d82049",
+  "plan_file_sha256": "fa6f83f27cb981b807ea9efab99dfcb893410f9ad67b62ac2baad6fa2f68d128",
+  "report_sha256": "d8de7f63fd812b984d4bbdd1a624b92ba629661d39508727ac0dd647967fb945",
+  "returncode": 0,
+  "scope": "Parent observed child exit and on-disk Git state; no execution, isolation or device attestation.",
+  "source_after": {
+    "clean": true,
+    "commit": "9b6fb1a7d7140c9ef997159a7f1bf7360e877c71",
+    "tree": "17addc9800ef0dd2c1a9d7a00139adc19c709f95"
+  },
+  "source_before": {
+    "clean": true,
+    "commit": "9b6fb1a7d7140c9ef997159a7f1bf7360e877c71",
+    "tree": "17addc9800ef0dd2c1a9d7a00139adc19c709f95"
+  },
+  "started_utc": "2026-10-29T05:55:15.878420+00:00",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "timed_out": false,
+  "timeout_seconds": 45,
+  "version": "cpu-fairness-watchdog-v1"
+}

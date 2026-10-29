@@ -1,0 +1,1947 @@
+{
+  "baselines": {
+    "drink-lemon": {
+      "mask_logits_sha256": "12e07a701fa5e1ea3e2fec6fcefadb11d1522e6a444d65c1d6628a3442b997dc",
+      "sour_bits": 1092460728,
+      "sour_logit": 9.851737976074219,
+      "sour_probability": 0.11778711721357804,
+      "sweet_bits": 1091000542,
+      "sweet_logit": 8.459196090698242,
+      "sweet_minus_sour": -1.3925418853759766,
+      "sweet_probability": 0.029263383317387353,
+      "top_five_ids": [
+        8618,
+        14768,
+        2204,
+        2488,
+        12090
+      ],
+      "top_five_tokens": [
+        "bitter",
+        "sour",
+        "good",
+        "better",
+        "delicious"
+      ]
+    },
+    "drink-sugar": {
+      "mask_logits_sha256": "9d0c8eab2cdebf9073f445cc5fcbe39ce63ce1c0bf1fdfc5857ae245f13c79ee",
+      "sour_bits": 1092789382,
+      "sour_logit": 10.165166854858398,
+      "sour_probability": 0.11247327941957136,
+      "sweet_bits": 1091759872,
+      "sweet_logit": 9.183349609375,
+      "sweet_minus_sour": -0.9818172454833984,
+      "sweet_probability": 0.042135829328395685,
+      "top_five_ids": [
+        8618,
+        14768,
+        4086,
+        2204,
+        12090
+      ],
+      "top_five_tokens": [
+        "bitter",
+        "sour",
+        "sweet",
+        "good",
+        "delicious"
+      ]
+    },
+    "sauce-lemon": {
+      "mask_logits_sha256": "ee5a84f320ebeccbde89c729c3782b9c52cebc906f9ffc15e3f4297e7b9c1e0b",
+      "sour_bits": 1090095303,
+      "sour_logit": 7.797946453094482,
+      "sour_probability": 0.020012821929927132,
+      "sweet_bits": 1088235362,
+      "sweet_logit": 6.911057472229004,
+      "sweet_minus_sour": -0.8868889808654785,
+      "sweet_probability": 0.008243987805006783,
+      "top_five_ids": [
+        11543,
+        6118,
+        3495,
+        2367,
+        18587
+      ],
+      "top_five_tokens": [
+        "differently",
+        "strongly",
+        "directly",
+        "different",
+        "faintly"
+      ]
+    },
+    "sauce-sugar": {
+      "mask_logits_sha256": "f21ae81f4e37b61ff956a09eb0f7462f6f2273d0d28028471f501b4d6ae53877",
+      "sour_bits": 1090900016,
+      "sour_logit": 8.363327026367188,
+      "sour_probability": 0.03755167510281309,
+      "sweet_bits": 1090554923,
+      "sweet_logit": 8.034220695495605,
+      "sweet_minus_sour": -0.32910633087158203,
+      "sweet_probability": 0.027020927443370292,
+      "top_five_ids": [
+        11543,
+        6118,
+        14768,
+        8618,
+        2367
+      ],
+      "top_five_tokens": [
+        "differently",
+        "strongly",
+        "sour",
+        "bitter",
+        "different"
+      ]
+    },
+    "tea-lemon": {
+      "mask_logits_sha256": "6faa4a9b57de78e29b4203790b7622443460b451b858a80627a6691f30fbfd10",
+      "sour_bits": 1091824875,
+      "sour_logit": 9.245341300964355,
+      "sour_probability": 0.06017439367920924,
+      "sweet_bits": 1091573479,
+      "sweet_logit": 9.00559139251709,
+      "sweet_minus_sour": -0.23974990844726562,
+      "sweet_probability": 0.0473466941185574,
+      "top_five_ids": [
+        8618,
+        14768,
+        2204,
+        12090,
+        14380
+      ],
+      "top_five_tokens": [
+        "bitter",
+        "sour",
+        "good",
+        "delicious",
+        "lemon"
+      ]
+    },
+    "tea-sugar": {
+      "mask_logits_sha256": "4fee1b442ca4d4668d6ad2e2bb47848d18f5320a4155f9ae2d2e5284404d1ee3",
+      "sour_bits": 1091690714,
+      "sour_logit": 9.117395401000977,
+      "sour_probability": 0.0417059527081831,
+      "sweet_bits": 1092356744,
+      "sweet_logit": 9.752571105957031,
+      "sweet_minus_sour": 0.6351757049560547,
+      "sweet_probability": 0.07871388539578139,
+      "top_five_ids": [
+        4086,
+        2204,
+        8618,
+        2488,
+        12090
+      ],
+      "top_five_tokens": [
+        "sweet",
+        "good",
+        "bitter",
+        "better",
+        "delicious"
+      ]
+    },
+    "water-lemon": {
+      "mask_logits_sha256": "a7f4df481f40852e8e2172d7da2b59374a748eed09107ab99a2d0ce14c4dd09b",
+      "sour_bits": 1091105238,
+      "sour_logit": 8.559041976928711,
+      "sour_probability": 0.06246241860614078,
+      "sweet_bits": 1090959371,
+      "sweet_logit": 8.41993236541748,
+      "sweet_minus_sour": -0.13910961151123047,
+      "sweet_probability": 0.05435058961957694,
+      "top_five_ids": [
+        23592,
+        14768,
+        8618,
+        4086,
+        27726
+      ],
+      "top_five_tokens": [
+        "salty",
+        "sour",
+        "bitter",
+        "sweet",
+        "pleasantly"
+      ]
+    },
+    "water-sugar": {
+      "mask_logits_sha256": "9e3da35fced348cbccb57a33213eabf1208f91c53bfb1e364f69cb063107d4f1",
+      "sour_bits": 1090987080,
+      "sour_logit": 8.446357727050781,
+      "sour_probability": 0.038710438985057646,
+      "sweet_bits": 1091876190,
+      "sweet_logit": 9.294279098510742,
+      "sweet_minus_sour": 0.8479213714599609,
+      "sweet_probability": 0.09038069343009619,
+      "top_five_ids": [
+        4086,
+        23592,
+        8618,
+        2204,
+        14768
+      ],
+      "top_five_tokens": [
+        "sweet",
+        "salty",
+        "bitter",
+        "good",
+        "sour"
+      ]
+    }
+  },
+  "completed_forwards": 248,
+  "effects": [
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-lemon",
+      "effect": -0.7953720092773438,
+      "layer": 0,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.16019630432128906,
+      "position": 7,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-sugar",
+      "effect": 0.0,
+      "layer": 0,
+      "mode": "ingredient_self",
+      "patched_margin": 0.6351757049560547,
+      "position": 7,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-lemon",
+      "effect": -0.0032100677490234375,
+      "layer": 0,
+      "mode": "control_swap",
+      "patched_margin": 0.6319656372070312,
+      "position": 1,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-sugar",
+      "effect": 0.7792682647705078,
+      "layer": 0,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.5395183563232422,
+      "position": 7,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-lemon",
+      "effect": 0.0,
+      "layer": 0,
+      "mode": "ingredient_self",
+      "patched_margin": -0.23974990844726562,
+      "position": 7,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-sugar",
+      "effect": 0.0031185150146484375,
+      "layer": 0,
+      "mode": "control_swap",
+      "patched_margin": -0.2366313934326172,
+      "position": 1,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-lemon",
+      "effect": -0.748417854309082,
+      "layer": 1,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.11324214935302734,
+      "position": 7,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-sugar",
+      "effect": 0.0,
+      "layer": 1,
+      "mode": "ingredient_self",
+      "patched_margin": 0.6351757049560547,
+      "position": 7,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-lemon",
+      "effect": 0.00012111663818359375,
+      "layer": 1,
+      "mode": "control_swap",
+      "patched_margin": 0.6352968215942383,
+      "position": 1,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-sugar",
+      "effect": 0.7770919799804688,
+      "layer": 1,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.5373420715332031,
+      "position": 7,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-lemon",
+      "effect": 0.0,
+      "layer": 1,
+      "mode": "ingredient_self",
+      "patched_margin": -0.23974990844726562,
+      "position": 7,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-sugar",
+      "effect": 0.0009365081787109375,
+      "layer": 1,
+      "mode": "control_swap",
+      "patched_margin": -0.2388134002685547,
+      "position": 1,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-lemon",
+      "effect": -0.6580753326416016,
+      "layer": 2,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.022899627685546875,
+      "position": 7,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-sugar",
+      "effect": 0.0,
+      "layer": 2,
+      "mode": "ingredient_self",
+      "patched_margin": 0.6351757049560547,
+      "position": 7,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-lemon",
+      "effect": 0.021704673767089844,
+      "layer": 2,
+      "mode": "control_swap",
+      "patched_margin": 0.6568803787231445,
+      "position": 1,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-sugar",
+      "effect": 0.7198829650878906,
+      "layer": 2,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.480133056640625,
+      "position": 7,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-lemon",
+      "effect": 0.0,
+      "layer": 2,
+      "mode": "ingredient_self",
+      "patched_margin": -0.23974990844726562,
+      "position": 7,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-sugar",
+      "effect": -0.023555755615234375,
+      "layer": 2,
+      "mode": "control_swap",
+      "patched_margin": -0.2633056640625,
+      "position": 1,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-lemon",
+      "effect": -0.6611442565917969,
+      "layer": 3,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.025968551635742188,
+      "position": 7,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-sugar",
+      "effect": 0.0,
+      "layer": 3,
+      "mode": "ingredient_self",
+      "patched_margin": 0.6351757049560547,
+      "position": 7,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-lemon",
+      "effect": 0.023682594299316406,
+      "layer": 3,
+      "mode": "control_swap",
+      "patched_margin": 0.6588582992553711,
+      "position": 1,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-sugar",
+      "effect": 0.6666355133056641,
+      "layer": 3,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.42688560485839844,
+      "position": 7,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-lemon",
+      "effect": 0.0,
+      "layer": 3,
+      "mode": "ingredient_self",
+      "patched_margin": -0.23974990844726562,
+      "position": 7,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-sugar",
+      "effect": -0.02452850341796875,
+      "layer": 3,
+      "mode": "control_swap",
+      "patched_margin": -0.2642784118652344,
+      "position": 1,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-lemon",
+      "effect": -0.4114408493041992,
+      "layer": 4,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.22373485565185547,
+      "position": 7,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-sugar",
+      "effect": 0.0,
+      "layer": 4,
+      "mode": "ingredient_self",
+      "patched_margin": 0.6351757049560547,
+      "position": 7,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-lemon",
+      "effect": 0.00089263916015625,
+      "layer": 4,
+      "mode": "control_swap",
+      "patched_margin": 0.6360683441162109,
+      "position": 1,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-sugar",
+      "effect": 0.38481998443603516,
+      "layer": 4,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.14507007598876953,
+      "position": 7,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-lemon",
+      "effect": 0.0,
+      "layer": 4,
+      "mode": "ingredient_self",
+      "patched_margin": -0.23974990844726562,
+      "position": 7,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-sugar",
+      "effect": -0.0036363601684570312,
+      "layer": 4,
+      "mode": "control_swap",
+      "patched_margin": -0.24338626861572266,
+      "position": 1,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-lemon",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.6351757049560547,
+      "position": 7,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-sugar",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_self",
+      "patched_margin": 0.6351757049560547,
+      "position": 7,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": 0.6351757049560547,
+      "donor": "tea-lemon",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "control_swap",
+      "patched_margin": 0.6351757049560547,
+      "position": 1,
+      "recipient": "tea-sugar"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-sugar",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.23974990844726562,
+      "position": 7,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-lemon",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_self",
+      "patched_margin": -0.23974990844726562,
+      "position": 7,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": -0.23974990844726562,
+      "donor": "tea-sugar",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "control_swap",
+      "patched_margin": -0.23974990844726562,
+      "position": 1,
+      "recipient": "tea-lemon"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-lemon",
+      "effect": -0.30744171142578125,
+      "layer": 0,
+      "mode": "ingredient_swap",
+      "patched_margin": -1.2892589569091797,
+      "position": 7,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-sugar",
+      "effect": 0.0,
+      "layer": 0,
+      "mode": "ingredient_self",
+      "patched_margin": -0.9818172454833984,
+      "position": 7,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-lemon",
+      "effect": 0.009204864501953125,
+      "layer": 0,
+      "mode": "control_swap",
+      "patched_margin": -0.9726123809814453,
+      "position": 1,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-sugar",
+      "effect": 0.33945274353027344,
+      "layer": 0,
+      "mode": "ingredient_swap",
+      "patched_margin": -1.0530891418457031,
+      "position": 7,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-lemon",
+      "effect": 0.0,
+      "layer": 0,
+      "mode": "ingredient_self",
+      "patched_margin": -1.3925418853759766,
+      "position": 7,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-sugar",
+      "effect": -0.00763702392578125,
+      "layer": 0,
+      "mode": "control_swap",
+      "patched_margin": -1.4001789093017578,
+      "position": 1,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-lemon",
+      "effect": -0.4337759017944336,
+      "layer": 1,
+      "mode": "ingredient_swap",
+      "patched_margin": -1.415593147277832,
+      "position": 7,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-sugar",
+      "effect": 0.0,
+      "layer": 1,
+      "mode": "ingredient_self",
+      "patched_margin": -0.9818172454833984,
+      "position": 7,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-lemon",
+      "effect": 0.01720142364501953,
+      "layer": 1,
+      "mode": "control_swap",
+      "patched_margin": -0.9646158218383789,
+      "position": 1,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-sugar",
+      "effect": 0.47528076171875,
+      "layer": 1,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.9172611236572266,
+      "position": 7,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-lemon",
+      "effect": 0.0,
+      "layer": 1,
+      "mode": "ingredient_self",
+      "patched_margin": -1.3925418853759766,
+      "position": 7,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-sugar",
+      "effect": -0.011879920959472656,
+      "layer": 1,
+      "mode": "control_swap",
+      "patched_margin": -1.4044218063354492,
+      "position": 1,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-lemon",
+      "effect": -0.35837459564208984,
+      "layer": 2,
+      "mode": "ingredient_swap",
+      "patched_margin": -1.3401918411254883,
+      "position": 7,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-sugar",
+      "effect": 0.0,
+      "layer": 2,
+      "mode": "ingredient_self",
+      "patched_margin": -0.9818172454833984,
+      "position": 7,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-lemon",
+      "effect": 0.033898353576660156,
+      "layer": 2,
+      "mode": "control_swap",
+      "patched_margin": -0.9479188919067383,
+      "position": 1,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-sugar",
+      "effect": 0.3435182571411133,
+      "layer": 2,
+      "mode": "ingredient_swap",
+      "patched_margin": -1.0490236282348633,
+      "position": 7,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-lemon",
+      "effect": 0.0,
+      "layer": 2,
+      "mode": "ingredient_self",
+      "patched_margin": -1.3925418853759766,
+      "position": 7,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-sugar",
+      "effect": -0.032207489013671875,
+      "layer": 2,
+      "mode": "control_swap",
+      "patched_margin": -1.4247493743896484,
+      "position": 1,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-lemon",
+      "effect": -0.683283805847168,
+      "layer": 3,
+      "mode": "ingredient_swap",
+      "patched_margin": -1.6651010513305664,
+      "position": 7,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-sugar",
+      "effect": 0.0,
+      "layer": 3,
+      "mode": "ingredient_self",
+      "patched_margin": -0.9818172454833984,
+      "position": 7,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-lemon",
+      "effect": 0.033654212951660156,
+      "layer": 3,
+      "mode": "control_swap",
+      "patched_margin": -0.9481630325317383,
+      "position": 1,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-sugar",
+      "effect": 0.6124753952026367,
+      "layer": 3,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.7800664901733398,
+      "position": 7,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-lemon",
+      "effect": 0.0,
+      "layer": 3,
+      "mode": "ingredient_self",
+      "patched_margin": -1.3925418853759766,
+      "position": 7,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-sugar",
+      "effect": -0.03372764587402344,
+      "layer": 3,
+      "mode": "control_swap",
+      "patched_margin": -1.42626953125,
+      "position": 1,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-lemon",
+      "effect": -0.5465517044067383,
+      "layer": 4,
+      "mode": "ingredient_swap",
+      "patched_margin": -1.5283689498901367,
+      "position": 7,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-sugar",
+      "effect": 0.0,
+      "layer": 4,
+      "mode": "ingredient_self",
+      "patched_margin": -0.9818172454833984,
+      "position": 7,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-lemon",
+      "effect": 0.021615028381347656,
+      "layer": 4,
+      "mode": "control_swap",
+      "patched_margin": -0.9602022171020508,
+      "position": 1,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-sugar",
+      "effect": 0.46360301971435547,
+      "layer": 4,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.9289388656616211,
+      "position": 7,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-lemon",
+      "effect": 0.0,
+      "layer": 4,
+      "mode": "ingredient_self",
+      "patched_margin": -1.3925418853759766,
+      "position": 7,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-sugar",
+      "effect": -0.03298473358154297,
+      "layer": 4,
+      "mode": "control_swap",
+      "patched_margin": -1.4255266189575195,
+      "position": 1,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-lemon",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.9818172454833984,
+      "position": 7,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-sugar",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_self",
+      "patched_margin": -0.9818172454833984,
+      "position": 7,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -0.9818172454833984,
+      "donor": "drink-lemon",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "control_swap",
+      "patched_margin": -0.9818172454833984,
+      "position": 1,
+      "recipient": "drink-sugar"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-sugar",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_swap",
+      "patched_margin": -1.3925418853759766,
+      "position": 7,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-lemon",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_self",
+      "patched_margin": -1.3925418853759766,
+      "position": 7,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -1.3925418853759766,
+      "donor": "drink-sugar",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "control_swap",
+      "patched_margin": -1.3925418853759766,
+      "position": 1,
+      "recipient": "drink-lemon"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-lemon",
+      "effect": -0.7662525177001953,
+      "layer": 0,
+      "mode": "ingredient_swap",
+      "patched_margin": -1.0953588485717773,
+      "position": 7,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-sugar",
+      "effect": 0.0,
+      "layer": 0,
+      "mode": "ingredient_self",
+      "patched_margin": -0.32910633087158203,
+      "position": 7,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-lemon",
+      "effect": 0.005280494689941406,
+      "layer": 0,
+      "mode": "control_swap",
+      "patched_margin": -0.3238258361816406,
+      "position": 1,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-sugar",
+      "effect": 0.7811093330383301,
+      "layer": 0,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.10577964782714844,
+      "position": 7,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-lemon",
+      "effect": 0.0,
+      "layer": 0,
+      "mode": "ingredient_self",
+      "patched_margin": -0.8868889808654785,
+      "position": 7,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-sugar",
+      "effect": -0.0043735504150390625,
+      "layer": 0,
+      "mode": "control_swap",
+      "patched_margin": -0.8912625312805176,
+      "position": 1,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-lemon",
+      "effect": -0.7683401107788086,
+      "layer": 1,
+      "mode": "ingredient_swap",
+      "patched_margin": -1.0974464416503906,
+      "position": 7,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-sugar",
+      "effect": 0.0,
+      "layer": 1,
+      "mode": "ingredient_self",
+      "patched_margin": -0.32910633087158203,
+      "position": 7,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-lemon",
+      "effect": 0.014271736145019531,
+      "layer": 1,
+      "mode": "control_swap",
+      "patched_margin": -0.3148345947265625,
+      "position": 1,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-sugar",
+      "effect": 0.7794508934020996,
+      "layer": 1,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.1074380874633789,
+      "position": 7,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-lemon",
+      "effect": 0.0,
+      "layer": 1,
+      "mode": "ingredient_self",
+      "patched_margin": -0.8868889808654785,
+      "position": 7,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-sugar",
+      "effect": -0.010915279388427734,
+      "layer": 1,
+      "mode": "control_swap",
+      "patched_margin": -0.8978042602539062,
+      "position": 1,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-lemon",
+      "effect": -0.5619368553161621,
+      "layer": 2,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.8910431861877441,
+      "position": 7,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-sugar",
+      "effect": 0.0,
+      "layer": 2,
+      "mode": "ingredient_self",
+      "patched_margin": -0.32910633087158203,
+      "position": 7,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-lemon",
+      "effect": 0.02608013153076172,
+      "layer": 2,
+      "mode": "control_swap",
+      "patched_margin": -0.3030261993408203,
+      "position": 1,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-sugar",
+      "effect": 0.5378317832946777,
+      "layer": 2,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.3490571975708008,
+      "position": 7,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-lemon",
+      "effect": 0.0,
+      "layer": 2,
+      "mode": "ingredient_self",
+      "patched_margin": -0.8868889808654785,
+      "position": 7,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-sugar",
+      "effect": -0.028589725494384766,
+      "layer": 2,
+      "mode": "control_swap",
+      "patched_margin": -0.9154787063598633,
+      "position": 1,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-lemon",
+      "effect": -0.4525918960571289,
+      "layer": 3,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.7816982269287109,
+      "position": 7,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-sugar",
+      "effect": 0.0,
+      "layer": 3,
+      "mode": "ingredient_self",
+      "patched_margin": -0.32910633087158203,
+      "position": 7,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-lemon",
+      "effect": 0.045662879943847656,
+      "layer": 3,
+      "mode": "control_swap",
+      "patched_margin": -0.2834434509277344,
+      "position": 1,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-sugar",
+      "effect": 0.4181852340698242,
+      "layer": 3,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.4687037467956543,
+      "position": 7,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-lemon",
+      "effect": 0.0,
+      "layer": 3,
+      "mode": "ingredient_self",
+      "patched_margin": -0.8868889808654785,
+      "position": 7,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-sugar",
+      "effect": -0.03994417190551758,
+      "layer": 3,
+      "mode": "control_swap",
+      "patched_margin": -0.9268331527709961,
+      "position": 1,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-lemon",
+      "effect": -0.23044776916503906,
+      "layer": 4,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.5595541000366211,
+      "position": 7,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-sugar",
+      "effect": 0.0,
+      "layer": 4,
+      "mode": "ingredient_self",
+      "patched_margin": -0.32910633087158203,
+      "position": 7,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-lemon",
+      "effect": -0.0030183792114257812,
+      "layer": 4,
+      "mode": "control_swap",
+      "patched_margin": -0.3321247100830078,
+      "position": 1,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-sugar",
+      "effect": 0.21885919570922852,
+      "layer": 4,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.66802978515625,
+      "position": 7,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-lemon",
+      "effect": 0.0,
+      "layer": 4,
+      "mode": "ingredient_self",
+      "patched_margin": -0.8868889808654785,
+      "position": 7,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-sugar",
+      "effect": 0.0023860931396484375,
+      "layer": 4,
+      "mode": "control_swap",
+      "patched_margin": -0.8845028877258301,
+      "position": 1,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-lemon",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.32910633087158203,
+      "position": 7,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-sugar",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_self",
+      "patched_margin": -0.32910633087158203,
+      "position": 7,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.32910633087158203,
+      "donor": "sauce-lemon",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "control_swap",
+      "patched_margin": -0.32910633087158203,
+      "position": 1,
+      "recipient": "sauce-sugar"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-sugar",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.8868889808654785,
+      "position": 7,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-lemon",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_self",
+      "patched_margin": -0.8868889808654785,
+      "position": 7,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": -0.8868889808654785,
+      "donor": "sauce-sugar",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "control_swap",
+      "patched_margin": -0.8868889808654785,
+      "position": 1,
+      "recipient": "sauce-lemon"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-lemon",
+      "effect": -0.8942794799804688,
+      "layer": 0,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.04635810852050781,
+      "position": 7,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-sugar",
+      "effect": 0.0,
+      "layer": 0,
+      "mode": "ingredient_self",
+      "patched_margin": 0.8479213714599609,
+      "position": 7,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-lemon",
+      "effect": 0.0011358261108398438,
+      "layer": 0,
+      "mode": "control_swap",
+      "patched_margin": 0.8490571975708008,
+      "position": 1,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-sugar",
+      "effect": 0.8753089904785156,
+      "layer": 0,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.7361993789672852,
+      "position": 7,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-lemon",
+      "effect": 0.0,
+      "layer": 0,
+      "mode": "ingredient_self",
+      "patched_margin": -0.13910961151123047,
+      "position": 7,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-sugar",
+      "effect": 0.0004138946533203125,
+      "layer": 0,
+      "mode": "control_swap",
+      "patched_margin": -0.13869571685791016,
+      "position": 1,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-lemon",
+      "effect": -0.8567972183227539,
+      "layer": 1,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.008875846862792969,
+      "position": 7,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-sugar",
+      "effect": 0.0,
+      "layer": 1,
+      "mode": "ingredient_self",
+      "patched_margin": 0.8479213714599609,
+      "position": 7,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-lemon",
+      "effect": 0.007708549499511719,
+      "layer": 1,
+      "mode": "control_swap",
+      "patched_margin": 0.8556299209594727,
+      "position": 1,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-sugar",
+      "effect": 0.8763561248779297,
+      "layer": 1,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.7372465133666992,
+      "position": 7,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-lemon",
+      "effect": 0.0,
+      "layer": 1,
+      "mode": "ingredient_self",
+      "patched_margin": -0.13910961151123047,
+      "position": 7,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-sugar",
+      "effect": -0.0075359344482421875,
+      "layer": 1,
+      "mode": "control_swap",
+      "patched_margin": -0.14664554595947266,
+      "position": 1,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-lemon",
+      "effect": -0.7677545547485352,
+      "layer": 2,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.08016681671142578,
+      "position": 7,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-sugar",
+      "effect": 0.0,
+      "layer": 2,
+      "mode": "ingredient_self",
+      "patched_margin": 0.8479213714599609,
+      "position": 7,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-lemon",
+      "effect": 0.016519546508789062,
+      "layer": 2,
+      "mode": "control_swap",
+      "patched_margin": 0.86444091796875,
+      "position": 1,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-sugar",
+      "effect": 0.7973194122314453,
+      "layer": 2,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.6582098007202148,
+      "position": 7,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-lemon",
+      "effect": 0.0,
+      "layer": 2,
+      "mode": "ingredient_self",
+      "patched_margin": -0.13910961151123047,
+      "position": 7,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-sugar",
+      "effect": -0.011434555053710938,
+      "layer": 2,
+      "mode": "control_swap",
+      "patched_margin": -0.1505441665649414,
+      "position": 1,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-lemon",
+      "effect": -0.5987482070922852,
+      "layer": 3,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.24917316436767578,
+      "position": 7,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-sugar",
+      "effect": 0.0,
+      "layer": 3,
+      "mode": "ingredient_self",
+      "patched_margin": 0.8479213714599609,
+      "position": 7,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-lemon",
+      "effect": 0.010321617126464844,
+      "layer": 3,
+      "mode": "control_swap",
+      "patched_margin": 0.8582429885864258,
+      "position": 1,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-sugar",
+      "effect": 0.5406808853149414,
+      "layer": 3,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.40157127380371094,
+      "position": 7,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-lemon",
+      "effect": 0.0,
+      "layer": 3,
+      "mode": "ingredient_self",
+      "patched_margin": -0.13910961151123047,
+      "position": 7,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-sugar",
+      "effect": -0.011484146118164062,
+      "layer": 3,
+      "mode": "control_swap",
+      "patched_margin": -0.15059375762939453,
+      "position": 1,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-lemon",
+      "effect": -0.2118082046508789,
+      "layer": 4,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.636113166809082,
+      "position": 7,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-sugar",
+      "effect": 0.0,
+      "layer": 4,
+      "mode": "ingredient_self",
+      "patched_margin": 0.8479213714599609,
+      "position": 7,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-lemon",
+      "effect": -0.018125534057617188,
+      "layer": 4,
+      "mode": "control_swap",
+      "patched_margin": 0.8297958374023438,
+      "position": 1,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-sugar",
+      "effect": 0.173614501953125,
+      "layer": 4,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.03450489044189453,
+      "position": 7,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-lemon",
+      "effect": 0.0,
+      "layer": 4,
+      "mode": "ingredient_self",
+      "patched_margin": -0.13910961151123047,
+      "position": 7,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-sugar",
+      "effect": 0.015345573425292969,
+      "layer": 4,
+      "mode": "control_swap",
+      "patched_margin": -0.1237640380859375,
+      "position": 1,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-lemon",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_swap",
+      "patched_margin": 0.8479213714599609,
+      "position": 7,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-sugar",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_self",
+      "patched_margin": 0.8479213714599609,
+      "position": 7,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": 0.8479213714599609,
+      "donor": "water-lemon",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "control_swap",
+      "patched_margin": 0.8479213714599609,
+      "position": 1,
+      "recipient": "water-sugar"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-sugar",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_swap",
+      "patched_margin": -0.13910961151123047,
+      "position": 7,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-lemon",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "ingredient_self",
+      "patched_margin": -0.13910961151123047,
+      "position": 7,
+      "recipient": "water-lemon"
+    },
+    {
+      "baseline_margin": -0.13910961151123047,
+      "donor": "water-sugar",
+      "effect": 0.0,
+      "layer": 5,
+      "mode": "control_swap",
+      "patched_margin": -0.13910961151123047,
+      "position": 1,
+      "recipient": "water-lemon"
+    }
+  ],
+  "exposure": {
+    "complete_exposure_history_certified": false,
+    "exact_or_complete_prefix_collisions": 0,
+    "prior_row_counts": [
+      96,
+      64
+    ]
+  },
+  "journals": {
+    "drink.jsonl": {
+      "sha256": "e6810094bee2ac4cdccfcd8913143368296fd204ff6ca44eca4cef6b5be948ea",
+      "size": 1002880
+    },
+    "sauce.jsonl": {
+      "sha256": "23f481e9dca72ffee6969cef3c52ca1fa961ce979a6ed4d147c579a7be9b9a26",
+      "size": 1002983
+    },
+    "tea.jsonl": {
+      "sha256": "addcd541275187defa9bd1baf2cb41871812f3fe6f6c8a284e669b44ba5f01ac",
+      "size": 1002414
+    },
+    "water.jsonl": {
+      "sha256": "c1c83d2b0fd1e54f3ca9272a09a5abd293a99dbeb215dfd763fbfbdb100a678e",
+      "size": 1002907
+    }
+  },
+  "layer_summary": [
+    {
+      "control_swap": {
+        "lemon_to_sugar": {
+          "mean_effect": 0.0031027793884277344,
+          "n": 4
+        },
+        "sugar_to_lemon": {
+          "mean_effect": -0.0021195411682128906,
+          "n": 4
+        }
+      },
+      "ingredient_self": {
+        "lemon_self": {
+          "mean_effect": 0.0,
+          "n": 4
+        },
+        "sugar_self": {
+          "mean_effect": 0.0,
+          "n": 4
+        }
+      },
+      "ingredient_swap": {
+        "lemon_to_sugar": {
+          "mean_effect": -0.6908364295959473,
+          "n": 4
+        },
+        "sugar_to_lemon": {
+          "mean_effect": 0.6937848329544067,
+          "n": 4
+        }
+      },
+      "layer": 0
+    },
+    {
+      "control_swap": {
+        "lemon_to_sugar": {
+          "mean_effect": 0.009825706481933594,
+          "n": 4
+        },
+        "sugar_to_lemon": {
+          "mean_effect": -0.00734865665435791,
+          "n": 4
+        }
+      },
+      "ingredient_self": {
+        "lemon_self": {
+          "mean_effect": 0.0,
+          "n": 4
+        },
+        "sugar_self": {
+          "mean_effect": 0.0,
+          "n": 4
+        }
+      },
+      "ingredient_swap": {
+        "lemon_to_sugar": {
+          "mean_effect": -0.7018327713012695,
+          "n": 4
+        },
+        "sugar_to_lemon": {
+          "mean_effect": 0.727044939994812,
+          "n": 4
+        }
+      },
+      "layer": 1
+    },
+    {
+      "control_swap": {
+        "lemon_to_sugar": {
+          "mean_effect": 0.024550676345825195,
+          "n": 4
+        },
+        "sugar_to_lemon": {
+          "mean_effect": -0.02394688129425049,
+          "n": 4
+        }
+      },
+      "ingredient_self": {
+        "lemon_self": {
+          "mean_effect": 0.0,
+          "n": 4
+        },
+        "sugar_self": {
+          "mean_effect": 0.0,
+          "n": 4
+        }
+      },
+      "ingredient_swap": {
+        "lemon_to_sugar": {
+          "mean_effect": -0.5865353345870972,
+          "n": 4
+        },
+        "sugar_to_lemon": {
+          "mean_effect": 0.5996381044387817,
+          "n": 4
+        }
+      },
+      "layer": 2
+    },
+    {
+      "control_swap": {
+        "lemon_to_sugar": {
+          "mean_effect": 0.028330326080322266,
+          "n": 4
+        },
+        "sugar_to_lemon": {
+          "mean_effect": -0.027421116828918457,
+          "n": 4
+        }
+      },
+      "ingredient_self": {
+        "lemon_self": {
+          "mean_effect": 0.0,
+          "n": 4
+        },
+        "sugar_self": {
+          "mean_effect": 0.0,
+          "n": 4
+        }
+      },
+      "ingredient_swap": {
+        "lemon_to_sugar": {
+          "mean_effect": -0.5989420413970947,
+          "n": 4
+        },
+        "sugar_to_lemon": {
+          "mean_effect": 0.5594942569732666,
+          "n": 4
+        }
+      },
+      "layer": 3
+    },
+    {
+      "control_swap": {
+        "lemon_to_sugar": {
+          "mean_effect": 0.0003409385681152344,
+          "n": 4
+        },
+        "sugar_to_lemon": {
+          "mean_effect": -0.0047223567962646484,
+          "n": 4
+        }
+      },
+      "ingredient_self": {
+        "lemon_self": {
+          "mean_effect": 0.0,
+          "n": 4
+        },
+        "sugar_self": {
+          "mean_effect": 0.0,
+          "n": 4
+        }
+      },
+      "ingredient_swap": {
+        "lemon_to_sugar": {
+          "mean_effect": -0.35006213188171387,
+          "n": 4
+        },
+        "sugar_to_lemon": {
+          "mean_effect": 0.31022417545318604,
+          "n": 4
+        }
+      },
+      "layer": 4
+    },
+    {
+      "control_swap": {
+        "lemon_to_sugar": {
+          "mean_effect": 0.0,
+          "n": 4
+        },
+        "sugar_to_lemon": {
+          "mean_effect": 0.0,
+          "n": 4
+        }
+      },
+      "ingredient_self": {
+        "lemon_self": {
+          "mean_effect": 0.0,
+          "n": 4
+        },
+        "sugar_self": {
+          "mean_effect": 0.0,
+          "n": 4
+        }
+      },
+      "ingredient_swap": {
+        "lemon_to_sugar": {
+          "mean_effect": 0.0,
+          "n": 4
+        },
+        "sugar_to_lemon": {
+          "mean_effect": 0.0,
+          "n": 4
+        }
+      },
+      "layer": 5
+    }
+  ],
+  "limitations": [
+    "Public exploratory inputs; no held-out or generalization claim.",
+    "Full-output untouched-coordinate equality is owner-observed; only its hashes are saved.",
+    "Full baseline mask-logit bits are saved; patched full-vocabulary summaries are owner-observed.",
+    "Source hashes and local execution records do not independently attest execution."
+  ],
+  "model": {
+    "assets": {
+      "config.json": {
+        "sha256": "69c94b0222d5d1f4b0ad027ca7416cdafb98378cbbb8305d0bf47c9365c60c83",
+        "size": 483
+      },
+      "model.safetensors": {
+        "sha256": "5e3f1108e3cb34ee048634875d8482665b65ac713291a7e32396fb18f6ff0063",
+        "size": 267954768
+      },
+      "tokenizer.json": {
+        "sha256": "ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98",
+        "size": 466062
+      },
+      "tokenizer_config.json": {
+        "sha256": "a025160ef0431f1a392f6f050c1310f4c5d9fb6f275932dbccba73c4d214bf10",
+        "size": 48
+      },
+      "vocab.txt": {
+        "sha256": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3",
+        "size": 231508
+      }
+    },
+    "attention_implementation": "eager",
+    "device": "cpu",
+    "dtype": "float32",
+    "model": "distilbert/distilbert-base-uncased",
+    "model_class": "DistilBertForMaskedLM",
+    "parameter_count": 66985530,
+    "pytorch_cuda_initialized": false,
+    "revision": "12040accade4e8a0f71eabdb258fecc2e7e948be",
+    "tokenizer_class": "DistilBertTokenizerFast",
+    "torch_version": "2.8.0+cu128",
+    "transformers_version": "4.57.3"
+  },
+  "model_state_sha256_before_after": "6bc3ce8e2f3d6518d6cc69e5f983af0208eab3957fa216be26006d502e18e9c0",
+  "runtime": {
+    "aten_cpu_capability": null,
+    "cuda_initialized": false,
+    "default_dtype": "torch.float32",
+    "denormal_probe": {
+      "normal_half_bits": 4194304,
+      "smallest_times_one_bits": 1
+    },
+    "deterministic_algorithms": true,
+    "interop_threads": 1,
+    "mkl_cbwr": "AUTO",
+    "mkl_num_threads": "1",
+    "mkldnn_enabled": true,
+    "omp_num_threads": "1",
+    "python": "3.11.15",
+    "threads": 1,
+    "torch": "2.8.0+cu128",
+    "torch_build_sha256": "9835a6eed581f616d1e294cc42162b701425ea24bf4723678b8233e78f30e8c6"
+  },
+  "schema": "bert-taste-context-result-v1",
+  "seed": 20261029,
+  "source": {
+    "commit": "bb2ccb0d4b674a4e2c90be4952ccff5195e8730a",
+    "selected_source_sha256": {
+      "docs/BERT_TASTE_CONTEXT_V1.md": "9e6bbe0544bc528f87d6de65c2d903197625dc14f2a48bcb39929852b71351f7",
+      "experiments/bert_agreement_exposures_v5.json": "34db577a211d6036e7803b8cdb6aaab35687b56974de8cf1ac6bccbf3272fb3c",
+      "experiments/bert_matched_public_cases_v1.json": "5b708600dba78db9e4ee676650bc5e1f6b3269d52179a8e45d5d45fee55219bb",
+      "experiments/bert_taste_public_cases_v1.json": "362b84af462e7f5bb4ccbb365c8ab5ee1bc96845ee6021df23d6d08c298acad8",
+      "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+      "looking_glass/bert_agreement_runner.py": "e777a2eb647a1a5c024b369be0dc8941df664a7ee02958bcb3dec6f3f617739b",
+      "looking_glass/bert_agreement_study.py": "1ac734bba7ad3dbda95728909d616bd8810b310f1ba22f94388e00e2f1e7d0a6",
+      "looking_glass/intervention_plan.py": "6470676938e73e48234128c30ba1d10a49104ee8513434871bc6e973c55d6120",
+      "looking_glass/interventions.py": "71cbcf4776660d2dd883b82815f710b0c909228fd1762504f9e3f984f7f6c60f",
+      "looking_glass/model_ownership.py": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434",
+      "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+      "scripts/bert_taste_parent_v1.py": "957d138612cfb9ef7bcdb4f891ce5c16f1c7d69ab59fdef29d595698e7748746",
+      "scripts/bert_taste_patch_v1.py": "a25c74df2d2aeccad41d4f4ee22059d8112ecdf7e1da9e0565502f464aaa1e76"
+    }
+  },
+  "status": "complete"
+}

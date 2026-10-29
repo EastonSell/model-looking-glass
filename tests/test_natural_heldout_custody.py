@@ -5,6 +5,8 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
+import sqlite3
 import sys
 import tempfile
 import types
@@ -13,6 +15,7 @@ import unittest
 from unittest import mock
 
 from looking_glass import pretrained_exposures_v7 as exposures
+from looking_glass import agreement_phase_ledger as phase_ledger
 from looking_glass import pretrained_number_commitments as commitments
 from tools import natural_heldout_custody as custody
 
@@ -88,13 +91,16 @@ class CustodyTests(unittest.TestCase):
         self.wrapper = Path(custody.__file__).read_bytes()
         self.deviation, self.prediction = b'fake deviation', b'fake prediction'
         self.inventory_source = b'fabricated inventory source'
+        self.scope = b'fabricated evidence scope'
         self.binding = json.dumps({'source_commit': custody.SOURCE_COMMIT,
                                    'checkpoint_revision': custody.CHECKPOINT}).encode()
         self.sha_patch = mock.patch.multiple(custody,
             BINDING_SHA256=hashlib.sha256(self.binding).hexdigest(),
             PREDICTION_SHA256=hashlib.sha256(self.prediction).hexdigest(),
             CURRENT_INVENTORY_VERSION=8, CURRENT_INVENTORY_SHA256=exposures.inventory_digest(),
-            CURRENT_INVENTORY_SOURCE_SHA256=hashlib.sha256(self.inventory_source).hexdigest())
+            CURRENT_INVENTORY_SOURCE_SHA256=hashlib.sha256(self.inventory_source).hexdigest(),
+            EVIDENCE_SCOPE_SHA256=hashlib.sha256(self.scope).hexdigest(),
+            LEDGER_SHA256=hashlib.sha256(b'fake ledger').hexdigest())
         self.sha_patch.start()
         self.addCleanup(self.sha_patch.stop)
         self.freeze = commitments.make_prediction_freeze({'natural': {
@@ -117,6 +123,9 @@ class CustodyTests(unittest.TestCase):
                      'inventory_version': custody.CURRENT_INVENTORY_VERSION,
                      'inventory_sha256': custody.CURRENT_INVENTORY_SHA256,
                      'inventory_source_sha256': custody.CURRENT_INVENTORY_SOURCE_SHA256,
+                     'evidence_scope': {'url': base + custody.EVIDENCE_SCOPE_PATH,
+                                        'sha256': custody.EVIDENCE_SCOPE_SHA256},
+                     'ledger_reconciliation': custody.reconciliation_identity(),
                      'runtime_overrides': {'MKL_CBWR': None, 'ATEN_CPU_CAPABILITY': None},
                      'limits': {'tensor_bytes': custody.LOGICAL_LIMIT, 'event_bytes': custody.EVENT_LIMIT,
                                 'side_bytes': custody.SIDE_LIMIT}, 'sources': sources}
@@ -139,6 +148,7 @@ class CustodyTests(unittest.TestCase):
                        self.public.inventory_source_url: self.inventory_source,
                        self.public.operational_binding_url: self.operation,
                        self.public.wrapper_url: self.wrapper, self.public.deviation_url: self.deviation}
+        self.remote[operation['evidence_scope']['url']] = self.scope
         self.remote.update({sources[name]['url']: data for name, data in source_data.items()})
         self.heldout = SimpleNamespace(load_frozen_natural_predictions=lambda data, freeze: None)
         self.validation_root = self.root / ('natural-heldout-validation-' + hashlib.sha256(self.operation).hexdigest())
@@ -209,7 +219,7 @@ class CustodyTests(unittest.TestCase):
 
     def test_publication_precedes_one_durable_claim_and_nonce(self):
         attempt, public = self.prepare()
-        self.assertEqual(self.calls, ['published'] * 14 + ['observe', 'claim', 'observe', 'nonce'])
+        self.assertEqual(self.calls, ['published'] * 15 + ['observe', 'claim', 'observe', 'nonce'])
         self.assertEqual((attempt / 'nonce.bin').read_bytes(), NONCE)
         self.assertEqual(set(public), {'schema', 'prediction_freeze_sha256', 'exposure_inventory_sha256',
                                        'heldout_commitment', 'wrapper_sha256', 'deviation_sha256',
@@ -243,6 +253,19 @@ class CustodyTests(unittest.TestCase):
             self.prepare(verify_validation=reject)
         self.assertNotIn('claim', self.calls)
         self.assertNotIn('nonce', self.calls)
+
+    def test_later_validation_growth_is_charged_with_preparation(self):
+        attempt, _ = self.prepare()
+        supervisor = self.supervised(attempt)
+        custody.verify_preparation_supervisor(attempt, supervisor, self.public, self.wrapper)
+        excess = self.validation_root / 'extra-after-preparation'
+        with excess.open('wb') as stream:
+            stream.seek(13 * 1024 * 1024)
+            stream.write(b'x')
+        with self.assertRaises(custody.CustodyError):
+            custody.verify_preparation_supervisor(attempt, supervisor, self.public, self.wrapper)
+        excess.unlink()
+        custody.verify_preparation_supervisor(attempt, supervisor, self.public, self.wrapper)
 
     def test_validation_configuration_binds_public_bytes_urls_and_runtime(self):
         fields = ('binding', 'prediction', 'aggregate', 'inventory', 'v7_inventory', 'inventory_source',
@@ -311,6 +334,105 @@ class CustodyTests(unittest.TestCase):
         with self.assertRaises(custody.CustodyError):
             self.prepare()
         self.assertNotIn('claim', self.calls)
+        self.assertNotIn('nonce', self.calls)
+
+    def test_scope_publication_mismatch_fails_before_claim_or_nonce(self):
+        operation = json.loads(self.operation)
+        self.remote[operation['evidence_scope']['url']] = b'changed scope'
+        with self.assertRaises(custody.CustodyError):
+            self.prepare()
+        self.assertNotIn('claim', self.calls)
+        self.assertNotIn('nonce', self.calls)
+
+    def test_other_published_scope_or_ledger_cannot_replace_reviewed_pins(self):
+        for name in ('scope', 'ledger'):
+            operation = json.loads(self.operation)
+            entry = operation['evidence_scope'] if name == 'scope' else operation['sources']['ledger']
+            entry['sha256'] = hashlib.sha256(b'other published bytes').hexdigest()
+            self.remote[entry['url']] = b'other published bytes'
+            raw = custody._json_bytes(operation)
+            self.remote[self.public.operational_binding_url] = raw
+            public = custody.PublicInputs(**{**self.public.__dict__, 'operational_binding': raw})
+            with self.subTest(name=name), self.assertRaises(custody.CustodyError):
+                custody.check_public_inputs(public, commitments=commitments, heldout=self.heldout,
+                                            wrapper_bytes=self.wrapper, reader=self.reader)
+        self.assertNotIn('claim', self.calls)
+        self.assertNotIn('nonce', self.calls)
+
+    def test_reconciliation_identity_is_pinned_before_claim_or_nonce(self):
+        for key in ('state_sha256', 'history_sha256', 'manifest_sha256', 'original_claims_sha256',
+                    'ledger_path_sha256'):
+            operation = json.loads(self.operation)
+            operation['ledger_reconciliation'][key] = 'f' * 64
+            raw = custody._json_bytes(operation)
+            self.remote[self.public.operational_binding_url] = raw
+            public = custody.PublicInputs(**{**self.public.__dict__, 'operational_binding': raw})
+            with self.subTest(key=key), self.assertRaises(custody.CustodyError):
+                custody.check_public_inputs(public, commitments=commitments, heldout=self.heldout,
+                                            wrapper_bytes=self.wrapper, reader=self.reader)
+        self.assertNotIn('claim', self.calls)
+        self.assertNotIn('nonce', self.calls)
+
+    def test_reconciled_ledger_checks_real_snapshot_and_original_claims(self):
+        path = self.root / 'ledger.sqlite3'
+        original = [('natural_discovery', 'natural-path', 1, 2, 3),
+                    ('injection_discovery', 'injection-path', 4, 5, 6)]
+        db = sqlite3.connect(path)
+        db.execute('CREATE TABLE meta (id INTEGER PRIMARY KEY, data TEXT, inventory TEXT)')
+        db.execute('CREATE TABLE claims (phase TEXT PRIMARY KEY, output TEXT, logical INTEGER, disk INTEGER, free INTEGER)')
+        db.executemany('INSERT INTO claims VALUES (?, ?, ?, ?, ?)', original)
+        history = phase_ledger._history_digest(db)
+        meta = {'schema': 'mlg-agreement-phase-ledger-v6',
+                'evidence_scope_amendment_sha256': custody.EVIDENCE_SCOPE_SHA256,
+                'initial_gap_record_sha256': custody.INITIAL_GAP_SHA256,
+                'current_reviewed_manifest_sha256': '1' * 64,
+                'current_history_sha256': history}
+        raw = json.dumps(meta, sort_keys=True, separators=(',', ':'))
+        db.execute('INSERT INTO meta VALUES (1, ?, ?)', (raw, '{}'))
+        db.commit()
+        state = phase_ledger._snapshot_digest(raw, '{}')
+        with mock.patch.multiple(custody, RECONCILED_STATE_SHA256=state,
+                                 RECONCILED_HISTORY_SHA256=history,
+                                 RECONCILED_MANIFEST_SHA256='1' * 64,
+                                 RECONCILED_LEDGER_PATH_SHA256=hashlib.sha256(
+                                     os.path.normcase(os.path.abspath(str(path))).encode('utf-8')).hexdigest(),
+                                 ORIGINAL_CLAIMS_SHA256=phase_ledger._claims_digest(original)):
+            custody.verify_reconciled_ledger(phase_ledger, path)
+            copy_path = self.root / 'copied-ledger.sqlite3'
+            shutil.copyfile(path, copy_path)
+            with self.assertRaises(custody.CustodyError):
+                custody.verify_reconciled_ledger(phase_ledger, copy_path)
+            # Another track may legitimately consume its separate phase.
+            db.execute('INSERT INTO claims VALUES (?, ?, ?, ?, ?)',
+                       ('injection_heldout', 'later-path', 7, 8, 9))
+            db.commit()
+            custody.verify_reconciled_ledger(phase_ledger, path)
+            db.execute("UPDATE claims SET free=10 WHERE phase='natural_discovery'")
+            db.commit()
+            with self.assertRaises(custody.CustodyError):
+                custody.verify_reconciled_ledger(phase_ledger, path)
+            db.execute("UPDATE claims SET free=3 WHERE phase='natural_discovery'")
+            db.execute('CREATE TABLE reconciliations (seq, manifest_sha, gap_sha, claims_sha, previous_meta, previous_inventory)')
+            db.commit()
+            with self.assertRaises(custody.CustodyError):
+                custody.verify_reconciled_ledger(phase_ledger, path)
+        db.close()
+
+    def test_post_claim_scope_failure_consumes_claim_without_nonce(self):
+        checks = []
+        def check(_ledger, _path):
+            checks.append('checked')
+            if len(checks) == 2:
+                raise custody.CustodyError('fabricated post-claim mismatch')
+        ledger = SimpleNamespace(claim_phase=lambda _path, phase, *, output_path:
+                                 self.ledger(phase, output_path=output_path))
+        with mock.patch.object(custody, 'verify_reconciled_ledger', side_effect=check):
+            claim = lambda phase, *, output_path: custody.claim_reconciled_phase(
+                ledger, self.root / 'ledger.sqlite3', phase, output_path=output_path)
+            with self.assertRaises(custody.CustodyError):
+                self.prepare(claim_phase=claim)
+        self.assertEqual(checks, ['checked', 'checked'])
+        self.assertTrue(self.ledger.claimed)
         self.assertNotIn('nonce', self.calls)
 
     def test_interruption_after_nonce_has_no_second_draw(self):

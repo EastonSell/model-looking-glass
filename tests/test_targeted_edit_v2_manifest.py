@@ -93,7 +93,10 @@ def test_listed_project_sources_cover_static_local_imports():
                                        "looking_glass/targeted_edit_v2_custody.py",
                                        "looking_glass/targeted_edit_v2_witness.py",
                                        "looking_glass/targeted_edit_v2_evaluation_evidence.py",
-                                       "looking_glass/targeted_edit_v2_evaluation_owner.py"])
+                                       "looking_glass/targeted_edit_v2_evaluation_owner.py",
+                                       "scripts/targeted_edit_v2_source_rehearsal.py",
+                                       "scripts/targeted_edit_v2_source_child.py",
+                                       "scripts/v2_source_bootstrap.py"])
 def test_working_source_edit_is_rejected(frozen_repo, relative):
     repo, _source, frozen_commit, sha = frozen_repo
     path = repo / relative
