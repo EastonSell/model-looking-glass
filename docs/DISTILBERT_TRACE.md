@@ -6,6 +6,9 @@ using the existing ordered activation plan. Each observation carries a
 `trace_schema.TraceEvent` plus a detached tensor snapshot. The adapter does
 not load or authenticate weights and does not perform generation.
 
+For an artificial injection, same-site restoration and off-target control
+using these traces and ordered plans, see the [intervention workflow](DISTILBERT_INTERVENTION_WORKFLOW.md).
+
 ```python
 from looking_glass.distilbert_trace import trace_distilbert_masked_lm
 
