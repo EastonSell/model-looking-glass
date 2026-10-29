@@ -107,8 +107,13 @@ callers and disposing every associated alias and exception graph. The helper
 checks the exact binding, empty ledgers and custody slots before permanently
 detaching the broker and worker. It retains no proof of external or native
 alias disposal, and it does not release the physical lease or either fixed
-device commitment. Those capabilities and the relevant roots must remain
-held through process exit; uncertain retirement requires process replacement.
+device commitment. The capabilities and relevant roots must remain held
+through process exit. A separately reviewed one-shot may release inert
+accounting commitments only after verified drain, zero allocator counters and
+host claims, and disposal of model/input/output, trace and callback custody,
+under the still-held physical lease, with no further CUDA work before clean
+attestation and exit. This helper does not perform that additional cleanup.
+Uncertain retirement requires process replacement.
 
 `close()` releases the exclusive ledger only after all healthy jobs,
 deliveries and groups are disposed and no dispatcher remains active. It does

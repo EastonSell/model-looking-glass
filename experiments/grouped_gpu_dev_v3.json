@@ -1,0 +1,140 @@
+{
+  "schema": "grouped-gpu-development-v3",
+  "purpose": "Supervised two-row correctness and resource observation; not a throughput benchmark or production capacity guarantee.",
+  "model": "distilbert/distilgpt2",
+  "revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "seed": 2026102808,
+  "device": "cuda:0",
+  "dtype": "float32",
+  "attention": "eager",
+  "cache": "disabled",
+  "autocast": "disabled",
+  "allocator_fraction": 0.25,
+  "minimum_preload_free_bytes": 5368709120,
+  "minimum_reserve_bytes": 536870912,
+  "resident_commitment_bytes": 2147483648,
+  "forward_commitment_bytes": 1073741824,
+  "host_ledger": {
+    "max_bytes": 67108864,
+    "max_items": 256,
+    "max_requests": 8,
+    "max_operations": 16
+  },
+  "control_host_ledger": {
+    "max_bytes": 33554432,
+    "max_items": 128,
+    "max_requests": 1,
+    "max_operations": 1
+  },
+  "snapshot_reservation": {
+    "nbytes": 256,
+    "items": 8
+  },
+  "worker_finite_scratch": {
+    "nbytes": 4194304,
+    "items": 8
+  },
+  "validation_scratch": {
+    "nbytes": 4194304,
+    "items": 8
+  },
+  "comparison_scratch": {
+    "chunk_elements": 4096,
+    "declared_max_bytes": 1048576
+  },
+  "per_request_shape": [
+    1,
+    4
+  ],
+  "combined_shape": [
+    2,
+    4
+  ],
+  "model_output_width": 50257,
+  "resident_input_limit_bytes": 128,
+  "resident_output_limit_bytes": 2097152,
+  "absolute_tolerance": 1e-06,
+  "relative_tolerance": 1e-05,
+  "policy_groups": [
+    [
+      [
+        50256,
+        103,
+        203,
+        303
+      ],
+      [
+        50256,
+        104,
+        204,
+        304
+      ]
+    ],
+    [
+      [
+        50256,
+        105,
+        205,
+        305
+      ],
+      [
+        50256,
+        106,
+        206,
+        306
+      ]
+    ]
+  ],
+  "broker_holdout_groups": [
+    [
+      [
+        50256,
+        107,
+        207,
+        307
+      ],
+      [
+        50256,
+        108,
+        208,
+        308
+      ]
+    ],
+    [
+      [
+        50256,
+        109,
+        209,
+        309
+      ],
+      [
+        50256,
+        110,
+        210,
+        310
+      ]
+    ]
+  ],
+  "teams": [
+    "team-a",
+    "team-b"
+  ],
+  "failure_policy": "Retain partial observations, quarantine on uncertain cleanup or failed synchronization, and never silently retry or change tolerances.",
+  "workspace_lifetime": "retained-through-guarded-cleanup-release-before-attestation",
+  "child_process_policy": "popen-disabled-job-fail-closed",
+  "forward_order": [
+    "serial-0-0",
+    "serial-0-1",
+    "mixed-0",
+    "serial-1-0",
+    "serial-1-1",
+    "mixed-1",
+    "heldout-serial-0-0",
+    "heldout-serial-0-1",
+    "heldout-group-0",
+    "heldout-serial-1-0",
+    "heldout-serial-1-1",
+    "heldout-group-1"
+  ],
+  "owner_timeout_seconds": 900
+}

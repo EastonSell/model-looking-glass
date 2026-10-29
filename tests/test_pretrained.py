@@ -1,13 +1,16 @@
 """Offline contract checks for the opt-in pretrained model loader."""
 
 import os
+import gc
 import hashlib
 import importlib.util
+import inspect
 import subprocess
 import sys
 import tempfile
 import types
 import unittest
+import weakref
 from pathlib import Path
 from unittest.mock import patch
 
@@ -241,6 +244,68 @@ class LocalTransformersFixtureTests(unittest.TestCase):
         save_file(weights, path, metadata={"format": "pt"})
         with self.assertRaisesRegex(pretrained.IncompleteCheckpointError, "missing_keys"):
             self.load_fixture()
+
+    def test_successful_loader_frame_does_not_pin_model_without_cyclic_gc(self):
+        previous_gc = gc.isenabled()
+        previous_profile = sys.getprofile()
+        completed_frames = []
+        def observe(frame, event, arg):
+            if event == 'return' and frame.f_code is load_distilgpt2.__code__:
+                completed_frames.append(frame)
+        try:
+            gc.disable()
+            sys.setprofile(observe)
+            with patch.object(gc, 'collect', side_effect=AssertionError('explicit collection during CPU load')):
+                bundle = self.load_fixture()
+            sys.setprofile(previous_profile)
+            self.assertEqual(len(completed_frames), 1)
+            reference = weakref.ref(bundle.model)
+            del bundle
+            self.assertIsNone(reference())
+            self.assertIsNone(completed_frames[0].f_locals.get('model'))
+            self.assertIsNone(completed_frames[0].f_locals.get('result'))
+        finally:
+            sys.setprofile(previous_profile)
+            if previous_gc:
+                gc.enable()
+
+    def test_bundle_construction_failure_preserves_model_in_original_traceback(self):
+        with patch.object(pretrained, 'LoadedPretrained', side_effect=MemoryError('bundle construction')):
+            try:
+                self.load_fixture()
+            except MemoryError as exc:
+                trace = exc.__traceback__
+                while trace is not None and trace.tb_frame.f_code is not load_distilgpt2.__code__:
+                    trace = trace.tb_next
+                self.assertIsNotNone(trace)
+                self.assertIsNotNone(trace.tb_frame.f_locals.get('model'))
+            else:
+                self.fail('simulated bundle construction failure was not raised')
+
+    def test_interrupt_at_successful_return_clears_cpu_handoff_locals(self):
+        source, start = inspect.getsourcelines(load_distilgpt2)
+        return_line = next(start + i for i, line in enumerate(source) if line.strip() == 'return result')
+        previous_trace = sys.gettrace()
+        def interrupt(frame, event, arg):
+            if (frame.f_code is load_distilgpt2.__code__ and event == 'line'
+                    and frame.f_lineno == return_line):
+                raise KeyboardInterrupt('interrupted CPU return')
+            return interrupt
+        try:
+            sys.settrace(interrupt)
+            try:
+                self.load_fixture()
+            except KeyboardInterrupt as exc:
+                trace = exc.__traceback__
+                while trace is not None and trace.tb_frame.f_code is not load_distilgpt2.__code__:
+                    trace = trace.tb_next
+                self.assertIsNotNone(trace)
+                self.assertIsNone(trace.tb_frame.f_locals.get('model'))
+                self.assertIsNone(trace.tb_frame.f_locals.get('result'))
+            else:
+                self.fail('return interruption was not raised')
+        finally:
+            sys.settrace(previous_trace)
 
 
 @unittest.skipUnless(os.environ.get("LOOKING_GLASS_TEST_CACHE"), "explicit pretrained cache not configured")

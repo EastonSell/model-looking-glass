@@ -1,6 +1,7 @@
 """CPU-only protocol and supervised-owner boundary tests."""
 import builtins
 from contextlib import ExitStack
+import gc
 import hashlib
 import json
 import os
@@ -40,6 +41,7 @@ def synthetic_runtime():
 
 class GroupedGpuDevelopmentTests(unittest.TestCase):
     def setUp(self):
+        self.gc_was_enabled = gc.isenabled()
         # Owner-entry tests run in the test process; the real subprocess policy
         # is exercised separately in an isolated supervised child below.
         guard = patch.object(dev, '_install_no_child_processes')
@@ -57,6 +59,11 @@ class GroupedGpuDevelopmentTests(unittest.TestCase):
         dev._CUDA_PENDING[:] = [False] * len(dev._CUDA_PENDING)
         dev._CUDA_DEPTH = 0
         dev._ATTEMPT_STARTED = False
+        dev._NO_CYCLIC_GC_REQUIRED = False
+        if self.gc_was_enabled:
+            gc.enable()
+        else:
+            gc.disable()
 
     def test_supervised_owner_requires_a_zero_exit_before_marker_clearance(self):
         identity = SimpleNamespace(lock_path='lock', marker_path='marker')
@@ -69,6 +76,56 @@ class GroupedGpuDevelopmentTests(unittest.TestCase):
         self.assertIs(supervisor.call_args.kwargs['require_zero_exit'], True)
         self.assertIs(supervisor.call_args.kwargs['inherit_environment'], False)
         self.assertIs(supervisor.call_args.kwargs['process_job'], job)
+        self.assertEqual(supervisor.call_args.kwargs['timeout'], 900)
+
+    @unittest.skipUnless(os.name == 'nt', 'the process-job contract is Windows-specific')
+    def test_supervised_failed_device_call_skips_python_shutdown_hooks(self):
+        repo = Path(__file__).resolve().parents[1]
+        hashes = {name: hashlib.sha256((repo / name).read_bytes()).hexdigest() for name in dev._SOURCE_PATHS}
+        code = r'''
+import atexit, pathlib, sys
+sys.path.insert(0, sys.argv[1])
+atexit.register(pathlib.Path(sys.argv[2]).write_text, 'atexit ran')
+from looking_glass import grouped_gpu_dev as dev
+from looking_glass.supervisor import OwnerSession
+from looking_glass.device_lease import DeviceLease
+def fake_main(argv=None):
+    session = OwnerSession.from_environment()
+    lease = DeviceLease.acquire(session.device_lease_path, timeout=3)
+    session.check(lease)
+    def failed():
+        raise RuntimeError('simulated failed drain')
+    try:
+        dev._cuda(session, lease, failed)
+    except RuntimeError:
+        return 1
+    raise AssertionError('failure was not propagated')
+dev.main = fake_main
+dev._owner_process_main()
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            marker = root / 'atexit.txt'
+            unsafe = root / 'gpu.unsafe.json'
+            job = dev._new_process_job(repo, hashes['scripts/v2_source_guards.py'])
+            environment = {key: os.environ[key] for key in ('SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP')
+                           if key in os.environ}
+            environment['PATH'] = str(Path(environment.get('SYSTEMROOT', 'C:/Windows')) / 'System32')
+            environment['CUDA_VISIBLE_DEVICES'] = '-1'
+            try:
+                result = dev.run_supervised([sys._base_executable, '-I', '-S', '-B', '-c', code,
+                                             str(repo), str(marker)],
+                    device_lease_path=root / 'gpu.lock', marker_path=unsafe, timeout=20,
+                    lease_timeout=3, terminate_grace=3, cwd=repo, env=environment,
+                    inherit_environment=False, require_zero_exit=True, process_job=job)
+                self.assertFalse(result.clean)
+                self.assertEqual(result.exit_code, 1)
+                self.assertTrue(unsafe.exists())
+                self.assertFalse(marker.exists())
+                self.assertTrue(job._confirmed)
+            finally:
+                if job._handle is not None:
+                    job.close()
 
     def test_child_source_verification_uses_bound_manifest_without_git(self):
         repo = Path(__file__).resolve().parents[1]
@@ -466,9 +523,11 @@ assert not torch.cuda.is_initialized()
              patch.object(dev, '_require_supervisor'), \
              patch.object(dev, '_require_gpu_boundary'), \
              patch.object(dev, '_configure', side_effect=lambda *a: events.append('configure')), \
-             patch.object(dev, '_bind_device', side_effect=lambda *a: events.append('bind')), \
+             patch.object(dev, '_bind_device', side_effect=lambda *a: events.append('bind') or
+                          SimpleNamespace(total_memory=8 * dev._GIB)), \
              patch.object(dev, '_verify_child_sources', return_value={dev._PROTOCOL: 'a' * 64}), \
              patch.object(dev, '_protect_sources'), patch.object(dev, '_protect_manifest'), \
+             patch.object(dev, '_check_cleanup_reservations'), \
              patch.object(dev, '_protocol', return_value={}), \
              patch.object(dev, '_write_json', side_effect=write), \
              patch.object(dev, '_run', side_effect=run):
@@ -1020,7 +1079,8 @@ assert not torch.cuda.is_initialized()
                 dev._require_supervisor()
 
     def test_gpu_launch_is_disabled_before_any_owner_or_device_action(self):
-        with patch.object(dev, '_require_bootstrap'), patch.object(dev, '_require_supervisor'), \
+        with patch.object(dev, '_GPU_BOUNDARY_READY', False), \
+             patch.object(dev, '_require_bootstrap'), patch.object(dev, '_require_supervisor'), \
              patch.object(dev.OwnerSession, 'from_environment') as session, \
              patch.object(dev.DeviceLease, 'acquire') as lease, patch.object(dev, '_write_json'):
             with self.assertRaisesRegex(RuntimeError, 'session-bound GPU worker'):
@@ -1095,14 +1155,19 @@ assert not torch.cuda.is_initialized()
             with self.assertRaisesRegex(RuntimeError, 'inconsistent'):
                 dev._record_memory(Path(directory), records, 'invalid', impossible, 8 * dev._GIB)
             self.assertEqual(json.loads((Path(directory) / 'memory-002.json').read_bytes())['stage'], 'invalid')
+            impossible = dict(base, device_free_bytes=8 * dev._GIB)
+            with self.assertRaisesRegex(RuntimeError, 'inconsistent'):
+                dev._record_memory(Path(directory), records, 'free-plus-reserved', impossible, 8 * dev._GIB)
+            self.assertEqual(json.loads((Path(directory) / 'memory-003.json').read_bytes())['stage'],
+                             'free-plus-reserved')
             impossible = dict(base, peak_reserved_bytes=9 * dev._GIB)
             with self.assertRaisesRegex(RuntimeError, 'inconsistent'):
                 dev._record_memory(Path(directory), records, 'invalid-peak', impossible, 8 * dev._GIB)
-            self.assertEqual(json.loads((Path(directory) / 'memory-003.json').read_bytes())['stage'], 'invalid-peak')
+            self.assertEqual(json.loads((Path(directory) / 'memory-004.json').read_bytes())['stage'], 'invalid-peak')
             impossible = dict(base, peak_reserved_bytes=3 * dev._GIB)
             with self.assertRaisesRegex(RuntimeError, 'fixed native cap'):
                 dev._record_memory(Path(directory), records, 'invalid-cap', impossible, 8 * dev._GIB)
-            self.assertEqual(json.loads((Path(directory) / 'memory-004.json').read_bytes())['stage'], 'invalid-cap')
+            self.assertEqual(json.loads((Path(directory) / 'memory-005.json').read_bytes())['stage'], 'invalid-cap')
         lower_peak = dict(base, allocated_bytes=300, reserved_bytes=300,
                           peak_allocated_bytes=300, peak_reserved_bytes=300)
         with self.assertRaisesRegex(RuntimeError, 'below the reset baseline'):
@@ -1121,20 +1186,331 @@ assert not torch.cuda.is_initialized()
             with self.subTest(key=key), self.assertRaises(RuntimeError):
                 dev._validate_runtime(runtime, protocol)
 
+    def test_stage_headroom_and_incremental_peak_respect_fixed_workspace(self):
+        protocol = {'minimum_reserve_bytes': dev._GIB // 2,
+                    'resident_commitment_bytes': 2 * dev._GIB,
+                    'forward_commitment_bytes': dev._GIB}
+        baseline = {'device_free_bytes': 6 * dev._GIB, 'device_total_bytes': 8 * dev._GIB,
+                    'allocated_bytes': 400, 'reserved_bytes': 500,
+                    'peak_allocated_bytes': 400, 'peak_reserved_bytes': 500}
+        dev._check_observed_headroom(baseline, protocol)
+        dev._check_workspace_peak(baseline, baseline, protocol)
+        with self.assertRaisesRegex(RuntimeError, 'headroom'):
+            dev._check_observed_headroom(dict(baseline, device_free_bytes=4 * dev._GIB), protocol)
+        with self.assertRaisesRegex(RuntimeError, 'workspace'):
+            dev._check_workspace_peak(baseline, dict(baseline, peak_allocated_bytes=dev._GIB + 401,
+                                                      peak_reserved_bytes=dev._GIB + 501), protocol)
+
+    def test_snapshot_rejects_each_invalid_counter_before_the_next_device_query(self):
+        names = ('synchronize', 'mem_get_info', 'memory_allocated', 'memory_reserved',
+                 'max_memory_allocated', 'max_memory_reserved')
+        baseline = {'mem_get_info': (6 * dev._GIB, 8 * dev._GIB), 'memory_allocated': 100,
+                    'memory_reserved': 200, 'max_memory_allocated': 300, 'max_memory_reserved': 400}
+        faults = [('mem_get_info', (6 * dev._GIB, 7 * dev._GIB)),
+                  ('mem_get_info', (True, 8 * dev._GIB)), ('memory_allocated', -1),
+                  ('memory_reserved', 99), ('memory_reserved', 3 * dev._GIB),
+                  ('max_memory_allocated', 99), ('max_memory_reserved', 299)]
+        for fault, value in faults:
+            with self.subTest(fault=fault, value=value):
+                calls, partials = [], []
+                values = dict(baseline, **{fault: value})
+                def invoke(name):
+                    def operation(*args):
+                        calls.append(name)
+                        return values.get(name)
+                    return operation
+                fake_torch = SimpleNamespace(cuda=SimpleNamespace(**{name: invoke(name) for name in names}))
+                with patch.object(dev.OwnerSession, 'check'):
+                    with self.assertRaises(RuntimeError):
+                        dev._snapshot(object(), object(), fake_torch, 8 * dev._GIB, partials.append)
+                self.assertEqual(calls, list(names[:names.index(fault) + 1]))
+                self.assertEqual(len(partials), 1)
+                if fault == 'mem_get_info':
+                    self.assertEqual(partials[0]['device_total_bytes'], value[1])
+
+    def test_runtime_properties_total_change_stops_before_further_queries(self):
+        calls = []
+        cuda = SimpleNamespace(device_count=lambda: calls.append('count') or 1,
+            get_device_properties=lambda index: calls.append('properties') or
+                SimpleNamespace(total_memory=7 * dev._GIB))
+        with patch.object(dev.OwnerSession, 'check'):
+            with self.assertRaisesRegex(RuntimeError, 'total changed'):
+                dev._live_runtime(object(), object(), SimpleNamespace(cuda=cuda), SimpleNamespace(),
+                                  '1.2', 8 * dev._GIB)
+        self.assertEqual(calls, ['count', 'properties'])
+
+    def test_group_escalation_requires_two_completed_single_row_controls(self):
+        for completed in (set(), {'serial-0-0'}, {'serial-0-1'}, {'unrelated', 'serial-0-0'}):
+            with self.subTest(completed=completed), self.assertRaisesRegex(RuntimeError, 'single-row'):
+                dev._require_group_escalation(completed)
+        dev._require_group_escalation({'serial-0-0', 'serial-0-1'})
+
+    def test_cleanup_stops_after_reservation_loss_in_each_device_call(self):
+        from looking_glass.device_lease import DeviceLease
+        from looking_glass.memory_budget import CudaMemorySnapshot, MemoryBudget
+        gc.disable()
+        protocol = {'minimum_reserve_bytes': dev._GIB // 2,
+                    'resident_commitment_bytes': 2 * dev._GIB,
+                    'forward_commitment_bytes': dev._GIB}
+        names = ('initialized', 'synchronize', 'empty_cache', 'allocated', 'reserved',
+                 'clear', 'synchronize', 'empty_cache', 'allocated', 'reserved')
+        for lost_after in range(1, len(names) + 1):
+            with self.subTest(lost_after=lost_after):
+                budget = MemoryBudget(lambda: CudaMemorySnapshot(6 * dev._GIB, 8 * dev._GIB, 0, 0),
+                                      max_gpu_trace_bytes=0, max_host_trace_bytes=0,
+                                      minimum_reserve_bytes=protocol['minimum_reserve_bytes'])
+                resident = budget.acquire(2 * dev._GIB, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+                workspace = budget.acquire(dev._GIB, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+                session = object.__new__(dev.OwnerSession)
+                session._identity = SimpleNamespace(cuda_device_index=0)
+                session._runtime_verified = True
+                lease = object.__new__(DeviceLease)
+                authority = SimpleNamespace(unsafe=False)
+                for index, value in ((0, session), (1, lease), (2, budget), (3, resident),
+                                     (19, workspace), (20, authority)):
+                    dev._ROOTS[index] = value
+                calls = []
+                def invoke(name, value=None):
+                    def operation(*args):
+                        calls.append(name)
+                        if len(calls) == lost_after:
+                            budget._leases = frozenset((resident,))
+                        return value
+                    return operation
+                cuda = SimpleNamespace(is_initialized=invoke('initialized', True),
+                    synchronize=invoke('synchronize'), empty_cache=invoke('empty_cache'),
+                    memory_allocated=invoke('allocated', 0), memory_reserved=invoke('reserved', 0))
+                fake_torch = SimpleNamespace(__version__='2.8.0+cu128', version=SimpleNamespace(cuda='12.8'),
+                    cuda=cuda, _C=SimpleNamespace(_cuda_clearCublasWorkspaces=invoke('clear')))
+                def check():
+                    dev._check_cleanup_reservations(session, lease, budget, resident, workspace,
+                                                    authority, protocol, (resident, workspace))
+                with patch.object(dev.OwnerSession, 'check'):
+                    with self.assertRaisesRegex(RuntimeError, 'reservations changed'):
+                        dev._guarded_cleanup(session, lease, fake_torch, check, 8 * dev._GIB,
+                                             lambda name, values: None)
+                self.assertEqual(calls, list(names[:lost_after]))
+
+    def test_cleanup_rejects_invalid_allocated_before_reserved_query(self):
+        from looking_glass.device_lease import DeviceLease
+        session = object.__new__(dev.OwnerSession)
+        session._identity = SimpleNamespace(cuda_device_index=0)
+        session._runtime_verified = True
+        lease = object.__new__(DeviceLease)
+        calls, partials = [], []
+        cuda = SimpleNamespace(is_initialized=lambda: calls.append('initialized') or True,
+            synchronize=lambda *args: calls.append('synchronize'),
+            empty_cache=lambda: calls.append('empty_cache'),
+            memory_allocated=lambda *args: calls.append('allocated') or -1,
+            memory_reserved=lambda *args: calls.append('reserved') or 0)
+        torch = SimpleNamespace(__version__='2.8.0+cu128', version=SimpleNamespace(cuda='12.8'),
+            cuda=cuda, _C=SimpleNamespace(_cuda_clearCublasWorkspaces=lambda: calls.append('clear')))
+        with patch.object(dev.OwnerSession, 'check'):
+            with self.assertRaisesRegex(RuntimeError, 'cleanup allocator'):
+                dev._guarded_cleanup(session, lease, torch, lambda: None, 8 * dev._GIB,
+                                     lambda name, values: partials.append((name, dict(values))))
+        self.assertEqual(calls, ['initialized', 'synchronize', 'empty_cache', 'allocated'])
+        self.assertEqual(partials, [('memory_allocated', {'memory_allocated': -1})])
+
+    def test_cleanup_partial_does_not_reuse_prior_snapshot_reserved_counter(self):
+        from looking_glass.device_lease import DeviceLease
+        session = object.__new__(dev.OwnerSession)
+        session._identity = SimpleNamespace(cuda_device_index=0)
+        session._runtime_verified = True
+        lease = object.__new__(DeviceLease)
+        allocated_values, partials, calls = iter((100, -1)), [], []
+        cuda = SimpleNamespace(is_initialized=lambda: True, synchronize=lambda *args: None,
+            empty_cache=lambda: None,
+            memory_allocated=lambda *args: calls.append('allocated') or next(allocated_values),
+            memory_reserved=lambda *args: calls.append('reserved') or 200)
+        torch = SimpleNamespace(__version__='2.8.0+cu128', version=SimpleNamespace(cuda='12.8'),
+            cuda=cuda, _C=SimpleNamespace(_cuda_clearCublasWorkspaces=lambda: None))
+        with patch.object(dev.OwnerSession, 'check'):
+            with self.assertRaisesRegex(RuntimeError, 'cleanup allocator'):
+                dev._guarded_cleanup(session, lease, torch, lambda: None, 8 * dev._GIB,
+                                     lambda name, values: partials.append((name, dict(values))))
+        self.assertEqual(calls, ['allocated', 'reserved', 'allocated'])
+        self.assertEqual(partials, [('memory_allocated', {'memory_allocated': -1})])
+
+    def test_cleanup_partial_precheck_does_not_reuse_previous_pair(self):
+        from looking_glass.device_lease import DeviceLease
+        session = object.__new__(dev.OwnerSession)
+        session._identity = SimpleNamespace(cuda_device_index=0)
+        session._runtime_verified = True
+        lease = object.__new__(DeviceLease)
+        calls, partials, checks = [], [], []
+        def check():
+            checks.append(None)
+            if len(checks) == 17:
+                raise RuntimeError('second allocated precheck failed')
+        cuda = SimpleNamespace(is_initialized=lambda: True, synchronize=lambda *args: None,
+            empty_cache=lambda: None,
+            memory_allocated=lambda *args: calls.append('allocated') or 100,
+            memory_reserved=lambda *args: calls.append('reserved') or 200)
+        torch = SimpleNamespace(__version__='2.8.0+cu128', version=SimpleNamespace(cuda='12.8'),
+            cuda=cuda, _C=SimpleNamespace(_cuda_clearCublasWorkspaces=lambda: None))
+        with patch.object(dev.OwnerSession, 'check'):
+            with self.assertRaisesRegex(RuntimeError, 'second allocated precheck'):
+                dev._guarded_cleanup(session, lease, torch, check, 8 * dev._GIB,
+                                     lambda name, values: partials.append((name, dict(values))))
+        self.assertEqual(calls, ['allocated', 'reserved'])
+        self.assertEqual(partials, [('memory_allocated', {})])
+
+    def test_interrupted_accounting_release_never_retries_or_attests(self):
+        from looking_glass.memory_budget import CudaMemorySnapshot, MemoryBudget, MemoryLease
+        gc.disable()
+        protocol = {'minimum_reserve_bytes': dev._GIB // 2,
+                    'resident_commitment_bytes': 2 * dev._GIB, 'forward_commitment_bytes': dev._GIB}
+        budget = MemoryBudget(lambda: CudaMemorySnapshot(6 * dev._GIB, 8 * dev._GIB, 0, 0),
+                              max_gpu_trace_bytes=0, max_host_trace_bytes=0,
+                              minimum_reserve_bytes=protocol['minimum_reserve_bytes'])
+        resident = budget.acquire(2 * dev._GIB, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        workspace = budget.acquire(dev._GIB, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        session, lease = object(), object()
+        authority = SimpleNamespace(unsafe=False)
+        authority.mark_unsafe = lambda: setattr(authority, 'unsafe', True)
+        for index, value in ((0, session), (1, lease), (2, budget), (3, resident),
+                             (19, workspace), (20, authority)):
+            dev._ROOTS[index] = value
+        original = MemoryLease.release
+        calls = []
+        def interrupted(item):
+            calls.append(item)
+            original(item)
+            raise KeyboardInterrupt('ambiguous release')
+        with patch.object(dev.OwnerSession, 'check'), patch.object(MemoryLease, 'release', new=interrupted):
+            with self.assertRaises(KeyboardInterrupt):
+                dev._release_clean_reservations(session, lease, budget, resident, workspace, authority, protocol)
+        self.assertEqual(calls, [resident])
+        self.assertEqual(budget.active_leases(), (workspace,))
+        self.assertTrue(authority.unsafe)
+        self.assertIsInstance(dev._ROOTS[15], KeyboardInterrupt)
+
+    def test_automatic_collection_reenabled_during_device_call_is_sticky(self):
+        gc.disable()
+        dev._NO_CYCLIC_GC_REQUIRED = True
+        with patch.object(dev.OwnerSession, 'check'):
+            with self.assertRaisesRegex(RuntimeError, 'cyclic GC was enabled'):
+                dev._cuda(object(), object(), gc.enable)
+            with self.assertRaisesRegex(RuntimeError, 'prohibited'):
+                dev._cuda(object(), object(), lambda: None)
+        self.assertIsNotNone(dev._ROOTS[15])
+
+    def test_direct_owner_entry_skips_atexit_on_uncertain_failure(self):
+        repo = Path(__file__).resolve().parents[1]
+        code = r'''
+import atexit, pathlib, runpy, sys
+repo, folder = sys.argv[1:]
+sys.path.insert(0, repo)
+atexit.register(pathlib.Path(folder, 'atexit-sentinel').write_text, 'called')
+sys.argv = ['grouped_gpu_dev', '--owner', folder, folder, 'id', 'commit', 'a' * 64, '1.2', 'b' * 64]
+runpy.run_module('looking_glass.grouped_gpu_dev', run_name='__main__')
+'''
+        with tempfile.TemporaryDirectory() as folder:
+            environment = dict(os.environ, CUDA_VISIBLE_DEVICES='-1', HF_HUB_OFFLINE='1')
+            completed = subprocess.run([sys.executable, '-I', '-B', '-c', code, str(repo), folder],
+                                       env=environment, capture_output=True, timeout=30)
+            self.assertEqual(completed.returncode, 1, completed.stderr.decode(errors='replace'))
+            self.assertFalse((Path(folder) / 'atexit-sentinel').exists())
+
+    def test_provisional_profile_binds_stages_and_preserves_peak_counters(self):
+        protocol = {'minimum_reserve_bytes': dev._GIB // 2,
+                    'resident_commitment_bytes': 2 * dev._GIB, 'forward_commitment_bytes': dev._GIB,
+                    'allocator_fraction': .25, 'host_ledger': {'max_bytes': 64 * 1024 ** 2},
+                    'control_host_ledger': {'max_bytes': 32 * 1024 ** 2},
+                    'snapshot_reservation': {'nbytes': 256, 'items': 8},
+                    'worker_finite_scratch': {'nbytes': 4194304, 'items': 8},
+                    'validation_scratch': {'nbytes': 4194304, 'items': 8},
+                    'comparison_scratch': {'chunk_elements': 4096, 'declared_max_bytes': 1048576},
+                    'forward_order': ['serial-0-0', 'serial-0-1', 'mixed-0', 'serial-1-0', 'serial-1-1',
+                                      'mixed-1', 'heldout-serial-0-0', 'heldout-serial-0-1', 'heldout-group-0',
+                                      'heldout-serial-1-0', 'heldout-serial-1-1', 'heldout-group-1']}
+        counters = {'device_free_bytes': 6 * dev._GIB, 'device_total_bytes': 8 * dev._GIB,
+                    'allocated_bytes': 400, 'reserved_bytes': 500,
+                    'peak_allocated_bytes': 400, 'peak_reserved_bytes': 500}
+        entries = [{'request_id': name, 'entry_shapes': [[2, 4] if name.startswith(('mixed-', 'heldout-group-'))
+                                                         else [1, 4]]} for name in protocol['forward_order']]
+        memory = [{'stage': 'before_model_load', **counters}, {'stage': 'after_model_load', **counters}]
+        for entry in entries:
+            name = entry['request_id']
+            memory.extend([{'stage': 'before-' + name, **counters},
+                           {'stage': 'after-' + name, **dict(counters, peak_allocated_bytes=420,
+                                                            peak_reserved_bytes=530)}])
+        profile = dev._resource_profile(memory, entries, protocol, 'a' * 64, {'source': 'b' * 64},
+                                        'c' * 64)
+        self.assertEqual(profile['status'], 'provisional')
+        self.assertEqual(profile['runtime_sha256'], 'a' * 64)
+        self.assertEqual([stage['observation'] for stage in profile['stages'][:3]],
+                         ['first-for-path-and-shape', 'repeat', 'first-for-path-and-shape'])
+        self.assertEqual(profile['stages'][0]['baseline']['reserved_bytes'], 500)
+        self.assertEqual(profile['stages'][0]['endpoint']['peak_reserved_bytes'], 530)
+        self.assertEqual(profile['stages'][0]['observed_increment_bytes'],
+                         {'allocated_increment_bytes': 20, 'reserved_increment_bytes': 30})
+        self.assertEqual(profile['trace_limits'], {'device_bytes': 0, 'host_bytes': 0})
+        with self.assertRaisesRegex(RuntimeError, 'single-row'):
+            dev._resource_profile(memory, [entries[2], *entries[:2]], protocol, 'a' * 64,
+                                  {'source': 'b' * 64}, 'c' * 64)
+
+    def test_public_runtime_projection_excludes_private_freeform_identity(self):
+        runtime = synthetic_runtime()
+        private_values = ('GPU-11111111-2222-3333-4444-555555555555',
+                          r'C:\Users\private\python.exe', 'pid=424242-private', 'private-device')
+        for field, value in zip(('physical_gpu_uuid', 'python', 'platform', 'name'), private_values):
+            runtime[field] = value
+        dev._validate_runtime(runtime, {'allocator_fraction': .25})
+        public = dev._public_runtime(runtime)
+        self.assertEqual(public['physical_gpu_uuid'], 'redacted')
+        self.assertTrue({'python', 'platform', 'name'}.isdisjoint(public))
+        for value in private_values:
+            self.assertNotIn(value, repr(public))
+
+    def test_public_nvidia_projection_is_typed_and_drops_unknown_fields(self):
+        snapshot = {'device_name': 'GPU-11111111-2222-3333-4444-555555555555',
+                    'total_bytes': 8 * dev._GIB, 'free_bytes': 6 * dev._GIB,
+                    'used_bytes': 2 * dev._GIB, 'driver_version': '577.01',
+                    'timestamp_utc': '2026-10-28T10:11:12+00:00',
+                    'pid': 424242, 'extra': r'C:\Users\private\checkpoint'}
+        public = dev._public_smi(snapshot)
+        self.assertEqual(set(public), {'total_bytes', 'free_bytes', 'used_bytes', 'driver_version', 'timestamp_utc'})
+        self.assertNotIn('GPU-', repr(public))
+        self.assertNotIn('424242', repr(public))
+        self.assertNotIn('private', repr(public))
+        for key, value in [('total_bytes', True), ('free_bytes', -1), ('driver_version', 'private-GPU'),
+                           ('timestamp_utc', r'C:\private')]:
+            with self.subTest(key=key), self.assertRaises(RuntimeError):
+                dev._public_smi({**snapshot, key: value})
+
+    def test_public_owner_presence_projection_drops_unknown_fields(self):
+        self.assertEqual(dev._public_presence({'query': 'ok', 'owner_pid_listed': False,
+                                               'pid': 424242, 'path': r'C:\private'}),
+                         {'query': 'ok', 'owner_pid_listed': False})
+        self.assertEqual(dev._public_presence({'query': 'ok', 'owner_pid_listed': 1}),
+                         {'query': 'inconclusive', 'owner_pid_listed': None})
+        self.assertEqual(dev._public_error_type(r'C:\private\GPU-1234-pid-4567'), 'OtherError')
+        self.assertEqual(dev._public_error_type('MemoryError'), 'MemoryError')
+
     def _synthetic_owner(self, *, swap=False, low_before_copy=False, indistinguishable=False,
                          peak_regression=False, promotion=False, revoke_during_forward=False,
-                         contaminate_return_slot=False):
+                         contaminate_return_slot=False, early_workspace_overflow=False,
+                         early_headroom_loss=False, oom_during_forward=False,
+                         revoke_during_model_drop=False, real_cache=None,
+                         changed_total_before_load=False, changed_properties_before_cap=False):
         import gc
         import torch
         self.assertTrue(torch.set_flush_denormal(False))
         from torch import nn
         from looking_glass import cuda_cleanup, pretrained
         from looking_glass.host_budget import HostClaim
+        from looking_glass.memory_budget import MemoryLease
+        real_load = pretrained.load_distilgpt2
         conversions = []
         references = []
         stray_refs = []
         session_state = {'valid': True}
         device_calls_after_loss = []
+        device_calls_after_accounting_release = []
+        released_accounting = []
+        model_shapes = []
 
         def check_owner(*args):
             if not session_state['valid']:
@@ -1144,6 +1520,8 @@ assert not torch.cuda.is_initialized()
             def call(*args, **kwargs):
                 if not session_state['valid']:
                     device_calls_after_loss.append(function)
+                if released_accounting:
+                    device_calls_after_accounting_release.append(function)
                 return function(*args, **kwargs)
             return call
 
@@ -1152,6 +1530,9 @@ assert not torch.cuda.is_initialized()
                 super().__init__()
                 self.config = SimpleNamespace(use_cache=False, _attn_implementation='eager', vocab_size=50257)
                 self.embedding = SimpleNamespace(weight=None)
+            def __del__(self):
+                if revoke_during_model_drop:
+                    session_state['valid'] = False
             def get_input_embeddings(self):
                 return self.embedding
             def get_output_embeddings(self):
@@ -1160,6 +1541,9 @@ assert not torch.cuda.is_initialized()
                 conversions.append('called')
                 return super().to(*args, **kwargs)
             def forward(self, input_ids, attention_mask):
+                model_shapes.append(tuple(input_ids.shape))
+                if oom_during_forward:
+                    raise torch.OutOfMemoryError('simulated grouped-owner OOM')
                 if indistinguishable and input_ids[0, 0].item() >= 17:
                     input_ids = torch.zeros_like(input_ids)
                 if swap and input_ids.shape[0] == 2 and input_ids[0, 0].item() >= 17:
@@ -1169,23 +1553,31 @@ assert not torch.cuda.is_initialized()
                     session_state['valid'] = False
                 return {'logits': logits}
         def load(**kwargs):
+            if real_cache is not None:
+                return real_load(cache_dir=str(real_cache), allow_download=False)
             return SimpleNamespace(model=FakeModel().eval(), metadata={
                 'parameter_count': 0, 'asset_sha256': {name: digest
                     for name, (_, digest) in pretrained.ASSETS.items()}})
-        properties = SimpleNamespace(uuid='fake', total_memory=8 * dev._GIB,
+        properties = SimpleNamespace(uuid='fake', total_memory=(7 if changed_properties_before_cap else 8) * dev._GIB,
                                      name='fake', major=8, minor=6)
+        allocator_backend_calls = []
         protocol_path = Path(__file__).resolve().parents[1] / dev._PROTOCOL
         raw = protocol_path.read_bytes()
         protocol = dev._protocol(protocol_path, hashlib.sha256(raw).hexdigest())
-        protocol['policy_groups'] = [[[1, 2, 3, 4], [5, 6, 7, 8]],
-                                     [[9, 10, 11, 12], [13, 14, 15, 16]]]
-        protocol['broker_holdout_groups'] = [[[17, 18, 19, 20], [21, 22, 23, 24]],
-                                             [[25, 26, 27, 28], [29, 30, 31, 32]]]
+        if real_cache is None:
+            protocol['policy_groups'] = [[[1, 2, 3, 4], [5, 6, 7, 8]],
+                                         [[9, 10, 11, 12], [13, 14, 15, 16]]]
+            protocol['broker_holdout_groups'] = [[[17, 18, 19, 20], [21, 22, 23, 24]],
+                                                 [[25, 26, 27, 28], [29, 30, 31, 32]]]
         readings = []
+        allocator_reads = []
         def memory_info(*args):
             readings.append('sample')
             free = 2 * dev._GIB if low_before_copy and len(readings) >= 3 else 6 * dev._GIB
-            return free, 8 * dev._GIB
+            return free, (7 if changed_total_before_load else 8) * dev._GIB
+        def allocated(*args):
+            allocator_reads.append('allocated')
+            return 400 if peak_regression and len(peak_readings) >= 4 else 0
         peak_readings = []
         def peak_allocated(*args):
             index = len(peak_readings) + 1
@@ -1199,7 +1591,17 @@ assert not torch.cuda.is_initialized()
             references.append(weakref.ref(value))
             return original_check(module, value, width)
         original_release = HostClaim.release
+        original_memory_release = MemoryLease.release
         original_write = dev._write_json
+        original_record = dev._record_memory
+        def record_with_bad_endpoint(run_dir, records, stage, value, expected_total, policy=None):
+            if stage == 'after-serial-0-0':
+                value = dict(value)
+                if early_workspace_overflow:
+                    value.update(peak_allocated_bytes=dev._GIB + 1, peak_reserved_bytes=dev._GIB + 1)
+                if early_headroom_loss:
+                    value['device_free_bytes'] = 4 * dev._GIB
+            return original_record(run_dir, records, stage, value, expected_total, policy)
         def write_with_stray(path, value):
             original_write(path, value)
             if Path(path).name == 'observations.json':
@@ -1208,11 +1610,13 @@ assert not torch.cuda.is_initialized()
                 dev._CUDA_RESULTS[-1] = stray
         def check_release(claim):
             if claim.info().stage == 'references-and-scratch':
-                gc.collect()
                 self.assertTrue(all(reference() is None for reference in references))
                 self.assertTrue(all(type(value) in (type(None), bool, int, float, str)
                                     for value in dev._CUDA_RESULTS))
             return original_release(claim)
+        def release_memory(item):
+            released_accounting.append(item)
+            return original_memory_release(item)
         def check_cleanup(**kwargs):
             self.assertTrue(all(type(value) in (type(None), bool, int, float, str)
                                 for value in dev._CUDA_RESULTS))
@@ -1229,18 +1633,19 @@ assert not torch.cuda.is_initialized()
             patch.object(pretrained, 'load_distilgpt2', side_effect=load),
             patch.object(cuda_cleanup, 'clear_cublas_after_drain', side_effect=check_cleanup),
             patch.object(HostClaim, 'release', new=check_release),
+            patch.object(MemoryLease, 'release', new=release_memory),
             patch.object(torch.cuda, 'is_available', return_value=True),
             patch.object(torch.cuda, 'device_count', return_value=1),
             patch.object(torch.cuda, 'get_device_properties', return_value=properties),
-            patch.object(torch.cuda, 'get_allocator_backend', return_value='native'),
+            patch.object(torch.cuda, 'get_allocator_backend',
+                         side_effect=lambda: allocator_backend_calls.append('called') or 'native'),
             patch.object(torch.cuda, 'set_per_process_memory_fraction'),
             patch.object(torch.cuda, 'get_per_process_memory_fraction', return_value=.25),
             patch.object(torch.cuda, 'manual_seed'),
             patch.object(torch.cuda, 'synchronize', side_effect=device_call(lambda *a: None)),
             patch.object(torch.cuda, 'reset_peak_memory_stats', side_effect=device_call(lambda *a: None)),
             patch.object(torch.cuda, 'mem_get_info', side_effect=device_call(memory_info)),
-            patch.object(torch.cuda, 'memory_allocated', side_effect=device_call(lambda *a: 400
-                         if peak_regression and len(peak_readings) >= 4 else 0)),
+            patch.object(torch.cuda, 'memory_allocated', side_effect=device_call(allocated)),
             patch.object(torch.cuda, 'memory_reserved', side_effect=device_call(lambda *a: 400
                          if peak_regression and len(peak_readings) >= 4 else 0)),
             patch.object(torch.cuda, 'max_memory_allocated', side_effect=device_call(peak_allocated)),
@@ -1250,9 +1655,32 @@ assert not torch.cuda.is_initialized()
             patches += [patch.object(dev, '_check_serial_reference', new=observe_reference)]
         if contaminate_return_slot:
             patches += [patch.object(dev, '_write_json', new=write_with_stray)]
+        if early_workspace_overflow or early_headroom_loss:
+            patches += [patch.object(dev, '_record_memory', new=record_with_bad_endpoint)]
         with tempfile.TemporaryDirectory() as directory, ExitStack() as stack:
             for item in patches:
                 stack.enter_context(item)
+            if changed_properties_before_cap:
+                with self.assertRaisesRegex(RuntimeError, 'total changed'):
+                    dev._run(synthetic_session(), object(), torch, SimpleNamespace(), cache=Path(directory),
+                        protocol=protocol, run_dir=Path(directory), driver='synthetic',
+                        source_hashes={'synthetic': 'a' * 64}, run_id='synthetic', _worker_device='cpu',
+                        _expected_total=8 * dev._GIB)
+                self.assertEqual(allocator_backend_calls, [])
+                self.assertEqual(conversions, [])
+                return None
+            if changed_total_before_load:
+                with self.assertRaisesRegex(RuntimeError, 'changed device'):
+                    dev._run(synthetic_session(), object(), torch, SimpleNamespace(), cache=Path(directory),
+                        protocol=protocol, run_dir=Path(directory), driver='synthetic',
+                        source_hashes={'synthetic': 'a' * 64}, run_id='synthetic', _worker_device='cpu')
+                self.assertEqual(allocator_reads, [])
+                saved = json.loads((Path(directory) / 'memory-000.json').read_bytes())
+                self.assertEqual(saved['stage'], 'before_model_load')
+                self.assertIs(saved['partial'], True)
+                self.assertEqual(saved['device_total_bytes'], 7 * dev._GIB)
+                self.assertEqual(conversions, [])
+                return None
             if low_before_copy:
                 with self.assertRaisesRegex(RuntimeError, 'before model copy'):
                     dev._run(synthetic_session(), object(), torch, SimpleNamespace(), cache=Path(directory),
@@ -1284,6 +1712,29 @@ assert not torch.cuda.is_initialized()
                 self.assertEqual(set(dev._ROOTS[2].active_leases()), {dev._ROOTS[3], dev._ROOTS[19]})
                 self.assertTrue(any(value is not None for value in dev._ROOTS[6]._worker._live_buffers))
                 return None
+            if oom_during_forward:
+                with self.assertRaisesRegex(RuntimeError, 'sampled forward failed'):
+                    dev._run(synthetic_session(), object(), torch, SimpleNamespace(), cache=Path(directory),
+                        protocol=protocol, run_dir=Path(directory), driver='synthetic',
+                        source_hashes={'synthetic': 'a' * 64}, run_id='synthetic', _worker_device='cpu')
+                self.assertEqual(model_shapes, [(1, 4)])
+                self.assertTrue(dev._ROOTS[20].unsafe)
+                self.assertEqual(set(dev._ROOTS[2].active_leases()), {dev._ROOTS[3], dev._ROOTS[19]})
+                self.assertGreater(dev._ROOTS[7].snapshot().used_bytes, 0)
+                self.assertTrue((Path(directory) / 'sample-evidence.json').is_file())
+                self.assertFalse((Path(directory) / 'resource-profile.json').exists())
+                return None
+            if revoke_during_model_drop:
+                with self.assertRaisesRegex(RuntimeError, 'physical owner was revoked'):
+                    dev._run(synthetic_session(), object(), torch, SimpleNamespace(), cache=Path(directory),
+                        protocol=protocol, run_dir=Path(directory), driver='synthetic',
+                        source_hashes={'synthetic': 'a' * 64}, run_id='synthetic', _worker_device='cpu')
+                self.assertFalse(session_state['valid'])
+                self.assertEqual(device_calls_after_loss, [])
+                self.assertTrue(dev._ROOTS[20].unsafe)
+                self.assertEqual(set(dev._ROOTS[2].active_leases()), {dev._ROOTS[3], dev._ROOTS[19]})
+                self.assertFalse((Path(directory) / 'resource-profile.json').exists())
+                return None
             if contaminate_return_slot:
                 with self.assertRaisesRegex(RuntimeError, 'return slots.*resource'):
                     dev._run(synthetic_session(), object(), torch, SimpleNamespace(), cache=Path(directory),
@@ -1294,9 +1745,21 @@ assert not torch.cuda.is_initialized()
                 self.assertGreater(dev._ROOTS[7].snapshot().used_bytes, 0)
                 self.assertIsNotNone(dev._ROOTS[10])
                 return None
+            if early_workspace_overflow or early_headroom_loss:
+                with self.assertRaisesRegex(RuntimeError, 'sampled forward failed'):
+                    dev._run(synthetic_session(), object(), torch, SimpleNamespace(), cache=Path(directory),
+                        protocol=protocol, run_dir=Path(directory), driver='synthetic',
+                        source_hashes={'synthetic': 'a' * 64}, run_id='synthetic', _worker_device='cpu')
+                self.assertEqual(model_shapes, [(1, 4)])
+                self.assertGreater(dev._ROOTS[7].snapshot().used_bytes, 0)
+                self.assertIsNotNone(dev._ROOTS[15])
+                saved = [json.loads(path.read_bytes()) for path in Path(directory).glob('memory-*.json')]
+                self.assertTrue(any(record['stage'] == 'after-serial-0-0' for record in saved))
+                return None
             result = dev._run(synthetic_session(), object(), torch, SimpleNamespace(), cache=Path(directory),
                 protocol=protocol, run_dir=Path(directory), driver='synthetic',
                 source_hashes={'synthetic': 'a' * 64}, run_id='synthetic', _worker_device='cpu')
+            self.assertEqual(device_calls_after_accounting_release, [])
             if promotion:
                 run_dir = Path(directory)
                 supervised = SimpleNamespace(run_id='supervisor', pid=123)
@@ -1335,10 +1798,24 @@ assert not torch.cuda.is_initialized()
                 self.assertEqual(promoted['status'], 'passed')
                 self.assertIn('private-runtime.json', inventory)
                 self.assertTrue(all(set(item) == {'bytes', 'sha256'} for item in inventory.values()))
+                profile_path = run_dir / 'resource-profile.json'
+                profile_raw = profile_path.read_bytes()
+                changed_profile = json.loads(profile_raw)
+                changed_profile['stages'][0]['observed_increment_bytes']['allocated_increment_bytes'] += 1
+                profile_path.write_text(json.dumps(changed_profile), encoding='utf-8')
+                with self.assertRaisesRegex(RuntimeError, 'incomplete or inconsistent'):
+                    dev._verify_promotion(run_dir, 'synthetic', supervised, 'fake', protocol, protocol_sha,
+                                          assets, {'synthetic': 'a' * 64}, source_commit=source_commit,
+                                          _expected_device='cpu')
+                profile_path.write_bytes(profile_raw)
                 private = json.loads(json.dumps(promoted))
                 private['unexpected_private_field'] = 'private-sentinel'
                 private['holdout'][0]['comparisons'][0]['own_reference']['private'] = 'private-sentinel'
+                private['runtime_redacted']['python'] = r'C:\private\python.exe'
+                private['resource_profile']['unexpected_private_field'] = 'private-sentinel'
+                private['resource_profile']['stages'][0]['baseline']['private'] = 'private-sentinel'
                 self.assertNotIn('private-sentinel', json.dumps(dev._public_measurement(private)))
+                self.assertNotIn(r'C:\private', repr(dev._public_measurement(private)))
                 public_admissions = [item for item in dev._public_measurement(promoted)['memory']
                                      if item['stage'] == 'admission']
                 self.assertEqual([item['admission_kind'] for item in public_admissions[:4]],
@@ -1412,14 +1889,41 @@ assert not torch.cuda.is_initialized()
     def test_low_free_memory_after_cpu_load_prevents_device_copy(self):
         self._synthetic_owner(low_before_copy=True)
 
+    def test_changed_total_stops_before_allocator_queries_and_saves_partial(self):
+        self._synthetic_owner(changed_total_before_load=True)
+
+    def test_changed_properties_stop_before_allocator_cap_or_model_load(self):
+        self._synthetic_owner(changed_properties_before_cap=True)
+
     def test_intermediate_peak_drop_is_recorded_and_quarantines_owner(self):
         self._synthetic_owner(peak_regression=True)
 
     def test_revoked_owner_during_forward_stops_device_calls_and_keeps_custody(self):
         self._synthetic_owner(revoke_during_forward=True)
 
+    def test_first_serial_oom_keeps_claims_and_cannot_produce_profile(self):
+        self._synthetic_owner(oom_during_forward=True)
+
+    def test_model_finalizer_owner_loss_stops_cleanup_and_keeps_claims(self):
+        self._synthetic_owner(revoke_during_model_drop=True)
+
+    @unittest.skipUnless(os.environ.get('LOOKING_GLASS_TEST_CACHE'), 'explicit pretrained cache not configured')
+    def test_pinned_cpu_grouped_chain_disposes_model_without_cyclic_gc(self):
+        # Actual forwards use only the v3 registered rows and require an
+        # append-only exposure update under the project's custody protocol.
+        result = self._synthetic_owner(real_cache=Path(os.environ['LOOKING_GLASS_TEST_CACHE']))
+        self.assertEqual(result['status'], 'passed')
+        self.assertEqual(len(result['model_entries']), 12)
+        self.assertEqual(result['cleanup']['accounting_leases_after'], 0)
+
     def test_unexpected_return_slot_retains_control_claim(self):
         self._synthetic_owner(contaminate_return_slot=True)
+
+    def test_first_serial_workspace_excess_stops_before_group_forward(self):
+        self._synthetic_owner(early_workspace_overflow=True)
+
+    def test_first_serial_headroom_loss_stops_before_group_forward(self):
+        self._synthetic_owner(early_headroom_loss=True)
 
     def test_uninformative_rows_are_disposed_before_control_claim(self):
         result = self._synthetic_owner(indistinguishable=True)
@@ -1454,6 +1958,10 @@ assert not torch.cuda.is_initialized()
         self.assertIsNotNone(dev._ROOTS[3])
         self.assertIsNotNone(dev._ROOTS[19])
         self.assertIsNotNone(dev._ROOTS[20])
+        self.assertEqual(dev._ROOTS[2].active_leases(), ())
+        self.assertEqual(result['cleanup']['accounting_leases_after'], 0)
+        self.assertIsNone(dev._ROOTS[6]._model)
+        self.assertIsNotNone(dev._ROOTS[12])
 
 
 if __name__ == '__main__':

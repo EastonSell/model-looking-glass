@@ -1,7 +1,12 @@
 """Experimental fixed-workspace owner for one- and two-row execution.
 
 This is a trusted in-process custody boundary, not a device-memory limit or a
-GPU certification. Both device leases remain owned until process exit. The
+GPU certification. Both device lease objects remain rooted until process exit;
+their commitments normally remain active for that lifetime. A separately
+reviewed one-shot may retire inert accounting only after verified drain,
+zero allocator counters and host claims, and disposal of model/input/output,
+trace and callback custody, under its still-held physical lease, with no
+further CUDA operation before clean attestation and process exit. The
 caller must precharge input snapshots and retain host claims until every covered
 result, input, exception, traceback and consumer alias has been disposed.
 The budget telemetry callback must guard each device query and anchor every
@@ -404,8 +409,14 @@ def retire_grouped_owner(worker, broker, *, callers_quiescent):
     disposal and health callers have stopped and that their aliases, including
     any prior teardown exception graphs, are gone.
     The caller must root the worker, broker, physical lease and both device
-    commitments until process exit. This is not proof of external alias or
-    native-memory disposal, nor does it release a device lease.
+    lease objects until process exit. Normally both commitments remain active
+    until exit. A separately reviewed one-shot may release inert accounting
+    only after verified drain, zero allocator counters and host claims, and
+    disposal of model/input/output, trace and callback custody, holding the
+    physical lease and committing to no further CUDA work before attestation
+    and exit. This
+    is not proof of external alias or native-memory disposal, nor does this
+    helper release a device lease.
     """
     from .grouped_broker import GroupedBroker
     from .grouped_broker_state import _RETIRED
