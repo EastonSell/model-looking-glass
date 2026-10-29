@@ -38,6 +38,48 @@ clone.release()
 request.close()
 ```
 
+For a coordinator that must recover an interrupted request handoff, create and
+retain a guard **before** registering anything:
+
+```python
+guard = budget.request_guard("run-2")  # no ledger request or claim yet
+guard.open()                           # stores the exact handle before registration
+request = guard.adopt()                # returns an alias; guard still retains it
+
+# Reserve and use claims as above; dispose and release them explicitly.
+guard.cancel_and_close_empty()         # cancels, then closes only if not busy
+```
+
+Each registered guard is retained by its request record and can be recovered
+with `active_guards()`, so its ledger-owned metadata is bounded by the request
+limit and retires when the request closes, including a direct `request.close()`.
+If registration or adoption is interrupted, the retained guard identifies its
+exact handle and generation; it cannot operate on a later request reusing the
+same ID. If interruption happened before record insertion after the guard
+prepared a handle, abandon that guard with `cancel_and_close_empty()` and
+create a new one. `open()` is idempotent while its original generation is live;
+a guard cannot issue its old handle as a new generation.
+
+Recovery depends on the ledger lock remaining accessible. Asynchronous
+exception injection at arbitrary CPython bytecode boundaries can interrupt a
+`with RLock` exit before the lock is released, leaving other threads blocked;
+this is a general limitation of the ledger's lock regions, including this
+guard. Do not inject asynchronous exceptions into lock-holding code. A
+signal-delivered `KeyboardInterrupt` can also arrive asynchronously; ordinary
+cancellation should use the cooperative cancellation API. A
+supervisor must detect an unresponsive worker and use process-level recovery
+instead of assuming `active_guards()` or other in-process inspection will
+always return. Any external buffers and claims require their own verified
+cleanup; process termination alone does not prove their disposal.
+
+`cancel_and_close_empty()` tombstones the matching request, then closes only
+when no claims or operations remain. A busy close raises `HostBusy` and leaves
+every commitment charged; the guard never finishes operations or releases
+claims. The coordinator must establish completion and dispose real storage
+before explicitly releasing claim handles. This guard does not provide durable
+cross-process identity or guarantee recovery if callers bypass the ledger or
+lose the underlying process.
+
 An operation pins **all** listed claims until `finish()`; a shared source can
 participate in multiple operations, and it cannot be transferred or released
 until all of them finish. The operation owner must call `finish()` only when

@@ -85,6 +85,7 @@ class _RequestRecord:
     handle: object
     generation: int
     cancelled: bool = False
+    guard: object = None
 
 
 @dataclass(frozen=True)
@@ -189,6 +190,16 @@ class HostBudget:
                     del self._requests[request_id]
                 raise
 
+    def request_guard(self, request_id):
+        """Create an unregistered guard; no ledger resource is opened yet."""
+        return HostRequestGuard(self, request_id)
+
+    def active_guards(self):
+        """Return guards retained by live request records for trusted recovery."""
+        with self._lock:
+            return tuple(record.guard for record in self._requests.values()
+                         if record.guard is not None)
+
     def active_requests(self):
         """Return retained request handles for a trusted cleanup coordinator."""
         with self._lock:
@@ -217,6 +228,84 @@ class HostBudget:
             return HostBudgetSnapshot(self.max_bytes, self.max_items, self.max_requests,
                                       self.max_operations, self.max_transfers, sum(c.nbytes for c in claims),
                                       sum(c.items for c in claims), requests, claims, operations)
+
+
+class HostRequestGuard:
+    """Retain an exact request generation through open/adoption interruptions.
+
+    Constructing the guard is side-effect free.  Keep it before calling
+    ``open``; after registration the ledger also retains it until the request
+    closes.  The guard never releases claims or finishes operations.
+    """
+
+    def __init__(self, budget, request_id):
+        if type(budget) is not HostBudget:
+            raise ValueError("budget must be a HostBudget")
+        self._budget = budget
+        self._request_id = _text(request_id, "request_id")
+        self._handle = None
+        self._closed = False
+
+    def open(self):
+        """Register at most one generation, retaining its handle before insert."""
+        budget = self._budget
+        with budget._lock:
+            if self._closed:
+                raise InvalidHostHandle("guard is closed")
+            current = budget._requests.get(self._request_id)
+            if self._handle is not None:
+                if (current is not None and current.handle is self._handle
+                        and current.guard is self):
+                    return None
+                # A guarded handle is never reused, including if interruption
+                # occurred before its record was inserted.  A new guard is
+                # required; the old one cannot attach to a reused request ID.
+                raise InvalidHostHandle("guard has no live request generation")
+            if current is not None:
+                raise ValueError("request_id is already open")
+            if len(budget._requests) >= budget.max_requests:
+                raise HostBudgetExceeded("request limit exceeded")
+            if self._handle is None:
+                self._handle = HostRequest(budget, self._request_id, _issued=True)
+            generation = budget._next_request
+            budget._next_request += 1
+            record = _RequestRecord(self._handle, generation, guard=self)
+            budget._requests[self._request_id] = record
+            return None  # opened
+
+    def _record(self):
+        current = self._budget._requests.get(self._request_id)
+        if (self._closed or self._handle is None or current is None
+                or current.handle is not self._handle or current.guard is not self):
+            raise InvalidHostHandle("guard has no live request generation")
+        return current
+
+    def adopt(self):
+        """Return the request alias while retaining the recovery handle."""
+        with self._budget._lock:
+            self._record()
+            return self._handle
+
+    @property
+    def generation(self):
+        with self._budget._lock:
+            return self._record().generation
+
+    def cancel_and_close_empty(self):
+        """Cancel and close this exact request, but never dispose its claims."""
+        budget = self._budget
+        with budget._lock:
+            if self._closed:
+                return False
+            current = budget._requests.get(self._request_id)
+            if (self._handle is None or current is None
+                    or current.handle is not self._handle or current.guard is not self):
+                self._closed = True
+                return False
+            self._handle.cancel()
+            closed = self._handle.close()  # HostBusy preserves all live claims.
+            self._closed = True
+            return closed
 
 
 class HostRequest:

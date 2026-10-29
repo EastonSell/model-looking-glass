@@ -1,0 +1,107 @@
+{
+  "case_input_sha256": {
+    "team-a": "44c56ff28f8f656b5baac23de670f27223141ab1df6afac93fe197b9cab44445",
+    "team-b": "8ca086bc587bcdca8619f3fc634f4c9d33446366115885bb41161a9da4e36f15"
+  },
+  "checkpoint": {
+    "asset_sha256": {
+      "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+      "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+      "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+      "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+      "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+      "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+    },
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "tokenizer_id": "distilbert/distilgpt2",
+    "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa"
+  },
+  "exit_code": 0,
+  "final_source_commit": "3896ec47422acfc6f2c7537cddd60abb50ed6dc9",
+  "finished_at_utc": "2026-10-29T01:03:09.577870+00:00",
+  "invocation": {
+    "command": [
+      "C:\\Users\\easto\\Documents\\Codex\\2026-10-28\\https-github-com-eastonsell-model-looking\\work\\.venv\\Scripts\\python.exe",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests",
+      "-p",
+      "test_pretrained_cli.py",
+      "-v"
+    ],
+    "hf_home": "C:\\Users\\easto\\Documents\\Codex\\2026-10-28\\https-github-com-eastonsell-model-looking\\work\\hf-cache",
+    "offline_cache": "C:\\Users\\easto\\Documents\\Codex\\2026-10-28\\https-github-com-eastonsell-model-looking\\work\\hf-cache\\hub"
+  },
+  "limits": {
+    "absolute_tolerance": 1e-06,
+    "max_batch": 1,
+    "max_input_bytes": 65536,
+    "max_output_bytes": 2097152,
+    "max_response_bytes": 4194304,
+    "max_tokens": 1,
+    "relative_tolerance": 0
+  },
+  "notes": "CPU CLI correctness smoke only; not a throughput, CUDA or causal result.",
+  "observed": {
+    "broker_id": "803d55b3b3e745ad8f9b94daab0c4200",
+    "jobs": {
+      "team-a": 1,
+      "team-b": 2
+    },
+    "max_absolute_error": {
+      "team-a": 0.0,
+      "team-b": 0.0
+    },
+    "owner_processes": 1,
+    "serial_reference_loads": 1,
+    "shape": [
+      1,
+      1,
+      50257
+    ]
+  },
+  "runtime": {
+    "cli_summary_enabled": true,
+    "cuda_visible_devices": "-1",
+    "device": "cpu",
+    "hf_hub_offline": true,
+    "owner_mkl_num_threads": "1",
+    "owner_omp_num_threads": "1",
+    "packages": {
+      "huggingface_hub": "0.36.2",
+      "safetensors": "0.8.0",
+      "tokenizers": "0.22.2",
+      "torch": "2.8.0+cu128",
+      "transformers": "4.57.3"
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.15",
+    "pythonhashseed": "0",
+    "reference_intraop_threads_setting": 1,
+    "seed": 1729
+  },
+  "schema": "pretrained-cli-cpu-smoke-evidence-v1",
+  "source_commit": "3896ec47422acfc6f2c7537cddd60abb50ed6dc9",
+  "source_files_sha256": {
+    "docs/PRETRAINED_CLI_SMOKE.md": "a0ab698c6f93d7e73f0cc92b67d8e7e5143f70fa2e32886caadc315b66447feb",
+    "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+    "looking_glass/broker.py": "fd1c8c5d836327fee36b06f3443e083eff3da6e85215471f6ff55bc32e103a8c",
+    "looking_glass/cpu_service.py": "f563400f68b02e45cea5c734836c241a5c04785304a761b1d79502a09e749687",
+    "looking_glass/fair_queue.py": "9b5708a16ef4e7fbda2647cb714b98107c3d91b34a003d714b51a2d86b2134b8",
+    "looking_glass/ipc.py": "06bf22cad7ee20f75eef1edbf6a40034ba0cfbec3a01f8d80aa84492e6c6d1c0",
+    "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+    "looking_glass/resident_worker.py": "27efb9c6c1911fa5f15166cb4a724cbf8a3967f20d2ccea07467308dfc205f96",
+    "looking_glass/service.py": "2c6960232c98eb22d9d04dd40e99b9b3e515903e6b679105770683ebc22fc219",
+    "pyproject.toml": "d6f4b4211fbdbac80f1af25546a9d62b76f57c9bae8a572573bcf0d635e18a21",
+    "tests/test_pretrained_cli.py": "9cf72714f79bd534566057f54e89a36abffc3d28f84c777865a02e021c1e0735"
+  },
+  "source_unchanged": true,
+  "started_at_utc": "2026-10-29T01:02:45.379235+00:00",
+  "status": "passed",
+  "stderr_sha256": "66b85f9beae3b22dcc7b17cc1523e9e4b44350a4c9c4fe4819c304bc409d604a",
+  "stdout_sha256": "ba236af314a667e9db91e46c8e3e6215ab911185511368ff80e23459f7b16117"
+}
