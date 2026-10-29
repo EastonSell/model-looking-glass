@@ -854,18 +854,50 @@ def _hold_unverified_process(custody, *, _test_release=None):
             continue
 
 
+def _hold_persistently(custody):
+    while True:
+        try:
+            _hold_unverified_process(custody)
+        except BaseException:
+            continue
+
+
+def _quarantine_state_if_needed(custody_state):
+    while True:
+        try:
+            if custody_state[2] and not custody_state[3]:
+                _hold_persistently(custody_state)
+            return
+        except BaseException:
+            continue
+
+
+def _quarantine_supervisor_if_needed(supervisor):
+    while True:
+        try:
+            if supervisor._QUARANTINED:
+                _hold_persistently(supervisor)
+            return
+        except BaseException:
+            continue
+
+
+def _ignore_console_interrupts():
+    """Mask console interruption before starting either gated process."""
+    for name in ('SIGINT', 'SIGBREAK'):
+        kind = getattr(signal, name, None)
+        if kind is not None:
+            signal.signal(kind, signal.SIG_IGN)
+
+
 def _supervise_preparation(supervisor, command, directory, audit_result):
     """Keep the inner supervisor rooted when its own cleanup is uncertain."""
     try:
         verdict = supervisor.supervise_heldout(command, directory, os.environ.copy(), audit_result=audit_result)
     finally:
-        while supervisor._QUARANTINED:
-            try:
-                _hold_unverified_process(supervisor)
-            except BaseException:
-                continue
+        _quarantine_supervisor_if_needed(supervisor)
     if type(verdict) is not dict or verdict.get('cleanup_verified') is not True:
-        _hold_unverified_process(supervisor)
+        _hold_persistently(supervisor)
     return verdict
 
 
@@ -1096,6 +1128,8 @@ def production_prepare(config_path, *, mode='validate', expected_config_sha=None
     """Production path: fixed ledger, OS nonce, official observer and frozen code."""
     if mode not in ('validate', 'prepare', 'supervise-prepare', 'observe-prepare'):
         raise CustodyError('unknown preparation mode')
+    if mode in ('supervise-prepare', 'observe-prepare'):
+        _ignore_console_interrupts()
     if (not sys.flags.isolated or not sys.flags.no_site or sys.flags.optimize != 0 or not sys.dont_write_bytecode
             or not sys.pycache_prefix or not Path(sys.pycache_prefix).is_absolute()
             or os.path.lexists(sys.pycache_prefix) or os.environ.get('CUDA_VISIBLE_DEVICES') != '-1'
@@ -1181,11 +1215,7 @@ def production_prepare(config_path, *, mode='validate', expected_config_sha=None
                                                       job_factory=lambda: _outer_supervisor_job(guards),
                                                       custody_state=custody_state)
                 finally:
-                    while custody_state[2] and not custody_state[3]:
-                        try:
-                            _hold_unverified_process(custody_state)
-                        except BaseException:
-                            continue
+                    _quarantine_state_if_needed(custody_state)
             supervisor = _load_file_module('_mlg_natural_heldout_supervisor',
                                            custody_root / SOURCE_SUFFIXES['supervisor'],
                                            operational['sources']['supervisor']['sha256'])
