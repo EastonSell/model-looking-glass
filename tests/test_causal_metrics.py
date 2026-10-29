@@ -5,6 +5,96 @@ import unittest
 
 
 class CausalMetricTests(unittest.TestCase):
+    def test_candidate_compares_against_matched_nonzero_baseline(self):
+        metrics = importlib.import_module('looking_glass.causal_metrics')
+        self.assertTrue(hasattr(metrics, 'compare_effects'), 'paired baseline comparator is missing')
+        candidate = [metrics.EffectCase('a', 2, 3), metrics.EffectCase('b', 1, -1),
+                     metrics.EffectCase('c', 0, 0)]
+        baseline = [metrics.EffectCase('c', 0, 0), metrics.EffectCase('a', 0, 3),
+                    metrics.EffectCase('b', 0, -1)]
+        result = metrics.compare_effects(candidate, baseline, bootstrap_samples=0)
+        point = result['point']
+        self.assertEqual(result['directional_cases'], {'included': 2, 'excluded': 1})
+        self.assertEqual(point['candidate_mae'], 1.0)
+        self.assertAlmostEqual(point['baseline_mae'], 4 / 3)
+        self.assertAlmostEqual(point['mae_improvement'], 1 / 3)
+        self.assertAlmostEqual(point['candidate_rmse'], math.sqrt(5 / 3))
+        self.assertAlmostEqual(point['baseline_rmse'], math.sqrt(10 / 3))
+        self.assertAlmostEqual(point['rmse_improvement'], math.sqrt(10 / 3) - math.sqrt(5 / 3))
+        self.assertEqual(point['candidate_sign_accuracy'], 0.5)
+        self.assertEqual(point['baseline_sign_accuracy'], 0.0)
+        self.assertEqual(point['sign_accuracy_improvement'], 0.5)
+        self.assertEqual(result['case_errors'][1], {'case_id': 'b', 'candidate_absolute_error': 2.0,
+                                                     'baseline_absolute_error': 1.0})
+        self.assertTrue(all(ci is None for ci in result['bootstrap']['intervals'].values()))
+
+    def test_matched_baseline_bootstrap_preserves_pairs(self):
+        metrics = importlib.import_module('looking_glass.causal_metrics')
+        candidate = [metrics.EffectCase('a', 1, 0), metrics.EffectCase('b', 3, 0)]
+        baseline = [metrics.EffectCase('b', 4, 0), metrics.EffectCase('a', 2, 0)]
+        result = metrics.compare_effects(candidate, baseline, bootstrap_samples=8, confidence=0.5, seed=2)
+        self.assertEqual(result['bootstrap']['intervals']['mae_improvement'], {'low': 1.0, 'high': 1.0})
+        self.assertIsNone(result['point']['sign_accuracy_improvement'])
+        self.assertEqual(result['bootstrap']['undefined_samples']['sign_accuracy_improvement'], 8)
+        self.assertEqual(result, metrics.compare_effects(list(reversed(candidate)), list(reversed(baseline)),
+                                                          bootstrap_samples=8, confidence=0.5, seed=2))
+
+    def test_comparator_defaults_to_descriptive_and_excludes_undefined_direction(self):
+        metrics = importlib.import_module('looking_glass.causal_metrics')
+        candidate = [metrics.EffectCase('a', 0, 0), metrics.EffectCase('b', 0, -1)]
+        baseline = [metrics.EffectCase('a', 1, 0), metrics.EffectCase('b', -1, -1)]
+        result = metrics.compare_effects(candidate, baseline)
+        self.assertEqual(result['bootstrap']['method'], 'none')
+        self.assertEqual(result['directional_cases'], {'included': 1, 'excluded': 1})
+        self.assertEqual(result['point']['candidate_sign_accuracy'], 0.0)
+        self.assertEqual(result['point']['baseline_sign_accuracy'], 1.0)
+        self.assertEqual(result['point']['sign_accuracy_improvement'], -1.0)
+        bootstrap = metrics.compare_effects(candidate, baseline, bootstrap_samples=8, seed=2)['bootstrap']
+        self.assertIsNone(bootstrap['intervals']['sign_accuracy_improvement'])
+        self.assertEqual(bootstrap['undefined_samples']['sign_accuracy_improvement'], 2)
+
+    def test_comparator_preserves_small_paired_effect_from_original_inputs(self):
+        metrics = importlib.import_module('looking_glass.causal_metrics')
+        candidate = [metrics.EffectCase('a', 1, 1e16)]
+        baseline = [metrics.EffectCase('a', 0, 1e16)]
+        point = metrics.compare_effects(candidate, baseline)['point']
+        self.assertEqual(point['mae_improvement'], 1.0)
+        self.assertEqual(point['rmse_improvement'], 1.0)
+
+    def test_matched_baseline_rejects_missing_or_misaligned_cases(self):
+        metrics = importlib.import_module('looking_glass.causal_metrics')
+        candidate = [metrics.EffectCase('a', 1, 2), metrics.EffectCase('b', 3, 4)]
+        invalid = [[metrics.EffectCase('a', 1, 2)],
+                   [metrics.EffectCase('a', 1, 2), metrics.EffectCase('c', 1, 4)],
+                   [metrics.EffectCase('a', 1, 2), metrics.EffectCase('b', 1, 5)],
+                   [metrics.EffectCase('a', 1, 2), metrics.EffectCase('b', None, 4)],
+                   [metrics.EffectCase('a', 1, 2, 0, 3), metrics.EffectCase('b', 1, 4, 0, 5)]]
+        for baseline in invalid:
+            with self.subTest(baseline=baseline), self.assertRaises(ValueError):
+                metrics.compare_effects(candidate, baseline, bootstrap_samples=0)
+
+    def test_matched_baseline_rejects_targets_that_only_match_after_float_rounding(self):
+        metrics = importlib.import_module('looking_glass.causal_metrics')
+        candidate = [metrics.EffectCase('a', 0, 2**53)]
+        baseline = [metrics.EffectCase('a', 0, 2**53 + 1)]
+        with self.assertRaises(ValueError):
+            metrics.compare_effects(candidate, baseline)
+
+    def test_rejects_integral_values_not_exactly_representable_as_binary64(self):
+        from fractions import Fraction
+        metrics = importlib.import_module('looking_glass.causal_metrics')
+        not_exact = 2**53 + 1
+        with self.assertRaises(ValueError):
+            metrics.compare_effects([metrics.EffectCase('a', not_exact, not_exact)],
+                                    [metrics.EffectCase('a', 2**53, not_exact)])
+        with self.assertRaises(ValueError):
+            metrics.evaluate_effects([metrics.EffectCase('a', not_exact, 0)], bootstrap_samples=0)
+        result = metrics.evaluate_effects([metrics.EffectCase('a', 2**53, 0)], bootstrap_samples=0)
+        self.assertEqual(result['point']['mae'], 2**53)
+        with self.assertRaises(ValueError):
+            metrics.evaluate_effects([metrics.EffectCase('a', Fraction(1, 3), 0)], bootstrap_samples=0)
+        result = metrics.evaluate_effects([metrics.EffectCase('a', Fraction(1, 2), 0)], bootstrap_samples=0)
+        self.assertEqual(result['point']['mae'], 0.5)
     def test_point_estimates_against_zero_effect_baseline(self):
         spec = importlib.util.find_spec('looking_glass.causal_metrics')
         self.assertIsNotNone(spec, 'causal metrics module is missing')
@@ -172,6 +262,21 @@ class CausalMetricTests(unittest.TestCase):
                  metrics.EffectCase('e', 1e-100, 1e-100)]
         point = metrics.evaluate_effects(cases, bootstrap_samples=0)['point']
         self.assertEqual(point['mae_improvement_over_null'], 1e-100 / 5)
+
+    def test_loss_improvements_preserve_effects_lost_by_rounded_subtraction(self):
+        metrics = importlib.import_module('looking_glass.causal_metrics')
+        case = metrics.EffectCase('a', 1.0, 1e16)
+        point = metrics.evaluate_effects([case], bootstrap_samples=0)['point']
+        self.assertEqual(point['mae_improvement_over_null'], 1.0)
+        self.assertEqual(point['rmse_improvement_over_null'], 1.0)
+
+    def test_rmse_improvement_preserves_small_effect_after_extreme_cancellation(self):
+        metrics = importlib.import_module('looking_glass.causal_metrics')
+        cases = [metrics.EffectCase('a', 1e308, 1e308),
+                 metrics.EffectCase('b', 1e308, 0),
+                 metrics.EffectCase('c', 1e100, 1e100)]
+        point = metrics.evaluate_effects(cases, bootstrap_samples=0)['point']
+        self.assertAlmostEqual(point['rmse_improvement_over_null'] / 2.886751345948129e-109, 1.0, places=14)
 
 
 if __name__ == '__main__':
