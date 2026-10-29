@@ -1,0 +1,1238 @@
+{
+  "additional_public_checks": [
+    {
+      "input_count": 8,
+      "scope": "operator-reported forwarded rows",
+      "sha256": "e087d03ae0cc2c3d0c0c71a241b4dd583fedea4f609364c96ad1ec7c8412e5e4"
+    },
+    {
+      "input_count": 44,
+      "scope": "public proposed prompt rows",
+      "sha256": "fc3f00a0b4f7884a3c00011186420d16322009edf75b6b09e4296953dad198e3"
+    },
+    {
+      "input_count": 48,
+      "scope": "public proposed year-direction rows",
+      "sha256": "419d74c23333407f9a9dc0b6f7d7b70764ab5d1078e2b0a4c84d37ba194df8a9"
+    }
+  ],
+  "answer_ids": [
+    318,
+    389,
+    373,
+    547
+  ],
+  "case_preparer_source_sha256": "68e440bfeb6a31abc83102d502197c9fa870081c45da11539f6a87ac2251246b",
+  "cases": [
+    {
+      "attractor_form": "fence",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-01-0",
+      "family_index": 0,
+      "frame_index": 0,
+      "morphology": "regular",
+      "relation": "near",
+      "role": "target",
+      "subject_form": "chef",
+      "subject_index": 1,
+      "subject_lemma": "chef",
+      "subject_number": "singular",
+      "text": "The chef near the fence",
+      "token_ids": [
+        464,
+        21221,
+        1474,
+        262,
+        13990
+      ],
+      "variant": 0
+    },
+    {
+      "attractor_form": "fence",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-01-1",
+      "family_index": 0,
+      "frame_index": 0,
+      "morphology": "regular",
+      "relation": "near",
+      "role": "target",
+      "subject_form": "chefs",
+      "subject_index": 1,
+      "subject_lemma": "chef",
+      "subject_number": "plural",
+      "text": "The chefs near the fence",
+      "token_ids": [
+        464,
+        36236,
+        1474,
+        262,
+        13990
+      ],
+      "variant": 1
+    },
+    {
+      "attractor_form": "fence",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-01-2",
+      "family_index": 0,
+      "frame_index": 0,
+      "morphology": "irregular",
+      "relation": "near",
+      "role": "target",
+      "subject_form": "man",
+      "subject_index": 1,
+      "subject_lemma": "man",
+      "subject_number": "singular",
+      "text": "The man near the fence",
+      "token_ids": [
+        464,
+        582,
+        1474,
+        262,
+        13990
+      ],
+      "variant": 2
+    },
+    {
+      "attractor_form": "fence",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-01-3",
+      "family_index": 0,
+      "frame_index": 0,
+      "morphology": "irregular",
+      "relation": "near",
+      "role": "target",
+      "subject_form": "men",
+      "subject_index": 1,
+      "subject_lemma": "man",
+      "subject_number": "plural",
+      "text": "The men near the fence",
+      "token_ids": [
+        464,
+        1450,
+        1474,
+        262,
+        13990
+      ],
+      "variant": 3
+    },
+    {
+      "attractor_form": "fences",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-02-0",
+      "family_index": 1,
+      "frame_index": 0,
+      "morphology": "regular",
+      "relation": "near",
+      "role": "target",
+      "subject_form": "chef",
+      "subject_index": 1,
+      "subject_lemma": "chef",
+      "subject_number": "singular",
+      "text": "The chef near the fences",
+      "token_ids": [
+        464,
+        21221,
+        1474,
+        262,
+        35771
+      ],
+      "variant": 0
+    },
+    {
+      "attractor_form": "fences",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-02-1",
+      "family_index": 1,
+      "frame_index": 0,
+      "morphology": "regular",
+      "relation": "near",
+      "role": "target",
+      "subject_form": "chefs",
+      "subject_index": 1,
+      "subject_lemma": "chef",
+      "subject_number": "plural",
+      "text": "The chefs near the fences",
+      "token_ids": [
+        464,
+        36236,
+        1474,
+        262,
+        35771
+      ],
+      "variant": 1
+    },
+    {
+      "attractor_form": "fences",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-02-2",
+      "family_index": 1,
+      "frame_index": 0,
+      "morphology": "irregular",
+      "relation": "near",
+      "role": "target",
+      "subject_form": "man",
+      "subject_index": 1,
+      "subject_lemma": "man",
+      "subject_number": "singular",
+      "text": "The man near the fences",
+      "token_ids": [
+        464,
+        582,
+        1474,
+        262,
+        35771
+      ],
+      "variant": 2
+    },
+    {
+      "attractor_form": "fences",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-02-3",
+      "family_index": 1,
+      "frame_index": 0,
+      "morphology": "irregular",
+      "relation": "near",
+      "role": "target",
+      "subject_form": "men",
+      "subject_index": 1,
+      "subject_lemma": "man",
+      "subject_number": "plural",
+      "text": "The men near the fences",
+      "token_ids": [
+        464,
+        1450,
+        1474,
+        262,
+        35771
+      ],
+      "variant": 3
+    },
+    {
+      "attractor_form": "tree",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-03-0",
+      "family_index": 2,
+      "frame_index": 1,
+      "morphology": "regular",
+      "relation": "beside",
+      "role": "target",
+      "subject_form": "nurse",
+      "subject_index": 1,
+      "subject_lemma": "nurse",
+      "subject_number": "singular",
+      "text": "The nurse beside the tree",
+      "token_ids": [
+        464,
+        15849,
+        13970,
+        262,
+        5509
+      ],
+      "variant": 0
+    },
+    {
+      "attractor_form": "tree",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-03-1",
+      "family_index": 2,
+      "frame_index": 1,
+      "morphology": "regular",
+      "relation": "beside",
+      "role": "target",
+      "subject_form": "nurses",
+      "subject_index": 1,
+      "subject_lemma": "nurse",
+      "subject_number": "plural",
+      "text": "The nurses beside the tree",
+      "token_ids": [
+        464,
+        20669,
+        13970,
+        262,
+        5509
+      ],
+      "variant": 1
+    },
+    {
+      "attractor_form": "tree",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-03-2",
+      "family_index": 2,
+      "frame_index": 1,
+      "morphology": "irregular",
+      "relation": "beside",
+      "role": "target",
+      "subject_form": "woman",
+      "subject_index": 1,
+      "subject_lemma": "woman",
+      "subject_number": "singular",
+      "text": "The woman beside the tree",
+      "token_ids": [
+        464,
+        2415,
+        13970,
+        262,
+        5509
+      ],
+      "variant": 2
+    },
+    {
+      "attractor_form": "tree",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-03-3",
+      "family_index": 2,
+      "frame_index": 1,
+      "morphology": "irregular",
+      "relation": "beside",
+      "role": "target",
+      "subject_form": "women",
+      "subject_index": 1,
+      "subject_lemma": "woman",
+      "subject_number": "plural",
+      "text": "The women beside the tree",
+      "token_ids": [
+        464,
+        1466,
+        13970,
+        262,
+        5509
+      ],
+      "variant": 3
+    },
+    {
+      "attractor_form": "trees",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-04-0",
+      "family_index": 3,
+      "frame_index": 1,
+      "morphology": "regular",
+      "relation": "beside",
+      "role": "target",
+      "subject_form": "nurse",
+      "subject_index": 1,
+      "subject_lemma": "nurse",
+      "subject_number": "singular",
+      "text": "The nurse beside the trees",
+      "token_ids": [
+        464,
+        15849,
+        13970,
+        262,
+        7150
+      ],
+      "variant": 0
+    },
+    {
+      "attractor_form": "trees",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-04-1",
+      "family_index": 3,
+      "frame_index": 1,
+      "morphology": "regular",
+      "relation": "beside",
+      "role": "target",
+      "subject_form": "nurses",
+      "subject_index": 1,
+      "subject_lemma": "nurse",
+      "subject_number": "plural",
+      "text": "The nurses beside the trees",
+      "token_ids": [
+        464,
+        20669,
+        13970,
+        262,
+        7150
+      ],
+      "variant": 1
+    },
+    {
+      "attractor_form": "trees",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-04-2",
+      "family_index": 3,
+      "frame_index": 1,
+      "morphology": "irregular",
+      "relation": "beside",
+      "role": "target",
+      "subject_form": "woman",
+      "subject_index": 1,
+      "subject_lemma": "woman",
+      "subject_number": "singular",
+      "text": "The woman beside the trees",
+      "token_ids": [
+        464,
+        2415,
+        13970,
+        262,
+        7150
+      ],
+      "variant": 2
+    },
+    {
+      "attractor_form": "trees",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-04-3",
+      "family_index": 3,
+      "frame_index": 1,
+      "morphology": "irregular",
+      "relation": "beside",
+      "role": "target",
+      "subject_form": "women",
+      "subject_index": 1,
+      "subject_lemma": "woman",
+      "subject_number": "plural",
+      "text": "The women beside the trees",
+      "token_ids": [
+        464,
+        1466,
+        13970,
+        262,
+        7150
+      ],
+      "variant": 3
+    },
+    {
+      "attractor_form": "window",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-05-0",
+      "family_index": 4,
+      "frame_index": 2,
+      "morphology": "regular",
+      "relation": "behind",
+      "role": "target",
+      "subject_form": "pilot",
+      "subject_index": 1,
+      "subject_lemma": "pilot",
+      "subject_number": "singular",
+      "text": "The pilot behind the window",
+      "token_ids": [
+        464,
+        8022,
+        2157,
+        262,
+        4324
+      ],
+      "variant": 0
+    },
+    {
+      "attractor_form": "window",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-05-1",
+      "family_index": 4,
+      "frame_index": 2,
+      "morphology": "regular",
+      "relation": "behind",
+      "role": "target",
+      "subject_form": "pilots",
+      "subject_index": 1,
+      "subject_lemma": "pilot",
+      "subject_number": "plural",
+      "text": "The pilots behind the window",
+      "token_ids": [
+        464,
+        14982,
+        2157,
+        262,
+        4324
+      ],
+      "variant": 1
+    },
+    {
+      "attractor_form": "window",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-05-2",
+      "family_index": 4,
+      "frame_index": 2,
+      "morphology": "irregular",
+      "relation": "behind",
+      "role": "target",
+      "subject_form": "child",
+      "subject_index": 1,
+      "subject_lemma": "child",
+      "subject_number": "singular",
+      "text": "The child behind the window",
+      "token_ids": [
+        464,
+        1200,
+        2157,
+        262,
+        4324
+      ],
+      "variant": 2
+    },
+    {
+      "attractor_form": "window",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-05-3",
+      "family_index": 4,
+      "frame_index": 2,
+      "morphology": "irregular",
+      "relation": "behind",
+      "role": "target",
+      "subject_form": "children",
+      "subject_index": 1,
+      "subject_lemma": "child",
+      "subject_number": "plural",
+      "text": "The children behind the window",
+      "token_ids": [
+        464,
+        1751,
+        2157,
+        262,
+        4324
+      ],
+      "variant": 3
+    },
+    {
+      "attractor_form": "windows",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-06-0",
+      "family_index": 5,
+      "frame_index": 2,
+      "morphology": "regular",
+      "relation": "behind",
+      "role": "target",
+      "subject_form": "pilot",
+      "subject_index": 1,
+      "subject_lemma": "pilot",
+      "subject_number": "singular",
+      "text": "The pilot behind the windows",
+      "token_ids": [
+        464,
+        8022,
+        2157,
+        262,
+        9168
+      ],
+      "variant": 0
+    },
+    {
+      "attractor_form": "windows",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-06-1",
+      "family_index": 5,
+      "frame_index": 2,
+      "morphology": "regular",
+      "relation": "behind",
+      "role": "target",
+      "subject_form": "pilots",
+      "subject_index": 1,
+      "subject_lemma": "pilot",
+      "subject_number": "plural",
+      "text": "The pilots behind the windows",
+      "token_ids": [
+        464,
+        14982,
+        2157,
+        262,
+        9168
+      ],
+      "variant": 1
+    },
+    {
+      "attractor_form": "windows",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-06-2",
+      "family_index": 5,
+      "frame_index": 2,
+      "morphology": "irregular",
+      "relation": "behind",
+      "role": "target",
+      "subject_form": "child",
+      "subject_index": 1,
+      "subject_lemma": "child",
+      "subject_number": "singular",
+      "text": "The child behind the windows",
+      "token_ids": [
+        464,
+        1200,
+        2157,
+        262,
+        9168
+      ],
+      "variant": 2
+    },
+    {
+      "attractor_form": "windows",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-06-3",
+      "family_index": 5,
+      "frame_index": 2,
+      "morphology": "irregular",
+      "relation": "behind",
+      "role": "target",
+      "subject_form": "children",
+      "subject_index": 1,
+      "subject_lemma": "child",
+      "subject_number": "plural",
+      "text": "The children behind the windows",
+      "token_ids": [
+        464,
+        1751,
+        2157,
+        262,
+        9168
+      ],
+      "variant": 3
+    },
+    {
+      "attractor_form": "door",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-07-0",
+      "family_index": 6,
+      "frame_index": 3,
+      "morphology": "regular",
+      "relation": "outside",
+      "role": "target",
+      "subject_form": "guard",
+      "subject_index": 1,
+      "subject_lemma": "guard",
+      "subject_number": "singular",
+      "text": "The guard outside the door",
+      "token_ids": [
+        464,
+        4860,
+        2354,
+        262,
+        3420
+      ],
+      "variant": 0
+    },
+    {
+      "attractor_form": "door",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-07-1",
+      "family_index": 6,
+      "frame_index": 3,
+      "morphology": "regular",
+      "relation": "outside",
+      "role": "target",
+      "subject_form": "guards",
+      "subject_index": 1,
+      "subject_lemma": "guard",
+      "subject_number": "plural",
+      "text": "The guards outside the door",
+      "token_ids": [
+        464,
+        10942,
+        2354,
+        262,
+        3420
+      ],
+      "variant": 1
+    },
+    {
+      "attractor_form": "door",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-07-2",
+      "family_index": 6,
+      "frame_index": 3,
+      "morphology": "irregular",
+      "relation": "outside",
+      "role": "target",
+      "subject_form": "person",
+      "subject_index": 1,
+      "subject_lemma": "person",
+      "subject_number": "singular",
+      "text": "The person outside the door",
+      "token_ids": [
+        464,
+        1048,
+        2354,
+        262,
+        3420
+      ],
+      "variant": 2
+    },
+    {
+      "attractor_form": "door",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-07-3",
+      "family_index": 6,
+      "frame_index": 3,
+      "morphology": "irregular",
+      "relation": "outside",
+      "role": "target",
+      "subject_form": "people",
+      "subject_index": 1,
+      "subject_lemma": "person",
+      "subject_number": "plural",
+      "text": "The people outside the door",
+      "token_ids": [
+        464,
+        661,
+        2354,
+        262,
+        3420
+      ],
+      "variant": 3
+    },
+    {
+      "attractor_form": "doors",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-08-0",
+      "family_index": 7,
+      "frame_index": 3,
+      "morphology": "regular",
+      "relation": "outside",
+      "role": "target",
+      "subject_form": "guard",
+      "subject_index": 1,
+      "subject_lemma": "guard",
+      "subject_number": "singular",
+      "text": "The guard outside the doors",
+      "token_ids": [
+        464,
+        4860,
+        2354,
+        262,
+        8215
+      ],
+      "variant": 0
+    },
+    {
+      "attractor_form": "doors",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-08-1",
+      "family_index": 7,
+      "frame_index": 3,
+      "morphology": "regular",
+      "relation": "outside",
+      "role": "target",
+      "subject_form": "guards",
+      "subject_index": 1,
+      "subject_lemma": "guard",
+      "subject_number": "plural",
+      "text": "The guards outside the doors",
+      "token_ids": [
+        464,
+        10942,
+        2354,
+        262,
+        8215
+      ],
+      "variant": 1
+    },
+    {
+      "attractor_form": "doors",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-08-2",
+      "family_index": 7,
+      "frame_index": 3,
+      "morphology": "irregular",
+      "relation": "outside",
+      "role": "target",
+      "subject_form": "person",
+      "subject_index": 1,
+      "subject_lemma": "person",
+      "subject_number": "singular",
+      "text": "The person outside the doors",
+      "token_ids": [
+        464,
+        1048,
+        2354,
+        262,
+        8215
+      ],
+      "variant": 2
+    },
+    {
+      "attractor_form": "doors",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-08-3",
+      "family_index": 7,
+      "frame_index": 3,
+      "morphology": "irregular",
+      "relation": "outside",
+      "role": "target",
+      "subject_form": "people",
+      "subject_index": 1,
+      "subject_lemma": "person",
+      "subject_number": "plural",
+      "text": "The people outside the doors",
+      "token_ids": [
+        464,
+        661,
+        2354,
+        262,
+        8215
+      ],
+      "variant": 3
+    },
+    {
+      "attractor_form": "fence",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-context-01",
+      "family_index": 0,
+      "frame_index": 0,
+      "relation": "near",
+      "role": "context",
+      "text": "Near the fence",
+      "token_ids": [
+        40640,
+        262,
+        13990
+      ]
+    },
+    {
+      "attractor_form": "fences",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-context-02",
+      "family_index": 1,
+      "frame_index": 0,
+      "relation": "near",
+      "role": "context",
+      "text": "Near the fences",
+      "token_ids": [
+        40640,
+        262,
+        35771
+      ]
+    },
+    {
+      "attractor_form": "tree",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-context-03",
+      "family_index": 2,
+      "frame_index": 1,
+      "relation": "beside",
+      "role": "context",
+      "text": "Beside the tree",
+      "token_ids": [
+        33,
+        274,
+        485,
+        262,
+        5509
+      ]
+    },
+    {
+      "attractor_form": "trees",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-context-04",
+      "family_index": 3,
+      "frame_index": 1,
+      "relation": "beside",
+      "role": "context",
+      "text": "Beside the trees",
+      "token_ids": [
+        33,
+        274,
+        485,
+        262,
+        7150
+      ]
+    },
+    {
+      "attractor_form": "window",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-context-05",
+      "family_index": 4,
+      "frame_index": 2,
+      "relation": "behind",
+      "role": "context",
+      "text": "Behind the window",
+      "token_ids": [
+        34163,
+        262,
+        4324
+      ]
+    },
+    {
+      "attractor_form": "windows",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-context-06",
+      "family_index": 5,
+      "frame_index": 2,
+      "relation": "behind",
+      "role": "context",
+      "text": "Behind the windows",
+      "token_ids": [
+        34163,
+        262,
+        9168
+      ]
+    },
+    {
+      "attractor_form": "door",
+      "attractor_number": "singular",
+      "case_id": "agreement-direction-context-07",
+      "family_index": 6,
+      "frame_index": 3,
+      "relation": "outside",
+      "role": "context",
+      "text": "Outside the door",
+      "token_ids": [
+        30815,
+        262,
+        3420
+      ]
+    },
+    {
+      "attractor_form": "doors",
+      "attractor_number": "plural",
+      "case_id": "agreement-direction-context-08",
+      "family_index": 7,
+      "frame_index": 3,
+      "relation": "outside",
+      "role": "context",
+      "text": "Outside the doors",
+      "token_ids": [
+        30815,
+        262,
+        8215
+      ]
+    }
+  ],
+  "direction_manifest_sha256": "91dc4170eff6ac60416e5b3f884f2a28f41f9a4c1ad7339b409e32baeadf3a0e",
+  "direction_revision": "15c0ef7f8141322aeb1fa31dc02cab5a68fc16b8",
+  "expected_forwards": 784,
+  "known_inventory_revision": "94a55846d438cf2fa8bc8fbbde9c5609de5021d0",
+  "known_inventory_rows_checked": 415,
+  "known_inventory_sha256": "3fa3eda9508ca314505aa658b1c02d04dbc98681bfc776337cd9ca1c9c384f5a",
+  "known_inventory_version": "distilgpt2-development-exposures-v18",
+  "model_id": "distilbert/distilgpt2",
+  "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "ordered_input_rows_sha256": "4b4faf815ae0d3d0943efec5fbc318fd251dc6fea80b6e32c770b470f01dae1d",
+  "private_split_check": "pending separately scoped custodian comparison before any forward",
+  "protocol_revision": "a39121c2f3cf2602281252a8856d48efadcb2a98",
+  "protocol_sha256": "f539ad55b347f88641de3b76565104dc7be43e0c5d15f6d8fefdb4173694bbea",
+  "publication_requirement": "caller must independently verify protocol and direction publication before case construction",
+  "schema": "distilgpt2-agreement-direction-cases-v1",
+  "scope": "Public nonblind proposed inputs; tokenizer only, no model forward.",
+  "selection": {
+    "attractors": [
+      {
+        "token_ids": [
+          13990,
+          35771
+        ],
+        "words": [
+          "fence",
+          "fences"
+        ]
+      },
+      {
+        "token_ids": [
+          5509,
+          7150
+        ],
+        "words": [
+          "tree",
+          "trees"
+        ]
+      },
+      {
+        "token_ids": [
+          4324,
+          9168
+        ],
+        "words": [
+          "window",
+          "windows"
+        ]
+      },
+      {
+        "token_ids": [
+          3420,
+          8215
+        ],
+        "words": [
+          "door",
+          "doors"
+        ]
+      }
+    ],
+    "eligibility": {
+      "attractors": [
+        {
+          "reason": "selected",
+          "token_ids": [
+            [
+              13990
+            ],
+            [
+              35771
+            ]
+          ],
+          "words": [
+            "fence",
+            "fences"
+          ]
+        },
+        {
+          "reason": "selected",
+          "token_ids": [
+            [
+              5509
+            ],
+            [
+              7150
+            ]
+          ],
+          "words": [
+            "tree",
+            "trees"
+          ]
+        },
+        {
+          "reason": "selected",
+          "token_ids": [
+            [
+              4324
+            ],
+            [
+              9168
+            ]
+          ],
+          "words": [
+            "window",
+            "windows"
+          ]
+        },
+        {
+          "reason": "selected",
+          "token_ids": [
+            [
+              3420
+            ],
+            [
+              8215
+            ]
+          ],
+          "words": [
+            "door",
+            "doors"
+          ]
+        }
+      ],
+      "irregular": [
+        {
+          "reason": "selected",
+          "token_ids": [
+            [
+              582
+            ],
+            [
+              1450
+            ]
+          ],
+          "words": [
+            "man",
+            "men"
+          ]
+        },
+        {
+          "reason": "selected",
+          "token_ids": [
+            [
+              2415
+            ],
+            [
+              1466
+            ]
+          ],
+          "words": [
+            "woman",
+            "women"
+          ]
+        },
+        {
+          "reason": "selected",
+          "token_ids": [
+            [
+              1200
+            ],
+            [
+              1751
+            ]
+          ],
+          "words": [
+            "child",
+            "children"
+          ]
+        },
+        {
+          "reason": "selected",
+          "token_ids": [
+            [
+              1048
+            ],
+            [
+              661
+            ]
+          ],
+          "words": [
+            "person",
+            "people"
+          ]
+        }
+      ],
+      "regular": [
+        {
+          "reason": "selected",
+          "token_ids": [
+            [
+              21221
+            ],
+            [
+              36236
+            ]
+          ],
+          "words": [
+            "chef",
+            "chefs"
+          ]
+        },
+        {
+          "reason": "not_one_token",
+          "token_ids": [
+            [
+              46412
+            ],
+            [
+              275,
+              3979
+            ]
+          ],
+          "words": [
+            "baker",
+            "bakers"
+          ]
+        },
+        {
+          "reason": "selected",
+          "token_ids": [
+            [
+              15849
+            ],
+            [
+              20669
+            ]
+          ],
+          "words": [
+            "nurse",
+            "nurses"
+          ]
+        },
+        {
+          "reason": "selected",
+          "token_ids": [
+            [
+              8022
+            ],
+            [
+              14982
+            ]
+          ],
+          "words": [
+            "pilot",
+            "pilots"
+          ]
+        },
+        {
+          "reason": "selected",
+          "token_ids": [
+            [
+              4860
+            ],
+            [
+              10942
+            ]
+          ],
+          "words": [
+            "guard",
+            "guards"
+          ]
+        }
+      ]
+    },
+    "irregular": [
+      {
+        "token_ids": [
+          582,
+          1450
+        ],
+        "words": [
+          "man",
+          "men"
+        ]
+      },
+      {
+        "token_ids": [
+          2415,
+          1466
+        ],
+        "words": [
+          "woman",
+          "women"
+        ]
+      },
+      {
+        "token_ids": [
+          1200,
+          1751
+        ],
+        "words": [
+          "child",
+          "children"
+        ]
+      },
+      {
+        "token_ids": [
+          1048,
+          661
+        ],
+        "words": [
+          "person",
+          "people"
+        ]
+      }
+    ],
+    "regular": [
+      {
+        "token_ids": [
+          21221,
+          36236
+        ],
+        "words": [
+          "chef",
+          "chefs"
+        ]
+      },
+      {
+        "token_ids": [
+          15849,
+          20669
+        ],
+        "words": [
+          "nurse",
+          "nurses"
+        ]
+      },
+      {
+        "token_ids": [
+          8022,
+          14982
+        ],
+        "words": [
+          "pilot",
+          "pilots"
+        ]
+      },
+      {
+        "token_ids": [
+          4860,
+          10942
+        ],
+        "words": [
+          "guard",
+          "guards"
+        ]
+      }
+    ]
+  },
+  "tokenizer_json_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+  "tokenizers_version": "0.22.2"
+}
