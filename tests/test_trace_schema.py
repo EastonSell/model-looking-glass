@@ -125,6 +125,86 @@ class TraceSchemaTests(unittest.TestCase):
                 with self.assertRaises((TypeError, ValueError)):
                     self.schema.RunIdentity(*args)
 
+    def test_generation_stage_requires_plain_serializable_string(self):
+        class EqualToEverything:
+            def __eq__(self, other):
+                return True
+
+        class SpoofedText(str):
+            def __eq__(self, other):
+                return True
+
+        for stage in (EqualToEverything(), SpoofedText("invented"), None, 7):
+            with self.subTest(stage=stage):
+                with self.assertRaises(TypeError):
+                    self.schema.GenerationContext(stage=stage)
+                wire = self.make_event().to_dict()
+                wire["generation"]["stage"] = stage
+                with self.assertRaises(TypeError):
+                    self.schema.TraceEvent.from_dict(wire)
+        for stage in ("unknown", "forward", "prefill", "decode"):
+            event = self.make_event(generation=self.schema.GenerationContext(stage=stage))
+            self.assertEqual(self.schema.TraceEvent.from_json(event.to_json()).generation.stage, stage)
+
+    def test_identifiers_and_other_text_are_plain_hashable_strings(self):
+        class UnhashableText(str):
+            __hash__ = None
+
+            def __eq__(self, other):
+                return True
+
+        forged = UnhashableText("run")
+        with self.assertRaises(TypeError):
+            self.schema.RunIdentity(forged)
+        with self.assertRaises(TypeError):
+            self.schema.RunIdentity("run", job_id=forged)
+        for field in ("module_path", "dtype", "device", "capture_mode", "module_kind",
+                      "saved_dtype", "saved_device"):
+            with self.subTest(field=field):
+                with self.assertRaises(TypeError):
+                    self.make_event(**{field: forged})
+        wire = self.make_event().to_dict()
+        wire["identity"]["run_id"] = forged
+        with self.assertRaises(TypeError):
+            self.schema.TraceEvent.from_dict(wire)
+
+    def test_nested_records_and_validated_events_are_exact_schema_types(self):
+        class UnsafeIdentity(self.schema.RunIdentity):
+            def to_dict(self):
+                return object()
+
+        class UnsafeGeneration(self.schema.GenerationContext):
+            def to_dict(self):
+                return object()
+
+        class UnsafeEvent(self.schema.TraceEvent):
+            def to_dict(self):
+                return object()
+
+        with self.assertRaises(TypeError):
+            self.make_event(identity=UnsafeIdentity("run"))
+        with self.assertRaises(TypeError):
+            self.make_event(generation=UnsafeGeneration())
+        base = self.make_event()
+        values = {item.name: getattr(base, item.name) for item in dataclasses.fields(base)}
+        with self.assertRaises(TypeError):
+            self.schema.validate_trace([UnsafeEvent(**values)])
+
+    def test_from_dict_requires_plain_string_field_names(self):
+        class SpoofedKey(str):
+            pass
+
+        wire = self.make_event().to_dict()
+        version = wire.pop("schema_version")
+        wire[SpoofedKey("schema_version")] = version
+        with self.assertRaises(TypeError):
+            self.schema.TraceEvent.from_dict(wire)
+        wire = self.make_event().to_dict()
+        stage = wire["generation"].pop("stage")
+        wire["generation"][SpoofedKey("stage")] = stage
+        with self.assertRaises(TypeError):
+            self.schema.TraceEvent.from_dict(wire)
+
     def test_json_deserialization_rejects_wrong_versions_and_incomplete_objects(self):
         wire = self.make_event().to_dict()
         for mutation in (lambda d: d.update(schema_version="2.0"),

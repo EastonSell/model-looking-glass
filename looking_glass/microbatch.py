@@ -75,6 +75,15 @@ class BatchLaunch:
 
 
 @dataclass(frozen=True)
+class LaunchIdentity:
+    profile: BatchProfile
+    profile_id: str
+    certification_id: str
+    launch_id: str
+    job_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class RequestResult:
     job_id: str
     owner: str
@@ -92,6 +101,16 @@ class BatchOutcome:
 
 class Microbatch:
     def __init__(self, requests, profile):
+        try:
+            self._initialize(requests, profile)
+        except BaseException as exc:
+            # A retained exception must not retain the constructor's input
+            # iterator, partial snapshots, or failed clone frames.
+            self = requests = profile = None
+            _detach_exception(exc)
+            raise exc from None
+
+    def _initialize(self, requests, profile):
         _validate_profile(profile)
         try:
             iterator = iter(requests)
@@ -143,6 +162,9 @@ class Microbatch:
         self._result = None
         self._active = ()
         self._launch_id = None
+        self._launch = None
+        self._launch_versions = ()
+        self._launch_claimed = False
         self._publication_quarantine = False
         self._lock = threading.Lock()
 
@@ -160,48 +182,142 @@ class Microbatch:
         with self._lock:
             if type(job_id) is not str or job_id not in self._job_ids:
                 raise KeyError(job_id)
-            if self._state not in ('planned', 'launched') or job_id in self._cancelled:
-                return False
-            try:
-                self._cancelled.add(job_id)
-                if self._state == 'planned':
-                    self._snapshots.pop(job_id, None)
-                return True
-            except BaseException:
-                self._mark_unpublishable(False)
-                raise
+            accepted = self._state in ('planned', 'launched') and job_id not in self._cancelled
+            if accepted:
+                try:
+                    self._cancelled.add(job_id)
+                    if self._state == 'planned':
+                        self._snapshots.pop(job_id, None)
+                except BaseException:
+                    self._mark_unpublishable(False)
+                    raise
+        return accepted
+
+    def cancellation_state(self, job_id):
+        """Return a recorded cancellation or None when publication is uncertain."""
+        with self._lock:
+            if type(job_id) is not str or job_id not in self._job_ids:
+                raise KeyError(job_id)
+            cancelled = None if self._state == 'unpublishable' else job_id in self._cancelled
+        return cancelled
 
     def launch(self):
-        with self._lock:
-            if self._state != 'planned':
-                raise RuntimeError('batch has already launched or finished')
-            try:
+        started = False
+        inputs = launch = None
+        try:
+            with self._lock:
+                if self._state != 'planned':
+                    raise RuntimeError('batch has already launched or finished')
+                started = True
                 self._active = tuple(identity[0] for identity in self._identities
                                      if identity[0] not in self._cancelled)
                 if not self._active:
                     self._complete({}, None, False)
-                    return None
-                rows = len(self._active) * self._profile.input_shape[0]
-                if rows not in self._profile.approved_rows:
-                    self._complete({}, 'unprofiled_batch', False)
-                    raise ValueError('combined batch size lacks an approved workload profile')
-                with torch.inference_mode(False), torch.no_grad():
-                    inputs = {name: torch.cat([self._snapshots[job_id][name] for job_id in self._active], dim=0)
-                              for name, _ in self._profile.input_schema}
-                launch_id = uuid.uuid4().hex
-                launch = BatchLaunch(self._profile.profile_id, launch_id, self._active, inputs)
-                self._launch_id = launch_id
-                self._state = 'launched'
-                return launch
+                else:
+                    rows = len(self._active) * self._profile.input_shape[0]
+                    if rows not in self._profile.approved_rows:
+                        self._complete({}, 'unprofiled_batch', False)
+                        raise ValueError('combined batch size lacks an approved workload profile')
+                    with torch.inference_mode(False), torch.no_grad():
+                        inputs = {name: torch.cat([self._snapshots[job_id][name] for job_id in self._active], dim=0)
+                                  for name, _ in self._profile.input_schema}
+                    launch_id = uuid.uuid4().hex
+                    launch = BatchLaunch(self._profile.profile_id, launch_id, self._active, MappingProxyType(inputs))
+                    versions = tuple((name, id(inputs[name]), inputs[name]._version)
+                                     for name, _ in self._profile.input_schema)
+                    self._launch_id = launch_id
+                    self._launch = launch
+                    self._launch_versions = versions
+                    self._state = 'launched'
+            return launch
+        except BaseException as exc:
+            try:
+                with self._lock:
+                    if started and self._state in ('planned', 'launched'):
+                        if self._state == 'launched' and self._launch_claimed:
+                            # An independently claimed handoff may have begun work.
+                            self._mark_unpublishable(True)
+                        else:
+                            # No launch was claimed and no worker forward was issued.
+                            self._state = 'planned'
+                            self._launch_id = None
+                            self._launch = None
+                            self._launch_versions = ()
+                            self._complete_failure(exc, False)
+            except BaseException as reporting_error:
+                inputs = launch = None
+                _detach_exception(exc)
+                _detach_exception(reporting_error)
+                raise reporting_error from exc
+            inputs = launch = None
+            _detach_exception(exc)
+            raise exc from None
+
+    def pending_launch(self):
+        """Recover the same launch object after an ambiguous trusted-owner handoff."""
+        with self._lock:
+            launch = self._launch if self._state == 'launched' else None
+        return launch
+
+    @property
+    def launch_claimed(self):
+        with self._lock:
+            claimed = self._launch_claimed
+        return claimed
+
+    def _inspect_launch_locked(self, launch):
+        if self._state != 'launched':
+            raise RuntimeError('batch is not awaiting a launched forward')
+        if type(launch) is not BatchLaunch or launch is not self._launch:
+            raise ValueError('launch is not the exact plan-owned capability')
+        try:
+            versions = tuple((name, id(launch.inputs[name]), launch.inputs[name]._version)
+                             for name, _ in self._profile.input_schema)
+        except (KeyError, AttributeError, TypeError) as exc:
+            raise ValueError('launch inputs cannot be validated') from exc
+        if versions != self._launch_versions:
+            raise ValueError('launch inputs changed after assembly')
+        return LaunchIdentity(self._profile, self._profile.profile_id, self._profile.certification_id,
+                              self._launch_id, self._active)
+
+    def inspect_launch(self, launch):
+        """Validate the live launch and return immutable identity metadata."""
+        with self._lock:
+            identity = self._inspect_launch_locked(launch)
+        return identity
+
+    def claim_launch(self, launch):
+        """Validate and consume a launch capability once before worker dispatch."""
+        with self._lock:
+            identity = self._inspect_launch_locked(launch)
+            if self._launch_claimed:
+                raise RuntimeError('launch capability has already been claimed')
+            self._launch_claimed = True
+        return identity
+
+    def abort_unexecuted(self, launch, error):
+        """Finish before device work; the trusted owner must establish no forward was issued."""
+        with self._lock:
+            if self._state != 'launched':
+                raise RuntimeError('batch is not awaiting a launched forward')
+            if type(launch) is not BatchLaunch or launch is not self._launch:
+                raise ValueError('launch is not the exact plan-owned capability')
+            if not isinstance(error, BaseException):
+                raise ValueError('error must be an exception')
+            try:
+                self._state = 'planned'
+                self._launch = None
+                self._launch_id = None
+                self._launch_versions = ()
+                result = self._complete_failure(error, False)
             except BaseException as exc:
-                if self._state in ('planned', 'launched'):
-                    # No caller received the launch; no worker forward was issued.
-                    self._state = 'planned'
-                    self._launch_id = None
-                    self._complete_failure(exc, False)
-                raise
+                if self._state != 'unpublishable':
+                    self._mark_unpublishable(False)
+                raise exc from error
+        return result
 
     def finish(self, logits, *, launch_id):
+        outputs = None
         with self._lock:
             if self._state != 'launched':
                 raise RuntimeError('batch is not awaiting a launched forward')
@@ -225,11 +341,17 @@ class Microbatch:
                     return self._complete({}, 'invalid_result', True)
                 return self._complete(outputs, None, False)
             except BaseException as exc:
+                # Failed split/publication must not pin logits through retained
+                # exception frames. The caller still owns any other references.
+                logits = None
+                if outputs is not None:
+                    outputs.clear()
+                _detach_exception(exc)
                 if self._state != 'launched':
-                    raise
+                    raise exc from None
                 result = self._complete_failure(exc, True)
                 if not isinstance(exc, Exception):
-                    raise
+                    raise exc from None
                 return result
 
     def fail(self, error, *, launch_id):
@@ -259,8 +381,9 @@ class Microbatch:
 
     def _complete(self, outputs, reason, quarantine):
         was_launched = self._state == 'launched'
+        records = []
+        result = None
         try:
-            records = []
             for job_id, owner, request_id in self._identities:
                 if job_id in self._cancelled:
                     records.append(RequestResult(job_id, owner, request_id, 'cancelled'))
@@ -270,12 +393,18 @@ class Microbatch:
                     records.append(RequestResult(job_id, owner, request_id, 'ok', logits=outputs[job_id]))
             result = BatchOutcome(tuple(records), quarantine)
             self._snapshots.clear()
+            self._launch = None
+            self._launch_versions = ()
             self._result = result
             self._state = 'finished'
             return result
-        except BaseException:
+        except BaseException as exc:
             self._mark_unpublishable(quarantine or was_launched)
-            raise
+            outputs.clear()
+            records.clear()
+            result = None
+            _detach_exception(exc)
+            raise exc from None
 
     def _complete_failure(self, error, quarantine):
         try:
@@ -290,6 +419,15 @@ class Microbatch:
         self._result = None
         self._state = 'unpublishable'
         self._snapshots.clear()
+        self._launch = None
+        self._launch_versions = ()
+
+
+def _detach_exception(error):
+    """Drop common chained tracebacks; arbitrary exception-owned aliases may remain."""
+    error.__traceback__ = None
+    error.__context__ = None
+    error.__cause__ = None
 
 
 def _failure_reason(error):

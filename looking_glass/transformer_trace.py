@@ -4,7 +4,7 @@ The module does not load checkpoints. Each session is exclusive to one model
 and entering thread; hooks are not suitable for multi-request dispatch.
 """
 from collections import Counter, defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import threading
 import sys
 
@@ -57,6 +57,7 @@ class GPT2TraceEvent:
     device: str
     capture_mode: str
     value: torch.Tensor | None
+    generation: GenerationContext = field(default_factory=GenerationContext)
 
     @property
     def saved_shape(self):
@@ -84,7 +85,7 @@ class GPT2TraceEvent:
             capture_mode=self.capture_mode, module_kind=self.module_kind,
             layer_index=self.layer_index, batch_positions=self.batch_positions,
             token_positions=self.token_positions, batch_axis=0, token_axis=1,
-            generation=GenerationContext(), saved_shape=self.saved_shape,
+            generation=self.generation, saved_shape=self.saved_shape,
             saved_dtype=None if self.value is None else str(self.value.dtype),
             saved_device=self.saved_device)
 
@@ -98,19 +99,24 @@ class GPT2TraceSession:
     def __init__(self, model, *, run_id=None, targets=("block", "attn", "mlp"),
                  layers=None, samples=None, tokens=None, mode="direct",
                  max_events=10000, max_trace_bytes=16 * 1024 * 1024,
-                 capture_device="cpu"):
-        if mode not in ("direct", "gradient", "id"):
+                 capture_device="cpu", forward_context=None):
+        if type(mode) is not str or mode not in ("direct", "gradient", "id"):
             raise ValueError("mode must be direct, gradient, or id")
-        if not isinstance(run_id, str) or not run_id.strip():
+        if type(run_id) is not str or not run_id.strip():
             raise ValueError("run_id must be a nonempty string")
         if type(max_events) is not int or max_events <= 0:
             raise ValueError("max_events must be a positive integer")
         if type(max_trace_bytes) is not int or max_trace_bytes < 0:
             raise ValueError("max_trace_bytes must be a nonnegative integer")
-        if capture_device not in ("cpu", "source"):
+        if type(capture_device) is not str or capture_device not in ("cpu", "source"):
             raise ValueError("capture_device must be cpu or source")
+        if forward_context is not None:
+            if type(forward_context) is not GenerationContext:
+                raise TypeError("forward_context must be a GenerationContext or None")
+            if forward_context != GenerationContext(stage="forward", use_cache=False):
+                raise ValueError("only the uncached single-forward context is supported")
         if (not isinstance(targets, (list, tuple)) or not targets
-                or any(t not in ("block", "attn", "mlp") for t in targets)
+                or any(type(t) is not str or t not in ("block", "attn", "mlp") for t in targets)
                 or len(set(targets)) != len(targets)):
             raise ValueError("targets must contain distinct block, attn, or mlp roles")
         samples, tokens, layers = (_indices("samples", samples),
@@ -145,6 +151,7 @@ class GPT2TraceSession:
         self.run_id, self.mode = run_id, mode
         self.max_events, self.max_trace_bytes = max_events, max_trace_bytes
         self.capture_device = capture_device
+        self._forward_context = forward_context
         self.samples, self.tokens = samples, tokens
         self.events = []
         self.successful = False
@@ -167,6 +174,7 @@ class GPT2TraceSession:
         self._site_frames = {}
         self._invocations = Counter()
         self._shape = None
+        self._context_hook_snapshot = None
         self._lease = ModelLease(model)
         self._selected_modules = []
         for layer in layers:
@@ -199,6 +207,10 @@ class GPT2TraceSession:
             self._lease.acquire()
             self._entering = True
             self._lease.verify_tree()
+            if self._forward_context is not None:
+                before = self._context_hooks()
+                if any(pre or post for _, pre, post in before):
+                    raise RuntimeError("verified forward context requires a hook-free model")
             counts = Counter(id(module) for _, module in self._lease.registered_paths)
             for module, path, _, _ in self._selected_modules:
                 try:
@@ -215,6 +227,12 @@ class GPT2TraceSession:
                 self._register(module, "pre", self._make_site_begin(path), prepend=True)
                 self._register(module, "forward", self._make_hook(path, kind, layer))
                 self._register(module, "forward", self._make_site_end(path), always_call=True)
+            if self._forward_context is not None:
+                snapshot = self._context_hooks()
+                observed = {key for _, pre, post in snapshot for key in pre + post}
+                if observed != {handle.id for handle in self._handles}:
+                    raise RuntimeError("verified forward context hook environment changed during entry")
+                self._context_hook_snapshot = snapshot
             self._entering = False
             return self
         except BaseException as primary:
@@ -224,6 +242,18 @@ class GPT2TraceSession:
             except BaseException as cleanup:
                 _note_cleanup(primary, f"Trace hook cleanup also failed: {cleanup!r}")
             raise
+
+    def _context_hooks(self):
+        torch_module = torch.nn.modules.module
+        if torch_module._global_forward_pre_hooks or torch_module._global_forward_hooks:
+            raise RuntimeError("verified forward context requires no global forward hooks")
+        return tuple((id(module), tuple(module._forward_pre_hooks), tuple(module._forward_hooks))
+                     for _, module in self._lease.registered_paths)
+
+    def _verify_context_hooks(self):
+        if self._forward_context is not None:
+            if self._context_hook_snapshot is None or self._context_hooks() != self._context_hook_snapshot:
+                raise RuntimeError("verified forward context hook environment changed")
 
     def _register(self, module, kind, callback, **kwargs):
         register = module.register_forward_pre_hook if kind == 'pre' else module.register_forward_hook
@@ -259,6 +289,7 @@ class GPT2TraceSession:
                 raise RuntimeError("a previous forward did not finish")
             frames.append(False)
             self._lease.verify_tree()
+            self._verify_context_hooks()
             if thread != self._owner_thread:
                 raise RuntimeError("model forward must run on the session's owning thread")
             if self._failed:
@@ -271,6 +302,11 @@ class GPT2TraceSession:
                 raise RuntimeError("compiled execution is unsupported")
             if len(args) > 1:
                 raise ValueError("only input_ids may be passed positionally")
+            if self._forward_context is not None:
+                if self._next_forward:
+                    raise RuntimeError("verified forward context permits exactly one forward")
+                if kwargs.get("use_cache") is not False or kwargs.get("past_key_values") is not None:
+                    raise ValueError("verified forward context requires explicit use_cache=False and no past_key_values")
             ids = kwargs.get("input_ids", args[0] if args else None)
             embeds = kwargs.get("inputs_embeds")
             if (ids is None) == (embeds is None):
@@ -298,6 +334,7 @@ class GPT2TraceSession:
 
     def _mark_forward_complete(self, module, args, output):
         if threading.current_thread() is self._owner_thread and self._active:
+            self._verify_context_hooks()
             self._normal_completed = True
         return None
 
@@ -335,6 +372,7 @@ class GPT2TraceSession:
         def begin(_module, _args):
             try:
                 self._lease.verify_tree()
+                self._verify_context_hooks()
                 thread = threading.current_thread()
                 if thread is not self._owner_thread or not self._active or self._failed:
                     raise RuntimeError("target entered outside the owning forward")
@@ -403,7 +441,8 @@ class GPT2TraceSession:
                 event = GPT2TraceEvent(self.run_id, self._sequence, self._forward_index,
                                        path, kind, layer, invocation, output_path,
                                        batch, token, tuple(tensor.shape), str(tensor.dtype),
-                                       str(tensor.device), self.mode, value)
+                                       str(tensor.device), self.mode, value,
+                                       self._forward_context or GenerationContext())
                 self.events.append(event)
                 self._sequence += 1
                 if value is not None:

@@ -322,7 +322,12 @@ class ResidentWorker:
                                 if logits.numel() * logits.element_size() > self.max_output_bytes:
                                     raise OutputLimitExceeded("logits exceed the configured output byte bound")
                                 with torch.inference_mode(False):
-                                    outcome = logits.detach().to(device="cpu", copy=True)
+                                    outcome = logits.detach().to(device="cpu", copy=True,
+                                                                 memory_format=torch.contiguous_format)
+                                if (not outcome.is_contiguous() or outcome.storage_offset() != 0
+                                        or outcome.untyped_storage().nbytes()
+                                        != outcome.numel() * outcome.element_size()):
+                                    raise WorkerExecutionError("copied logits do not own exact contiguous storage")
                         finally:
                             if devices:
                                 sync_attempted = True

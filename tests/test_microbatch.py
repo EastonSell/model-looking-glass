@@ -1,6 +1,7 @@
 import importlib
 import importlib.util
 from dataclasses import replace
+import gc
 import threading
 import unittest
 from unittest.mock import patch
@@ -608,6 +609,408 @@ class MicrobatchTests(unittest.TestCase):
         self.assertIs(plan, sentinel)
         self.assertTrue(all(torch.equal(job.inputs['input_ids'], before)
                             for job, before in zip(jobs, original)))
+
+    def test_retained_snapshot_failure_does_not_retain_original_inputs(self):
+        m, profile, jobs = self.fixture()
+        references = [weakref.ref(job.inputs['input_ids']) for job in jobs]
+        original_clone = torch.Tensor.clone
+        calls = 0
+        def clone(value, *args, **kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise MemoryError('snapshot allocation failed')
+            return original_clone(value, *args, **kwargs)
+        held_error = None
+        with patch.object(torch.Tensor, 'clone', clone):
+            try:
+                m.Microbatch(jobs, profile)
+            except MemoryError as exc:
+                held_error = exc
+        self.assertIsNotNone(held_error)
+        del jobs
+        gc.collect()
+        self.assertTrue(all(ref() is None for ref in references))
+
+    def test_retained_publication_failure_does_not_retain_logits_or_split_clones(self):
+        m, profile, jobs = self.fixture()
+        plan = m.Microbatch(jobs, profile)
+        launch = plan.launch()
+        logits = torch.ones((2, 3, 7))
+        logits_ref = weakref.ref(logits)
+        clones = []
+        clone_ids = set()
+        original_clone = torch.Tensor.clone
+        def clone(value, *args, **kwargs):
+            result = original_clone(value, *args, **kwargs)
+            if id(result) not in clone_ids:
+                clone_ids.add(id(result))
+                clones.append(weakref.ref(result))
+            return result
+        def no_record(*args, **kwargs):
+            raise MemoryError('cannot construct result')
+        held_error = None
+        with patch.object(torch.Tensor, 'clone', clone), patch('looking_glass.microbatch.RequestResult', no_record):
+            try:
+                plan.finish(logits, launch_id=launch.launch_id)
+            except MemoryError as exc:
+                held_error = exc
+        self.assertIsNotNone(held_error)
+        self.assertTrue(plan.publication_failed)
+        self.assertTrue(plan.publication_quarantine_required)
+        self.assertEqual(len(clones), 2)
+        del logits
+        gc.collect()
+        self.assertIsNone(logits_ref())
+        self.assertTrue(all(ref() is None for ref in clones))
+
+    def test_cancel_return_interrupt_never_strands_plan_lock(self):
+        import inspect
+        import sys
+        m, profile, jobs = self.fixture()
+        lines, first = inspect.getsourcelines(m.Microbatch.cancel)
+        line = next(first + i for i, value in enumerate(lines)
+                    if value.strip() in ('return True', 'return accepted'))
+        plan = m.Microbatch(jobs, profile)
+        seen = []
+        def interrupted():
+            def trace(frame, event, arg):
+                if event == 'line' and frame.f_code is m.Microbatch.cancel.__code__ and frame.f_lineno == line:
+                    raise KeyboardInterrupt
+                return trace
+            try:
+                sys.settrace(trace)
+                plan.cancel('job-1')
+            except KeyboardInterrupt:
+                seen.append('interrupted')
+            finally:
+                sys.settrace(None)
+        thread = threading.Thread(target=interrupted, daemon=True)
+        thread.start()
+        thread.join(1)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(seen, ['interrupted'])
+        status = []
+        probe = threading.Thread(target=lambda: status.append(plan.publication_failed), daemon=True)
+        probe.start()
+        probe.join(1)
+        self.assertFalse(probe.is_alive(), 'cancel interrupt stranded the plan lock')
+        self.assertEqual(status, [False])
+        launch = plan.launch()
+        outcome = plan.finish(torch.zeros((1, 3, 7)), launch_id=launch.launch_id)
+        self.assertEqual([r.status for r in outcome.results], ['cancelled', 'ok'])
+
+    def test_all_cancelled_launch_return_interrupt_never_strands_lock(self):
+        import inspect
+        import sys
+        m, profile, jobs = self.fixture()
+        plan = m.Microbatch(jobs, profile)
+        plan.cancel('job-1')
+        plan.cancel('job-2')
+        lines, first = inspect.getsourcelines(m.Microbatch.launch)
+        line = next(first + i for i, value in enumerate(lines)
+                    if value.strip() in ('return None', 'return launch'))
+        seen = []
+        def interrupted():
+            def trace(frame, event, arg):
+                if event == 'line' and frame.f_code is m.Microbatch.launch.__code__ and frame.f_lineno == line:
+                    raise KeyboardInterrupt
+                return trace
+            try:
+                sys.settrace(trace)
+                plan.launch()
+            except KeyboardInterrupt:
+                seen.append('interrupted')
+            finally:
+                sys.settrace(None)
+        thread = threading.Thread(target=interrupted, daemon=True)
+        thread.start()
+        thread.join(1)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(seen, ['interrupted'])
+        outcomes = []
+        probe = threading.Thread(target=lambda: outcomes.append(plan.outcome()), daemon=True)
+        probe.start()
+        probe.join(1)
+        self.assertFalse(probe.is_alive(), 'launch interrupt stranded the plan lock')
+        self.assertEqual([r.status for r in outcomes[0].results], ['cancelled', 'cancelled'])
+
+    def test_launch_capability_is_one_time_exact_and_immutable_metadata(self):
+        m, profile, jobs = self.fixture()
+        plan = m.Microbatch(jobs, profile)
+        launch = plan.launch()
+        self.assertIs(plan.pending_launch(), launch)
+        with self.assertRaises(TypeError):
+            launch.inputs['input_ids'] = torch.zeros((2, 3), dtype=torch.int64)
+        forged = replace(launch, job_ids=tuple(reversed(launch.job_ids)))
+        with self.assertRaises(ValueError):
+            plan.claim_launch(forged)
+        self.assertEqual(plan.inspect_launch(launch).job_ids, ('job-1', 'job-2'))
+        self.assertFalse(plan.launch_claimed)
+        identity = plan.claim_launch(launch)
+        self.assertEqual(identity.profile, profile)
+        self.assertEqual(identity.profile_id, profile.profile_id)
+        self.assertEqual(identity.certification_id, profile.certification_id)
+        self.assertEqual(identity.launch_id, launch.launch_id)
+        self.assertEqual(identity.job_ids, ('job-1', 'job-2'))
+        with self.assertRaises((AttributeError, TypeError)):
+            identity.job_ids = ('job-2', 'job-1')
+        with self.assertRaises(RuntimeError):
+            plan.claim_launch(launch)
+        self.assertTrue(plan.launch_claimed)
+
+    def test_claimed_launch_can_abort_only_before_forward_is_issued(self):
+        m, profile, jobs = self.fixture()
+        plan = m.Microbatch(jobs, profile)
+        launch = plan.launch()
+        plan.claim_launch(launch)
+        plan.cancel('job-2')
+        with self.assertRaises(ValueError):
+            plan.abort_unexecuted(replace(launch), MemoryError('unused'))
+        outcome = plan.abort_unexecuted(launch, MemoryError('admission failed'))
+        self.assertFalse(outcome.quarantine_required)
+        self.assertEqual([r.status for r in outcome.results], ['failed', 'cancelled'])
+        self.assertEqual(outcome.results[0].reason, 'out_of_memory')
+        self.assertIsNone(plan.pending_launch())
+        with self.assertRaises(RuntimeError):
+            plan.claim_launch(launch)
+
+    def test_mutated_launch_tensor_fails_before_claim(self):
+        m, profile, jobs = self.fixture()
+        plan = m.Microbatch(jobs, profile)
+        launch = plan.launch()
+        launch.inputs['input_ids'].fill_(0)
+        with self.assertRaises(ValueError):
+            plan.claim_launch(launch)
+        self.assertFalse(plan.launch_claimed)
+
+    def test_launch_return_event_interrupt_leaves_recoverable_same_capability(self):
+        import sys
+        m, profile, jobs = self.fixture()
+        plan = m.Microbatch(jobs, profile)
+        previous = sys.gettrace()
+        def trace(frame, event, arg):
+            if event == 'return' and frame.f_code is m.Microbatch.launch.__code__ and arg is not None:
+                raise KeyboardInterrupt
+            return trace
+        try:
+            sys.settrace(trace)
+            with self.assertRaises(KeyboardInterrupt):
+                plan.launch()
+        finally:
+            sys.settrace(previous)
+        launch = plan.pending_launch()
+        self.assertIsNotNone(launch)
+        self.assertEqual(plan.claim_launch(launch).job_ids, ('job-1', 'job-2'))
+        outcome = plan.finish(torch.zeros((2, 3, 7)), launch_id=launch.launch_id)
+        self.assertEqual([r.status for r in outcome.results], ['ok', 'ok'])
+        self.assertIsNone(plan.pending_launch())
+
+    def test_retained_launch_failure_does_not_retain_combined_inputs(self):
+        m, profile, jobs = self.fixture()
+        plan = m.Microbatch(jobs, profile)
+        refs = []
+        original_cat = torch.cat
+        def cat(*args, **kwargs):
+            result = original_cat(*args, **kwargs)
+            refs.append(weakref.ref(result))
+            return result
+        def no_launch(*args, **kwargs):
+            raise MemoryError('cannot construct launch')
+        held_error = None
+        with patch('looking_glass.microbatch.torch.cat', cat), patch('looking_glass.microbatch.BatchLaunch', no_launch):
+            try:
+                plan.launch()
+            except MemoryError as exc:
+                held_error = exc
+        self.assertIsNotNone(held_error)
+        self.assertEqual(len(refs), len(profile.input_schema))
+        gc.collect()
+        self.assertTrue(all(ref() is None for ref in refs))
+
+    def test_nested_constructor_exception_does_not_retain_private_tensor(self):
+        m, profile, _ = self.fixture()
+        references = []
+        class FailingIterable:
+            def __iter__(self):
+                return self
+            def __next__(self):
+                private = torch.ones((3, 3))
+                references.append(weakref.ref(private))
+                try:
+                    raise MemoryError('inner')
+                except MemoryError:
+                    raise ValueError('outer')
+        held_error = None
+        try:
+            m.Microbatch(FailingIterable(), profile)
+        except ValueError as exc:
+            held_error = exc
+        self.assertIsNotNone(held_error)
+        gc.collect()
+        self.assertIsNone(references[0]())
+
+    def test_nested_publication_exception_does_not_retain_split_tensors(self):
+        m, profile, jobs = self.fixture()
+        plan = m.Microbatch(jobs, profile)
+        launch = plan.launch()
+        references = []
+        def no_record(*args, **kwargs):
+            references.append(weakref.ref(kwargs['logits']))
+            try:
+                raise MemoryError('inner')
+            except MemoryError:
+                raise ValueError('outer')
+        held_error = None
+        with patch('looking_glass.microbatch.RequestResult', no_record):
+            try:
+                plan.finish(torch.ones((2, 3, 7)), launch_id=launch.launch_id)
+            except ValueError as exc:
+                held_error = exc
+        self.assertIsNotNone(held_error)
+        self.assertEqual(len(references), 1)
+        gc.collect()
+        self.assertIsNone(references[0]())
+
+    def test_claim_return_event_is_consumed_once_and_can_abort_before_dispatch(self):
+        import sys
+        m, profile, jobs = self.fixture()
+        plan = m.Microbatch(jobs, profile)
+        launch = plan.launch()
+        previous = sys.gettrace()
+        def trace(frame, event, arg):
+            if event == 'return' and frame.f_code is m.Microbatch.claim_launch.__code__ and arg is not None:
+                raise KeyboardInterrupt
+            return trace
+        try:
+            sys.settrace(trace)
+            with self.assertRaises(KeyboardInterrupt):
+                plan.claim_launch(launch)
+        finally:
+            sys.settrace(previous)
+        self.assertTrue(plan.launch_claimed)
+        with self.assertRaises(RuntimeError):
+            plan.claim_launch(launch)
+        outcome = plan.abort_unexecuted(launch, RuntimeError('no forward issued'))
+        self.assertFalse(outcome.quarantine_required)
+
+    def test_concurrent_claim_during_interrupted_launch_quarantines(self):
+        import inspect
+        import sys
+        m, profile, jobs = self.fixture()
+        plan = m.Microbatch(jobs, profile)
+        lines, first = inspect.getsourcelines(m.Microbatch.launch)
+        return_line = next(first + i for i, value in enumerate(lines) if value.strip() == 'return launch')
+        previous = sys.gettrace()
+        def trace(frame, event, arg):
+            if event == 'line' and frame.f_code is m.Microbatch.launch.__code__ and frame.f_lineno == return_line:
+                launch = plan.pending_launch()
+                plan.claim_launch(launch)
+                raise KeyboardInterrupt
+            return trace
+        try:
+            sys.settrace(trace)
+            with self.assertRaises(KeyboardInterrupt):
+                plan.launch()
+        finally:
+            sys.settrace(previous)
+        self.assertTrue(plan.publication_failed)
+        self.assertTrue(plan.publication_quarantine_required)
+        with self.assertRaises(RuntimeError):
+            plan.outcome()
+
+    def test_cancel_return_event_can_be_reconciled_under_plan_lock(self):
+        import sys
+        m, profile, jobs = self.fixture()
+        plan = m.Microbatch(jobs, profile)
+        previous = sys.gettrace()
+        def trace(frame, event, arg):
+            if event == 'return' and frame.f_code is m.Microbatch.cancel.__code__ and arg is True:
+                raise KeyboardInterrupt
+            return trace
+        try:
+            sys.settrace(trace)
+            with self.assertRaises(KeyboardInterrupt):
+                plan.cancel('job-1')
+        finally:
+            sys.settrace(previous)
+        self.assertTrue(plan.cancellation_state('job-1'))
+        self.assertFalse(plan.cancel('job-1'))
+        self.assertFalse(plan.cancellation_state('job-2'))
+        with self.assertRaises(KeyError):
+            plan.cancellation_state('missing')
+
+    def test_unpublishable_cancellation_state_is_unknown(self):
+        m, profile, jobs = self.fixture()
+        plan = m.Microbatch(jobs, profile)
+        class FailingSet(set):
+            def add(self, item):
+                raise MemoryError('cannot record cancellation')
+        plan._cancelled = FailingSet()
+        with self.assertRaises(MemoryError):
+            plan.cancel('job-1')
+        self.assertIsNone(plan.cancellation_state('job-1'))
+
+    def test_interrupted_prelaunch_abort_cannot_leave_a_reusable_plan(self):
+        import inspect
+        import sys
+        m, profile, jobs = self.fixture()
+        lines, first = inspect.getsourcelines(m.Microbatch.abort_unexecuted)
+        targets = [first + i for i, value in enumerate(lines)
+                   if value.strip().startswith(('self._state = ', 'self._launch = ',
+                                                'self._launch_id = ', 'self._launch_versions = ',
+                                                'result = self._complete_failure'))]
+        self.assertGreaterEqual(len(targets), 5)
+        for target in targets:
+            with self.subTest(line=target):
+                plan = m.Microbatch(jobs, profile)
+                launch = plan.launch()
+                original = RuntimeError('unused')
+                previous = sys.gettrace()
+                def trace(frame, event, arg):
+                    if (event == 'line' and frame.f_code is m.Microbatch.abort_unexecuted.__code__
+                            and frame.f_lineno == target):
+                        raise KeyboardInterrupt
+                    return trace
+                try:
+                    sys.settrace(trace)
+                    with self.assertRaises(KeyboardInterrupt) as raised:
+                        plan.abort_unexecuted(launch, original)
+                finally:
+                    sys.settrace(previous)
+                self.assertTrue(plan.publication_failed)
+                self.assertIs(raised.exception.__cause__, original)
+                with self.assertRaises(RuntimeError):
+                    plan.launch()
+
+    def test_abort_return_interrupt_leaves_outcome_and_lock_usable(self):
+        import inspect
+        import sys
+        m, profile, jobs = self.fixture()
+        lines, first = inspect.getsourcelines(m.Microbatch.abort_unexecuted)
+        return_line = next(first + i for i, value in enumerate(lines) if value.strip() == 'return result')
+        for event_kind in ('line', 'return'):
+            with self.subTest(event=event_kind):
+                plan = m.Microbatch(jobs, profile)
+                launch = plan.launch()
+                previous = sys.gettrace()
+                def trace(frame, event, arg):
+                    if (event == event_kind and frame.f_code is m.Microbatch.abort_unexecuted.__code__
+                            and (event == 'return' or frame.f_lineno == return_line)):
+                        raise KeyboardInterrupt
+                    return trace
+                try:
+                    sys.settrace(trace)
+                    with self.assertRaises(KeyboardInterrupt):
+                        plan.abort_unexecuted(launch, RuntimeError('unused'))
+                finally:
+                    sys.settrace(previous)
+                result = []
+                thread = threading.Thread(target=lambda: result.append(plan.outcome()), daemon=True)
+                thread.start()
+                thread.join(1)
+                self.assertFalse(thread.is_alive(), 'abort interrupt stranded the plan lock')
+                self.assertEqual([r.status for r in result[0].results], ['failed', 'failed'])
 
     def test_interrupt_during_assembly_or_result_check_finishes_and_reraises(self):
         m, profile, jobs = self.fixture()
