@@ -16,3 +16,7 @@ preflight. Its manifest-only successor uses Python's JSON serializer to retain
 the fixed float types. The model, inputs, grid values, thresholds and other
 scientific rules are unchanged. The successor and a fresh no-model rehearsal
 require independent readback before any study forward.
+
+Correction: the serializer changed four entries' JSON types: `1.0`, `2.0`,
+`3.0` and `4.0` became integer `1`, `2`, `3` and `4`. The earlier reference
+to two entries was inaccurate. The numerical grid itself did not change.
