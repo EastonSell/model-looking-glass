@@ -80,7 +80,8 @@ def _read(path, limit, before):
 
 
 def _plan(raw, site_nonce):
-    _require(type(raw) is bytes and _digest(raw) == PLAN_SHA256, 'published request plan differs')
+    _require(type(raw) is bytes and 0 < len(raw) <= 128 * 1024 and _digest(raw) == PLAN_SHA256,
+             'published request plan differs')
     plan = independent.parse_object(raw, 128 * 1024)
     _require(set(plan) == {'schema', 'protocol_sha256', 'checkpoint_revision', 'source_commit',
                           'public_entropy', 'requests'}
@@ -158,7 +159,8 @@ def audit_saved_replay(*, attempt_dir, plan_bytes, site_nonce, site_record_bytes
     _require(externally_quiescent is True and independent._hex(actual_runtime_sha256)
              and independent._hex(expected_model_state_sha256), 'external runtime, model or quiescence is missing')
     _require(type(references) is tuple and len(references) == 16
-             and all(type(raw) is bytes and _digest(raw) == digest for raw, digest in zip(references, REFERENCES)),
+             and all(type(raw) is bytes and 0 < len(raw) <= 512 * 1024 and _digest(raw) == digest
+                     for raw, digest in zip(references, REFERENCES)),
              'published reference bytes differ')
     requests = _plan(plan_bytes, site_nonce)
     site = _site(site_record_bytes, site_nonce)

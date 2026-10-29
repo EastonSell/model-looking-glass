@@ -128,6 +128,21 @@ def test_replay_rejects_wrong_references_site_and_extra_evidence(saved_replay, m
         extra.unlink()
 
 
+def test_oversized_plan_and_reference_are_rejected_before_hashing(saved_replay, monkeypatch):
+    kwargs = _configure(monkeypatch, saved_replay)
+    oversized_plan, oversized_reference = b'p' * (128 * 1024 + 1), b'r' * (512 * 1024 + 1)
+    original = audit._digest
+    def bounded_digest(value):
+        if value is oversized_plan or value is oversized_reference:
+            raise AssertionError('oversized input was hashed')
+        return original(value)
+    monkeypatch.setattr(audit, '_digest', bounded_digest)
+    with pytest.raises(ValueError):
+        audit.audit_saved_replay(**dict(kwargs, plan_bytes=oversized_plan))
+    with pytest.raises(ValueError):
+        audit.audit_saved_replay(**dict(kwargs, references=(oversized_reference,) + kwargs['references'][1:]))
+
+
 def test_rechained_private_landing_tamper_is_rejected(saved_replay, monkeypatch):
     kwargs = _configure(monkeypatch, saved_replay)
     pairs = list(saved_replay['pairs'])
