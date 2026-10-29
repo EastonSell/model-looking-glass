@@ -1,0 +1,11 @@
+{
+  "bidirectional_pairs": 117504,
+  "bundle_schema": "distilgpt2-paired-continuation-cases-v1",
+  "bundle_sha256": "68b567718209285a9adedd588d0c0d269efb4b7d8ed9d278a2fb8201d672d1dd",
+  "case_sha256": "188782606abd576cde029408bb34975e7fd7ac2113bf17299dbb7e1aa2ddd76b",
+  "foreign_sequences": 192,
+  "own_sequences": 612,
+  "relations": 0,
+  "schema": "natural-invariant-transfer-pending-comparison-v1",
+  "scope": "Public fixed pending bundle only; no model use or private exposure is established."
+}
