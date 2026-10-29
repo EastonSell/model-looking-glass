@@ -66,3 +66,16 @@ the original workspace root, this run used `work/.venv/Scripts/python.exe`,
 the `work/hf-cache/hub` checkpoint cache and the deliberately absent
 `work/distilgpt2-batch-cpu-v1-pycache-never-created` prefix, expanded to
 absolute paths at launch.
+
+An independently launched fresh CPU process repeated the frozen protocol on
+the same machine and runtime. Its six uncompressed output members match the
+original member SHA-256s, and the primary report, controls, observed input
+rows and model-state fingerprints match. The [replay records](replay/) retain
+the attempt, report, summary and raw archive. The replay ZIP container SHA-256
+is `5c7aafab931e8954d1c40792f89bbb8c2c7839db9a99224bc1be3a977b0803fb`;
+its container hash differs from the original because member timestamps differ,
+while the uncompressed member bytes match. This is a same-host repeat of the
+four length-four synthetic cases with the same leading EOS token and all-one
+masks, not an independent hardware replication. Padding and mask variants,
+other lengths, natural-language prompts, GPU execution and broker batching
+were not tested by this run.
