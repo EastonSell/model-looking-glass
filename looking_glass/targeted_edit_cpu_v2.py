@@ -175,7 +175,12 @@ def verify_development_selection(logits, recorded_selection):
 
 
 def evaluate(logits, selection):
-    """Recompute saved evaluation metrics after selection has been verified."""
+    """Recompute provisional numerical metrics after selection is verified.
+
+    The returned decision cannot assess provenance, execution, artifact
+    completeness or cleanup. The study owner and auditor must verify those
+    gates before assigning a final outcome.
+    """
     if type(selection) is not dict or type(selection.get("development_qualified")) is not bool:
         raise v1.StudyError("missing validated development selection")
     selected_name = selection.get("selected_condition")
