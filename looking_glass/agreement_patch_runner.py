@@ -474,6 +474,9 @@ class NaturalAgreementRunner:
     def _failed_forward(self, error):
         pass
 
+    def _failure_cleanup_status(self, error):
+        return _cleanup_status(self.model, self._baseline_hooks, error)
+
     def _seed_device_rng(self):
         return None
 
@@ -615,6 +618,11 @@ class NaturalAgreementRunner:
             self._finish_forward_roots()
             return last_logits, encoded, metadata
         except BaseException as error:
+            # The legacy runner retains secondary interruptions as diagnostics.
+            # A fail-stop study may opt in to making a newly observed
+            # cancellation primary after preserving its known failure roots.
+            interruption = None
+            propagate = getattr(self, '_propagate_fresh_interruptions', False) is True
             # A device call may have returned into a local before an interrupt
             # prevented its normal custody-slot assignment. Retain every known
             # local before attempting any synchronization or cleanup.
@@ -625,18 +633,37 @@ class NaturalAgreementRunner:
                         self._root_forward(name, value)
                     except BaseException as root_error:
                         self.quarantined = True
+                        if propagate and isinstance(root_error, (KeyboardInterrupt, SystemExit)):
+                            interruption = root_error
                         if hasattr(error, 'add_note'):
                             error.add_note('Forward custody is uncertain: ' + type(root_error).__name__)
             try:
                 self._failed_forward(error)
             except BaseException as cleanup_error:
                 self.quarantined = True
+                if propagate and isinstance(cleanup_error, (KeyboardInterrupt, SystemExit)):
+                    interruption = cleanup_error
                 if hasattr(error, 'add_note'):
                     error.add_note('Device completion is unknown; discard the worker: '
                                    + type(cleanup_error).__name__)
-            _cleanup_status(self.model, self._baseline_hooks, error)
+            try:
+                self._failure_cleanup_status(error)
+            except BaseException as inspection_error:
+                self.quarantined = True
+                if propagate and isinstance(inspection_error, (KeyboardInterrupt, SystemExit)):
+                    interruption = inspection_error
+                elif hasattr(error, 'add_note'):
+                    error.add_note('Hook inspection failed: ' + type(inspection_error).__name__)
             if started_here:
-                self._record_rejected(case, output, captures, metadata, error)
+                try:
+                    self._record_rejected(case, output, captures, metadata, interruption or error)
+                except (KeyboardInterrupt, SystemExit) as evidence_error:
+                    if propagate:
+                        self.quarantined = True
+                        raise evidence_error from (interruption or error)
+                    raise
+            if interruption is not None:
+                raise interruption from error
             raise
 
     def _record_rejected(self, case, output, captures, metadata, primary_error):
