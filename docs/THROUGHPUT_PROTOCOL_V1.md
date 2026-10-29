@@ -231,9 +231,14 @@ counters are recorded. The broker uses one resident model and execution thread,
 four pending slots and one pending slot per team; it neither batches nor overlaps
 model forwards. External applications can still allocate GPU memory.
 
-After broker drain and synchronization the owner clears the PyTorch allocator
-cache and checks that both allocated and reserved tensor bytes are zero before
-attesting clean. A timeout, invalid physical binding, retained allocation, failed
+After broker drain the owner rechecks the device lease, synchronizes, empties the
+allocator cache, and records the allocated/reserved counters. The development
+path is limited to PyTorch `2.8.0+cu128` with CUDA runtime `12.8` and uses its
+private `_cuda_clearCublasWorkspaces` API, which was exercised by the separate
+two-token pilot. The owner rechecks the lease immediately before this call,
+synchronizes and empties the cache again, records the final counters, and requires
+both to be zero before attesting clean. If cleanup fails, available pre-clear
+diagnostics are preserved and no clean attestation is sent. A timeout, invalid physical binding, retained allocation, failed
 synchronization or uncertain drain leaves the supervisor's unsafe marker in place.
 The controller accepts a result only after a clean reaped child with exit code
 zero and complete matching source, workload, raw attempts, timings, memory,

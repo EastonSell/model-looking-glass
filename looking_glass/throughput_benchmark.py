@@ -877,6 +877,9 @@ _CHILD_OS_ENV = ('PATH', 'PATHEXT', 'SYSTEMROOT', 'WINDIR', 'SYSTEMDRIVE', 'COMS
                  'TEMP', 'TMP', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH', 'HOME',
                  'LOCALAPPDATA', 'APPDATA')
 _DEVELOPMENT_ALLOCATOR_FRACTION = 0.25
+_CUBLAS_CLEANUP_TORCH_VERSION = '2.8.0+cu128'
+_CUBLAS_CLEANUP_CUDA_VERSION = '12.8'
+_CUBLAS_CLEANUP_API = 'torch._C._cuda_clearCublasWorkspaces'
 
 
 def _capture_cuda_environment(environment):
@@ -991,17 +994,49 @@ def _attest_owner(session, device_lease, *, runtime_verified, budget, synchroniz
     session.attest_clean(device_lease)
 
 
-def _clear_cuda_allocator(torch_module, device):
-    """Require zero live or cached PyTorch tensor bytes in the owner process."""
+def _cublas_workspace_clear(torch_module):
+    """Locate the pilot-tested private API without initializing CUDA."""
+    callback = getattr(getattr(torch_module, '_C', None), '_cuda_clearCublasWorkspaces', None)
+    if (str(getattr(torch_module, '__version__', '')) != _CUBLAS_CLEANUP_TORCH_VERSION
+            or getattr(getattr(torch_module, 'version', None), 'cuda', None) != _CUBLAS_CLEANUP_CUDA_VERSION
+            or not callable(callback)):
+        raise RuntimeError('unsupported PyTorch cuBLAS workspace cleanup API or version')
+    return callback
+
+
+def _clear_cuda_allocator(torch_module, device, *, owner_session, device_lease, diagnostics=None):
+    """Drain and clear the tested cuBLAS workspace before zero-byte attestation."""
     import gc
+    if diagnostics is None:
+        diagnostics = {}
+    _check_owner_before_cuda(owner_session, device_lease)
+    clear_workspaces = _cublas_workspace_clear(torch_module)
     gc.collect()
     torch_module.cuda.synchronize(device)
     torch_module.cuda.empty_cache()
+    pre_allocated = torch_module.cuda.memory_allocated(device)
+    pre_reserved = torch_module.cuda.memory_reserved(device)
+    if (type(pre_allocated) is not int or type(pre_reserved) is not int
+            or pre_allocated < 0 or pre_reserved < pre_allocated):
+        diagnostics['pre_workspace_clear_counters_valid'] = False
+        raise RuntimeError('invalid PyTorch allocator counters before workspace cleanup')
+    diagnostics.update(pre_workspace_clear_allocated_bytes=pre_allocated,
+                       pre_workspace_clear_reserved_bytes=pre_reserved,
+                       workspace_clear_api=_CUBLAS_CLEANUP_API)
+    _check_owner_before_cuda(owner_session, device_lease)
+    clear_workspaces()
+    torch_module.cuda.synchronize(device)
+    torch_module.cuda.empty_cache()
+    _check_owner_before_cuda(owner_session, device_lease)
     allocated = torch_module.cuda.memory_allocated(device)
     reserved = torch_module.cuda.memory_reserved(device)
-    if type(allocated) is not int or type(reserved) is not int or allocated != 0 or reserved != 0:
+    if type(allocated) is not int or type(reserved) is not int:
+        diagnostics['post_workspace_clear_counters_valid'] = False
+        raise RuntimeError('invalid PyTorch allocator counters after workspace cleanup')
+    diagnostics.update(allocated_bytes=allocated, reserved_bytes=reserved)
+    if allocated != 0 or reserved != 0:
         raise RuntimeError(f'live PyTorch CUDA allocations remain after teardown: allocated={allocated}, reserved={reserved}')
-    return {'allocated_bytes': allocated, 'reserved_bytes': reserved}
+    return diagnostics
 
 
 def _configure_cuda_allocator(torch_module, device):
@@ -1310,7 +1345,9 @@ def run_distilgpt2_benchmark(output_dir, *, cache_dir, device='cpu', gpu_activit
                     bundle.model.to('cpu')
                     bundle.model = None
                 torch.cuda.synchronize(resolved_device)
-                cuda_cleanup = _clear_cuda_allocator(torch, resolved_device)
+                cuda_cleanup = {}
+                cuda_cleanup = _clear_cuda_allocator(torch, resolved_device,
+                    owner_session=owner_session, device_lease=device_lease, diagnostics=cuda_cleanup)
                 if lease is not None:
                     lease.release()
                 _attest_owner(owner_session, device_lease, runtime_verified=runtime_verified,
@@ -1323,6 +1360,7 @@ def run_distilgpt2_benchmark(output_dir, *, cache_dir, device='cpu', gpu_activit
                     'cuda_allocator_after_cleanup': cuda_cleanup}
                    if cleanup_error is None else
                    {'status': 'failed', 'type': type(cleanup_error).__name__, 'message': str(cleanup_error),
+                    'cuda_allocator_cleanup_diagnostics': cuda_cleanup,
                     'work_may_still_be_running': True})
         cleanup['admission_status'] = 'development_unprofiled' if device_name == 'cuda:0' else None
         publication_errors = []
@@ -1374,6 +1412,7 @@ def _preflight_distilgpt2(cache_dir, *, quick):
         import torch
         if torch.cuda.is_initialized() is not False:
             raise RuntimeError('PyTorch CUDA was initialized during CPU preflight')
+        _cublas_workspace_clear(torch)
         from .pretrained import load_distilgpt2
         bundle = load_distilgpt2(cache_dir=cache_dir, allow_download=False)
         prompts = DISTILGPT2_PROMPTS[:2] if quick else DISTILGPT2_PROMPTS
@@ -1385,7 +1424,8 @@ def _preflight_distilgpt2(cache_dir, *, quick):
             raise RuntimeError('PyTorch CUDA was initialized during CPU preflight')
         return {'model_metadata': metadata, 'manifest_jobs': manifest['jobs'],
                 'source': _source_metadata(), 'public_prompts': list(prompts),
-                'pytorch_cuda_initialized': False}
+                'pytorch_cuda_initialized': False, 'torch_cuda_runtime': torch.version.cuda,
+                'cublas_workspace_clear_api': _CUBLAS_CLEANUP_API}
     finally:
         if was_set:
             os.environ['CUDA_VISIBLE_DEVICES'] = visible
@@ -1412,6 +1452,10 @@ def _validate_preflight(preflight, *, quick):
     from .pretrained import ASSETS, MODEL_ID, REVISION
     if preflight.get('pytorch_cuda_initialized') is not False:
         raise ValueError('CPU preflight did not verify uninitialized PyTorch CUDA state')
+    if preflight.get('cublas_workspace_clear_api') != _CUBLAS_CLEANUP_API:
+        raise ValueError('CPU preflight did not verify the supported cuBLAS workspace cleanup API')
+    if preflight.get('torch_cuda_runtime') != _CUBLAS_CLEANUP_CUDA_VERSION:
+        raise ValueError('CPU preflight CUDA runtime is unsupported for workspace cleanup')
     cuda_environment = preflight.get('cuda_environment')
     if (type(cuda_environment) is not dict
             or any(type(key) is not str or type(value) is not str for key, value in cuda_environment.items())
@@ -1433,7 +1477,7 @@ def _validate_preflight(preflight, *, quick):
             or metadata.get('model_class') != 'GPT2LMHeadModel'
             or metadata.get('tokenizer_class') != 'GPT2TokenizerFast'
             or type(metadata.get('parameter_count')) is not int or metadata['parameter_count'] != 81912576
-            or type(metadata.get('torch_version')) is not str or not metadata['torch_version']
+            or metadata.get('torch_version') != _CUBLAS_CLEANUP_TORCH_VERSION
             or type(metadata.get('transformers_version')) is not str or not metadata['transformers_version']
             or metadata.get('asset_sha256') != assets
             or metadata.get('weights_sha256') != ASSETS['model.safetensors'][1]
@@ -1684,8 +1728,15 @@ def _validate_owner_evidence(owner_dir, *, supervision, preflight, gpu_uuid, rep
     allocator = cleanup.get('cuda_allocator_after_cleanup')
     if (cleanup.get('status') != 'complete' or cleanup.get('owner_attested_clean') is not True
             or cleanup.get('broker_state') != 'stopped' or cleanup.get('memory_lease_released') is not True
-            or type(allocator) is not dict or set(allocator) != {'allocated_bytes', 'reserved_bytes'}
-            or any(type(value) is not int or value != 0 for value in allocator.values())
+            or type(allocator) is not dict or set(allocator) != {
+                'allocated_bytes', 'reserved_bytes', 'pre_workspace_clear_allocated_bytes',
+                'pre_workspace_clear_reserved_bytes', 'workspace_clear_api'}
+            or any(type(allocator.get(key)) is not int or allocator[key] != 0
+                   for key in ('allocated_bytes', 'reserved_bytes'))
+            or any(type(allocator.get(key)) is not int or allocator[key] < 0 for key in
+                   ('pre_workspace_clear_allocated_bytes', 'pre_workspace_clear_reserved_bytes'))
+            or allocator['pre_workspace_clear_reserved_bytes'] < allocator['pre_workspace_clear_allocated_bytes']
+            or allocator['workspace_clear_api'] != _CUBLAS_CLEANUP_API
             or final.get('status') != 'complete' or final.get('measurement_status') != 'complete'
             or final.get('cleanup_status') != 'complete' or final.get('work_may_still_be_running') is not False
             or result.get('status') != 'complete'):
@@ -1723,7 +1774,7 @@ def _validate_owner_evidence(owner_dir, *, supervision, preflight, gpu_uuid, rep
             or environment.get('cublas_workspace_config') not in (':4096:8', ':16:8')
             or environment.get('torch') != preflight['model_metadata'].get('torch_version')
             or environment.get('transformers') != preflight['model_metadata'].get('transformers_version')
-            or type(environment.get('cuda_runtime')) is not str or not environment['cuda_runtime']
+            or environment.get('cuda_runtime') != _CUBLAS_CLEANUP_CUDA_VERSION
             or type(environment.get('device_name')) is not str or not environment['device_name']
             or type(environment.get('compute_capability')) is not list
             or len(environment['compute_capability']) != 2
