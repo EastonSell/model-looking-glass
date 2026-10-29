@@ -71,6 +71,9 @@ association between that digest and the saved state is an independent external
 attestation. This update does not authorize replacing or refunding either
 discovery claim or redrawing a private site; prior draw chronology is an
 operator report, not established by the ledger.
+The scope amendment's statement that prior commitment bytes remain unchanged
+is an operation constraint: reconciliation does not open or independently
+verify private commitments. The custodian verifies their integrity separately.
 
 The observed candidate inventory and its generator are retained locally as
 `work/agreement-ledger-inventory-candidate.json` and
