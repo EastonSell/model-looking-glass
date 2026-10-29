@@ -36,7 +36,9 @@ oversized input, corrupt saved-vector readback, degenerate direction and
 binary32 edge cases.
 
 The recorded construction used CPython 3.11.15, MSC v.1944 AMD64 on Windows,
-with binary64 radix 2, 53-bit mantissa and round mode 1. The exact operation
+with binary64 radix 2, 53-bit mantissa and `sys.float_info.rounds == 1`
+reported at startup. This is not a continuous live floating-point-mode probe.
+The exact operation
 order and the runtime `sqrt` limitation are fixed in the protocol; a different
 runtime should be checked against these hashes instead of assumed identical.
 The historical model run did not record `MKL_CBWR` or `ATEN_CPU_CAPABILITY`;
