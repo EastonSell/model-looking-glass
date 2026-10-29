@@ -37,11 +37,29 @@ Missing values, nonfinite or empty tensors, unsupported layouts or devices,
 mismatched shape/dtype/device, and inconsistent saved-value metadata cannot
 establish equality. Empty streams cannot establish equality either. Only dense
 strided CPU or CUDA tensors in float16, bfloat16, float32, or float64 are
-supported; sparse, meta, float8, and other values are reported as unavailable.
-Values are compared elementwise against the reference magnitude:
-`abs(candidate - reference) <= atol + rtol * abs(reference)`. Both tolerances
-must be finite, nonnegative real numbers. Comparison uses direct subtraction
-and rescales extreme overflow cases. Exact matching is the default.
+supported; sparse, meta, float8, named tensors, lazy negative/conjugate views,
+and other values are reported as unavailable. Values are compared elementwise
+against the reference magnitude:
+`abs(candidate - reference) <= atol + rtol * abs(reference)`. This inequality
+uses exact real arithmetic over the recorded finite IEEE tensor values and the
+binary64 tolerance values. It can therefore differ at a boundary from the
+previously implemented rounded binary64 computation. Signed zeros compare equal.
+Both tolerances must be finite, nonnegative built-in Python `int` or `float`
+values; integers are converted to binary64 first. Other numeric types must be
+explicitly converted by the caller before use. Restricting the conversion avoids
+silently flushing a subnormal in an implicit conversion; integers that are not
+exactly representable as binary64 are rejected instead of rounded. Zero
+tolerance is the default. Subnormal bits are preserved during comparison even if the calling
+CPU thread flushes denormals; this does not establish the numerical mode used
+when the model produced the retained values.
+
+The `tolerance` report includes `rtol_binary64_hex` and `atol_binary64_hex`,
+each exactly 16 hexadecimal digits encoding the authoritative IEEE-754
+binary64 bits. These are bit patterns, not Python's `float.hex()` strings.
+The corresponding numeric `rtol` or `atol` field is `null` for subnormal
+tolerances in either CPU mode: Python JSON formatting can otherwise print a
+retained subnormal as zero while denormal flushing is enabled. Other finite
+tolerances keep their numeric fields, and the hex fields preserve signed zero.
 
 - `difference_observed`: a difference is present at a matched observation and
   all earlier supplied observations form an aligned, available, equal prefix.
@@ -67,6 +85,12 @@ explain model reasoning.
 
 This comparator does not save tensor values, impose a trace-memory budget, or
 schedule GPU work. Finite-value checks and element comparisons can synchronize a
-GPU; nonzero-tolerance comparisons also allocate temporary float64 tensors.
-Measure or budget that cost separately, and prefer bounded CPU-staged traces
+GPU. Exact comparisons use temporary integer views and masks, and nonzero
+tolerances stage complete saved snapshots on CPU before processing bounded
+chunks of Python integers. A noncontiguous value can require a full-size
+contiguous copy, including a device-side staging copy for CUDA. The caller must
+budget source-sized device and host copies and use supervised GPU ownership;
+the integer chunks do not bound this snapshot staging. Nonzero-tolerance
+comparison may be substantially slower than vectorized float comparison.
+Measure or budget these costs separately, and prefer bounded CPU-staged traces
 when appropriate. No new empirical localization result is claimed here.

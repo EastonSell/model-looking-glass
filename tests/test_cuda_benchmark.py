@@ -2,6 +2,7 @@ import json
 import hashlib
 import io
 import os
+import py_compile
 import subprocess
 import sys
 import site
@@ -24,6 +25,141 @@ except ImportError:
 
 
 class OwnerLaunchTests(unittest.TestCase):
+    def test_source_entrypoint_rejects_unsafe_parent_startup_before_import(self):
+        entry = Path(bench.__file__).with_name("cuda_benchmark_entry.py")
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            package = root / "looking_glass"
+            package.mkdir()
+            (package / "__init__.py").write_text("", encoding="utf-8")
+            marker = root / "controller-imported"
+            (package / "cuda_benchmark.py").write_text(
+                "from pathlib import Path\n"
+                f"Path({str(marker)!r}).write_text('unsafe')\n", encoding="utf-8")
+            copied = package / "cuda_benchmark_entry.py"
+            copied.write_bytes(entry.read_bytes())
+            child = subprocess.run([sys._base_executable, str(copied), "--site-packages", str(root)],
+                cwd=root, capture_output=True, text=True, timeout=20, check=False)
+            self.assertNotEqual(child.returncode, 0)
+            self.assertFalse(marker.exists())
+
+    def test_source_entrypoint_ignores_stale_bytecode_and_hostile_paths(self):
+        entry = Path(bench.__file__).with_name("cuda_benchmark_entry.py")
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            package = root / "looking_glass"
+            package.mkdir()
+            (package / "__init__.py").write_text("", encoding="utf-8")
+            controller = package / "cuda_benchmark.py"
+            controller.write_text('import statistics\ndef main(): print("OLD")\n', encoding="utf-8")
+            old = controller.stat()
+            py_compile.compile(str(controller), doraise=True)
+            controller.write_text('import statistics\ndef main(): print("NEW")\n', encoding="utf-8")
+            os.utime(controller, ns=(old.st_atime_ns, old.st_mtime_ns))
+            copied = package / "cuda_benchmark_entry.py"
+            copied.write_bytes(entry.read_bytes())
+            shadow_source = package / "json.py"
+            shadow_source.write_text("raise RuntimeError('unsafe script-directory bytecode')\n", encoding="utf-8")
+            py_compile.compile(str(shadow_source), cfile=str(package / "json.pyc"), doraise=True)
+            shadow_source.unlink()
+            (root / "json.py").write_text("raise RuntimeError('unsafe startup path')\n", encoding="utf-8")
+            shadow_source = root / "fractions.py"
+            marker = root / "shadow-ran"
+            shadow_source.write_text("from pathlib import Path\n"
+                f"Path({str(marker)!r}).write_text('ran')\n"
+                "raise RuntimeError('unsafe root bytecode')\n", encoding="utf-8")
+            py_compile.compile(str(shadow_source), cfile=str(root / "fractions.pyc"), doraise=True)
+            shadow_source.unlink()
+            env = os.environ.copy()
+            env["PYTHONPATH"] = str(root)
+            env["CUDA_VISIBLE_DEVICES"] = "-1"
+            fresh = root / "never-created-pycache"
+            child = subprocess.run([sys._base_executable, "-I", "-B", "-S", "-X",
+                "pycache_prefix=" + str(fresh), str(copied), "--site-packages", str(root)],
+                cwd=root, env=env, capture_output=True, text=True, timeout=20, check=False)
+            self.assertEqual(child.returncode, 0, child.stderr)
+            self.assertEqual(child.stdout.strip(), "NEW")
+            self.assertFalse(fresh.exists())
+            self.assertFalse(marker.exists())
+
+    def test_source_entrypoint_rejects_sourceless_project_module_before_execution(self):
+        entry = Path(bench.__file__).with_name("cuda_benchmark_entry.py")
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            package = root / "looking_glass"
+            package.mkdir()
+            (package / "__init__.py").write_text("", encoding="utf-8")
+            marker = root / "sourceless-ran"
+            controller = package / "cuda_benchmark.py"
+            controller.write_text("from pathlib import Path\n"
+                f"Path({str(marker)!r}).write_text('ran')\n", encoding="utf-8")
+            py_compile.compile(str(controller), cfile=str(package / "cuda_benchmark.pyc"), doraise=True)
+            controller.unlink()
+            copied = package / "cuda_benchmark_entry.py"
+            copied.write_bytes(entry.read_bytes())
+            fresh = root / "never-created-pycache"
+            child = subprocess.run([sys._base_executable, "-I", "-B", "-S", "-X",
+                "pycache_prefix=" + str(fresh), str(copied), "--site-packages", str(root)],
+                cwd=root, capture_output=True, text=True, timeout=20, check=False)
+            self.assertNotEqual(child.returncode, 0)
+            self.assertFalse(marker.exists())
+
+    def test_direct_child_ignores_hostile_pythonpath_and_working_directory(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            marker = root / "startup-hook-ran"
+            (root / "json.py").write_text(
+                "from pathlib import Path\n"
+                f"Path({str(marker)!r}).write_text('ran')\n"
+                "raise RuntimeError('untrusted json module executed')\n", encoding="utf-8")
+            (root / "sitecustomize.py").write_text(
+                "from pathlib import Path\n"
+                f"Path({str(marker)!r}).write_text('ran')\n", encoding="utf-8")
+            (root / "safe_probe.py").write_text('print("safe")\n', encoding="utf-8")
+            command, environment = bench.direct_python_module("safe_probe", [], project=root)
+            environment["PYTHONPATH"] = str(root)
+            environment["CUDA_VISIBLE_DEVICES"] = "-1"
+            child = subprocess.run(command, cwd=root, env=environment,
+                capture_output=True, text=True, timeout=20, check=False)
+            self.assertEqual(child.returncode, 0, child.stderr)
+            self.assertEqual(child.stdout.strip(), "safe")
+            self.assertFalse(marker.exists())
+
+    def test_direct_child_does_not_import_sourceless_root_shadow(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            marker = root / "shadow-ran"
+            shadow = root / "fractions.py"
+            shadow.write_text("from pathlib import Path\n"
+                f"Path({str(marker)!r}).write_text('ran')\n"
+                "raise RuntimeError('root shadow')\n", encoding="utf-8")
+            py_compile.compile(str(shadow), cfile=str(root / "fractions.pyc"), doraise=True)
+            shadow.unlink()
+            (root / "safe_probe.py").write_text('import statistics\nprint("safe")\n', encoding="utf-8")
+            command, environment = bench.direct_python_module("safe_probe", [], project=root)
+            environment["CUDA_VISIBLE_DEVICES"] = "-1"
+            child = subprocess.run(command, cwd=root, env=environment,
+                capture_output=True, text=True, timeout=20, check=False)
+            self.assertEqual(child.returncode, 0, child.stderr)
+            self.assertEqual(child.stdout.strip(), "safe")
+            self.assertFalse(marker.exists())
+
+    def test_direct_child_does_not_read_a_stale_timestamp_valid_pyc(self):
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            source = root / "pyc_probe.py"
+            source.write_text('print("OLD")\n', encoding="utf-8")
+            original = source.stat()
+            py_compile.compile(str(source), doraise=True)
+            source.write_text('print("NEW")\n', encoding="utf-8")
+            os.utime(source, ns=(original.st_atime_ns, original.st_mtime_ns))
+            command, environment = bench.direct_python_module("pyc_probe", [], project=root)
+            environment["CUDA_VISIBLE_DEVICES"] = "-1"
+            child = subprocess.run(command, cwd=root, env=environment,
+                capture_output=True, text=True, timeout=20, check=False)
+            self.assertEqual(child.returncode, 0, child.stderr)
+            self.assertEqual(child.stdout.strip(), "NEW")
+
     def test_cleanup_attests_only_after_synchronization_and_zero_allocations(self):
         events = []
         class Lease:
@@ -854,6 +990,7 @@ class EquivalenceTests(unittest.TestCase):
                                     identity=None, device_lease_path=lease_path)
             source, _ = bench.create_source_bundle(Path(bench.__file__).resolve().parent.parent)
             with patch.object(bench, "GPU_BENCHMARK_ADMISSION_READY", True), \
+                 patch.object(bench, "_require_clean_python_runtime"), \
                  patch.object(bench, "_validate_owner_session"), \
                  patch.object(bench, "_acquire_device_lease"), \
                  patch.object(torch.cuda, "is_available") as cuda_available:
@@ -870,6 +1007,7 @@ class EquivalenceTests(unittest.TestCase):
                                     identity=object(), device_lease_path=Path(root) / "device.lock")
             source, _ = bench.create_source_bundle(Path(bench.__file__).resolve().parent.parent)
             with patch.object(bench, "GPU_BENCHMARK_ADMISSION_READY", True), \
+                 patch.object(bench, "_require_clean_python_runtime"), \
                  patch.object(torch.cuda, "is_available", return_value=False), \
                  patch.object(bench, "_acquire_device_lease") as acquire, \
                  patch.object(bench, "_validate_owner_session"):

@@ -28,6 +28,14 @@ class WorkerExecutionError(RuntimeError):
     """A model forward or its output violated the execution contract."""
 
 
+class WorkerConfigurationError(WorkerExecutionError):
+    """The execution thread has unsupported ambient runtime settings."""
+
+
+class WorkerStateError(WorkerExecutionError):
+    """Post-forward model state or cache behavior violated its contract."""
+
+
 class WorkerOutOfMemory(WorkerExecutionError):
     """Allocation failed; the worker must be replaced."""
 
@@ -64,6 +72,58 @@ _mapping_proxy_type = type(MappingProxyType({}))
 _input_names = frozenset(("input_ids", "attention_mask", "token_type_ids", "position_ids"))
 
 
+def _describe_failure(exc, fallback):
+    """Keep useful diagnostics without depending on an exception's __str__."""
+    try:
+        return f"{type(exc).__name__}: {str(exc)[:1024]}"
+    except BaseException:
+        return fallback
+
+
+def registered_model_state(model, device):
+    """Snapshot registered identities and versions; this is not an integrity proof.
+
+    The snapshot is meaningful only in this process and can miss ``.data``
+    edits, unregistered mutable state, and arbitrary model-code side effects.
+    """
+    if not isinstance(model, nn.Module):
+        raise TypeError("model must be a trusted torch.nn.Module")
+    device = torch.device(device)
+    global_hooks = nn.modules.module
+    if any(getattr(global_hooks, name, None) for name in (
+            "_global_forward_hooks", "_global_forward_pre_hooks",
+            "_global_backward_hooks", "_global_backward_pre_hooks")):
+        raise ValueError("process-global module hooks are not supported")
+    modules = []
+    for name, module in model.named_modules():
+        if module.training:
+            raise ValueError("every model module must be in evaluation mode")
+        if (module._forward_hooks or module._forward_pre_hooks or module._backward_hooks
+                or module._backward_pre_hooks):
+            raise ValueError("model hooks are not supported by this worker")
+        modules.append((name, id(module)))
+    tensors = []
+    for kind, collection in (("parameter", model.named_parameters()),
+                             ("buffer", model.named_buffers())):
+        for name, tensor in collection:
+            if tensor.device != device:
+                raise ValueError("all model parameters and buffers must be on the worker device")
+            try:
+                version = tensor._version
+            except RuntimeError as exc:
+                raise ValueError("model tensors must track in-place changes") from exc
+            tensors.append((kind, name, id(tensor), version, tuple(tensor.shape),
+                            str(tensor.dtype), str(tensor.device)))
+    config = getattr(model, "config", None)
+    if config is not None and hasattr(config, "use_cache"):
+        cache_policy = config.use_cache
+        if cache_policy is not False:
+            raise ValueError("model cache must be explicitly disabled")
+    else:
+        cache_policy = None
+    return tuple(modules), tuple(tensors), (id(config), cache_policy)
+
+
 class ResidentWorker:
     """Own a preconfigured model and execute at most one forward at a time."""
 
@@ -89,17 +149,41 @@ class ResidentWorker:
             raise ValueError("only CPU and CUDA devices are supported")
         if resolved_device.type == "cuda" and resolved_device.index is None:
             resolved_device = torch.device("cuda", torch.cuda.current_device())
-        self.model_id = model_id
-        self.device = resolved_device
-        self.max_batch_size = max_batch_size
-        self.max_sequence_length = max_sequence_length
-        self.max_input_bytes = max_input_bytes
-        self.max_output_bytes = max_output_bytes
+        self._model_id = model_id
+        self._device = resolved_device
+        self._max_batch_size = max_batch_size
+        self._max_sequence_length = max_sequence_length
+        self._max_input_bytes = max_input_bytes
+        self._max_output_bytes = max_output_bytes
         self._lock = threading.Lock()
         self._model = model
         self._poison_pending = threading.Event()
         self._closed = False
         self._baseline = self._model_state()
+
+    @property
+    def model_id(self):
+        return self._model_id
+
+    @property
+    def device(self):
+        return self._device
+
+    @property
+    def max_batch_size(self):
+        return self._max_batch_size
+
+    @property
+    def max_sequence_length(self):
+        return self._max_sequence_length
+
+    @property
+    def max_input_bytes(self):
+        return self._max_input_bytes
+
+    @property
+    def max_output_bytes(self):
+        return self._max_output_bytes
 
     @property
     def poisoned(self):
@@ -111,82 +195,72 @@ class ResidentWorker:
         return _process_quarantined.is_set()
 
     def _model_state(self):
-        global_hooks = nn.modules.module
-        if any(getattr(global_hooks, name, None) for name in (
-                "_global_forward_hooks", "_global_forward_pre_hooks",
-                "_global_backward_hooks", "_global_backward_pre_hooks")):
-            raise ValueError("process-global module hooks are not supported")
-        modules = []
-        for name, module in self._model.named_modules():
-            if module.training:
-                raise ValueError("every model module must be in evaluation mode")
-            if (module._forward_hooks or module._forward_pre_hooks or module._backward_hooks
-                    or module._backward_pre_hooks):
-                raise ValueError("model hooks are not supported by this worker")
-            modules.append((name, id(module)))
-        tensors = []
-        for kind, collection in (("parameter", self._model.named_parameters()),
-                                 ("buffer", self._model.named_buffers())):
-            for name, tensor in collection:
-                if tensor.device != self.device:
-                    raise ValueError("all model parameters and buffers must be on the worker device")
-                try:
-                    version = tensor._version
-                except RuntimeError as exc:
-                    raise ValueError("model tensors must track in-place changes") from exc
-                tensors.append((kind, name, id(tensor), version, tuple(tensor.shape),
-                                str(tensor.dtype), str(tensor.device)))
-        return tuple(modules), tuple(tensors)
+        return registered_model_state(self._model, self.device)
 
     def validate_request(self, request):
         """Validate without copying inputs or modifying model state."""
+        error = self._request_error(request)
+        request = None
+        if error is not None:
+            raise InvalidRequest(error)
+
+    def _request_error(self, request):
         if type(request) is not ForwardRequest:
-            raise InvalidRequest("request must be a ForwardRequest")
+            return "request must be a ForwardRequest"
         if type(request.request_id) is not str or not request.request_id or len(request.request_id) > 256:
-            raise InvalidRequest("request_id must be a nonempty string of at most 256 characters")
+            return "request_id must be a nonempty string of at most 256 characters"
         if type(request.seed) is not int or not 0 <= request.seed < 2**63:
-            raise InvalidRequest("seed must be an integer in [0, 2**63)")
+            return "seed must be an integer in [0, 2**63)"
         if type(request.inputs) not in (dict, _mapping_proxy_type):
-            raise InvalidRequest("inputs must be a plain tensor dictionary")
+            return "inputs must be a plain tensor dictionary"
         if any(type(name) is not str for name in request.inputs):
-            raise InvalidRequest("input names must be plain strings")
+            return "input names must be plain strings"
         if "input_ids" not in request.inputs or not set(request.inputs).issubset(_input_names):
-            raise InvalidRequest("inputs must contain input_ids and only supported names")
+            return "inputs must contain input_ids and only supported names"
         shape = None
         total_bytes = 0
         for name, value in request.inputs.items():
             if type(value) is not torch.Tensor or value.device.type != "cpu" or value.layout != torch.strided:
-                raise InvalidRequest("inputs must be ordinary dense CPU tensors")
+                return "inputs must be ordinary dense CPU tensors"
             allowed = (torch.int32, torch.int64, torch.bool) if name == "attention_mask" else (torch.int32, torch.int64)
             if value.dtype not in allowed or value.ndim != 2:
-                raise InvalidRequest("input tensors must be two-dimensional integer token tensors")
+                return "input tensors must be two-dimensional integer token tensors"
             if shape is None:
                 shape = tuple(value.shape)
             elif shape != tuple(value.shape):
-                raise InvalidRequest("all input tensors must have the same shape")
+                return "all input tensors must have the same shape"
             total_bytes += value.numel() * value.element_size()
         if not (0 < shape[0] <= self.max_batch_size and 0 < shape[1] <= self.max_sequence_length):
-            raise InvalidRequest("input batch or sequence length exceeds its bound")
+            return "input batch or sequence length exceeds its bound"
         if total_bytes > self.max_input_bytes:
-            raise InvalidRequest("input tensor bytes exceed their bound")
+            return "input tensor bytes exceed their bound"
+        return None
 
     def snapshot_request(self, request):
         """Make a bounded CPU snapshot; caller must not mutate during copying."""
         if _process_quarantined.is_set():
+            request = None
             raise WorkerSynchronizationError("execution process is quarantined")
-        self.validate_request(request)
-        oom = None
+        invalid = None
+        try:
+            self.validate_request(request)
+        except InvalidRequest as exc:
+            invalid = str(exc)
+        if invalid is not None:
+            request = None
+            raise InvalidRequest(invalid) from None
+        oom = False
         try:
             inputs = {name: tensor.detach().clone(memory_format=torch.contiguous_format)
                       for name, tensor in request.inputs.items()}
-        except (MemoryError, torch.OutOfMemoryError) as exc:
+        except (MemoryError, torch.OutOfMemoryError):
             self._poison_pending.set()
-            oom = str(exc)
-        if oom is not None:
+            oom = True
+        if oom:
+            request = None
             with self._lock:
                 self._poison()
-            request = None
-            raise WorkerOutOfMemory(f"input snapshot failed: {oom}") from None
+            raise WorkerOutOfMemory("input snapshot allocation failed") from None
         return ForwardRequest(request.request_id, MappingProxyType(inputs), request.seed)
 
     def _poison(self):
@@ -238,6 +312,8 @@ class ResidentWorker:
                             with torch.inference_mode():
                                 device_inputs = {name: tensor.to(self.device) for name, tensor in request.inputs.items()}
                                 output = self._model(**device_inputs)
+                                if isinstance(output, Mapping) and output.get("past_key_values") is not None:
+                                    raise WorkerStateError("model returned an unsupported key/value cache")
                                 logits = output if type(output) is torch.Tensor else output.get("logits") if isinstance(output, Mapping) else None
                                 if type(logits) is not torch.Tensor or not logits.is_floating_point() or logits.ndim != 3:
                                     raise ValueError("model must return rank-three floating logits")
@@ -262,11 +338,13 @@ class ResidentWorker:
                             quarantine()
         except BaseException as exc:
             if isinstance(exc, (MemoryError, torch.OutOfMemoryError)):
-                failure = (WorkerOutOfMemory, f"allocation failed: {exc}")
+                failure = (WorkerOutOfMemory, _describe_failure(exc, "allocation failed"))
             elif isinstance(exc, OutputLimitExceeded):
-                failure = (OutputLimitExceeded, str(exc))
+                failure = (OutputLimitExceeded, _describe_failure(exc, "output byte bound exceeded"))
+            elif isinstance(exc, WorkerStateError):
+                failure = (WorkerStateError, _describe_failure(exc, "model state contract violated"))
             elif isinstance(exc, Exception):
-                failure = (WorkerExecutionError, f"{type(exc).__name__}: {exc}")
+                failure = (WorkerExecutionError, _describe_failure(exc, "model execution failed"))
             else:
                 exc.__traceback__ = None
                 exc.__context__ = None
@@ -284,6 +362,7 @@ class ResidentWorker:
             request = None
             raise WorkerSynchronizationError("execution process is quarantined")
         if cancel_event is not None and type(cancel_event) is not threading.Event:
+            request = None
             raise InvalidRequest("cancel_event must be a threading.Event")
         if cancel_event is not None and cancel_event.is_set():
             request = None
@@ -291,7 +370,23 @@ class ResidentWorker:
         if self._closed or self.poisoned:
             request = None
             raise WorkerUnavailable("worker is closed or poisoned")
-        snapshot = self.snapshot_request(request)
+        if torch.is_autocast_enabled("cpu") or torch.is_autocast_enabled("cuda"):
+            request = None
+            raise WorkerConfigurationError("ambient autocast is incompatible with resident execution")
+        snapshot_error = None
+        try:
+            snapshot = self.snapshot_request(request)
+        except (InvalidRequest, WorkerOutOfMemory, WorkerSynchronizationError) as exc:
+            snapshot_error = (type(exc), str(exc))
+        except BaseException as exc:
+            request = None
+            exc.__traceback__ = None
+            exc.__context__ = None
+            exc.__cause__ = None
+            raise exc
+        if snapshot_error is not None:
+            request = None
+            raise snapshot_error[0](snapshot_error[1]) from None
         request = None
         if cancel_event is not None and cancel_event.is_set():
             snapshot = None
@@ -307,41 +402,72 @@ class ResidentWorker:
                 state_ok = self._model_state() == self._baseline
             except Exception:
                 state_ok = False
-            if not state_ok:
-                self._poison()
-                snapshot = None
-                raise WorkerUnavailable("model state changed outside the worker")
-            try:
-                logits, failure = self._perform(snapshot)
             except BaseException as exc:
-                self._poison()
                 snapshot = None
                 exc.__traceback__ = None
                 exc.__context__ = None
                 exc.__cause__ = None
+                self._poison_pending.set()
+                self._poison()
                 raise exc
-            if failure is not None and failure[0] is not OutputLimitExceeded:
+            if not state_ok:
+                snapshot = None
+                self._poison_pending.set()
                 self._poison()
+                raise WorkerUnavailable("model state changed outside the worker")
+            try:
+                logits, failure = self._perform(snapshot)
+            except BaseException as exc:
+                snapshot = None
+                exc.__traceback__ = None
+                exc.__context__ = None
+                exc.__cause__ = None
+                self._poison_pending.set()
+                self._poison()
+                raise exc
+            # An unverified CUDA drain is more serious than any state check.
+            # The process-wide latch already prevents subsequent work.
+            if failure is not None and failure[0] is WorkerSynchronizationError:
                 snapshot = None
                 logits = None
+                self._poison_pending.set()
+                self._poison()
                 raise failure[0](failure[1]) from None
-            if self.poisoned:
-                self._poison()
-                snapshot = None
-                logits = None
-                raise WorkerUnavailable("worker was poisoned during execution")
+            # A drained failed forward may still have mutated model state. Check
+            # before dropping the model so its owner can quarantine the lease.
             try:
                 state_ok = self._model_state() == self._baseline
             except Exception:
                 state_ok = False
-            if not state_ok:
-                self._poison()
+            except BaseException as exc:
                 snapshot = None
                 logits = None
-                raise WorkerExecutionError("model changed registered state during forward")
+                exc.__traceback__ = None
+                exc.__context__ = None
+                exc.__cause__ = None
+                self._poison_pending.set()
+                self._poison()
+                raise exc
+            if not state_ok:
+                snapshot = None
+                logits = None
+                self._poison_pending.set()
+                self._poison()
+                detail = "model state changed or could not be verified during forward"
+                if failure is not None:
+                    detail += f"; original failure: {failure[0].__name__}: {failure[1]}"
+                raise WorkerStateError(detail) from None
+            if self.poisoned:
+                snapshot = None
+                logits = None
+                self._poison()
+                raise WorkerUnavailable("worker was poisoned during execution")
             if failure is not None:
                 snapshot = None
                 logits = None
+                if failure[0] is not OutputLimitExceeded:
+                    self._poison_pending.set()
+                    self._poison()
                 raise failure[0](failure[1]) from None
             if cancel_event is not None and cancel_event.is_set():
                 snapshot = None

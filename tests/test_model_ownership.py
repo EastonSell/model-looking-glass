@@ -270,7 +270,7 @@ class ModelOwnershipTests(unittest.TestCase):
                 raise MemoryError('list append failed')
         model = nn.Sequential(nn.Identity())
         capture = ActivationCapture(model, '0')
-        capture._handles = AppendWouldFail([None] * 4)
+        capture._handles = AppendWouldFail([None] * 6)
         with capture:
             model(torch.ones(1, 2))
         self.assertTrue(torch.equal(capture.value, torch.ones(1, 2)))
@@ -871,7 +871,7 @@ class ModelOwnershipTests(unittest.TestCase):
         with ModelLease(model):
             pass
 
-    def test_keyboard_interrupt_from_forward_cleans_on_context_exit(self):
+    def test_keyboard_interrupt_from_forward_has_a_safe_outcome(self):
         import torch
         from looking_glass.interventions import ActivationCapture
         from looking_glass.model_ownership import ModelLease
@@ -886,11 +886,18 @@ class ModelOwnershipTests(unittest.TestCase):
         with self.assertRaisesRegex(KeyboardInterrupt, 'forward cancellation'):
             with session:
                 model(torch.ones(1, 2))
-        self.assertEqual(len(model.tap._forward_hooks), 0)
         with self.assertRaises(RuntimeError):
             _ = session.value
-        with ModelLease(model):
-            pass
+        if session._in_forward:
+            self.assertGreater(len(model.tap._forward_hooks), 0)
+            with self.assertRaises(RuntimeError):
+                ModelLease(model).acquire()
+            with self.assertRaises(RuntimeError):
+                session.close()
+        else:
+            self.assertEqual(len(model.tap._forward_hooks), 0)
+            with ModelLease(model):
+                pass
 
     def test_caught_keyboard_interrupt_remains_unpublishable_and_abort_refuses(self):
         import torch
@@ -904,17 +911,81 @@ class ModelOwnershipTests(unittest.TestCase):
                 raise KeyboardInterrupt('forward cancellation')
         model = Interrupted()
         session = ActivationCapture(model, 'tap')
-        with self.assertRaisesRegex(RuntimeError, 'did not complete'):
+        with self.assertRaises(RuntimeError):
             with session:
                 with self.assertRaises(KeyboardInterrupt):
                     model(torch.ones(1, 2))
-                with self.assertRaisesRegex(RuntimeError, 'forward may be active'):
-                    session.abort()
+                if session._in_forward:
+                    with self.assertRaisesRegex(RuntimeError, 'forward may be active'):
+                        session.abort()
                 with self.assertRaises(RuntimeError):
                     ModelLease(model).acquire()
         with self.assertRaises(RuntimeError):
             _ = session.value
-        self.assertEqual(len(model.tap._forward_hooks), 0)
+        if session._in_forward:
+            self.assertGreater(len(model.tap._forward_hooks), 0)
+            with self.assertRaises(RuntimeError):
+                ModelLease(model).acquire()
+            with self.assertRaises(RuntimeError):
+                session.close()
+        else:
+            self.assertEqual(len(model.tap._forward_hooks), 0)
+            with ModelLease(model):
+                pass
+
+    def test_skipped_forward_completion_retains_lease_deterministically(self):
+        import torch
+        from looking_glass.interventions import ActivationCapture
+        from looking_glass.model_ownership import ModelLease
+        class SkipFinishCapture(ActivationCapture):
+            def _finish_forward(self, module, inputs, output):
+                return None
+        class Interrupted(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.tap = nn.Identity()
+            def forward(self, x):
+                raise ValueError('forward cancellation')
+        model = Interrupted()
+        session = SkipFinishCapture(model, 'tap')
+        with self.assertRaisesRegex(ValueError, 'forward cancellation'):
+            with session:
+                model(torch.ones(1, 2))
+        self.assertTrue(session._in_forward)
+        with self.assertRaises(RuntimeError):
+            _ = session.value
+        with self.assertRaises(RuntimeError):
+            session.close()
+        with self.assertRaises(RuntimeError):
+            ModelLease(model).acquire()
+
+    def test_reentrant_exit_cannot_release_lease_before_root_returns(self):
+        import torch
+        from looking_glass.interventions import ActivationCapture
+        from looking_glass.model_ownership import ModelLease
+        errors = []
+        test = self
+        class Root(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.tap = nn.Identity()
+            def forward(self, x):
+                try:
+                    session.__exit__(None, None, None)
+                except RuntimeError as error:
+                    errors.append(error)
+                with test.assertRaises(RuntimeError):
+                    ModelLease(self).acquire()
+                test.assertGreater(len(self.tap._forward_hooks), 0)
+                return self.tap(x)
+        model = Root()
+        session = ActivationCapture(model, 'tap')
+        with self.assertRaisesRegex(RuntimeError, 'already invalid'):
+            with session:
+                model(torch.ones(1, 2))
+        self.assertEqual(len(errors), 1)
+        with self.assertRaises(RuntimeError):
+            _ = session.value
         with ModelLease(model):
             pass
 

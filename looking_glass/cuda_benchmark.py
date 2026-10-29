@@ -66,21 +66,70 @@ def direct_python_module(module, arguments, *, project=None):
         raise ValueError("a module and an argument sequence are required")
     if any(not isinstance(argument, str) for argument in arguments):
         raise ValueError("module arguments must be strings")
+    if sys.version_info < (3, 11):
+        raise RuntimeError("source-isolated benchmark launch requires Python 3.11 or later")
     project = Path(project or Path(__file__).resolve().parent.parent).resolve(strict=True)
-    locations = [str(Path(path).resolve()) for path in site.getsitepackages() if Path(path).is_dir()]
+    selected_site = os.environ.get("LOOKING_GLASS_BENCHMARK_SITE_PACKAGES")
+    source_only = (sys.flags.no_site and sys.flags.ignore_environment
+                   and getattr(sys.flags, "safe_path", False))
+    candidates = ([selected_site] if source_only and selected_site else
+                  [path for path in site.getsitepackages()
+                   if Path(path).name.lower() in ("site-packages", "dist-packages")])
+    locations = [str(Path(path).resolve()) for path in candidates if Path(path).is_dir()]
     if not locations:
         raise RuntimeError("cannot find the calling environment's site-packages")
     base = Path(sys._base_executable).resolve(strict=True)
-    spec = json.dumps({"module": module, "project": str(project), "site_paths": locations},
+    # The random path is intentionally never created; -B prevents writes and
+    # the fresh prefix prevents Python from reading stale source-adjacent pyc.
+    cache_prefix = project / (".looking-glass-no-pyc-" + secrets.token_hex(16))
+    if os.path.lexists(cache_prefix):
+        raise RuntimeError("fresh bytecode-cache prefix unexpectedly exists")
+    spec = json.dumps({"module": module, "project": str(project), "site_paths": locations,
+                       "empty_cache_prefix": str(cache_prefix)},
                       separators=(",", ":"))
-    bootstrap = ("import json,runpy,sys; s=json.loads(sys.argv.pop(1)); "
-                 "sys.path[:0]=[s['project'],*s['site_paths']]; "
+    bootstrap = ("import importlib.machinery,importlib.util,json,os,runpy,sys\n"
+                 "s=json.loads(sys.argv.pop(1))\n"
+                 "if not sys.flags.isolated or not sys.dont_write_bytecode or not sys.flags.ignore_environment "
+                 "or not sys.flags.safe_path or not sys.flags.no_site "
+                 "or sys.pycache_prefix != s['empty_cache_prefix'] "
+                 "or os.path.lexists(s['empty_cache_prefix']):\n"
+                 "    raise RuntimeError('fresh bytecode-cache isolation is unavailable')\n"
+                 "sys.path.extend(s['site_paths'])\n"
+                 "class Guard:\n"
+                 "    @classmethod\n"
+                 "    def find_spec(cls,name,path=None,target=None):\n"
+                 "        spec=importlib.machinery.PathFinder.find_spec(name,path,target)\n"
+                 "        if spec is not None and isinstance(spec.loader,importlib.machinery.SourcelessFileLoader):\n"
+                 "            raise ImportError('sourceless Python imports are not permitted')\n"
+                 "        if spec is not None and name.startswith('looking_glass.') and isinstance(spec.loader,importlib.machinery.ExtensionFileLoader):\n"
+                 "            raise ImportError('native extensions cannot replace project source modules')\n"
+                 "        return spec\n"
+                 "sys.meta_path.insert(sys.meta_path.index(importlib.machinery.PathFinder),Guard)\n"
+                 "if s['module'].startswith('looking_glass.'):\n"
+                 "    directory=os.path.join(s['project'],'looking_glass')\n"
+                 "    p=importlib.util.spec_from_file_location('looking_glass',os.path.join(directory,'__init__.py'),submodule_search_locations=[directory])\n"
+                 "    if p is None or not isinstance(p.loader,importlib.machinery.SourceFileLoader):\n"
+                 "        raise ImportError('project package must be loaded from source')\n"
+                 "    m=importlib.util.module_from_spec(p)\n"
+                 "    sys.modules['looking_glass']=m\n"
+                 "    p.loader.exec_module(m)\n"
+                 "else:\n"
+                 "    sys.path.append(s['project'])\n"
                  "runpy.run_module(s['module'],run_name='__main__',alter_sys=True)")
     environment = os.environ.copy()
     environment.pop("PYTHONHOME", None)
     environment["PYTHONNOUSERSITE"] = "1"
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
-    return [str(base), "-S", "-c", bootstrap, spec, *arguments], environment
+    return [str(base), "-I", "-B", "-X", "pycache_prefix=" + str(cache_prefix), "-S",
+            "-c", bootstrap, spec, *arguments], environment
+
+
+def _require_clean_python_runtime():
+    """Require the source-only startup policy before CUDA-facing work."""
+    if (not sys.flags.isolated or not sys.dont_write_bytecode or not sys.flags.no_site or not sys.flags.ignore_environment
+            or not getattr(sys.flags, "safe_path", False) or not sys.pycache_prefix
+            or os.path.lexists(sys.pycache_prefix)):
+        raise RuntimeError("source-only Python startup with a fresh empty bytecode prefix is required")
 
 
 def model_admission(free_bytes, total_bytes, model_bytes, trace_limit):
@@ -654,6 +703,7 @@ def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
         raise RuntimeError("CPU preflight and GPU owner source bundles differ")
     if not GPU_BENCHMARK_ADMISSION_READY:
         raise RuntimeError("reviewed GPU admission for the eight-token trace workload is not available")
+    _require_clean_python_runtime()
     lease = _acquire_device_lease(lease_path, lease_timeout)
     lease.check()
     owner_session.check(lease)
@@ -735,6 +785,14 @@ def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
             "python_executable": sys.executable, "python_base_executable": sys._base_executable,
             "python_prefix": sys.prefix, "python_base_prefix": sys.base_prefix,
             "python_search_path": list(sys.path),
+            "python_original_argv": list(sys.orig_argv),
+            "python_pycache_prefix": sys.pycache_prefix,
+            "python_bytecode_writes_disabled": sys.dont_write_bytecode,
+            "python_no_site": bool(sys.flags.no_site),
+            "python_isolated": bool(sys.flags.isolated),
+            "python_ignore_environment": bool(sys.flags.ignore_environment),
+            "python_safe_path": bool(sys.flags.safe_path),
+            "python_hash_randomization": bool(sys.flags.hash_randomization),
             "torch_module_file": torch.__file__, "transformers_module_file": transformers.__file__,
             "torch_version": str(torch.__version__), "transformers_version": transformers.__version__,
             "torch_cuda_version": torch.version.cuda, "cudnn_version": torch.backends.cudnn.version(),
@@ -1072,6 +1130,7 @@ def run_benchmark(output_dir, quick=False, exclusive=False, cache_dir=None,
 
 def _cpu_preflight(cache_dir):
     """Load and exercise the frozen checkpoint in a separate CPU-only process."""
+    _require_clean_python_runtime()
     project = Path(__file__).resolve().parent.parent
     source, hashes = create_source_bundle(project)
     import torch
@@ -1104,7 +1163,15 @@ def _cpu_preflight(cache_dir):
             "cuda_initialized": False, "source_bundle_sha256": hashlib.sha256(source).hexdigest(),
             "repository_source_sha256": hashes, "loaded_module_file_sha256": modules,
             "runtime": {"python_version": platform.python_version(), "executable": sys.executable,
-                        "prefix": sys.prefix, "torch_version": str(torch.__version__),
+                        "prefix": sys.prefix, "original_argv": list(sys.orig_argv),
+                        "pycache_prefix": sys.pycache_prefix,
+                        "bytecode_writes_disabled": sys.dont_write_bytecode,
+                        "no_site": bool(sys.flags.no_site),
+                        "isolated": bool(sys.flags.isolated),
+                        "ignore_environment": bool(sys.flags.ignore_environment),
+                        "safe_path": bool(sys.flags.safe_path),
+                        "hash_randomization": bool(sys.flags.hash_randomization),
+                        "torch_version": str(torch.__version__),
                         "transformers_version": transformers.__version__}}
 
 
@@ -1247,6 +1314,7 @@ def run_supervised_benchmark(output, *, workspace_root, cache_dir, quick=False, 
             raise exc from recording_error
         raise exc
     try:
+        _require_clean_python_runtime()
         identity, _ = resolve_benchmark_identity(workspace_root, shutil.which("nvidia-smi"))
         supervision = _launch_supervised_owner(output, identity=identity, cache_dir=cache_dir,
             preflight_sha256=preflight_sha256, parent_run_id=parent_run_id, quick=quick, exclusive=exclusive,

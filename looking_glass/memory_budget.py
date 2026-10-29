@@ -89,7 +89,7 @@ class MemoryLease:
         self._estimated_incremental_bytes = estimated_incremental_bytes
         self._trace_limits = {'gpu': max_gpu_trace_bytes, 'host': max_host_trace_bytes}
         self._trace_used = {'gpu': 0, 'host': 0}
-        self._released = False
+        self._issued = False
         self._entered = False
 
     @property
@@ -99,16 +99,18 @@ class MemoryLease:
     @property
     def released(self):
         with self._budget._lock:
-            return self._released
+            released = self._issued and self not in self._budget._leases
+        return released
 
     def trace_bytes(self, location):
         if location not in ('gpu', 'host'):
             raise ValueError('location must be gpu or host')
         with self._budget._lock:
-            return self._trace_used[location]
+            used = self._trace_used[location]
+        return used
 
     def _check_active(self):
-        if self._released or self not in self._budget._leases:
+        if not self._issued or self not in self._budget._leases:
             raise RuntimeError('lease is not active in its issuing budget')
 
     def reserve_trace(self, location, byte_count):
@@ -119,15 +121,20 @@ class MemoryLease:
         with self._budget._lock:
             self._check_active()
             new_used = self._trace_used[location] + byte_count
-            new_total = self._budget._trace_used[location] + byte_count
+            new_total = self._budget._trace_total(location) + byte_count
             if (new_used > self._trace_limits[location]
                     or new_total > self._budget._trace_limits[location]):
                 raise TraceLimitError(f'{location} trace limit exceeded')
             self._trace_used[location] = new_used
-            self._budget._trace_used[location] = new_total
+        return None
 
     def release_trace(self, location, byte_count):
-        """Release a trace claim after the retained storage is no longer owned."""
+        """Release bytes after storage disposal; reconcile an interrupted call before retry.
+
+        This count-based API cannot identify a retried release. If the result is
+        uncertain, inspect the lease's outstanding bytes and reconcile actual
+        storage ownership, or retain the lease. Do not blindly repeat the call.
+        """
         _nonnegative_bytes(byte_count, 'byte_count')
         if location not in ('gpu', 'host'):
             raise ValueError('location must be gpu or host')
@@ -136,18 +143,17 @@ class MemoryLease:
             if byte_count > self._trace_used[location]:
                 raise ValueError('cannot release more trace bytes than claimed')
             self._trace_used[location] -= byte_count
-            self._budget._trace_used[location] -= byte_count
+        return None
 
     def release(self):
         """Release after all device work, offload and retained storage are finished."""
         with self._budget._lock:
-            if not self._released:
+            if not (self._issued and self not in self._budget._leases):
                 self._check_active()
                 if any(self._trace_used.values()):
                     raise TraceClaimsOutstanding('release trace claims after disposing retained storage')
-                self._budget._estimated_bytes -= self._estimated_incremental_bytes
-                self._budget._leases.remove(self)
-                self._released = True
+                self._budget._leases = self._budget._leases - {self}
+        return None
 
     def __enter__(self):
         with self._budget._lock:
@@ -179,10 +185,17 @@ class MemoryBudget:
         self._minimum_reserve_bytes = _nonnegative_bytes(minimum_reserve_bytes, 'minimum_reserve_bytes')
         self._telemetry = telemetry
         self._lock = RLock()
-        self._estimated_bytes = 0
-        self._leases = set()
+        # This immutable set is the sole authority for committed leases. Each
+        # update replaces it in one assignment, so interruption cannot split a
+        # membership change from a separate cached total.
+        self._leases = frozenset()
         self._trace_limits = {'gpu': max_gpu_trace_bytes, 'host': max_host_trace_bytes}
-        self._trace_used = {'gpu': 0, 'host': 0}
+
+    def _committed_bytes(self):
+        return sum(lease._estimated_incremental_bytes for lease in self._leases)
+
+    def _trace_total(self, location):
+        return sum(lease._trace_used[location] for lease in self._leases)
 
     def _read_snapshot(self):
         snapshot = self._telemetry()
@@ -197,21 +210,24 @@ class MemoryBudget:
     def active_leases(self):
         """Return retained lease objects; reclaim only after verified cleanup."""
         with self._lock:
-            return tuple(self._leases)
+            leases = tuple(self._leases)
+        return leases
 
     def snapshot(self):
         """Return policy state and current telemetry, sampled under the policy lock."""
         with self._lock:
             telemetry = self._read_snapshot()
             reserve = self._reserve(telemetry)
+            committed = self._committed_bytes()
             available = max(0, min(
                 telemetry.device_total_bytes - telemetry.process_reserved_bytes
-                - reserve - self._estimated_bytes,
-                telemetry.device_free_bytes - reserve - self._estimated_bytes))
-            return BudgetSnapshot(telemetry, reserve, self._estimated_bytes,
-                                  len(self._leases), self._trace_used['gpu'],
-                                  self._trace_used['host'], self._trace_limits['gpu'],
-                                  self._trace_limits['host'], available)
+                - reserve - committed,
+                telemetry.device_free_bytes - reserve - committed))
+            result = BudgetSnapshot(telemetry, reserve, committed,
+                                    len(self._leases), self._trace_total('gpu'),
+                                    self._trace_total('host'), self._trace_limits['gpu'],
+                                    self._trace_limits['host'], available)
+        return result
 
     def acquire(self, estimated_incremental_bytes, *, max_gpu_trace_bytes,
                 max_host_trace_bytes):
@@ -227,12 +243,12 @@ class MemoryBudget:
         with self._lock:
             snapshot = self._read_snapshot()
             reserve = self._reserve(snapshot)
-            committed = self._estimated_bytes + estimated_incremental_bytes
+            committed = self._committed_bytes() + estimated_incremental_bytes
             if (snapshot.process_reserved_bytes + committed + reserve > snapshot.device_total_bytes
                     or committed + reserve > snapshot.device_free_bytes):
                 raise AdmissionError('insufficient memory budget')
             lease = MemoryLease(self, estimated_incremental_bytes, max_gpu_trace_bytes,
                                 max_host_trace_bytes)
-            self._leases.add(lease)
-            self._estimated_bytes = committed
-            return lease
+            lease._issued = True
+            self._leases = self._leases | {lease}
+        return lease
