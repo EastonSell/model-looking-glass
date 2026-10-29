@@ -62,3 +62,24 @@ The optional summary contains only aggregate sizes, hashes, counts and the Git
 revision. Failures report a bounded phase and exception type; full logits,
 credentials, child cache or scratch paths, and child tracebacks are not emitted.
 The unittest runner may show the local test-file path in its own traceback.
+
+To save a separate aggregate record from a clean checkout, run the versioned
+collector below. It checks the collector and selected source files against their
+Git blobs, records their hashes and the base-interpreter digest, captures only
+hashes of test output, and refuses to overwrite an existing record. Choose a
+new output path outside the checkout so the source remains clean during the
+run. The collector launches the unittest parent in isolated mode with bytecode
+writes disabled and a fresh, empty private cache prefix, and checks that this
+prefix stays empty. A failure is saved with its status and a bounded phase and
+type when available; raw logs are withheld.
+
+```powershell
+python tools/bootstrap_pretrained_cpu_evidence.py --repository . `
+  --cache $env:LOOKING_GLASS_TEST_CACHE --scratch $env:LOOKING_GLASS_TEST_SCRATCH `
+  --output ../bootstrap-pretrained-cpu-result.json --purpose correctness
+```
+
+The optional `controlled-missing-cache` purpose requires an absent cache path
+and records whether that path existed before the test. It exercises failure at
+child startup; the loader's missing-asset behavior is checked separately inside
+the successful preflight using a real partial cache.
