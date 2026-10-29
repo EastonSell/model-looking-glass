@@ -109,7 +109,12 @@ leaves the attempt incomplete even if such bytes exist.
 Before issuing `complete`, the observer also executes the independently
 authored, source-bound standard-library reader from its checked source bytes
 in a fresh isolated no-bytecode interpreter; that reader reconstructs the
-result effects, interpolation and summaries. A separate replay of the same
+result effects, interpolation and selected logits, and checks consistency of
+the remaining recorded summaries. For positive normal binary64 target
+probabilities it checks their log ratio against the selected-logit difference
+with absolute tolerance `1e-10` and relative tolerance `1e-12`; for zero or
+subnormal probabilities it skips this check. This does not reconstruct patched
+full-vocabulary probabilities or top-five tokens. A separate replay of the same
 reader follows the direct-child exit. These checks do not authenticate
 execution, unchanged dependencies or whole-process-tree cleanup; using the
 same reader twice is not two independent numerical methods.
