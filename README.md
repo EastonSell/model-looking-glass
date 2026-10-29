@@ -66,6 +66,8 @@ The [DistilBERT GPU calibration](results/bert-gpu-calibration-v1-20261029/README
 
 The [DistilGPT2 agreement preflight](results/distilgpt2-agreement-preflight-v1-20261028/README.md) found the grammatical verb preferred on all 16 fixed public development prompts; it establishes a small behavior to investigate, not a held-out or causal result.
 
+The [DistilGPT2 copying screen](results/distilgpt2-copying-dev-v1-20261028/README.md) found higher target log probability after repetition than after each of three first-block shuffles in eight public development families. The shuffles also change local transitions; the observed attention pattern proposes a head for intervention but does not establish a cause.
+
 A [targeted parameter-edit experiment](results/targeted-edit-cpu-v1-20261028/README.md) changed the intended answer preference but failed its preset locality thresholds on public probes. The negative result and a same-host replay are preserved; the study does not establish general capability preservation.
 
 ## Run locally
