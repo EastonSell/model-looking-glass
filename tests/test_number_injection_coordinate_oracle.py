@@ -3,6 +3,7 @@
 Uses no pretrained weights, real cases, held-out inputs, or private study site.
 """
 import hashlib
+import importlib.util
 import json
 import struct
 import unittest
@@ -332,6 +333,85 @@ class InjectionCoordinateOracle(unittest.TestCase):
                                 self.assertEqual((before[:start], before[end:]), (after[:start], after[end:]))
         finally:
             IDS = original
+
+    def test_actual_random_gpt2_blocks_match_manual_hooks(self):
+        """Exercise real block/attention tuple outputs with a synthetic small MLP and head."""
+        if importlib.util.find_spec("transformers") is None:
+            self.skipTest("requires transformers")
+        from transformers import GPT2Config
+        from transformers.models.gpt2.modeling_gpt2 import GPT2Block
+
+        class ActualBlocks(nn.Module):
+            def __init__(self, config):
+                super().__init__()
+                self.h = nn.ModuleList(GPT2Block(config, layer_idx=i) for i in range(6))
+
+            def forward(self, hidden):
+                for block in self.h:
+                    hidden = block(hidden, use_cache=False)[0]
+                return hidden
+
+        class ActualBlockModel(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.config = GPT2Config(vocab_size=VOCAB, n_positions=32, n_ctx=32, n_embd=WIDTH,
+                                         n_layer=6, n_head=12, n_inner=16, use_cache=False,
+                                         resid_pdrop=0.0, embd_pdrop=0.0, attn_pdrop=0.0)
+                self.config._attn_implementation = "eager"
+                with torch.random.fork_rng(devices=[]):
+                    torch.random.default_generator.manual_seed(20261028)
+                    self.transformer = ActualBlocks(self.config)
+                self.is_gradient_checkpointing = False
+                self.register_buffer("indices", torch.arange(VOCAB, dtype=torch.int64, device="cpu") % WIDTH)
+                self.eval()
+
+            def forward(self, input_ids, attention_mask, use_cache=False, return_dict=True):
+                assert not use_cache and bool(torch.all(attention_mask == 1))
+                features = torch.arange(WIDTH, dtype=torch.float32, device="cpu").reshape(1, 1, WIDTH) / 2048
+                positions = torch.arange(input_ids.shape[1], dtype=torch.float32, device="cpu").reshape(1, -1, 1) / 64
+                hidden = input_ids.to(torch.float32).unsqueeze(-1) / 16 + features + positions
+                hidden = self.transformer(hidden)
+                return SimpleNamespace(logits=hidden[:, :, self.indices], past_key_values=None)
+
+        global Model
+        original = Model
+        try:
+            Model = ActualBlockModel
+            refs = {"clean": reference(2, "clean"), "injected": reference(2, "injected")}
+            clean_source = refs["clean"][0]["mlp_2"]
+            injected_source = refs["injected"][0]["mlp_2"]
+            refs["clean_to_injected"] = reference(2, "clean_to_injected", 2, clean_source)
+            refs["injected_to_clean"] = reference(2, "injected_to_clean", 2, injected_source)
+            model = ActualBlockModel()
+            with NumberInjectionExecutor(model, site=2) as executor:
+                clean = executor.forward(IDS, request_id=f"{1:032x}", condition="clean")
+                injected = executor.forward(IDS, request_id=f"{2:032x}", condition="injected")
+                restored = executor.forward(IDS, request_id=f"{3:032x}", condition="clean_to_injected",
+                                            layer=2, donor=clean.mlp_donor(2))
+                reverse = executor.forward(IDS, request_id=f"{4:032x}", condition="injected_to_clean",
+                                           layer=2, donor=injected.mlp_donor(2))
+                for observation in (clean, injected, restored, reverse):
+                    expected, witnesses, logits = refs[observation.condition]
+                    self.assertEqual(observation.logits, logits)
+                    for layer in range(6):
+                        self.assertEqual(observation.attention[layer], expected[f"attention_{layer}"])
+                        self.assertEqual(observation.mlp[layer], expected[f"mlp_{layer}"])
+                        self.assertEqual(observation.trace[2 * layer].output_selector, (0,))
+                        self.assertEqual(observation.trace[2 * layer + 1].output_selector, ())
+                    self.assertEqual(observation.block, expected["block_5"])
+                    self.assertEqual(observation.trace[-1].output_selector, (0,))
+                    evidence = [x for x in executor.private_evidence() if x.request_id == observation.request_id]
+                    self.assertEqual({x.operation for x in evidence}, set(witnesses))
+                    for item in evidence:
+                        path, before, after, donor = witnesses[item.operation]
+                        self.assertEqual((item.module_path, item.before, item.after, item.donor),
+                                         (path, before, after, donor))
+                self.assertEqual(restored.logits, clean.logits)
+                self.assertEqual(reverse.logits, injected.logits)
+            self.assertTrue(all(not module._forward_hooks and not module._forward_pre_hooks
+                                for module in model.modules()))
+        finally:
+            Model = original
 
 
 if __name__ == "__main__":
