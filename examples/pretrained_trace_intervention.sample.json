@@ -1,0 +1,155 @@
+{
+  "schema": "gpt2-trace-intervention-example-v1",
+  "prompt": "Hello world",
+  "input_ids": [
+    15496,
+    995
+  ],
+  "model": {
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "tokenizer_id": "distilbert/distilgpt2",
+    "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "model_class": "GPT2LMHeadModel",
+    "tokenizer_class": "GPT2TokenizerFast",
+    "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+    "asset_sha256": {
+      "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+      "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+      "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+      "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+      "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783",
+      "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+    },
+    "torch_version": "2.8.0+cu128",
+    "transformers_version": "4.57.3",
+    "device": "cpu",
+    "dtype": "float32",
+    "attention_implementation": "eager",
+    "use_cache": false,
+    "parameter_count": 81912576
+  },
+  "trace": {
+    "max_events": 3,
+    "max_trace_bytes": 32768,
+    "captured_tensor_bytes": 18432,
+    "events": [
+      {
+        "module_path": "transformer.h.0.attn",
+        "kind": "attn",
+        "source_shape": [
+          1,
+          2,
+          768
+        ],
+        "saved_shape": [
+          1,
+          2,
+          768
+        ],
+        "token_positions": [
+          0,
+          1
+        ],
+        "tensor_bytes": 6144,
+        "last_token_first_four_values": [
+          -1.6819654703140259,
+          -0.0937056690454483,
+          0.35531532764434814,
+          -0.00041141713154502213
+        ]
+      },
+      {
+        "module_path": "transformer.h.0.mlp",
+        "kind": "mlp",
+        "source_shape": [
+          1,
+          2,
+          768
+        ],
+        "saved_shape": [
+          1,
+          2,
+          768
+        ],
+        "token_positions": [
+          0,
+          1
+        ],
+        "tensor_bytes": 6144,
+        "last_token_first_four_values": [
+          -0.29306545853614807,
+          0.7334590554237366,
+          0.2854320704936981,
+          -0.23638983070850372
+        ]
+      },
+      {
+        "module_path": "transformer.h.0",
+        "kind": "block",
+        "source_shape": [
+          1,
+          2,
+          768
+        ],
+        "saved_shape": [
+          1,
+          2,
+          768
+        ],
+        "token_positions": [
+          0,
+          1
+        ],
+        "tensor_bytes": 6144,
+        "last_token_first_four_values": [
+          -2.123579978942871,
+          0.7782057523727417,
+          0.5086820721626282,
+          -0.3704943060874939
+        ]
+      }
+    ]
+  },
+  "intervention": {
+    "module_path": "transformer.h.0.mlp",
+    "batch_index": 0,
+    "token_index": 1,
+    "operation": "add",
+    "delta_coordinate": 0,
+    "delta_value": 5.0,
+    "before_coordinate": -0.29306545853614807,
+    "after_coordinate": 4.706934452056885,
+    "observed_displacement_l2": 5.0,
+    "max_absolute_logit_change": 0.6009407043457031,
+    "max_absolute_final_token_logit_change": 0.6009407043457031,
+    "clean_next_token_top": {
+      "token_id": 13,
+      "text": "."
+    },
+    "edited_next_token_top": {
+      "token_id": 13,
+      "text": "."
+    },
+    "plan_limits_bytes": {
+      "max_tensor_bytes": 16384,
+      "max_capture_bytes": 8192,
+      "max_source_bytes": 4096
+    }
+  },
+  "controls": {
+    "traced_logits_equal_clean": true,
+    "self_patch_logits_equal_clean": true,
+    "self_patch_before_equals_after": true,
+    "edit_input_equals_self_capture": true,
+    "edit_after_equals_before_plus_delta": true,
+    "edit_changed_activation": true,
+    "clean_and_edited_logits_finite": true,
+    "logit_difference_finite": true,
+    "edited_first_token_logits_equal_clean": true,
+    "edited_final_token_logits_changed": true,
+    "post_session_logits_equal_clean": true
+  },
+  "interpretation": "The chosen edit demonstrates the API and its downstream effect on logits for this input. It does not explain the model's ordinary behavior. The next-token entries are argmax logits, not generated sentences."
+}
