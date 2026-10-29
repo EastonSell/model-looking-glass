@@ -1,0 +1,83 @@
+{
+  "admission": {
+    "bidirectional_pairs": 201120,
+    "conflicts": 0,
+    "foreign_sequences": 4190,
+    "own_planned_rows": 16,
+    "proposal_sequences": 48,
+    "reservation_sha256": "e5ae202c1e3449a67e92788a83cd0dc62d404a3fa1e052716a11770ee92cc00c",
+    "scope": "recorded public inventory only; no protected or unknown exposure attestation"
+  },
+  "case_sha256": "f1e1043fc302e701b1224248122efc7f79938665ce12cd48ebb7dd713b353789",
+  "delivery_addendum_sha256": "68e12b08516a97c40c4084ac0ff581b8312afa507daf49bb29fc2928622fa8fa",
+  "direct_launcher_sha256": "16fe7de78bf29aab18b0d2820de854e6d14a80f44fc5c96274431fba8cbdf38e",
+  "direct_launcher_test_sha256": "4bd0e296ea50bbca2fb0c6c67d57e906d4eadb3a81af1c493d347a3c279a7b7d",
+  "execution_checkout_head": "f143f6b94f0882e69329e7ef3d93134c14397392",
+  "intended_execution": {
+    "discovery_cases": 8,
+    "forwards_each": 120,
+    "heldout_cases": 8,
+    "heldout_requires_published_discovery_freeze": true,
+    "metadata_cap_each_bytes": 8388608,
+    "minimum_free_before_checkpoint_bytes": 2147483648,
+    "minimum_free_before_each_forward_bytes": 1073741824,
+    "minimum_source_and_cache_volume_free_bytes": 268435456,
+    "raw_cap_each_bytes": 78643200,
+    "retry_policy": "no silent retry; missing receipt or uncertain child state requires reconciliation"
+  },
+  "limitations": [
+    "old protected one-use split not accessed or checked",
+    "unknown outside/pretraining exposure",
+    "public injection sites provide procedural rather than strong human blinding",
+    "interpreter startup, process custody and execution are cooperative observations"
+  ],
+  "output_drive": "E:",
+  "protocol_sha256": "9eeca112d06f998037bea9d5a7a6b7097307f76634565441c62b24e5f2855cfd",
+  "public_comparisons": {
+    "pending_agreement_cases_sha256": "94910e59415936a09c18f81478e0eaffb790c9b69d0962ab3f6b70947fbe1dfe",
+    "pending_agreement_report_sha256": "b06ac84fc38f01e7755cee8394c77c87a4d56188945ebbfb5a7000bf77e9a39e",
+    "v32_and_public_support_sha256": "4a4ed0127d18a7c5a8f6472af619b82895cb4efa6c07314a48a463510b1878b2"
+  },
+  "pycache_prefix_sha256": {
+    "discovery": "76e0b1ce7b9530bafd1839183b9f689554fdf3f09c3aefefc626f95223b5a9ab",
+    "held-out": "cb86e8f9e35f25063c05b6dc72e14840793798f0029bdeebf7267d3cce9b9f8c"
+  },
+  "reservation_commit": "57a481d477e3d983b092f963d8d3e24002cc7961",
+  "reservation_sha256": "e5ae202c1e3449a67e92788a83cd0dc62d404a3fa1e052716a11770ee92cc00c",
+  "reservation_version": "distilgpt2-development-exposures-v34",
+  "runtime": {
+    "device": "cpu",
+    "dtype": "float32",
+    "python": "3.11.15",
+    "threads": 1,
+    "tokenizers": "0.22.2",
+    "torch": "2.8.0+cu128",
+    "transformers": "4.57.3",
+    "use_cache": false
+  },
+  "schema": "public-known-injection-pre-run-v1",
+  "source_revision": "ea3f1e78e9074e3455087919d96c84d7c20db0cc",
+  "source_scope": "Relevant locally assembled checkout files are hash-matched to the public source commit; the checkout is not claimed to be that commit or its complete tree.",
+  "source_sha256": {
+    "docs/PUBLIC_KNOWN_INJECTION_DELIVERY_CLARIFICATION_V1.md": "68e12b08516a97c40c4084ac0ff581b8312afa507daf49bb29fc2928622fa8fa",
+    "docs/PUBLIC_KNOWN_INJECTION_LOCALIZATION_V1.md": "9eeca112d06f998037bea9d5a7a6b7097307f76634565441c62b24e5f2855cfd",
+    "experiments/public_known_injection_cases_v1.json": "f1e1043fc302e701b1224248122efc7f79938665ce12cd48ebb7dd713b353789",
+    "experiments/public_known_injection_v1/admission.py": "4c29e3fd0dd97ba91d4357bd6efe66a5067fb4b986307f861d7a1b8c920a9228",
+    "experiments/public_known_injection_v1/analyze.py": "ffea39afa0d6c0e78c8886a0ac329b9fd1722097746706791d4432ab6c968bbc",
+    "experiments/public_known_injection_v1/executor.py": "dbcc45777ba100050817c98364e75143defa0322b1935a21b705bc4696eb6722",
+    "experiments/public_known_injection_v1/hook_core.py": "61bf6384d67a58e0a0a3cb9cb2e00d1ef6e237772988c6e11332c3d7b809dd96",
+    "experiments/public_known_injection_v1/journal.py": "50bf8e236633033087d5e505298d7b0c4a0112853a78a90da7c889f88187f2f4",
+    "experiments/public_known_injection_v1/run_phase.py": "3321cfd12ba2bab8ce6dc878cb6253e290a5c3bb436e5e8c9ceee4fb45a88e47",
+    "experiments/public_known_injection_v1/selector.py": "17451e00aeafe309697fac6f5cbc401791ef88edfeaf151febbf3c91f5227d40",
+    "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+    "looking_glass/intervention_plan.py": "5bb643c538a1d7dcd97214238c2a996967d4b6ae2e965d3776b3699758491c0a",
+    "looking_glass/interventions.py": "71cbcf4776660d2dd883b82815f710b0c909228fd1762504f9e3f984f7f6c60f",
+    "looking_glass/model_ownership.py": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434",
+    "looking_glass/pretrained.py": "1f3ff1cb1457aa0a9df73a2b791f6b391ee4716b951bc988f461bfe168eb9d6f",
+    "looking_glass/probes.py": "3ba99f7289bb2f12cc7e0c1e255c22a7c7aff3a48e1348ec5d503956e0c8e730",
+    "looking_glass/trace_schema.py": "38e05eb52a59a10ad9f93d19763d60df4c27f9eb626fdefdcba39fc4af3eb92c",
+    "looking_glass/transformer_trace.py": "c58b303bd2448d0bb6804ee28066d33cc6830da8cec43986f6d481806b3b1929"
+  },
+  "source_tree": "97d6e126de608c5820b44ad3fce2f3b38fded69a",
+  "stage_dir_sha256": "32f0be80dbe804daf55736ab16f4936489ce3fdc76319f752c6c8357b1942551"
+}
