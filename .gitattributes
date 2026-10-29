@@ -1,0 +1,9 @@
+/docs/TARGETED_EDIT_FRANCE_FULL_TOP_V2.md -text
+/docs/TARGETED_EDIT_FRANCE_FULL_TOP_V2_IMPLEMENTATION.md -text
+/experiments/france_full_top_cases_v2.json -text
+/experiments/france_full_top_tokenizer_observation_v2.json -text
+/scripts/assemble_france_full_top_v2.py -text
+/looking_glass/targeted_edit_france_top_v2.py -text
+/looking_glass/targeted_edit_france_top_edits_v2.py -text
+/tests/test_france_top_v2.py -text
+/tests/test_france_top_edits_v2.py -text
