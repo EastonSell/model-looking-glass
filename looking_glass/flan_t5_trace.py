@@ -72,6 +72,8 @@ def trace_t5_forward(model, *, input_ids, attention_mask, decoder_input_ids,
         raise ValueError("only eager T5 attention is supported")
     if getattr(model.forward, "__func__", None) is not T5ForConditionalGeneration.forward:
         raise ValueError("modified root forward is unsupported")
+    if torch.nn.modules.module._global_forward_hooks or torch.nn.modules.module._global_forward_pre_hooks:
+        raise ValueError("pre-existing global forward hooks are unsupported")
     if any(module._forward_hooks or module._forward_pre_hooks for module in model.modules()):
         raise ValueError("pre-existing forward hooks are unsupported")
     for name, value in (("max_events", max_events), ("max_trace_bytes", max_trace_bytes),

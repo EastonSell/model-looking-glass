@@ -49,7 +49,8 @@ observation, not a causal or semantic claim.
 
 The supported model is an unmodified standard T5 conditional-generation model
 with eager attention, eval mode, float32 parameters on one CPU or CUDA device,
-autocast disabled, no gradient checkpointing and no pre-existing forward hooks.
+autocast disabled, no gradient checkpointing and no pre-existing local or
+process-global forward hooks.
 The adapter uses inference mode and the cooperative model lease provided by
 `ActivationPlan`; callers remain responsible for GPU ownership and lifetime.
 The current checkpoint smoke and unit tests run on CPU, not CUDA.

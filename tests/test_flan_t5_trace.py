@@ -108,6 +108,31 @@ def test_non_eager_stack_configuration_is_rejected(stack):
             run_id="backend", points=[T5TracePoint("encoder", 0, "block", 0, 0)])
 
 
+@pytest.mark.parametrize("kind", ["pre", "post"])
+def test_process_global_forward_hooks_are_rejected_before_model_execution(kind):
+    # Global hooks can alter a selected output even when local hook lists are empty.
+    from looking_glass.flan_t5_trace import T5TracePoint, trace_t5_forward
+    from torch.nn.modules.module import register_module_forward_hook, register_module_forward_pre_hook
+
+    model = tiny_t5()
+    calls = []
+    def global_pre(_module, _inputs):
+        calls.append("pre")
+    def global_post(module, _inputs, output):
+        calls.append("post")
+        if module is model.encoder.block[0]:
+            return (output[0] + 1, *output[1:])
+    handle = register_module_forward_pre_hook(global_pre) if kind == "pre" else register_module_forward_hook(global_post)
+    try:
+        with pytest.raises(ValueError, match="global forward hooks"):
+            trace_t5_forward(model, input_ids=torch.tensor([[4, 1]]), attention_mask=torch.tensor([[1, 1]]),
+                decoder_input_ids=torch.tensor([[0, 1]]), decoder_attention_mask=torch.tensor([[1, 1]]),
+                run_id="global-hook", points=[T5TracePoint("encoder", 0, "block", 0, 0)])
+        assert calls == []
+    finally:
+        handle.remove()
+
+
 def test_masks_and_unsupported_generation_or_cross_attention_are_rejected():
     from looking_glass.flan_t5_trace import T5TracePoint, trace_t5_forward
 
