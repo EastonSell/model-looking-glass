@@ -370,6 +370,66 @@ def test_selection_directory_must_be_absent_from_manifest_commit(tiny_vocab, tmp
                                             manifest_sha256=manifest_sha, terminal_sha256=terminal)
 
 
+def test_git_absence_rejects_windows_case_aliases_at_each_component(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git(repo, "init")
+    git(repo, "config", "user.email", "study@example.invalid")
+    git(repo, "config", "user.name", "Synthetic Study")
+    directory = repo / "Runs" / "Development"
+    directory.mkdir(parents=True)
+    (directory / "Partial.json").write_bytes(b"already present")
+    git(repo, "add", "Runs")
+    git(repo, "commit", "-m", "early artifact")
+    commit = git(repo, "rev-parse", "HEAD")
+    assert not evidence._path_absent(repo, commit, "runs/development")
+    assert not evidence._path_absent(repo, commit, "runs/development/partial.json")
+    assert not evidence._path_absent(repo, commit, "runs/development/partial.json/child")
+    assert evidence._path_absent(repo, commit, "runs/other")
+
+
+@pytest.mark.parametrize("suffix", [".", " "])
+def test_git_absence_rejects_windows_trimmed_directory_alias(tmp_path, suffix):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git(repo, "init")
+    git(repo, "config", "user.email", "study@example.invalid")
+    git(repo, "config", "user.name", "Synthetic Study")
+    (repo / "content").write_bytes(b"tracked")
+    blob = git(repo, "hash-object", "-w", "content")
+    git(repo, "-c", "core.protectNTFS=false", "update-index", "--add", "--cacheinfo",
+        f"100644,{blob},Runs/Development{suffix}/partial")
+    tree = git(repo, "write-tree")
+    commit = git(repo, "commit-tree", tree, "-m", "synthetic alias")
+    assert not evidence._path_absent(repo, commit, "runs/development")
+
+
+@pytest.mark.parametrize("path", ["runs/évaluation", "runs/SHORT~1", "runs/name.",
+                                  "runs/name ", "runs/COM1.json", "runs/name?x"])
+def test_windows_chronology_paths_reject_ambiguous_components(path):
+    with pytest.raises(v1.StudyError):
+        evidence._windows_parts(path)
+
+
+def test_windows_overlap_is_case_insensitive_and_component_based():
+    assert evidence._paths_overlap("runs/Development", "RUNS/development/evaluation")
+    assert evidence._paths_overlap("runs/development/evaluation", "RUNS/DEVELOPMENT")
+    assert not evidence._paths_overlap("runs/development", "runs/development-extra")
+
+
+def test_git_absence_fails_closed_on_non_ascii_tree_names(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    git(repo, "init")
+    git(repo, "config", "user.email", "study@example.invalid")
+    git(repo, "config", "user.name", "Synthetic Study")
+    (repo / "é.txt").write_bytes(b"tracked")
+    git(repo, "add", "--all")
+    git(repo, "commit", "-m", "unicode entry")
+    with pytest.raises(v1.StudyError, match="non-ASCII"):
+        evidence._path_absent(repo, git(repo, "rev-parse", "HEAD"), "frozen.json")
+
+
 def test_git_identity_rejects_annotated_tag_objects(tiny_vocab, tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()

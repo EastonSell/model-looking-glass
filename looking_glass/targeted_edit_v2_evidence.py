@@ -270,6 +270,29 @@ def _relative(value):
     return value
 
 
+def _windows_parts(value):
+    """Restrict chronology paths to unambiguous ASCII Win32 components.
+
+    A physical no-overwrite check and a quiescent checkout are still required.
+    The Git check cannot establish historical filesystem alias or execution
+    behavior, including 8.3 aliases and paths never committed to Git.
+    """
+    parts = _relative(value).split("/")
+    for part in parts:
+        base = part.split(".", 1)[0].upper()
+        if (not part.isascii() or part[-1] in " ." or "~" in part or
+                any(ord(char) < 32 or char in '<>"|?*' for char in part) or
+                base in {"CON", "PRN", "AUX", "NUL"} or
+                re.fullmatch(r"(?:COM|LPT)[1-9]", base)):
+            raise v1.StudyError("ambiguous Windows chronology path")
+    return tuple(part.lower() for part in parts)
+
+
+def _paths_overlap(first, second):
+    left, right = _windows_parts(first), _windows_parts(second)
+    return left[:min(len(left), len(right))] == right[:min(len(left), len(right))]
+
+
 def _ordinary_path(root, relative, *, final_directory=False):
     """Reject redirected components below the trusted repository root.
 
@@ -304,10 +327,38 @@ def _git(repo, *args, check=True):
 
 
 def _path_absent(repo, commit, path):
-    """Accept absence only after a successful literal Git tree lookup."""
-    path = _relative(path)
-    listing = _git(repo, "ls-tree", "-z", "--full-tree", commit, "--", path).stdout
-    return not listing
+    """Fail closed on case aliases by walking each historical tree component."""
+    parts = _windows_parts(path)
+    tree = commit
+    for index, part in enumerate(parts):
+        # ls-tree does not support case-insensitive pathspecs. Inspect every
+        # entry at this level and traverse the object ID of a matching tree.
+        listing = _git(repo, "ls-tree", "-z", tree).stdout
+        matches = []
+        for entry in listing.split(b"\x00"):
+            if not entry:
+                continue
+            try:
+                header, raw_name = entry.split(b"\t", 1)
+                mode, kind, object_id = header.split(b" ")
+                name = raw_name.decode("utf-8")
+            except (ValueError, UnicodeError) as exc:
+                raise v1.StudyError("invalid committed tree entry") from exc
+            # Restrict each examined tree level so exotic filesystem case
+            # mappings cannot silently masquerade as a missing ASCII path.
+            if not name.isascii():
+                raise v1.StudyError("non-ASCII tree entry prevents Windows chronology check")
+            if name.rstrip(" .").lower() == part:
+                matches.append((mode, kind, object_id))
+        if not matches:
+            return True
+        if len(matches) != 1 or index == len(parts) - 1:
+            return False
+        mode, kind, object_id = matches[0]
+        if mode != b"040000" or kind != b"tree" or not re.fullmatch(rb"[0-9a-f]{40}", object_id):
+            return False
+        tree = object_id.decode("ascii")
+    return False
 
 
 def _blob(repo, commit, path, limit):
