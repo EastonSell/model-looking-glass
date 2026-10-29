@@ -70,6 +70,8 @@ The [DistilGPT2 agreement preflight](results/distilgpt2-agreement-preflight-v1-2
 
 The independently audited [agreement discovery](results/distilgpt2-natural-agreement-v1-20261028/README.md) selected the layer 3 attention output at the final token. Across four public families, opposite-number donors caused a mean 3.095-logit greater shift away from the target's present-tense agreement margin than same-number donors. They reversed the margin in 10 of 32 donor–target pairs involving six distinct targets, versus none of 32 same-number pairs. These are development results, and a shift can reflect weakening rather than transfer of number information; held-out prediction remains to be tested.
 
+An [independent held-out auditor](docs/INDEPENDENT_NATURAL_HELDOUT_AUDIT.md) is prepared to check saved controls and frozen-prediction errors after reveal; it does not establish that a held-out study has run.
+
 The [DistilGPT2 copying screen](results/distilgpt2-copying-dev-v1-20261028/README.md) found higher target log probability after repetition than after each of three first-block shuffles in eight public development families. The shuffles also change local transitions; the observed attention pattern proposes a head for intervention but does not establish a cause.
 
 In a [follow-up intervention](results/distilgpt2-copy-head-eval-v1-20261028/README.md) on eight new public families, zeroing the selected head at the final input position reduced the repeated-versus-shuffled log-probability contrast by 0.638 nats on average, compared with an increase of 0.130 for one same-layer control head. All eight repeated targets remained top-ranked after the selected-head intervention. These fixed-order exploratory tests do not establish a complete copying circuit.
