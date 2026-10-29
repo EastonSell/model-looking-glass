@@ -74,6 +74,21 @@ def test_partial_thread_start_is_reported_as_unresolved_without_submitting(contr
         pilot.start()
 
 
+def test_client_side_memory_failure_is_unresolved_and_privately_retained(contracts, live_cpu_owner):
+    service, model, _, _, _, _ = live_cpu_owner
+    failure = MemoryError('private client-side allocation detail')
+    with patch.object(IPCClient, 'submit', side_effect=failure) as submit:
+        pilot = clients.ConcurrentClients(service)
+        pilot.start()
+        report = pilot.wait(timeout=5)
+    assert report is not None and report.requires_owner_reconciliation
+    assert [(row.status, row.error) for row in report.requests] == [
+        ('unresolved', 'client_failure'), ('unresolved', 'client_failure')]
+    assert all(slot.failure is failure for slot in pilot._slots)
+    assert submit.call_count == 2 and model.calls == 0
+    assert 'private client-side allocation detail' not in repr(report)
+
+
 class BlockingModel(nn.Module):
     def __init__(self):
         super().__init__()
