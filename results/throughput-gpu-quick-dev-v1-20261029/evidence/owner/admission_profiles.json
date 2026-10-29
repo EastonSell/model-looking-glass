@@ -1,0 +1,27 @@
+{
+  "status": "provisional_unmeasured_estimates",
+  "admission_status": "development_unprofiled",
+  "profiles": [
+    {
+      "profile_id": "fixed-v1-2079fdf92f118563",
+      "model_id": "422537d16c19050a82c56b591161aa57294a75572f101c9ab49acff168427740",
+      "device": "cuda:0",
+      "shape": [
+        1,
+        5
+      ],
+      "input_dtypes": [
+        [
+          "attention_mask",
+          "torch.int64"
+        ],
+        [
+          "input_ids",
+          "torch.int64"
+        ]
+      ],
+      "output_limit_bytes": 8388608,
+      "estimated_incremental_bytes": 1073741824
+    }
+  ]
+}

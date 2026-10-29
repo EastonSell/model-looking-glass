@@ -1,0 +1,107 @@
+{
+  "model_metadata": {
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "tokenizer_id": "distilbert/distilgpt2",
+    "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "model_class": "GPT2LMHeadModel",
+    "tokenizer_class": "GPT2TokenizerFast",
+    "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+    "asset_sha256": {
+      "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+      "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+      "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+      "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+      "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783",
+      "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+    },
+    "torch_version": "2.8.0+cu128",
+    "transformers_version": "4.57.3",
+    "device": "cpu",
+    "dtype": "float32",
+    "attention_implementation": "eager",
+    "use_cache": false,
+    "parameter_count": 81912576
+  },
+  "manifest_jobs": [
+    {
+      "job_id": "team-a-0",
+      "team_id": "team-a",
+      "workload_class": "5-positions",
+      "units": 5,
+      "seed": 1000,
+      "input_digest": "257b8a00843dd34e32f32503bdfd6dd0fa8474839f9bf6406b7b223e558b3eb7",
+      "capture_policy": "none",
+      "request_sha256": "257b8a00843dd34e32f32503bdfd6dd0fa8474839f9bf6406b7b223e558b3eb7"
+    },
+    {
+      "job_id": "team-a-1",
+      "team_id": "team-a",
+      "workload_class": "5-positions",
+      "units": 5,
+      "seed": 1001,
+      "input_digest": "fd6d289b882c38973dac6d0b4b6ab89c07778ef0141fbafe13bfece611f5bf4b",
+      "capture_policy": "none",
+      "request_sha256": "fd6d289b882c38973dac6d0b4b6ab89c07778ef0141fbafe13bfece611f5bf4b"
+    },
+    {
+      "job_id": "team-b-0",
+      "team_id": "team-b",
+      "workload_class": "5-positions",
+      "units": 5,
+      "seed": 1000,
+      "input_digest": "a409e25911b17c7675eca975b34d133e1b659d39c1238f3395ccff2bb934c128",
+      "capture_policy": "none",
+      "request_sha256": "a409e25911b17c7675eca975b34d133e1b659d39c1238f3395ccff2bb934c128"
+    },
+    {
+      "job_id": "team-b-1",
+      "team_id": "team-b",
+      "workload_class": "5-positions",
+      "units": 5,
+      "seed": 1001,
+      "input_digest": "365f5464a53bdf1f257789551a8a7f52a6e707ef9ae1a04522930ad094894f46",
+      "capture_policy": "none",
+      "request_sha256": "365f5464a53bdf1f257789551a8a7f52a6e707ef9ae1a04522930ad094894f46"
+    }
+  ],
+  "source": {
+    "source_commit": "c480e7e987ef7127ae61658ead3018e15ce9ae84",
+    "source_dirty": false,
+    "source_sha256": {
+      "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+      "looking_glass/throughput_benchmark.py": "601aa88f21a6b841bd576a83c7672a13720f304e685d532e81ccb0e5997ced8d",
+      "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+      "looking_glass/resident_worker.py": "4d2d9bb6c61ec904f337c8825934f95543f3a07d64f25887bf3fae03ea96d539",
+      "looking_glass/broker.py": "31bd59309ff0b6564085d0dcb00c36499d3bdfac32c0159321456cb38ba2e0da",
+      "looking_glass/fair_queue.py": "af9b1fdf9b8b86483ee446a9d13bce72ff844341266707b757807ea6265ad1fb",
+      "looking_glass/memory_budget.py": "27d7b1a352815b7a103e1d70a5f8f0a3ccffdd10dacb71a0744a47ad6f66e1b9",
+      "looking_glass/budgeted_worker.py": "31528b423f6b98dd2899a4e295190d6f2c72573b7ba2080db20cc6387bfcfc0a",
+      "looking_glass/device_lease.py": "6bb41af0ade9efff143aa1eb3cb0a25be1a801ad74a86d2f81ae36a0a9d05dfe",
+      "looking_glass/device_identity.py": "ad08eff6edbb1c94af9abec0d07d8a10944624488b8d723b10c75e8c67e10c45",
+      "looking_glass/supervisor.py": "d97a9b97384ea67eddd2f461003428aa0b8bd9b01c102b19b2bd2d6dd56c2537",
+      "docs/THROUGHPUT_PROTOCOL_V1.md": "e5dbc74d727719874b6442000cab28e96983d92914a94f842ac0cd62139821bd",
+      "scripts/throughput_bootstrap.py": "2fa3b02be7635c7cd6673bb1de6b6ae6a4f73a364b4a5cf03459dfdf1ffee46e"
+    }
+  },
+  "public_prompts": [
+    "The small bird landed on",
+    "A bright light appeared in"
+  ],
+  "pytorch_cuda_initialized": false,
+  "torch_cuda_runtime": "12.8",
+  "cublas_workspace_clear_api": "torch._C._cuda_clearCublasWorkspaces",
+  "cuda_environment": {
+    "CUDA_VISIBLE_DEVICES": "<GPU_UUID_REDACTED>",
+    "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+    "CUDA_MODULE_LOADING": "LAZY",
+    "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+    "OMP_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "NUMEXPR_NUM_THREADS": "1",
+    "BLIS_NUM_THREADS": "1",
+    "VECLIB_MAXIMUM_THREADS": "1"
+  }
+}

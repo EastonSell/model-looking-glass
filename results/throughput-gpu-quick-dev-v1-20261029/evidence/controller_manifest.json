@@ -1,0 +1,10 @@
+{
+  "protocol": "supervised-shared-model-throughput-v1",
+  "status": "initializing",
+  "smoke_only": true,
+  "repetitions": 1,
+  "protocol_seed": 0,
+  "external_gpu_activity": "Not isolated; WDDM and other external GPU activity may be present.",
+  "admission_status": "development_unprofiled",
+  "bytecode_policy": "empty_prefix_no_writes"
+}
