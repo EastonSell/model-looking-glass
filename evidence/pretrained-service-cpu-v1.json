@@ -1,0 +1,100 @@
+{
+  "case_input_sha256": {
+    "team-a": "44c56ff28f8f656b5baac23de670f27223141ab1df6afac93fe197b9cab44445",
+    "team-b": "8ca086bc587bcdca8619f3fc634f4c9d33446366115885bb41161a9da4e36f15"
+  },
+  "checkpoint": {
+    "asset_sha256": {
+      "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+      "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+      "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+      "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+      "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+      "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+    },
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "tokenizer_id": "distilbert/distilgpt2",
+    "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa"
+  },
+  "exit_code": 0,
+  "final_source_commit": "d39691d9049b0ad350ac50ac00c7a573d2493138",
+  "finished_at_utc": "2026-10-29T00:34:38.204662+00:00",
+  "invocation": {
+    "command": [
+      "C:\\Users\\easto\\Documents\\Codex\\2026-10-28\\https-github-com-eastonsell-model-looking\\work\\.venv\\Scripts\\python.exe",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests",
+      "-p",
+      "test_pretrained_service.py",
+      "-v"
+    ],
+    "hf_home": "C:\\Users\\easto\\Documents\\Codex\\2026-10-28\\https-github-com-eastonsell-model-looking\\work\\hf-cache",
+    "offline_cache": "C:\\Users\\easto\\Documents\\Codex\\2026-10-28\\https-github-com-eastonsell-model-looking\\work\\hf-cache\\hub"
+  },
+  "limits": {
+    "absolute_tolerance": 1e-06,
+    "max_batch": 1,
+    "max_input_bytes": 8,
+    "max_output_bytes": 201028,
+    "max_response_bytes": 2000000,
+    "max_tokens": 1,
+    "relative_tolerance": 0
+  },
+  "notes": "CPU correctness smoke only; not a throughput, CUDA or causal result.",
+  "observed": {
+    "broker_id": "b887d03ccca84b179184bd1a381476e0",
+    "jobs": {
+      "team-a": 1,
+      "team-b": 2
+    },
+    "max_absolute_error": {
+      "team-a": 0.0,
+      "team-b": 0.0
+    },
+    "model_deserializations": 1,
+    "shape": [
+      1,
+      1,
+      50257
+    ]
+  },
+  "runtime": {
+    "cuda_visible_devices": "-1",
+    "device": "cpu",
+    "intraop_threads": 1,
+    "packages": {
+      "huggingface_hub": "0.36.2",
+      "safetensors": "0.8.0",
+      "tokenizers": "0.22.2",
+      "torch": "2.8.0+cu128",
+      "transformers": "4.57.3"
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.15",
+    "pythonhashseed": "0",
+    "seed": 1729
+  },
+  "schema": "pretrained-service-cpu-smoke-evidence-v1",
+  "source_commit": "d39691d9049b0ad350ac50ac00c7a573d2493138",
+  "source_files_sha256": {
+    "docs/PRETRAINED_SERVICE_SMOKE.md": "3b43f0ef746403fe323dd830c24607007a3852ec2a0fe34fcdd14b655096a268",
+    "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+    "looking_glass/broker.py": "ca671a77bbc075df36d8a1d02e6ec3490c2350d5378e9782f7053d02aec71f26",
+    "looking_glass/fair_queue.py": "88927209f440f8c86bdb1aab62fcf038cb349ae43381f798ad451cb7c2393383",
+    "looking_glass/ipc.py": "06bf22cad7ee20f75eef1edbf6a40034ba0cfbec3a01f8d80aa84492e6c6d1c0",
+    "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+    "looking_glass/resident_worker.py": "75d62b25859aa52a69cd772850d8ed04224118acfa400de95344a883a806058f",
+    "pyproject.toml": "d6f4b4211fbdbac80f1af25546a9d62b76f57c9bae8a572573bcf0d635e18a21",
+    "tests/test_pretrained_service.py": "2e3dcce938e6f9bc6fa07668d79a604e4de810e9374c167e2f659070371eef5f"
+  },
+  "source_unchanged": true,
+  "started_at_utc": "2026-10-29T00:34:26.848506+00:00",
+  "status": "passed",
+  "stderr_sha256": "daef66409aefcdbe46b7e2be205a5872e6b01145d54c34a929010d90a5a58e06",
+  "stdout_sha256": "673286f8bb5687e530f166a064788b0f94dff375c0dde3e8da70995f4be1a8ba"
+}
