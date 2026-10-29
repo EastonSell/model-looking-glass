@@ -164,6 +164,8 @@ logical ceiling plus this 160 MiB has a combined potential ceiling of 672 MiB.
 The old physical allowance and all claims remain unchanged. Reconcile existing
 study-owned and new evidence before the claim; check at least 3 GiB free on
 each actual distinct output/cache volume immediately before claim and launch.
+That independent-study threshold does not recheck or lower the old v6 ledger's
+separate 12 GiB phase-claim rule.
 The loader's approximately 356 MB transient checkpoint stage is outside the
 224 MiB evidence cap; measure and reconcile it and any orphan rather than
 treating the evidence cap as a filesystem quota. Free-space observations do not
