@@ -17,7 +17,7 @@ import threading
 import time
 from types import MappingProxyType
 
-from .ipc_custody import IPCCustodyKey
+from .ipc_custody import IPCCustodyCapacity, IPCCustodyKey
 
 _IDENTIFIER = re.compile(r"[A-Za-z0-9_.-]{1,64}\Z")
 _BROKER_ID = re.compile(r"[0-9a-f]{32}\Z")
@@ -457,7 +457,15 @@ class IPCServer:
                 # A failed or interrupted reserve can still have committed.
                 # The owner can recover by its pre-existing guardian record.
                 custody_safe = False
-                self._custody_guardian.reserve(custody_key)
+                try:
+                    self._custody_guardian.reserve(custody_key)
+                except IPCCustodyCapacity as exc:
+                    if type(exc) is not IPCCustodyCapacity:
+                        raise
+                    # Trusted guardian attests that nothing was registered,
+                    # claimed, or left in flight for this key.
+                    custody_safe = True
+                    raise IPCRejected("busy") from None
                 custody_registered = True
                 custody_safe = True
             self._send(client, {"version": 1, "status": "ready"})

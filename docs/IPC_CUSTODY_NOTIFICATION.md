@@ -42,7 +42,17 @@ own separately established completion and disposal conditions are met.
    discoverable record and reserve any declared read/decode and downstream
    envelopes before the corresponding allocations. A failed or interrupted
    registration may have committed and is treated as uncertain. The guardian
-   must keep such records and any claims charged for supervisor recovery.
+   must keep such records and any claims charged for supervisor recovery. A
+   trusted guardian may instead raise the **exact** `IPCCustodyCapacity` type
+   from `looking_glass.ipc_custody` only when reservation was denied before
+   creating any record, claim, request-owned payload, or pending registration
+   for that key, and none can subsequently appear. That is a trusted
+   no-mutation contract, not a fact the server can independently prove. The
+   server returns `rejected/busy` before ready without notifying the guardian
+   or latching quarantine; the connection generation is still consumed. If
+   the guardian raises this exception after any such side effect, custody
+   guarantees do not hold. Subclasses, other failures, and this exception
+   raised at any other lifecycle step remain uncertain and quarantined.
 2. Only after validating the per-team token and envelope does the server call
    `guardian.authenticate(key, team_id, request_id)`. It then constructs the
    bounded forward request and calls the paired broker's

@@ -88,6 +88,10 @@ GetTickCount64 resolution; it cannot support trustworthy short latency spans.
 `time.perf_counter_ns()` uses QueryPerformanceCounter with a reported 0.1 µs
 resolution there. Never subtract timestamps from different clock domains; bind
 the actual clock policy to both calibration and subsequent benchmark source.
+Require a monotonic clock with positive reported resolution no worse than 1 µs;
+fail the run if any warmup or measured interval is shorter than 100 times that
+resolution. This is a resolution screen, not a guarantee against scheduling
+jitter or other timing error.
 
 ## Identity and admission
 
