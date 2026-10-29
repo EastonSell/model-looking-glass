@@ -70,7 +70,10 @@ uncommitted captures discarded by the plan are recorded as unavailable.
 Uncertain or failed ownership is quarantined until the dedicated process is
 discarded. If in-memory failure recording itself fails, its original and
 secondary exceptions are chained where possible; a supervisor must mark the
-attempt incomplete when no durable terminal record can be written.
+attempt incomplete when no durable terminal record can be written. A new
+keyboard interrupt or process exit during failure recording remains the
+primary cancellation, with the original failure chained privately; an
+already-active cancellation retains its original type and exit code.
 
 This in-process API is procedural custody, not isolation from code in the same
 process. Private evidence, action metadata, exceptions and exception chains
