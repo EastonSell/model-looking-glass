@@ -151,7 +151,9 @@ class CustodianRunTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / "run"
         self.snapshot = fake_snapshot()
-        self.manifest = canonical_json({"schema": "fake-public-pre-manifest"})
+        self.source_map = {f"looking_glass/fake_{i}.py": str(i) * 64 for i in range(1, 5)}
+        self.manifest = canonical_json({"schema": "fake-public-pre-manifest",
+                                        "source_sha256": self.source_map})
         self.executor = FakeExecutor(self.root)
         self.patches = [patch("looking_glass.causal_v2_custodian_run._checked_preparation",
                               return_value=(self.snapshot, self.manifest)),
@@ -165,7 +167,7 @@ class CustodianRunTests(unittest.TestCase):
             item.start()
             self.addCleanup(item.stop)
 
-    def run_once(self, scorer_override=None, classifier_override=None):
+    def run_once(self, scorer_override=None, classifier_override=None, source_inventory=None):
         def scorer(manifest, freeze, prediction, commitment_bytes, heldout, schedule,
                    heldout_root, site_nonce, prediction_nonce, chunks, **attestations):
             self.assertTrue(self.executor.closed)
@@ -173,10 +175,146 @@ class CustodianRunTests(unittest.TestCase):
             self.assertEqual(attestations["exposure_classification"], "unknown")
             return fake_summary(manifest, freeze, prediction, chunks, attestations["exposure_classification"])
         return run_study_once(self.root, prepared=None, expected_context={}, exclusion_bytes=b"",
-            pilot_bytes=b"", historical_cases=[], source_sha256={}, clarification_sha256={},
+            pilot_bytes=b"", historical_cases=[], source_sha256=self.source_map, clarification_sha256={},
             runtime={}, created_utc="fake", executor=self.executor, score=scorer_override or scorer,
             classify_exposure=classifier_override or (lambda: {"schema": "synthetic-v2-exposure-v1",
-                "classification": "unknown", "basis": "fabricated test"}))
+                "classification": "unknown", "basis": "fabricated test"}),
+            source_inventory=source_inventory)
+
+    def test_source_inventory_snapshots_are_bound_and_ordered(self):
+        calls = []
+        keys = list(self.source_map)
+        def inventory():
+            calls.append(list(self.executor.calls))
+            index = len(calls)
+            if index == 2:
+                self.assertTrue((self.root / "public" / "artifacts" /
+                                 "prediction_commitment.json").exists())
+            return {key: self.source_map[key] for key in keys[:index]}
+        def score(manifest, freeze, prediction, commitment_bytes, heldout, schedule,
+                  heldout_root, site_nonce, prediction_nonce, chunks, **attestations):
+            self.executor.calls.append(("score",))
+            return fake_summary(manifest, freeze, prediction, chunks, attestations["exposure_classification"])
+        result = self.run_once(scorer_override=score, source_inventory=inventory)
+        self.assertEqual(result["status"], "succeeded")
+        self.assertEqual(calls[0], [])
+        self.assertIn(("cell", "discovery"), calls[1])
+        self.assertNotIn(("cell", "heldout"), calls[1])
+        self.assertIn(("cell", "heldout"), calls[2])
+        self.assertIn(("close",), calls[2])
+        self.assertNotIn(("score",), calls[2])
+        self.assertIn(("close",), calls[3])
+        self.assertIn(("score",), calls[3])
+        artifacts = self.root / "public" / "artifacts"
+        for i, stage in enumerate(("before_discovery", "after_discovery",
+                                   "after_heldout", "before_success"), 1):
+            name = f"source_inventory_{stage}.json"
+            row = json.loads((artifacts / name).read_bytes())
+            self.assertEqual(row["stage"], stage)
+            self.assertEqual(row["pre_manifest_sha256"], hashlib.sha256(self.manifest).hexdigest())
+            self.assertEqual(row["source_sha256"], {key: self.source_map[key] for key in keys[:i]})
+        self.assertEqual(registry.verify_run(self.root / "public")["state"], "succeeded")
+
+    def test_source_inventory_mismatch_stops_before_discovery(self):
+        with self.assertRaisesRegex(CustodianError, "source inventory"):
+            self.run_once(source_inventory=lambda: {"looking_glass/fake_1.py": "f" * 64})
+        self.assertNotIn(("cell", "discovery"), self.executor.calls)
+        self.assertEqual(registry.verify_run(self.root / "public")["state"], "failed")
+        self.assertEqual(registry.verify_run(self.root / "private")["state"], "failed")
+
+    def test_source_inventory_cannot_forget_prior_imports_before_holdout(self):
+        values = iter(({"looking_glass/fake_1.py": "1" * 64},
+                       {"looking_glass/fake_2.py": "2" * 64}))
+        with self.assertRaisesRegex(CustodianError, "source inventory"):
+            self.run_once(source_inventory=lambda: next(values))
+        self.assertIn(("cell", "discovery"), self.executor.calls)
+        self.assertNotIn(("cell", "heldout"), self.executor.calls)
+        self.assertTrue((self.root / "public" / "artifacts" /
+                         "source_inventory_before_discovery.json").exists())
+        self.assertEqual(registry.verify_run(self.root / "public")["state"], "failed")
+
+    def test_source_inventory_is_copied_before_validation(self):
+        reported = {"looking_glass/fake_1.py": "1" * 64}
+        lines, start = inspect.getsourcelines(run_study_once)
+        target = start + next(i for i, line in enumerate(lines) if line.strip() == "owned = dict(reported)")
+        fired = []
+        def mutate(frame, event, arg):
+            if event == "line" and frame.f_code.co_name == "save_source_inventory" and frame.f_lineno == target:
+                reported["looking_glass/fake_1.py"] = "f" * 64
+                fired.append(True)
+            return mutate
+        try:
+            sys.settrace(mutate)
+            with self.assertRaisesRegex(CustodianError, "source inventory"):
+                self.run_once(source_inventory=lambda: reported)
+        finally:
+            sys.settrace(None)
+        self.assertEqual(fired, [True])
+        self.assertNotIn(("cell", "discovery"), self.executor.calls)
+        self.assertFalse((self.root / "public" / "artifacts" /
+                          "source_inventory_before_discovery.json").exists())
+
+    def test_late_source_inventory_interrupt_cannot_publish_success(self):
+        calls = []
+        def inventory():
+            calls.append(1)
+            if len(calls) == 4:
+                raise KeyboardInterrupt("source observation interrupted")
+            return {"looking_glass/fake_1.py": "1" * 64}
+        with self.assertRaisesRegex(KeyboardInterrupt, "source observation interrupted"):
+            self.run_once(source_inventory=inventory)
+        self.assertEqual(registry.verify_run(self.root / "public")["state"], "cancelled")
+        self.assertEqual(registry.verify_run(self.root / "private")["state"], "cancelled")
+        self.assertFalse((self.root / "public" / "artifacts" / "results.json").exists())
+        self.assertFalse((self.root / "public" / "artifacts" /
+                          "source_inventory_before_success.json").exists())
+
+    def test_changed_saved_source_inventory_cannot_publish_results(self):
+        calls = []
+        def inventory():
+            calls.append(1)
+            if len(calls) == 4:
+                path = self.root / "public" / "artifacts" / "source_inventory_before_discovery.json"
+                path.write_bytes(b"{}")
+            return {"looking_glass/fake_1.py": "1" * 64}
+        with self.assertRaisesRegex(CustodianError, "changed after publication"):
+            self.run_once(source_inventory=inventory)
+        self.assertFalse((self.root / "public" / "artifacts" / "results.json").exists())
+        # The terminal registry records the current bytes, but the custodian
+        # declines to attest its old expected inventory as a successful run.
+        self.assertNotEqual(registry.verify_run(self.root / "public")["state"], "succeeded")
+
+    def test_source_inventory_count_and_type_are_bounded(self):
+        for index, value in enumerate(([], {}, {f"x{i}": "a" * 64 for i in range(4097)})):
+            with self.subTest(count=len(value)):
+                self.root = Path(self.temp.name) / f"run-{index}"
+                self.executor = FakeExecutor(self.root)
+                with self.assertRaisesRegex(CustodianError, "source inventory"):
+                    self.run_once(source_inventory=lambda: value)
+                self.assertNotIn(("cell", "discovery"), self.executor.calls)
+                self.assertEqual(registry.verify_run(self.root / "public")["state"], "failed")
+
+    def test_noncallable_source_inventory_closes_executor_before_initialization(self):
+        with self.assertRaisesRegex(TypeError, "source inventory must be callable"):
+            self.run_once(source_inventory="invalid")
+        self.assertEqual(self.executor.calls, [("close",)])
+        self.assertFalse(self.root.exists())
+
+    def test_uncertain_source_inventory_write_is_not_retried(self):
+        original = registry.ExperimentRun.write_artifact
+        seen = []
+        def write(run, name, data):
+            original(run, name, data)
+            if name == "source_inventory_before_discovery.json":
+                seen.append(name)
+                raise OSError("source record acknowledgement lost")
+        with patch.object(registry.ExperimentRun, "write_artifact", new=write):
+            with self.assertRaisesRegex(OSError, "acknowledgement lost"):
+                self.run_once(source_inventory=lambda: {"looking_glass/fake_1.py": "1" * 64})
+        self.assertEqual(seen, ["source_inventory_before_discovery.json"])
+        self.assertNotIn(("cell", "discovery"), self.executor.calls)
+        self.assertEqual(registry.verify_run(self.root / "public")["state"], "incomplete")
+        self.assertEqual(registry.verify_run(self.root / "private")["state"], "failed")
 
     def test_discovery_freeze_commitment_precede_any_heldout_callback(self):
         result = self.run_once()

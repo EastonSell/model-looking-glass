@@ -1,0 +1,748 @@
+{
+  "auditor_source_sha256": "7b82b476788ccec49c8f48bd30dfd9a21cdedd2c5532057c11b087e08b641a6d",
+  "binding_commit": "dea2f2a6f5db8627f7d65100628fe60fd0344668",
+  "binding_sha256": "23575704f3e55d741123d3c1024accfb15aa0a048a84ce415bc765573d913ba0",
+  "checkpoint_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "controls": {
+    "delivery": 16,
+    "final_clean": 16,
+    "null": 16,
+    "repeat": 16,
+    "self": 128,
+    "subject_position": 16
+  },
+  "device": "CPU float32, eager, one thread",
+  "events": 626,
+  "evidence_archive_bytes": 11485872,
+  "evidence_archive_sha256": "9ea7ebf83f0580335cbf35b65b2277d8990090adff5b3eb8d0b3b68409cd3a69",
+  "forwards": 608,
+  "independent_audit_sha256": "f7a5cd4a202c5d0339efd9afbf3d8a496adae23e2795054ee1b0c1f66589460a",
+  "job_closed": true,
+  "job_drained": true,
+  "journal_event_sha256": "02a03e192fc067f22253d5029a19cab0a076396cc8b4e47daae4f57288dfb0f4",
+  "journal_started_sha256": "ba59f64f1a2791d7a7b629cf740e88e53661144b39558ca2dd5c48e622ea5f45",
+  "journal_terminal_sha256": "3d447663df56244482f1a5c2a5e46b22efb3241303edc79bf379c05b31718295",
+  "launcher_terminal_sha256": "49c6771ebdb7be6f3c4ebe315cfe1383d4c202276b248c4c47ca1fe3f181f111",
+  "model_id": "distilbert/distilgpt2",
+  "owner_exit_code": 0,
+  "owner_reaped": true,
+  "past_clean_baseline": {
+    "correct": 16,
+    "incorrect": 0,
+    "n": 16,
+    "ties": 0
+  },
+  "preflight_manifest_sha256": "1b1adf4d72163bfa3e0399ed8ee92eba6b5c0eb82a47edf28cecde5ffb1deafe",
+  "present_clean_baseline": {
+    "correct": 16,
+    "incorrect": 0,
+    "n": 16,
+    "ties": 0
+  },
+  "private_supervisor_sha256": "fecb5d8996ffd9621d1ed59818f8f2eb6168fb98ccf767c2fe53f64d2ec8462f",
+  "public_cases": 16,
+  "public_families": 4,
+  "schema": "mlg-natural-discovery-results-v1",
+  "scope": "public, exposed development discovery; no held-out or general causal claim",
+  "selection": {
+    "earliest_site": "1:attn:last",
+    "magnitude_site": "4:mlp:last",
+    "random_site": "3:mlp:last",
+    "ranking": [
+      "3:attn:last",
+      "4:mlp:last",
+      "4:attn:last",
+      "2:attn:last",
+      "1:attn:last",
+      "1:mlp:last",
+      "2:mlp:last",
+      "3:mlp:last"
+    ],
+    "selected_site": "3:attn:last"
+  },
+  "site_effects": [
+    {
+      "different_lemma_number_contrast": 0.07612156867980957,
+      "families": [
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 0.03839588165283203,
+            "different_lemma_same_number": 0.007279396057128906,
+            "same_lemma_opposite_number": 0.031266212463378906,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.00014972686767578125,
+          "number_main_contrast": 0.031191349029541016,
+          "quartet": "q1",
+          "site": "1:attn:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 0.09055042266845703,
+            "different_lemma_same_number": 0.02019500732421875,
+            "same_lemma_opposite_number": 0.07268333435058594,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.0023279190063476562,
+          "number_main_contrast": 0.07151937484741211,
+          "quartet": "q2",
+          "site": "1:attn:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 0.08010482788085938,
+            "different_lemma_same_number": 0.008512496948242188,
+            "same_lemma_opposite_number": 0.08102035522460938,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.009428024291992188,
+          "number_main_contrast": 0.07630634307861328,
+          "quartet": "q3",
+          "site": "1:attn:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 0.15294551849365234,
+            "different_lemma_same_number": 0.021523475646972656,
+            "same_lemma_opposite_number": 0.11582756042480469,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -0.015594482421875,
+          "number_main_contrast": 0.12362480163574219,
+          "quartet": "q4",
+          "site": "1:attn:last"
+        }
+      ],
+      "past_number_main_contrast": 0.0644843578338623,
+      "present_number_main_contrast": 0.07566046714782715,
+      "same_lemma_number_contrast": 0.07519936561584473,
+      "site": "1:attn:last",
+      "strict_sign_reversals": {
+        "opposite_number": 0,
+        "same_number": 0
+      }
+    },
+    {
+      "different_lemma_number_contrast": -0.013733148574829102,
+      "families": [
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": -0.02227306365966797,
+            "different_lemma_same_number": 0.0017004013061523438,
+            "same_lemma_opposite_number": -0.02550792694091797,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -0.0015344619750976562,
+          "number_main_contrast": -0.02474069595336914,
+          "quartet": "q1",
+          "site": "1:mlp:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 0.021188735961914062,
+            "different_lemma_same_number": -0.016182899475097656,
+            "same_lemma_opposite_number": 0.038771629333496094,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.001399993896484375,
+          "number_main_contrast": 0.038071632385253906,
+          "quartet": "q2",
+          "site": "1:mlp:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": -0.05244922637939453,
+            "different_lemma_same_number": -0.004458427429199219,
+            "same_lemma_opposite_number": -0.042893409729003906,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.005097389221191406,
+          "number_main_contrast": -0.04544210433959961,
+          "quartet": "q3",
+          "site": "1:mlp:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": -0.040329933166503906,
+            "different_lemma_same_number": -0.019989967346191406,
+            "same_lemma_opposite_number": -0.04516887664794922,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -0.02482891082763672,
+          "number_main_contrast": -0.03275442123413086,
+          "quartet": "q4",
+          "site": "1:mlp:last"
+        }
+      ],
+      "past_number_main_contrast": -0.009236931800842285,
+      "present_number_main_contrast": -0.016216397285461426,
+      "same_lemma_number_contrast": -0.01869964599609375,
+      "site": "1:mlp:last",
+      "strict_sign_reversals": {
+        "opposite_number": 0,
+        "same_number": 0
+      }
+    },
+    {
+      "different_lemma_number_contrast": 0.09861516952514648,
+      "families": [
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 0.18400192260742188,
+            "different_lemma_same_number": 0.0012254714965820312,
+            "same_lemma_opposite_number": 0.18540287017822266,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.0026264190673828125,
+          "number_main_contrast": 0.18408966064453125,
+          "quartet": "q1",
+          "site": "2:attn:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 0.09365177154541016,
+            "different_lemma_same_number": 0.0015239715576171875,
+            "same_lemma_opposite_number": 0.08303165435791016,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -0.009096145629882812,
+          "number_main_contrast": 0.08757972717285156,
+          "quartet": "q2",
+          "site": "2:attn:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 0.1812286376953125,
+            "different_lemma_same_number": 0.005997657775878906,
+            "same_lemma_opposite_number": 0.17873668670654297,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.003505706787109375,
+          "number_main_contrast": 0.17698383331298828,
+          "quartet": "q3",
+          "site": "2:attn:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": -0.07985973358154297,
+            "different_lemma_same_number": -0.0241851806640625,
+            "same_lemma_opposite_number": -0.0799722671508789,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -0.024297714233398438,
+          "number_main_contrast": -0.06782341003417969,
+          "quartet": "q4",
+          "site": "2:attn:last"
+        }
+      ],
+      "past_number_main_contrast": 0.08857297897338867,
+      "present_number_main_contrast": 0.09520745277404785,
+      "same_lemma_number_contrast": 0.09179973602294922,
+      "site": "2:attn:last",
+      "strict_sign_reversals": {
+        "opposite_number": 0,
+        "same_number": 0
+      }
+    },
+    {
+      "different_lemma_number_contrast": -0.0405421257019043,
+      "families": [
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 0.042850494384765625,
+            "different_lemma_same_number": 0.005444526672363281,
+            "same_lemma_opposite_number": 0.04697132110595703,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.009565353393554688,
+          "number_main_contrast": 0.04218864440917969,
+          "quartet": "q1",
+          "site": "2:mlp:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": -0.0361328125,
+            "different_lemma_same_number": 0.011000633239746094,
+            "same_lemma_opposite_number": -0.03902912139892578,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.008104324340820312,
+          "number_main_contrast": -0.04308128356933594,
+          "quartet": "q2",
+          "site": "2:mlp:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": -0.003192901611328125,
+            "different_lemma_same_number": 0.008165359497070312,
+            "same_lemma_opposite_number": -0.00722503662109375,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.0041332244873046875,
+          "number_main_contrast": -0.009291648864746094,
+          "quartet": "q3",
+          "site": "2:mlp:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": -0.19345569610595703,
+            "different_lemma_same_number": -0.05237293243408203,
+            "same_lemma_opposite_number": -0.1667947769165039,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -0.025712013244628906,
+          "number_main_contrast": -0.15393877029418945,
+          "quartet": "q4",
+          "site": "2:mlp:last"
+        }
+      ],
+      "past_number_main_contrast": -0.037636637687683105,
+      "present_number_main_contrast": -0.04103076457977295,
+      "same_lemma_number_contrast": -0.0415194034576416,
+      "site": "2:mlp:last",
+      "strict_sign_reversals": {
+        "opposite_number": 0,
+        "same_number": 0
+      }
+    },
+    {
+      "different_lemma_number_contrast": 3.103684902191162,
+      "families": [
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 2.885143280029297,
+            "different_lemma_same_number": -0.00024890899658203125,
+            "same_lemma_opposite_number": 2.890913963317871,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.0055217742919921875,
+          "number_main_contrast": 2.888153076171875,
+          "quartet": "q1",
+          "site": "3:attn:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 4.121252059936523,
+            "different_lemma_same_number": -0.0027151107788085938,
+            "same_lemma_opposite_number": 4.1193342208862305,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -0.0046329498291015625,
+          "number_main_contrast": 4.121650695800781,
+          "quartet": "q2",
+          "site": "3:attn:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 2.083468437194824,
+            "different_lemma_same_number": 0.011464118957519531,
+            "same_lemma_opposite_number": 2.081141471862793,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.009137153625488281,
+          "number_main_contrast": 2.076572895050049,
+          "quartet": "q3",
+          "site": "3:attn:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 3.279041290283203,
+            "different_lemma_same_number": -0.05433464050292969,
+            "same_lemma_opposite_number": 3.256648063659668,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -0.07672786712646484,
+          "number_main_contrast": 3.2950119972229004,
+          "quartet": "q4",
+          "site": "3:attn:last"
+        }
+      ],
+      "past_number_main_contrast": 2.6841492652893066,
+      "present_number_main_contrast": 3.0953471660614014,
+      "same_lemma_number_contrast": 3.0870094299316406,
+      "site": "3:attn:last",
+      "strict_sign_reversals": {
+        "opposite_number": 10,
+        "same_number": 0
+      }
+    },
+    {
+      "different_lemma_number_contrast": -0.15824103355407715,
+      "families": [
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": -0.14808273315429688,
+            "different_lemma_same_number": -0.0009632110595703125,
+            "same_lemma_opposite_number": -0.14717864990234375,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -5.91278076171875e-05,
+          "number_main_contrast": -0.14714908599853516,
+          "quartet": "q1",
+          "site": "3:mlp:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": -0.13409709930419922,
+            "different_lemma_same_number": 0.00711822509765625,
+            "same_lemma_opposite_number": -0.12929439544677734,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.011920928955078125,
+          "number_main_contrast": -0.1352548599243164,
+          "quartet": "q2",
+          "site": "3:mlp:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": -0.05378246307373047,
+            "different_lemma_same_number": -0.0012235641479492188,
+            "same_lemma_opposite_number": -0.04720878601074219,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.0053501129150390625,
+          "number_main_contrast": -0.04988384246826172,
+          "quartet": "q3",
+          "site": "3:mlp:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": -0.3177757263183594,
+            "different_lemma_same_number": -0.025705337524414062,
+            "same_lemma_opposite_number": -0.2974395751953125,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -0.0053691864013671875,
+          "number_main_contrast": -0.2947549819946289,
+          "quartet": "q4",
+          "site": "3:mlp:last"
+        }
+      ],
+      "past_number_main_contrast": -0.17575287818908691,
+      "present_number_main_contrast": -0.15676069259643555,
+      "same_lemma_number_contrast": -0.15528035163879395,
+      "site": "3:mlp:last",
+      "strict_sign_reversals": {
+        "opposite_number": 0,
+        "same_number": 0
+      }
+    },
+    {
+      "different_lemma_number_contrast": 1.7064030170440674,
+      "families": [
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 2.063117027282715,
+            "different_lemma_same_number": -0.0022668838500976562,
+            "same_lemma_opposite_number": 2.062466621398926,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -0.0029172897338867188,
+          "number_main_contrast": 2.063925266265869,
+          "quartet": "q1",
+          "site": "4:attn:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 1.9604883193969727,
+            "different_lemma_same_number": 0.0034198760986328125,
+            "same_lemma_opposite_number": 1.918447494506836,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -0.038620948791503906,
+          "number_main_contrast": 1.937757968902588,
+          "quartet": "q2",
+          "site": "4:attn:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 1.131882667541504,
+            "different_lemma_same_number": 0.0145416259765625,
+            "same_lemma_opposite_number": 1.121088981628418,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.0037479400634765625,
+          "number_main_contrast": 1.1192150115966797,
+          "quartet": "q3",
+          "site": "4:attn:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 1.6667757034301758,
+            "different_lemma_same_number": -0.01904296875,
+            "same_lemma_opposite_number": 1.616781234741211,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -0.06903743743896484,
+          "number_main_contrast": 1.6512999534606934,
+          "quartet": "q4",
+          "site": "4:attn:last"
+        }
+      ],
+      "past_number_main_contrast": 1.517922282218933,
+      "present_number_main_contrast": 1.6930495500564575,
+      "same_lemma_number_contrast": 1.6796960830688477,
+      "site": "4:attn:last",
+      "strict_sign_reversals": {
+        "opposite_number": 0,
+        "same_number": 0
+      }
+    },
+    {
+      "different_lemma_number_contrast": 1.82649564743042,
+      "families": [
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 0.8816213607788086,
+            "different_lemma_same_number": -0.0044841766357421875,
+            "same_lemma_opposite_number": 0.8804740905761719,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -0.005631446838378906,
+          "number_main_contrast": 0.8832898139953613,
+          "quartet": "q1",
+          "site": "4:mlp:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 3.445925712585449,
+            "different_lemma_same_number": 0.0071926116943359375,
+            "same_lemma_opposite_number": 3.4749364852905273,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.03620338439941406,
+          "number_main_contrast": 3.4568347930908203,
+          "quartet": "q2",
+          "site": "4:mlp:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 0.44280433654785156,
+            "different_lemma_same_number": 0.005806922912597656,
+            "same_lemma_opposite_number": 0.4486083984375,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": 0.011610984802246094,
+          "number_main_contrast": 0.44280290603637695,
+          "quartet": "q3",
+          "site": "4:mlp:last"
+        },
+        {
+          "cell_counts": {
+            "different_lemma_opposite_number": 4,
+            "different_lemma_same_number": 4,
+            "same_lemma_opposite_number": 4,
+            "same_lemma_same_number": 4
+          },
+          "cell_means": {
+            "different_lemma_opposite_number": 2.500899314880371,
+            "different_lemma_same_number": -0.043247222900390625,
+            "same_lemma_opposite_number": 2.4762802124023438,
+            "same_lemma_same_number": 0.0
+          },
+          "lemma_number_interaction": -0.06786632537841797,
+          "number_main_contrast": 2.5102133750915527,
+          "quartet": "q4",
+          "site": "4:mlp:last"
+        }
+      ],
+      "past_number_main_contrast": 1.4376769065856934,
+      "present_number_main_contrast": 1.8232852220535278,
+      "same_lemma_number_contrast": 1.8200747966766357,
+      "site": "4:mlp:last",
+      "strict_sign_reversals": {
+        "opposite_number": 0,
+        "same_number": 0
+      }
+    }
+  ],
+  "source_commit": "def07cbb168408a12c76ba30f196af45149e111d",
+  "unique_tensor_bytes": 12315712,
+  "unique_tensor_count": 1120
+}
