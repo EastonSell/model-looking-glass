@@ -6,6 +6,8 @@ predictions, execute held-out work, or authorize a study run.
 """
 from contextlib import nullcontext
 from copy import deepcopy
+from dataclasses import dataclass, field
+import hashlib
 
 import torch
 from torch import nn
@@ -13,6 +15,7 @@ from torch.nn.modules import module as module_hooks
 
 from .causal_trace_v2 import compare_sparse_pair
 from .causal_v2_custody import canonical_json
+from .causal_v2_model_identity import state_sha256
 from .causal_v2_runtime import NumericPolicy, float32_exact_equal
 from .causal_v2_selection import DiscoveryCondition
 from .intervention_plan import ActivationPlan
@@ -45,7 +48,37 @@ class DevelopmentBudget:
         self.root_forwards += 1
 
 
+_CACHE_TOKEN = object()
+
+
+@dataclass(frozen=True, eq=False)
+class DevelopmentClean:
+    clean_trace: tuple
+    repeat_trace: tuple
+    clean_logits: torch.Tensor
+    repeat_logits: torch.Tensor
+    input_sha256: str
+    model_state_sha256: str
+    _payload_sha256: str = field(repr=False)
+    _model: object = field(repr=False)
+    _budget: object = field(repr=False)
+    _policy: object = field(repr=False)
+    _token: object = field(repr=False)
+
+
+@dataclass(frozen=True, eq=False)
+class DevelopmentTarget:
+    target: str
+    value: torch.Tensor
+    metadata: dict
+    _payload_sha256: str = field(repr=False)
+    _clean: object = field(repr=False)
+    _token: object = field(repr=False)
+
+
 def _check_hooks(model):
+    if torch.is_autocast_enabled("cpu"):
+        raise DevelopmentInvalid("CPU autocast is unsupported")
     if (module_hooks._global_forward_hooks or module_hooks._global_forward_pre_hooks or
             module_hooks._global_backward_hooks or module_hooks._global_backward_pre_hooks):
         raise DevelopmentInvalid("global forward or backward hooks are unsupported")
@@ -71,7 +104,9 @@ def _check_model(model):
         points = list(block.branch_taps) + [block.activation_tap, block.merge_tap, block.output_tap]
         names = [f"block.{i}.branch.0", f"block.{i}.branch.1", f"block.{i}.activation",
                  f"block.{i}.merge", f"block.{i}.output"]
-        if any(type(point) is not TapPoint or point.node_id != name for point, name in zip(points, names)):
+        groups = ("dense", "dense", "dense", "dense", "sparse")
+        if any(type(point) is not TapPoint or point.node_id != name or point.group != group
+               for point, name, group in zip(points, names, groups)):
             raise DevelopmentInvalid("invalid development tap labels")
     modules = [module for _, module in model.named_modules(remove_duplicate=False)]
     if len({id(module) for module in modules}) != len(modules) or any(module.training for module in modules):
@@ -106,6 +141,79 @@ def _require_equal(left, right, description, policy):
 
 def _bits(value):
     return [int(bit) & 0xffffffff for bit in value.detach().view(torch.int32).reshape(-1).tolist()]
+
+
+def input_sha256(value):
+    """Bind a [1,8] CPU float32 input's exact bits in a defined byte order.
+
+    This development identity is SHA-256 of the ASCII domain tag and NUL,
+    followed by two unsigned 32-bit big-endian dimensions and eight unsigned
+    IEEE binary32 bit patterns in big-endian order. Signed zeros stay distinct.
+    It does not bind a model, source revision or custody record.
+    """
+    if (type(value) is not torch.Tensor or tuple(value.shape) != (1, 8) or
+            value.layout != torch.strided or value.is_nested or value.is_neg() or value.is_conj() or
+            value.has_names() or value.dtype != torch.float32 or value.device.type != "cpu"):
+        raise DevelopmentInvalid("input identity requires a CPU float32 [1,8] tensor")
+    bits = _bits(value)
+    if any((bit & 0x7f800000) == 0x7f800000 for bit in bits):
+        raise DevelopmentInvalid("input identity requires finite values")
+    data = b"MLG-v2-input-f32be-v1\0" + (1).to_bytes(4, "big") + (8).to_bytes(4, "big")
+    return hashlib.sha256(data + b"".join(bit.to_bytes(4, "big") for bit in bits)).hexdigest()
+
+
+def _snapshot_sha256(clean_trace, repeat_trace, clean, repeat):
+    rows = []
+    for stream in (clean_trace, repeat_trace):
+        rows.append([{"metadata": event.metadata(), "bits": _bits(event.value)} for event in stream])
+    return hashlib.sha256(canonical_json({"traces": rows, "logits": [_bits(clean), _bits(repeat)]})).hexdigest()
+
+
+def _target_sha256(target, value, metadata):
+    return hashlib.sha256(canonical_json({"target": target, "bits": _bits(value), "metadata": metadata})).hexdigest()
+
+
+def _validate_cached_tensor(value, shape, policy):
+    if (type(value) is not torch.Tensor or tuple(value.shape) != shape or value.layout != torch.strided or
+            value.is_nested or value.is_neg() or value.is_conj() or value.has_names() or
+            value.dtype != torch.float32 or value.device.type != "cpu"):
+        raise DevelopmentInvalid("cached tensor shape, dtype or layout differs")
+    if not _equal(value, value, policy):
+        raise DevelopmentInvalid("cached tensor is not finite")
+
+
+def _validate_clean(clean, model, x, budget, policy):
+    if (type(clean) is not DevelopmentClean or clean._token is not _CACHE_TOKEN or
+            clean._model is not model or clean._budget is not budget or clean._policy is not policy):
+        raise DevelopmentInvalid("clean observation does not belong to this execution")
+    policy.verify()
+    _check_model(model)
+    _check_input(x, policy)
+    _validate_cached_tensor(clean.clean_logits, (1, 2), policy)
+    _validate_cached_tensor(clean.repeat_logits, (1, 2), policy)
+    _require_equal(clean.clean_logits, clean.repeat_logits, "cached clean logits differ", policy)
+    try:
+        pair = _compare(clean.clean_trace, clean.repeat_trace, policy)
+    except Exception as error:
+        raise DevelopmentInvalid("cached trace payload or metadata differs") from error
+    if pair["status"] != "no_difference_observed":
+        raise DevelopmentInvalid("cached clean traces differ")
+    if (input_sha256(x) != clean.input_sha256 or state_sha256(model) != clean.model_state_sha256 or
+            _snapshot_sha256(clean.clean_trace, clean.repeat_trace, clean.clean_logits, clean.repeat_logits)
+            != clean._payload_sha256):
+        raise DevelopmentInvalid("clean observation or its execution identity changed")
+    policy.verify()
+
+
+def _validate_target(target_capture, target, clean):
+    if (type(target_capture) is not DevelopmentTarget or target_capture._token is not _CACHE_TOKEN or
+            target_capture._clean is not clean or target_capture.target != target):
+        raise DevelopmentInvalid("private target capture or its identity changed")
+    _, path = _target_spec(target)
+    _check_capture_metadata(target_capture.metadata, path)
+    _validate_cached_tensor(target_capture.value, (1, 8), clean._policy)
+    if _target_sha256(target_capture.target, target_capture.value, target_capture.metadata) != target_capture._payload_sha256:
+        raise DevelopmentInvalid("private target capture or its identity changed")
 
 
 def _compare(reference, candidate, policy):
@@ -244,34 +352,73 @@ def _plan(model, x, site, kind, source, trace_value, budget, policy, perturb):
                     "base_identity": "clean" if kind == "reverse" else "perturbed"}
 
 
-def run_development_condition(model, x, target, strength, budget, policy):
-    """Run 19 CPU forwards on retained development vectors; return private evidence.
-
-    The caller must not expose ``private_integrity`` or ``target`` to selection.
-    This function cannot enforce confidentiality, phase gates or provenance.
-    """
+def prepare_development_clean(model, x, budget, policy):
+    """Capture a reusable clean/repeat pair using two development forwards."""
     try:
         if type(budget) is not DevelopmentBudget or type(policy) is not NumericPolicy:
             raise DevelopmentInvalid("development budget and numeric policy are required")
         policy.verify()
         _check_model(model)
         _check_input(x, policy)
-        targets = {f"block.{block}.{op}": (block, op) for block in (1, 2, 3)
-                   for op in ("branch.0", "activation", "merge")}
-        if type(target) is not str or target not in targets or type(strength) is not float or strength not in (.25, .75):
-            raise DevelopmentInvalid("invalid development injection")
-        block, op = targets[target]
-        path = f"blocks.{block}.branch_taps.0" if op == "branch.0" else f"blocks.{block}.{op}_tap"
-        delta = strength if x[0, 0].item() > 0 else -strength
-        perturb = (target, delta)
+        initial_input, initial_state = input_sha256(x), state_sha256(model)
         clean, clean_trace = _trace(model, x, budget, policy)
         repeat, repeat_trace = _trace(model, x, budget, policy)
         _require_equal(clean, repeat, "repeated clean logits differ", policy)
         clean_pair = _compare(clean_trace, repeat_trace, policy)
         if clean_pair["status"] != "no_difference_observed":
             raise DevelopmentInvalid("repeated clean sparse trace differs")
+        if input_sha256(x) != initial_input or state_sha256(model) != initial_state:
+            raise DevelopmentInvalid("model or input changed during clean observation")
+        result = DevelopmentClean(clean_trace, repeat_trace, clean, repeat, initial_input, initial_state,
+                                  _snapshot_sha256(clean_trace, repeat_trace, clean, repeat),
+                                  model, budget, policy, _CACHE_TOKEN)
+        _validate_clean(result, model, x, budget, policy)
+        return result
+    except DevelopmentInvalid:
+        raise
+    except Exception as error:
+        raise DevelopmentInvalid("development clean preparation failed") from error
+
+
+def _target_spec(target):
+    targets = {f"block.{block}.{op}": (block, op) for block in (1, 2, 3)
+               for op in ("branch.0", "activation", "merge")}
+    if type(target) is not str or target not in targets:
+        raise DevelopmentInvalid("invalid development injection")
+    block, op = targets[target]
+    path = f"blocks.{block}.branch_taps.0" if op == "branch.0" else f"blocks.{block}.{op}_tap"
+    return block, path
+
+
+def prepare_development_target(model, x, target, clean, budget, policy):
+    """Capture one private clean target for reuse across strengths."""
+    try:
+        _validate_clean(clean, model, x, budget, policy)
+        _, path = _target_spec(target)
         capture_logits, clean_target, clean_metadata = _capture(model, x, path, budget, policy)
-        _require_equal(capture_logits, clean, "clean target capture logits differ", policy)
+        _require_equal(capture_logits, clean.clean_logits, "clean target capture logits differ", policy)
+        _validate_clean(clean, model, x, budget, policy)
+        return DevelopmentTarget(target, clean_target, clean_metadata,
+                                 _target_sha256(target, clean_target, clean_metadata), clean, _CACHE_TOKEN)
+    except DevelopmentInvalid:
+        raise
+    except Exception as error:
+        raise DevelopmentInvalid("development target preparation failed") from error
+
+
+def run_development_active(model, x, target, strength, clean, target_capture, budget, policy):
+    """Execute the 16-forward development condition with validated reusable inputs."""
+    try:
+        _validate_clean(clean, model, x, budget, policy)
+        _validate_target(target_capture, target, clean)
+        block, path = _target_spec(target)
+        if type(strength) is not float or strength not in (.25, .75):
+            raise DevelopmentInvalid("invalid development strength")
+        clean_trace, repeat_trace = clean.clean_trace, clean.repeat_trace
+        clean_logits, repeat_logits = clean.clean_logits, clean.repeat_logits
+        clean_target, clean_metadata = target_capture.value, target_capture.metadata
+        delta = strength if x[0, 0].item() > 0 else -strength
+        perturb = (target, delta)
         changed, changed_trace = _trace(model, x, budget, policy, perturb)
         compared = _compare(clean_trace, changed_trace, policy)
         if compared["status"] == "upstream_difference":
@@ -293,8 +440,8 @@ def run_development_condition(model, x, target, strength, budget, policy):
                 trace_value = changed_trace[site].value
                 output, evidence = _plan(model, x, site, kind, source, trace_value, budget, policy,
                                          None if kind == "reverse" else perturb)
-                expected_logits = (clean if site >= block else changed) if kind == "forward" else (
-                    (changed if site >= block else clean) if kind == "reverse" else changed)
+                expected_logits = (clean_logits if site >= block else changed) if kind == "forward" else (
+                    (changed if site >= block else clean_logits) if kind == "reverse" else changed)
                 _require_equal(output, expected_logits, "development control logits differ", policy)
                 results[kind].append(output)
                 plans.append(evidence)
@@ -303,19 +450,35 @@ def run_development_condition(model, x, target, strength, budget, policy):
         _require_equal(upstream, changed, "upstream control differs", policy)
         plans.append(evidence)
         verification, _ = _forward(model, x, budget, policy)
-        _require_equal(verification, clean, "post-hook clean logits differ", policy)
+        _require_equal(verification, clean_logits, "post-hook clean logits differ", policy)
         condition = DiscoveryCondition(strength, changed_trace, changed, tuple(results["forward"]),
                                        tuple(results["reverse"]), tuple(results["null"]), tuple(results["self"]),
                                        upstream, verification)
-        policy.verify()
-        return {"clean_trace": clean_trace, "repeat_trace": repeat_trace, "clean_logits": clean,
-                "repeat_logits": repeat, "condition": condition, "plans": plans,
+        _validate_clean(clean, model, x, budget, policy)
+        _validate_target(target_capture, target, clean)
+        return {"clean_trace": clean_trace, "repeat_trace": repeat_trace, "clean_logits": clean_logits,
+                "repeat_logits": repeat_logits, "condition": condition, "plans": plans,
                 "private_integrity": {"target": target, "clean_target_bits": _bits(clean_target),
                                       "perturbed_target_bits": _bits(changed_target), "delta": delta,
-                                      "clean_capture_metadata": clean_metadata,
-                                      "perturbed_capture_metadata": changed_metadata},
-                "comparison": compared}
+                                      "clean_capture_metadata": deepcopy(clean_metadata),
+                                      "perturbed_capture_metadata": deepcopy(changed_metadata)},
+                "comparison": compared, "input_sha256": clean.input_sha256,
+                "model_state_sha256": clean.model_state_sha256}
     except DevelopmentInvalid:
         raise
     except Exception as error:
-        raise DevelopmentInvalid("development condition failed") from error
+        raise DevelopmentInvalid("development active condition failed") from error
+
+
+def run_development_condition(model, x, target, strength, budget, policy):
+    """Run the standalone 19-forward development exercise with private evidence.
+
+    The caller must not expose ``private_integrity`` or ``target`` to selection.
+    This function cannot enforce confidentiality, phase gates or provenance.
+    """
+    _target_spec(target)
+    if type(strength) is not float or strength not in (.25, .75):
+        raise DevelopmentInvalid("invalid development strength")
+    clean = prepare_development_clean(model, x, budget, policy)
+    private_target = prepare_development_target(model, x, target, clean, budget, policy)
+    return run_development_active(model, x, target, strength, clean, private_target, budget, policy)

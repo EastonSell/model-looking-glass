@@ -95,6 +95,14 @@ own separately established completion and disposal conditions are met.
    justified. A trusted encoder must not retain its argument or frame unless
    separately charged and managed.
 
+The IPC handler does not retain the original factory or encoder exception and
+traceback for the guardian. Unreachable synchronous CPU temporaries can be
+disposed while their conservative connection claim remains charged; that is
+not proof that another alias or operation has finished. Trusted overrides that
+start asynchronous or native work, or retain buffers or frames externally,
+must establish their own rooted ownership, accounting and completion contract
+before starting that work. This notification seam does not provide it.
+
 The quarantine signal and defensive checks are not an atomic service-wide
 admission barrier; a concurrent admission can already be in progress as a
 different handler latches quarantine. The owner must coordinate shutdown and

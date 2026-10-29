@@ -23,7 +23,7 @@ MAX_RECORD_BYTES = 64 * 1024
 MAX_CONDITIONS = 32
 # Thirty-two complete conditions and one optional partial record, plus framing.
 CELL_CHUNK_LIMIT = (MAX_CONDITIONS + 1) * MAX_RECORD_BYTES + 4096
-_RECORD_SCHEMA = "causal-v2-condition-record-v1"
+_RECORD_SCHEMAS = {"causal-v2-condition-record-v1", "causal-v2-condition-record-v2"}
 _PARTIAL_SCHEMA = "causal-v2-partial-record-v1"
 _DIGEST = re.compile(r"[0-9a-f]{64}\Z")
 _KINDS = tuple((kind, site) for kind in ("forward", "reverse", "null", "self")
@@ -99,12 +99,15 @@ def _logits(value):
             _tensor(item, 2)
 
 
-def _plans(value):
+def _plans(value, schema):
     if type(value) is not list or len(value) != len(_KINDS):
         raise CellEvidenceError("thirteen ordered plan records are required")
     for plan, (kind, site) in zip(value, _KINDS):
+        keys = {"kind", "site", "metadata", "captures", "source_id", "base_id"}
+        if schema == "causal-v2-condition-record-v2":
+            keys |= {"source_role", "comparison_role", "comparison_id", "base_role"}
         if (type(plan) is not dict
-                or set(plan) != {"kind", "site", "metadata", "captures", "source_id", "base_id"}
+                or set(plan) != keys
                 or plan["kind"] != kind or type(plan["site"]) is not int or plan["site"] != site
                 or type(plan["metadata"]) is not dict or not _text(plan["base_id"])):
             raise CellEvidenceError("invalid ordered plan record")
@@ -113,6 +116,20 @@ def _plans(value):
                 or (kind == "self" and source != "same_forward_self_source")
                 or (kind not in ("null", "self") and not _text(source))):
             raise CellEvidenceError("invalid plan source identity")
+        if schema == "causal-v2-condition-record-v2":
+            source_role = {"forward": "clean_sparse_trace", "reverse": "perturbed_sparse_trace",
+                           "null": None, "self": "same_forward_self_source",
+                           "upstream": "clean_sparse_trace"}[kind]
+            comparison_role = ("perturbed_sparse_trace" if kind in ("reverse", "null", "self")
+                               else "clean_sparse_trace")
+            base_role = "clean" if kind == "reverse" else "perturbed"
+            comparison = plan["comparison_id"]
+            suffix = f"/block.{site}.output"
+            if (plan["source_role"] != source_role or plan["comparison_role"] != comparison_role
+                    or plan["base_role"] != base_role or not _text(comparison)
+                    or not comparison.endswith(suffix)
+                    or (kind not in ("null", "self") and source != comparison)):
+                raise CellEvidenceError("invalid plan role or site-bound comparison identity")
         captures = plan["captures"]
         names = {"self_source", "post_action"} if kind == "self" else {"post_action"}
         if type(captures) is not dict or set(captures) != names:
@@ -194,6 +211,11 @@ class CellEvidence:
                 or threading.current_thread() is not self._owner_thread):
             raise CellEvidenceError("cell buffer is unavailable; preserve the attempt")
 
+    def mark_failed(self):
+        """Prevent success after a caller's preparation or encoding failure."""
+        self._require_owner(allow_failed=True)
+        self._failed = True
+
     def append(self, canonical_record_bytes):
         self._require_owner()
         try:
@@ -201,7 +223,8 @@ class CellEvidence:
             count = len(self._records)
             index, strength = divmod(count, 2)
             strength = (0.25, 0.75)[strength]
-            if (count >= MAX_CONDITIONS or set(value) != _FIELDS or value["schema"] != _RECORD_SCHEMA
+            if (count >= MAX_CONDITIONS or set(value) != _FIELDS or type(value["schema"]) is not str
+                    or value["schema"] not in _RECORD_SCHEMAS
                     or value["cell_id"] != self.cell_id or value["phase"] != self.phase
                     or type(value["case_index"]) is not int or value["case_index"] != index
                     or type(value["model_seed"]) is not int or value["model_seed"] != self.model_seed
@@ -213,6 +236,8 @@ class CellEvidence:
                     or (self.phase == "heldout" and not _text(value["prediction_ref"]))):
                 raise CellEvidenceError("condition identity or order differs")
             previous = self._records
+            if previous and previous[0][4] != value["schema"]:
+                raise CellEvidenceError("condition record versions cannot be mixed")
             if any(row[3] == value["condition_id"] for row in previous):
                 raise CellEvidenceError("condition identity is repeated")
             if count % 2:
@@ -228,12 +253,12 @@ class CellEvidence:
             for events in traces.values():
                 _trace(events)
             _logits(value["logits"])
-            _plans(value["plans"])
+            _plans(value["plans"], value["schema"])
             _private(value["private_integrity"], strength)
             if type(value["comparison"]) is not dict:
                 raise CellEvidenceError("comparison record is required")
             updated = self._records + ((canonical_record_bytes, value["case_id"],
-                                        value["input_sha256"], value["condition_id"]),)
+                                        value["input_sha256"], value["condition_id"], value["schema"]),)
             self._records = updated
         except BaseException:
             self._failed = True

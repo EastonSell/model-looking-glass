@@ -140,9 +140,23 @@ class CpuTraceOwnerTests(unittest.TestCase):
                 patch.object(torch.cuda, "manual_seed_all", side_effect=AssertionError("CUDA seeded")), \
                 patch.object(torch.cuda, "device_count", side_effect=AssertionError("CUDA enumerated")):
             owner, worker, budget, profile = self.make_owner()
-            _, job = self.register_job(owner, profile)
-            self.assertTrue(job.abort_before_forward(timeout=5))
+            selected, job = self.register_job(owner, profile)
+            job.prepare()
+            caller = budget.open_request("caller")
+            claim = caller.reserve("caller", "input", 48, items=1)
+            ids = torch.zeros((2, 3), dtype=torch.int64)
+            request = ForwardRequest(selected.worker_request_id, {"input_ids": ids})
+            job.execute(request, input_owner=caller, input_claim=claim)
+            job.discard_result()
+            job.confirm_producer_disposed()
+            job.seal()
+            self.assertEqual(len(job.manifest().events), 4)
+            self.assertTrue(job.dispose(timeout=5))
             owner.retire(job)
+            request = ids = None
+            claim.release()
+            caller.close()
+            self.assertEqual(budget.snapshot().used_bytes, 0)
 
     def test_known_worker_out_of_memory_cannot_publish_and_can_drain(self):
         from looking_glass.cpu_trace_owner import CpuTraceStateError
