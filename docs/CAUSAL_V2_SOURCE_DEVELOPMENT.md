@@ -35,6 +35,20 @@ cleanup is a failure: retained handles must be retried and the process
 quarantined until cleanup succeeds. The cache is never recursively deleted; a
 nonempty prefix is retained for inspection.
 
+On Windows, importing PyTorch can ask `platform.machine()` to run `cmd /c ver`.
+A short-lived descendant may exit before the job supervisor can retain its
+process handle, leaving cleanup unconfirmed. The diagnostic's parent therefore
+observes `platform.uname()` before creating the job and sends its five fields
+in the guarded start frame. The child checks its machine, host name and Windows
+version against local observations, then primes Python's uname cache before
+project imports. A Python audit hook rejects later process-creation requests.
+This is a narrow CPython 3.11 operational measure, not a security boundary;
+native process creation is not covered by Python audit hooks, and the job still
+fails closed if it cannot account for a lifetime member. A direct call such as
+`platform.win32_ver()` that tries to spawn after startup fails the diagnostic.
+Compatibility-mode version disagreements are rejected rather than silently
+reported as an observed match. The normal script remains development-only.
+
 `scripts/v2_source_launcher.py` composes these checks for the **diagnostic
 only**. It checks the launcher's, bootstrap's, guard's and project Python
 sources against tracked Git blobs, acquires source and manifest leases plus
