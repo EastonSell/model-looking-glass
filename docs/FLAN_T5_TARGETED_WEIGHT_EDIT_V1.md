@@ -197,9 +197,12 @@ The independent FLAN sentiment custodian must receive the exact candidate
 bundle and all proposal/screen token rows, including any rejected proposals,
 before any new input is forwarded. Before its currently unformed private pool is
 drawn, include those rows and their variable words in its exclusion ledger.
-If an applicable pool has already been committed, an authorized, identity-bound
-custodian comparison must instead establish the specified scoped non-overlap;
-do not modify the commitment or inspect private rows. Fail closed if a required
+If an applicable pool has already been committed, an authorized custodian
+comparison must bind that exact pool commitment and candidate/proposal bundle,
+and establish no variable-word collision between the committed pool and the
+candidate/proposal bundle and no complete-row prefix relation in either
+direction under the pool's frozen EOS rule. Do not modify
+the commitment or inspect private rows. Fail closed if a required
 comparison cannot be authorized or completed. Refresh the scope of every
 relevant FLAN protected pool at each launch boundary. A scoped absence report
 is not a private comparison, and known public exclusions do not prove anything
