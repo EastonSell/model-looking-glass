@@ -18,12 +18,13 @@ class FakeUuid:
 
 
 class FakeCuda:
-    def __init__(self, *, free=6 * GIB, oom=False):
+    def __init__(self, *, free=6 * GIB, oom=False, workspace_bytes=0):
         self.total, self.free = 8 * GIB, free
         self.allocated = self.reserved = self.peak_allocated = self.peak_reserved = 0
         self.oom = oom
         self.syncs = 0
         self.fraction = None
+        self.workspace_bytes, self.workspace_live = workspace_bytes, 0
     def is_initialized(self): return False
     def device_count(self): return 1
     def get_device_properties(self, index):
@@ -47,6 +48,9 @@ class FakeCuda:
         self.reserved = max(self.reserved, self.allocated)
         self.peak_allocated = max(self.peak_allocated, self.allocated)
         self.peak_reserved = max(self.peak_reserved, self.reserved)
+    def clear_workspaces(self):
+        self.allocated -= self.workspace_live
+        self.workspace_live = 0
 
 
 class FakeTensor:
@@ -77,7 +81,11 @@ class FakeModel:
         self.cuda.allocate(size)
         self.nbytes = size
         return self
-    def __call__(self, **kwargs): return SimpleNamespace(logits=FakeTensor(self.cuda, (1, 2, 50257), gpu=True))
+    def __call__(self, **kwargs):
+        if self.cuda.workspace_bytes:
+            self.cuda.allocate(self.cuda.workspace_bytes)
+            self.cuda.workspace_live = self.cuda.workspace_bytes
+        return SimpleNamespace(logits=FakeTensor(self.cuda, (1, 2, 50257), gpu=True))
     def parameters(self):
         return [SimpleNamespace(device=SimpleNamespace(type="cuda", index=0), dtype="float32",
                                 numel=lambda: 81912576)]
@@ -89,9 +97,9 @@ class FakeModel:
 class FakeTorch:
     def __init__(self, cuda):
         self.cuda = cuda
-        self._C = SimpleNamespace(_CUuuid=FakeUuid)
+        self._C = SimpleNamespace(_CUuuid=FakeUuid, _cuda_clearCublasWorkspaces=cuda.clear_workspaces)
         self.float32, self.long, self.int32 = "float32", "int64", "int32"
-        self.__version__ = "fake"
+        self.__version__ = "2.8.0+cu128"
         self.version = SimpleNamespace(cuda="fake")
         self.random = SimpleNamespace(default_generator=SimpleNamespace(manual_seed=lambda seed: None))
     def tensor(self, value, *, dtype, device): return FakeTensor(self.cuda, (1, 2), dtype="int64")
@@ -148,6 +156,33 @@ class OneShotTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.module._snapshot(self.session, self.lease, FakeTorch(cuda))
 
+    def test_workspace_cleanup_and_stage_records_are_separate(self):
+        cuda = FakeCuda(workspace_bytes=4 * 1024 ** 2)
+        events = {}
+        result = self.module._measure_once(
+            self.session, self.lease, FakeTorch(cuda),
+            lambda: SimpleNamespace(model=FakeModel(cuda), metadata={"parameter_count": 81912576}),
+            record_stage=lambda stage, value: events.__setitem__(stage, value))
+        self.assertEqual(events["cleanup_before_workspace_clear"]["allocated_bytes"], 4 * 1024 ** 2)
+        self.assertEqual(events["after_cleanup"]["allocated_bytes"], 0)
+        self.assertEqual(events["after_cleanup"]["reserved_bytes"], 0)
+        self.assertEqual(events["cleanup_weakrefs"], {"model": False, "input_gpu": False, "logits": False})
+        self.assertEqual(events["output"]["output_sha256"], result["output_sha256"])
+
+    def test_stages_survive_workspace_cleanup_failure(self):
+        cuda = FakeCuda(workspace_bytes=4 * 1024 ** 2)
+        torch = FakeTorch(cuda)
+        torch._C._cuda_clearCublasWorkspaces = lambda: (_ for _ in ()).throw(RuntimeError("fake failure"))
+        events = {}
+        with self.assertRaises(RuntimeError):
+            self.module._measure_once(
+                self.session, self.lease, torch,
+                lambda: SimpleNamespace(model=FakeModel(cuda), metadata={"parameter_count": 81912576}),
+                record_stage=lambda stage, value: events.__setitem__(stage, value))
+        self.assertIn("after_forward", events)
+        self.assertIn("cleanup_before_workspace_clear", events)
+        self.assertNotIn("after_cleanup", events)
+
 
 class SupervisedPublicationTests(unittest.TestCase):
     def setUp(self):
@@ -179,10 +214,10 @@ class SupervisedPublicationTests(unittest.TestCase):
         def supervise(command, **kwargs):
             self.assertFalse(kwargs["inherit_environment"])
             run_id, run_dir = command[-1], Path(command[-3])
-            candidate = {"schema": "gpu-oneshot-owner-v1", "run_id": run_id,
+            candidate = {"schema": "gpu-oneshot-owner-v2", "run_id": run_id,
                          "supervisor_run_id": "b" * 32, "pid": 123, "measurement": {"finite": True}}
             (run_dir / "candidate.json").write_text(json.dumps(candidate), encoding="utf-8")
-            return SimpleNamespace(run_id="b" * 32, pid=123, clean=True, exit_code=0, timed_out=False)
+            return SimpleNamespace(run_id="b" * 32, pid=123, clean=True, exit_code=0, timed_out=False, reason="clean")
         result = self.run_parent(supervise, [(UUID, self.before), OSError("telemetry unavailable")])
         self.assertEqual(result["status"], "incomplete")
         self.assertEqual(result["post_telemetry_error_type"], "OSError")
@@ -202,8 +237,8 @@ class SupervisedPublicationTests(unittest.TestCase):
     def test_mismatched_candidate_cannot_be_published_as_success(self):
         def supervise(command, **kwargs):
             run_dir = Path(command[-3])
-            (run_dir / "candidate.json").write_text(json.dumps({"schema": "gpu-oneshot-owner-v1"}))
-            return SimpleNamespace(run_id="b" * 32, pid=123, clean=True, exit_code=0, timed_out=False)
+            (run_dir / "candidate.json").write_text(json.dumps({"schema": "gpu-oneshot-owner-v2"}))
+            return SimpleNamespace(run_id="b" * 32, pid=123, clean=True, exit_code=0, timed_out=False, reason="clean")
         result = self.run_parent(supervise, [(UUID, self.before), (UUID, self.after)])
         self.assertEqual(result["status"], "incomplete")
         self.assertEqual(result["candidate_error_type"], "RuntimeError")

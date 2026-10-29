@@ -12,6 +12,7 @@ import sys
 import tempfile
 import traceback
 import uuid
+import weakref
 from datetime import datetime, timezone
 
 from .device_identity import normalize_gpu_uuid, parse_nvidia_smi_inventory, resolve_device_identity
@@ -54,7 +55,7 @@ def _snapshot(session, lease, torch):
     return result
 
 
-def _measure_once(session, lease, torch, load_model):
+def _measure_once(session, lease, torch, load_model, *, record_stage=None):
     """Run exactly one forward, returning only after verified local disposal."""
     if type(session) is not OwnerSession or type(lease) is not DeviceLease:
         raise ValueError("an actual supervised owner and device lease are required")
@@ -77,7 +78,12 @@ def _measure_once(session, lease, torch, load_model):
     if readback != effective / properties.total_memory:
         raise RuntimeError("allocator fraction readback does not match the cap")
     torch.cuda.reset_peak_memory_stats(0)
-    initial = _snapshot(session, lease, torch)
+    def snapshot(stage):
+        value = _snapshot(session, lease, torch)
+        if record_stage is not None:
+            record_stage(stage, value)
+        return value
+    initial = snapshot("before_model_copy")
     if initial["device_free_bytes"] < 3 * _GIB:
         raise RuntimeError("insufficient device-wide free memory for the pilot")
     loaded = load_model()
@@ -86,7 +92,7 @@ def _measure_once(session, lease, torch, load_model):
     torch.cuda.manual_seed(17)
     OwnerSession.check(session, lease)
     model.to("cuda:0")
-    after_copy = _snapshot(session, lease, torch)
+    after_copy = snapshot("after_model_copy")
     if model.training is not False or model.config.use_cache is not False:
         raise RuntimeError("model must be in eval mode with cache disabled")
     parameter_count = 0
@@ -112,20 +118,41 @@ def _measure_once(session, lease, torch, load_model):
             or tuple(logits.shape) != (1, 2, 50257) or logits.dtype != torch.float32
             or logits.numel() * logits.element_size() != 402056):
         raise RuntimeError("forward output differs from the fixed contract")
-    after_forward = _snapshot(session, lease, torch)
+    after_forward = snapshot("after_forward")
     output_cpu = logits.detach().to(device="cpu", copy=True)
     if output_cpu.device.type != "cpu":
         raise RuntimeError("forward result did not offload to CPU")
     if not bool(torch.isfinite(output_cpu).all()):
         raise RuntimeError("forward produced non-finite logits")
     output_sha256 = hashlib.sha256(output_cpu.detach().view(torch.int32).contiguous().numpy().tobytes()).hexdigest()
+    output_observation = {"output_shape": [1, 2, 50257], "output_dtype": "float32",
+                          "output_tensor_bytes": 402056, "finite": True,
+                          "output_sha256": output_sha256, "output_byte_order": sys.byteorder}
+    if record_stage is not None:
+        record_stage("output", output_observation)
+    references = {"model": weakref.ref(model), "input_gpu": weakref.ref(input_gpu),
+                  "logits": weakref.ref(logits)}
     metadata = loaded.metadata
     del output_cpu, output, logits, input_gpu, input_cpu, model, loaded
     gc.collect()
+    survivors = {name: ref() is not None for name, ref in references.items()}
+    if record_stage is not None:
+        record_stage("cleanup_weakrefs", survivors)
     OwnerSession.check(session, lease)
     torch.cuda.synchronize(0)
     torch.cuda.empty_cache()
-    cleanup = _snapshot(session, lease, torch)
+    cleanup_before_workspaces = snapshot("cleanup_before_workspace_clear")
+    # PyTorch 2.8 internally retains cuBLAS workspaces in its allocator.
+    # This private API is version-bound and is only called after synchronization.
+    if torch.__version__ != "2.8.0+cu128" or not callable(getattr(torch._C, "_cuda_clearCublasWorkspaces", None)):
+        raise RuntimeError("unsupported PyTorch cuBLAS workspace cleanup API")
+    OwnerSession.check(session, lease)
+    torch._C._cuda_clearCublasWorkspaces()
+    torch.cuda.synchronize(0)
+    torch.cuda.empty_cache()
+    cleanup = snapshot("after_cleanup")
+    if any(survivors.values()):
+        raise RuntimeError("model, input or output object still alive after disposal")
     if cleanup["allocated_bytes"] != 0 or cleanup["reserved_bytes"] != 0:
         raise RuntimeError("CUDA allocator still owns bytes after disposal")
     return {"input_ids": [15496, 995], "seed": 17, "output_shape": [1, 2, 50257],
@@ -138,8 +165,12 @@ def _measure_once(session, lease, torch, load_model):
             "allocator_fraction": _FRACTION, "allocator_limit_bytes": effective,
             "allocator_readback": readback, "torch_version": torch.__version__,
             "cuda_build": torch.version.cuda, "cpu_load_metadata": metadata,
+            "cleanup_weakrefs": survivors,
+            "workspace_cleanup": "PyTorch 2.8.0+cu128 private _cuda_clearCublasWorkspaces",
             "snapshots": {"before_model_copy": initial, "after_model_copy": after_copy,
-                          "after_forward": after_forward, "after_cleanup": cleanup}}
+                          "after_forward": after_forward,
+                          "cleanup_before_workspace_clear": cleanup_before_workspaces,
+                          "after_cleanup": cleanup}}
 
 
 def _write_json(path, value):
@@ -166,11 +197,14 @@ def _owner_main(run_dir, cache_dir, run_id):
         OwnerSession.check(session, lease)
         if session.identity is None:
             raise RuntimeError("physical GPU identity is required")
+        _write_json(Path(run_dir) / "owner.json", {"schema": "gpu-oneshot-owner-identity-v2",
+                    "run_id": run_id, "supervisor_run_id": session.run_id, "pid": os.getpid()})
         torch = _import_torch()
         from .pretrained import load_distilgpt2
         result = _measure_once(session, lease, torch,
-                               lambda: load_distilgpt2(cache_dir=cache_dir, allow_download=False))
-        candidate = {"schema": "gpu-oneshot-owner-v1", "run_id": run_id,
+                               lambda: load_distilgpt2(cache_dir=cache_dir, allow_download=False),
+                               record_stage=lambda stage, value: _write_json(Path(run_dir) / (stage + ".json"), value))
+        candidate = {"schema": "gpu-oneshot-owner-v2", "run_id": run_id,
                      "supervisor_run_id": session.run_id, "pid": os.getpid(), "measurement": result}
         _write_json(Path(run_dir) / "candidate.json", candidate)
         OwnerSession.attest_clean(session, lease)
@@ -180,7 +214,7 @@ def _owner_main(run_dir, cache_dir, run_id):
         # the marker. Keep diagnostics bounded and avoid paths or raw UUIDs.
         try:
             _write_json(Path(run_dir) / "failure.json", {
-                "schema": "gpu-oneshot-failure-v1", "run_id": run_id,
+                "schema": "gpu-oneshot-failure-v2", "run_id": run_id,
                 "error_type": type(exc).__name__, "status": "quarantined",
                 "private_traceback": traceback.format_exc()[-8192:]})
         except BaseException:
@@ -298,7 +332,7 @@ def run_one_shot(*, workspace_root, cache_dir, output, site_packages, smi):
     prefix = Path(tempfile.mkdtemp(prefix="pycache-", dir=run_dir))
     environment["PYTHONPYCACHEPREFIX"] = str(prefix)
     run_id = secrets.token_hex(16)
-    _write_json(run_dir / "started.json", {"schema": "gpu-oneshot-start-v1", "run_id": run_id,
+    _write_json(run_dir / "started.json", {"schema": "gpu-oneshot-start-v2", "run_id": run_id,
                                             "source_commit": commit, "started_utc": before["timestamp_utc"]})
     bootstrap = ("import sys,runpy;sys.path.extend((sys.argv.pop(1),sys.argv.pop(1)));"
                  "runpy.run_module('looking_glass.gpu_oneshot',run_name='__main__',alter_sys=True)")
@@ -314,6 +348,15 @@ def run_one_shot(*, workspace_root, cache_dir, output, site_packages, smi):
         # The supervisor may have launched an owner. Do not infer an exit or
         # clean teardown from a missing result; its marker remains authoritative.
         supervisor_error = type(exc).__name__
+    supervision_evidence_error = None
+    if supervision is not None:
+        try:
+            _write_json(run_dir / "supervision.json", {"run_id": run_id,
+                        "supervisor_run_id": supervision.run_id, "pid": supervision.pid,
+                        "exit_code": supervision.exit_code, "clean": supervision.clean,
+                        "timed_out": supervision.timed_out, "reason": supervision.reason})
+        except Exception as exc:
+            supervision_evidence_error = type(exc).__name__
     after = None
     telemetry_error = None
     try:
@@ -325,12 +368,13 @@ def run_one_shot(*, workspace_root, cache_dir, output, site_packages, smi):
         telemetry_error = type(exc).__name__
     presence = (_owner_presence_after_exit(smi, supervision.pid) if supervision is not None
                 else {"query": "not_attempted", "owner_pid_listed": None})
-    outcome = {"schema": "gpu-oneshot-result-v1", "run_id": run_id, "source_commit": commit,
+    outcome = {"schema": "gpu-oneshot-result-v2", "run_id": run_id, "source_commit": commit,
                "source_sha256": source_hashes, "controller_fresh_pycache": True,
                "status": "quarantined",
                "supervisor": ({"exit_code": supervision.exit_code,
                    "clean": supervision.clean, "timed_out": supervision.timed_out}
                    if supervision is not None else None), "supervisor_error_type": supervisor_error,
+               "supervision_evidence_error_type": supervision_evidence_error,
                "nvidia_smi_before": before, "nvidia_smi_after": after, "owner_presence_after_exit": presence,
                "post_telemetry_error_type": telemetry_error,
                "limitations": ["one observation, not a latency or throughput benchmark",
@@ -345,12 +389,13 @@ def run_one_shot(*, workspace_root, cache_dir, output, site_packages, smi):
             if len(raw) > 1024 * 1024:
                 raise RuntimeError("owner result exceeds its byte cap")
             candidate = json.loads(raw)
-            if (candidate.get("schema") != "gpu-oneshot-owner-v1" or candidate.get("run_id") != run_id
+            if (candidate.get("schema") != "gpu-oneshot-owner-v2" or candidate.get("run_id") != run_id
                     or candidate.get("supervisor_run_id") != supervision.run_id
                     or candidate.get("pid") != supervision.pid):
                 raise RuntimeError("owner result does not match the reaped child")
             outcome["measurement"] = candidate["measurement"]
-            if telemetry_error is None and presence["owner_pid_listed"] is not True:
+            if (telemetry_error is None and supervision_evidence_error is None
+                    and presence["owner_pid_listed"] is not True):
                 outcome["status"] = "success"
         except Exception as exc:
             outcome["candidate_error_type"] = type(exc).__name__
@@ -359,10 +404,23 @@ def run_one_shot(*, workspace_root, cache_dir, output, site_packages, smi):
             raw = (run_dir / "failure.json").read_bytes()
             if len(raw) <= 16384:
                 failure = json.loads(raw)
-                if failure.get("schema") == "gpu-oneshot-failure-v1" and failure.get("run_id") == run_id:
+                if failure.get("schema") == "gpu-oneshot-failure-v2" and failure.get("run_id") == run_id:
                     outcome["owner_error_type"] = failure.get("error_type")
         except (OSError, ValueError, AttributeError):
             pass
+    partial = {}
+    for stage in ("before_model_copy", "after_model_copy", "after_forward", "output",
+                  "cleanup_weakrefs", "cleanup_before_workspace_clear", "after_cleanup"):
+        try:
+            raw = (run_dir / (stage + ".json")).read_bytes()
+            if len(raw) <= 4096:
+                value = json.loads(raw)
+                if type(value) is dict:
+                    partial[stage] = value
+        except (OSError, ValueError):
+            pass
+    if partial:
+        outcome["partial_stage_observations"] = partial
     try:
         _verify_controller_import_mode()
     except Exception as exc:
