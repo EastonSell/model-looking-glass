@@ -234,6 +234,17 @@ class SyntheticJournalTests(unittest.TestCase):
         self.terminal['detail']['testing_only'] = False
         self.rejected()
 
+    def test_combined_baseline_and_dose_failure_are_both_reported(self):
+        path = os.environ.get('FLAN_SENTIMENT_FAKE_COMBINED_ATTEMPT')
+        if not path:
+            self.skipTest('set FLAN_SENTIMENT_FAKE_COMBINED_ATTEMPT to the fabricated combined-failure fixture')
+        report = reader.audit(path, fake.groups(), fake.Tokenizer(), 2, 8, synthetic=True)
+        self.assertEqual(report['evaluations'], 196)
+        self.assertEqual(len(report['cases']), 32)
+        self.assertTrue(all(case['status'] == 'baseline-unsupported' and
+                            case['baseline_supported'] is False and case['dose_status'] == 'dose-unmatchable' and
+                            not case['matched'] and case['natural_reference'] is None for case in report['cases']))
+
     def test_strict_json_rejects_duplicate_and_nonfinite(self):
         for payload in (b'{"a":1,"a":2}', b'{"a":NaN}', b'{"a":1e400}'):
             with self.subTest(payload=payload), self.assertRaises(ValueError):

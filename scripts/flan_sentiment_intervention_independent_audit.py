@@ -905,6 +905,7 @@ def audit_actions(records, rows, flow, groups, bank, oracle, width, terminal):
             for side in SIDES:
                 base = baseline[(unit, instruction, side)]['analysis']
                 case = {'unit': unit, 'instruction': instruction, 'receiver': side, 'status': status,
+                        'baseline_supported': support[groupkey], 'dose_status': geometry[groupkey]['status'],
                         'q': geometry[groupkey]['q'], 'baseline_margin': base['margin'],
                         'baseline_scores': base['scores'], 'baseline_generated_ids': base['generated'],
                         'baseline_strict_correct': base['strict'],

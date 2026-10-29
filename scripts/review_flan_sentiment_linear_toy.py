@@ -86,6 +86,8 @@ class SkipDecoder(LinearDecoder):
         assert not use_cache and return_dict
         self.decodes += 1
         z = encoder_outputs[0][0, 2, 1]
+        if getattr(self, 'force_negative', False):
+            z = -abs(z)
         logits = torch.full((1, decoder_input_ids.shape[1], 8), -10.0)
         logits[0, 0, 2], logits[0, 0, 3] = z / 2, -z / 2
         if decoder_input_ids.shape[1] > 1:

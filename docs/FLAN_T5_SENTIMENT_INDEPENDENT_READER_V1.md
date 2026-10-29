@@ -72,6 +72,9 @@ the accepted complete fixture and deliberately rehashed source, untouched
 state, nonfinite, score, TV, summary, input-type, mode and selection
 corruptions. The fixture producer also accepts `zero` and `rounding` to
 exercise respectively dose-ineligible and dose-unmatchable complete schedules.
+To test both failures at once, generate another fake attempt with mode
+`rounding_unsupported` and point `FLAN_SENTIMENT_FAKE_COMBINED_ATTEMPT` at it;
+the combined-failure test otherwise reports a skip.
 `python -I -B scripts/review_flan_sentiment_linear_toy.py <runner-checkout>`
 additionally checks passing and failing decisions against hand-derived fake
 effects and verifies both skip paths.
