@@ -57,6 +57,17 @@ def _json_new(path, value):
     _write_new(path, _canonical(value))
 
 
+def _path_absent(path):
+    """Check lexical absence, including dangling links, in a trusted namespace."""
+    try:
+        Path(path).lstat()
+    except FileNotFoundError:
+        return True
+    except OSError as exc:
+        raise OwnerError("publication path could not be inspected") from exc
+    return False
+
+
 def _modules():
     """Import model dependencies only after the supervised child has claimed."""
     import torch
@@ -393,8 +404,8 @@ def _read_development_arrays(output, v1, v2, evidence, np):
     return arrays
 
 
-def _development_work(repo, cache, output, identity, manifest_value, public, receipt, deps):
-    """Run the already-gated private model; never called by the disabled entry point."""
+def _prepare_v1_reconstruction(repo, cache, manifest_value, deps):
+    """Reconstruct the frozen v1 candidate in an already-gated private owner."""
     torch, np, pretrained, v1, v2, edits, evidence, _manifest, _custody, _exposure, _gate = deps
     if (sys.byteorder != "little" or os.environ.get("CUDA_VISIBLE_DEVICES") != "-1"
             or os.environ.get("HF_HUB_OFFLINE") != "1" or os.environ.get("TRANSFORMERS_OFFLINE") != "1"
@@ -437,6 +448,14 @@ def _development_work(repo, cache, output, identity, manifest_value, public, rec
             original=guard.original, v1_gradient=gradient, v1_random=random, discovery=discovery)
     except v1.StudyError as exc:
         raise Incompatible("v1 candidate reconstruction differs") from exc
+    return loaded, guard, gradient, random, discovery, reference, compatibility, environment
+
+
+def _development_work(repo, cache, output, identity, manifest_value, public, receipt, deps):
+    """Run the already-gated private model; never called by the disabled entry point."""
+    torch, np, _pretrained, v1, v2, edits, evidence, _manifest, _custody, _exposure, _gate = deps
+    loaded, guard, gradient, _random, discovery, _reference, compatibility, environment = \
+        _prepare_v1_reconstruction(repo, cache, manifest_value, deps)
     updates, grid = {}, {}
     for name, dose in v2.GRID:
         updates[name] = edits.construct_dose(guard.original, gradient, dose)
@@ -485,10 +504,10 @@ def _rename_development(staging, destination, identity, terminal_sha, manifest_v
     except BaseException as primary:
         status = "unknown"
         try:
-            if destination.exists():
+            if not _path_absent(destination):
                 _reconcile_development(destination, identity, terminal_sha, manifest_value, public, receipt, deps)
                 status = "complete_verified"
-            elif staging.exists():
+            elif not _path_absent(staging):
                 status = "not_published"
         except BaseException as recovery:
             if (isinstance(recovery, (KeyboardInterrupt, SystemExit))
@@ -517,7 +536,7 @@ def _publish_development(staging, destination, identity, candidate, supervisor_r
     torch, _np, _pretrained, v1, v2, _edits, evidence, _manifest, _custody, _exposure, gate = deps
     staging, destination = Path(staging), Path(destination)
     if (staging.parent.resolve(strict=True) != destination.parent.resolve(strict=True)
-            or staging == destination or destination.exists()):
+            or staging == destination or not _path_absent(destination)):
         raise OwnerError("publication requires a new destination beside its staging directory")
     evidence._regular(staging, directory=True)
     if (type(supervisor_result) is not SupervisionResult or type(supervisor_result.pid) is not int
@@ -551,9 +570,18 @@ def _publish_development(staging, destination, identity, candidate, supervisor_r
     selection = v1._decode_document(evidence._read(staging / "selection.json", evidence.MAX_JSON))
     gate._check_metadata(manifest_value, selection["selection"], metadata, public, receipt)
     _json_new(staging / "metadata.json", metadata)
+    matrix_bytes = len(v1.CASES) * v1.VOCAB_SIZE * 4
+    inventory = {}
+    for name in sorted(names):
+        limit = (matrix_bytes if name.endswith(".f32") else
+                 (evidence.MAX_JOURNAL if name.endswith(".jsonl") else evidence.MAX_JSON))
+        data = evidence._read(staging / name, limit)
+        if name.endswith(".f32") and len(data) != matrix_bytes:
+            raise OwnerError("development matrix is incomplete")
+        inventory[name] = v1._sha(data)
     terminal = {**identity, "status": "complete", "finished_utc": datetime.now(timezone.utc).isoformat(),
                 "cleanup": {name: True for name in evidence.CLEANUP_KEYS},
-                "artifacts": {name: v1._file_sha(staging / name) for name in sorted(names)}}
+                "artifacts": inventory}
     _json_new(staging / "terminal.json", terminal)
     terminal_sha = v1._file_sha(staging / "terminal.json")
     if not torch.set_flush_denormal(False):

@@ -118,8 +118,12 @@ def _owner(config):
     if any(name.partition('.')[0] in ('torch', 'transformers', 'huggingface_hub')
            for name in sys.modules):
         raise RuntimeError('model dependencies were imported before owner acquisition')
-    from .two_token_service import _check_owner_contract
+    from .two_token_service import (_check_owner_contract, _source_checkout, _workspace_root,
+                                    _require_workspace_spec, _require_workspace_binding)
     _check_owner_contract(config.repo_root)
+    if config.repo_root != _source_checkout():
+        raise RuntimeError('owner configuration does not match this source checkout')
+    _workspace_root(config.repo_root, config.workspace_root)
     from .device_identity import DeviceIdentity
     from .device_lease import DeviceLease
     from .supervisor import OwnerSession
@@ -129,9 +133,11 @@ def _owner(config):
         JOB_COMMITMENT)
 
     session = OwnerSession.from_environment()
+    _require_workspace_spec(session, config.repo_root)
     lease = DeviceLease.acquire(session.device_lease_path, timeout=30)
     _LEASE_HOLD = lease
     session.check(lease)
+    _require_workspace_binding(session, config.repo_root)
     identity = session.identity
     if type(identity) is not DeviceIdentity or identity.workspace_root != config.workspace_root:
         raise RuntimeError('supervised GPU identity does not match the configured workspace')

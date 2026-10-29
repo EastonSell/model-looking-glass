@@ -39,7 +39,7 @@ def test_development_rejects_mask_drift_before_model_work(monkeypatch, mask):
         owner._development_work(None, None, None, None, None, None, None, (torch,) + (None,) * 10)
 
 
-@pytest.mark.parametrize("point", ["load_mask", "load_setting", "tokenizer_setting", "unchanged"])
+@pytest.mark.parametrize("point", ["load_mask", "load_setting", "tokenizer_setting", "unchanged", "discovery_interrupt"])
 def test_development_binds_full_runtime_before_discovery(monkeypatch, point):
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "-1")
     monkeypatch.setenv("HF_HUB_OFFLINE", "1")
@@ -69,6 +69,8 @@ def test_development_binds_full_runtime_before_discovery(monkeypatch, point):
     calls = []
     def candidate(*_args, **_kwargs):
         calls.append(True)
+        if point == "discovery_interrupt":
+            raise KeyboardInterrupt()
         raise LookupError("candidate reached")
     fake_v1 = SimpleNamespace(_denormal_probe=lambda: None, _environment=lambda: {},
         _candidate=candidate, CASES=((None, None, None, (1,)),), LONDON=1, PARIS=2, WEIGHT_SHAPE=(1,))
@@ -78,8 +80,9 @@ def test_development_binds_full_runtime_before_discovery(monkeypatch, point):
     deps = (fake_torch, None, SimpleNamespace(load_distilgpt2=load), fake_v1, None,
             SimpleNamespace(ENVIRONMENT_FIELDS=()), fake_evidence, None, None, None, None)
     manifest = {"v1_compatibility": {"environment": {}, "model_state_sha256": "state", "weight_sha256": "weight"}}
-    if point == "unchanged":
-        with pytest.raises(LookupError, match="candidate reached"):
+    if point in ("unchanged", "discovery_interrupt"):
+        expected = KeyboardInterrupt if point == "discovery_interrupt" else LookupError
+        with pytest.raises(expected):
             owner._development_work(None, None, None, None, manifest, None, None, deps)
         assert calls == [True]
     else:
@@ -544,6 +547,60 @@ def test_publication_requires_and_records_clean_reaped_child(staged_development)
                                         terminal_sha256=published["terminal_sha256"])
     assert record["metadata"]["supervision"]["supervisor"]["reaped"] is True
     assert record["selection"] == published["selection"]
+
+
+@pytest.mark.parametrize("failure", ["oversized", "directory"])
+def test_development_prehash_rejects_unbounded_or_nonregular_artifact(staged_development, failure):
+    staging, destination, identity, candidate, result, manifest_value, public, receipt, deps = staged_development
+    path = staging / "observations.jsonl"
+    if failure == "oversized":
+        path.write_bytes(b"x" * (evidence.MAX_JOURNAL + 1))
+    else:
+        path.unlink()
+        path.mkdir()
+    with pytest.raises(v1.StudyError):
+        owner._publish_development(staging, destination, identity, candidate, result, manifest_value, public, receipt, deps)
+    assert staging.is_dir() and not destination.exists() and not (staging / "terminal.json").exists()
+
+
+def test_development_rejects_a_dangling_destination(staged_development):
+    staging, destination, identity, candidate, result, manifest_value, public, receipt, deps = staged_development
+    try:
+        destination.symlink_to(destination.parent / "missing-target", target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"creating a symlink is unavailable: {exc}")
+    assert destination.is_symlink() and not destination.exists()
+    with pytest.raises(owner.OwnerError, match="new destination"):
+        owner._publish_development(staging, destination, identity, candidate, result, manifest_value, public, receipt, deps)
+    assert destination.is_symlink() and staging.is_dir() and not (staging / "terminal.json").exists()
+
+
+def test_development_rejects_a_lexical_entry_even_when_exists_is_false(staged_development, monkeypatch):
+    staging, destination, identity, candidate, result, manifest_value, public, receipt, deps = staged_development
+    assert not destination.exists()
+    original = Path.lstat
+    seen = []
+    def lstat(path):
+        if path == destination:
+            seen.append(True)
+            return SimpleNamespace()
+        return original(path)
+    monkeypatch.setattr(Path, "lstat", lstat)
+    with pytest.raises(owner.OwnerError, match="new destination"):
+        owner._publish_development(staging, destination, identity, candidate, result, manifest_value, public, receipt, deps)
+    assert seen == [True] and staging.is_dir() and not (staging / "terminal.json").exists()
+
+
+def test_lexical_absence_fails_closed_on_inaccessible_path(monkeypatch, tmp_path):
+    target = tmp_path / "unknown"
+    original = Path.lstat
+    def lstat(path):
+        if path == target:
+            raise PermissionError("synthetic denied stat")
+        return original(path)
+    monkeypatch.setattr(Path, "lstat", lstat)
+    with pytest.raises(owner.OwnerError, match="could not be inspected"):
+        owner._path_absent(target)
 
 
 def test_publication_rename_success_then_interrupt_is_reconciled(staged_development, monkeypatch):

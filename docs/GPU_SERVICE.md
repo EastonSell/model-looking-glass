@@ -15,8 +15,11 @@ The staged owner checks the supervised device lease and the runtime UUID before
 telemetry, resolves separate load/cold/warm profiles against independently
 constructed live keys, retains the model-load reservation until process exit,
 and repeats the lease, runtime, and headroom checks before copying weights.
-The fixed two-token service holds a 2 GiB load commitment and a separate
-512 MiB commitment for each sequential forward, including the cold warmup.
+The fixed two-token service holds a 2 GiB load commitment and one separate
+512 MiB workspace commitment, acquired before the cold warmup and retained
+through process exit. Every serial forward checks those exact live capabilities
+and current headroom. The cold result is validated before the worker advances
+to the separately bound warm profile.
 The measured estimates must fit within those commitments; they do not replace
 the fixed reservations or guarantee that future operations cannot run out of
 memory. The CPU generator is seeded with 17 immediately before offline loading,
@@ -56,6 +59,62 @@ Once a drain fails, the process latch prevents retries and clean attestation.
 The final recheck relies on the service having stopped every potential
 signaler; it is not an atomic lock between an independently running signaler
 and attestation. An uncertain shutdown must remain unverified.
+The launcher remains gated while this signaler-quiescence/attestation boundary
+and the fair ingress and IPC custody integrations are being completed. No
+compatibility marker for that completed boundary is exported by this draft.
+
+The fixed worker and Broker share a sticky completion authority. A success,
+retirement, buffer cleanup, or guarded device-operation decision is ordered at
+its unsafe-flag read; an unsafe signal first suppresses that decision and
+retains its known custody. A decision first may physically finish or become
+visible after a later signal. The signal cannot preempt an in-flight native
+operation. CPU/GPU producer buffers are staged before disposal, and last
+references are released outside the decision lock. These guarantees require
+the service's unsafe sources to mark the same authority synchronously, with
+one trusted resident worker in the owner process. A separate process-quarantine
+latch is rechecked during model retirement, but an independent source that
+does not mark this authority is ordered only when detected. An
+independently revoked physical session is detected at a point-in-time lease
+check, not atomically at the instant of external revocation. The flag's fast
+publication relies on the supported CPython execution model, not a general
+cross-process atomic or an OS memory limit.
+
+Each bound CUDA operation checks the actual owner session and physical lease
+at its decision boundary. CUDA RNG restoration is skipped after unsafe, and a
+final guarded synchronization follows successful restoration. An unsafe or
+failed drain keeps known buffers and both commitments through process exit;
+it cannot recover unknown device-internal temporaries or a newly allocated
+host tensor interrupted before Python assigns it to a custody slot. A later
+snapshot failure may also unwind earlier clones from a partial dictionary on
+the interpreter stack; retaining the exception does not recover those clones.
+Any producer retaining an alias of such a clone must account for and retain it
+independently. Such a failure requires process quarantine; it is not proof of
+disposal. Host result, IPC and
+consumer ownership require separate claims and disposal proofs. A fixed
+workspace or bounded output size alone does not establish aggregate host or
+native-device memory consumption.
+Bound producer and model-state inspection exceptions are privately rooted
+when observed; the caller must not infer safe disposal from a sanitized error.
+The budget's telemetry callback is trusted owner code: it must independently
+check that same session and lease before each CUDA query. The fixed worker also
+checks the authority immediately before and after the budget snapshot; these
+outer checks do not replace the callback's per-query guards.
+The session guard and telemetry callback must themselves retain any
+resource-bearing partials and their associated claims on failure through
+process exit. Their exception tracebacks can reach callers and are not private
+custody roots. The concrete callbacks must be reviewed against that contract
+before the service is enabled; unknown native temporaries remain outside it.
+The fixed workload's recorder policy is disabled. The bound worker rejects an
+attached broker serial recorder and checks the executing thread for an active
+grouped or serial forward-observation scope; a detected change marks the
+owner unsafe. A future recorded workload needs its own verified identity and
+profile. The collector can detach a closed, unbrokered worker from its
+authority only after execution and custody have stopped. This retirement is
+one-shot: it retains the authority and unsafe latch, forbids rebinding, and
+does not attest process quiescence or device disposal. The collector must keep
+its own worker, model and lease roots until disposal actually finishes. On any
+failure or interrupted return it must mark the authority unsafe and retain
+those roots through process exit, because detachment may already be committed.
 These ordering checks are CPU-tested with fakes, including real supervisor
 subprocesses and an authenticated two-team CPU service. They do not establish
 that the GPU path works on this machine.
@@ -63,8 +122,14 @@ that the GPU path works on this machine.
 Real service launch still requires a reviewed CPU-only preflight, a trusted live
 source/runtime/model verifier, a private supervisor-to-parent startup channel,
 and separately reviewed measured model-load and forward profiles. None of the
-present test profiles is measured or approved. All real owners on this machine
+present test profiles is measured or approved. The measured profile must cover
+the same authority-bound `LifetimeWorkspaceWorker` and resident custody/RNG
+path; an unbound `ResidentWorker.execute` profile is a different workload even
+if source hashes and shapes match. All real owners on this machine
 must use the same canonical project workspace root for device coordination.
+The checkout-derived rule rejects nested `work` directories as ambiguous. It
+relies on a trusted shared checkout layout: a separate unrelated checkout can
+select its own namespace and is not prevented by a machine-global lock.
 The generic test profile loader does not prove that its evidence used the
 specified token case and stage seeds; a production verifier must check both.
 The runtime UUID representation also requires verification against the actual

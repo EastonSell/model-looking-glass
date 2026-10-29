@@ -81,14 +81,30 @@ The four commands and their ordering are:
    --phase-ledger <initialized-ledger>` reads back all three public artifacts,
    validates the private custody binding, compares the live runtime to the
    published bytes, then consumes the one-use injection-discovery phase grant
-   before loading the model. The ledger's initializer must already have
-   independently verified prior owner drainage and accounted for earlier and
-   orphaned study evidence, including the prepared runtime, plan and custody
-   records. Initialize it after these preparatory artifacts exist and before
-   calling `run`. The launcher reserves its own start and terminal
-   markers inside the grant's physical share and gives the remainder to the
-   supervisor for all complete, partial, and failed evidence. A consumed grant
-   is never reused, including when the process stops before a marker is saved.
+   before loading the model. The ledger initializer must independently verify
+   prior owner drainage and account for earlier and orphaned study evidence.
+   It may run before or after preparation. The launcher reserves 8 MiB of the
+   injection physical share for preparation files created after initialization,
+   including runtime, plan, custody, bridge, invoker, failed and orphaned files.
+   Store them outside all previously snapshotted natural and prior roots;
+   changing such a root makes the ledger reject the claim. Before the phase
+   claim, the trusted custodian must inventory these files, verify
+   their aggregate is at most 8 MiB and avoid double-counting other reserved
+   or previously inventoried paths. When preparation was already inventoried,
+   this reservation remains conservative unused capacity.
+
+   The launcher also reserves its start and terminal markers and 1 MiB for the
+   run owner's and invoker's receipts and logs inside the physical share. The
+   outer owner must enforce that aggregate bound across all of those files,
+   including partial and failed files. The fresh bytecode prefix must remain
+   empty; the bound is not a filesystem quota on unexpected child-created files.
+   If it is nonempty, the attempt is incomplete: retain and charge those files and
+   reconcile them before later work. The remainder is available to the
+   supervisor for all complete, partial, and failed evidence. A consumed
+   grant is never reused, including when the process stops before a marker is
+   saved. An attempt that never receives a claim still retains its evidence;
+   charge and reconcile it within the appropriate preparation reservation or
+   prior/overhead inventory before later work.
 
 The command emits only a public status and hashes. A successful supervisor
 result is `complete-local`: the independent numerical and custody audit,

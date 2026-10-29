@@ -1,0 +1,41 @@
+{
+  "assets": {
+    "config.json": {
+      "sha256": "69c94b0222d5d1f4b0ad027ca7416cdafb98378cbbb8305d0bf47c9365c60c83",
+      "size": 483
+    },
+    "model.safetensors": {
+      "sha256": "5e3f1108e3cb34ee048634875d8482665b65ac713291a7e32396fb18f6ff0063",
+      "size": 267954768
+    },
+    "tokenizer.json": {
+      "sha256": "ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98",
+      "size": 466062
+    },
+    "tokenizer_config.json": {
+      "sha256": "a025160ef0431f1a392f6f050c1310f4c5d9fb6f275932dbccba73c4d214bf10",
+      "size": 48
+    },
+    "vocab.txt": {
+      "sha256": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3",
+      "size": 231508
+    }
+  },
+  "bytecode_prefix_empty": true,
+  "controller_custody_root_sha256": "d7b91c991924fe5a62ccb80d2ce9f6eca71f51e5b0d60cac079d365c8b6b9e2f",
+  "cpu_custody_root_sha256": "ee265239176b719dcec78d0068ececc95105a74a326a9edda34e6b896f654867",
+  "evaluation_ledger_empty": true,
+  "evaluation_rows": 64,
+  "exposure_sha256": "1f9ae67040646341097414f5ef6da1f66d0ccc5f0be47deeee36cfe66550e32e",
+  "ledger_root_sha256": "d88790bd7e0164989c1798b50382eea8ec1690b90c8e7d0d23e5c88646d56987",
+  "manifest_sha256": "20a8ce96bab80c1f3b19ca86ac43e5d32f62c4b4a9bbd3c23e1a3fc9abfd91e5",
+  "model": "distilbert/distilbert-base-uncased",
+  "model_revision": "12040accade4e8a0f71eabdb258fecc2e7e948be",
+  "protocol_sha256": "30132047ffb354a3be97b8ae91a1606059ddfd432845dd6dbf2e4b06faa61ede",
+  "scope": "read-only; no reservation or model forward",
+  "source_commit": "4ee50069464228798071218b58b64221ac5960f4",
+  "source_file_count": 30,
+  "status": "passed",
+  "torch_imported": false,
+  "transformers_imported": false
+}

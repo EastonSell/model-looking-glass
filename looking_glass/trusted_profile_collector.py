@@ -1,4 +1,4 @@
-"""Measurements for the fixed, supervised trusted-service worker protocol.
+"""Measurements for the fixed, supervised custody-bound service protocol.
 
 Raw sample production requires a real owner, lease, and memory commitments.
 Profiles describe observed incremental usage; they are not resource bounds.
@@ -28,12 +28,12 @@ import weakref
 
 from .resource_profile import (MeasuredResourceProfile, MemorySample, ProfileProvenance,
                                ProfileRegistry, canonical_fingerprint, encode_evidence)
+from .custody_service_profile import resolve_custody_service_profiles
 from .trusted_service_profile import (FORWARD_CASE_SHA256, JOB_COMMITMENT,
-    LOAD_CASE_SHA256, LOAD_COMMITMENT, TrustedServiceIdentity, make_fixed_service_inputs,
-    resolve_trusted_service_profiles)
+    LOAD_CASE_SHA256, LOAD_COMMITMENT, TrustedServiceIdentity, make_fixed_service_inputs)
 
 
-TRUSTED_SERVICE_COLLECTOR_CONTRACT = 'two-token-worker-profile-v1'
+TRUSTED_SERVICE_COLLECTOR_CONTRACT = 'two-token-custody-worker-profile-v1'
 
 
 class CollectorError(RuntimeError):
@@ -63,6 +63,53 @@ def _validated_hf_home(cache_root, hf_home):
     return home
 
 
+def _workspace_root(repo, requested):
+    """Use the trusted shared checkout layout's device lock namespace.
+
+    An unrelated checkout outside that layout must be coordinated separately;
+    this rule does not supply a machine-global lock.
+    """
+    repo, requested = Path(repo).resolve(strict=True), Path(requested)
+    if not requested.is_absolute():
+        raise CollectorError('the workspace root must be absolute')
+    requested = requested.resolve(strict=True)
+    work_parents = [parent for parent in repo.parents if parent.name.casefold() == 'work']
+    if len(work_parents) > 1:
+        raise CollectorError('checkout has an ambiguous nested work layout')
+    expected = work_parents[0].parent if work_parents else repo
+    if requested != expected or not (expected / 'work').is_dir():
+        raise CollectorError('workspace root does not match the shared checkout layout')
+    return expected
+
+
+def _require_workspace_spec(session):
+    """Reject an alternate serialized lock namespace before lease acquisition."""
+    from .supervisor import OwnerSession, _resolve_child_identity
+    if type(session) is not OwnerSession or type(session._identity_spec) is not dict:
+        raise CollectorError('a serialized supervised physical identity is required')
+    spec = session._identity_spec
+    if type(spec.get('workspace_root')) is not str:
+        raise CollectorError('the supervised workspace root is missing')
+    repo = Path(__file__).resolve().parents[1]
+    expected = _workspace_root(repo, spec['workspace_root'])
+    identity = _resolve_child_identity(spec, session.device_lease_path, session.marker_path)
+    if identity.workspace_root != expected:
+        raise CollectorError('the supervised identity uses another workspace')
+
+
+def _require_workspace_binding(session):
+    """Recheck the resolved physical identity against its serialized spec."""
+    from .device_identity import DeviceIdentity
+    from .supervisor import OwnerSession, _identity_spec
+    if type(session) is not OwnerSession or type(session.identity) is not DeviceIdentity:
+        raise CollectorError('a resolved supervised physical identity is required')
+    identity = session.identity
+    _workspace_root(Path(__file__).resolve().parents[1], identity.workspace_root)
+    if type(session._identity_spec) is not dict or _identity_spec(identity) != session._identity_spec:
+        raise CollectorError('the supervised physical identity changed')
+    DeviceIdentity.validate_paths(identity)
+
+
 # These slots exist before any admission or CUDA work. The dedicated owner
 # process keeps its budget, leases, model and failure traceback until exit.
 _OWNER_CUSTODY = [None] * 9
@@ -75,7 +122,9 @@ def _owner_unsafe(state):
     module = sys.modules.get('looking_glass.resident_worker')
     process_check = getattr(module, '_is_process_quarantined', None) if module is not None else None
     worker = state['worker']
+    authority = state.get('authority')
     return (state['unsafe'] or (process_check is not None and process_check())
+            or (authority is not None and authority.unsafe)
             or (worker is not None and worker.quarantined))
 
 
@@ -99,6 +148,85 @@ def _check_retained_owner(session, lease):
             'forward_bytes': JOB_COMMITMENT,
             'committed_incremental_bytes': LOAD_COMMITMENT + JOB_COMMITMENT,
             'retained_until_exit': True}
+
+
+def _guarded_cleanup(session, lease, torch):
+    """Check the unsafe latch and both claims around every cleanup CUDA call."""
+    from .cuda_cleanup import clear_cublas_after_drain
+    def guarded(function):
+        def call(*args, **kwargs):
+            _check_retained_owner(session, lease)
+            value = function(*args, **kwargs)
+            _check_retained_owner(session, lease)
+            return value
+        return call
+    cuda = SimpleNamespace(**{name: guarded(getattr(torch.cuda, name)) for name in
+        ('is_initialized', 'synchronize', 'empty_cache', 'memory_allocated', 'memory_reserved')})
+    wrapped = SimpleNamespace(__version__=torch.__version__, version=torch.version, cuda=cuda,
+        _C=SimpleNamespace(_cuda_clearCublasWorkspaces=guarded(torch._C._cuda_clearCublasWorkspaces)))
+    return clear_cublas_after_drain(session=session, lease=lease, torch=wrapped)
+
+
+def _dispose_custody_worker(state):
+    """Dispose a confirmed idle worker cycle while claims remain held.
+
+    The caller checks the physical owner before and after this operation.
+    An unsafe or still-custodied worker stays rooted for process termination.
+    """
+    from .owner_completion import LifetimeWorkspaceWorker, OwnerCompletionAuthority
+    from .resident_worker import ResidentWorker
+    owned = state['worker']
+    authority = state.get('authority')
+    try:
+        if (type(owned) is not LifetimeWorkspaceWorker or authority is not owned._authority
+                or type(owned._worker) is not ResidentWorker or _owner_unsafe(state) or owned.poisoned
+                or state.get('operation_in_flight', False) is not False
+                or owned._cold_pending or owned._warmup_result is not None
+                or owned._custody.result is not None or owned._custody.request is not None
+                or owned._custody.logits is not None
+                or owned._worker._snapshot_error is not None
+                or owned._custody.forward_error is not None or owned._custody.state_error is not None
+                or owned._custody.producer_error is not None
+                or owned._custody.error is not None or owned._retiring_transfer is not None
+                or owned._retiring_cancel is not None or owned._transfer_cleanup_error is not None
+                or owned._cancel_cleanup_error is not None):
+            raise CollectorError('worker is unsafe or still holds a forward result or request')
+        resident = owned._worker
+        owned.close()
+        if authority.unsafe:
+            raise CollectorError('owner became unsafe while closing the worker')
+        resident.close()
+        if authority.unsafe:
+            raise CollectorError('owner became unsafe while closing the resident')
+        # The authority's retirement decision permanently forbids rebinding and
+        # severs its worker root only after verifying the closed, idle worker.
+        # Keep both this root and the authoritative latch through the decision.
+        authority.retire_unbrokered_worker(owned)
+        if authority.unsafe:
+            raise CollectorError('owner became unsafe before worker retirement')
+        state['worker'] = None
+        if authority.unsafe:
+            state['worker'] = owned
+            raise CollectorError('owner became unsafe during worker retirement')
+        state['bundle'] = None
+        state['copy_result'] = None
+        del resident, owned
+        gc.collect()
+        if authority.unsafe:
+            raise CollectorError('owner became unsafe during worker retirement')
+        if state['model_ref']() is not None:
+            raise CollectorError('the model remains referenced after worker shutdown')
+    except BaseException:
+        # Never lose an interrupted retirement's sticky authority. The
+        # dedicated owner keeps its worker/model roots where still available
+        # and both ledger claims until process exit.
+        state['unsafe'] = True
+        if type(authority) is OwnerCompletionAuthority:
+            try:
+                authority.mark_unsafe()
+            except BaseException:
+                pass
+        raise
 
 
 class _GuardedProbe:
@@ -189,7 +317,7 @@ def assemble_profiles(identity, samples, *, collected_utc):
     pins = tuple(profile.profile_id for profile in profiles)
     registry = ProfileRegistry(profiles, approved_profile_ids=pins)
     # This tests schema/case consistency, not independent approval of the pins.
-    resolve_trusted_service_profiles(registry, identity, pins)
+    resolve_custody_service_profiles(registry, identity, pins)
     return profiles, tuple(evidences)
 
 
@@ -257,44 +385,63 @@ def _representative_frame_size(result, request_id):
 
 
 def run_fixed_forward(worker, seed, *, cold, allow_cpu_test=False):
-    """Execute and validate the actual worker path; CPU mode is for tests only."""
+    """Measure the custody-bound worker; CPU mode is solely for tests."""
     import torch
+    from .owner_completion import LifetimeWorkspaceWorker, OwnerCompletionAuthority
     from .resident_worker import ForwardRequest, ForwardResult, ResidentWorker
-    if type(worker) is not ResidentWorker:
-        raise TypeError('the exact ResidentWorker is required')
+    if type(worker) is not LifetimeWorkspaceWorker:
+        raise TypeError('the exact lifetime workspace worker is required')
+    resident, authority = worker._worker, worker._authority
+    if (type(resident) is not ResidentWorker or type(authority) is not OwnerCompletionAuthority
+            or resident._owner_completion is not authority or authority._worker is not worker):
+        raise CollectorError('worker and completion authority are not correctly bound')
     expected = 'cpu' if allow_cpu_test is True else 'cuda'
-    if (worker.device.type != expected or (expected == 'cuda' and worker.device.index != 0)
-            or worker.max_batch_size != 1 or worker.max_sequence_length != 2
-            or worker.max_input_bytes != 64 * 1024 or worker.max_output_bytes != 512 * 1024):
+    if (resident.device.type != expected or (expected == 'cuda' and resident.device.index != 0)
+            or resident.max_batch_size != 1 or resident.max_sequence_length != 2
+            or resident.max_input_bytes != 64 * 1024 or resident.max_output_bytes != 512 * 1024):
         raise CollectorError('worker device or bounds differ from the protocol')
-    inputs = make_fixed_service_inputs([15496, 995], seed, cold=cold)
-    tokens = inputs['input_ids']
-    actual_case = {'schema': 'resource-bootstrap-case-v1', 'input_ids': tokens.tolist()[0],
-                   'shape': list(tokens.shape), 'dtype': str(tokens.dtype)}
-    case_sha256 = canonical_fingerprint(actual_case)
-    if case_sha256 != FORWARD_CASE_SHA256:
-        raise CollectorError('constructed input does not match the fixed case digest')
-    request = ForwardRequest('profile-case-v1', inputs, seed)
-    result = ResidentWorker.execute(worker, request)
-    if type(result) is not ForwardResult or result.request_id != request.request_id:
-        raise CollectorError('worker returned an invalid result identity')
-    logits = result.logits
-    if (type(logits) is not torch.Tensor or logits.device.type != 'cpu'
-            or logits.dtype is not torch.float32 or tuple(logits.shape) != (1, 2, 50257)
-            or not logits.is_contiguous() or logits.storage_offset() != 0
-            or logits.untyped_storage().nbytes() != 402056 or logits.requires_grad
-            or not bool(torch.isfinite(logits).all())):
-        raise CollectorError('worker output differs from the finite fixed output contract')
-    frame = _representative_frame_size(result, request.request_id)
-    output_ref, input_ref = weakref.ref(logits), weakref.ref(tokens)
-    del logits, result, request, tokens, inputs
-    if output_ref() is not None or input_ref() is not None:
-        raise CollectorError('collector-owned input or output remains referenced')
-    return {'seed': seed, 'cold': cold, 'case_sha256': case_sha256,
-            'finite': True, 'output_shape': [1, 2, 50257],
-            'output_dtype': 'torch.float32', 'output_tensor_bytes': 402056,
-            'representative_frame_bytes': frame,
-            'frame_scope': 'production IPC envelope, shape, dtype and finite count; no numerical parity claim'}
+    try:
+        if type(cold) is not bool or worker._cold_pending is not cold:
+            raise CollectorError('worker cold/warm state differs from the sample')
+        inputs = make_fixed_service_inputs([15496, 995], seed, cold=cold)
+        tokens = inputs['input_ids']
+        actual_case = {'schema': 'resource-bootstrap-case-v1', 'input_ids': tokens.tolist()[0],
+                       'shape': list(tokens.shape), 'dtype': str(tokens.dtype)}
+        case_sha256 = canonical_fingerprint(actual_case)
+        if case_sha256 != FORWARD_CASE_SHA256:
+            raise CollectorError('constructed input does not match the fixed case digest')
+        request = ForwardRequest('profile-case-v1', inputs, seed)
+        result = LifetimeWorkspaceWorker.execute(worker, request)
+        if type(result) is not ForwardResult or result.request_id != request.request_id:
+            raise CollectorError('worker returned an invalid result identity')
+        logits = result.logits
+        if (type(logits) is not torch.Tensor or logits.device.type != 'cpu'
+                or logits.dtype is not torch.float32 or tuple(logits.shape) != (1, 2, 50257)
+                or not logits.is_contiguous() or logits.storage_offset() != 0
+                or logits.untyped_storage().nbytes() != 402056 or logits.requires_grad
+                or not bool(torch.isfinite(logits).all())):
+            raise CollectorError('worker output differs from the finite fixed output contract')
+        frame = _representative_frame_size(result, request.request_id)
+        output_ref, input_ref = weakref.ref(logits), weakref.ref(tokens)
+        if cold:
+            LifetimeWorkspaceWorker._finish_cold(worker, result)
+        else:
+            # The local result is the consumer root while producer custody is
+            # transferred by the worker's own authority-ordered decision.
+            LifetimeWorkspaceWorker._transfer_result(worker, result)
+        if authority.unsafe or worker.quarantined:
+            raise CollectorError('owner became unsafe during result transfer')
+        del logits, result, request, tokens, inputs
+        if output_ref() is not None or input_ref() is not None:
+            raise CollectorError('collector-owned input or output remains referenced')
+        return {'seed': seed, 'cold': cold, 'case_sha256': case_sha256,
+                'finite': True, 'output_shape': [1, 2, 50257],
+                'output_dtype': 'torch.float32', 'output_tensor_bytes': 402056,
+                'representative_frame_bytes': frame,
+                'frame_scope': 'production IPC envelope, shape, dtype and finite count; no numerical parity claim'}
+    except BaseException:
+        authority.mark_unsafe()
+        raise
 
 
 def utc_now():
@@ -397,11 +544,11 @@ def _owner_main(config):
         _validated_hf_home(config['cache_root'], os.environ.get('HF_HOME'))
         session = OwnerSession.from_environment()
         _PROCESS_CUSTODY[0] = session
+        _require_workspace_spec(session)
         lease = DeviceLease.acquire(session.device_lease_path, timeout=30)
         _PROCESS_CUSTODY[1] = lease
         OwnerSession.check(session, lease)
-        if session.identity is None:
-            raise CollectorError('physical identity is required')
+        _require_workspace_binding(session)
         owner = {'schema': 'trusted-profile-owner-v1', 'run_id': config['run_id'],
                  'supervisor_run_id': session.run_id, 'pid': os.getpid(),
                  'physical_gpu_uuid': session.identity.gpu_uuid}
@@ -481,7 +628,7 @@ def _validate_candidate(run_dir, run_id, supervision):
     identity = TrustedServiceIdentity(tuple(profile.key for profile in profiles), source,
                                       artifacts['runtime-manifest.json'], artifacts['asset-manifest.json'])
     registry = ProfileRegistry(profiles, approved_profile_ids=tuple(pins))
-    resolve_trusted_service_profiles(registry, identity, tuple(pins))
+    resolve_custody_service_profiles(registry, identity, tuple(pins))
     samples = (profiles[0].samples[0], profiles[1].samples[0], *profiles[2].samples)
     actual_source = TrustedServiceSource('', '', b'', artifacts['asset-manifest.json'], ())
     if samples[0].case_sha256 != _load_case_digest(actual_source):
@@ -615,7 +762,7 @@ def run_supervised_collector(*, workspace_root, cache_root, hf_home, site_packag
     from .trusted_service_profile import prepare_trusted_source
 
     repo = Path(__file__).resolve().parents[1]
-    root = Path(workspace_root).resolve(strict=True)
+    root = _workspace_root(repo, workspace_root)
     cache = Path(cache_root).resolve(strict=True)
     home = _validated_hf_home(cache, hf_home)
     private = Path(private_parent).resolve(strict=True)
@@ -730,10 +877,12 @@ def collect_owned(source, session, lease, run_dir, run_id):
             raise CollectorError('this owner process has already attempted collection')
         _OWNER_CLAIMED = True
         _OWNER_CUSTODY[0], _OWNER_CUSTODY[1], _OWNER_CUSTODY[2] = session, lease, source
-    state = {'bundle': None, 'worker': None, 'model_ref': None, 'copy_result': None,
+    state = {'bundle': None, 'worker': None, 'authority': None, 'model_ref': None, 'copy_result': None,
              'unsafe': False, 'operation_in_flight': False}
     _OWNER_CUSTODY[3] = state
     try:
+        OwnerSession.check(session, lease)
+        _require_workspace_binding(session)
         return _collect_owned_inner(source, session, lease, run_dir, run_id, state)
     except BaseException as exc:
         state['unsafe'] = True
@@ -742,21 +891,27 @@ def collect_owned(source, session, lease, run_dir, run_id):
 
 
 def _collect_owned_inner(source, session, lease, run_dir, run_id, state):
-    from .cuda_cleanup import clear_cublas_after_drain
     from .live_profile import decode_cuda_uuid
     from .memory_budget import MemoryBudget
     from .resource_profile import TorchMemoryProbe, collect_sample
     from .supervisor import OwnerSession
-    from .trusted_service_profile import (build_trusted_service_identity,
-        prepare_trusted_source, verify_trusted_cpu_model, verify_trusted_device_tie)
+    from .custody_service_profile import build_custody_service_identity
+    from .trusted_service_profile import (prepare_trusted_source, verify_trusted_cpu_model,
+                                          verify_trusted_device_tie)
 
     OwnerSession.check(session, lease)
+    _require_workspace_binding(session)
     identity = session.identity
     if identity is None:
         raise CollectorError('a physical GPU identity is required')
     torch = _import_uninitialized_torch()
     OwnerSession.check(session, lease)
-    live = build_trusted_service_identity(source, identity, session, lease)
+    live = build_custody_service_identity(source, identity, session, lease)
+    expected_total = live.keys[0].device_total_bytes
+    if (type(expected_total) is not int or expected_total <= 0
+            or any(type(key.device_total_bytes) is not int or key.device_total_bytes != expected_total
+                   for key in live.keys)):
+        raise CollectorError('live workload keys have inconsistent device totals')
     run_dir = Path(run_dir)
     for name, data in (('source-manifest.json', live.source_manifest),
                        ('runtime-manifest.json', live.runtime_manifest),
@@ -790,9 +945,17 @@ def _collect_owned_inner(source, session, lease, run_dir, run_id, state):
     _OWNER_CUSTODY[4] = probe
     def telemetry():
         binding()
-        return probe.snapshot()
+        snapshot = probe.snapshot()
+        if type(snapshot.device_total_bytes) is not int or snapshot.device_total_bytes != expected_total:
+            raise CollectorError('budget telemetry device total differs from the live workload')
+        return snapshot
     budget = MemoryBudget(telemetry, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
     _OWNER_CUSTODY[5] = budget
+    def guarded_budget_snapshot():
+        check_owner_safe()
+        result = budget.snapshot()
+        check_owner_safe()
+        return result
     resident_lease = budget.acquire(LOAD_COMMITMENT, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
     _OWNER_CUSTODY[6] = resident_lease
     actual_load_case = _load_case_digest(source)
@@ -815,10 +978,10 @@ def _collect_owned_inner(source, session, lease, run_dir, run_id, state):
         OwnerSession.check(session, lease)
         if prepare_trusted_source(source.repo_root, source.cache_root) != source:
             raise CollectorError('source or assets changed during CPU staging')
-        revalidated = build_trusted_service_identity(source, identity, session, lease)
+        revalidated = build_custody_service_identity(source, identity, session, lease)
         if revalidated != live:
             raise CollectorError('live source or runtime identity changed during CPU staging')
-        current = budget.snapshot()
+        current = guarded_budget_snapshot()
         if (current.active_leases != 1 or resident_lease not in budget.active_leases()
                 or current.committed_incremental_bytes != LOAD_COMMITMENT
                 or current.committed_incremental_bytes + current.reserve_bytes > current.telemetry.device_free_bytes
@@ -856,7 +1019,7 @@ def _collect_owned_inner(source, session, lease, run_dir, run_id, state):
         return None
 
     def measure(key, operation, *, label, case_sha256, seed, memory_lease):
-        before = budget.snapshot()
+        before = guarded_budget_snapshot()
         _write_json(run_dir / (label + '-admission.json'), {
             'label': label, 'budget': asdict(before), 'lease_bytes': memory_lease.estimated_incremental_bytes})
         def guarded_operation():
@@ -874,7 +1037,7 @@ def _collect_owned_inner(source, session, lease, run_dir, run_id, state):
         # Preserve what the probe observed even if fresh headroom fails; do not
         # publish it as a completed sample or release its lease in that case.
         _write_json(run_dir / (label + '-after-observed.json'), asdict(sample.after))
-        after_budget = asdict(budget.snapshot())
+        after_budget = asdict(guarded_budget_snapshot())
         _write_json(run_dir / (label + '-postcheck.json'), after_budget)
         expected = LOAD_COMMITMENT if label == 'load-17' else LOAD_COMMITMENT + JOB_COMMITMENT
         _validate_budget_record(after_budget, expected, 1 if label == 'load-17' else 2)
@@ -893,6 +1056,30 @@ def _collect_owned_inner(source, session, lease, run_dir, run_id, state):
     # observation and stays rooted, with the resident claim, until process exit.
     job_lease = budget.acquire(JOB_COMMITMENT, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
     _OWNER_CUSTODY[7] = job_lease
+    # These descriptors only permit the explicitly bounded calibration. They
+    # are not measured profiles or approved pins. The real service path uses
+    # the same lifetime worker and owner-bound completion authority.
+    from .budgeted_worker import WorkloadProfile
+    from .owner_completion import LifetimeWorkspaceWorker, OwnerCompletionAuthority
+    provisional = WorkloadProfile('provisional-cold', live.keys[1].model_id, 'cuda:0',
+                                  (1, 2), (('input_ids', 'torch.int64'),),
+                                  512 * 1024, JOB_COMMITMENT)
+    warm_provisional = WorkloadProfile('provisional-warm', live.keys[2].model_id, 'cuda:0',
+                                       (1, 2), (('input_ids', 'torch.int64'),),
+                                       512 * 1024, JOB_COMMITMENT)
+    check_owner_safe()
+    authority = OwnerCompletionAuthority(device_guard=check_owner_safe)
+    state['authority'] = authority
+    try:
+        state['worker'] = LifetimeWorkspaceWorker(state['worker'], budget, resident_lease, job_lease,
+            profiles=(provisional, warm_provisional), authority=authority)
+    except BaseException:
+        state['unsafe'] = True
+        authority.mark_unsafe()
+        raise
+    # The state retains the authority even if worker construction is
+    # interrupted at its return boundary. Avoid a separate model root here.
+    del authority
     for key, seed, cold in ((live.keys[1], 17, True), (live.keys[2], 29, False),
                             (live.keys[2], 43, False), (live.keys[2], 71, False)):
         label = ('cold-' if cold else 'warm-') + str(seed)
@@ -912,19 +1099,11 @@ def _collect_owned_inner(source, session, lease, run_dir, run_id, state):
         _write_new(run_dir / (name + '-evidence.json'), raw)
         _write_new(run_dir / (name + '-profile.json'), profile.to_json().encode('utf-8'))
 
-    owned = state['worker']
-    if owned.quarantined or owned.poisoned:
-        raise CollectorError('worker is not clean before shutdown')
-    owned.close()
-    state['worker'] = None
-    state['bundle'] = None
-    state['copy_result'] = None
-    del owned
-    gc.collect()
-    if state['model_ref']() is not None:
-        raise CollectorError('the model remains referenced after worker shutdown')
     check_owner_safe()
-    cleanup = clear_cublas_after_drain(session=session, lease=lease, torch=torch)
+    _check_retained_owner(session, lease)
+    _dispose_custody_worker(state)
+    check_owner_safe()
+    cleanup = _guarded_cleanup(session, lease, torch)
     cleanup['model_weakref_dead'] = True
     cleanup['owner_commitments'] = _check_retained_owner(session, lease)
     _write_json(run_dir / 'cleanup.json', cleanup)

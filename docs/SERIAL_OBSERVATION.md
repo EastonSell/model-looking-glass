@@ -24,9 +24,10 @@ unique logical job IDs of at most 128 characters; the recorder retains the
 broker's distinct native integer job
 ID. The bounded registry supports at most 4,096 jobs per owner epoch. A direct
 broker or fair-IPC submission path is not automatically observed.
-The fixed service's `LifetimeWorkspaceWorker` is a separate execution path and
-is not covered by this wrapper; measuring it needs its own reviewed owner,
-profile and resident-call bindings.
+The fixed service's `LifetimeWorkspaceWorker` uses a separate
+[CPU-only observation adapter](SERVICE_SERIAL_OBSERVATION.md). Its CUDA path
+remains recorder-disabled until a separately reviewed instrumented profile is
+available.
 
 At the selected `BudgetedWorker` admission, the scope binds the actual
 single-row `WorkloadProfile`, resident worker, internal worker request token,

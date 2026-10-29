@@ -39,6 +39,15 @@ class IPCRejected(IPCError):
         super().__init__(code)
 
 
+class IPCInputRejected(Exception):
+    """Trusted factory denied this input before request-owned side effects.
+
+    Raising the exact type asserts that this invocation has created no
+    request-owned tensors or other retained aliases, external side effects,
+    or asynchronous/native work. Subclasses are not this assertion.
+    """
+
+
 class _ProtocolError(Exception):
     pass
 
@@ -283,6 +292,39 @@ def _encode_tensor_result(result, max_response_bytes):
             "logits": values}
 
 
+def _completion_binding(broker, guardian, authority):
+    """Resolve only trusted, exact owner backends; legacy backends stay optional."""
+    target = getattr(broker, "_target", None)
+    candidates = (getattr(broker, "_completion_authority", None),
+                  getattr(getattr(broker, "_target_broker", None), "_completion_authority", None),
+                  getattr(getattr(target, "_broker", None), "_completion_authority", None))
+    if authority is None and not any(candidate is not None for candidate in candidates):
+        return None
+
+    # Lazy imports retain the lightweight legacy transport for fake brokers.
+    from .broker import Broker
+    from .ipc_fair_bridge import FairIPCBridge
+    from .owner_completion import OwnerCompletionAuthority
+
+    if type(authority) is not OwnerCompletionAuthority:
+        raise ValueError("the bound completion authority must be supplied exactly")
+    if type(broker) is Broker:
+        actual, fair_target = broker, None
+        if guardian is not None or broker._fair_handoff is not None:
+            raise ValueError("direct authority binding requires a direct broker")
+    elif type(broker) is FairIPCBridge:
+        actual, fair_target = broker._target_broker, broker._target
+        if (guardian is not broker or type(actual) is not Broker or
+                fair_target._broker is not actual or actual._fair_handoff is not fair_target):
+            raise ValueError("fair authority binding must use the pinned broker and guardian")
+    else:
+        raise ValueError("authority binding requires an exact supported backend")
+    if (actual._completion_authority is not authority or authority._broker is not actual
+            or authority.unsafe):
+        raise ValueError("completion authority does not match the live broker")
+    return authority, actual, fair_target
+
+
 class IPCServer:
     """One request per authenticated local connection, backed by a trusted broker.
 
@@ -294,7 +336,9 @@ class IPCServer:
                  max_connections=8, max_request_bytes=_MAX_REQUEST,
                  max_response_bytes=_MAX_RESPONSE, max_batch=8, max_tokens=256,
                  io_timeout=3.0, job_timeout=60.0, team_ids=None,
-                 custody_guardian=None, custody_epoch=None):
+                 custody_guardian=None, custody_epoch=None, completion_authority=None):
+        # These checks are performed before server construction acquires any
+        # resource. Ordinary invalid arguments are not custody faults.
         for name, value, low, high in (
             ("max_connections", max_connections, 1, 128),
             ("max_request_bytes", max_request_bytes, 256, _MAX_REQUEST),
@@ -306,10 +350,47 @@ class IPCServer:
         for name, value in (("io_timeout", io_timeout), ("job_timeout", job_timeout)):
             if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
                 raise ValueError(f"invalid {name}")
-        self.broker = broker
-        self._broker_id = getattr(broker, "broker_id", None)
-        if type(self._broker_id) is not str or not _BROKER_ID.fullmatch(self._broker_id):
+        broker_id = getattr(broker, "broker_id", None)
+        if type(broker_id) is not str or not _BROKER_ID.fullmatch(broker_id):
             raise ValueError("broker must expose its 32-character hexadecimal lifetime ID")
+        if team_ids is not None:
+            if (type(team_ids) not in (list, tuple) or not 1 <= len(team_ids) <= 128 or
+                    not all(_identifier(team) for team in team_ids) or len(set(team_ids)) != len(team_ids)):
+                raise ValueError("team_ids must contain 1 to 128 distinct valid team identifiers")
+        if custody_guardian is None:
+            if custody_epoch is not None:
+                raise ValueError("custody epoch requires a guardian")
+        else:
+            if team_ids is None:
+                raise ValueError("custody notifications require per-team authentication")
+            if (type(custody_epoch) is not str or not _BROKER_ID.fullmatch(custody_epoch)
+                    or any(not callable(getattr(custody_guardian, name, None))
+                           for name in ("reserve", "authenticate", "handler_closed"))
+                    or getattr(broker, "custody_guardian", None) is not custody_guardian
+                    or not callable(getattr(broker, "submit_registered", None))):
+                raise ValueError("invalid trusted custody configuration")
+        binding = _completion_binding(broker, custody_guardian, completion_authority)
+        try:
+            self._initialize(broker, broker_id, request_factory, result_encoder, max_connections,
+                             max_request_bytes, max_response_bytes, max_batch, max_tokens,
+                             io_timeout, job_timeout, team_ids, custody_guardian, custody_epoch, binding)
+        except BaseException:
+            if binding is not None:
+                try:
+                    binding[0].mark_unsafe()
+                finally:
+                    # The exact authority's signal is a sticky CPython
+                    # reference assignment. A one-shot interruption at the
+                    # method entry must not leave this owner apparently safe.
+                    binding[0]._unsafe = True
+            raise
+
+    def _initialize(self, broker, broker_id, request_factory, result_encoder, max_connections,
+                    max_request_bytes, max_response_bytes, max_batch, max_tokens,
+                    io_timeout, job_timeout, team_ids, custody_guardian, custody_epoch, binding):
+        self.broker = broker
+        self._broker_id = broker_id
+        self._completion_binding = binding
         self.request_factory = request_factory or _default_request_factory
         self.result_encoder = result_encoder
         self.max_request_bytes = max_request_bytes
@@ -317,9 +398,6 @@ class IPCServer:
         self.max_batch, self.max_tokens = max_batch, max_tokens
         self.io_timeout, self.job_timeout = io_timeout, job_timeout
         if team_ids is not None:
-            if (type(team_ids) not in (list, tuple) or not 1 <= len(team_ids) <= 128 or
-                    not all(_identifier(team) for team in team_ids) or len(set(team_ids)) != len(team_ids)):
-                raise ValueError("team_ids must contain 1 to 128 distinct valid team identifiers")
             generated = {}
             for team in team_ids:
                 candidate = secrets.token_hex(32)
@@ -332,23 +410,12 @@ class IPCServer:
             self._token = secrets.token_hex(32)
             self._team_tokens = MappingProxyType({})
         self._invalid_token = secrets.token_hex(32)
-        if custody_guardian is None:
-            if custody_epoch is not None:
-                raise ValueError("custody epoch requires a guardian")
-        else:
-            if not self._team_tokens:
-                raise ValueError("custody notifications require per-team authentication")
-            if (type(custody_epoch) is not str or not _BROKER_ID.fullmatch(custody_epoch)
-                    or any(not callable(getattr(custody_guardian, name, None))
-                           for name in ("reserve", "authenticate", "handler_closed"))
-                    or getattr(broker, "custody_guardian", None) is not custody_guardian
-                    or not callable(getattr(broker, "submit_registered", None))):
-                raise ValueError("invalid trusted custody configuration")
         self._custody_guardian = custody_guardian
         self._custody_broker = broker if custody_guardian is not None else None
         self._custody_epoch = custody_epoch
         self._custody_generation = 0
         self._custody_quarantine = threading.Event()
+        self._max_connections = max_connections
         self._slots = threading.BoundedSemaphore(max_connections)
         self._lock = threading.Lock()
         self._lifecycle = threading.Lock()
@@ -356,10 +423,18 @@ class IPCServer:
         self._admissions_active = 0
         self._clients = set()
         self._handlers = set()
+        # Completed handlers remain rooted until another thread has observed
+        # their actual termination. A handler cannot prove its own exit.
+        self._retiring_handlers = set()
         self._stop = threading.Event()
         self._accepting_stopped = threading.Event()
         self._listener = None
         self._accept_thread = None
+        self._accept_orphan = None
+        self._accept_uncertain = False
+        self._accept_failure = None
+        self._startup_uncertain = False
+        self._startup_failure = None
         self.address = None
 
     @property
@@ -383,12 +458,81 @@ class IPCServer:
         """Report an uncertain custody transition without waiting for locks."""
         return self._custody_quarantine.is_set()
 
+    def _mark_custody_fault(self):
+        # The owner decision and this signal use a shared authority. Mark it
+        # before publishing the separate observational IPC quarantine flag.
+        binding = self._completion_binding
+        if binding is not None:
+            try:
+                binding[0].mark_unsafe()
+            finally:
+                binding[0]._unsafe = True
+                self._custody_quarantine.set()
+        elif self._custody_guardian is not None:
+            self._custody_quarantine.set()
+
+    def _check_completion_binding(self):
+        binding = self._completion_binding
+        if binding is None:
+            return
+        authority, actual, fair_target = binding
+        if authority.unsafe:
+            raise IPCRejected("unavailable")
+        try:
+            endpoint = self._custody_broker if fair_target is not None else actual
+            if fair_target is not None:
+                from .ipc_fair_bridge import _ServerConstruction
+                construction = endpoint._server_construction
+            valid = (self.broker is endpoint and actual._completion_authority is authority
+                     and authority._broker is actual
+                     and (actual._fair_handoff is None if fair_target is None else
+                          (self._custody_guardian is endpoint and endpoint._target is fair_target
+                           and endpoint._target_broker is actual and fair_target._broker is actual
+                           and actual._fair_handoff is fair_target and endpoint._server is self
+                           and type(construction) is _ServerConstruction
+                           and construction.server is self)))
+        except BaseException:
+            self._mark_custody_fault()
+            raise
+        if not valid:
+            self._mark_custody_fault()
+            raise IPCRejected("unavailable")
+
+    def _validate_completion_handle(self, handle, key, team_id, request_id):
+        """Check the returned receipt before using it or sending acceptance."""
+        authority, actual, fair_target = self._completion_binding
+        if fair_target is None:
+            from .broker import RequestHandle
+            valid = (type(handle) is RequestHandle and handle._broker is actual
+                     and type(handle.job_id) is int and handle.job_id > 0
+                     and handle.team_id == team_id and handle.request_id == request_id)
+        else:
+            from .ipc_fair_bridge import _Proxy, _Record
+            endpoint = self._custody_broker
+            with endpoint._condition:
+                record = endpoint._records.get(key)
+                valid = (type(handle) is _Proxy and type(record) is _Record
+                         and handle._owner is endpoint and handle._record is record
+                         and record.proxy is handle and record.key is key
+                         and record.team == team_id and record.request_id == request_id
+                         and type(handle.job_id) is int and handle.job_id > 0)
+        if not valid:
+            raise IPCError("broker returned an invalid request handle")
+
+    def _request_handle_cancel(self, handle):
+        accepted = handle.cancel()
+        if self._completion_binding is not None and type(accepted) is not bool:
+            raise IPCError("broker returned an invalid cancellation result")
+        return accepted
+
     def start(self):
+        self._check_completion_binding()
         with self._lifecycle:
             if self._listener is not None or self._accepting_stopped.is_set():
                 raise RuntimeError("server already started or closed")
-            listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            listener = None
             try:
+                listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
                     listener.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
                 listener.bind(("127.0.0.1", 0))
@@ -400,53 +544,134 @@ class IPCServer:
                 self.address = listener.getsockname()
                 self._accept_thread = threading.Thread(target=self._accept, daemon=True, name="looking-glass-ipc")
                 self._accept_thread.start()
-            except BaseException:
-                listener.close()
+            except BaseException as exc:
+                monitored = self._completion_binding is not None or self._custody_guardian is not None
+                try:
+                    if monitored:
+                        # The failed startup frame may still own the listener.
+                        self._startup_failure = exc
+                finally:
+                    try:
+                        self._mark_custody_fault()
+                    finally:
+                        if monitored:
+                            self._startup_uncertain = True
+                            self._stop.set()
+                            self._accepting_stopped.set()
+                if listener is not None:
+                    listener.close()
                 raise
         return self
 
     def _accept(self):
+        try:
+            self._accept_loop()
+        except BaseException as exc:
+            try:
+                # One acceptor can fail once. Its traceback may still own a
+                # socket between accept() and the explicit orphan handoff.
+                self._accept_failure = exc
+            finally:
+                try:
+                    self._mark_custody_fault()
+                finally:
+                    if self._completion_binding is not None or self._custody_guardian is not None:
+                        self._accept_uncertain = True
+                        self._accepting_stopped.set()
+            raise
+
+    def _accept_loop(self):
         while not self._accepting_stopped.is_set():
             try:
                 if not select.select([self._listener], [], [], 0.1)[0]:
                     continue
                 client, peer = self._listener.accept()
-                client.setblocking(False)
             except (OSError, ValueError):
                 if self._accepting_stopped.is_set():
                     return
-                continue
-            if peer[0] != "127.0.0.1" or not self._slots.acquire(blocking=False):
-                try:
-                    _send(client, {"version": 1, "status": "rejected", "error": "busy"},
-                          self.max_response_bytes, time.monotonic() + min(self.io_timeout, 0.2))
-                except (OSError, EOFError, TimeoutError, ValueError, _ProtocolError, _ResultTooLarge):
-                    pass
-                finally:
-                    client.close()
-                continue
-            thread = threading.Thread(target=self._serve, args=(client,), daemon=True,
-                                      name="looking-glass-ipc-client")
-            with self._lock:
-                if self._accepting_stopped.is_set():
-                    client.close()
-                    self._slots.release()
+                if self._completion_binding is not None or self._custody_guardian is not None:
+                    self._mark_custody_fault()
+                    self._accept_uncertain = True
+                    self._accepting_stopped.set()
                     return
-                self._clients.add(client)
-                self._handlers.add(thread)
-                thread.start()
+                continue
+            monitored = self._completion_binding is not None or self._custody_guardian is not None
+            try:
+                if monitored:
+                    # Only one acceptor exists. Keep the just-accepted socket
+                    # rooted until a handler owns it or rejection completes.
+                    self._accept_orphan = client
+                client.setblocking(False)
+                if peer[0] != "127.0.0.1" or not self._slots.acquire(blocking=False):
+                    try:
+                        _send(client, {"version": 1, "status": "rejected", "error": "busy"},
+                              self.max_response_bytes, time.monotonic() + min(self.io_timeout, 0.2))
+                    except (OSError, EOFError, TimeoutError, ValueError, _ProtocolError, _ResultTooLarge):
+                        pass
+                    finally:
+                        client.close()
+                    self._accept_orphan = None
+                    continue
+                thread = threading.Thread(target=self._run_handler, args=(client,), daemon=True,
+                                          name="looking-glass-ipc-client")
+                full = False
+                with self._lock:
+                    if self._accepting_stopped.is_set():
+                        client.close()
+                        self._slots.release()
+                        self._accept_orphan = None
+                        return
+                    # A socket slot can have been released just before its
+                    # handler exits. Keep the combined live thread count
+                    # bounded even in that interval.
+                    self._retiring_handlers.difference_update(
+                        [prior for prior in self._retiring_handlers if not prior.is_alive()])
+                    if len(self._handlers) + len(self._retiring_handlers) >= self._max_connections:
+                        full = True
+                    else:
+                        self._clients.add(client)
+                        self._handlers.add(thread)
+                        thread.start()
+                        self._accept_orphan = None
+                if full:
+                    try:
+                        _send(client, {"version": 1, "status": "rejected", "error": "busy"},
+                              self.max_response_bytes, time.monotonic() + min(self.io_timeout, 0.2))
+                    except (OSError, EOFError, TimeoutError, ValueError, _ProtocolError, _ResultTooLarge):
+                        pass
+                    finally:
+                        client.close()
+                        self._slots.release()
+                    self._accept_orphan = None
+            except BaseException:
+                self._mark_custody_fault()
+                if monitored:
+                    self._accept_uncertain = True
+                    self._accepting_stopped.set()
+                raise
 
     def _send(self, client, message):
         _send(client, message, self.max_response_bytes, time.monotonic() + self.io_timeout)
 
+    def _run_handler(self, client):
+        # Retain a source-time fault signal even if an unexpected exception
+        # escapes the final part of the handler's own cleanup.
+        try:
+            self._serve(client)
+        except BaseException:
+            self._mark_custody_fault()
+            raise
+
     def _serve(self, client):
         handle = None
+        handle_valid = False
         terminal = False
         request_id = None
         custody_key = None
         custody_registered = False
         custody_safe = True
         try:
+            self._check_completion_binding()
             if self._custody_guardian is not None:
                 if self._custody_quarantine.is_set():
                     raise IPCRejected("unavailable")
@@ -481,7 +706,15 @@ class IPCServer:
             # A trusted factory can allocate or retain input aliases before it
             # raises.  The guardian cannot infer cleanup from an exception.
             custody_safe = False
-            request = self.request_factory(request_id, message["inputs"], message["seed"])
+            try:
+                request = self.request_factory(request_id, message["inputs"], message["seed"])
+            except IPCInputRejected as exc:
+                if type(exc) is not IPCInputRejected:
+                    raise
+                # This is a trusted, exact no-side-effects assertion made at
+                # the factory boundary, not something IPC can verify.
+                custody_safe = True
+                raise IPCRejected("invalid_request") from None
             custody_safe = True
             if self._accepting_stopped.is_set():
                 return
@@ -491,21 +724,43 @@ class IPCServer:
                 self._admissions_active += 1
             try:
                 try:
+                    self._check_completion_binding()
                     if self._custody_guardian is None:
-                        handle = self.broker.submit(message["team_id"], request)
+                        if self._completion_binding is not None:
+                            # Submission may have committed even if its return
+                            # never reaches this handler. Only the exact
+                            # trusted broker can attest a clean rejection.
+                            from .broker import Broker
+                            custody_safe = False
+                            try:
+                                handle = self.broker.submit(message["team_id"], request)
+                            except Exception:
+                                authority, actual, _ = self._completion_binding
+                                if (getattr(self.broker.submit, "__func__", None) is Broker.submit
+                                        and not authority.unsafe and not actual.quarantined):
+                                    custody_safe = True
+                                raise
+                            self._validate_completion_handle(handle, None, message["team_id"], request_id)
+                            custody_safe = True
+                        else:
+                            handle = self.broker.submit(message["team_id"], request)
+                        handle_valid = True
                     else:
                         custody_safe = False
                         if self._custody_quarantine.is_set():
                             raise IPCRejected("unavailable")
                         handle = self._custody_broker.submit_registered(custody_key, message["team_id"], request)
+                        if self._completion_binding is not None:
+                            self._validate_completion_handle(handle, custody_key, message["team_id"], request_id)
                         custody_safe = True
+                        handle_valid = True
                 except Exception as exc:
                     code = {"QueueFull": "queue_full", "BrokerUnavailable": "unavailable"}.get(
                         type(exc).__name__, "admission_failed")
                     raise IPCRejected(code) from exc
                 if self._accepting_stopped.is_set():
                     custody_safe = False
-                    handle.cancel()
+                    self._request_handle_cancel(handle)
                     custody_safe = True
                     raise IPCRejected("unavailable")
             finally:
@@ -533,7 +788,7 @@ class IPCServer:
                     return
                 if _remaining(deadline) == 0:
                     custody_safe = False
-                    handle.cancel()
+                    self._request_handle_cancel(handle)
                     custody_safe = True
                     self._send(client, {"version": 1, "status": "timeout", "request_id": request_id,
                                         "team_id": message["team_id"], "broker_id": self.broker_id,
@@ -558,7 +813,7 @@ class IPCServer:
                         continue
                     cancellation_seen = True
                     custody_safe = False
-                    cancellation_accepted = handle.cancel()
+                    cancellation_accepted = self._request_handle_cancel(handle)
                     custody_safe = True
                     if cancellation_accepted:
                         cancellation_status = "cancel_requested"
@@ -580,17 +835,26 @@ class IPCServer:
                     terminal = True
                     return
         except IPCRejected as exc:
+            if not custody_safe:
+                self._mark_custody_fault()
             self._try_reject(client, exc.code, request_id)
         except MemoryError:
             custody_safe = False
+            self._mark_custody_fault()
             if handle is None:
                 self._try_reject(client, "internal_error", request_id)
         except (_ProtocolError, _ResultTooLarge, ValueError, TypeError):
+            if not custody_safe:
+                self._mark_custody_fault()
             if handle is None:
                 self._try_reject(client, "invalid_request", request_id)
         except (OSError, EOFError, TimeoutError):
+            if not custody_safe:
+                self._mark_custody_fault()
             pass
         except Exception:
+            if not custody_safe:
+                self._mark_custody_fault()
             if handle is None:
                 self._try_reject(client, "internal_error", request_id)
         finally:
@@ -598,11 +862,17 @@ class IPCServer:
             cancellation_exception = None
             if pending_exception:
                 custody_safe = False
-            if handle is not None and not terminal:
+            if not custody_safe:
+                self._mark_custody_fault()
+            if handle is not None and handle_valid and not terminal:
                 try:
-                    handle.cancel()
+                    prior_safe = custody_safe
+                    custody_safe = False
+                    self._request_handle_cancel(handle)
+                    custody_safe = prior_safe
                 except BaseException as exc:
                     custody_safe = False
+                    self._mark_custody_fault()
                     if not isinstance(exc, Exception):
                         cancellation_exception = exc
             # Drop potentially large result/input references before a slow peer
@@ -615,9 +885,8 @@ class IPCServer:
                 client.close()
                 socket_closed = True
             finally:
-                if self._custody_guardian is not None and (not custody_safe or
-                                                            (custody_registered and not socket_closed)):
-                    self._custody_quarantine.set()
+                if not custody_safe or (custody_registered and not socket_closed):
+                    self._mark_custody_fault()
                 if custody_registered and custody_safe and socket_closed:
                     try:
                         # This reports a local event only. The guardian owns
@@ -625,7 +894,7 @@ class IPCServer:
                         self._custody_guardian.handler_closed(custody_key)
                     except BaseException:
                         # The guardian must keep uncertain records charged.
-                        self._custody_quarantine.set()
+                        self._mark_custody_fault()
                 try:
                     with self._lock:
                         try:
@@ -633,16 +902,17 @@ class IPCServer:
                             # Keep the handler discoverable until connection
                             # accounting has actually completed.
                             self._slots.release()
+                            # Root first, then remove from active handlers;
+                            # only another thread can observe actual exit.
+                            self._retiring_handlers.add(threading.current_thread())
                             self._handlers.discard(threading.current_thread())
                         except BaseException:
                             # A notice may already have been observed. Latch
                             # before releasing the lock or the handler exits.
-                            if self._custody_guardian is not None:
-                                self._custody_quarantine.set()
+                            self._mark_custody_fault()
                             raise
                 except BaseException:
-                    if self._custody_guardian is not None:
-                        self._custody_quarantine.set()
+                    self._mark_custody_fault()
                     raise
             if cancellation_exception is not None and not pending_exception:
                 raise cancellation_exception
@@ -683,10 +953,15 @@ class IPCServer:
         if (getattr(outcome, "broker_id", None) != self.broker_id or
                 outcome.request_id != request_id or outcome.team_id != team_id or
                 outcome.job_id != handle.job_id):
+            uncertain = self._completion_binding is not None
+            if uncertain:
+                # Wrong-job results are not disclosed, but their custody is
+                # also unknown. Do not issue a clean local-close notice.
+                self._mark_custody_fault()
             self._send(client, {"version": 1, "status": "failed", "error": "invalid_result",
                                 "request_id": request_id, "team_id": team_id,
                                 "broker_id": self.broker_id, "job_id": handle.job_id})
-            return True
+            return not uncertain
         state = getattr(outcome.state, "value", outcome.state)
         response = {"version": 1, "status": state, "request_id": outcome.request_id,
                     "team_id": outcome.team_id, "broker_id": self.broker_id, "job_id": outcome.job_id,
@@ -706,6 +981,7 @@ class IPCServer:
             self._send(client, response)
             return True
         except (MemoryError, _ResultTooLarge, _ProtocolError, ValueError, TypeError) as exc:
+            self._mark_custody_fault()
             response.pop("result", None)
             response["status"] = "failed"
             if isinstance(exc, MemoryError):
@@ -721,6 +997,13 @@ class IPCServer:
         """Stop new submissions without interrupting already accepted jobs."""
         if type(timeout) not in (int, float) or not math.isfinite(timeout) or timeout < 0:
             raise ValueError("timeout must be finite and nonnegative")
+        try:
+            return self._stop_accepting(timeout)
+        except BaseException:
+            self._mark_custody_fault()
+            raise
+
+    def _stop_accepting(self, timeout):
         deadline = time.monotonic() + timeout
         with self._admission:
             self._accepting_stopped.set()
@@ -728,7 +1011,11 @@ class IPCServer:
             return False
         try:
             if self._listener is not None:
-                self._listener.close()
+                try:
+                    self._listener.close()
+                except BaseException:
+                    self._mark_custody_fault()
+                    raise
         finally:
             self._lifecycle.release()
         with self._admission:
@@ -737,7 +1024,8 @@ class IPCServer:
                 return False
         if self._accept_thread is not None and self._accept_thread is not threading.current_thread():
             self._accept_thread.join(timeout=_remaining(deadline))
-        return self._accept_thread is None or not self._accept_thread.is_alive()
+        return (not self._startup_uncertain and not self._accept_uncertain and self._accept_orphan is None and
+                (self._accept_thread is None or not self._accept_thread.is_alive()))
 
     def drain(self, timeout=5.0):
         """Wait for client handlers without cancelling accepted work."""
@@ -745,18 +1033,27 @@ class IPCServer:
             raise IPCError("stop accepting before draining")
         if type(timeout) not in (int, float) or not math.isfinite(timeout) or timeout < 0:
             raise ValueError("timeout must be finite and nonnegative")
+        try:
+            return self._drain(timeout)
+        except BaseException:
+            self._mark_custody_fault()
+            raise
+
+    def _drain(self, timeout):
         deadline = time.monotonic() + timeout
         if not self.stop_accepting(timeout=_remaining(deadline)):
             return False
         if self._accept_thread is not None and self._accept_thread is not threading.current_thread():
             self._accept_thread.join(timeout=_remaining(deadline))
         with self._lock:
-            handlers = list(self._handlers)
+            handlers = list(self._handlers | self._retiring_handlers)
         for thread in handlers:
             if thread is not threading.current_thread():
                 thread.join(timeout=_remaining(deadline))
         with self._lock:
-            return (not self._handlers and
+            self._retiring_handlers.difference_update(
+                [thread for thread in self._retiring_handlers if not thread.is_alive()])
+            return (not self._handlers and not self._retiring_handlers and
                     (self._accept_thread is None or not self._accept_thread.is_alive()))
 
     def close(self, timeout=5.0):
@@ -767,6 +1064,13 @@ class IPCServer:
         """
         if type(timeout) not in (int, float) or not math.isfinite(timeout) or timeout < 0:
             raise ValueError("timeout must be finite and nonnegative")
+        try:
+            return self._close(timeout)
+        except BaseException:
+            self._mark_custody_fault()
+            raise
+
+    def _close(self, timeout):
         deadline = time.monotonic() + timeout
         self._stop.set()
         self._accepting_stopped.set()
@@ -774,26 +1078,41 @@ class IPCServer:
             return False
         try:
             if self._listener is not None:
-                self._listener.close()
+                try:
+                    self._listener.close()
+                except BaseException:
+                    self._mark_custody_fault()
+                    raise
         finally:
             self._lifecycle.release()
         with self._lock:
             clients = list(self._clients)
+            orphan = self._accept_orphan
+        if orphan is not None and not any(client is orphan for client in clients):
+            clients.append(orphan)
         for client in clients:
             try:
                 client.shutdown(socket.SHUT_RDWR)
             except OSError:
                 pass
-            client.close()
+            try:
+                client.close()
+            except BaseException:
+                self._mark_custody_fault()
+                raise
         if self._accept_thread is not None and self._accept_thread is not threading.current_thread():
             self._accept_thread.join(timeout=_remaining(deadline))
+        if self._startup_uncertain or self._accept_uncertain or self._accept_orphan is not None:
+            return False
         with self._lock:
-            handlers = list(self._handlers)
+            handlers = list(self._handlers | self._retiring_handlers)
         for thread in handlers:
             if thread is not threading.current_thread():
                 thread.join(timeout=_remaining(deadline))
         with self._lock:
-            return (not self._handlers and
+            self._retiring_handlers.difference_update(
+                [thread for thread in self._retiring_handlers if not thread.is_alive()])
+            return (not self._handlers and not self._retiring_handlers and
                     (self._accept_thread is None or not self._accept_thread.is_alive()))
 
     def __enter__(self):

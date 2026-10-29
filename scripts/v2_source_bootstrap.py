@@ -2,7 +2,7 @@
 
 The external owner must independently bind this script and its source manifest
 to committed bytes and hold source/cache protections for the process lifetime.
-Rehearsal is no-forward; study execution remains disabled pending review.
+Rehearsal is no-forward; study execution requires the guarded start protocol.
 """
 import argparse
 import hashlib
@@ -25,7 +25,7 @@ class _AuditHookCheck(Exception):
 
 
 _START_TOKEN = b"model-looking-glass-development-start-v2\n"
-_STUDY_LAUNCH_ENABLED = False  # Enable only after independent launcher review.
+_STUDY_LAUNCH_ENABLED = True
 
 
 def _deny_process_creation(event, args):

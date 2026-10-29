@@ -19,13 +19,19 @@ from typing import Iterable
 _MIB = 1024 * 1024
 STUDY_LOGICAL_LIMIT = 512 * _MIB
 ORIGINAL_DISK_LIMIT = 1024 * _MIB
-STUDY_DISK_LIMIT = 2048 * _MIB
-REQUIRED_FREE_DISK_BYTES = 3072 * _MIB
-LEDGER_DISK_RESERVE = 4 * _MIB
+PREVIOUS_DISK_LIMIT = 2048 * _MIB
+PREVIOUS_FREE_DISK_BYTES = 3072 * _MIB
+V2_DISK_LIMIT = 4096 * _MIB
+V2_FREE_DISK_BYTES = 6144 * _MIB
+V2_METADATA_MAX = 8 * _MIB
+V2_LEDGER_RESERVE = 64 * _MIB
+STUDY_DISK_LIMIT = 8192 * _MIB
+REQUIRED_FREE_DISK_BYTES = 12288 * _MIB
+LEDGER_DISK_RESERVE = 128 * _MIB
 PREFLIGHT_BYTES = 3_216_448
 PREFLIGHT_SHA256 = '7c262f3fe81236888a8f5fdb6d31f7835666674be9ffbf36f8ce2ca6a375eb6c'
 PHASE_LIMITS = MappingProxyType({
-    'natural_discovery': (128 * _MIB, 512 * _MIB),
+    'natural_discovery': (128 * _MIB, 4096 * _MIB),
     'natural_heldout': (160 * _MIB, 224 * _MIB),
     'injection_discovery': (48 * _MIB, 128 * _MIB),
     'injection_heldout': (72 * _MIB, 192 * _MIB),
@@ -36,9 +42,17 @@ ORIGINAL_PHASE_DISK = MappingProxyType({
     'injection_discovery': 128 * _MIB,
     'injection_heldout': 192 * _MIB,
 })
-_SCHEMA = 'mlg-agreement-phase-ledger-v3'
-_MAX_FILES = 8192
-_MAX_INVENTORY = 512 * 1024
+PREVIOUS_PHASE_DISK = MappingProxyType({
+    **ORIGINAL_PHASE_DISK,
+    'natural_discovery': 512 * _MIB,
+})
+V2_PHASE_DISK = MappingProxyType({
+    **ORIGINAL_PHASE_DISK,
+    'natural_discovery': 1024 * _MIB,
+})
+_SCHEMA = 'mlg-agreement-phase-ledger-v5'
+_MAX_FILES = 32768  # Applied independently to each side's traversal.
+_MAX_INVENTORY = 16 * _MIB  # Combined UTF-8 bytes of meta and inventory.
 _MAX_JSON = 4 * _MIB
 
 
@@ -183,26 +197,52 @@ def _phase_snapshot():
     return {phase: list(limits) for phase, limits in PHASE_LIMITS.items()}
 
 
-def _physical_amendment(amendment, claim_hash, binding_hash):
-    if (amendment.get('schema') != 'mlg-agreement-physical-budget-amendment-v1'
-            or amendment.get('natural_claim_sha256') != claim_hash
+def _check_metadata_bound(meta, inventory):
+    if len(meta.encode('utf-8')) + len(inventory.encode('utf-8')) > _MAX_INVENTORY:
+        raise LedgerError('combined ledger metadata exceeds the bound')
+
+
+def _physical_amendment(amendment, claim_hash, binding_hash, *, expected_version, previous_hash=None):
+    schema = amendment.get('schema')
+    versions = {'mlg-agreement-physical-budget-amendment-v1': 1,
+                'mlg-agreement-physical-budget-amendment-v2': 2,
+                'mlg-agreement-physical-budget-amendment-v3': 3}
+    version = versions.get(schema) if type(schema) is str else None
+    if version != expected_version or (version == 1) != (previous_hash is None):
+        raise LedgerError('unknown physical amendment chain')
+    if (amendment.get('natural_claim_sha256') != claim_hash
             or amendment.get('natural_binding_sha256') != binding_hash):
         raise LedgerError('physical amendment does not bind the original natural claim')
+    if version != 1 and amendment.get('previous_physical_amendment_sha256') != previous_hash:
+        raise LedgerError('physical amendment does not bind its predecessor')
+    disk = {1: PREVIOUS_DISK_LIMIT, 2: V2_DISK_LIMIT, 3: STUDY_DISK_LIMIT}[version]
+    free = {1: PREVIOUS_FREE_DISK_BYTES, 2: V2_FREE_DISK_BYTES, 3: REQUIRED_FREE_DISK_BYTES}[version]
     for key, expected in (
         ('original_host_disk_allowance_bytes', ORIGINAL_DISK_LIMIT),
-        ('host_disk_allowance_bytes', STUDY_DISK_LIMIT),
-        ('required_free_disk_bytes', REQUIRED_FREE_DISK_BYTES),
+        ('host_disk_allowance_bytes', disk),
+        ('required_free_disk_bytes', free),
         ('study_limit_bytes', STUDY_LOGICAL_LIMIT),
     ):
         if type(amendment.get(key)) is not int or amendment[key] != expected:
             raise LedgerError('physical amendment totals differ')
     for key, index in (('phase_reservations_bytes', 0), ('host_disk_phase_reservations_bytes', 1)):
         table = amendment.get(key)
-        wanted = {phase: limits[index] for phase, limits in PHASE_LIMITS.items()}
+        wanted = ({phase: limits[index] for phase, limits in PHASE_LIMITS.items()}
+                  if index == 0 or version == 3 else
+                  dict(PREVIOUS_PHASE_DISK if version == 1 else V2_PHASE_DISK))
         if type(table) is not dict or set(table) != set(wanted):
             raise LedgerError('physical amendment shares differ')
         if any(type(table[p]) is not int or table[p] != value for p, value in wanted.items()):
             raise LedgerError('physical amendment shares differ')
+    if version >= 2:
+        metadata = V2_METADATA_MAX if version == 2 else _MAX_INVENTORY
+        reserve = V2_LEDGER_RESERVE if version == 2 else LEDGER_DISK_RESERVE
+        for key, expected in (('metadata_max_bytes', metadata), ('ledger_disk_reserve_bytes', reserve)):
+            if type(amendment.get(key)) is not int or amendment[key] != expected:
+                raise LedgerError('physical amendment metadata bounds differ')
+    if version == 3 and (type(amendment.get('max_files_per_inventory')) is not int
+                         or amendment['max_files_per_inventory'] != _MAX_FILES):
+        raise LedgerError('physical amendment file bound differs')
 
 
 def _check_natural_audit(natural, owner_inventory, audit, binding, natural_files):
@@ -264,7 +304,9 @@ def initialize_study_ledger(
     ledger_path, *, natural_claim_path, natural_binding_path, prior_paths,
     prior_unique_tensor_bytes, natural_unique_tensor_bytes, expected_natural_claim_sha256,
     expected_natural_binding_sha256, natural_audit_path, expected_natural_audit_sha256,
-    expected_natural_terminal_sha256, physical_amendment_path,
+    expected_natural_terminal_sha256, original_physical_amendment_path,
+    expected_original_physical_amendment_sha256, previous_physical_amendment_path,
+    expected_previous_physical_amendment_sha256, physical_amendment_path,
     expected_physical_amendment_sha256, natural_extra_paths=(),
 ):
     """Import the drained natural attempt and its explicit evidence inventory.
@@ -284,10 +326,14 @@ def initialize_study_ledger(
     claim_path = _path(natural_claim_path, existing=True)
     binding_path = _path(natural_binding_path, existing=True)
     audit_path = _path(natural_audit_path, existing=True)
+    original_amendment_path = _path(original_physical_amendment_path, existing=True)
+    previous_amendment_path = _path(previous_physical_amendment_path, existing=True)
     amendment_path = _path(physical_amendment_path, existing=True)
     raw_claim, claim = _read_json(claim_path)
     raw_binding, binding = _read_json(binding_path)
     raw_audit, audit = _read_json(audit_path)
+    raw_original, original_amendment = _read_json(original_amendment_path)
+    raw_previous, previous_amendment = _read_json(previous_amendment_path)
     raw_amendment, amendment = _read_json(amendment_path)
     if hashlib.sha256(raw_claim).hexdigest() != _digest(expected_natural_claim_sha256, 'expected_natural_claim_sha256'):
         raise LedgerError('natural claim digest mismatch')
@@ -295,6 +341,10 @@ def initialize_study_ledger(
         raise LedgerError('natural binding digest mismatch')
     if hashlib.sha256(raw_audit).hexdigest() != _digest(expected_natural_audit_sha256, 'expected_natural_audit_sha256'):
         raise LedgerError('natural audit digest mismatch')
+    if hashlib.sha256(raw_original).hexdigest() != _digest(expected_original_physical_amendment_sha256, 'expected_original_physical_amendment_sha256'):
+        raise LedgerError('original physical amendment digest mismatch')
+    if hashlib.sha256(raw_previous).hexdigest() != _digest(expected_previous_physical_amendment_sha256, 'expected_previous_physical_amendment_sha256'):
+        raise LedgerError('previous physical amendment digest mismatch')
     if hashlib.sha256(raw_amendment).hexdigest() != _digest(expected_physical_amendment_sha256, 'expected_physical_amendment_sha256'):
         raise LedgerError('physical amendment digest mismatch')
     if claim.get('schema') != 'mlg-natural-study-claim-v1':
@@ -305,7 +355,13 @@ def initialize_study_ledger(
     _fixed_budget(binding.get('study_budget'))
     if claim['budget'] != binding['study_budget']:
         raise LedgerError('claim and binding budgets differ')
-    _physical_amendment(amendment, hashlib.sha256(raw_claim).hexdigest(), hashlib.sha256(raw_binding).hexdigest())
+    claim_hash = hashlib.sha256(raw_claim).hexdigest()
+    binding_hash = hashlib.sha256(raw_binding).hexdigest()
+    _physical_amendment(original_amendment, claim_hash, binding_hash, expected_version=1)
+    _physical_amendment(previous_amendment, claim_hash, binding_hash,
+                        expected_version=2, previous_hash=hashlib.sha256(raw_original).hexdigest())
+    _physical_amendment(amendment, claim_hash, binding_hash,
+                        expected_version=3, previous_hash=hashlib.sha256(raw_previous).hexdigest())
     try:
         natural = _path(claim['output'], existing=True)
     except (KeyError, TypeError, OSError) as exc:
@@ -335,7 +391,7 @@ def initialize_study_ledger(
     prior_unique = _nat(prior_unique_tensor_bytes, 'prior_unique_tensor_bytes')
     if prior_unique < PREFLIGHT_BYTES or prior_unique + sum(x[0] for x in PHASE_LIMITS.values()) > STUDY_LOGICAL_LIMIT:
         raise LedgerError('prior logical evidence exceeds the available remainder')
-    prior_roots = [claim_path, binding_path, amendment_path] + [_path(p, existing=True) for p in prior_paths]
+    prior_roots = [claim_path, binding_path, original_amendment_path, previous_amendment_path, amendment_path] + [_path(p, existing=True) for p in prior_paths]
     natural_roots = [natural, audit_path] + [_path(p, existing=True) for p in natural_extra_paths]
     if any(_overlap(ledger, p) for p in prior_roots + natural_roots):
         raise LedgerError('ledger path overlaps inventoried evidence')
@@ -343,6 +399,8 @@ def initialize_study_ledger(
     prior_files = _files(prior_roots)
     for path, raw, inventory in (
         (claim_path, raw_claim, prior_files), (binding_path, raw_binding, prior_files),
+        (original_amendment_path, raw_original, prior_files),
+        (previous_amendment_path, raw_previous, prior_files),
         (amendment_path, raw_amendment, prior_files),
         (audit_path, raw_audit, natural_files),
         (natural / 'launcher-terminal.json', terminal_raw, natural_files),
@@ -363,12 +421,12 @@ def initialize_study_ledger(
     if prior_disk + LEDGER_DISK_RESERVE + sum(x[1] for x in PHASE_LIMITS.values()) > STUDY_DISK_LIMIT:
         raise LedgerError('prior physical evidence exceeds the available remainder')
     inventory = json.dumps({'natural': natural_files, 'prior': prior_files}, sort_keys=True, separators=(',', ':'))
-    if len(inventory.encode('utf-8')) > _MAX_INVENTORY:
-        raise LedgerError('inventory metadata exceeds the bound')
     meta = json.dumps({
         'schema': _SCHEMA, 'natural_claim_sha256': hashlib.sha256(raw_claim).hexdigest(),
         'natural_binding_sha256': hashlib.sha256(raw_binding).hexdigest(),
         'physical_amendment_sha256': hashlib.sha256(raw_amendment).hexdigest(),
+        'previous_physical_amendment_sha256': hashlib.sha256(raw_previous).hexdigest(),
+        'original_physical_amendment_sha256': hashlib.sha256(raw_original).hexdigest(),
         'natural_audit_sha256': hashlib.sha256(raw_audit).hexdigest(),
         'natural_terminal_sha256': hashlib.sha256(terminal_raw).hexdigest(),
         'prior_unique_tensor_bytes': prior_unique, 'prior_physical_bytes': prior_disk,
@@ -376,8 +434,11 @@ def initialize_study_ledger(
         'natural_physical_bytes': natural_disk, 'ledger_disk_reserve_bytes': LEDGER_DISK_RESERVE,
         'phase_limits': _phase_snapshot(), 'study_logical_limit': STUDY_LOGICAL_LIMIT,
         'study_disk_limit': STUDY_DISK_LIMIT, 'required_free_disk_bytes': REQUIRED_FREE_DISK_BYTES,
+        'metadata_max_bytes': _MAX_INVENTORY,
+        'max_files_per_inventory': _MAX_FILES,
         'natural_roots': [str(p) for p in natural_roots], 'prior_roots': [str(p) for p in prior_roots],
     }, sort_keys=True, separators=(',', ':'))
+    _check_metadata_bound(meta, inventory)
     fd = os.open(ledger, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     os.close(fd)
     try:
@@ -404,7 +465,7 @@ def claim_phase(ledger_path, phase, *, output_path) -> PhaseGrant:
     output = _path(output_path, existing=False)
     free = shutil.disk_usage(output.parent).free
     if free < REQUIRED_FREE_DISK_BYTES:
-        raise LedgerError('less than 3 GiB free on output filesystem')
+        raise LedgerError('less than 12 GiB free on output filesystem')
     try:
         db = _connect(ledger)
     except sqlite3.Error as exc:
@@ -414,6 +475,7 @@ def claim_phase(ledger_path, phase, *, output_path) -> PhaseGrant:
         row = db.execute('SELECT data, inventory FROM meta WHERE id=1').fetchone()
         if row is None:
             raise LedgerError('ledger initialization incomplete')
+        _check_metadata_bound(*row)
         meta = json.loads(row[0])
         if meta.get('schema') != _SCHEMA:
             raise LedgerError('unknown ledger schema')
@@ -421,6 +483,8 @@ def claim_phase(ledger_path, phase, *, output_path) -> PhaseGrant:
                 or meta.get('study_logical_limit') != STUDY_LOGICAL_LIMIT
                 or meta.get('study_disk_limit') != STUDY_DISK_LIMIT
                 or meta.get('required_free_disk_bytes') != REQUIRED_FREE_DISK_BYTES
+                or meta.get('metadata_max_bytes') != _MAX_INVENTORY
+                or meta.get('max_files_per_inventory') != _MAX_FILES
                 or meta.get('ledger_disk_reserve_bytes') != LEDGER_DISK_RESERVE):
             raise LedgerError('phase budget differs from the initialized ledger')
         prior_unique = _nat(meta.get('prior_unique_tensor_bytes'), 'prior_unique_tensor_bytes')
@@ -461,7 +525,7 @@ def claim_phase(ledger_path, phase, *, output_path) -> PhaseGrant:
         # not a reservation against unrelated disk users.
         free = shutil.disk_usage(output.parent).free
         if free < REQUIRED_FREE_DISK_BYTES:
-            raise LedgerError('less than 3 GiB free on output filesystem')
+            raise LedgerError('less than 12 GiB free on output filesystem')
         logical, disk = PHASE_LIMITS[phase]
         db.execute('INSERT INTO claims VALUES (?, ?, ?, ?, ?)', (phase, str(output), logical, disk, free))
         db.execute('COMMIT')
