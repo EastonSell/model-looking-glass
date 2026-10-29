@@ -31,11 +31,13 @@ ASSETS = {
 SOURCE_PATHS = (
     'scripts/bert_agreement_bootstrap.py', 'scripts/bert_agreement_cpu_evaluation.py', 'docs/BERT_AGREEMENT_V1.md',
     'docs/CPU_STUDY_SUPERVISION.md', 'docs/SUPERVISOR.md', 'docs/BERT_AGREEMENT_EXPOSURES_V2.md',
-    'docs/BERT_AGREEMENT_EXPOSURES_V3.md', 'experiments/bert_agreement_cpu_evaluation_v1.json',
+    'docs/BERT_AGREEMENT_EXPOSURES_V3.md', 'docs/BERT_AGREEMENT_EXPOSURES_V4.md',
+    'experiments/bert_agreement_cpu_evaluation_v1.json',
     'experiments/bert_agreement_public_cases_v1.json', 'experiments/bert_agreement_exposures_v2.json',
-    'experiments/bert_agreement_exposures_v3.json',
+    'experiments/bert_agreement_exposures_v3.json', 'experiments/bert_agreement_exposures_v4.json',
     'looking_glass/__init__.py', 'looking_glass/bert_agreement_cases.py',
     'looking_glass/bert_agreement_exposures_v2.py', 'looking_glass/bert_agreement_exposures_v3.py',
+    'looking_glass/bert_agreement_exposures_v4.py',
     'looking_glass/bert_evaluation_ledger.py', 'looking_glass/bert_agreement_runner.py',
     'looking_glass/bert_agreement_audit.py', 'looking_glass/bert_agreement_study.py',
     'looking_glass/pretrained.py', 'looking_glass/intervention_plan.py',
@@ -45,7 +47,7 @@ SOURCE_PATHS = (
 )
 _CPU_CUSTODY = {}
 _CONTROLLER_CUSTODY = {}
-EVALUATION_ENABLED = False  # Enable only in the independently reviewed frozen revision.
+EVALUATION_ENABLED = True  # Frozen v1; the custody and source checks remain mandatory.
 
 
 def stage_verified_assets(snapshot, destination):
@@ -600,11 +602,11 @@ def _evaluation_binding(repo, commit, hashes, manifest, manifest_sha, custody_ro
                         controller_custody_root):
     """Derive the ledger identity from verified sources and canonical cases."""
     from .bert_agreement_cases import build_manifest, manifest_digest
-    from .bert_agreement_exposures_v3 import build_snapshot, verify_snapshot_bytes
+    from .bert_agreement_exposures_v4 import build_snapshot, verify_snapshot_bytes
     from .bert_evaluation_ledger import MAX_ATTEMPTS, root_identity
 
     profile_path = 'experiments/bert_agreement_cpu_evaluation_v1.json'
-    exposure_path = 'experiments/bert_agreement_exposures_v3.json'
+    exposure_path = 'experiments/bert_agreement_exposures_v4.json'
     profile_raw = (Path(repo) / profile_path).read_bytes()
     exposure_raw = (Path(repo) / exposure_path).read_bytes()
     if (hashlib.sha256(profile_raw).hexdigest() != hashes[profile_path]
