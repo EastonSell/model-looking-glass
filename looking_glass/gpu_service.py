@@ -24,6 +24,7 @@ FIXED_SERVICE_OWNER_CONTRACT = 'fixed-two-token-commitments-v1'
 _QUARANTINED = Event()
 _QUARANTINE_HOLDS = []
 _OWNER_UNSAFE = False
+_OWNER_COMPLETION = None
 _OWNER_DRAIN_PENDING = False
 # Preallocate process-lifetime custody before any owner can touch CUDA.  The
 # fixed slots hold session, device lease, backend, registry, budget, resident
@@ -91,14 +92,23 @@ def _validate_service_keys(identity, keys):
 
 
 def _owner_is_unsafe():
-    return _OWNER_UNSAFE or _QUARANTINED.is_set()
+    return (_OWNER_UNSAFE or _QUARANTINED.is_set()
+            or (_OWNER_COMPLETION is not None and _OWNER_COMPLETION.unsafe))
 
 
 def _mark_unsafe():
     global _OWNER_UNSAFE
-    # This process-local latch is authoritative; Event notification is only
-    # best effort and cannot undo it if notification allocation fails.
-    _OWNER_UNSAFE = True
+    # The completion authority is signaled first, before notification or any
+    # other owner state can block. Broker publication reads this same flag.
+    try:
+        if _OWNER_COMPLETION is not None:
+            _OWNER_COMPLETION.mark_unsafe()
+    finally:
+        # Retry the shared signal and preserve the existing process latch even
+        # if the first call is interrupted once.
+        _OWNER_UNSAFE = True
+        if _OWNER_COMPLETION is not None:
+            _OWNER_COMPLETION.mark_unsafe()
     try:
         _QUARANTINED.set()
     except BaseException:
@@ -222,7 +232,7 @@ class _TorchServiceBackend:
         self._resolved_keys = None
         # These slots are allocated while still CPU-only.  Filling a fixed slot
         # avoids allocating an ever-growing failure-time retention list.
-        self._retained = [None] * 7
+        self._retained = [None] * 9
 
     def runtime_binding(self):
         # This is the sole CUDA query permitted between session.check and
@@ -319,7 +329,7 @@ class _TorchServiceBackend:
         import torch
         from .pretrained import load_distilgpt2
         from .resident_worker import ForwardRequest, ResidentWorker
-        from .budgeted_worker import BudgetedWorker, DeviceAdmission
+        from .owner_completion import LifetimeWorkspaceWorker, OwnerCompletionAuthority
         from .broker import Broker
         from .ipc import IPCServer
         from .service import make_gpt2_request_factory
@@ -330,6 +340,8 @@ class _TorchServiceBackend:
             raise RuntimeError('a live exclusive resident-load reservation is required')
         if self._resolved_keys is None:
             raise RuntimeError('live profiles must be resolved before model loading')
+        if type(_OWNER_COMPLETION) is not OwnerCompletionAuthority:
+            raise RuntimeError('owner completion authority is required')
         load, cold, warm = profiles
         if any(getattr(profile, 'estimated_incremental_bytes', None) != JOB_COMMITMENT
                for profile in (cold, warm)):
@@ -401,28 +413,32 @@ class _TorchServiceBackend:
                                   max_input_bytes=64 * 1024,
                                   max_output_bytes=512 * 1024)
         self._retained[1] = resident
-        admission = DeviceAdmission(budget, device='cuda:0',
-            max_estimated_incremental_bytes=max(cold.estimated_incremental_bytes,
-                                                warm.estimated_incremental_bytes))
-        cold_worker = BudgetedWorker(resident, admission, (cold,))
-        self._retained[2] = admission
-        self._retained[3] = cold_worker
+        # The actual workspace capability is acquired before cold execution
+        # and is never released inside the child, even after clean shutdown.
+        workspace_lease = budget.acquire(JOB_COMMITMENT, max_gpu_trace_bytes=0,
+                                         max_host_trace_bytes=0)
+        self._retained[7] = workspace_lease
+        self._retained[8] = _OWNER_COMPLETION
+        worker = LifetimeWorkspaceWorker(resident, budget, resident_lease, workspace_lease,
+                                         profiles=(cold, warm), authority=_OWNER_COMPLETION)
+        self._retained[3] = worker
         warmup = ForwardRequest('service-cold-warmup-v1',
             {'input_ids': torch.tensor([[15496, 995]], dtype=torch.int64)}, seed=17)
         _require_unquarantined()
-        warmup_result = cold_worker.execute(warmup)
+        warmup_result = worker.execute(warmup)
         _require_unquarantined()
         logits = warmup_result.logits
         if (logits.device.type != 'cpu' or logits.dtype != torch.float32
                 or tuple(logits.shape) != (1, 2, 50257)
                 or not bool(torch.isfinite(logits).all())):
             raise RuntimeError('cold warmup did not return finite expected logits')
+        worker._finish_cold(warmup_result)
         del logits, warmup_result, warmup
-        if cold_worker.quarantined or budget.active_leases() != (resident_lease,):
+        if worker.quarantined or set(budget.active_leases()) != {resident_lease, workspace_lease}:
             raise RuntimeError('cold warmup did not drain safely')
-        worker = BudgetedWorker(resident, admission, (warm,))
         self._retained[4] = worker
-        broker = Broker(worker, max_pending=8, max_pending_per_team=2)
+        broker = Broker(worker, max_pending=8, max_pending_per_team=2,
+                        completion_authority=_OWNER_COMPLETION)
         self._retained[5] = broker
         factory = make_gpt2_request_factory(vocab_size=config.vocab_size,
             max_positions=config.n_positions, max_batch=1, max_tokens=2)
@@ -464,12 +480,15 @@ def _run_bound_owner(session, device_lease, *, backend, registry, stop_event,
     use a real OwnerSession and DeviceLease. Tests use a fake CPU-only backend.
     The resident load reservation remains held through process exit.
     """
-    global _OWNER_CLAIMED
+    global _OWNER_CLAIMED, _OWNER_COMPLETION
     with _OWNER_CUSTODY_LOCK:
         if _owner_is_unsafe() or _OWNER_DRAIN_PENDING:
             raise RuntimeError('GPU owner process is quarantined')
         if _OWNER_CLAIMED:
             raise RuntimeError('GPU owner process has already been used')
+        from .owner_completion import OwnerCompletionAuthority
+        guard = backend._check_owner_lease if type(backend) is _TorchServiceBackend else None
+        _OWNER_COMPLETION = OwnerCompletionAuthority(device_guard=guard)
         _OWNER_CLAIMED = True
         _OWNER_CUSTODY[0] = session
         _OWNER_CUSTODY[1] = device_lease
@@ -556,6 +575,8 @@ def _run_bound_owner_inner(session, device_lease, *, backend, registry,
     def verify_drain():
         global _OWNER_DRAIN_PENDING
         try:
+            from .owner_completion import LifetimeWorkspaceWorker
+            from .trusted_service_profile import JOB_COMMITMENT
             if _owner_is_unsafe() or _OWNER_DRAIN_PENDING:
                 _mark_unsafe()
                 return False
@@ -565,11 +586,20 @@ def _run_bound_owner_inner(session, device_lease, *, backend, registry,
             if worker.quarantined or broker.quarantined:
                 _mark_unsafe()
                 return False
+            expected = (resident_lease, worker._workspace_lease) if type(worker) is LifetimeWorkspaceWorker else (resident_lease,)
+            expected_bytes = (LOAD_COMMITMENT, JOB_COMMITMENT) if len(expected) == 2 else (LOAD_COMMITMENT,)
+            if type(worker) is LifetimeWorkspaceWorker and (
+                    worker._resident_lease is not resident_lease
+                    or worker._resident_bytes != LOAD_COMMITMENT
+                    or worker._workspace_bytes != JOB_COMMITMENT):
+                _mark_unsafe()
+                return False
             active = budget.active_leases()
-            if (len(active) != 1 or active[0] is not resident_lease
-                    or resident_lease.released
-                    or resident_lease.trace_bytes('gpu')
-                    or resident_lease.trace_bytes('host')):
+            if (len(active) != len(expected) or set(active) != set(expected)
+                    or any(lease.released or lease.estimated_incremental_bytes != expected_bytes[index]
+                           or lease.trace_bytes('gpu') or lease.trace_bytes('host')
+                           or lease._trace_limits != {'gpu': 0, 'host': 0}
+                           for index, lease in enumerate(expected))):
                 _mark_unsafe()
                 return False
             verify_binding(allow_pending=True)
@@ -581,10 +611,12 @@ def _run_bound_owner_inner(session, device_lease, *, backend, registry,
             verify_binding(allow_pending=True)
             active = budget.active_leases()
             safe = (not _owner_is_unsafe() and not worker.quarantined
-                    and not broker.quarantined and len(active) == 1
-                    and active[0] is resident_lease and not resident_lease.released
-                    and not resident_lease.trace_bytes('gpu')
-                    and not resident_lease.trace_bytes('host'))
+                    and not broker.quarantined and len(active) == len(expected)
+                    and set(active) == set(expected)
+                    and all(not lease.released and lease.estimated_incremental_bytes == expected_bytes[index]
+                            and not lease.trace_bytes('gpu') and not lease.trace_bytes('host')
+                            and lease._trace_limits == {'gpu': 0, 'host': 0}
+                            for index, lease in enumerate(expected)))
             if not safe:
                 _mark_unsafe()
             else:

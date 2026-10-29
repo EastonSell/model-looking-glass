@@ -157,6 +157,7 @@ def _reset_fake_owner():
     gpu_service._OWNER_CUSTODY[:] = [None] * len(gpu_service._OWNER_CUSTODY)
     gpu_service._OWNER_CLAIMED = False
     gpu_service._OWNER_UNSAFE = False
+    gpu_service._OWNER_COMPLETION = None
     gpu_service._OWNER_DRAIN_PENDING = False
 
 
@@ -498,6 +499,14 @@ print('verified-offline-cpu-model')
 
 
 class ConcreteBackendContractTests(unittest.TestCase):
+    def setUp(self):
+        from looking_glass.owner_completion import OwnerCompletionAuthority
+        _reset_fake_owner()
+        gpu_service._OWNER_COMPLETION = OwnerCompletionAuthority()
+
+    def tearDown(self):
+        _reset_fake_owner()
+
     def test_runtime_binding_stops_if_supervision_is_lost_between_queries(self):
         import torch
         events = []
@@ -620,12 +629,14 @@ class ConcreteBackendContractTests(unittest.TestCase):
             def execute(self, request):
                 self.warmup = request
                 return SimpleNamespace(logits=torch.zeros((1, 2, 50257), dtype=torch.float32))
+            def _finish_cold(self, result):
+                self.transferred = result
         class FakeServer:
             def __init__(self, broker, **kwargs):
                 self.request_factory = kwargs['request_factory']
         factory = lambda request_id, inputs, seed: (request_id, inputs, seed)
         workers = []
-        def make_worker(*args):
+        def make_worker(*args, **kwargs):
             worker = WarmupWorker()
             workers.append(worker)
             return worker
@@ -639,8 +650,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
         with patch.dict(sys.modules, {'looking_glass.service': fake_service}), \
              patch('looking_glass.pretrained.load_distilgpt2', return_value=SimpleNamespace(model=CpuModel())), \
              patch('looking_glass.resident_worker.ResidentWorker', return_value=object()), \
-             patch('looking_glass.budgeted_worker.DeviceAdmission', return_value=object()), \
-             patch('looking_glass.budgeted_worker.BudgetedWorker', side_effect=make_worker), \
+             patch('looking_glass.owner_completion.LifetimeWorkspaceWorker', side_effect=make_worker), \
              patch('looking_glass.broker.Broker', return_value=object()), \
              patch('looking_glass.ipc.IPCServer', FakeServer):
             _, _, server = backend.construct(budget, lease, (load, cold, warm))
