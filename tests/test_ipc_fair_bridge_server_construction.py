@@ -127,13 +127,13 @@ def test_server_construction_blocks_clean_close_but_not_dispatcher_status():
         assert broker.close(timeout=3)
 
 
-def test_recorded_constructor_failure_stops_new_reservations_before_latch():
+def test_constructor_failure_stops_new_reservations_before_error_is_recorded():
     _, broker, _, bridge = make_stack()
     entered, resume = threading.Event(), threading.Event()
     errors = []
     lines, first_line = inspect.getsourcelines(FairIPCBridge._make_server_guarded)
     target_line = first_line + next(i for i, line in enumerate(lines)
-                                    if 'self._quarantined = True' in line)
+                                    if 'state.error = error' in line)
 
     def pause_handler(frame, event, _argument):
         if (frame.f_code is FairIPCBridge._make_server_guarded.__code__ and
@@ -157,7 +157,7 @@ def test_recorded_constructor_failure_stops_new_reservations_before_latch():
     try:
         thread.start()
         assert entered.wait(3)
-        assert isinstance(bridge._server_construction.error, MemoryError)
+        assert bridge._server_construction.error is None
         assert bridge.quarantined
         with pytest.raises(BrokerUnavailable):
             bridge.reserve(IPCCustodyKey(EPOCH, 1))
@@ -180,7 +180,7 @@ def test_interruption_during_failure_handler_keeps_private_partial_allocation():
     aliases, owners, errors = [], [], []
     lines, first_line = inspect.getsourcelines(FairIPCBridge._make_server_guarded)
     target_line = first_line + next(i for i, line in enumerate(lines)
-                                    if 'self._quarantined = True' in line)
+                                    if 'self._mark_quarantined()' in line)
 
     class Owner:
         def __init__(self):
