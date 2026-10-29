@@ -55,8 +55,9 @@ class GroupedWorker:
     """A trusted owner for exact, profiled grouped forwards on one worker."""
 
     def __init__(self, worker, profiles, *, host_budget, finite_scratch_bytes, finite_scratch_items):
-        if type(worker) is not BudgetedWorker or type(host_budget) is not HostBudget:
-            raise TypeError('expected exact BudgetedWorker and HostBudget objects')
+        from .grouped_owner_worker import GroupedWorkspaceWorker
+        if type(worker) not in (BudgetedWorker, GroupedWorkspaceWorker) or type(host_budget) is not HostBudget:
+            raise TypeError('expected an exact supported worker and HostBudget')
         if type(profiles) not in (tuple, list) or not profiles:
             raise ValueError('profiles must be a nonempty bounded sequence')
         if type(finite_scratch_bytes) is not dict or type(finite_scratch_items) is not dict:
@@ -86,6 +87,8 @@ class GroupedWorker:
             if (profile.contract.model_id != worker._binding[0]
                     or profile.contract.device != str(worker._binding[1])):
                 raise ValueError('profile does not match the resident worker binding')
+            if type(worker) is GroupedWorkspaceWorker and profile.contract.seed != worker._seed:
+                raise ValueError('profile seed does not match the workspace owner')
             scratch = finite_scratch_bytes.get(profile.profile_id)
             scratch_items = finite_scratch_items.get(profile.profile_id)
             if type(scratch) is not int or scratch <= 0 or type(scratch_items) is not int or scratch_items <= 0:
@@ -230,6 +233,7 @@ class GroupPlan:
         self._disposal_ready = False
         self._launch = None
         self._digest = None
+        self._owned_result = None
         self._lock = threading.Lock()
 
     def cancel(self, job_id):
@@ -359,11 +363,14 @@ class GroupPlan:
                     return False
                 if self._preparing or self._execution is not None or self._uncertain:
                     raise HostBusy('group preparation, execution or cleanup is uncertain')
+                from .grouped_owner_worker import GroupedWorkspaceWorker
+                if type(self._owner._worker) is GroupedWorkspaceWorker:
+                    self._owner._worker._allow_retirement()
                 if not self._disposal_ready:
                     if self._prepared and not self._aborted:
                         self._plan.outcome()  # Must be terminal before disposal.
                     self._disposal_ready = True
-                self._plan = self._launch = self._digest = None
+                self._plan = self._launch = self._digest = self._owned_result = None
                 # Recover a pin if interruption happened after its registration
                 # but before assignment to this group.
                 if self._operation is None:
