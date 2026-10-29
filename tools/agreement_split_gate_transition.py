@@ -1,4 +1,8 @@
-"""Observe published commitments and announce possible first forwards."""
+"""Observe commitments and announce first forwards with an uncommitted peer.
+
+This caller cannot verify a two-split comparison. It fails closed if the peer
+is already committed; a separately reviewed verifier is required for that case.
+"""
 import hashlib
 import json
 from pathlib import Path
@@ -61,6 +65,8 @@ def operate(action, track, root, source_root, *, helper, source_reader,
             commitment_bytes=None, publication_check=None, receipt_bytes=None, receipt_check=None):
     if action not in ('commit', 'forward') or track not in helper.FREEZES:
         raise ValueError('unsupported transition')
+    if receipt_bytes is not None or receipt_check is not None:
+        raise ValueError('two-split clearance requires a separately reviewed verifier')
     root = helper.checked_root(root)
     helper.checked_lock(root)
     gate_module = helper.load_sources(source_root, reader=source_reader)
@@ -76,7 +82,7 @@ def operate(action, track, root, source_root, *, helper, source_reader,
                 commitment_bytes=commitment_bytes, publication_check=publication_check)
             result = {'status': 'commitment_announced', 'track': track}
         else:
-            result = gate.announce_forward(track, receipt_bytes=receipt_bytes, receipt_check=receipt_check)
+            result = gate.announce_forward(track)
         helper.checked_lock(root)
     helper.checked_root(root)
     helper.checked_lock(root)
@@ -108,12 +114,10 @@ def main():
                 publication_check=lambda candidate: candidate == public)
             print(result['status'] + ':' + result['track'])
         else:
-            if any(commit_fields) or (any(receipt_fields) and not all(receipt_fields)):
+            if any(commit_fields) or any(receipt_fields):
                 raise ValueError('forward inputs differ')
-            receipt = read_published(*receipt_fields, reader=_remote) if all(receipt_fields) else None
             result = operate('forward', args.track, Path(args.root), Path(args.source_root),
-                helper=helper, source_reader=helper._remote, receipt_bytes=receipt,
-                receipt_check=(lambda candidate: candidate == receipt) if receipt is not None else None)
+                helper=helper, source_reader=helper._remote)
             print('forward_announced:' + args.track + ':' + result['comparison'])
         return 0
     except BaseException:
