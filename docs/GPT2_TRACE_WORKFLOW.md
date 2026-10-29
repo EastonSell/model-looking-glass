@@ -5,7 +5,9 @@ GPT-2 trace, transformer comparison and ordered intervention APIs. It records
 where **selected observations** differ after a known input-embedding edit,
 then tests a clean-state patch at a chosen changed site. It also runs a
 target-site self-patch and a clean-state patch at another site in the same
-layer. These are controlled demonstrations, not a search for a natural circuit.
+layer. An optional matched-dose pair, enabled by the example CLI, compares
+partial clean-direction patches at those sites. These are controlled
+demonstrations, not a search for a natural circuit.
 
 ## Run the example
 
@@ -21,8 +23,10 @@ default. Add `--allow-download` only to fetch missing assets. The output file
 must be new. The [loader guide](PRETRAINED_MODEL.md) describes the asset
 verification, model revision and staging space. The example uses the public
 `Hello world` input (`[15496, 995]`) and writes a JSON report. A
-[sample report](../examples/gpt2_localization_workflow.sample.json) from a
-cached CPU run is included; its numerical values can vary with the runtime.
+[matched-dose sample report](../examples/gpt2_matched_control_workflow.sample.json)
+from a cached CPU run is included; its numerical values can vary with the runtime.
+The [earlier unmatched sample](../examples/gpt2_localization_workflow.sample.json)
+remains available.
 
 The library function can also be called with a loaded model and another short
 input:
@@ -37,6 +41,7 @@ report = compare_known_corruption(
     bundle.model, inputs["input_ids"], coordinate=0, amount=5.0,
     readout_token=13, layers=(0, 1),
     target_site=(0, "block"), comparison_site=(0, "attn"),
+    matched_control=True,
 )
 print(report["localization"]["first_observed_interval"])
 print(report["candidate_sites"])
@@ -87,6 +92,35 @@ comparison: module outputs can differ in scale, execution position and
 downstream sensitivity. Its realized L2 dose is reported separately and need
 not equal the target dose; it is not assumed to be ineffective. The JSON saves
 metadata and summary measurements, not full logits or activation snapshots.
+
+With `matched_control=True`, the workflow also measures each site's natural
+clean-to-corrupted vector distance and chooses their smaller value `q` as the
+common dose. It interpolates each corrupted vector toward its clean vector in
+CPU float64, then rounds once to float32; neither direction is extrapolated.
+Each partial patch has the same same-forward receiver, landing and untouched-
+position checks as the full patches. The actual post-action L2 at each site
+must be positive, within `min(max(1e-5, 1e-5*q), 0.01*q)` of `q`, and within
+1% of the actual target-site dose. The report retains both natural distances,
+the common dose, interpolation fractions, planned and actual doses, witnesses,
+and the same logit measurements as the full patches. If either natural
+distance is at most `1e-6`, or rounding cannot deliver the required matched
+doses, the matched arm is labeled `dose_ineligible` or `dose_unmatchable`;
+the full restoration and existing controls are still reported. Nonfinite
+directions are errors, not a successful match. The library default remains
+`matched_control=False`; opting in uses the `gpt2-known-corruption-workflow-v2`
+report schema and up to two additional forwards.
+
+The matched comparison controls raw vector L2 magnitude, not module scale,
+direction, position in the computation, or downstream sensitivity. A larger
+or smaller response at one boundary does not establish a unique causal site
+or natural feature; the interpolated vectors can also be off-distribution.
+In the saved CPU example, the common dose is about 10.833 at both sites; the
+comparison-site natural distance is about 12.434, so its interpolation uses
+about 87.1% of that direction. The matched target patch restores the clean
+logits exactly, while the matched comparison patch leaves a maximum logit
+difference of about 0.636 from clean. These are single-input, runtime-specific
+observations; the target restoration is expected from the construction
+described below.
 
 In the supplied example the only changed input is the last token. Patching its
 full layer-0 block output with the clean vector restores that entire block

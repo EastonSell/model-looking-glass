@@ -25,9 +25,52 @@ def _site_path(site):
     return f"transformer.h.{layer}" + ("" if kind == "block" else f".{kind}")
 
 
+def _dose_matches(q, tolerance, target_dose, comparison_dose):
+    """Check both positive actual doses against q and against each other."""
+    return (all(math.isfinite(value) and value > 0 for value in (q, target_dose, comparison_dose))
+            and math.isfinite(tolerance) and tolerance >= 0
+            and abs(target_dose - q) <= tolerance and abs(comparison_dose - q) <= tolerance
+            and abs(target_dose - comparison_dose) <= 0.01 * target_dose)
+
+
+def _plan_matched_patches(target_clean, target_corrupt, comparison_clean, comparison_corrupt):
+    """Interpolate two float32 vectors toward clean without extrapolating."""
+    values = (target_clean, target_corrupt, comparison_clean, comparison_corrupt)
+    if (any(type(value) is not torch.Tensor or value.device.type != "cpu"
+            or value.dtype != torch.float32 or value.ndim != 1 or not value.numel() for value in values)
+            or len({tuple(value.shape) for value in values}) != 1
+            or any(not bool(torch.isfinite(value).all()) for value in values)):
+        raise RuntimeError("matched directions require finite CPU float32 vectors of equal shape")
+    target_delta = target_clean.double() - target_corrupt.double()
+    comparison_delta = comparison_clean.double() - comparison_corrupt.double()
+    target_distance = target_delta.norm().item()
+    comparison_distance = comparison_delta.norm().item()
+    if not math.isfinite(target_distance) or not math.isfinite(comparison_distance):
+        raise RuntimeError("matched direction has nonfinite L2 distance")
+    q = min(target_distance, comparison_distance)
+    result = {"status": "dose_ineligible", "natural_target_l2": target_distance,
+              "natural_comparison_l2": comparison_distance, "common_dose_l2": q}
+    if q <= 1e-6:
+        return result, None
+    tolerance = min(max(1e-5, 1e-5 * q), 0.01 * q)
+    target_fraction, comparison_fraction = q / target_distance, q / comparison_distance
+    target_value = (target_corrupt.double() + target_fraction * target_delta).float()
+    comparison_value = (comparison_corrupt.double() + comparison_fraction * comparison_delta).float()
+    planned_target = (target_value.double() - target_corrupt.double()).norm().item()
+    planned_comparison = (comparison_value.double() - comparison_corrupt.double()).norm().item()
+    result.update({"absolute_dose_tolerance": tolerance, "target_fraction": target_fraction,
+                   "comparison_fraction": comparison_fraction, "planned_target_l2": planned_target,
+                   "planned_comparison_l2": planned_comparison})
+    if not _dose_matches(q, tolerance, planned_target, planned_comparison):
+        result["status"] = "dose_unmatchable"
+        return result, None
+    result["status"] = "ready"
+    return result, (target_value, comparison_value)
+
+
 def compare_known_corruption(model, input_ids, *, coordinate, amount, readout_token,
                              layers=(0, 1), target_site=(0, "block"),
-                             comparison_site=(0, "attn")):
+                             comparison_site=(0, "attn"), matched_control=False):
     """Trace a known embedding edit and test two clean-state patches.
 
     ``input_ids`` is one unpadded CPU int64 row of 2--16 tokens. The final
@@ -35,6 +78,8 @@ def compare_known_corruption(model, input_ids, *, coordinate, amount, readout_to
     Each site is ``(layer, 'attn'|'mlp'|'block')`` and both must be selected,
     distinct, and in the same layer. The model must be an unmodified,
     evaluation-mode CPU float32 GPT2LMHeadModel. No cache or sampling is used.
+    With ``matched_control=True``, two further partial patches match the
+    smaller clean-to-corrupt L2 dose at both sites when float32 permits it.
 
     Returns JSON-compatible metadata, exact comparison statuses, input edit,
     raw selected next-token logits, logit distances, plan witnesses and
@@ -45,6 +90,8 @@ def compare_known_corruption(model, input_ids, *, coordinate, amount, readout_to
     """
     from transformers import GPT2LMHeadModel
 
+    if type(matched_control) is not bool:
+        raise ValueError("matched_control must be a boolean")
     if type(model) is not GPT2LMHeadModel:
         raise TypeError("model must be an unmodified GPT2LMHeadModel")
     if model.training or any(module.training for module in model.modules()):
@@ -177,7 +224,8 @@ def compare_known_corruption(model, input_ids, *, coordinate, amount, readout_to
                       if row["result"] == "different"]
         target_path, other_path = _site_path(target_site), _site_path(comparison_site)
         result = {
-            "schema": "gpt2-known-corruption-workflow-v1", "input_ids": ids[0].tolist(),
+            "schema": ("gpt2-known-corruption-workflow-v2" if matched_control
+                       else "gpt2-known-corruption-workflow-v1"), "input_ids": ids[0].tolist(),
             "attention_mask": mask[0].tolist(), "readout_token_id": readout_token,
             "corruption": {"token_index": token, "coordinate": coordinate,
                            "requested_addition": amount, "before": before_coordinate,
@@ -206,12 +254,14 @@ def compare_known_corruption(model, input_ids, *, coordinate, amount, readout_to
             reason = ("trace comparison inconclusive" if comparison["status"] == "inconclusive"
                       else "target is not an observed changed site")
             result["interventions"] = {"status": "not_run", "reason": reason}
+            if matched_control:
+                result["interventions"]["matched_control"] = {"status": "not_run", "reason": reason}
             return result
 
         clean_by_path = {event.module_path: event.value[0, 0] for event in clean_trace.events}
         corrupt_by_path = {event.module_path: event.value[0, 0] for event in corrupt_trace.events}
 
-        def patch(path, *, self_patch=False):
+        def patch(path, *, self_patch=False, replacement=None):
             full = {"module_path": path, "invocation": 0}
             selected = dict(full, batch_index=0, token_index=token)
             steps = [dict(full, name="before_all", operation="capture")]
@@ -219,13 +269,15 @@ def compare_known_corruption(model, input_ids, *, coordinate, amount, readout_to
                 steps.extend([dict(selected, name="self_source", operation="capture"),
                               dict(selected, name="patch", operation="patch", source_capture="self_source")])
             else:
-                steps.append(dict(selected, name="patch", operation="patch", value=clean_by_path[path]))
+                value = clean_by_path[path] if replacement is None else replacement
+                steps.append(dict(selected, name="patch", operation="patch", value=value))
             steps.append(dict(full, name="after_all", operation="capture"))
             plan = ActivationPlan(model, steps, **plan_limits)
             with plan:
                 logits = forward(inputs_embeds=corrupted_embeds)
             before, after = plan.captures["before_all"], plan.captures["after_all"]
-            expected = before[0, token] if self_patch else clean_by_path[path]
+            expected = (before[0, token] if self_patch else
+                        clean_by_path[path] if replacement is None else replacement)
             unaffected_before = torch.cat((before[:, :token], before[:, token + 1:]), dim=1)
             unaffected_after = torch.cat((after[:, :token], after[:, token + 1:]), dim=1)
             checks = {
@@ -242,6 +294,23 @@ def compare_known_corruption(model, input_ids, *, coordinate, amount, readout_to
         self_logits, self_witness = patch(target_path, self_patch=True)
         restored_logits, target_witness = patch(target_path)
         other_logits, other_witness = patch(other_path)
+        matched = None
+        if matched_control:
+            matched, values = _plan_matched_patches(clean_by_path[target_path], corrupt_by_path[target_path],
+                                                    clean_by_path[other_path], corrupt_by_path[other_path])
+            if values is not None:
+                target_matched_logits, target_matched_witness = patch(target_path, replacement=values[0])
+                other_matched_logits, other_matched_witness = patch(other_path, replacement=values[1])
+                target_dose = target_matched_witness["realized_displacement_l2"]
+                other_dose = other_matched_witness["realized_displacement_l2"]
+                if not _dose_matches(matched["common_dose_l2"], matched["absolute_dose_tolerance"],
+                                     target_dose, other_dose):
+                    raise RuntimeError("actual same-forward matched doses failed their tolerance")
+                matched.update({"status": "complete",
+                    "target": {"interpolation_fraction": matched["target_fraction"],
+                               "measurement": measure(target_matched_logits), "witness": target_matched_witness},
+                    "comparison": {"interpolation_fraction": matched["comparison_fraction"],
+                                   "measurement": measure(other_matched_logits), "witness": other_matched_witness}})
         clean_repeat = forward(inputs_embeds=clean_embeds)
         corrupt_repeat = forward(inputs_embeds=corrupted_embeds)
         controls = {
@@ -259,4 +328,6 @@ def compare_known_corruption(model, input_ids, *, coordinate, amount, readout_to
             "target_patch": {"measurement": measure(restored_logits), "witness": target_witness},
             "comparison_patch": {"measurement": measure(other_logits), "witness": other_witness},
         }
+        if matched_control:
+            result["interventions"]["matched_control"] = matched
         return result
