@@ -136,8 +136,10 @@ def main(argv=None):
         try:
             _write_receipt(receipt_path, {"status": "incomplete", "exception_type": type(exc).__name__,
                                           "child_reaped": False})
-        except BaseException:
-            pass
+        except BaseException as secondary:
+            if isinstance(secondary, (KeyboardInterrupt, SystemExit)) and not isinstance(
+                    exc, (KeyboardInterrupt, SystemExit)):
+                raise secondary from exc
         raise
 
 
