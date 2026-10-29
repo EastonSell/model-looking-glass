@@ -1,0 +1,43 @@
+{
+  "all_39_rows_and_terminal_hashes_verified": true,
+  "both_rollbacks_reported_complete": true,
+  "decision": "negative",
+  "gradient_realized_delta_norm": 3.06752761595388,
+  "limitations": [
+    "weights and deltas were not saved; norm and rollback are run attestations supported by a fresh replay, not independently recomputed from persisted weights",
+    "commit timestamps and local clocks do not independently prove remote publication or forward chronology",
+    "four related target prompts and eight chosen locality prompts do not establish general capability preservation",
+    "one random direction is a control, not a random-edit distribution"
+  ],
+  "locality": {
+    "gradient": {
+      "max_kl": 0.7450010421153651,
+      "mean_kl": 0.18286951866618756,
+      "mean_nll_deterioration": 0.2855125760758126,
+      "mean_target_change": 11.754931449890137,
+      "top_changed_case_ids": [
+        "locality-3",
+        "locality-4"
+      ]
+    },
+    "random": {
+      "max_kl": 8.093547345833048e-05,
+      "mean_kl": 3.6469841746474544e-05,
+      "mean_nll_deterioration": -0.009114740105546026,
+      "mean_target_change": -0.00048065185546875,
+      "top_changed_case_ids": []
+    }
+  },
+  "mean_target_margin_change": {
+    "gradient": 11.754931449890137,
+    "random": -0.00048065185546875
+  },
+  "random_realized_delta_norm": 3.067527606229891,
+  "realized_norm_ratio": 1.000000003169976,
+  "recorded_times_ordered_after_manifest_git_time": true,
+  "reference_replay_precommit_equal_except_run_id": true,
+  "reference_replay_raw_arrays_and_journal_bit_identical": true,
+  "schema": "targeted-edit-independent-replay-review-v1",
+  "source_manifest_ancestry_and_raw_hashes_verified": true,
+  "weight_norm": 306.75276096822097
+}
