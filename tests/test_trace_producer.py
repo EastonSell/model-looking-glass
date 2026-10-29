@@ -8,7 +8,10 @@ import unittest
 import weakref
 from unittest.mock import patch
 
-from opcode_support import offsets_at_line, run_opcode_trace
+if __package__:
+    from .opcode_support import offsets_at_line, run_opcode_trace
+else:
+    from opcode_support import offsets_at_line, run_opcode_trace
 
 from looking_glass.host_budget import (HostBudget, HostBudgetExceeded, HostBusy,
                                        HostRequest, HostRequestCancelled)

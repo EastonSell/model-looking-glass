@@ -8,7 +8,10 @@ import unittest
 
 from unittest.mock import patch
 
-from opcode_support import offsets_at_line, run_opcode_trace
+if __package__:
+    from .opcode_support import offsets_at_line, run_opcode_trace
+else:
+    from opcode_support import offsets_at_line, run_opcode_trace
 
 from looking_glass.host_budget import HostBudget, HostClaim, HostClaimGuard
 from looking_glass.trace_producer import (ClaimLimit, ProducerCancelled,
