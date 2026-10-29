@@ -57,6 +57,13 @@ plan supplied snapshots that were discarded. The supervisor must preserve the
 original exception and treat the whole attempt as non-retryable even if failure
 reporting also fails.
 
+Opaque partial bytes are limited to 1 MiB. The separately validated
+`pretrained_number_incomplete` format can use a larger bounded envelope for
+metadata and framing while retaining at most 1 MiB of raw tensor bytes. The
+journal charges the entire envelope to its local reservation, and inspection
+revalidates oversized envelopes. A serializer failure still requires the
+supervisor to report unavailable pieces rather than inventing a record.
+
 The owner is the actual creating `Thread` object. A foreign thread cannot
 append, and concurrent use is outside the contract. Python can interrupt at a
 call or return boundary outside the method's handler. If the caller cannot
