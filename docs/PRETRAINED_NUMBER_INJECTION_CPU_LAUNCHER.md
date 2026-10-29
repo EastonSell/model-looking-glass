@@ -87,9 +87,13 @@ The four commands and their ordering are:
    records. Initialize it after these preparatory artifacts exist and before
    calling `run`. The launcher reserves its own start and terminal markers and
    1 MiB for the trusted outer owner's receipts and logs inside the grant's
-   physical share. The outer owner must enforce that aggregate bound, including
-   partial and failed files, and the remainder is available to the supervisor
-   for all complete, partial, and failed evidence. A consumed grant is never
+   physical share. The outer owner must enforce that aggregate bound for its
+   own receipts and logs, including partial and failed files. The fresh
+   bytecode prefix must remain empty; the bound is not a filesystem quota on
+   unexpected child-created files. If it is nonempty, the attempt is
+   incomplete: retain and charge those files and reconcile them before later
+   work. The remainder is available to the supervisor for all complete,
+   partial, and failed evidence. A consumed grant is never
    reused, including when the process stops before a marker is saved. Retained
    outer evidence from an attempt that never receives a claim must be included
    separately in the prior or overhead inventory.

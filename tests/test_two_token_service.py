@@ -1,4 +1,5 @@
 import hashlib
+import os
 from pathlib import Path
 import tempfile
 import threading
@@ -19,7 +20,7 @@ class ServicePreparationTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name).resolve()
-        self.repo = self.root / "repo"
+        self.repo = self.root / "work" / "frozen" / "repo"
         self.hf_home = self.root / "hf-home"
         self.cache = self.hf_home / "hub"
         self.env = self.root / "env"
@@ -40,6 +41,7 @@ class ServicePreparationTests(unittest.TestCase):
                                            str(index) * 64) for index in range(1, 4))
         self.source_mock = patch.object(service, "prepare_trusted_source", return_value=self.source).start()
         self.registry_mock = patch.object(service, "_load_profile_registry", return_value=(None, None)).start()
+        patch.object(service, "_source_checkout", return_value=self.repo).start()
         patch.object(service._owner_module, "FIXED_SERVICE_OWNER_CONTRACT",
                      service._REQUIRED_OWNER_CONTRACT, create=True).start()
         patch.object(service._owner_module, "OWNER_COMPLETION_CUSTODY_CONTRACT",
@@ -155,6 +157,50 @@ class ServicePreparationTests(unittest.TestCase):
         with patch.object(service, "resolve_device_identity", return_value=None):
             with self.assertRaisesRegex(RuntimeError, "canonical"):
                 self.prepare()
+
+    def test_alternate_workspace_is_rejected_before_device_identity_resolution(self):
+        wrong = self.root / "other-workspace"
+        wrong.mkdir()
+        with patch.object(service, "resolve_device_identity") as resolve:
+            with self.assertRaisesRegex(ValueError, "workspace root"):
+                self.prepare(workspace_root=wrong)
+            resolve.assert_not_called()
+
+    def test_selected_checkout_must_match_controller_before_device_resolution(self):
+        wrong = self.root / "other-repo"
+        wrong.mkdir()
+        with patch.object(service, "resolve_device_identity") as resolve:
+            with self.assertRaisesRegex(ValueError, "checkout"):
+                self.prepare(repo_root=wrong)
+            resolve.assert_not_called()
+
+    def test_nested_work_ancestors_cannot_select_an_inner_lease_namespace(self):
+        inner = self.root / 'work' / 'teams' / 'owner'
+        checkout = inner / 'Work' / 'checkout'
+        checkout.mkdir(parents=True)
+        for requested in (self.root, inner):
+            with self.subTest(requested=requested):
+                with self.assertRaisesRegex(ValueError, 'ambiguous'):
+                    service._workspace_root(checkout, requested)
+
+    def test_serialized_and_resolved_identity_share_the_checkout_workspace(self):
+        from looking_glass.device_identity import resolve_device_identity
+        from looking_glass.supervisor import OwnerSession, _identity_spec
+        with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": UUID, "CUDA_DEVICE_ORDER": "PCI_BUS_ID"}):
+            identity = resolve_device_identity(self.root, UUID, physical_uuids=(UUID,))
+            session = object.__new__(OwnerSession)
+            session._identity = identity
+            session._identity_spec = _identity_spec(identity)
+            session.device_lease_path, session.marker_path = identity.lock_path, identity.marker_path
+            service._require_workspace_spec(session, self.repo)
+            service._require_workspace_binding(session, self.repo)
+            wrong = self.root / 'other-workspace'
+            wrong.mkdir()
+            session._identity_spec = dict(session._identity_spec, workspace_root=str(wrong))
+            with self.assertRaisesRegex(ValueError, 'workspace root'):
+                service._require_workspace_spec(session, self.repo)
+            with self.assertRaisesRegex(RuntimeError, 'identity changed'):
+                service._require_workspace_binding(session, self.repo)
 
     def test_client_and_recovery_operations_use_caller_held_controller(self):
         prepared = self.prepare()
