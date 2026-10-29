@@ -1,0 +1,126 @@
+{
+  "checkpoint": {
+    "assets": {
+      "config.json": {
+        "sha256": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+        "size": 762
+      },
+      "generation_config.json": {
+        "sha256": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+        "size": 124
+      },
+      "merges.txt": {
+        "sha256": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+        "size": 456318
+      },
+      "model.safetensors": {
+        "sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+        "size": 352824413
+      },
+      "tokenizer.json": {
+        "sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+        "size": 1355256
+      },
+      "tokenizer_config.json": {
+        "sha256": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+        "size": 26
+      },
+      "vocab.json": {
+        "sha256": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783",
+        "size": 1042301
+      }
+    },
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "tokenizer_id": "distilbert/distilgpt2",
+    "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa"
+  },
+  "exit_code": 1,
+  "failure": {
+    "message": "child failure details withheld",
+    "phase": "shared_storage_distinct_parameter"
+  },
+  "final_git_status_clean": true,
+  "final_source_commit": "366cbf837aa60513f15f741d87a1431150b564fe",
+  "finished_at_utc": "2026-10-29T02:10:34.590432+00:00",
+  "invocation": {
+    "cache_path_existed_before": true,
+    "cache_policy": "explicit local cache; download disabled",
+    "collector": "tools/pretrained_verifier_cpu_evidence.py",
+    "command": [
+      "python",
+      "-I",
+      "-B",
+      "-X",
+      "pycache_prefix=<private-empty>",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests",
+      "-p",
+      "test_pretrained_verifier_cpu.py",
+      "-v"
+    ],
+    "summary_enabled": true
+  },
+  "notes": "CPU correctness only; guarded calls apply after PyTorch import, not all native CUDA paths. The synthetic SourcePreflight is not an attestation, benchmark, or GPU profile.",
+  "protocol": {
+    "case_sha256": "a137759c4f2a40c4da15d1a4625086e160edc75f161748db91b07d83dae751e4",
+    "input_dtype": "torch.int64",
+    "input_shape": [
+      1,
+      2
+    ],
+    "output_dtype": "torch.float32",
+    "output_shape": [
+      1,
+      2,
+      50257
+    ],
+    "source_preflight": "synthetic verifier fixture; not production attestation"
+  },
+  "purpose": "correctness",
+  "runtime": {
+    "base_python_sha256": "749a54c7896d14138d74c6e35f89cb4f8fb1c59d1dd6ddaeaa8107b2a8e0aba2",
+    "child_bytecode_writes_disabled_setting": true,
+    "child_direct_base_interpreter_setting": true,
+    "child_no_site_setting": true,
+    "child_no_user_site_setting": true,
+    "child_private_empty_pycache_setting": true,
+    "cuda_hidden_setting": true,
+    "device_setting": "cpu",
+    "offline_setting": true,
+    "outer_python_sha256": "605444b81575fbe41b84b57d3c83f7133ac472f5b3fc5f43160d2bec03fca3fb",
+    "packages": {
+      "huggingface_hub": "0.36.2",
+      "numpy": "2.4.6",
+      "safetensors": "0.8.0",
+      "tokenizers": "0.22.2",
+      "torch": "2.8.0+cu128",
+      "transformers": "4.57.3"
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.15",
+    "reference_intraop_threads_setting": 1,
+    "seed_setting": 17
+  },
+  "schema": "pretrained-verifier-cpu-evidence-v2",
+  "selected_source_files_unchanged": true,
+  "source_commit": "366cbf837aa60513f15f741d87a1431150b564fe",
+  "source_files_sha256": {
+    "docs/PRETRAINED_VERIFIER_CPU.md": "5db38913bd32d2d59414c4e90670d50386be6e6a81e6a0afe44a470db7c49591",
+    "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+    "looking_glass/live_profile.py": "1d789b9aa4553ddebb7ccf2abb749825ff2bb55b315d932e4645d100b48c0a73",
+    "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+    "pyproject.toml": "d6f4b4211fbdbac80f1af25546a9d62b76f57c9bae8a572573bcf0d635e18a21",
+    "tests/test_pretrained_verifier_cpu.py": "193f47ced117a3b00468a6f95e3ad695252a2bf75384e9db1497aeb1e4bcd705",
+    "tools/pretrained_verifier_cpu_evidence.py": "c779906cd3b686744f01922d8f4098b6d16aedb35166d51f3857e6222d5eccde"
+  },
+  "source_tree": "fbde87c473f5acf5369dccb91f212d6a785e25d3",
+  "started_at_utc": "2026-10-29T02:10:12.422885+00:00",
+  "status": "failed",
+  "stderr_sha256": "31a194ceeaa4a55e50346d2fabd81ca4b492278dd953632fd54c862153079432",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "unittest_parent_pycache_empty_after": true
+}

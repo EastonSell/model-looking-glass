@@ -9,8 +9,8 @@ import types
 import unittest
 from unittest.mock import patch
 
-from looking_glass.ipc import IPCClient, IPCError, IPCServer
-from looking_glass.ipc_custody import IPCCustodyKey
+from looking_glass.ipc import IPCClient, IPCError, IPCRejected, IPCServer
+from looking_glass.ipc_custody import IPCCustodyCapacity, IPCCustodyKey
 
 
 class FakeGuardian:
@@ -212,6 +212,134 @@ class IPCCustodyNotificationTests(unittest.TestCase):
         self.assertTrue(record["charged"])
         self.assertEqual(broker.calls, [])
         self.assertTrue(server.custody_quarantined)
+
+    def test_proven_capacity_rejection_is_busy_without_quarantine(self):
+        class LimitedGuardian(FakeGuardian):
+            full = True
+
+            def reserve(self, key):
+                if self.full:
+                    # Trusted guarantee: no record, claim or pending work.
+                    raise IPCCustodyCapacity()
+                return super().reserve(key)
+
+        guardian = LimitedGuardian()
+        broker = RegisteredBroker(guardian)
+        server = self.make_server(guardian, broker)
+        client = IPCClient(server.address, server.team_tokens["team"])
+        with self.assertRaises(IPCRejected) as caught:
+            client.submit(team_id="team", request_id="case", inputs={"input_ids": [[1]]})
+        self.assertEqual(caught.exception.code, "busy")
+        self.assertFalse(server.custody_quarantined)
+        self.assertEqual(guardian.records, {})
+        self.assertFalse(guardian.notified.is_set())
+        guardian.full = False
+        result = client.submit(team_id="team", request_id="case", inputs={"input_ids": [[1]]}).wait(3)
+        self.assertEqual(result["status"], "succeeded")
+        self.assertTrue(guardian.notified.wait(3))
+        self.assertEqual(broker.calls[0][0].connection_generation, 2)
+        self.assertFalse(server.custody_quarantined)
+
+    def test_saturation_survives_disconnect_until_owner_disposes_job(self):
+        class SingleClaimGuardian(FakeGuardian):
+            def reserve(self, key):
+                with self.lock:
+                    if any(record["charged"] for record in self.records.values()):
+                        raise IPCCustodyCapacity()
+                    self.records[key] = {"authenticated": None, "handle": None,
+                                         "notice": False, "charged": True}
+                self.reserved.set()
+
+        guardian = SingleClaimGuardian()
+        broker = RegisteredBroker(guardian, completed=False)
+        server = self.make_server(guardian, broker)
+        client = IPCClient(server.address, server.team_tokens["team"])
+        running = client.submit(team_id="team", request_id="running", inputs={"input_ids": [[1]]})
+        key = broker.calls[0][0]
+
+        def assert_busy(request_id):
+            with self.assertRaises(IPCRejected) as caught:
+                client.submit(team_id="team", request_id=request_id, inputs={"input_ids": [[1]]})
+            self.assertEqual(caught.exception.code, "busy")
+            self.assertFalse(server.custody_quarantined)
+
+        assert_busy("while-running")
+        running.close()
+        self.assertTrue(guardian.notified.wait(3))
+        self.assertTrue(guardian.records[key]["handle"].cancel_requested.is_set())
+        self.assertTrue(guardian.records[key]["charged"])
+        self.assertFalse(broker.done.is_set())
+        assert_busy("after-disconnect")
+
+        # The trusted fake owner, not a disconnect or notice, establishes
+        # completion and discards its retained handle before releasing quota.
+        broker.done.set()
+        with guardian.lock:
+            guardian.records[key]["handle"] = None
+            guardian.records[key]["charged"] = False
+        result = client.submit(team_id="team", request_id="next", inputs={"input_ids": [[2]]}).wait(3)
+        self.assertEqual(result["status"], "succeeded")
+        self.assertEqual(broker.calls[-1][0].connection_generation, 4)
+        self.assertFalse(server.custody_quarantined)
+
+    def test_capacity_subclass_after_partial_reserve_is_quarantined(self):
+        class UncertainCapacity(IPCCustodyCapacity):
+            pass
+
+        class BadGuardian(FakeGuardian):
+            def reserve(self, key):
+                super().reserve(key)
+                raise UncertainCapacity()
+
+        guardian = BadGuardian()
+        broker = RegisteredBroker(guardian)
+        server = self.make_server(guardian, broker)
+        with self.assertRaises((IPCError, OSError, EOFError)):
+            IPCClient(server.address, server.team_tokens["team"]).submit(
+                team_id="team", request_id="case", inputs={"input_ids": [[1]]})
+        self.assertTrue(server.close(3))
+        record = next(iter(guardian.records.values()))
+        self.assertFalse(record["notice"])
+        self.assertTrue(record["charged"])
+        self.assertTrue(server.custody_quarantined)
+
+    def test_capacity_exception_outside_reserve_is_not_clean_overload(self):
+        for where in ("authenticate", "submit", "notify"):
+            with self.subTest(where=where):
+                class FaultGuardian(FakeGuardian):
+                    def authenticate(self, key, team_id, request_id):
+                        super().authenticate(key, team_id, request_id)
+                        if where == "authenticate":
+                            raise IPCCustodyCapacity()
+
+                    def handler_closed(self, key):
+                        if where == "notify":
+                            raise IPCCustodyCapacity()
+                        return super().handler_closed(key)
+
+                class FaultBroker(RegisteredBroker):
+                    def submit_registered(self, key, team_id, request):
+                        handle = super().submit_registered(key, team_id, request)
+                        if where == "submit":
+                            raise IPCCustodyCapacity()
+                        return handle
+
+                guardian = FaultGuardian()
+                broker = FaultBroker(guardian)
+                server = self.make_server(guardian, broker)
+                client = IPCClient(server.address, server.team_tokens["team"])
+                if where == "notify":
+                    result = client.submit(team_id="team", request_id="case",
+                                           inputs={"input_ids": [[1]]}).wait(3)
+                    self.assertEqual(result["status"], "succeeded")
+                else:
+                    with self.assertRaises((IPCError, OSError, EOFError)):
+                        client.submit(team_id="team", request_id="case", inputs={"input_ids": [[1]]})
+                self.assertTrue(server.close(3))
+                record = next(iter(guardian.records.values()))
+                self.assertFalse(record["notice"])
+                self.assertTrue(record["charged"])
+                self.assertTrue(server.custody_quarantined)
 
     def test_uncertain_binding_does_not_notify_or_release(self):
         guardian = FakeGuardian()

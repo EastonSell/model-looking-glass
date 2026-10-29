@@ -143,8 +143,12 @@ After drawing the held-out nonce, the custodian tokenizes both splits using the
 pinned tokenizer and verifies the same structural checks above. Known exposure
 is **allowed and disclosed** for discovery; it is the purpose of that split.
 Check every held-out row against the available versioned prior exposure
-inventory, and against both splits for duplicates and whole-row prefix
-relationships in either direction. Common initial tokens alone are permitted.
+inventory: reject a held-out full token row that equals any prefix of a known
+inventoried row. This particular known-history check does **not** reject every
+longer held-out row that extends an unrelated, shorter known row. Also reject
+duplicates and whole-row prefix relationships in either direction between the
+particular discovery and held-out splits. Common initial tokens alone are
+permitted. Neither rule establishes semantic or pretraining independence.
 Any collision, failed alignment or failed check aborts the attempt; never
 redraw or replace an individual case using model outcomes. Preserve the
 failure. A revised sampling frame requires a separately reviewed protocol

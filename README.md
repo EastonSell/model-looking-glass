@@ -14,7 +14,7 @@ The roadmap is a research plan, not a claim that its milestones are complete. Th
 - The [trace schema](docs/TRACE_SCHEMA.md) records execution coordinates separately from tensor values and hypotheses. Unknown coordinates remain unknown.
 - The [GPT-2 trace adapter](docs/TRANSFORMER_TRACE.md) captures selected layer, module, local token and invocation coordinates; generation and cache positions remain unknown unless established separately. The [ordered intervention plan](docs/INTERVENTION_PLANS.md) can capture, inject and patch at specified boundaries.
 - The [fair queue](docs/FAIR_QUEUE.md) rotates among admitted teams; it does not by itself guarantee admission fairness or equal GPU time.
-- The [memory budget](docs/MEMORY_BUDGET.md) and [resource profiles](docs/RESOURCE_PROFILE.md) track conservative leases, trace allowances and workload-specific measurements. Estimates and logical byte counts are not peak-memory guarantees or proof of device enforcement; no GPU profile has yet been recorded.
+- The [memory budget](docs/MEMORY_BUDGET.md) and [resource profiles](docs/RESOURCE_PROFILE.md) track conservative leases, trace allowances and workload-specific measurements. Estimates and logical byte counts are not peak-memory guarantees or proof of device enforcement; no shared-service GPU workload profile has yet been approved.
 - The [resident worker](docs/RESIDENT_WORKER.md) and [broker](docs/BROKER.md) reuse one trusted model for queued forwards. Their current execution is serial; GPU-wide admission and concurrent device throughput require separate integration and validation.
 - The [local CPU service](docs/SERVICE.md) exposes the pinned DistilGPT2 model to authenticated clients, with a two-token input limit and serial execution. A separate [microbatch primitive](docs/MICROBATCH.md) and [sampled batch validator](docs/BATCH_VALIDATION.md) are not yet integrated into that service.
 - The [device supervisor](docs/SUPERVISOR.md) coordinates a cooperative owner process, a device lease, and a sticky quarantine marker. It has CPU tests, but has not yet been integrated and validated as a shared GPU service.
@@ -112,6 +112,7 @@ Full activations can contain sensitive information. This synthetic benchmark sav
 - [Audit of the preserved CPU records and reproducibility limits](docs/REPRODUCIBILITY_AUDIT.md)
 - [Causal intervention literature and controls](docs/CAUSAL_LITERATURE.md)
 - [Machine and GPU inventory](docs/GPU_INVENTORY_V1.md)
+- [Supervised GPU memory pilot and recovery record](docs/GPU_ONESHOT_RESULTS_V2.md)
 - [Trace custody integration plan](docs/TRACE_CUSTODY_PLAN.md)
 - [Shared-model throughput protocol](docs/THROUGHPUT_PROTOCOL_V1.md) and its [CPU functionality record](results/throughput-cpu-smoke-v1-20261028/run_status.json)
 - [Verification status](evidence/STATUS.md)
