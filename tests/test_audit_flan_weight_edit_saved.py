@@ -541,7 +541,8 @@ def test_recorded_exit_and_phase_hashes_must_close_before_science(tmp_path):
     write(root/'phase.json', phase)
     start = {'phase':'development','source':source,'scope_sha256':scope,'rehearsal':False,
              'parent_temp':{'TEMP':str(root.parent.resolve()),'TMP':str(root.parent.resolve())},
-             'child_cache_paths':caches}
+             'child_cache_paths':caches, 'disk':{'source_free':audit.C_FREE_FLOOR,
+               'output_free':audit.E_FREE_FLOOR, 'source_margin_scope':'heuristic; not an OS reservation'}}
     write(root/'operator-start.json', start)
     write(root/'operator-spawn.json', {'pid':123,'parent_pid':456})
     def log(path): return {'bytes':path.stat().st_size, 'sha256':audit.file_sha(path),
@@ -550,16 +551,65 @@ def test_recorded_exit_and_phase_hashes_must_close_before_science(tmp_path):
         'identity_matches':True,'timed_out':False,'error':None,'error_detail':None,
         'phase_sha256':audit.file_sha(root/'phase.json'),
         'direct_child_pid':123,'operator_pid':456,'phase_consistent':True,'within_evidence_cap':True,
-        'cumulative_evidence_bytes_before_exit_record':100,'supervised_elapsed_seconds':0.1,
+        'cumulative_evidence_bytes_before_exit_record':sum((root/name).stat().st_size for name in
+            ('operator-start.json','operator-spawn.json','stdout.log','stderr.log','phase.json','result.json',
+             'resources.jsonl','evidence/events.jsonl','evidence/logits.f32')), 'supervised_elapsed_seconds':0.1,
         'logs':{'stdout':log(root/'stdout.log'),'stderr':log(root/'stderr.log')}}
     write(root/'operator-exit.json', observed)
     result = audit.validate_closed_phase(root, 'development', manifest, manifest_sha, asset)
     assert result[0]['calls'] == 1
+    saved_count = observed['cumulative_evidence_bytes_before_exit_record']
+    observed['cumulative_evidence_bytes_before_exit_record'] = saved_count - 1
+    write(root/'operator-exit.json', observed)
+    with pytest.raises(audit.AuditError, match='pre-exit evidence count is too small'):
+        audit.validate_closed_phase(root, 'development', manifest, manifest_sha, asset)
+    observed['cumulative_evidence_bytes_before_exit_record'] = saved_count
+    write(root/'operator-exit.json', observed)
+    phase['model_loaded'] = False
+    write(root/'phase.json', phase)
+    observed['phase_sha256'] = audit.file_sha(root/'phase.json')
+    write(root/'operator-exit.json', observed)
+    with pytest.raises(audit.AuditError, match='model-load marker contradicts'):
+        audit.validate_closed_phase(root, 'development', manifest, manifest_sha, asset)
+    del phase['model_loaded']
+    write(root/'phase.json', phase)
+    observed['phase_sha256'] = audit.file_sha(root/'phase.json')
+    write(root/'operator-exit.json', observed)
+    for child_pid, parent_pid in ((0, 456), (-1, 456), (123, 123)):
+        phase['pid'], phase['parent_pid'] = child_pid, parent_pid
+        write(root/'phase.json', phase)
+        write(root/'operator-spawn.json', {'pid':child_pid,'parent_pid':parent_pid})
+        (root/'stdout.log').write_bytes(audit.canonical({'pid':child_pid,'parent_pid':parent_pid,
+                                                        'site':'fixture','cache_paths':caches})+b'\n')
+        observed['direct_child_pid'], observed['operator_pid'] = child_pid, parent_pid
+        observed['phase_sha256'] = audit.file_sha(root/'phase.json')
+        observed['logs']['stdout'] = log(root/'stdout.log')
+        write(root/'operator-exit.json', observed)
+        with pytest.raises(audit.AuditError, match='process or source records differ'):
+            audit.validate_closed_phase(root, 'development', manifest, manifest_sha, asset)
+    phase['pid'], phase['parent_pid'] = 123, 456
+    write(root/'phase.json', phase)
+    write(root/'operator-spawn.json', {'pid':123,'parent_pid':456})
+    (root/'stdout.log').write_bytes(stdout)
+    observed['direct_child_pid'], observed['operator_pid'] = 123, 456
+    observed['phase_sha256'] = audit.file_sha(root/'phase.json')
+    observed['logs']['stdout'] = log(root/'stdout.log')
+    write(root/'operator-exit.json', observed)
     broken = copy.deepcopy(start)
     broken['child_cache_paths']['HF_HOME'] = str(root.parent.parent.parent/'other')
     write(root/'operator-start.json', broken)
     with pytest.raises(audit.AuditError, match='cache paths differ'):
         audit.validate_closed_phase(root, 'development', manifest, manifest_sha, asset)
+    write(root/'operator-start.json', start)
+    for disk in (None, {**start['disk'], 'source_free':True},
+                 {**start['disk'], 'source_free':audit.C_FREE_FLOOR-1},
+                 {**start['disk'], 'output_free':audit.E_FREE_FLOOR-1},
+                 {**start['disk'], 'source_margin_scope':'reserved'}):
+        broken = copy.deepcopy(start)
+        broken['disk'] = disk
+        write(root/'operator-start.json', broken)
+        with pytest.raises(audit.AuditError, match='parent disk admission differs'):
+            audit.validate_closed_phase(root, 'development', manifest, manifest_sha, asset)
     write(root/'operator-start.json', start)
     observed['reaped'] = False
     write(root/'operator-exit.json', observed)
@@ -592,6 +642,51 @@ def test_strict_json_and_float32_mode_fail_closed(monkeypatch):
     monkeypatch.setattr(audit.struct, 'unpack', flushed)
     with pytest.raises(audit.AuditError, match='mode differs'):
         audit.numeric_mode()
+
+
+def test_tokenizer_no_model_phase_has_no_forward_or_extra_records(tmp_path):
+    root = tmp_path/'phase'
+    root.mkdir()
+    def write(path, value): path.write_bytes(audit.canonical(value)+b'\n')
+    source, manifest_sha, scope = 'a'*40, 'b'*64, 'c'*64
+    manifest = {'source_revision':source,'runtime':{'tokenizers':'0.22.2'}}
+    caches = audit.expected_cache_paths(root)
+    phase = {'phase':'development','execution_status':'complete','scientific_status':'ineligible',
+        'reason':'tokenizer-alignment','model_loaded':False,'source_revision':source,'calls':0,
+        'pid':123,'parent_pid':456,'case_sha256':audit.CASE_SHA,'scope_sha256':scope,
+        'manifest_sha256':manifest_sha}
+    write(root/'phase.json', phase)
+    write(root/'operator-start.json', {'phase':'development','source':source,'scope_sha256':scope,
+        'rehearsal':False,'parent_temp':{'TEMP':str(root.parent.resolve()),'TMP':str(root.parent.resolve())},
+        'child_cache_paths':caches,'disk':{'source_free':audit.C_FREE_FLOOR,'output_free':audit.E_FREE_FLOOR,
+                                          'source_margin_scope':'heuristic; not an OS reservation'}})
+    write(root/'operator-spawn.json', {'pid':123,'parent_pid':456})
+    (root/'stdout.log').write_bytes(audit.canonical({'pid':123,'parent_pid':456,'cache_paths':caches})+b'\n')
+    (root/'stderr.log').write_bytes(b'')
+    def log(path): return {'bytes':path.stat().st_size,'sha256':audit.file_sha(path),
+                           'finished':True,'truncated':False,'error':None}
+    exit_record = {'status':'complete_candidate','exit_code':0,'reaped':True,'drained':True,
+        'identity_matches':True,'timed_out':False,'error':None,'error_detail':None,
+        'phase_sha256':audit.file_sha(root/'phase.json'),'direct_child_pid':123,'operator_pid':456,
+        'phase_consistent':True,'within_evidence_cap':True,
+        'cumulative_evidence_bytes_before_exit_record':sum((root/name).stat().st_size for name in
+            ('operator-start.json','operator-spawn.json','stdout.log','stderr.log','phase.json')),
+        'supervised_elapsed_seconds':0.1,'logs':{'stdout':log(root/'stdout.log'),'stderr':log(root/'stderr.log')}}
+    write(root/'operator-exit.json', exit_record)
+    assert audit.validate_closed_phase(root,'development',manifest,manifest_sha,{'files':{}})[2] is None
+    phase['cumulative_calls'] = 1
+    write(root/'phase.json', phase)
+    exit_record['phase_sha256'] = audit.file_sha(root/'phase.json')
+    write(root/'operator-exit.json', exit_record)
+    with pytest.raises(audit.AuditError, match='pre-forward ineligibility'):
+        audit.validate_closed_phase(root,'development',manifest,manifest_sha,{'files':{}})
+    del phase['cumulative_calls']
+    write(root/'phase.json', phase)
+    exit_record['phase_sha256'] = audit.file_sha(root/'phase.json')
+    write(root/'operator-exit.json', exit_record)
+    (root/'resources.jsonl').write_bytes(b'{"call":1}\n')
+    with pytest.raises(audit.AuditError, match='pre-forward ineligibility'):
+        audit.validate_closed_phase(root,'development',manifest,manifest_sha,{'files':{}})
 
 
 def test_invalid_direction_requires_exact_no_forward_record(tmp_path):

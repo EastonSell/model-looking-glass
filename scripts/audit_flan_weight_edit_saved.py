@@ -1097,6 +1097,16 @@ def expected_cache_paths(root):
             **{name: str(temp / 'library-cache' / directory) for name, directory in names.items()}}
 
 
+def require_recorded_evidence_count(root, exit_record, *, has_evidence):
+    files = ['operator-start.json', 'operator-spawn.json', 'stdout.log', 'stderr.log', 'phase.json']
+    if has_evidence:
+        files += ['result.json', 'resources.jsonl', 'evidence/events.jsonl', 'evidence/logits.f32']
+    paths = [Path(root) / name for name in files]
+    require(all(path.is_file() for path in paths)
+            and exit_record['cumulative_evidence_bytes_before_exit_record'] >=
+                sum(path.stat().st_size for path in paths), 'recorded pre-exit evidence count is too small')
+
+
 def validate_closed_phase(directory, phase_name, manifest, manifest_sha, asset_manifest, *, scope_path=None, claim_path=None):
     root = Path(directory)
     reject_failure_markers(root)
@@ -1121,6 +1131,7 @@ def validate_closed_phase(directory, phase_name, manifest, manifest_sha, asset_m
             and type(spawn.get('parent_pid')) is int and type(exit_record.get('direct_child_pid')) is int
             and type(exit_record.get('operator_pid')) is int and type(phase.get('pid')) is int
             and type(phase.get('parent_pid')) is int
+            and spawn['pid'] > 0 and spawn['parent_pid'] > 0 and spawn['pid'] != spawn['parent_pid']
             and spawn['pid'] == exit_record.get('direct_child_pid') == phase.get('pid')
             and spawn['parent_pid'] == exit_record['operator_pid'] == phase['parent_pid']
             and phase.get('manifest_sha256') == manifest_sha and phase.get('case_sha256') == CASE_SHA
@@ -1128,6 +1139,12 @@ def validate_closed_phase(directory, phase_name, manifest, manifest_sha, asset_m
             'phase process or source records differ')
     parent_temp = start.get('parent_temp')
     study_root = root.parent.parent.resolve()
+    disk = start.get('disk')
+    require(type(disk) is dict and set(disk) == {'source_free', 'output_free', 'source_margin_scope'}
+            and type(disk.get('source_free')) is int and C_FREE_FLOOR <= disk['source_free'] < 2**64
+            and type(disk.get('output_free')) is int and E_FREE_FLOOR <= disk['output_free'] < 2**64
+            and disk.get('source_margin_scope') == 'heuristic; not an OS reservation',
+            'recorded parent disk admission differs')
     require(type(parent_temp) is dict and set(parent_temp) == {'TEMP', 'TMP'}
             and all(type(value) is str and Path(value).is_absolute()
                     and Path(value).resolve().is_relative_to(study_root) for value in parent_temp.values())
@@ -1158,10 +1175,16 @@ def validate_closed_phase(directory, phase_name, manifest, manifest_sha, asset_m
             and exact(identity.get('cache_paths'), start['child_cache_paths']),
             'direct-child identity record differs')
     if phase.get('scientific_status') == 'ineligible' and phase.get('model_loaded') is False:
-        require(phase.get('reason') == 'tokenizer-alignment' and type(phase.get('calls')) is int
-                and phase['calls'] == 0,
+        require(set(phase) == {'phase', 'execution_status', 'scientific_status', 'reason', 'model_loaded',
+                               'source_revision', 'calls', 'pid', 'parent_pid', 'case_sha256',
+                               'scope_sha256', 'manifest_sha256'}
+                and phase.get('reason') == 'tokenizer-alignment' and type(phase.get('calls')) is int
+                and phase['calls'] == 0 and all(not (root / name).exists()
+                                               for name in ('result.json', 'resources.jsonl', 'evidence')),
                 'pre-forward ineligibility record differs')
+        require_recorded_evidence_count(root, exit_record, has_evidence=False)
         return phase, exit_record, None
+    require('model_loaded' not in phase, 'model-load marker contradicts the completed phase')
     require(exact(phase.get('runtime'), manifest['runtime'])
             and phase.get('assets') == {name: item['sha256'] for name, item in asset_manifest['files'].items()},
             'phase runtime, assets, source or scope binding differs')
@@ -1176,6 +1199,7 @@ def validate_closed_phase(directory, phase_name, manifest, manifest_sha, asset_m
             and type(phase.get('cumulative_calls')) is int and 0 <= phase['cumulative_calls'] <= 1200,
             'phase call accounting differs')
     validate_resource_log(files['resources_sha256'], phase['calls'], phase.get('resource_summary'))
+    require_recorded_evidence_count(root, exit_record, has_evidence=True)
     return phase, exit_record, files
 
 
