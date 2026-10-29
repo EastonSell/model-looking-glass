@@ -15,6 +15,7 @@ from .pretrained_number_selection import CHECKPOINT_REVISION, PROTOCOL_SHA256
 
 
 _SCHEMA = "mlg-number-injection-request-plan-v1"
+_FAMILY_SCHEMA = "mlg-number-injection-family-request-plan-v2"
 _DOMAIN = b"MLG-number-injection-request-v1\0"
 _MAX_PLAN_BYTES = 128 * 1024
 _HEX32 = re.compile(r"[0-9a-f]{32}\Z")
@@ -31,35 +32,58 @@ def _input_digest(ids):
                           b"".join(value.to_bytes(4, "big") for value in ids)).hexdigest()
 
 
-def create_request_plan(public_entropy, source_commit):
-    """Derive a fixed 128-request plan from independently generated public bytes.
+def family_request_schedule():
+    """Run both targets' actions before either family-final clean check."""
+    result = []
+    for family in range(4):
+        first, second = 2 * family, 2 * family + 1
+        result.extend((case, role) for case in (first, second) for role in _ROLES[:-1])
+        result.extend(((first, "verify_clean"), (second, "verify_clean")))
+    return tuple(result)
 
-    The custodian must draw and publish these bytes before independently
-    drawing the private site nonce. A collision or failure is terminal, not a
-    reason to reroll, and this helper cannot prove that ordering.
-    """
+
+def _create(public_entropy, source_commit, family):
     if type(public_entropy) is not bytes or len(public_entropy) != 32:
         raise ValueError("public request entropy must be 32 immutable bytes")
     if type(source_commit) is not str or not _HEX40.fullmatch(source_commit):
         raise ValueError("source commit must be a full lowercase SHA-1")
     requests, identities = [], set()
-    for case_index in range(8):
+    schedule = family_request_schedule() if family else tuple((case, role) for case in range(8) for role in _ROLES)
+    for case_index, role in schedule:
         ids = PUBLIC_DISCOVERY[(case_index // 2) * 4 + case_index % 2][1]
-        for role in _ROLES:
-            ordinal = len(requests)
-            request_id = hashlib.sha256(_DOMAIN + public_entropy + ordinal.to_bytes(4, "big")).digest()[:16].hex()
-            if request_id in identities:
-                raise ValueError("request ID collision; attempt must stop")
-            identities.add(request_id)
-            requests.append({"case_index": case_index, "role": role, "request_id": request_id,
-                             "input_sha256": _input_digest(ids)})
-    record = {"schema": _SCHEMA, "protocol_sha256": PROTOCOL_SHA256,
+        # Keep the v1 case/role-derived identity even when execution order changes.
+        logical_ordinal = case_index * len(_ROLES) + _ROLES.index(role)
+        request_id = hashlib.sha256(_DOMAIN + public_entropy + logical_ordinal.to_bytes(4, "big")).digest()[:16].hex()
+        if request_id in identities:
+            raise ValueError("request ID collision; attempt must stop")
+        identities.add(request_id)
+        requests.append({"case_index": case_index, "role": role, "request_id": request_id,
+                         "input_sha256": _input_digest(ids)})
+    record = {"schema": _FAMILY_SCHEMA if family else _SCHEMA, "protocol_sha256": PROTOCOL_SHA256,
               "checkpoint_revision": CHECKPOINT_REVISION, "source_commit": source_commit,
               "public_entropy": public_entropy.hex(), "requests": requests}
     raw = _canonical(record)
     if len(raw) > _MAX_PLAN_BYTES:
         raise ValueError("request plan exceeds its byte cap")
     return raw
+
+
+def create_request_plan(public_entropy, source_commit):
+    """Create the original case-major v1 plan for reproducibility only.
+
+    Its first clean check precedes the paired family's actions, so it does
+    not satisfy the family-final study protocol and must not launch discovery.
+    """
+    return _create(public_entropy, source_commit, False)
+
+
+def create_family_request_plan(public_entropy, source_commit):
+    """Create the v2 family-final schedule from independent public entropy.
+
+    Publish these bytes before independently drawing the private site nonce.
+    Collisions/failures are terminal; this helper cannot prove chronology.
+    """
+    return _create(public_entropy, source_commit, True)
 
 
 @dataclass(frozen=True)
@@ -82,7 +106,10 @@ def load_request_plan(raw, *, expected_source_commit, expected_sha256):
                                                          "source_commit", "public_entropy", "requests"}
                 or type(record["public_entropy"]) is not str or not _HEX64.fullmatch(record["public_entropy"])):
             raise ValueError("request plan schema or public entropy is invalid")
-        expected = create_request_plan(bytes.fromhex(record["public_entropy"]), record["source_commit"])
+        if record["schema"] not in (_SCHEMA, _FAMILY_SCHEMA):
+            raise ValueError("request plan version is unsupported")
+        expected = _create(bytes.fromhex(record["public_entropy"]), record["source_commit"],
+                           record["schema"] == _FAMILY_SCHEMA)
     except (KeyError, TypeError, UnicodeError, RecursionError) as error:
         raise ValueError("request plan is malformed") from error
     actual_sha256 = hashlib.sha256(raw).hexdigest()
@@ -90,6 +117,14 @@ def load_request_plan(raw, *, expected_source_commit, expected_sha256):
             not hmac.compare_digest(actual_sha256, expected_sha256)):
         raise ValueError("request plan does not match its derivation, published source, or digest")
     return PublicRequestPlan(raw, actual_sha256, expected_source_commit)
+
+
+def load_family_request_plan(raw, *, expected_source_commit, expected_sha256):
+    """Require the v2 family-final schedule at the discovery boundary."""
+    plan = load_request_plan(raw, expected_source_commit=expected_source_commit, expected_sha256=expected_sha256)
+    if json.loads(plan.record_bytes)["schema"] != _FAMILY_SCHEMA:
+        raise ValueError("discovery requires the family-final v2 request plan")
+    return plan
 
 
 def verify_request(plan, case_index, role, request_id, input_sha256, *, expected_source_commit, expected_sha256):
@@ -105,8 +140,12 @@ def verify_request(plan, case_index, role, request_id, input_sha256, *, expected
             type(request_id) is not str or not _HEX32.fullmatch(request_id) or
             type(input_sha256) is not str or not _HEX64.fullmatch(input_sha256)):
         raise ValueError("observation request coordinates are invalid")
-    ordinal = case_index * len(_ROLES) + _ROLES.index(role)
-    expected = json.loads(checked.record_bytes)["requests"][ordinal]
+    record = json.loads(checked.record_bytes)
+    if record["schema"] == _FAMILY_SCHEMA:
+        ordinal = family_request_schedule().index((case_index, role))
+    else:
+        ordinal = case_index * len(_ROLES) + _ROLES.index(role)
+    expected = record["requests"][ordinal]
     if not hmac.compare_digest(expected["request_id"], request_id) or not hmac.compare_digest(expected["input_sha256"], input_sha256):
         raise ValueError("observation does not match its precommitted request")
     return True

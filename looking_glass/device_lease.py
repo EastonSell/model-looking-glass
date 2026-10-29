@@ -274,13 +274,17 @@ class DeviceLease:
                 return
             if self._invalid:
                 raise LeaseOwnershipError("device lease ownership is ambiguous; terminate the process")
+            # Revoke the Python ownership claim before any operation which can
+            # unlock or close the descriptor. An interruption after the OS
+            # unlock must never leave check() reporting the old lease as held.
+            self._invalid = True
             try:
                 _check_identity(self._fd, self.path)
                 _unlock(self._fd)
                 os.close(self._fd)
             except (OSError, LeaseError) as exc:
-                self._invalid = True
                 raise LeaseError("device lease release failed; ownership is ambiguous; terminate the process") from exc
             _open_fds.discard(self._fd)
             _active.pop(self._fd, None)
             self._released = True
+            self._invalid = False
