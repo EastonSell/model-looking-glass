@@ -1,0 +1,14 @@
+{
+  "command_redacted_for_local_paths": true,
+  "cuda_visible_devices": "-1",
+  "ended_utc": "2026-10-29T02:22:55.782612+00:00",
+  "exit_code": 0,
+  "launch_error": null,
+  "omp_num_threads": "1",
+  "original_supervisor_sha256": "8a1858b09cb6aa08b45b96fe6b6ce124a6f221ba6255b3bbaffb4f8c59e1d975",
+  "schema": "agreement-preflight-supervisor-public-v1",
+  "started_utc": "2026-10-29T02:22:35.967896+00:00",
+  "status": "completed",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256": "8aeb34e7e03f84dc39fefa1078c61191d57fd2064f0248c6f785f23a9fb17778"
+}
