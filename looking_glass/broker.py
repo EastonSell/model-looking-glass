@@ -6,12 +6,74 @@ process isolation, VRAM budgeting, batching, or concurrent CUDA execution API.
 
 from dataclasses import dataclass, replace
 from enum import Enum
-from threading import Condition, Event, Thread, current_thread
+from threading import Condition, Event, Lock, Thread, current_thread
 from time import perf_counter_ns
+from types import MappingProxyType
 from typing import Any, Optional
 from uuid import uuid4
 
+import torch
+
 from .fair_queue import FairTeamQueue, QueueFull
+from .resident_worker import ForwardRequest, ForwardResult, InvalidRequest
+
+
+# Register live owners before work starts. A quarantined owner remains strongly
+# referenced until process exit even when clients drop their Broker references.
+_owner_registry = set()
+_owner_registry_lock = Lock()
+_mapping_proxy_type = type(MappingProxyType({}))
+_input_names = frozenset(('input_ids', 'attention_mask', 'token_type_ids', 'position_ids'))
+
+
+def _validate_forward_snapshot(request):
+    """Enforce the shared forward-only boundary for requests and snapshots.
+
+    Worker-specific tensor bounds and defensive copying remain the worker's
+    responsibility. Trace-bearing request types need a separate custody API.
+    """
+    if type(request) is not ForwardRequest:
+        raise InvalidRequest('broker requires an exact ForwardRequest')
+    if type(request.request_id) is not str or not request.request_id or len(request.request_id) > 256:
+        raise InvalidRequest('request_id must be a nonempty string of at most 256 characters')
+    if type(request.seed) is not int or not 0 <= request.seed < 2**63:
+        raise InvalidRequest('seed must be an integer in [0, 2**63)')
+    if type(request.inputs) not in (dict, _mapping_proxy_type):
+        raise InvalidRequest('inputs must be a plain tensor dictionary')
+    if len(request.inputs) > len(_input_names):
+        raise InvalidRequest('too many input names')
+    if (any(type(name) is not str for name in request.inputs)
+            or 'input_ids' not in request.inputs or not set(request.inputs).issubset(_input_names)):
+        raise InvalidRequest('unsupported input names')
+    shape = None
+    total_bytes = 0
+    for name, tensor in request.inputs.items():
+        if (type(tensor) is not torch.Tensor or tensor.device.type != 'cpu'
+                or tensor.layout != torch.strided or tensor.ndim != 2):
+            raise InvalidRequest('inputs must be plain dense two-dimensional CPU tensors')
+        allowed = (torch.int32, torch.int64, torch.bool) if name == 'attention_mask' else (torch.int32, torch.int64)
+        if tensor.dtype not in allowed:
+            raise InvalidRequest('input tensor dtype is unsupported')
+        if shape is None:
+            shape = tuple(tensor.shape)
+        elif shape != tuple(tensor.shape):
+            raise InvalidRequest('input tensor shapes differ')
+        total_bytes += tensor.numel() * tensor.element_size()
+    if not (0 < shape[0] <= 256 and 0 < shape[1] <= 8192) or total_bytes > 64 * 1024 * 1024:
+        raise InvalidRequest('input shape or bytes exceed the broker ceiling')
+    return request
+
+
+def _validate_forward_result(result, worker_request_id):
+    """Accept only the forward result schema and its matching internal ID."""
+    if type(result) is not ForwardResult:
+        raise ValueError('broker requires an exact ForwardResult')
+    if type(result.request_id) is not str or result.request_id != worker_request_id:
+        raise ValueError('result identity mismatch')
+    if (type(result.logits) is not torch.Tensor or result.logits.device.type != 'cpu'
+            or result.logits.requires_grad or result.logits.is_inference()):
+        raise ValueError('logits must be a mutable detached plain CPU tensor')
+    return result
 
 
 class BrokerUnavailable(RuntimeError):
@@ -99,7 +161,7 @@ class RequestHandle:
         job = None
         broker = self._broker
         with broker._condition:
-            if broker._fatal_cleanup_failure and self._outcome is None:
+            if (broker._fatal_cleanup_failure or broker.quarantined) and self._outcome is None:
                 raise BrokerUnavailable('request status is unknown after broker cleanup failure')
             if self._state is RequestState.PENDING:
                 job = self._job  # Keep payload alive until after lock release.
@@ -128,7 +190,8 @@ class RequestHandle:
             raise ValueError('timeout must be nonnegative or None')
         with self._broker._condition:
             if not self._broker._condition.wait_for(
-                    lambda: self._outcome is not None or self._broker._fatal_cleanup_failure, timeout):
+                    lambda: self._outcome is not None or self._broker._fatal_cleanup_failure
+                    or self._broker.quarantined, timeout):
                 raise TimeoutError('request is still in flight')
             if self._outcome is None:
                 raise BrokerUnavailable('request status is unknown after broker cleanup failure')
@@ -139,7 +202,8 @@ class Broker:
     """Queue requests for exactly one trusted, preconstructed resident worker.
 
     The worker must supply snapshot_request, execute, poisoned, and close, as
-    implemented by ResidentWorker. Clients must not otherwise access its model.
+    implemented by ResidentWorker. Requests/snapshots and results use the exact
+    forward-only types. Clients must not otherwise access the worker's model.
     """
 
     def __init__(self, worker, *, max_pending, max_pending_per_team):
@@ -164,8 +228,30 @@ class Broker:
         self._unavailable = None
         self._fatal_cleanup_failure = False
         self._shutdown_error = None
+        self._quarantine_latched = False
+        self._startup_decided = False
+        # At most max_pending preparations and one execution can concurrently
+        # return unknown objects. Reserve one more slot for an owner exception
+        # whose traceback can retain another in-flight object.
+        self._quarantine_empty = object()
+        self._quarantine_objects = [self._quarantine_empty] * (max_pending + 2)
         self._thread = Thread(target=self._run, name='looking-glass-worker', daemon=True)
-        self._thread.start()
+        with _owner_registry_lock:
+            _owner_registry.add(self)
+        try:
+            self._thread.start()
+        except BaseException as exc:
+            # Thread.start can start the owner and then raise. The caller has no
+            # usable handle, so signal shutdown but retain the owner/worker and
+            # require process teardown instead of assuming startup did not run.
+            self._retain_unknown(exc)
+            with self._condition:
+                self._closed = True
+            raise BrokerUnavailable('owner startup outcome is unknown; terminate the owner process') from None
+        finally:
+            with self._condition:
+                self._startup_decided = True
+                self._condition.notify_all()
 
     @property
     def broker_id(self):
@@ -176,13 +262,47 @@ class Broker:
     def available(self):
         """Whether this broker can currently accept requests."""
         with self._condition:
-            return not self._closed and not self._unavailable and not self._worker.poisoned
+            return (not self._closed and not self._unavailable and not self.quarantined
+                    and not self._worker.poisoned)
 
     @property
     def failed(self):
         """Whether a broker failure occurred, distinct from orderly closure."""
         with self._condition:
-            return bool(self._unavailable or self._fatal_cleanup_failure)
+            return bool(self._unavailable or self._fatal_cleanup_failure or self.quarantined)
+
+    @property
+    def quarantined(self):
+        """Unknown worker-owned data requires terminating the owner process."""
+        return self._quarantine_latched
+
+    def _retain_unknown(self, value):
+        # Retain before signaling. A failed notification must not release the
+        # object; quarantine remains independently visible to admission/close.
+        with self._condition:
+            try:
+                try:
+                    self._store_quarantine_value_locked(value)
+                except BaseException:
+                    # Retry once while this frame still owns the value. The
+                    # identity check avoids consuming two slots if interruption
+                    # occurred just after the first assignment.
+                    self._store_quarantine_value_locked(value)
+                    raise
+            finally:
+                self._quarantine_latched = True
+                self._mark_cleanup_failed_locked()
+
+    def _store_quarantine_value_locked(self, value):
+        # No counter: interruption after assignment cannot let another
+        # preparation overwrite an already-retained object.
+        if any(existing is value for existing in self._quarantine_objects):
+            return
+        for index, existing in enumerate(self._quarantine_objects):
+            if existing is self._quarantine_empty:
+                self._quarantine_objects[index] = value
+                return
+        raise RuntimeError('quarantine retention slots exhausted')
 
     def submit(self, team_id, request):
         """Submit a supported request or raise QueueFull/BrokerUnavailable.
@@ -193,8 +313,10 @@ class Broker:
         submitted_ns = perf_counter_ns()
         if type(team_id) is not str or not team_id:
             raise ValueError('team_id must be a nonempty string')
+        _validate_forward_snapshot(request)
+        request_id = request.request_id
         with self._condition:
-            if self._closed or self._unavailable or self._worker.poisoned:
+            if self._closed or self._unavailable or self.quarantined or self._worker.poisoned:
                 raise BrokerUnavailable('broker is closed or worker is unavailable')
             if self._pending_slots >= self._max_pending:
                 raise QueueFull('global pending-job limit reached')
@@ -212,10 +334,21 @@ class Broker:
         # Preparation holds a bounded slot, but not the condition. A slow CPU
         # copy cannot prevent cancellation of a different running request.
         try:
-            snapshot = self._worker.snapshot_request(request)
-            request_id = snapshot.request_id
-            worker_request_id = f'lg-{self._identity_prefix}-{handle.job_id}'
-            snapshot = replace(snapshot, request_id=worker_request_id)
+            try:
+                snapshot = self._worker.snapshot_request(request)
+            except BaseException as exc:
+                if not isinstance(exc, Exception) or isinstance(exc, (MemoryError, torch.OutOfMemoryError)):
+                    self._retain_unknown(exc)
+                raise
+            try:
+                _validate_forward_snapshot(snapshot)
+                if snapshot.request_id != request_id:
+                    raise InvalidRequest('worker snapshot changed the caller request_id')
+                worker_request_id = f'lg-{self._identity_prefix}-{handle.job_id}'
+                snapshot = replace(snapshot, request_id=worker_request_id)
+            except BaseException:
+                self._retain_unknown(snapshot)
+                raise
         except BaseException:
             try:
                 poisoned = bool(self._worker.poisoned)
@@ -224,6 +357,11 @@ class Broker:
             removed = []
             with self._condition:
                 self._preparing -= 1
+                if self._fatal_cleanup_failure or self.quarantined:
+                    # Another thread already found accounting uncertain. Do not
+                    # release any reservation or drain the queue on that basis.
+                    self._condition.notify_all()
+                    raise BrokerUnavailable('snapshot status is unknown after broker cleanup failure') from None
                 try:
                     self._release_slot_locked(team_id)
                 except BaseException:
@@ -240,7 +378,7 @@ class Broker:
             raise
         with self._condition:
             try:
-                if self._closed or self._unavailable or self._worker.poisoned:
+                if self._closed or self._unavailable or self.quarantined or self._worker.poisoned:
                     raise BrokerUnavailable('broker closed while preparing request')
                 handle._request_id = request_id
                 handle._worker_request_id = worker_request_id
@@ -255,7 +393,7 @@ class Broker:
                     self._mark_cleanup_failed_locked()
                     raise BrokerUnavailable('queue publication failed; accounting is unknown') from None
             except BaseException:
-                if not self._fatal_cleanup_failure:
+                if not self._fatal_cleanup_failure and not self.quarantined:
                     try:
                         self._release_slot_locked(team_id)
                     except BaseException:
@@ -281,6 +419,7 @@ class Broker:
 
     def _mark_cleanup_failed_locked(self):
         # Do not discard pending requests or decrement unverified reservations.
+        self._quarantine_latched = True
         self._fatal_cleanup_failure = True
         self._unavailable = 'broker cleanup failed; request status is unknown'
         self._condition.notify_all()
@@ -299,8 +438,13 @@ class Broker:
     def _run(self):
         removed = []
         try:
+            # Do not close/unregister before the constructor knows whether
+            # Thread.start returned, including a start-then-raise interruption.
+            with self._condition:
+                self._condition.wait_for(lambda: self._startup_decided)
             self._serve()
         except BaseException as exc:
+            self._retain_unknown(exc)
             failure = _describe_exception(exc)
             with self._condition:
                 self._unavailable = 'worker owner failed unexpectedly'
@@ -310,7 +454,8 @@ class Broker:
                                             error_type=failure[0], error_message=failure[1])
                         self._running._job = None
                     self._running = None
-                    removed = self._fail_pending_locked()
+                    if not self._fatal_cleanup_failure and not self.quarantined:
+                        removed = self._fail_pending_locked()
                 except BaseException:
                     self._mark_cleanup_failed_locked()
                 finally:
@@ -325,18 +470,25 @@ class Broker:
             with self._condition:
                 self._condition.wait_for(lambda: self._preparing == 0)
             del removed
-            try:
-                self._worker.close()
-            except BaseException as exc:
-                with self._condition:
-                    self._shutdown_error = _describe_exception(exc)
-                    self._condition.notify_all()
+            if not self.quarantined:
+                try:
+                    self._worker.close()
+                except BaseException as exc:
+                    self._retain_unknown(exc)
+                    with self._condition:
+                        self._shutdown_error = _describe_exception(exc)
+                        self._condition.notify_all()
+                finally:
+                    if not self.quarantined:
+                        with _owner_registry_lock:
+                            _owner_registry.discard(self)
 
     def _serve(self):
         while True:
             with self._condition:
-                self._condition.wait_for(lambda: len(self._queue) or self._closed or self._unavailable)
-                if self._closed or self._unavailable:
+                self._condition.wait_for(lambda: len(self._queue) or self._closed or self._unavailable
+                                         or self.quarantined)
+                if self._closed or self._unavailable or self.quarantined:
                     return
                 item = self._queue.pop()
                 job = item.payload
@@ -354,15 +506,17 @@ class Broker:
             try:
                 result = self._worker.execute(job.request, handle._cancel)
             except BaseException as exc:
+                if not isinstance(exc, Exception) or isinstance(exc, (MemoryError, torch.OutOfMemoryError)):
+                    self._retain_unknown(exc)
                 failure = _describe_exception(exc)
                 cancellation = isinstance(exc, self._cancellation_exception)
                 fatal = not isinstance(exc, Exception)
             else:
                 try:
-                    if type(result.request_id) is not str or result.request_id != handle._worker_request_id:
-                        raise ValueError('result identity mismatch')
+                    _validate_forward_result(result, handle._worker_request_id)
                     result = replace(result, request_id=handle.request_id)
                 except BaseException:
+                    self._retain_unknown(result)
                     failure = ('InvalidWorkerResult', 'worker returned an invalid request identity or result')
                     fatal = True
                     result = None
@@ -381,7 +535,7 @@ class Broker:
                 else:
                     self._finish_locked(handle, RequestState.SUCCEEDED, result=result)
                 self._running = None
-                if poisoned or fatal:
+                if (poisoned or fatal) and not self._fatal_cleanup_failure and not self.quarantined:
                     self._unavailable = 'worker failed and cannot be reused'
                     removed = self._fail_pending_locked()
             # Do not retain finished inputs, exceptions, or results in the owner
@@ -413,7 +567,7 @@ class Broker:
         with self._condition:
             self._closed = True
             try:
-                while len(self._queue) and not self._fatal_cleanup_failure:
+                while len(self._queue) and not self._fatal_cleanup_failure and not self.quarantined:
                     item = self._queue.pop()
                     removed.append(item)
                     handle = item.payload.handle
@@ -433,7 +587,7 @@ class Broker:
         if wait:
             self._thread.join(timeout)
         stopped = not self._thread.is_alive()
-        if self._fatal_cleanup_failure:
+        if self._fatal_cleanup_failure or self.quarantined:
             raise BrokerShutdownError('broker cleanup failed; request status and accounting are unknown')
         if stopped and self._shutdown_error is not None:
             raise BrokerShutdownError(f'worker close failed: {self._shutdown_error[0]}: {self._shutdown_error[1]}')

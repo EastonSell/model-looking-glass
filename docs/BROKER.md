@@ -9,10 +9,35 @@ provided by this module alone.
 
 `Broker(worker, max_pending=..., max_pending_per_team=...)` accepts a trusted
 worker implementing `snapshot_request`, `execute`, `poisoned`, `close`, and
-the exact `cancellation_exception` type. Snapshots and results must be
-dataclasses with a replaceable string `request_id`. The resident worker
-supports bounded named CPU token tensors for forward inference; arbitrary
-code, hooks, interventions, and tracing are not supported by this contract.
+the exact `cancellation_exception` type. Submissions and worker snapshots
+must have the exact `ForwardRequest` type; worker results must have the exact
+`ForwardResult` type and contain a detached, mutable plain CPU tensor for logits
+(inference-mode tensors are rejected because they cannot be mutated normally).
+Subclasses and trace-bearing wrappers are rejected. The resident worker
+validates and copies bounded named CPU token tensors for forward inference;
+arbitrary code, hooks, interventions, and tracing are not supported by this
+contract. These checks prevent accidental use of an unsupported trace schema;
+they do not sandbox trusted workers or prove tensor provenance. A trace-aware
+path requires explicit ownership transfer, disposal, and delivery accounting.
+Worker snapshots use only supported names, equal two-dimensional integer CPU
+tensors, and a valid seed. The broker enforces absolute ceilings of 256 batch
+rows, 8192 tokens per row, and 64 MiB across inputs; the worker must enforce its
+own tighter model and workload bounds. If a worker returns any snapshot or
+result that fails validation, its custody is unknown. The broker latches
+`quarantined`, retains the object and worker, stops processing pending work,
+and does not close the worker. A supervised owner must exit promptly with its
+device lease and unsafe marker retained; starting another broker in the same
+process is not recovery. Retention is best effort under catastrophic host-memory
+failure and does not establish the fate of aliases outside this process. A
+trusted producer remains responsible for retaining its own resources until it
+has completed its forward-only handoff; the broker cannot make an arbitrary
+Python return/assignment boundary atomic. A failed owner-thread start or worker
+close also requires quarantine because its teardown state is unknown. For an
+ordinary worker execution or snapshot exception, the trusted worker must prove
+device completion and dispose its own resources before raising, or signal
+quarantine itself. The broker does not infer those guarantees from the exception.
+Raw host or PyTorch out-of-memory exceptions and process interruptions are
+treated as uncertain and quarantined.
 The caller must keep input data stable while it is being snapshotted. The
 worker and model must not also be accessed directly by other code. This is
 an in-process coordination mechanism for trusted clients, not a security or
@@ -44,9 +69,11 @@ with Broker(worker, max_pending=8, max_pending_per_team=2) as broker:
 - `submit(team_id, request)` first reserves a slot, snapshots and validates the
   request, and then returns a handle. It raises `QueueFull` synchronously when
   the global or per-team pending capacity is full and `BrokerUnavailable`
-  when shutdown or worker failure prevents admission. Validation and snapshot
-  failures also propagate synchronously and release their reservation. A
-  failed submission produces no handle or terminal outcome.
+  when shutdown or worker failure prevents admission. Invalid caller requests
+  and ordinary worker snapshot exceptions propagate synchronously and release
+  their reservation when accounting is known. A rejected worker-produced
+  snapshot instead quarantines the owner and retains its reservation. A failed
+  submission produces no handle or terminal outcome.
 - `max_pending` and `max_pending_per_team` count preparation plus queued jobs;
   one additional job may be executing. Snapshot preparation can overlap other
   preparations and execution, but it is bounded by these slot counts. Slow
@@ -83,11 +110,15 @@ otherwise successful result is discarded. CUDA kernels cannot be preempted by
 this flag. If execution instead fails, the failure is reported; a poisoned
 worker's exception is not mislabeled as cancellation.
 
-The broker stores error type and message rather than an exception traceback.
-On a poisoned worker or an unexpected owner failure it fails pending jobs and
-rejects new ones. It does not automatically retry, lower precision, drop
+Terminal outcomes contain error type and message rather than an exception
+traceback. Quarantined exceptions and their tracebacks are retained privately
+until process exit because their frames may own unresolved resources; they can
+also contain sensitive input references.
+On a poisoned worker it fails pending jobs when cleanup is known. An
+unexpected owner failure quarantines the broker and pending status may be
+unknown. It rejects new work and does not automatically retry, lower precision, drop
 measurements, or substitute a smaller workload. A result with a wrong internal
-identity is discarded and makes the broker unavailable. An outcome notification
+identity quarantines the owner and is retained. An outcome notification
 can precede release of the owner thread's last local references, so it is not a
 guarantee of immediate memory reclamation.
 `broker.failed` remains true after a broker failure and differs from an
@@ -96,18 +127,22 @@ ordinary close; a service should check it when reporting its workload status.
 If persistent host-memory exhaustion prevents queue cleanup or publication of
 a terminal outcome, `wait()` and `cancel()` can instead raise
 `BrokerUnavailable`: the request's status is unknown, not a completed failure.
-The broker rejects further work, retains unresolved accounting and request
-references where possible, and reports `BrokerShutdownError` rather than
+The broker latches quarantine, rejects further work, retains unresolved
+accounting, worker and request references where possible, and reports `BrokerShutdownError` rather than
 claiming a clean shutdown. Catastrophic exhaustion can also prevent even this
 best-effort notification; a supervising process must treat an unresponsive
-owner as incomplete and preserve its resource quarantine.
+owner as incomplete and preserve its resource quarantine. Once uncertainty is
+latched, later worker poison or snapshot/owner failure does not drain pending
+work or release unverified pending reservations.
 
 `close(wait=True, timeout=None)` stops admission, cancels queued work, requests
 cancellation of a running call, and waits for the owner to stop. It returns
 false when it has not stopped by the timeout; another call can wait again.
 `close(wait=False)` does not wait. The owner closes the worker only after any
-running call and all preparations finish. Worker-close errors are surfaced as
-`BrokerShutdownError`. The context manager waits without a timeout on exit.
+running call and all preparations finish, unless quarantined. Worker-close
+errors retain the exception and worker, quarantine the owner, and surface as
+`BrokerShutdownError`; any resources a faulty close already released cannot be
+recovered. The context manager waits without a timeout on exit.
 
 ## Timing and memory boundaries
 
