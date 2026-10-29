@@ -1,0 +1,4 @@
+# Preserve the exact bytes referenced by the development evidence inventories.
+*.json -text
+*.ps1 -text
+*.gz -text
