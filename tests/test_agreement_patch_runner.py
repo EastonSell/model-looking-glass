@@ -351,6 +351,75 @@ class AgreementRunnerTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 ModelLease(self.model).acquire()
 
+    def test_attention_scaling_drift_during_forward_quarantines_model(self):
+        from transformers import GPT2Config, GPT2LMHeadModel
+        config = GPT2Config(vocab_size=600, n_positions=16, n_embd=8, n_layer=6,
+                            n_head=2, use_cache=False)
+        config._attn_implementation = 'eager'
+        with torch.random.fork_rng(devices=[]):
+            torch.random.default_generator.manual_seed(123)
+            model = GPT2LMHeadModel(config).eval()
+        original = model.forward
+        def mutate_after_forward(*args, **kwargs):
+            result = original(*args, **kwargs)
+            model.transformer.h[1].attn.scale_attn_weights = False
+            return result
+        model.forward = mutate_after_forward
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'attempt'
+            journal = AgreementJournal(path, {'protocol': 'synthetic-random-gpt2'})
+            runner = NaturalAgreementRunner(model, journal, expected_quartets=1)
+            with self.assertRaisesRegex(StudyFailure, 'execution contract changed'):
+                runner.run(cases())
+            self.assertTrue(runner.quarantined)
+            self.assertEqual(json.loads((path / 'terminal.json').read_text())['status'], 'failed')
+            with self.assertRaises(RuntimeError):
+                ModelLease(model).acquire()
+
+    def test_numeric_runtime_drift_during_forward_quarantines_model(self):
+        before = torch.are_deterministic_algorithms_enabled()
+        warning = torch.is_deterministic_algorithms_warn_only_enabled()
+        original = self.model.forward
+        def mutate_after_forward(*args, **kwargs):
+            result = original(*args, **kwargs)
+            torch.use_deterministic_algorithms(not before)
+            return result
+        self.model.forward = mutate_after_forward
+        try:
+            with tempfile.TemporaryDirectory() as temporary:
+                journal = AgreementJournal(Path(temporary) / 'attempt', {'protocol': 'synthetic'})
+                runner = NaturalAgreementRunner(self.model, journal, expected_quartets=1)
+                with self.assertRaisesRegex(StudyFailure, 'execution contract changed'):
+                    runner.run(cases())
+                self.assertTrue(runner.quarantined)
+                with self.assertRaises(RuntimeError):
+                    ModelLease(self.model).acquire()
+        finally:
+            torch.use_deterministic_algorithms(before, warn_only=warning)
+
+    def test_global_runtime_snapshot_detects_threads_precision_and_denormals(self):
+        from looking_glass.agreement_patch_runner import _global_runtime_configuration
+        before = dict(_global_runtime_configuration())
+        precision = torch.get_float32_matmul_precision()
+        threads = torch.get_num_threads()
+        try:
+            torch.set_num_threads(threads + 1)
+            self.assertNotEqual(dict(_global_runtime_configuration())['cpu_threads'], before['cpu_threads'])
+            torch.set_float32_matmul_precision('medium' if precision != 'medium' else 'highest')
+            self.assertNotEqual(dict(_global_runtime_configuration())['float32_matmul_precision'],
+                                before['float32_matmul_precision'])
+        finally:
+            torch.set_float32_matmul_precision(precision)
+            torch.set_num_threads(threads)
+        ftz_before = before['calling_thread_denormal_product_bits'] == 0
+        if not torch.set_flush_denormal(not ftz_before):
+            self.skipTest('denormal mode switching is unavailable on this host')
+        try:
+            self.assertNotEqual(dict(_global_runtime_configuration())['calling_thread_denormal_product_bits'],
+                                before['calling_thread_denormal_product_bits'])
+        finally:
+            torch.set_flush_denormal(ftz_before)
+
     def test_eval_mode_is_checked_after_lease_acquisition(self):
         with tempfile.TemporaryDirectory() as temporary:
             journal = AgreementJournal(Path(temporary) / 'attempt', {'protocol': 'synthetic'})

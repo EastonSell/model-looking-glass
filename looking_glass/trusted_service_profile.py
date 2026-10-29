@@ -31,9 +31,11 @@ FORWARD_CASE_SHA256 = canonical_fingerprint(FORWARD_CASE)
 LOAD_COMMITMENT = 2 * 1024 ** 3
 JOB_COMMITMENT = 512 * 1024 ** 2
 _FIXED_ENV = {'CUDA_DEVICE_ORDER': 'PCI_BUS_ID', 'PYTORCH_CUDA_ALLOC_CONF': 'backend:native',
-              'CUBLAS_WORKSPACE_CONFIG': ':4096:8', 'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1'}
+              'CUBLAS_WORKSPACE_CONFIG': ':4096:8', 'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1',
+              'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1', 'HF_HUB_DISABLE_TELEMETRY': '1'}
 _ABSENT_ENV = ('PYTORCH_ALLOC_CONF', 'PYTORCH_NO_CUDA_MEMORY_CACHING', 'CUDA_LAUNCH_BLOCKING')
-_ENV_PREFIXES = ('CUDA_', 'PYTORCH_', 'TORCH_', 'CUBLAS_', 'OMP_', 'MKL_', 'OPENBLAS_')
+_ENV_PREFIXES = ('CUDA_', 'PYTORCH_', 'TORCH_', 'CUBLAS_', 'OMP_', 'MKL_', 'OPENBLAS_',
+                 'HF_', 'HUGGINGFACE_', 'TRANSFORMERS_')
 
 
 @dataclass(frozen=True)
@@ -141,15 +143,29 @@ def verify_trusted_device_tie(model, identity, owner_session, device_lease):
     return True
 
 
-def _checked_environment(device_uuid):
-    required = {'CUDA_VISIBLE_DEVICES': device_uuid, **_FIXED_ENV}
+def _checked_environment(device_uuid, cache_root):
+    hf_home = os.environ.get('HF_HOME')
+    if type(hf_home) is not str or not hf_home or type(cache_root) is not str or not cache_root:
+        raise ValueError('HF_HOME and the selected cache must be explicit canonical paths')
+    try:
+        home, cache = Path(hf_home), Path(cache_root)
+        if not home.is_absolute() or not cache.is_absolute():
+            raise ValueError('HF_HOME and the selected cache must be absolute')
+        resolved_home, resolved_cache = home.resolve(strict=True), cache.resolve(strict=True)
+        if (str(resolved_home) != hf_home or str(resolved_cache) != cache_root
+                or not resolved_home.is_dir() or not resolved_cache.is_dir()
+                or resolved_cache == resolved_home or not resolved_cache.is_relative_to(resolved_home)):
+            raise ValueError('HF_HOME must canonically contain the selected cache')
+    except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        raise ValueError('HF_HOME must canonically contain the selected cache') from exc
+    required = {'CUDA_VISIBLE_DEVICES': device_uuid, 'HF_HOME': str(resolved_home), **_FIXED_ENV}
     for key, value in required.items():
         if os.environ.get(key) != value:
             raise ValueError(f'required runtime environment changed: {key}')
     for key in os.environ:
         upper = key.upper()
         if upper.startswith(_ENV_PREFIXES) and (key != upper or upper not in required):
-            raise ValueError('unreviewed CUDA or numerical environment setting')
+            raise ValueError('unreviewed CUDA, numerical or model-cache environment setting')
     if any(name in os.environ for name in _ABSENT_ENV):
         raise ValueError('incompatible runtime environment is present')
     return {**required, **{name: None for name in _ABSENT_ENV}}
@@ -167,6 +183,27 @@ def _load_transformers():
     return importlib.import_module('transformers')
 
 
+def _effective_hf_settings(hf_home):
+    """Inspect settings cached by the imported Hub and Transformers modules."""
+    hub = importlib.import_module('huggingface_hub.constants')
+    transformers_hub = importlib.import_module('transformers.utils.hub')
+    cache = str(Path(hf_home) / 'hub')
+    modules = str(Path(hf_home) / 'modules')
+    fields = ((hub, 'HF_HOME', hf_home), (hub, 'HF_HUB_CACHE', cache),
+              (transformers_hub, 'TRANSFORMERS_CACHE', cache),
+              (transformers_hub, 'HF_MODULES_CACHE', modules))
+    if any(type(getattr(obj, name, None)) is not str or getattr(obj, name) != value
+           for obj, name, value in fields):
+        raise ValueError('effective Hugging Face cache settings differ')
+    if (getattr(hub, 'HF_HUB_OFFLINE', None) is not True
+            or getattr(hub, 'HF_HUB_DISABLE_TELEMETRY', None) is not True
+            or getattr(transformers_hub, '_is_offline_mode', None) is not True):
+        raise ValueError('effective Hugging Face offline settings differ')
+    return {'hf_home': hf_home, 'hf_hub_cache': cache, 'transformers_cache': cache,
+            'hf_modules_cache': modules, 'hub_offline': True,
+            'transformers_offline': True, 'telemetry_disabled': True}
+
+
 def _resolved_import_paths(entries, cwd):
     root = Path(cwd)
     if not root.is_absolute() or any(type(value) is not str or '\x00' in value for value in entries):
@@ -180,7 +217,7 @@ def build_trusted_service_identity(preflight, identity, owner_session, device_le
     _guard_owner(identity, owner_session, device_lease)
     if type(preflight) is not TrustedServiceSource:
         raise TypeError('a service-owned trusted source preflight is required')
-    environment = _checked_environment(identity.gpu_uuid)
+    environment = _checked_environment(identity.gpu_uuid, preflight.cache_root)
     current = prepare_trusted_source(preflight.repo_root, preflight.cache_root)
     if current != preflight:
         raise ValueError('source or offline assets changed after preflight')
@@ -193,6 +230,7 @@ def build_trusted_service_identity(preflight, identity, owner_session, device_le
     runtime = _measure_runtime(torch, identity, owner_session, device_lease)
     _guard_owner(identity, owner_session, device_lease)
     transformers = _load_transformers()
+    effective_hf_settings = _effective_hf_settings(environment['HF_HOME'])
     dependencies = [_module_origin(torch, 'torch'), _module_origin(transformers, 'transformers')]
     source = {'schema': 'trusted-service-source-v1', 'base': json.loads(preflight.source_base),
               'dependency_origins': dependencies}
@@ -200,6 +238,7 @@ def build_trusted_service_identity(preflight, identity, owner_session, device_le
     runtime.update({'schema': 'trusted-service-runtime-v1', 'python_version': sys.version.split()[0],
                     'transformers_version': str(transformers.__version__),
                     'environment': environment,
+                    'effective_huggingface_settings': effective_hf_settings,
                     'python_import_paths': _resolved_import_paths(sys.path, Path.cwd().resolve()),
                     'overwrite_module_params_on_conversion': False,
                     'swap_module_params_on_conversion': False})
