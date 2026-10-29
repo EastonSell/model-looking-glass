@@ -1,0 +1,2 @@
+# This replay embeds and reports the exact analysis source SHA-256.
+bert_negation_distribution_posthoc.py -text

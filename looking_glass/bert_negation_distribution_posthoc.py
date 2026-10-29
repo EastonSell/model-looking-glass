@@ -497,9 +497,9 @@ def _same_nested(actual, expected):
         return set(actual) == set(expected) and all(_same_nested(actual[k], expected[k]) for k in actual)
     if type(actual) is list and type(expected) is list:
         return len(actual) == len(expected) and all(_same_nested(a, b) for a, b in zip(actual, expected))
-    if type(actual) in (float, int) and type(expected) in (float, int):
+    if type(actual) is float and type(expected) is float:
         return math.isfinite(actual) and math.isfinite(expected) and math.isclose(actual, expected,
-                                                                                   rel_tol=1e-12, abs_tol=1e-12)
+                                                                                   rel_tol=1e-12, abs_tol=0.0)
     return type(actual) is type(expected) and actual == expected
 
 

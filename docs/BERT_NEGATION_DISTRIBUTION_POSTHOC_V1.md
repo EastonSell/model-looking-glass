@@ -79,6 +79,8 @@ The public subset makes the full-vocabulary calculations replayable; its linkage
 to the unshared complete journal is a reported, independently checked
 relationship, not an execution attestation.
 
+The following examples use POSIX shell line continuations.
+
 ```text
 python -m looking_glass.bert_negation_distribution_posthoc journal \
   --events <original-events.jsonl.gz> \
@@ -111,3 +113,5 @@ Python-traced heap through report construction, excluding serialization,
 native allocations and interpreter baseline, and makes the replay slower.
 The reader checks for binary64 subnormal flushing before and after analysis;
 ordinary softmax underflow below the binary64 range is still permitted.
+Subset replay compares floating-point metrics with a relative tolerance of
+`1e-12` and no absolute tolerance; exact zero and nonzero cannot match.

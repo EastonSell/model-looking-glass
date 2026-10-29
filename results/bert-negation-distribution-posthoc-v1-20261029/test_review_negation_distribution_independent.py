@@ -52,6 +52,15 @@ class IndependentArithmetic(unittest.TestCase):
         with self.assertRaises(ValueError):
             review.same({'x': -.1}, {'x': .1}, 'test')
 
+    def test_small_nonzero_values_and_integer_types(self):
+        with self.assertRaises(ValueError):
+            review.same({'probability': 1e-100}, {'probability': 1e-16}, 'test')
+        with self.assertRaises(ValueError):
+            review.same({'probability': 5e-324}, {'probability': 1e-323}, 'test')
+        with self.assertRaises(ValueError):
+            review.same({'count': 1}, {'count': 1.0}, 'test')
+        review.same({'probability': 1e-100}, {'probability': 1e-100 * (1 + 1e-13)}, 'test')
+
 
 if __name__ == '__main__':
     unittest.main()

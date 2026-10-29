@@ -45,6 +45,12 @@ _require_binary64_subnormals()
                                                vocabulary=('any', 'some', 'other'))
         self.assertEqual(result['total_variation'], 0.0)
 
+    def test_report_comparison_does_not_hide_small_nonzero_errors(self):
+        self.assertFalse(subject._same_nested(1e-100, 1e-16))
+        self.assertFalse(subject._same_nested(0.0, 1e-15))
+        self.assertFalse(subject._same_nested(1, 1.0))
+        self.assertTrue(subject._same_nested(1.0, 1.0 + 5e-13))
+
     def test_conditional_other_tv_ignores_uniform_rescaling(self):
         clean = [math.log(x) for x in (0.4, 0.3, 0.2, 0.1)]
         changed = [math.log(x) for x in (0.2, 0.15, 0.43333333333333335, 0.21666666666666667)]

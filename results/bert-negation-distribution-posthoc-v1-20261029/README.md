@@ -70,7 +70,7 @@ frames and doses; its design and results must be reported separately.
 ## Data and verification
 
 `analysis.json` is the full per-case, per-site report and index (SHA-256
-`d5bd1451890fbf8f1a73e8f474e6060aa62c5665f6fd2f69a54d246dae76459b`).
+`dec7f4871b41b115f8e3e3d65d395b1875e25d56c29a55add8e58e3ca391704c`).
 The six binary parts in `parts.json` reconstruct a lossless gzip of the
 selected little-endian float32 mask-logit vectors. It has 288 logical event
 references and 224 case-local physically stored vectors, 24,470,665 compressed
@@ -89,7 +89,7 @@ attest execution. The separate original full-witness audit covers the saved
 activation/landing checks; this analysis does not repeat them.
 
 The analysis source is `looking_glass/bert_negation_distribution_posthoc.py`
-(SHA-256 `28cc76a0c5b83f47b988b361f43d296c2f808862f390d57be001ff2bfc59e069`).
+(SHA-256 `c510defe6da8b6a733c227f4dc90039f1864833a5b535dc46f0fd5540d575493`).
 The public manifest SHA-256 is `4308e7977e36eb731948193cce27ffa399421bf1bd8bbdd4e42dfa7cc6f4a8ff`,
 the original compact result SHA-256 is `20bcd1777e343a268e73042e664bfeb0603a01791ae0b16d908f5d5ea6d08f9b`,
 and the pinned `distilbert-base-uncased` vocabulary SHA-256 is
@@ -103,12 +103,7 @@ From the repository root, rebuild and replay the public subset:
 
 ```text
 python results/bert-negation-distribution-posthoc-v1-20261029/rebuild_subset.py --output <new-subset.f32.gz>
-python -m looking_glass.bert_negation_distribution_posthoc subset \
-  --subset <new-subset.f32.gz> \
-  --index results/bert-negation-distribution-posthoc-v1-20261029/analysis.json \
-  --manifest experiments/bert_negation_public_cases_v1.json \
-  --result results/bert-negation-cue-cpu-v1-20261029/result.json \
-  --vocab <pinned-vocab.txt>
+python -m looking_glass.bert_negation_distribution_posthoc subset --subset <new-subset.f32.gz> --index results/bert-negation-distribution-posthoc-v1-20261029/analysis.json --manifest experiments/bert_negation_public_cases_v1.json --result results/bert-negation-cue-cpu-v1-20261029/result.json --vocab <pinned-vocab.txt>
 ```
 
 The rebuild command checks each part and the closed output digest and refuses

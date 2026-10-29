@@ -122,12 +122,14 @@ def same(actual, expected, label):
         check(len(actual) == len(expected), label + ' length')
         for a, b in zip(actual, expected):
             same(a, b, label)
-    elif type(actual) in (int, float) and type(expected) in (int, float):
+    elif type(actual) is int and type(expected) is int:
+        check(actual == expected, label + ' integer')
+    elif type(actual) is float and type(expected) is float:
         check(math.isfinite(actual) and math.isfinite(expected), label + ' finite')
         if actual == 0 or expected == 0:
             check(actual == expected, label + ' zero')
         else:
-            check(math.isclose(actual, expected, rel_tol=2e-12, abs_tol=1e-15), label + ' numeric')
+            check(math.isclose(actual, expected, rel_tol=2e-12, abs_tol=0.0), label + ' numeric')
     else:
         check(type(actual) is type(expected) and actual == expected, label + ' value/type')
 
