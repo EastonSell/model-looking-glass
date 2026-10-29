@@ -1,0 +1,84 @@
+{
+  "archive_bytes": 108205215,
+  "archive_sha256": "dba1da139648d8dd841bd9cc8cca41f8bfe64a2bdb73939e1f76857e97bcc352",
+  "claim_projection": {
+    "original_claim_bytes": 256,
+    "original_claim_sha256": "d57f651aa93247b387d085f01e1398aaad0c51101d549ec1042a21246c697601",
+    "prelaunch_sha256": "c367112faf54cf8321b15059fbc8bb65460f3f83c0b52c7e9eb58a81dad49e33",
+    "schema": "agreement-direction-public-claim-projection-v1",
+    "scope": "The original claim contains a local output path and is retained locally; this projection omits that path."
+  },
+  "journal_sha256": "7c8be25d480d986b087052685720ba7d2813c53d27509dcc81e67f9e2049eca6",
+  "parts": [
+    {
+      "bytes": 8388608,
+      "path": "evidence.tar.gz.part-000",
+      "sha256": "16983738ea11e17cee1940172577c2146f15d7ace7a2f921668ada34d22ac85a"
+    },
+    {
+      "bytes": 8388608,
+      "path": "evidence.tar.gz.part-001",
+      "sha256": "0a1899490e69f18afc9c06ca7ed81d00e61913b020bfbb1d898ded3b6291bd90"
+    },
+    {
+      "bytes": 8388608,
+      "path": "evidence.tar.gz.part-002",
+      "sha256": "eb3dfc83e2d2c018a3f0adc1dff57d6fd24e6c770d4f518058d0ffd9e448480e"
+    },
+    {
+      "bytes": 8388608,
+      "path": "evidence.tar.gz.part-003",
+      "sha256": "74e17fcf7bc34e4ac9af3ed6413c13be5177261a696e9ede36a95ce653997984"
+    },
+    {
+      "bytes": 8388608,
+      "path": "evidence.tar.gz.part-004",
+      "sha256": "2b8bfefa3d8d5ddd189403e67ea86b2a25173e9d8514e69bbaf5a2f5a34fc5cf"
+    },
+    {
+      "bytes": 8388608,
+      "path": "evidence.tar.gz.part-005",
+      "sha256": "53cf6f2f874fb9639c5b24ee18274810707fb8a90748e0e59337fd3d7e3c7d80"
+    },
+    {
+      "bytes": 8388608,
+      "path": "evidence.tar.gz.part-006",
+      "sha256": "2504372b266c4e303bbd0a9ee5bc6de9076cc78570314979748025b458b98d57"
+    },
+    {
+      "bytes": 8388608,
+      "path": "evidence.tar.gz.part-007",
+      "sha256": "5faa93e2f16f81f6a98bf3dc75ba6c98978518df5341c59c30331f36d3142ee9"
+    },
+    {
+      "bytes": 8388608,
+      "path": "evidence.tar.gz.part-008",
+      "sha256": "19628a0584307a5411d69a9fd4732a6068d7ecb4f85f2e34adcfaf227975c0ec"
+    },
+    {
+      "bytes": 8388608,
+      "path": "evidence.tar.gz.part-009",
+      "sha256": "1503e6b3302fdb382d45332f4cf9af95d2ac0766a82df0947cb86e747b521a6f"
+    },
+    {
+      "bytes": 8388608,
+      "path": "evidence.tar.gz.part-010",
+      "sha256": "5d5fb7d25e3569584dd6dd49da324897541283aefb119da01989782ca02fe310"
+    },
+    {
+      "bytes": 8388608,
+      "path": "evidence.tar.gz.part-011",
+      "sha256": "86e99551ba56b07508ef66852335b9dc3ad3585fa7e0f7eb24f633e68f792396"
+    },
+    {
+      "bytes": 7541919,
+      "path": "evidence.tar.gz.part-012",
+      "sha256": "3a02a3ee5e2f6e059b75e6a7f9a770048ff27856baa902318c530f2c2f68c090"
+    }
+  ],
+  "prelaunch_sha256": "c367112faf54cf8321b15059fbc8bb65460f3f83c0b52c7e9eb58a81dad49e33",
+  "run_file_count": 1883,
+  "schema": "agreement-direction-evidence-archive-v1",
+  "scope": "Archive of saved evidence; receipt and custody observations do not authenticate execution.",
+  "supervisor_sha256": "7e5fcae4b415afdf06b3221e67692707e43449ee20e236d8ec580d9c57f843af"
+}

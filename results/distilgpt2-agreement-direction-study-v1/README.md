@@ -3,8 +3,8 @@
 This record fixes the 40 public evaluation inputs and a single 784-forward
 CPU attempt described by the published protocol. The exposed discovery was
 used to select both site and direction; the prospective inputs are public and
-the outcome is an exploratory comparison, not a blind confirmation. At this
-publication point no direction-study model forward has been run.
+the outcome is an exploratory comparison, not a blind confirmation. At the
+original prelaunch publication, no direction-study model forward had been run.
 
 `prelaunch.json` binds the exact public owner source, checkpoint, cases,
 direction artifacts, environment, operator observations and the reviewed
@@ -40,3 +40,5 @@ interruption, identity matching, source and sourceless import shadows, and
 tracked-source blob verification. The actual public owner and supervisor also
 passed a gated, zero-forward validation rehearsal. That rehearsal is not a
 study result.
+
+[Completed study results and evidence](RESULTS.md).
