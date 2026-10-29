@@ -4,7 +4,7 @@ All cooperating hook APIs must use the same lease. It does not prevent custom
 hooks, model-tree mutation, or access from another process.
 """
 
-from threading import RLock
+from threading import RLock, current_thread
 from weakref import ref
 
 from torch import nn
@@ -59,6 +59,9 @@ class ModelLease:
         self._held = False
         self._modules = ()
         self._tree = ()
+        self._owner_thread = None
+        self._borrower = None
+        self._quarantined = False
 
     def acquire(self):
         global _owners
@@ -95,6 +98,7 @@ class ModelLease:
                 self._modules = modules
                 self._tree = tree
                 self._held = True
+                self._owner_thread = current_thread()
                 self._verify_tree_snapshot()
                 _owners = replacement
             except BaseException:
@@ -102,6 +106,7 @@ class ModelLease:
                 self._modules = ()
                 self._tree = ()
                 self._held = False
+                self._owner_thread = None
                 raise
         return self
 
@@ -145,6 +150,8 @@ class ModelLease:
         with _lock:
             if not self._held:
                 return
+            if self._borrower is not None or self._quarantined:
+                raise RuntimeError("model lease has an active or quarantined child scope")
             replacement = _owners.copy()
             for module in self._modules:
                 key = id(module)
@@ -155,6 +162,22 @@ class ModelLease:
             self._modules = ()
             self._tree = ()
             self._held = False
+
+    def _borrow_for_plan(self, release_key, cleanup_complete):
+        """Create a restricted child capability for one trusted plan.
+
+        This internal interface is not a general reentrant lease. The child
+        acquires under the same registry lock, can only verify this lease's
+        exact token/tree, and never releases the parent's reservation.
+        """
+        return _PlanLease(self, release_key, cleanup_complete)
+
+    def _quarantine(self):
+        """Permanently prevent release when the owning worker is uncertain."""
+        with _lock:
+            if not self._owns_tree():
+                raise RuntimeError("model lease is not held")
+            self._quarantined = True
 
     def __enter__(self):
         return self.acquire()
@@ -167,3 +190,82 @@ class ModelLease:
                 raise exc.with_traceback(tb) from cleanup_error
             raise
         return False
+
+
+class _PlanLease:
+    """Single-use private borrow from a continuously held ModelLease."""
+
+    def __init__(self, parent, release_key, cleanup_complete):
+        self._parent = parent
+        self._token = object()
+        self._held = False
+        self._used = False
+        self._release_key = release_key
+        self._cleanup_complete = cleanup_complete
+
+    def acquire(self):
+        parent = self._parent
+        with _lock:
+            if self._used:
+                raise RuntimeError("plan lease scopes are single-use")
+            self._used = True
+            if current_thread() is not parent._owner_thread:
+                raise RuntimeError("plan scope must run on the parent lease owner thread")
+            if not parent._owns_tree() or parent._quarantined:
+                raise RuntimeError("parent model lease is not available")
+            if parent._borrower is not None:
+                raise RuntimeError("another plan scope is active")
+            try:
+                parent._verify_tree_snapshot()
+            except BaseException:
+                parent._quarantined = True
+                raise
+            # Publish the borrow last. If interrupted after publication, the
+            # retained child handle can release only its own token.
+            self._held = True
+            parent._borrower = self._token
+        return self
+
+    def _owns_scope(self):
+        parent = self._parent
+        return (self._held and parent._owns_tree()
+                and parent._borrower is self._token and not parent._quarantined)
+
+    @property
+    def registered_paths(self):
+        with _lock:
+            if not self._owns_scope():
+                raise RuntimeError("plan lease scope is not held")
+            return self._parent._tree
+
+    def verify_tree(self):
+        with _lock:
+            if current_thread() is not self._parent._owner_thread:
+                raise RuntimeError("plan scope must run on the parent lease owner thread")
+            if not self._owns_scope():
+                raise RuntimeError("plan lease scope is not held")
+            try:
+                self._parent._verify_tree_snapshot()
+            except BaseException:
+                self._parent._quarantined = True
+                raise
+
+    def release(self, release_key=None):
+        # A supervisor can retry cleanup of an exited, quiescent plan. The
+        # plan's lifecycle owns that precondition; a stale child cannot remove
+        # a newer child's marker or release the parent's registry reservation.
+        with _lock:
+            if release_key is not self._release_key:
+                raise RuntimeError("only plan cleanup can release a borrowed scope")
+            if not self._cleanup_complete():
+                raise RuntimeError("plan hooks or forward may still be active")
+            if self._held and self._parent._borrower is self._token:
+                try:
+                    if not self._parent._owns_tree():
+                        raise RuntimeError("parent model lease is not held")
+                    self._parent._verify_tree_snapshot()
+                except BaseException:
+                    self._parent._quarantined = True
+                    raise
+                self._parent._borrower = None
+            self._held = False

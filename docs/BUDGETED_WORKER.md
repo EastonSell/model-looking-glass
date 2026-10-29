@@ -33,6 +33,9 @@ including an `AdmissionError`, leaves publication or lock state potentially
 unknown: the wrapper latches the device quarantine without reacquiring the
 budget lock and requires process replacement. The owner must not infer that a
 lease was absent merely because the call did not return a handle.
+The admission's pre-existing sticky flag is set before its best-effort event
+notification, so a notification allocation failure does not clear the health
+signal or allow another wrapper to proceed.
 
 A peer can latch the shared admission quarantine while a forward is in
 progress. If the owner observes the latch before releasing its lease, it
