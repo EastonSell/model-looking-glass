@@ -1,0 +1,22 @@
+{
+  "schema": "bert-exposed-pair-cpu-preflight-observation-v1",
+  "source_commit": "a39945187c383c0bac9cfb0cce950ce590357261",
+  "script_sha256": "d76f3d9b4635224c7c1e762c23672bb04748829830f466282ad41a2f485ed9a6",
+  "exit_code": 0,
+  "scope": "operator-observed CPU load/tokenizer validation; no model forward; selected socket and CUDA lazy-init calls blocked",
+  "observation": {
+    "cuda_initialized": false,
+    "donor_row": "evaluation-f01-A-p-s",
+    "forward_blocked": true,
+    "model_class": "DistilBertForMaskedLM",
+    "model_id": "distilbert/distilbert-base-uncased",
+    "parameter_count": 66985530,
+    "revision": "12040accade4e8a0f71eabdb258fecc2e7e948be",
+    "safetensors_version": "0.8.0",
+    "selected_network_calls_blocked": true,
+    "target_row": "evaluation-f01-A-s-s",
+    "tokenizer_class": "DistilBertTokenizerFast",
+    "tokenizers_version": "0.22.2",
+    "transformers_version": "4.57.3"
+  }
+}

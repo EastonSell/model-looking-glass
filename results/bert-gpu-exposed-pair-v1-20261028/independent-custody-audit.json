@@ -1,0 +1,33 @@
+{
+  "schema": "bert-exposed-pair-independent-audit-v1",
+  "audit_status": "pass",
+  "recorded_run_status": "success",
+  "checks": {
+    "source_and_public_manifest_rehashed": true,
+    "all_five_checkpoint_assets_rehashed": true,
+    "supervision_and_owner_evidence_consistent": true,
+    "candidate_digest_and_recorded_zero_active_leases_checked": true,
+    "complete_typed_stage_and_cleanup_records_verified": true,
+    "recorded_memory_headroom_and_cumulative_peaks_checked": true,
+    "float32_bits_margins_and_patch_vectors_recomputed": true,
+    "public_projection_allowlists_checked": true,
+    "owner_not_listed_in_post_exit_query": true
+  },
+  "typed_stage_and_cleanup_record_count": 14,
+  "pair_analysis": {
+    "margins": {
+      "target": 5.204014539718628,
+      "donor": -4.266260623931885,
+      "self": 5.204014539718628,
+      "cross": 0.05722808837890625
+    },
+    "target_minus_cross": 5.146786451339722,
+    "strict_sign_change": false
+  },
+  "scope": [
+    "One previously exposed public evaluation pair; no new held-out or lexical-control claim.",
+    "Checks retained evidence consistency; native libraries and GPU isolation are not attested.",
+    "An owner not listed in the query is an observation, not proof of process isolation.",
+    "Full mask logits are not retained and cannot be reconstructed from their hashes."
+  ]
+}
