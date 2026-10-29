@@ -527,18 +527,18 @@ class TracedWorkerTests(unittest.TestCase):
             with self.subTest(traced=traced):
                 self.setUp()
                 worker = self.make_worker()
-                original_state, calls = worker._model_state, []
+                original_poison, calls = worker._poison, []
 
                 def interrupted_poison():
                     calls.append(True)
-                    if len(calls) == 2:
-                        raise KeyboardInterrupt("TEST interrupted poison")
-                    return original_state()
+                    with patch.object(worker, "_model_state",
+                                      side_effect=KeyboardInterrupt("TEST interrupted poison")):
+                        return original_poison()
 
                 def failed_forward(*args, **kwargs):
                     raise RuntimeError("TEST initial forward failure")
 
-                with patch.object(worker, "_model_state", interrupted_poison), \
+                with patch.object(worker, "_poison", interrupted_poison), \
                         patch.object(self.model, "forward", failed_forward):
                     with self.assertRaises(KeyboardInterrupt) as caught:
                         if traced:
@@ -547,6 +547,7 @@ class TracedWorkerTests(unittest.TestCase):
                             worker.execute(self.forward_request())
                 self.assertIn("TEST interrupted poison", str(caught.exception))
                 self.assertIn("TEST initial forward failure", str(caught.exception))
+                self.assertTrue(calls)
                 self.assertIsNone(caught.exception.__context__)
                 self.assertIsNone(caught.exception.__cause__)
                 self.assertTrue(worker.poisoned)
