@@ -78,7 +78,10 @@ Development data are for choosing implementation and the candidate only; they
 are not held-out evidence. Unknown prior exposure remains possible. Freeze a
 separate DistilBERT-specific inventory with exact text, input IDs, attention
 masks, tokenizer and model asset hashes; another model's inventory cannot
-certify these inputs.
+certify these inputs. The runner records the values of the tensors supplied at
+each model call, and the closed-journal auditor checks their integer types,
+order and values against the corresponding manifest row. These records remain
+self-reported execution evidence rather than independent execution proof.
 
 Held-out families use the distinct template `The {subject} beside the
 {distractor} [MASK] ready.` and ordered pairs `(painter, artist)`, `(actor,

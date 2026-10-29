@@ -60,6 +60,11 @@ def audit_family_events(manifest, records, *, split, family, mask_id, hidden_siz
         if (not _same_fields(started, {'status': 'started', **identity})
                 or not _same_fields(completed, {'status': 'completed', **identity})):
             raise ValueError('forward start/completion inventory differs')
+        for field, row_field in (('model_input_ids', 'input_ids'), ('model_attention_mask', 'attention_mask')):
+            values = completed.get(field)
+            if (type(values) is not list or len(values) != 10
+                    or any(type(value) is not int for value in values) or values != by_id[row_id][row_field]):
+                raise ValueError('recorded model inputs differ from their manifest row')
         before = _vector(completed, 'before_float32_le_base64', hidden_size)
         if patch:
             after = _vector(completed, 'after_float32_le_base64', hidden_size)

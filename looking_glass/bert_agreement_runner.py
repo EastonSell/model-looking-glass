@@ -36,6 +36,8 @@ class Observation:
     events: tuple
     capture_bytes: int
     source_bytes: int
+    model_input_ids: tuple
+    model_attention_mask: tuple
 
 
 def float32_bytes(tensor):
@@ -144,10 +146,16 @@ def run_observation(model, input_ids, *, layer, token, mask_token, is_id, are_id
     plan = ActivationPlan(model, steps, max_tensor_bytes=10 * hidden * 4,
                           max_capture_bytes=2 * hidden * 4,
                           max_source_bytes=hidden * 4, max_steps=3, max_invocations=1)
+    attention_mask = torch.ones_like(input_ids)
+    model_input_ids = tuple(input_ids[0].tolist())
+    model_attention_mask = tuple(attention_mask[0].tolist())
     with torch.inference_mode(), plan:
-        logits = model(input_ids=input_ids, attention_mask=torch.ones_like(input_ids),
+        logits = model(input_ids=input_ids, attention_mask=attention_mask,
                        output_attentions=False, output_hidden_states=False,
                        return_dict=True).logits
+        if (tuple(input_ids[0].tolist()) != model_input_ids
+                or tuple(attention_mask[0].tolist()) != model_attention_mask):
+            raise RuntimeError('model input tensors changed during execution')
         if (type(logits) is not torch.Tensor or logits.dtype != torch.float32
                 or logits.device.type != 'cpu' or tuple(logits.shape) != (1, 10, vocab)
                 or not bool(torch.isfinite(logits).all())):
@@ -196,7 +204,8 @@ def run_observation(model, input_ids, *, layer, token, mask_token, is_id, are_id
         raise RuntimeError('nonfinite selected logit')
     return Observation(mask_logits, before, after, is_bits, are_bits,
                        is_logit, are_logit, tuple(events),
-                       metadata['capture_bytes'], metadata['source_bytes'])
+                       metadata['capture_bytes'], metadata['source_bytes'],
+                       model_input_ids, model_attention_mask)
 
 
 def _family_rows(manifest, split, family, mask_id):
@@ -313,10 +322,15 @@ def run_family(model, manifest, *, split, family, is_id, are_id, mask_id, emit):
             observation = run_observation(model, inputs, layer=layer, token=token,
                                           mask_token=6, is_id=is_id, are_id=are_id,
                                           source=source, self_patch=self_patch)
+            if (observation.model_input_ids != tuple(by_id[row_id]['input_ids'])
+                    or observation.model_attention_mask != tuple(by_id[row_id]['attention_mask'])):
+                raise RuntimeError('model input values differ from the declared row')
         except BaseException as error:
             try:
                 emit({'status': 'failed', **record, 'error_type': type(error).__name__})
-            except BaseException:
+            except (KeyboardInterrupt, SystemExit) as cancellation:
+                raise cancellation from error
+            except Exception:
                 pass
             raise
         raw_before = float32_bytes(observation.before)
@@ -328,7 +342,9 @@ def run_family(model, manifest, *, split, family, is_id, are_id, mask_id, emit):
               'before_float32_le_base64': base64.b64encode(raw_before).decode('ascii'),
               'after_float32_le_base64': None if raw_after is None else base64.b64encode(raw_after).decode('ascii'),
               'events': list(observation.events), 'capture_bytes': observation.capture_bytes,
-              'source_bytes': observation.source_bytes})
+              'source_bytes': observation.source_bytes,
+              'model_input_ids': list(observation.model_input_ids),
+              'model_attention_mask': list(observation.model_attention_mask)})
         return observation
 
     def check(name, case, site_name, value, reference):

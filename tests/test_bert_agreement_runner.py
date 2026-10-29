@@ -182,6 +182,11 @@ class AgreementRunnerTest(unittest.TestCase):
         self.assertEqual(sum(r['status'] == 'started' for r in records), 140)
         self.assertEqual(sum(r['status'] == 'completed' for r in records), 140)
         self.assertTrue(all(c['passed'] for c in result['controls']))
+        rows = {row['row_id']: row for row in self.sample_family()['rows']}
+        for record in records:
+            if record['status'] == 'completed':
+                self.assertEqual(record['model_input_ids'], rows[record['row_id']]['input_ids'])
+                self.assertEqual(record['model_attention_mask'], rows[record['row_id']]['attention_mask'])
         audited = audit_family_events(self.sample_family(), records, split='development',
                                       family=1, mask_id=7, hidden_size=16)
         self.assertEqual(audited['cases'], result['cases'])
@@ -205,6 +210,14 @@ class AgreementRunnerTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             audit_family_events(self.sample_family(), damaged, split='development',
                                 family=1, mask_id=7, hidden_size=16)
+        for field in ('model_input_ids', 'model_attention_mask'):
+            for wrong_value in (True, 900):
+                damaged = copy.deepcopy(records)
+                captured = next(row for row in damaged if row['status'] == 'completed')
+                captured[field][0] = wrong_value
+                with self.assertRaises(ValueError):
+                    audit_family_events(self.sample_family(), damaged, split='development',
+                                        family=1, mask_id=7, hidden_size=16)
         damaged = copy.deepcopy(records)
         final_row = next(row for row in damaged if row['status'] == 'completed'
                          and row['kind'] == 'delivery_patch' and row['site'] == 'final_subject')
@@ -241,6 +254,28 @@ class AgreementRunnerTest(unittest.TestCase):
             run_family(self.model, manifest, split='development', family=1,
                        is_id=20, are_id=21, mask_id=7, emit=records.append)
         self.assertEqual(records, [])
+
+    def test_new_cancellation_during_failure_event_is_not_swallowed(self):
+        def emit(record):
+            if record['status'] == 'failed':
+                raise KeyboardInterrupt('cancelled while recording failure')
+        with patch('looking_glass.bert_agreement_runner.run_observation', side_effect=OSError('forward failed')):
+            with self.assertRaises(KeyboardInterrupt) as raised:
+                run_family(self.model, self.sample_family(), split='development', family=1,
+                           is_id=20, are_id=21, mask_id=7, emit=emit)
+        self.assertIsInstance(raised.exception.__cause__, OSError)
+
+    def test_wrong_invocation_input_is_recorded_as_failed_before_completion(self):
+        from dataclasses import replace
+        observation = run_observation(self.model, self.a, layer=2, token=2,
+                                      mask_token=6, is_id=20, are_id=21)
+        observation = replace(observation, model_attention_mask=(0,) * 10)
+        records = []
+        with patch('looking_glass.bert_agreement_runner.run_observation', return_value=observation):
+            with self.assertRaises(RuntimeError):
+                run_family(self.model, self.sample_family(), split='development', family=1,
+                           is_id=20, are_id=21, mask_id=7, emit=records.append)
+        self.assertEqual([record['status'] for record in records], ['started', 'failed'])
 
     def test_collapsed_lemmas_wrong_mask_context_or_boolean_mask_cannot_run(self):
         for corruption in ('collapsed_lemma', 'wrong_mask', 'different_context', 'boolean_mask'):
