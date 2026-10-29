@@ -189,6 +189,22 @@ class ResidentWorkerTests(unittest.TestCase):
         result = worker.execute(ForwardRequest("small", {"input_ids": torch.tensor([[3]])}))
         self.assertTrue(torch.equal(result.logits, torch.tensor([[[3., 4.]]])))
 
+    def test_output_is_copied_into_exact_contiguous_cpu_storage(self):
+        class NoncontiguousModel(nn.Module):
+            def forward(self, input_ids):
+                values = input_ids.float().transpose(0, 1)
+                return {'logits': torch.stack((values, values + 1), dim=-1).transpose(0, 1)}
+
+        worker = ResidentWorker('layout', NoncontiguousModel().eval(), max_batch_size=2,
+                                max_output_bytes=48)
+        inputs = torch.tensor([[1, 2, 3], [4, 5, 6]])
+        result = worker.execute(ForwardRequest('r', {'input_ids': inputs}))
+        self.assertTrue(result.logits.is_contiguous())
+        self.assertEqual(result.logits.storage_offset(), 0)
+        self.assertEqual(result.logits.untyped_storage().nbytes(),
+                         result.logits.numel() * result.logits.element_size())
+        self.assertTrue(torch.equal(result.logits[..., 0], inputs.float()))
+
     def test_mutating_registered_buffer_poisoned_before_result_is_returned(self):
         class StatefulModel(SmallModel):
             def __init__(self):

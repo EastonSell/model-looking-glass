@@ -23,9 +23,11 @@ is not a security boundary.
 The broker validates and snapshots inputs before enqueueing. Callers must not
 mutate tensors while the snapshot is being made. The worker checks again and
 copies its inputs, runs with gradients disabled, and returns a separate,
-detached CPU logits tensor. The output cap applies to that tensor, not to
+detached CPU logits tensor in contiguous storage with a zero offset and exactly
+its logical byte size. The output cap applies to that tensor, not to
 model weights, temporary activations, non-logit model outputs, Python metadata,
-allocator overhead, or memory retained by completed results. In particular,
+allocator overhead, the source logits and other transient copies during the
+forward, or memory retained by completed results. In particular,
 per-request limits alone do not bound results retained across many requests;
 the broker or consumer needs its own retention and backpressure policy.
 
