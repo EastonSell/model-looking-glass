@@ -68,7 +68,8 @@ No case-wise outcome may change these criteria or the fixed heads.
 Save clean full logits, projection-input and replacement witnesses, exact
 landings and untouched bits, 32 self-patch controls and 16 clean repeats;
 the complete eligible run has 128 forwards. Save and report all per-case
-absolute and receiver-relative delivered doses, margins and contrasts,
+donor-to-receiver distances and interpolation fractions q/d, absolute and
+receiver-relative delivered doses, margins and contrasts,
 frame and lemma dependence, plus exploratory full-vocabulary or top-token
 effects. Require observed child completion and independent saved-byte replay
 before publishing either a positive, negative, baseline-limited or
@@ -78,5 +79,7 @@ The other-lemma control removes the prior between-lemma donor mismatch, but
 singular and plural donor forms are different lexical tokens. Head 8 was
 chosen adaptively and is not a random-head or downstream-dose-matched null;
 equal relative input doses can yield unequal absolute or output changes.
+Any comparison by intervening-noun number is descriptive and confounded by
+frame and subject pairing in this small fixed design.
 This comparison cannot by itself identify a unique grammatical circuit,
 measure generated text, or generalize beyond these few cases.
