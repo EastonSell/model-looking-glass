@@ -7,7 +7,8 @@ import math
 import numpy as np
 import torch
 
-from .vision_coco_study import _array, _replacement, _tolerance, check_denormals, distance
+from .vision_coco_study import (EARLY, LATE, _array, _replacement, _same, _tolerance,
+                                baseline_status, check_denormals, check_landing, distance, forward, score)
 
 
 def _random_same_site(own, q, pair_id, side):
@@ -88,3 +89,104 @@ def aggregate_same_site(rows):
     status = ('inconclusive' if len(eligible) < 4 else
               'positive' if positive * 4 >= 3 * len(eligible) else 'negative')
     return {'status': status, 'selected': len(rows), 'evaluable': len(eligible), 'positive': positive}
+
+
+def run_same_site(model, pairs, pixel_by_id, evidence):
+    """Run the fixed same-site comparison, retaining every finite case."""
+    target_ids = [pair[side]['image_id'] for pair in pairs for side in ('cat', 'dog')]
+    donor_ids = [pair[side + '_donor']['image_id'] for pair in pairs for side in ('cat', 'dog')]
+    if (len(target_ids) != len(set(target_ids)) or set(target_ids) & set(donor_ids) or
+            set(target_ids) | set(donor_ids) != set(pixel_by_id)):
+        raise ValueError('target and reusable donor image inventory differs')
+    clean = {}
+    for pair in pairs:
+        for role in ('cat', 'dog', 'cat_donor', 'dog_donor'):
+            image_id = pair[role]['image_id']
+            if image_id in clean:
+                continue
+            logits, captures, row = forward(model, pixel_by_id[image_id], evidence,
+                                            f"{pair['pair_id']}:{role}:initial")
+            _, reference = score(logits)
+            clean[image_id] = {'logits': logits, 'early': captures['early'], 'late': captures['late'],
+                               'score': row['score'], 'off_reference': reference}
+    output = []
+    for pair in pairs:
+        pair_id, inside = pair['pair_id'], pair['box_tokens']
+        base = baseline_status(clean[pair['cat']['image_id']]['score'],
+                               clean[pair['dog']['image_id']]['score'])
+        results = {}
+        for side, other_side in (('cat', 'dog'), ('dog', 'cat')):
+            image_id = pair[side]['image_id']
+            own = clean[image_id]
+            other = clean[pair[other_side]['image_id']]
+            same = clean[pair[side + '_donor']['image_id']]
+            pixels = pixel_by_id[image_id]
+            dose, requested = prepare_same_site_dose(own['early'], other['early'], inside,
+                                                    pair_id, side, same['early'])
+            info = {'image_id': image_id, 'baseline': own['score'], 'dose': dose,
+                    'same_species_donor_id': pair[side + '_donor']['image_id'],
+                    'same_species_baseline': same['score'], 'conditions': {}}
+            logits, captures, row = forward(model, pixels, evidence, f'{pair_id}:{side}:repeat',
+                                            reference=own['off_reference'])
+            if not all((_same(logits, own['logits']), _same(captures['early'], own['early']),
+                        _same(captures['late'], own['late']))):
+                raise ValueError('clean repeat failed')
+            info['conditions']['repeat'] = row['score']
+            plans = [
+                ('null_inside', EARLY, inside, None, 'null', own['logits']),
+                ('self_inside', EARLY, inside, own['early'][0, inside], 'patch', own['logits']),
+                ('full_self', EARLY, None, own['early'], 'patch', own['logits']),
+                ('full_swap', EARLY, None, other['early'], 'patch', other['logits']),
+                ('natural_inside', EARLY, inside, other['early'][0, inside], 'patch', None),
+            ]
+            if dose['status'] == 'matchable':
+                for name in ('opposite', 'same_species', 'random'):
+                    plans.append(('matched_' + name, EARLY, inside, requested[name], 'patch', None))
+            plans.append(('final_inside', LATE, inside, other['late'][0, inside], 'patch', own['logits']))
+            for name, path, tokens, replacement, action, expected in plans:
+                logits, captures, row = forward(model, pixels, evidence, f'{pair_id}:{side}:{name}',
+                                                path=path, tokens=tokens, replacement=replacement,
+                                                action=action, reference=own['off_reference'])
+                state = own['early'] if path == EARLY else own['late']
+                check_landing(captures, state, tokens, replacement, action=action)
+                if expected is not None and not _same(logits, expected):
+                    raise ValueError(f'{name} logits control failed')
+                saved = dict(row['score'])
+                saved['raw_margin_change'] = saved['margin'] - own['score']['margin']
+                saved['annotation_oriented_change'] = (1 if side == 'cat' else -1) * saved['raw_margin_change']
+                if name.startswith('matched_'):
+                    pre, post = captures['before_all'][0, tokens], captures['after_all'][0, tokens]
+                    norm = distance(post, pre)
+                    receiver_norm = distance(pre, torch.zeros_like(pre))
+                    if (norm <= 0 or abs(norm - dose['q']) > dose['tolerance'] or
+                            receiver_norm <= 0 or norm > .10 * receiver_norm):
+                        raise ValueError('actual matched dose or receiver-relative bound differs')
+                    saved['actual_dose'] = norm
+                    saved['token_doses'] = [distance(post[i], pre[i]) for i in range(4)]
+                    saved['receiver_norm'] = receiver_norm
+                    saved['realized_over_receiver_norm'] = norm / receiver_norm
+                    if name != 'matched_opposite':
+                        first = info['conditions']['matched_opposite']['actual_dose']
+                        if abs(norm - first) > .01 * first:
+                            raise ValueError('actual matched doses differ')
+                info['conditions'][name] = saved
+            logits, captures, row = forward(model, pixels, evidence, f'{pair_id}:{side}:post_clean',
+                                            reference=own['off_reference'])
+            if not all((_same(logits, own['logits']), _same(captures['early'], own['early']),
+                        _same(captures['late'], own['late']))):
+                raise ValueError('post-clean control failed')
+            info['conditions']['post_clean'] = row['score']
+            results[side] = info
+        dose_statuses = {side: results[side]['dose']['status'] for side in ('cat', 'dog')}
+        movements = None
+        if all(status == 'matchable' for status in dose_statuses.values()):
+            movements = {side: {name: results[side]['conditions']['matched_' + name]['annotation_oriented_change']
+                                for name in ('opposite', 'same_species', 'random')}
+                         for side in ('cat', 'dog')}
+        status = classify_same_site(base, dose_statuses, movements)
+        row = {'pair_id': pair_id, 'split': pair['split'], 'baseline_eligibility': base,
+               'dose_matchability': dose_statuses, 'status': status, 'sides': results,
+               'descriptive_movements': movements}
+        evidence.json(f'{pair_id}.json', row)
+        output.append(row)
+    return output

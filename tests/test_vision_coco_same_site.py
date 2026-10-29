@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import pytest
 import torch
@@ -134,3 +135,157 @@ def test_two_direction_composite_includes_absolute_same_and_random_controls():
                               {'cat': good, 'dog': bad}) == 'negative'
     assert classify_same_site({'eligible': False}, {'cat': 'matchable', 'dog': 'matchable'},
                               {'cat': good, 'dog': good}) == 'baseline-ineligible'
+
+
+def test_fake_hook_run_reuses_donor_baselines_and_retains_ineligible_results(tmp_path):
+    from looking_glass.vision_coco_same_site_study import run_same_site
+    from looking_glass.vision_coco_study import Evidence
+
+    class Layer(torch.nn.Module):
+        def forward(self, value):
+            return value + .01 * value.mean(dim=1, keepdim=True)
+
+    class FakeVit(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.vit = torch.nn.Module()
+            self.vit.encoder = torch.nn.Module()
+            self.vit.encoder.layer = torch.nn.ModuleList([Layer() for _ in range(12)])
+
+        def forward(self, pixel_values):
+            value = pixel_values
+            for layer in self.vit.encoder.layer:
+                value = layer(value)
+            logits = torch.zeros((1, 1000), dtype=torch.float32)
+            logits[:, 151:269] = 2 + value[:, 0, :1]
+            logits[:, 281:286] = -value[:, 0, :1]
+            return SimpleNamespace(logits=logits)
+
+    assert torch.set_flush_denormal(False)
+    torch.manual_seed(4)
+    pixels = {i: torch.randn(1, 197, 192) for i in range(1, 7)}
+    pairs = [dict(pair_id=f'pair-{i:02d}', split='heldout',
+                  cat={'image_id': 1 + 2 * i}, dog={'image_id': 2 + 2 * i},
+                  cat_donor={'image_id': 5}, dog_donor={'image_id': 6},
+                  box_tokens=[1, 2, 15, 16]) for i in range(2)]
+    evidence = Evidence(tmp_path / 'fake', 64)
+    rows = run_same_site(FakeVit().eval(), pairs, pixels, evidence)
+    assert len(rows) == 2 and all(row['status'] == 'baseline-ineligible' for row in rows)
+    assert evidence.submissions == len(evidence.records) == 50
+    for row in rows:
+        for side in ('cat', 'dog'):
+            result = row['sides'][side]
+            assert result['dose']['status'] == 'matchable'
+            for name in ('opposite', 'random', 'same_species'):
+                condition = result['conditions']['matched_' + name]
+                assert condition['realized_over_receiver_norm'] <= .1
+                assert condition['actual_dose'] == pytest.approx(result['dose']['q'], rel=1e-5)
+            assert {'full_swap', 'null_inside', 'self_inside', 'final_inside', 'post_clean'} <= set(result['conditions'])
+
+    # The supervisor reconciles the saved schedule before promoting a run.
+    import copy
+    import runpy
+    checker = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'tools/run_vision_coco_same_site.py'))
+    evidence.json('started.json', {'schema': 'vision-coco-same-site-start-v3', 'source': {'revision': 'fake'},
+                  'manifest_sha256': checker['MANIFEST_SHA'], 'checkpoint_preflight_only': False,
+                  'synthetic_rehearsal': True})
+    terminal = {'pairs': rows, 'submissions': evidence.submissions, 'saved_forwards': len(evidence.records),
+                'source_revision': 'fake', 'aggregate': None}
+    checker['verify_saved_schedule'](evidence.root, terminal, pairs, {'revision': 'fake'}, synthetic=True)
+    start = evidence.root / 'started.json'
+    start_raw = start.read_bytes()
+    start.unlink()
+    with pytest.raises(FileNotFoundError):
+        checker['verify_saved_schedule'](evidence.root, terminal, pairs, {'revision': 'fake'}, synthetic=True)
+    start.write_bytes(start_raw)
+    contradictory = copy.deepcopy(terminal)
+    contradictory['aggregate'] = {'status': 'positive', 'selected': 8, 'evaluable': 8, 'positive': 8}
+    with pytest.raises(ValueError, match='aggregate'):
+        checker['verify_saved_schedule'](evidence.root, contradictory, pairs, {'revision': 'fake'}, synthetic=True)
+    contradictory = copy.deepcopy(terminal)
+    contradictory['pairs'][0]['sides']['cat']['same_species_donor_id'] = 1
+    record = evidence.root / 'pair-00.json'
+    record_raw = record.read_bytes()
+    record.write_text(json.dumps(contradictory['pairs'][0]))
+    with pytest.raises(ValueError, match='target or donor'):
+        checker['verify_saved_schedule'](evidence.root, contradictory, pairs, {'revision': 'fake'}, synthetic=True)
+    record.write_bytes(record_raw)
+    damaged = evidence.root / 'forward-050.bin'
+    original = damaged.read_bytes()
+    damaged.write_bytes(original[:-1])
+    with pytest.raises(ValueError, match='forward record|layout'):
+        checker['verify_saved_schedule'](evidence.root, terminal, pairs, {'revision': 'fake'}, synthetic=True)
+    damaged.write_bytes(original)
+    (evidence.root / 'forward-050.json').unlink()
+    with pytest.raises(ValueError, match='inventory'):
+        checker['verify_saved_schedule'](evidence.root, terminal, pairs, {'revision': 'fake'}, synthetic=True)
+
+
+def test_preflight_rejects_boolean_counts_and_missing_start(tmp_path):
+    import runpy
+    checker = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'tools/run_vision_coco_same_site.py'))
+    runtime = {'device': 'cpu', 'cuda_visible_devices': '', 'cuda_initialized': False,
+               'threads': 1, 'interop_threads': 1, 'deterministic_algorithms': True,
+               'denormals_preserved': True, 'python': '3.11.15', 'torch': '2.8.0+cu128',
+               'transformers': '4.57.3', 'numpy': '2.4.6', 'pillow': '11.3.0',
+               'processor': 'ViTImageProcessor', 'float32_matmul_precision': 'highest', 'mkldnn_enabled': True}
+    terminal = {'pairs': [], 'submissions': 0, 'saved_forwards': 0, 'aggregate': None,
+                'source_revision': 'fake', 'model_state_sha256_before_after': checker['MODEL_STATE_SHA'],
+                'runtime': runtime}
+    with pytest.raises(FileNotFoundError):
+        checker['verify_saved_schedule'](tmp_path, terminal, [], {'revision': 'fake'}, preflight=True)
+    started = {'schema': 'vision-coco-same-site-start-v3', 'source': {'revision': 'fake'},
+               'manifest_sha256': checker['MANIFEST_SHA'], 'checkpoint_preflight_only': True,
+               'synthetic_rehearsal': False, 'split': 'heldout', 'model_state_sha256': checker['MODEL_STATE_SHA'],
+               'runtime': runtime}
+    (tmp_path / 'started.json').write_text(json.dumps(started))
+    checker['verify_saved_schedule'](tmp_path, terminal, [], {'revision': 'fake'}, preflight=True)
+    terminal['submissions'] = False
+    with pytest.raises(ValueError, match='preflight'):
+        checker['verify_saved_schedule'](tmp_path, terminal, [], {'revision': 'fake'}, preflight=True)
+    terminal['submissions'] = 0
+    changed = dict(started, source={'revision': 'fake', 'sources': {'invented': 'value'}})
+    (tmp_path / 'started.json').write_text(json.dumps(changed))
+    with pytest.raises(ValueError, match='start record'):
+        checker['verify_saved_schedule'](tmp_path, terminal, [], {'revision': 'fake'}, preflight=True)
+    changed = dict(started, runtime={**runtime, 'threads': 77})
+    (tmp_path / 'started.json').write_text(json.dumps(changed))
+    with pytest.raises(ValueError, match='runtime'):
+        checker['verify_saved_schedule'](tmp_path, terminal, [], {'revision': 'fake'}, preflight=True)
+    missing = {k: v for k, v in runtime.items() if k not in ('processor', 'float32_matmul_precision', 'mkldnn_enabled')}
+    terminal['runtime'] = missing
+    (tmp_path / 'started.json').write_text(json.dumps(dict(started, runtime=missing)))
+    with pytest.raises(ValueError, match='runtime'):
+        checker['verify_saved_schedule'](tmp_path, terminal, [], {'revision': 'fake'}, preflight=True)
+
+
+def test_controller_retains_child_exit_receipt_on_malformed_terminal(tmp_path, monkeypatch):
+    import dataclasses
+    import runpy
+    from looking_glass import cpu_study_supervision
+    checker = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'tools/run_vision_coco_same_site.py'))
+    controller = checker['controller']
+    controller.__globals__['source_snapshot'] = lambda revision: {'revision': revision, 'sources': {}}
+    @dataclasses.dataclass
+    class FakeResult:
+        exit_code: int = 0
+        clean: bool = True
+        timed_out: bool = False
+        pid: int = 123
+    out, custody, assets, pillow = (tmp_path / name for name in ('out', 'custody', 'assets', 'pillow'))
+    for directory in (custody, assets, pillow):
+        directory.mkdir()
+    def child(*args, **kwargs):
+        data = out / 'data'
+        data.mkdir()
+        (data / 'terminal.json').write_text('{')
+        return FakeResult()
+    monkeypatch.setattr(cpu_study_supervision, 'run_cpu_study', child)
+    args = SimpleNamespace(output=out, custody=custody, assets=assets, pillow=pillow,
+                           synthetic_rehearsal=False, preflight_only=False,
+                           revision='a' * 40, timeout=60)
+    assert controller(args) == 1
+    receipt = json.loads((out / 'supervisor.json').read_bytes())
+    assert receipt['status'] == 'incomplete' and receipt['exit_code'] == 0
+    assert receipt['failure_detail'].endswith('JSONDecodeError')
+    assert (out / 'data' / 'terminal.json').read_text() == '{'
