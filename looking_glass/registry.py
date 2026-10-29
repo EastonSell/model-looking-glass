@@ -189,7 +189,12 @@ def _publish(path, destination, data):
     pending = path / ".pending"
     try:
         with pending.open("xb") as stream:
-            stream.write(data)
+            remaining = memoryview(data)
+            while remaining:
+                count = stream.write(remaining)
+                if type(count) is not int or count <= 0 or count > len(remaining):
+                    raise OSError("registry write did not make valid progress")
+                remaining = remaining[count:]
             stream.flush()
             os.fsync(stream.fileno())
         # A same-filesystem hard link is atomically visible and fails if the target exists.

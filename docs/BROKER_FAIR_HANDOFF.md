@@ -12,7 +12,10 @@ The broker must be idle when fair mode is enabled. It then permanently rejects
 ordinary `submit` calls, so those calls cannot bypass the adapter. A target is
 bound to exactly one adapter with the same configured team set and a no-larger
 encoded item limit. The caller runs `transfer_next` to move work; this is not a
-background scheduling loop. A transfer takes the broker condition, checks
+background scheduling loop. The trusted service owner must also limit concurrent
+`transfer_next` calls to at most `max_pending + max_unacknowledged + 1`; this
+bounds the preallocated private failure roots if multiple calls fail together.
+A transfer takes the broker condition, checks
 global and per-team preparation slots, reserves a fixed host commitment, and
 claims an eligible waiting team under that same condition. Decoding and
 snapshotting happen outside the condition. A successful transfer returns the
@@ -24,6 +27,21 @@ looks up the request handle after either success or interruption;
 not authenticated client APIs. The adapter checks the ticket namespace; the
 target is permanently bound to one adapter.
 
+A direct-submit handle can report a terminal outcome before its broker-owned
+input root has been retired. Enabling fair mode during that interval raises
+`BrokerUnavailable`; the service owner can retry after retirement. There is
+not yet a public blocking wait-for-idle API for this transition.
+
+`handle.wait_for_retirement(timeout)` is an exact-handle signal for fair
+handoff: it returns only after the broker's execution and job aliases are
+retired, raises `TimeoutError` while retirement is pending, and reports
+`BrokerUnavailable` when quarantine makes cleanup uncertain. The receipt can
+still retain the handle until ACK. A guardian can wait for retirement, ACK,
+drop its own handle, outcome and transport aliases, and then release its
+separately budgeted result custody. Calling ACK earlier is allowed but does
+not establish retirement or dispose the caller's copies. Direct-submit handles
+do not provide this retirement signal.
+
 `HandoffFailure` and `FatalHandoffFailure` identify the ticket when the adapter
 knows which waiter was claimed, but do not prove the job failed: publication
 may have succeeded before the handoff was interrupted. The owner must first
@@ -33,7 +51,12 @@ failed, the outcome may be unknown and needs quarantine and reconciliation.
 An unexpected exception inside the queue claim can leave even the ticket
 indeterminate. The adapter then closes itself to new work; the owner must call
 `close()` and reconcile all returned outstanding tickets, deduplicating any
-known terminal outcomes. The original interruption still propagates.
+known terminal outcomes. A fatal interruption remains fatal.
+For an uncertain active handoff, the public exception is sanitized so that
+clearing its traceback cannot clear a privately retained worker exception.
+`transfer_next()` wraps a sanitized `KeyboardInterrupt` or `SystemExit` in
+`FatalHandoffFailure`; the built-in category is visible in its cause. The
+private traceback is not exposed through that cause.
 
 `cancel(credential, ticket)` works only while the ticket is waiting. After a
 claim and before a handle can be recovered, decoding is non-preemptible and
@@ -59,6 +82,9 @@ worker stack; it may conservatively overestimate a specific request. These
 limits are per tensor or snapshot, not an aggregate model-workspace cap. A
 poisoned or uncertain cleanup retains the relevant commitment and requires
 replacing the owner rather than reusing its capacity.
+Cleanup that commits its detachment under the broker condition before a later
+quarantine may finish disposal after that quarantine. If quarantine wins the
+locked decision, staged owners and both commitments remain retained.
 
 Before claim, a second ledger reserves a configured per-result byte commitment
 at least as large as the worker's enforced output limit and a bounded receipt
@@ -67,13 +93,19 @@ that limit. A completed handle can pin its result, so the commitment remains unt
 both the owner acknowledges custody and the broker has dropped its own result
 aliases. ACK before completion does not release it early. Unacknowledged receipts
 can block further admissions even after jobs complete; the owner must drain them.
+If retirement or acknowledgement is interrupted or quarantined, preserve the
+recipient's separate commitment until it can be reconciled or the process is
+replaced.
 
 These are **declared cooperative commitments**, not an operating-system memory
 limit. The decoder must be trusted, enforce its declared expansion bound, and
 not retain input aliases or traceback frames after return. It must reject
 malformed payloads by raising; if it returns an object that fails the supported
 forward-request boundary, the broker retains that unknown object and requires
-process replacement. The worker must be
+process replacement. A decoder must establish safe disposal of its own partial
+inputs before an ordinary exception. Decoder out-of-memory errors and fatal
+interruptions are quarantined with their private traceback and commitments
+retained until process replacement. The worker must be
 trusted to use at most the declared three overlapping input snapshots, stop
 using them before a non-quarantined return, and avoid returning output aliases
 of input storage. A different implementation needs a new bound and review.
@@ -85,6 +117,10 @@ adapter storage, arbitrary model intermediates, exception retention, IPC seriali
 other brokers, and GPU memory are outside these ledgers and need their own
 limits. Results held by the recipient after ACK need a separate recipient budget.
 In particular, one broker's budgets are not machine-wide memory caps.
+The worker's `poisoned`, `max_input_bytes`, and `max_output_bytes` getters
+are trusted, quick, and nonblocking: they are read under the broker condition.
+A getter that blocks can stall service operations; a getter that raises is
+quarantined and its error is sanitized.
 
 Waiter positions and queued-job turns are round-robin by configured team, with
 the eligibility and liveness conditions described in

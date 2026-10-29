@@ -14,7 +14,7 @@ The roadmap is a research plan, not a claim that its milestones are complete. Th
 - The [trace schema](docs/TRACE_SCHEMA.md) records execution coordinates separately from tensor values and hypotheses. Unknown coordinates remain unknown.
 - The [GPT-2 trace adapter](docs/TRANSFORMER_TRACE.md) captures selected layer, module, local token and invocation coordinates; generation and cache positions remain unknown unless established separately. The [ordered intervention plan](docs/INTERVENTION_PLANS.md) can capture, inject and patch at specified boundaries.
 - The [fair queue](docs/FAIR_QUEUE.md) rotates among admitted teams; it does not by itself guarantee admission fairness or equal GPU time.
-- The [memory budget](docs/MEMORY_BUDGET.md) and [resource profiles](docs/RESOURCE_PROFILE.md) track conservative leases, trace allowances and workload-specific measurements. Estimates and logical byte counts are not peak-memory guarantees or proof of device enforcement; no GPU profile has yet been recorded.
+- The [memory budget](docs/MEMORY_BUDGET.md) and [resource profiles](docs/RESOURCE_PROFILE.md) track conservative leases, trace allowances and workload-specific measurements. Estimates and logical byte counts are not peak-memory guarantees or proof of device enforcement; no shared-service GPU workload profile has yet been approved.
 - The [resident worker](docs/RESIDENT_WORKER.md) and [broker](docs/BROKER.md) reuse one trusted model for queued forwards. Their current execution is serial; GPU-wide admission and concurrent device throughput require separate integration and validation.
 - The [local CPU service](docs/SERVICE.md) exposes the pinned DistilGPT2 model to authenticated clients, with a two-token input limit and serial execution. A separate [microbatch primitive](docs/MICROBATCH.md) and [sampled batch validator](docs/BATCH_VALIDATION.md) are not yet integrated into that service.
 - The [device supervisor](docs/SUPERVISOR.md) coordinates a cooperative owner process, a device lease, and a sticky quarantine marker. It has CPU tests, but has not yet been integrated and validated as a shared GPU service.
@@ -57,6 +57,8 @@ The initial model is a small randomly initialized residual network with a contro
 
 The [synthetic causal v1 study](docs/CAUSAL_RESULTS_V1.md) records fixed predictions and tests clean-state patches on 16 public held-out inputs. Its selected injection-site patch and the single random draw, a final-state patch, produced the same measured scalar effects, illustrating why restoration alone does not identify a unique cause. One held-out vector was previously used during development, so the result is explicitly exploratory; the raw run and protocol clarification are preserved alongside the report.
 
+The [DistilBERT agreement pilot](results/bert-agreement-dev-v0-20261028/README.md) observed donor-directed shifts after subject-state patches on four public development examples. All four used plural distractors, so the finding is confounded and a balanced evaluation is needed before making a mechanism claim.
+
 ## Run locally
 
 Python 3.10+ and PyTorch 2.6+ are required. Use the [official PyTorch installation instructions](https://pytorch.org/get-started/locally/) for your platform. The original CPU experiment downloads no models or datasets, and traces stay in the local process/files.
@@ -66,6 +68,10 @@ The optional `transformer` extra pins Transformers 4.57.3: install it with `pyth
 The [recorded CPU shared-service checks](docs/PRETRAINED_SERVICE_SMOKE.md#recorded-cpu-checks) compare full DistilGPT2 logits for two clients against serial references with one model deserialization. They check correctness for the specified inputs and serial execution, not causal explanations or GPU performance.
 
 The [pretrained trace smoke](results/pretrained-trace-cpu-v1-20261028/README.md) records 18 events per channel on one fixed five-token input and two fresh-process replays on the same CPU host. It saves hashes and metadata rather than raw activations; it is a correctness check, not a causal study or benchmark.
+
+The [pretrained intervention smoke](results/distilgpt2-intervention-dev-cpu-v1-20261028/README.md) checks a known injection and same-site activation restoration on one public input, with an independent same-host replay. It tests intervention mechanics, not a held-out behavioral explanation.
+
+The [sampled pretrained batch check](results/distilgpt2-batch-cpu-v1-20261028/RESULTS.md) compares serial and two-row outputs on four fixed public CPU cases against a prespecified tolerance, with negative controls and a same-host replay. It does not establish general batch separability or GPU throughput.
 
 The recorded original experiment used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records its installed version inventory; it is not a cross-platform dependency lock. Other versions allowed by the package metadata have not been validated here. For the tested CPU version, install into an isolated environment with `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
 
@@ -108,8 +114,9 @@ Full activations can contain sensitive information. This synthetic benchmark sav
 - [Audit of the preserved CPU records and reproducibility limits](docs/REPRODUCIBILITY_AUDIT.md)
 - [Causal intervention literature and controls](docs/CAUSAL_LITERATURE.md)
 - [Machine and GPU inventory](docs/GPU_INVENTORY_V1.md)
+- [Supervised GPU memory pilot and recovery record](docs/GPU_ONESHOT_RESULTS_V2.md)
 - [Trace custody integration plan](docs/TRACE_CUSTODY_PLAN.md)
-- [Shared-model throughput protocol](docs/THROUGHPUT_PROTOCOL_V1.md) and its [CPU functionality record](results/throughput-cpu-smoke-v1-20261028/run_status.json)
+- [Shared-model throughput protocol](docs/THROUGHPUT_PROTOCOL_V1.md), its [CPU functionality record](results/throughput-cpu-smoke-v1-20261028/run_status.json), and the [quick GPU development comparison](results/throughput-gpu-quick-dev-v1-20261029/README.md)
 - [Verification status](evidence/STATUS.md)
 - [Design](docs/superpowers/specs/2026-10-28-runtime-probes-design.md)
 - [Implementation plan](docs/superpowers/plans/2026-10-28-runtime-probes.md)

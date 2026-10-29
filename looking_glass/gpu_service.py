@@ -6,22 +6,32 @@ the owner in a supervised child. No profile or device is assumed here.
 """
 
 from dataclasses import dataclass, replace
+import os
 from pathlib import Path
 import re
-from threading import Event
+from threading import Event, Lock
 
 from .memory_budget import MemoryBudget
 
 
-# A failed device drain is a process-lifetime event. Retain every reachable
-# owner object (including exception tracebacks) and stop admitting work; only
-# terminating the supervised process can dispose of uncertain CUDA state.
+# A failed device drain is a process-lifetime event. Retain known owner
+# objects and a bounded set of failure tracebacks, and stop admitting work.
+# Unrecorded CUDA internals can be lost; the supervised process must exit.
 _QUARANTINED = Event()
 _QUARANTINE_HOLDS = []
-_LIFETIME_HOLDS = []
+_OWNER_UNSAFE = False
+_OWNER_DRAIN_PENDING = False
+# Preallocate process-lifetime custody before any owner can touch CUDA.  The
+# fixed slots hold session, device lease, backend, registry, budget, resident
+# lease, worker, broker, server and two failure tracebacks, respectively.  The
+# first failure is never overwritten by a later failure while quarantining.
+# The process serves only one owner and must exit after its result, even on success.
+_OWNER_CUSTODY = [None] * 11
+_OWNER_CLAIMED = False
+_OWNER_CUSTODY_LOCK = Lock()
 _RAW_RUNTIME_UUID = re.compile(r'[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\Z', re.ASCII)
-
-
+_WARMUP_PROTOCOL_SHA256 = '84b21a9ba63413bb9394dbac6d31dbc08ce3171508a25477f44e596be579760c'
+_NO_CAPTURE_POLICY_SHA256 = '1ec2c8752f73cab7403fa9012e0796de77fdd87eb395a7cbc796044bf1643250'
 def _canonical_runtime_uuid(value, expected_type):
     """Parse the expected PyTorch CUDA runtime UUID representation exactly."""
     if type(expected_type) is not type and not isinstance(expected_type, type):
@@ -53,7 +63,9 @@ def _validate_service_keys(identity, keys):
             or key.grad_mode != 'inference' or key.autocast != 'disabled'
             or key.use_cache is not False or key.compiled is not False
             or key.capture_mode != 'none' or key.max_gpu_trace_bytes != 0
-            or key.max_host_trace_bytes != 0 for key in keys
+            or key.max_host_trace_bytes != 0
+            or key.warmup_protocol_sha256 != _WARMUP_PROTOCOL_SHA256
+            or key.capture_policy_sha256 != _NO_CAPTURE_POLICY_SHA256 for key in keys
         ):
             raise ValueError('live keys do not match the supported model or execution mode')
         if (load.operation != 'model_load' or load.warmup_state != 'cold'
@@ -71,14 +83,34 @@ def _validate_service_keys(identity, keys):
         raise ValueError('invalid live workload keys') from exc
 
 
+def _owner_is_unsafe():
+    return _OWNER_UNSAFE or _QUARANTINED.is_set()
+
+
+def _mark_unsafe():
+    global _OWNER_UNSAFE
+    # This process-local latch is authoritative; Event notification is only
+    # best effort and cannot undo it if notification allocation fails.
+    _OWNER_UNSAFE = True
+    try:
+        _QUARANTINED.set()
+    except BaseException:
+        pass
+
+
 def _quarantine(*objects):
-    _QUARANTINED.set()
+    _mark_unsafe()
     try:
         _QUARANTINE_HOLDS.append(objects)
     except BaseException:
         # Even if retaining references fails during OOM, the latch remains set
         # and the supervised owner must exit immediately without attesting.
         pass
+
+
+def _require_unquarantined(*, allow_pending=False):
+    if _owner_is_unsafe() or (_OWNER_DRAIN_PENDING and not allow_pending):
+        raise RuntimeError('GPU owner process is quarantined')
 
 
 @dataclass(frozen=True)
@@ -91,6 +123,61 @@ class GpuOwnerResult:
     error_message: str | None = None
 
 
+@dataclass(frozen=True)
+class ProfileFiles:
+    """Locally configured evidence files and an independently approved pin."""
+
+    document: Path
+    evidence: Path
+    source_manifest: Path
+    approved_profile_id: str
+
+
+def _read_bounded_profile_file(path, limit):
+    path = Path(path)
+    if not path.is_absolute():
+        raise ValueError('profile files must use absolute paths')
+    with path.open('rb') as stream:
+        data = stream.read(limit + 1)
+    if len(data) > limit:
+        raise ValueError('profile evidence file exceeds its size limit')
+    return data
+
+
+def _load_profile_registry(files, identity):
+    """CPU-only validation of saved evidence against separately approved IDs.
+
+    These declared keys are used only to reject invalid configuration before a
+    GPU owner starts. They are not live runtime identity: the child must build
+    and resolve independently verified live keys again under supervision. This
+    generic loader does not establish that evidence used the fixed token case
+    and prescribed stage seeds; production must verify those separately.
+    """
+    from .resource_profile import ProfileRegistry, load_profile
+
+    if type(files) is not tuple or len(files) != 3 or any(type(item) is not ProfileFiles for item in files):
+        raise ValueError('exactly three trusted load/cold/warm profile files are required')
+    profiles = []
+    manifests = []
+    for item in files:
+        document = _read_bounded_profile_file(item.document, 16 * 1024 * 1024)
+        evidence = _read_bounded_profile_file(item.evidence, 16 * 1024 * 1024)
+        manifest = _read_bounded_profile_file(item.source_manifest, 64 * 1024 * 1024)
+        profile = load_profile(document, evidence=evidence, source_manifest=manifest,
+                               expected_profile_id=item.approved_profile_id)
+        if profile.key.source_sha256 != profile.provenance.source_manifest_sha256:
+            raise ValueError('profile workload source does not match its source manifest')
+        profiles.append(profile)
+        manifests.append(manifest)
+    if not manifests[0] == manifests[1] == manifests[2]:
+        raise ValueError('profile source manifests do not match')
+    declared_keys = tuple(profile.key for profile in profiles)
+    _validate_service_keys(identity, declared_keys)
+    registry = ProfileRegistry(tuple(profiles),
+        approved_profile_ids=tuple(item.approved_profile_id for item in files))
+    return registry, declared_keys
+
+
 class _TorchServiceBackend:
     """Fixed no-capture, two-token backend for an already supervised child.
 
@@ -100,7 +187,8 @@ class _TorchServiceBackend:
     """
 
     def __init__(self, *, session, device_lease, cache_dir, team_ids,
-                 live_key_builder, verify_loaded_model, shutdown_timeout=10):
+                 live_key_builder, verify_loaded_model, verify_device_model,
+                 shutdown_timeout=10):
         from .ipc import _identifier
 
         cache_dir = Path(cache_dir)
@@ -115,34 +203,49 @@ class _TorchServiceBackend:
             raise TypeError('a verified live-key builder is required')
         if not callable(verify_loaded_model):
             raise TypeError('a CPU model verifier is required')
+        if not callable(verify_device_model):
+            raise TypeError('a device model verifier is required')
         if type(shutdown_timeout) not in (int, float) or not 0 < shutdown_timeout <= 300:
             raise ValueError('invalid shutdown timeout')
         self.session, self.device_lease = session, device_lease
         self.cache_dir, self.team_ids = cache_dir, team_ids
         self.live_key_builder, self.shutdown_timeout = live_key_builder, shutdown_timeout
         self.verify_loaded_model = verify_loaded_model
+        self.verify_device_model = verify_device_model
         self._resolved_keys = None
-        self._retained = []
+        # These slots are allocated while still CPU-only.  Filling a fixed slot
+        # avoids allocating an ever-growing failure-time retention list.
+        self._retained = [None] * 7
 
     def runtime_binding(self):
         # This is the sole CUDA query permitted between session.check and
         # verify_runtime_binding: it obtains the actual runtime identity.
+        _require_unquarantined(allow_pending=True)
         import torch
         count = torch.cuda.device_count()
+        _require_unquarantined(allow_pending=True)
         if type(count) is not int or count != 1:
             raise RuntimeError('the CUDA runtime must expose exactly one device')
         properties = torch.cuda.get_device_properties(0)
+        _require_unquarantined(allow_pending=True)
         uuid_type = getattr(torch._C, '_CUuuid', None)
         return _canonical_runtime_uuid(getattr(properties, 'uuid', None), uuid_type), count
 
     def live_keys(self, identity):
-        return self.live_key_builder(identity)
+        _require_unquarantined()
+        keys = self.live_key_builder(identity)
+        _require_unquarantined()
+        return keys
 
     def _check_runtime(self):
+        _require_unquarantined()
         self.session.check(self.device_lease)
+        _require_unquarantined()
         runtime_uuid, count = self.runtime_binding()
+        _require_unquarantined()
         self.session.verify_runtime_binding(self.device_lease, runtime_uuid=runtime_uuid,
                                             device_count=count)
+        _require_unquarantined()
 
     def resolve_profiles(self, registry, keys):
         from .resource_profile import WorkloadKey, ProfileRegistry, resolve_worker_profile
@@ -157,15 +260,40 @@ class _TorchServiceBackend:
         return load, cold, warm
 
     def telemetry(self):
-        from .memory_budget import cuda_memory_snapshot
-        return cuda_memory_snapshot(0)
+        _require_unquarantined()
+        from .memory_budget import CudaMemorySnapshot, TelemetryError
+        import torch
+        try:
+            available = torch.cuda.is_available()
+            _require_unquarantined()
+            if not available:
+                raise RuntimeError('CUDA is not available')
+            free, total = torch.cuda.mem_get_info(0)
+            _require_unquarantined()
+            allocated = torch.cuda.memory_allocated(0)
+            _require_unquarantined()
+            reserved = torch.cuda.memory_reserved(0)
+            _require_unquarantined()
+            return CudaMemorySnapshot(free, total, allocated, reserved)
+        except Exception as exc:
+            raise TelemetryError(f'cannot read CUDA memory telemetry: {exc}') from exc
 
     def synchronize(self):
+        _require_unquarantined(allow_pending=True)
         import torch
         torch.cuda.synchronize(0)
+        _require_unquarantined(allow_pending=True)
+
+    @staticmethod
+    def _require_conversion_policy():
+        import torch
+        if (torch.__future__.get_overwrite_module_params_on_conversion() is not False
+                or torch.__future__.get_swap_module_params_on_conversion() is not False):
+            raise RuntimeError('model conversion flags must both be explicitly false')
 
     def construct(self, budget, resident_lease, profiles):
         """Load once and complete a separately admitted same-signature warmup."""
+        _require_unquarantined()
         import torch
         from .pretrained import load_distilgpt2
         from .resident_worker import ForwardRequest, ResidentWorker
@@ -180,7 +308,8 @@ class _TorchServiceBackend:
             raise RuntimeError('live profiles must be resolved before model loading')
         load, cold, warm = profiles
         bundle = load_distilgpt2(cache_dir=self.cache_dir, allow_download=False)
-        self._retained.append(bundle)
+        self._retained[0] = bundle
+        _require_unquarantined()
         model = bundle.model
         config = getattr(model, 'config', None)
         if (model.training or getattr(config, 'use_cache', None) is not False
@@ -202,26 +331,57 @@ class _TorchServiceBackend:
         snapshot = budget.snapshot()
         memory = snapshot.telemetry
         committed = snapshot.committed_incremental_bytes + snapshot.reserve_bytes
+        if (snapshot.active_leases != 1
+                or snapshot.committed_incremental_bytes != resident_lease.estimated_incremental_bytes
+                or budget.active_leases() != (resident_lease,)
+                or resident_lease.released):
+            raise RuntimeError('resident reservation changed before the model copy')
         if (committed > memory.device_free_bytes
                 or memory.process_reserved_bytes + committed > memory.device_total_bytes):
             from .memory_budget import AdmissionError
             raise AdmissionError('live headroom changed before the model copy')
-        model.to(device='cuda:0', dtype=torch.float32)
+        _require_unquarantined()
+        self._require_conversion_policy()
+        _require_unquarantined()
+        converted = model.to(device='cuda:0', dtype=torch.float32)
+        if converted is not model:
+            # A nonstandard conversion may have produced another device object.
+            # Keep it reachable while the owner exits under quarantine.
+            self._retained[6] = converted
+            raise RuntimeError('model conversion did not preserve the model object')
+        _require_unquarantined()
         self.synchronize()
         self._check_runtime()
+        self._require_conversion_policy()
+        _require_unquarantined()
+        # Tied weights can split during module conversion even when the CPU
+        # model was correct. Verify the actual post-copy model and owner under
+        # the same live lease, before creating a worker or running a warmup.
+        if self.verify_device_model(model, self.session.identity, self.session,
+                                    self.device_lease) is not True:
+            raise RuntimeError('device model verification did not explicitly succeed')
+        _require_unquarantined()
+        self._check_runtime()
+        self.synchronize()
+        self._check_runtime()
+        self._require_conversion_policy()
+        _require_unquarantined()
         resident = ResidentWorker(load.key.model_id, model, device='cuda:0',
                                   max_batch_size=1, max_sequence_length=2,
                                   max_input_bytes=64 * 1024,
                                   max_output_bytes=512 * 1024)
-        self._retained.append(resident)
+        self._retained[1] = resident
         admission = DeviceAdmission(budget, device='cuda:0',
             max_estimated_incremental_bytes=max(cold.estimated_incremental_bytes,
                                                 warm.estimated_incremental_bytes))
         cold_worker = BudgetedWorker(resident, admission, (cold,))
-        self._retained.extend((admission, cold_worker))
+        self._retained[2] = admission
+        self._retained[3] = cold_worker
         warmup = ForwardRequest('service-cold-warmup-v1',
             {'input_ids': torch.tensor([[15496, 995]], dtype=torch.int64)}, seed=17)
+        _require_unquarantined()
         warmup_result = cold_worker.execute(warmup)
+        _require_unquarantined()
         logits = warmup_result.logits
         if (logits.device.type != 'cpu' or logits.dtype != torch.float32
                 or tuple(logits.shape) != (1, 2, 50257)
@@ -231,9 +391,9 @@ class _TorchServiceBackend:
         if cold_worker.quarantined or budget.active_leases() != (resident_lease,):
             raise RuntimeError('cold warmup did not drain safely')
         worker = BudgetedWorker(resident, admission, (warm,))
-        self._retained.append(worker)
+        self._retained[4] = worker
         broker = Broker(worker, max_pending=8, max_pending_per_team=2)
-        self._retained.append(broker)
+        self._retained[5] = broker
         factory = make_gpt2_request_factory(vocab_size=config.vocab_size,
             max_positions=config.n_positions, max_batch=1, max_tokens=2)
 
@@ -242,8 +402,12 @@ class _TorchServiceBackend:
                 raise ValueError('only the profiled input_ids signature is supported')
             if (type(inputs['input_ids']) is not list or len(inputs['input_ids']) != 1
                     or type(inputs['input_ids'][0]) is not list
-                    or len(inputs['input_ids'][0]) != 2):
-                raise ValueError('only the profiled [1,2] shape is supported')
+                    or len(inputs['input_ids'][0]) != 2
+                    or any(type(token) is not int for token in inputs['input_ids'][0])
+                    or inputs['input_ids'][0] != [15496, 995]):
+                raise ValueError('only the profiled [15496, 995] input is supported')
+            if type(seed) is not int or seed not in (29, 43, 71):
+                raise ValueError('only the profiled warm seeds are supported')
             return factory(request_id, inputs, seed)
 
         # IPC preflights JSON at 32 bytes per value plus envelope overhead.
@@ -252,7 +416,7 @@ class _TorchServiceBackend:
         server = IPCServer(broker, team_ids=self.team_ids, request_factory=exact_request,
                            max_connections=8, max_batch=1, max_tokens=2,
                            max_response_bytes=4 * 1024 * 1024)
-        self._retained.append(server)
+        self._retained[6] = server
         return worker, broker, server
 
     def serve(self, server, broker, worker, stop_event, announce, verify_drain):
@@ -270,8 +434,17 @@ def _run_bound_owner(session, device_lease, *, backend, registry, stop_event,
     use a real OwnerSession and DeviceLease. Tests use a fake CPU-only backend.
     The resident load reservation remains held through process exit.
     """
-    if _QUARANTINED.is_set():
-        raise RuntimeError('GPU owner process is quarantined')
+    global _OWNER_CLAIMED
+    with _OWNER_CUSTODY_LOCK:
+        if _owner_is_unsafe() or _OWNER_DRAIN_PENDING:
+            raise RuntimeError('GPU owner process is quarantined')
+        if _OWNER_CLAIMED:
+            raise RuntimeError('GPU owner process has already been used')
+        _OWNER_CLAIMED = True
+        _OWNER_CUSTODY[0] = session
+        _OWNER_CUSTODY[1] = device_lease
+        _OWNER_CUSTODY[2] = backend
+        _OWNER_CUSTODY[3] = registry
     try:
         return _run_bound_owner_inner(
             session, device_lease, backend=backend, registry=registry,
@@ -279,6 +452,11 @@ def _run_bound_owner(session, device_lease, *, backend, registry, stop_event,
             minimum_reserve_bytes=minimum_reserve_bytes,
         )
     except BaseException as exc:
+        if _OWNER_CUSTODY[9] is None:
+            _OWNER_CUSTODY[9] = exc
+        elif _OWNER_CUSTODY[9] is not exc and _OWNER_CUSTODY[10] is None:
+            _OWNER_CUSTODY[10] = exc
+        _mark_unsafe()
         _quarantine(session, device_lease, backend, registry, exc)
         raise
 
@@ -289,21 +467,27 @@ def _run_bound_owner_inner(session, device_lease, *, backend, registry,
     if session.identity is None:
         raise RuntimeError('GPU ownership requires an identity-aware supervisor')
 
-    def verify_binding():
+    def verify_binding(*, allow_pending=False):
         # The runtime is queried only after checking the sticky marker and the
         # actual process-owned lease. This UUID must come from CUDA, not the
         # inventory or a profile's declared UUID.
+        _require_unquarantined(allow_pending=allow_pending)
         session.check(device_lease)
+        _require_unquarantined(allow_pending=allow_pending)
         runtime_uuid, count = backend.runtime_binding()
+        _require_unquarantined(allow_pending=allow_pending)
         session.verify_runtime_binding(device_lease, runtime_uuid=runtime_uuid,
                                        device_count=count)
+        _require_unquarantined(allow_pending=allow_pending)
 
     verify_binding()
     # The backend must reconstruct keys from actual runtime/source state, not
     # by copying declarations out of a supplied resource-profile document.
     keys = backend.live_keys(session.identity)
+    _require_unquarantined()
     _validate_service_keys(session.identity, keys)
     profiles = backend.resolve_profiles(registry, keys)
+    _require_unquarantined()
     if type(profiles) is not tuple or len(profiles) != 3:
         raise ValueError('load, cold-forward and warm-forward profiles are required')
     load_profile, _, _ = profiles
@@ -313,36 +497,71 @@ def _run_bound_owner_inner(session, device_lease, *, backend, registry,
 
     def guarded_telemetry():
         verify_binding()
-        return backend.telemetry()
+        snapshot = backend.telemetry()
+        _require_unquarantined()
+        return snapshot
 
     budget = MemoryBudget(guarded_telemetry, max_gpu_trace_bytes=0,
                           max_host_trace_bytes=0,
                           minimum_reserve_bytes=minimum_reserve_bytes)
+    # The budget itself roots every published lease, including when an
+    # interruption prevents acquire() from returning its newly issued handle.
+    _OWNER_CUSTODY[4] = budget
     resident_lease = budget.acquire(estimate, max_gpu_trace_bytes=0,
                                     max_host_trace_bytes=0)
+    _OWNER_CUSTODY[5] = resident_lease
+    _require_unquarantined()
     # Construct loads one model, performs a separately admitted cold warmup,
     # then binds one resident worker, broker and authenticated IPC server.
     worker, broker, server = backend.construct(budget, resident_lease, profiles)
+    _OWNER_CUSTODY[6] = worker
+    _OWNER_CUSTODY[7] = broker
+    _OWNER_CUSTODY[8] = server
+    _require_unquarantined()
 
     def verify_drain():
+        global _OWNER_DRAIN_PENDING
         try:
-            if worker.quarantined:
+            if _owner_is_unsafe() or _OWNER_DRAIN_PENDING:
+                _mark_unsafe()
+                return False
+            # Keep this set until all drain checks finish. If an interruption
+            # occurs before failure notification, another drain cannot retry.
+            _OWNER_DRAIN_PENDING = True
+            if worker.quarantined or broker.quarantined:
+                _mark_unsafe()
                 return False
             active = budget.active_leases()
             if (len(active) != 1 or active[0] is not resident_lease
                     or resident_lease.released
                     or resident_lease.trace_bytes('gpu')
                     or resident_lease.trace_bytes('host')):
+                _mark_unsafe()
                 return False
-            verify_binding()
+            verify_binding(allow_pending=True)
+            if _owner_is_unsafe():
+                return False
             backend.synchronize()
-            verify_binding()
+            if _owner_is_unsafe():
+                return False
+            verify_binding(allow_pending=True)
             active = budget.active_leases()
-            return (not worker.quarantined and len(active) == 1
+            safe = (not _owner_is_unsafe() and not worker.quarantined
+                    and not broker.quarantined and len(active) == 1
                     and active[0] is resident_lease and not resident_lease.released
                     and not resident_lease.trace_bytes('gpu')
                     and not resident_lease.trace_bytes('host'))
+            if not safe:
+                _mark_unsafe()
+            else:
+                _OWNER_DRAIN_PENDING = False
+            return safe
         except BaseException as exc:
+            if _OWNER_CUSTODY[9] is None:
+                _OWNER_CUSTODY[9] = exc
+            elif _OWNER_CUSTODY[9] is not exc and _OWNER_CUSTODY[10] is None:
+                _OWNER_CUSTODY[10] = exc
+            _mark_unsafe()
             _quarantine(session, device_lease, backend, registry, budget,
                         resident_lease, worker, broker, server, exc)
             return False
@@ -369,8 +588,10 @@ def _run_bound_owner_inner(session, device_lease, *, backend, registry,
     # Keep the reservation, device lease and owners alive even after a clean
     # result. The direct child must exit promptly; it never releases a resident
     # reservation while model/state references may still exist.
-    _LIFETIME_HOLDS.append((session, device_lease, backend, registry, budget,
-                            resident_lease, worker, broker, server))
+    if _owner_is_unsafe() or _OWNER_DRAIN_PENDING or worker.quarantined or broker.quarantined:
+        _quarantine(session, device_lease, backend, registry, budget,
+                    resident_lease, worker, broker, server, result)
+        return GpuOwnerResult('quarantined', False)
     session.attest_clean(device_lease)
     return GpuOwnerResult(status, True, getattr(result, 'error_type', None),
                           getattr(result, 'error_message', None))

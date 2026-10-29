@@ -1,0 +1,32 @@
+{
+  "assessment_sha256": "7e3fc2c51473d4357270c1bd401100014c8822133308b8abf4c1ee4b33bef6c8",
+  "assessment_utc": "2026-10-29T02:09:21.840403+00:00",
+  "evidence": [
+    "supervisor source waits for owner exit before returning its exit code",
+    "failed result records exit code 1, no timeout and no clean attestation",
+    "reviewer checked the physical identity, marker and both cooperative locks",
+    "marker and evidence were preserved before removal under both locks"
+  ],
+  "failed_result_sha256": "6d79de374088adab40a1bb8641d78669cbf89f419462c1b8b6c73ebd8a8b1e61",
+  "limitations": [
+    "operator recovery; no clean owner attestation was created",
+    "original owner PID and run-ID link were not persisted",
+    "WDDM and unrelated GPU users limit process and memory visibility",
+    "marker association relies on reviewed cooperative control flow"
+  ],
+  "memory_during_recovery": {
+    "device_name": "NVIDIA GeForce RTX 2070 SUPER",
+    "driver_version": "616.92",
+    "free_bytes": 7023362048,
+    "timestamp_utc": "2026-10-29T02:11:28.523307+00:00",
+    "total_bytes": 8589934592,
+    "used_bytes": 1354760192
+  },
+  "original_marker_sha256": "f15a257781cc1975abd4972411049a87e0476a5b270e8411854d4a8f19253c3a",
+  "physical_gpu": "NVIDIA GeForce RTX 2070 SUPER",
+  "private_failure_sha256": "f5e891fc808216382cff4c4c1f0a557e74b44bec64b44375bed5f0086e421429",
+  "private_started_sha256": "9cc54e03fe682b806a5b4ffd0b6306d304c1199cfb39018fd199b8cd6bab9907",
+  "recovery_completed_utc": "2026-10-29T02:11:28.541306+00:00",
+  "schema": "gpu-oneshot-recovery-public-v1",
+  "status": "completed"
+}

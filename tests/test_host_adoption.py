@@ -1,11 +1,16 @@
 import concurrent.futures
-import dis
 import gc
 import inspect
 import sys
 import threading
 import unittest
+
 import weakref
+
+if __package__:
+    from .opcode_support import offsets_at_line, run_opcode_trace
+else:
+    from opcode_support import offsets_at_line, run_opcode_trace
 
 from looking_glass.host_budget import (HostBudget, HostBusy, HostBudgetExceeded,
                                        HostRequestCancelled, InvalidHostHandle)
@@ -20,8 +25,7 @@ def interrupt_at(method, line_text, opname, call):
     matching = [first + i for i, line in enumerate(lines) if line_text in line]
     if len(matching) != 1:
         raise AssertionError(f"ambiguous line {line_text!r}: {matching}")
-    instructions = [inst.offset for inst in dis.get_instructions(method)
-                    if inst.positions.lineno == matching[0] and inst.opname == opname]
+    instructions = offsets_at_line(method, matching[0], opname)
     if len(instructions) != 1:
         raise AssertionError(f"ambiguous opcode {opname}: {instructions}")
 
@@ -34,11 +38,7 @@ def interrupt_at(method, line_text, opname, call):
             raise KeyboardInterrupt("injected interruption")
         return tracer
 
-    sys.settrace(tracer)
-    try:
-        call()
-    finally:
-        sys.settrace(None)
+    run_opcode_trace(tracer, call)
 
 
 class HostAdoptionTests(unittest.TestCase):

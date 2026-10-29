@@ -68,10 +68,23 @@ forward; an already launched CUDA kernel cannot be preempted. Device work is
 synchronized before a result or a failure is returned, so a surrounding
 device-memory lease must remain held until the call has returned. If device
 synchronization fails, completion is unknown. The worker latches a
-process-wide quarantine before releasing its execution lock, refuses further
+process-wide quarantine before attempting its event notification and before
+releasing its execution lock, refuses further
 worker forwards, and tries to retain known model, request, and output
 references until process teardown. Retention itself may fail under memory
-exhaustion; the quarantine remains in force. On every exception, the service
+exhaustion; the quarantine remains in force. Before launching work the worker
+sets a pending-drain marker, cleared only after successful synchronization.
+If failure handling is interrupted, cleanup retries quarantine while holding
+the shared execution lock, retaining its model and known buffers. The worker
+also keeps fixed, preallocated custody slots for its request, successfully
+stored device inputs, model output, logits, and CPU offload. On a failed drain,
+it also attempts to move available local references into these slots before
+unwinding. These slots and its model reference remain attached even when adding to the
+process hold list fails. The supervisor must keep the worker strongly rooted
+until the quarantined process exits; these slots do not recover temporaries
+that model/runtime code released internally or allocations interrupted before
+their references reached the worker. Repeated asynchronous interruption of
+the retention path can also prevent complete salvage. On every exception, the service
 must inspect `worker.quarantined` as well as the exception type: a secondary
 failure during unwinding can mask the synchronization error. If quarantined,
 retain the device lease and promptly terminate the dedicated execution process.

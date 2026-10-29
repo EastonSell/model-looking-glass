@@ -3,6 +3,7 @@ import unittest
 import gc
 import linecache
 import sys
+import traceback
 import weakref
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
@@ -101,6 +102,467 @@ class FairBrokerHandoffTests(unittest.TestCase):
             self.assertEqual(outcome.state, RequestState.SUCCEEDED)
             self.assertTrue(torch.equal(outcome.result.logits, torch.tensor([[[104.]]])))
 
+    def test_retirement_waits_for_owner_alias_disposal_and_survives_ack(self):
+        worker = Worker()
+        worker.release.clear()
+        entered, release_retirement = threading.Event(), threading.Event()
+        with Broker(worker, max_pending=2, max_pending_per_team=2) as broker:
+            adapter, target = self.make_adapter(broker)
+            ticket = adapter.submit(b'alice', b'hello')
+            receipt = adapter.transfer_next()
+            handle = adapter.recover_receipt(receipt.ticket)
+            original = broker._retire_job_result
+
+            def gated_retirement(job):
+                entered.set()
+                if not release_retirement.wait(5):
+                    raise TimeoutError('test did not release retirement')
+                return original(job)
+
+            try:
+                with patch.object(broker, '_retire_job_result', side_effect=gated_retirement):
+                    self.assertTrue(worker.started.wait(2))
+                    with self.assertRaises(TimeoutError):
+                        handle.wait_for_retirement(timeout=0)
+                    worker.release.set()
+                    self.assertEqual(handle.wait(2).state, RequestState.SUCCEEDED)
+                    self.assertTrue(entered.wait(2))
+                    with self.assertRaises(TimeoutError):
+                        handle.wait_for_retirement(timeout=0)
+                    self.assertEqual(target.receipt_committed_bytes, 16)
+                    release_retirement.set()
+                    self.assertTrue(handle.wait_for_retirement(timeout=2))
+                    self.assertTrue(adapter.acknowledge_receipt(ticket, handle))
+                    self.assertTrue(handle.wait_for_retirement(timeout=0))
+                    self.assertEqual(target.receipt_committed_bytes, 0)
+            finally:
+                worker.release.set()
+                release_retirement.set()
+
+    def test_pending_cancellation_signals_retirement(self):
+        worker = Worker()
+        worker.release.clear()
+        with Broker(worker, max_pending=2, max_pending_per_team=2) as broker:
+            adapter, _ = self.make_adapter(broker)
+            adapter.submit(b'alice', b'one')
+            running = transfer_handle(adapter)
+            self.assertTrue(worker.started.wait(2))
+            ticket = adapter.submit(b'bob', b'two')
+            receipt = adapter.transfer_next()
+            pending = adapter.recover_receipt(receipt.ticket)
+            try:
+                self.assertTrue(pending.cancel())
+                self.assertEqual(pending.wait(2).state, RequestState.CANCELLED)
+                self.assertTrue(pending.wait_for_retirement(timeout=2))
+                self.assertTrue(adapter.acknowledge_receipt(ticket, pending))
+            finally:
+                worker.release.set()
+            self.assertEqual(running.wait(2).state, RequestState.SUCCEEDED)
+
+    def test_retirement_is_unknown_if_result_cleanup_fails(self):
+        worker = Worker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=2, max_pending_per_team=2)
+        adapter, target = self.make_adapter(broker)
+        ticket = adapter.submit(b'alice', b'one')
+        receipt = adapter.transfer_next()
+        handle = adapter.recover_receipt(receipt.ticket)
+        self.assertTrue(worker.started.wait(2))
+        self.assertTrue(adapter.acknowledge_receipt(ticket, handle))
+        original_release = target._release
+        calls = []
+
+        def fail_result_release(custody):
+            calls.append(True)
+            if len(calls) == 2:
+                raise RuntimeError('injected result release failure')
+            return original_release(custody)
+
+        try:
+            with patch.object(target, '_release', side_effect=fail_result_release):
+                worker.release.set()
+                broker._thread.join(3)
+                self.assertFalse(broker._thread.is_alive())
+            self.assertTrue(broker.quarantined)
+            with self.assertRaises(BrokerUnavailable):
+                handle.wait_for_retirement(timeout=0)
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(timeout=2)
+        finally:
+            worker.release.set()
+
+    def test_direct_submit_handle_does_not_claim_retirement_support(self):
+        with Broker(Worker(), max_pending=1, max_pending_per_team=1) as broker:
+            handle = broker.submit('A', decode(b'one'))
+            self.assertEqual(handle.wait(2).state, RequestState.SUCCEEDED)
+            with self.assertRaises(BrokerUnavailable):
+                handle.wait_for_retirement(timeout=0)
+
+    def test_latched_quarantine_blocks_capacity_ack_and_retirement(self):
+        worker = Worker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=2, max_pending_per_team=2)
+        adapter, target = self.make_adapter(broker)
+        ticket = adapter.submit(b'alice', b'one')
+        receipt = adapter.transfer_next()
+        handle = adapter.recover_receipt(receipt.ticket)
+        self.assertTrue(worker.started.wait(2))
+        try:
+            # Quarantine can become visible before the remainder of its
+            # notification/cleanup transition completes.
+            with broker._condition:
+                broker._quarantine_latched = True
+                broker._condition.notify_all()
+            self.assertFalse(target.wait_for_capacity(timeout=0))
+            with self.assertRaises(BrokerUnavailable):
+                adapter.acknowledge_receipt(ticket, handle)
+            with self.assertRaises(BrokerUnavailable):
+                handle.wait_for_retirement(timeout=0)
+            worker.release.set()
+            broker._thread.join(2)
+            self.assertEqual((target.committed_bytes, target.receipt_committed_bytes), (64, 16))
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(timeout=2)
+        finally:
+            worker.release.set()
+
+    def test_quarantine_before_unpublished_cleanup_keeps_both_claims(self):
+        for mode in ('empty', 'preparation'):
+            with self.subTest(mode=mode):
+                entered, resume = threading.Event(), threading.Event()
+                refs, aliases, errors = [], [], []
+
+                class Owner:
+                    pass
+
+                class FailingWorker(Worker):
+                    def snapshot_request(self, request):
+                        raise ValueError('injected snapshot failure')
+
+                def decoder(payload):
+                    tensor = torch.tensor([[payload[0]]])
+                    tensor.owner = Owner()
+                    refs.append(weakref.ref(tensor.owner))
+                    aliases.append(tensor.detach())
+                    return ForwardRequest('input', {'input_ids': tensor})
+
+                worker = FailingWorker() if mode == 'preparation' else Worker()
+                broker = Broker(worker, max_pending=2, max_pending_per_team=2)
+                adapter, target = self.make_adapter(broker, decoder=decoder)
+                if mode == 'preparation':
+                    adapter.submit(b'alice', b'one')
+
+                def trace(frame, event, arg):
+                    if (event == 'line' and frame.f_code.co_name == '_retire_unpublished' and
+                            linecache.getline(frame.f_code.co_filename, frame.f_lineno).strip() ==
+                            'with broker._condition:'):
+                        entered.set()
+                        if not resume.wait(5):
+                            raise TimeoutError('test did not release cleanup')
+                        return None
+                    return trace
+
+                def dispatch():
+                    try:
+                        sys.settrace(trace)
+                        adapter.transfer_next()
+                    except BaseException as exc:
+                        errors.append(type(exc).__name__)
+                    finally:
+                        sys.settrace(None)
+
+                thread = threading.Thread(target=dispatch)
+                try:
+                    thread.start()
+                    self.assertTrue(entered.wait(3))
+                    with broker._condition:
+                        broker._mark_cleanup_failed_locked()
+                    resume.set()
+                    thread.join(3)
+                    self.assertFalse(thread.is_alive())
+                    self.assertTrue(errors)
+                    self.assertEqual((target.committed_bytes, target.receipt_committed_bytes), (64, 16))
+                    self.assertEqual(len(target._inflight), 1)
+                    if mode == 'preparation':
+                        gc.collect()
+                        self.assertIsNotNone(refs[0]())
+                        self.assertEqual(len(aliases), 1)
+                    with self.assertRaises(BrokerShutdownError):
+                        broker.close(timeout=2)
+                finally:
+                    resume.set()
+                    thread.join(3)
+
+    def test_quarantine_before_publication_failure_cleanup_retains_snapshot(self):
+        snapshot_entered, release_snapshot = threading.Event(), threading.Event()
+        cleanup_entered, release_cleanup = threading.Event(), threading.Event()
+        refs, aliases, errors = [], [], []
+
+        class Owner:
+            pass
+
+        class SlowWorker(Worker):
+            def snapshot_request(self, request):
+                result = super().snapshot_request(request)
+                tensor = result.inputs['input_ids']
+                tensor.owner = Owner()
+                refs.append(weakref.ref(tensor.owner))
+                aliases.append(tensor.detach())
+                snapshot_entered.set()
+                if not release_snapshot.wait(5):
+                    raise TimeoutError('test did not release snapshot')
+                return result
+
+        broker = Broker(SlowWorker(), max_pending=2, max_pending_per_team=2)
+        adapter, target = self.make_adapter(broker)
+        adapter.submit(b'alice', b'one')
+
+        def trace(frame, event, arg):
+            if (event == 'line' and frame.f_code.co_name == '_retire_unpublished' and
+                    linecache.getline(frame.f_code.co_filename, frame.f_lineno).strip() ==
+                    'with broker._condition:'):
+                cleanup_entered.set()
+                if not release_cleanup.wait(5):
+                    raise TimeoutError('test did not release cleanup')
+                return None
+            return trace
+
+        def dispatch():
+            try:
+                sys.settrace(trace)
+                adapter.transfer_next()
+            except BaseException as exc:
+                errors.append(type(exc).__name__)
+            finally:
+                sys.settrace(None)
+
+        thread = threading.Thread(target=dispatch)
+        try:
+            thread.start()
+            self.assertTrue(snapshot_entered.wait(3))
+            self.assertFalse(broker.close(wait=False))
+            release_snapshot.set()
+            self.assertTrue(cleanup_entered.wait(3))
+            with broker._condition:
+                broker._mark_cleanup_failed_locked()
+            release_cleanup.set()
+            thread.join(3)
+            self.assertFalse(thread.is_alive())
+            self.assertTrue(errors)
+            self.assertEqual((target.committed_bytes, target.receipt_committed_bytes), (64, 16))
+            self.assertEqual(len(target._inflight), 1)
+            gc.collect()
+            self.assertIsNotNone(refs[0]())
+            self.assertEqual(len(aliases), 1)
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(timeout=2)
+        finally:
+            release_snapshot.set()
+            release_cleanup.set()
+            thread.join(3)
+
+    def test_quarantine_before_success_staging_disposal_keeps_decoded_owner(self):
+        entered, resume = threading.Event(), threading.Event()
+        refs, aliases, errors = [], [], []
+
+        class Owner:
+            pass
+
+        def decoder(payload):
+            tensor = torch.tensor([[payload[0]]])
+            tensor.owner = Owner()
+            refs.append(weakref.ref(tensor.owner))
+            aliases.append(tensor.detach())
+            return ForwardRequest('input', {'input_ids': tensor})
+
+        broker = Broker(Worker(), max_pending=2, max_pending_per_team=2)
+        adapter, target = self.make_adapter(broker, decoder=decoder)
+        adapter.submit(b'alice', b'one')
+
+        def trace(frame, event, arg):
+            if (event == 'line' and frame.f_code.co_name == '_drop_success_staged' and
+                    linecache.getline(frame.f_code.co_filename, frame.f_lineno).strip() ==
+                    'with broker._condition:'):
+                entered.set()
+                if not resume.wait(5):
+                    raise TimeoutError('test did not release staging cleanup')
+                return None
+            return trace
+
+        def dispatch():
+            try:
+                sys.settrace(trace)
+                adapter.transfer_next()
+            except BaseException as exc:
+                errors.append(type(exc).__name__)
+            finally:
+                sys.settrace(None)
+
+        thread = threading.Thread(target=dispatch)
+        try:
+            thread.start()
+            self.assertTrue(entered.wait(3))
+            with broker._condition:
+                broker._mark_cleanup_failed_locked()
+            resume.set()
+            thread.join(3)
+            self.assertFalse(thread.is_alive())
+            self.assertTrue(errors)
+            self.assertEqual((target.committed_bytes, target.receipt_committed_bytes), (64, 16))
+            self.assertEqual(len(target._inflight), 1)
+            gc.collect()
+            self.assertIsNotNone(refs[0]())
+            self.assertEqual(len(aliases), 1)
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(timeout=2)
+        finally:
+            resume.set()
+            thread.join(3)
+
+    def test_preflight_status_failure_is_private_and_quarantines(self):
+        for operation in ('enable', 'bind', 'capacity', 'transfer', 'available', 'submit'):
+            with self.subTest(operation=operation):
+                refs, aliases = [], []
+
+                class Owner:
+                    pass
+
+                class StatusWorker(Worker):
+                    @property
+                    def poisoned(self):
+                        if self.fail_status:
+                            original = torch.ones(1)
+                            original.owner = Owner()
+                            refs.append(weakref.ref(original.owner))
+                            aliases.append(original.detach())
+                            raise KeyboardInterrupt('preflight status failed')
+                        return self._poisoned
+
+                    @poisoned.setter
+                    def poisoned(self, value):
+                        self._poisoned = value
+
+                    def __init__(self):
+                        self.fail_status = False
+                        super().__init__()
+
+                worker = StatusWorker()
+                broker = Broker(worker, max_pending=2, max_pending_per_team=2)
+                adapter = target = None
+                if operation == 'bind':
+                    target = broker.enable_fair_handoff(
+                        ('A', 'B'), decoder=decode, max_item_bytes=8,
+                        max_decoded_bytes=8, preparation_bytes=64,
+                        max_preparation_bytes=128, max_result_bytes=16,
+                        max_unacknowledged=8)
+                elif operation in ('capacity', 'transfer'):
+                    adapter, target = self.make_adapter(broker)
+                    if operation == 'transfer':
+                        adapter.submit(b'alice', b'one')
+                worker.fail_status = True
+                error = None
+                try:
+                    if operation == 'enable':
+                        self.make_adapter(broker)
+                    elif operation == 'bind':
+                        ExperimentalFairAdapter(
+                            {'alice': 'A', 'bob': 'B'}, verifier=verify, target=target,
+                            max_waiters=4, max_waiters_per_team=3,
+                            max_waiting_bytes=32, max_item_bytes=8)
+                    elif operation == 'capacity':
+                        target.wait_for_capacity(timeout=0)
+                    elif operation == 'transfer':
+                        adapter.transfer_next()
+                    elif operation == 'available':
+                        _ = broker.available
+                    else:
+                        broker.submit('A', decode(b'one'))
+                except KeyboardInterrupt as exc:
+                    error = exc
+                self.assertIsNotNone(error)
+                self.assertIsNot(error, broker._status_error)
+                self.assertIsNone(error.__context__)
+                traceback.clear_frames(error.__traceback__)
+                gc.collect()
+                self.assertIsNotNone(refs[0]())
+                self.assertEqual(len(aliases), 1)
+                self.assertTrue(broker.quarantined)
+                self.assertFalse(broker.available)
+                with self.assertRaises(BrokerShutdownError):
+                    broker.close(timeout=2)
+
+    def test_preflight_ordinary_and_system_exit_fail_closed(self):
+        for interruption in (RuntimeError, SystemExit):
+            with self.subTest(interruption=interruption.__name__):
+                class StatusWorker(Worker):
+                    @property
+                    def poisoned(self):
+                        raise interruption('preflight failure')
+
+                    @poisoned.setter
+                    def poisoned(self, value):
+                        pass
+
+                broker = Broker(StatusWorker(), max_pending=1, max_pending_per_team=1)
+                error = None
+                try:
+                    _ = broker.available
+                except BaseException as exc:
+                    error = exc
+                expected = BrokerUnavailable if interruption is RuntimeError else SystemExit
+                self.assertIsInstance(error, expected)
+                self.assertIsNot(error, broker._status_error)
+                self.assertIsNone(error.__context__)
+                self.assertTrue(broker.quarantined)
+                with self.assertRaises(BrokerShutdownError):
+                    broker.close(timeout=2)
+
+    def test_interruption_before_status_error_storage_keeps_its_owner(self):
+        refs, aliases = [], []
+
+        class Owner:
+            pass
+
+        class StatusWorker(Worker):
+            @property
+            def poisoned(self):
+                original = torch.ones(1)
+                original.owner = Owner()
+                refs.append(weakref.ref(original.owner))
+                aliases.append(original.detach())
+                raise RuntimeError('worker status failed')
+
+            @poisoned.setter
+            def poisoned(self, value):
+                pass
+
+        broker = Broker(StatusWorker(), max_pending=1, max_pending_per_team=1)
+
+        def trace(frame, event, arg):
+            if (event == 'line' and frame.f_code.co_name == '_worker_poisoned_probe_locked' and
+                    linecache.getline(frame.f_code.co_filename, frame.f_lineno).strip() ==
+                    'self._status_error = exc'):
+                raise KeyboardInterrupt('before status error storage')
+            return trace
+
+        error = None
+        try:
+            sys.settrace(trace)
+            _ = broker.available
+        except KeyboardInterrupt as exc:
+            error = exc
+        finally:
+            sys.settrace(None)
+        self.assertIsNotNone(error)
+        self.assertIsNone(error.__context__)
+        self.assertTrue(broker.quarantined)
+        traceback.clear_frames(error.__traceback__)
+        gc.collect()
+        self.assertIsNotNone(refs[0]())
+        self.assertEqual(len(aliases), 1)
+        with self.assertRaises(BrokerShutdownError):
+            broker.close(timeout=2)
+
     def test_cpu_resident_worker_runs_a_bounded_decoded_forward(self):
         import torch
         from torch import nn
@@ -156,14 +618,17 @@ class FairBrokerHandoffTests(unittest.TestCase):
         class TracedSnapshot(ForwardRequest):
             pass
 
-        for mode in ('subclass', 'identity_changed'):
+        for mode in ('subclass', 'identity_changed', 'extra_owner'):
             with self.subTest(mode=mode):
                 class BadWorker(Worker):
                     def snapshot_request(self, request):
                         if mode == 'subclass':
                             snapshot = TracedSnapshot(request.request_id, request.inputs, request.seed)
-                        else:
+                        elif mode == 'identity_changed':
                             snapshot = ForwardRequest('changed', request.inputs, request.seed)
+                        else:
+                            snapshot = ForwardRequest(request.request_id, request.inputs, request.seed)
+                            object.__setattr__(snapshot, 'owner', object())
                         self.snapshot_ref = weakref.ref(snapshot)
                         return snapshot
 
@@ -180,6 +645,59 @@ class FairBrokerHandoffTests(unittest.TestCase):
                 self.assertIsNotNone(worker.snapshot_ref())
                 with self.assertRaises(BrokerShutdownError):
                     broker.close(timeout=3)
+
+    def test_failing_worker_limit_getter_is_private_and_quarantines(self):
+        class Owner:
+            pass
+
+        for stage in ('enable', 'claim'):
+            for name in ('max_input_bytes', 'max_output_bytes'):
+                for kind in (RuntimeError, KeyboardInterrupt, SystemExit):
+                    with self.subTest(stage=stage, name=name, kind=kind):
+                        refs, aliases = [], []
+
+                        class BadLimit(Worker):
+                            failed_name = None
+
+                            def __getattribute__(self, key):
+                                if key == object.__getattribute__(self, 'failed_name'):
+                                    tensor = torch.tensor([1])
+                                    owner = Owner()
+                                    tensor.owner = owner
+                                    refs.append(weakref.ref(owner))
+                                    aliases.append(tensor.detach())
+                                    raise kind('limit lookup failed')
+                                return super().__getattribute__(key)
+
+                        worker = BadLimit()
+                        broker = Broker(worker, max_pending=2, max_pending_per_team=2)
+                        if stage == 'claim':
+                            adapter, target = self.make_adapter(broker)
+                            ticket = adapter.submit(b'alice', b'one')
+                        worker.failed_name = name
+                        error = None
+                        try:
+                            if stage == 'enable':
+                                self.make_adapter(broker)
+                            else:
+                                adapter.transfer_next()
+                        except BaseException as exc:
+                            error = exc
+                        expected = BrokerUnavailable if kind is RuntimeError else kind
+                        self.assertIsInstance(error, expected)
+                        self.assertIsNone(error.__context__)
+                        self.assertTrue(broker.quarantined)
+                        if stage == 'claim':
+                            self.assertEqual((target.committed_bytes, target.receipt_committed_bytes), (0, 0))
+                            self.assertTrue(adapter.cancel(b'alice', ticket))
+                        traceback.clear_frames(error.__traceback__)
+                        with self.assertRaises(BrokerShutdownError):
+                            broker.close(timeout=2)
+                        del broker
+                        gc.collect()
+                        self.assertIsNotNone(refs[0]())
+                        self.assertEqual(aliases[0].tolist(), [1])
+                        self.assertFalse(worker.closed)
 
     def test_rejected_decoder_output_is_retained_and_quarantined(self):
         class UnknownRequest(ForwardRequest):
@@ -308,18 +826,166 @@ class FairBrokerHandoffTests(unittest.TestCase):
     def test_multiple_system_exits_preserve_their_interruption(self):
         self.assert_concurrent_status_interruptions(SystemExit)
 
-    def assert_concurrent_status_interruptions(self, interruption):
-        barrier = threading.Barrier(3)
+    def test_published_interrupt_does_not_requery_status_after_quarantine(self):
         local = threading.local()
-        statuses = []
+        status_calls = []
 
-        class UnknownRequest(ForwardRequest):
+        class StatusWorker(Worker):
+            @property
+            def poisoned(self):
+                if getattr(local, 'interrupt_status', False):
+                    status_calls.append(True)
+                    raise SystemExit('injected status interruption')
+                return self._poisoned
+
+            @poisoned.setter
+            def poisoned(self, value):
+                self._poisoned = value
+
+        broker = Broker(StatusWorker(), max_pending=2, max_pending_per_team=2)
+        adapter, _ = self.make_adapter(broker)
+        ticket = adapter.submit(b'alice', b'one')
+
+        def trace(frame, event, arg):
+            if (event == 'line' and frame.f_code.co_name == '_accept_next' and
+                    linecache.getline(frame.f_code.co_filename, frame.f_lineno).strip() == 'state.active = False' and
+                    frame.f_locals.get('publication_started') and frame.f_locals.get('job', True) is None):
+                local.interrupt_status = True
+                raise KeyboardInterrupt('injected after job frame cleared')
+            return trace
+
+        error = None
+        try:
+            sys.settrace(trace)
+            adapter.transfer_next()
+        except BaseException as exc:
+            error = exc
+        finally:
+            sys.settrace(None)
+            local.interrupt_status = False
+        self.assertIsInstance(error, FatalHandoffFailure)
+        self.assertEqual(error.ticket, ticket)
+        self.assertIsInstance(error.__cause__, KeyboardInterrupt)
+        self.assertEqual(status_calls, [])
+        self.assertTrue(broker.quarantined)
+        with self.assertRaises(BrokerShutdownError):
+            broker.close(timeout=2)
+
+    def test_public_fatal_traceback_cannot_clear_private_status_ownership(self):
+        local = threading.local()
+        refs, aliases = [], []
+
+        class Owner:
             pass
 
         class StatusWorker(Worker):
             @property
             def poisoned(self):
                 if getattr(local, 'fail_status', False):
+                    original = torch.ones(1)
+                    original.owner = Owner()
+                    refs.append(weakref.ref(original.owner))
+                    aliases.append(original.detach())
+                    raise KeyboardInterrupt('worker status failed')
+                return self._poisoned
+
+            @poisoned.setter
+            def poisoned(self, value):
+                self._poisoned = value
+
+        def bad_decoder(payload):
+            local.fail_status = True
+            raise ValueError('ordinary decoder failure')
+
+        broker = Broker(StatusWorker(), max_pending=2, max_pending_per_team=2)
+        adapter, target = self.make_adapter(broker, decoder=bad_decoder)
+        adapter.submit(b'alice', b'one')
+        error = None
+        try:
+            adapter.transfer_next()
+        except FatalHandoffFailure as exc:
+            error = exc
+        finally:
+            local.fail_status = False
+        self.assertIsNotNone(error)
+        self.assertIsInstance(error.__cause__, KeyboardInterrupt)
+        self.assertIsNone(error.__cause__.__context__)
+        private_error = next(iter(target._inflight.values())).retained_status_error
+        self.assertIsNot(error.__cause__, private_error)
+        traceback.clear_frames(error.__cause__.__traceback__)
+        gc.collect()
+        self.assertIsNotNone(refs[0]())
+        self.assertEqual(len(aliases), 1)
+        self.assertEqual(target.committed_bytes, 64)
+        with self.assertRaises(BrokerShutdownError):
+            broker.close(timeout=2)
+
+    def test_sanitized_status_does_not_attach_an_active_caller_exception(self):
+        local = threading.local()
+        refs, aliases = [], []
+
+        class Owner:
+            pass
+
+        class StatusWorker(Worker):
+            @property
+            def poisoned(self):
+                if getattr(local, 'fail_status', False):
+                    raise local.status_error
+                return self._poisoned
+
+            @poisoned.setter
+            def poisoned(self, value):
+                self._poisoned = value
+
+        def bad_decoder(payload):
+            local.fail_status = True
+            raise ValueError('ordinary decoder failure')
+
+        def fail_outer():
+            original = torch.ones(1)
+            original.owner = Owner()
+            refs.append(weakref.ref(original.owner))
+            aliases.append(original.detach())
+            raise KeyboardInterrupt('outer error')
+
+        broker = Broker(StatusWorker(), max_pending=2, max_pending_per_team=2)
+        adapter, target = self.make_adapter(broker, decoder=bad_decoder)
+        adapter.submit(b'alice', b'one')
+        error = None
+        try:
+            fail_outer()
+        except KeyboardInterrupt as outer:
+            local.status_error = outer
+            try:
+                adapter.transfer_next()
+            except FatalHandoffFailure as exc:
+                error = exc
+            finally:
+                local.fail_status = False
+                del local.status_error
+        self.assertIsNotNone(error)
+        self.assertIsInstance(error.__cause__, KeyboardInterrupt)
+        self.assertIsNone(error.__cause__.__context__)
+        traceback.clear_frames(error.__cause__.__traceback__)
+        gc.collect()
+        self.assertIsNotNone(refs[0]())
+        self.assertEqual(len(aliases), 1)
+        self.assertEqual(target.committed_bytes, 64)
+        with self.assertRaises(BrokerShutdownError):
+            broker.close(timeout=2)
+
+    def assert_concurrent_status_interruptions(self, interruption):
+        barrier = threading.Barrier(3)
+        status_barrier = threading.Barrier(3)
+        local = threading.local()
+        statuses = []
+
+        class StatusWorker(Worker):
+            @property
+            def poisoned(self):
+                if getattr(local, 'fail_status', False):
+                    status_barrier.wait(timeout=5)
                     raise interruption('status interrupted')
                 return self._poisoned
 
@@ -330,7 +996,7 @@ class FairBrokerHandoffTests(unittest.TestCase):
         def bad_decoder(payload):
             barrier.wait(timeout=5)
             local.fail_status = True
-            return UnknownRequest(payload.decode('ascii'), {'input_ids': torch.tensor([[1]])})
+            raise ValueError('ordinary decoder failure')
 
         broker = Broker(StatusWorker(), max_pending=3, max_pending_per_team=3)
         adapter, target = self.make_adapter(
@@ -379,6 +1045,8 @@ class FairBrokerHandoffTests(unittest.TestCase):
         handle = transfer_handle(adapter)
         self.assertEqual(handle.wait(2).state, RequestState.FAILED)
         self.assertTrue(broker.quarantined)
+        with self.assertRaises(BrokerUnavailable):
+            handle.wait_for_retirement(timeout=0)
         self.assertIsNotNone(broker._fair_running_job)
         self.assertEqual((target.committed_bytes, target.receipt_committed_bytes), (64, 16))
         broker_ref, target_ref = weakref.ref(broker), weakref.ref(target)
@@ -596,15 +1264,442 @@ class FairBrokerHandoffTests(unittest.TestCase):
         def interrupt(_payload):
             raise KeyboardInterrupt()
 
-        with Broker(Worker(), max_pending=2, max_pending_per_team=2) as broker:
-            adapter, target = self.make_adapter(broker, decoder=interrupt)
-            ticket = adapter.submit(b'alice', b'one')
-            with self.assertRaises(FatalHandoffFailure) as caught:
+        broker = Broker(Worker(), max_pending=2, max_pending_per_team=2)
+        adapter, target = self.make_adapter(broker, decoder=interrupt)
+        ticket = adapter.submit(b'alice', b'one')
+        with self.assertRaises(FatalHandoffFailure) as caught:
+            adapter.transfer_next()
+        self.assertEqual(caught.exception.ticket, ticket)
+        self.assertIsNone(adapter.recover_receipt(ticket))
+        self.assertTrue(broker.quarantined)
+        self.assertEqual(target.committed_bytes, 64)
+        self.assertEqual(target.receipt_committed_bytes, 16)
+        with self.assertRaises(BrokerShutdownError):
+            broker.close(timeout=2)
+
+    def test_decoder_oom_and_interruptions_retain_private_partial_inputs(self):
+        class Owner:
+            pass
+
+        for kind in (MemoryError, torch.OutOfMemoryError, KeyboardInterrupt, SystemExit):
+            with self.subTest(kind=kind):
+                refs, aliases = [], []
+
+                def decoder(_payload):
+                    tensor = torch.tensor([1])
+                    owner = Owner()
+                    tensor.owner = owner
+                    refs.append(weakref.ref(owner))
+                    aliases.append(tensor.detach())
+                    raise kind('decoder interrupted after partial allocation')
+
+                worker = Worker()
+                broker = Broker(worker, max_pending=2, max_pending_per_team=2)
+                adapter, target = self.make_adapter(broker, decoder=decoder)
+                ticket = adapter.submit(b'alice', b'one')
+                error = None
+                try:
+                    adapter.transfer_next()
+                except BaseException as exc:
+                    error = exc
+                expected = HandoffFailure if issubclass(kind, Exception) else FatalHandoffFailure
+                self.assertIsInstance(error, expected)
+                self.assertEqual(error.ticket, ticket)
+                self.assertTrue(broker.quarantined)
+                self.assertEqual((target.committed_bytes, target.receipt_committed_bytes), (64, 16))
+                seen = set()
+                public = error
+                while public is not None and id(public) not in seen:
+                    seen.add(id(public))
+                    traceback.clear_frames(public.__traceback__)
+                    public = public.__cause__ or public.__context__
+                with self.assertRaises(BrokerShutdownError):
+                    broker.close(timeout=2)
+                del broker
+                gc.collect()
+                self.assertIsNotNone(refs[0]())
+                self.assertEqual(aliases[0].tolist(), [1])
+                self.assertFalse(worker.closed)
+
+    def test_interrupted_quarantine_mark_cannot_release_preparation_owners(self):
+        class Owner:
+            pass
+
+        for stage in ('decoder_oom', 'decoder_invalid', 'snapshot_oom', 'snapshot_invalid'):
+            for mark_error in (RuntimeError, KeyboardInterrupt, SystemExit):
+                with self.subTest(stage=stage, mark_error=mark_error):
+                    refs, aliases = [], []
+
+                    def owned_tensor():
+                        tensor = torch.tensor([[1]])
+                        tensor.owner = Owner()
+                        refs.append(weakref.ref(tensor.owner))
+                        aliases.append(tensor.detach())
+                        return tensor
+
+                    def decoder(_payload):
+                        tensor = owned_tensor()
+                        if stage == 'decoder_oom':
+                            raise MemoryError('partial decoder allocation')
+                        result = ForwardRequest('one', {'input_ids': tensor})
+                        if stage == 'decoder_invalid':
+                            object.__setattr__(result, 'unexpected', object())
+                        return result
+
+                    class BadSnapshot(Worker):
+                        def snapshot_request(self, request):
+                            if stage == 'snapshot_oom':
+                                partial = owned_tensor()
+                                raise MemoryError('partial worker snapshot')
+                            if stage == 'snapshot_invalid':
+                                snapshot = ForwardRequest(request.request_id, request.inputs)
+                                object.__setattr__(snapshot, 'unexpected', object())
+                                return snapshot
+                            return super().snapshot_request(request)
+
+                    worker = BadSnapshot()
+                    broker = Broker(worker, max_pending=2, max_pending_per_team=2)
+                    adapter, target = self.make_adapter(broker, decoder=decoder)
+                    ticket = adapter.submit(b'alice', b'one')
+                    mark = broker._mark_cleanup_failed_locked
+                    calls = []
+
+                    def fail_first_mark():
+                        calls.append(True)
+                        if len(calls) == 1:
+                            raise mark_error('quarantine mark interrupted')
+                        return mark()
+
+                    error = None
+                    with patch.object(broker, '_mark_cleanup_failed_locked', side_effect=fail_first_mark):
+                        try:
+                            adapter.transfer_next()
+                        except BaseException as exc:
+                            error = exc
+                    expected = HandoffFailure if issubclass(mark_error, Exception) else FatalHandoffFailure
+                    self.assertIsInstance(error, expected)
+                    self.assertEqual(error.ticket, ticket)
+                    self.assertGreaterEqual(len(calls), 2)
+                    self.assertTrue(broker.quarantined)
+                    self.assertEqual((target.committed_bytes, target.receipt_committed_bytes), (64, 16))
+                    seen = set()
+                    public = error
+                    while public is not None and id(public) not in seen:
+                        seen.add(id(public))
+                        traceback.clear_frames(public.__traceback__)
+                        public = public.__cause__ or public.__context__
+                    with self.assertRaises(BrokerShutdownError):
+                        broker.close(timeout=2)
+                    del broker
+                    gc.collect()
+                    self.assertTrue(all(ref() is not None for ref in refs))
+                    self.assertTrue(all(alias.tolist() == [[1]] for alias in aliases))
+                    self.assertFalse(worker.closed)
+
+    def test_repeated_quarantine_mark_failures_use_private_emergency_latch(self):
+        class Owner:
+            pass
+
+        for kind in (RuntimeError, KeyboardInterrupt, SystemExit):
+            with self.subTest(kind=kind):
+                refs, aliases = [], []
+
+                def decoder(_payload):
+                    tensor = torch.tensor([1])
+                    tensor.owner = Owner()
+                    refs.append(weakref.ref(tensor.owner))
+                    aliases.append(tensor.detach())
+                    raise MemoryError('partially constructed decoder input')
+
+                worker = Worker()
+                broker = Broker(worker, max_pending=2, max_pending_per_team=2)
+                adapter, target = self.make_adapter(broker, decoder=decoder)
+                ticket = adapter.submit(b'alice', b'one')
+                error = None
+                with patch.object(broker, '_mark_cleanup_failed_locked', side_effect=kind('mark failed')) as mark:
+                    try:
+                        adapter.transfer_next()
+                    except BaseException as exc:
+                        error = exc
+                self.assertGreaterEqual(mark.call_count, 3)
+                expected = HandoffFailure if kind is RuntimeError else FatalHandoffFailure
+                self.assertIsInstance(error, expected)
+                self.assertEqual(error.ticket, ticket)
+                self.assertTrue(broker.quarantined)
+                self.assertFalse(broker.available)
+                self.assertEqual((target.committed_bytes, target.receipt_committed_bytes), (64, 16))
+                seen = set()
+                public = error
+                while public is not None and id(public) not in seen:
+                    seen.add(id(public))
+                    traceback.clear_frames(public.__traceback__)
+                    public = public.__cause__ or public.__context__
+                with self.assertRaises(BrokerShutdownError):
+                    broker.close(timeout=2)
+                del broker
+                gc.collect()
+                self.assertIsNotNone(refs[0]())
+                self.assertEqual(aliases[0].tolist(), [1])
+                self.assertFalse(worker.closed)
+
+    def test_prejob_guard_retains_error_when_preparation_set_insert_fails(self):
+        class Owner:
+            pass
+
+        refs, aliases = [], []
+
+        class FailedPreparations(set):
+            def add(self, _state):
+                tensor = torch.tensor([1])
+                tensor.owner = Owner()
+                refs.append(weakref.ref(tensor.owner))
+                aliases.append(tensor.detach())
+                raise KeyboardInterrupt('preparation registration')
+
+        worker = Worker()
+        broker = Broker(worker, max_pending=2, max_pending_per_team=2)
+        adapter, target = self.make_adapter(broker)
+        adapter.submit(b'alice', b'one')
+        broker._fair_preparations = FailedPreparations()
+        error = None
+        with patch.object(broker, '_mark_cleanup_failed_locked', side_effect=RuntimeError('mark failed')):
+            try:
                 adapter.transfer_next()
-            self.assertEqual(caught.exception.ticket, ticket)
-            self.assertIsNone(adapter.recover_receipt(ticket))
-            self.assertEqual(target.committed_bytes, 0)
-            self.assertEqual(target.receipt_committed_bytes, 0)
+            except BaseException as exc:
+                error = exc
+        self.assertIsInstance(error, KeyboardInterrupt)
+        self.assertTrue(broker.quarantined)
+        self.assertEqual((target.committed_bytes, target.receipt_committed_bytes), (0, 0))
+        traceback.clear_frames(error.__traceback__)
+        with self.assertRaises(BrokerShutdownError):
+            broker.close(timeout=2)
+        del broker
+        gc.collect()
+        self.assertIsNotNone(refs[0]())
+        self.assertEqual(aliases[0].tolist(), [1])
+
+    def test_ordinary_mark_failures_do_not_mask_fatal_preparation_or_publication(self):
+        for stage in ('decoder', 'published'):
+            for fatal in (KeyboardInterrupt, SystemExit):
+                with self.subTest(stage=stage, fatal=fatal):
+                    worker = Worker()
+                    worker.release.clear()
+
+                    def decoder(payload):
+                        if stage == 'decoder':
+                            raise fatal('original interruption')
+                        return decode(payload)
+
+                    broker = Broker(worker, max_pending=2, max_pending_per_team=2)
+                    adapter, _ = self.make_adapter(broker, decoder=decoder)
+                    ticket = adapter.submit(b'alice', b'one')
+
+                    def trace(frame, event, arg):
+                        if (stage == 'published' and event == 'line' and
+                                frame.f_code.co_name == '_accept_next' and
+                                frame.f_locals.get('publication_started') and
+                                linecache.getline(frame.f_code.co_filename, frame.f_lineno).strip() ==
+                                'state.active = False'):
+                            sys.settrace(None)
+                            raise fatal('original interruption')
+                        return trace
+
+                    error = None
+                    try:
+                        with patch.object(broker, '_mark_cleanup_failed_locked',
+                                          side_effect=RuntimeError('mark failed')):
+                            sys.settrace(trace)
+                            try:
+                                adapter.transfer_next()
+                            except BaseException as exc:
+                                error = exc
+                            finally:
+                                sys.settrace(None)
+                        self.assertIsInstance(error, FatalHandoffFailure)
+                        self.assertEqual(error.ticket, ticket)
+                        self.assertIsInstance(error.__cause__, fatal)
+                        self.assertTrue(broker.quarantined)
+                        with self.assertRaises(BrokerShutdownError):
+                            broker.close(timeout=2)
+                    finally:
+                        worker.release.set()
+
+    def test_error_classification_failure_follows_private_quarantine_latch(self):
+        class Owner:
+            pass
+
+        for original in (MemoryError, KeyboardInterrupt):
+            for classification in (RuntimeError, KeyboardInterrupt):
+                with self.subTest(original=original, classification=classification):
+                    refs, aliases = [], []
+
+                    def decoder(_payload):
+                        tensor = torch.tensor([1])
+                        tensor.owner = Owner()
+                        refs.append(weakref.ref(tensor.owner))
+                        aliases.append(tensor.detach())
+                        raise original('partially constructed input')
+
+                    worker = Worker()
+                    broker = Broker(worker, max_pending=2, max_pending_per_team=2)
+                    adapter, target = self.make_adapter(broker, decoder=decoder)
+                    ticket = adapter.submit(b'alice', b'one')
+                    error = None
+                    with patch('looking_glass.broker_fair_handoff._failure_identity',
+                               side_effect=classification('classification failed')):
+                        try:
+                            adapter.transfer_next()
+                        except BaseException as exc:
+                            error = exc
+                    fatal = original is KeyboardInterrupt or classification is KeyboardInterrupt
+                    self.assertIsInstance(error, FatalHandoffFailure if fatal else HandoffFailure)
+                    self.assertEqual(error.ticket, ticket)
+                    self.assertTrue(broker.quarantined)
+                    self.assertEqual((target.committed_bytes, target.receipt_committed_bytes), (64, 16))
+                    seen = set()
+                    public = error
+                    while public is not None and id(public) not in seen:
+                        seen.add(id(public))
+                        traceback.clear_frames(public.__traceback__)
+                        public = public.__cause__ or public.__context__
+                    with self.assertRaises(BrokerShutdownError):
+                        broker.close(timeout=2)
+                    del broker
+                    gc.collect()
+                    self.assertIsNotNone(refs[0]())
+                    self.assertEqual(aliases[0].tolist(), [1])
+                    self.assertFalse(worker.closed)
+
+    def test_repeated_error_root_insertion_failure_uses_quarantine_pool(self):
+        class Owner:
+            pass
+
+        refs, aliases = [], []
+
+        def decoder(_payload):
+            tensor = torch.tensor([1])
+            tensor.owner = Owner()
+            refs.append(weakref.ref(tensor.owner))
+            aliases.append(tensor.detach())
+            raise MemoryError('partial input')
+
+        worker = Worker()
+        broker = Broker(worker, max_pending=2, max_pending_per_team=2)
+        adapter, target = self.make_adapter(broker, decoder=decoder)
+        ticket = adapter.submit(b'alice', b'one')
+        error = None
+        with patch.object(target, '_root_failure_state_locked',
+                          side_effect=KeyboardInterrupt('root insertion failed')):
+            try:
+                adapter.transfer_next()
+            except BaseException as exc:
+                error = exc
+        self.assertIsInstance(error, FatalHandoffFailure)
+        self.assertEqual(error.ticket, ticket)
+        self.assertIsInstance(error.__cause__, KeyboardInterrupt)
+        self.assertTrue(broker.quarantined)
+        self.assertEqual((target.committed_bytes, target.receipt_committed_bytes), (64, 16))
+        seen = set()
+        public = error
+        while public is not None and id(public) not in seen:
+            seen.add(id(public))
+            traceback.clear_frames(public.__traceback__)
+            public = public.__cause__ or public.__context__
+        with self.assertRaises(BrokerShutdownError):
+            broker.close(timeout=2)
+        del broker
+        gc.collect()
+        self.assertIsNotNone(refs[0]())
+        self.assertEqual(aliases[0].tolist(), [1])
+        self.assertFalse(worker.closed)
+
+    def test_concurrent_publication_interruptions_keep_each_private_failure(self):
+        import looking_glass.broker_fair_handoff as handoff_module
+
+        class Owner:
+            pass
+
+        class InterruptState(handoff_module._HandoffState):
+            def __init__(self):
+                self.saw_job = False
+                super().__init__()
+
+            def __setattr__(self, name, value):
+                if name == 'job' and value is not None:
+                    object.__setattr__(self, 'saw_job', True)
+                if (name == 'active' and value is False and self.saw_job and
+                        getattr(self, 'job', None) is None):
+                    raise KeyboardInterrupt('publication interrupted')
+                object.__setattr__(self, name, value)
+
+        worker = Worker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=2, max_pending_per_team=2)
+        prepare = threading.Barrier(2)
+
+        def decoder(payload):
+            prepare.wait(timeout=5)
+            return decode(payload)
+
+        adapter, target = self.make_adapter(broker, decoder=decoder)
+        for credential in (b'alice', b'bob'):
+            adapter.submit(credential, b'one')
+        barrier = threading.Barrier(2)
+        refs, aliases, errors = [], [], []
+        def fail_mark():
+            tensor = torch.tensor([1])
+            tensor.owner = Owner()
+            refs.append(weakref.ref(tensor.owner))
+            aliases.append(tensor.detach())
+            raise RuntimeError('distinct mark failure')
+
+        def run_transfer():
+            def trace(frame, event, arg):
+                source = linecache.getline(frame.f_code.co_filename, frame.f_lineno).strip()
+                if (event == 'line' and frame.f_code.co_name == 'accept_next' and
+                        source == 'with self._broker._condition:'):
+                    sys.settrace(None)
+                    barrier.wait(timeout=5)
+                return trace
+
+            try:
+                sys.settrace(trace)
+                adapter.transfer_next()
+            except BaseException as exc:
+                errors.append(exc)
+            finally:
+                sys.settrace(None)
+
+        threads = [threading.Thread(target=run_transfer, daemon=True) for _ in range(2)]
+        try:
+            with patch.object(handoff_module, '_HandoffState', InterruptState), \
+                    patch.object(broker, '_mark_cleanup_failed_locked', side_effect=fail_mark):
+                for thread in threads:
+                    thread.start()
+                for thread in threads:
+                    thread.join(8)
+                    self.assertFalse(thread.is_alive())
+            self.assertEqual(len(errors), 2)
+            self.assertTrue(all(isinstance(error, FatalHandoffFailure) for error in errors))
+            self.assertTrue(all(isinstance(error.__cause__, KeyboardInterrupt) for error in errors))
+            self.assertTrue(broker.quarantined)
+            self.assertEqual(len([state for state in target._failure_states if state is not None]), 2)
+            for error in errors:
+                seen = set()
+                public = error
+                while public is not None and id(public) not in seen:
+                    seen.add(id(public))
+                    traceback.clear_frames(public.__traceback__)
+                    public = public.__cause__ or public.__context__
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(timeout=2)
+            del broker
+            gc.collect()
+            self.assertGreaterEqual(len(refs), 6)
+            self.assertTrue(all(ref() is not None for ref in refs))
+            self.assertTrue(all(alias.tolist() == [1] for alias in aliases))
+        finally:
+            worker.release.set()
 
     def test_interrupt_at_unprotected_stage_boundaries_fails_closed(self):
         for source_line in ('if request is None:', 'publication_failure = None'):
@@ -922,6 +2017,9 @@ class FairBrokerHandoffTests(unittest.TestCase):
             finally:
                 worker.release.set()
             self.assertEqual(handle.wait(2).state, RequestState.SUCCEEDED)
+            with broker._condition:
+                self.assertTrue(broker._condition.wait_for(
+                    lambda: all(job is None for job in broker._job_roots), 2))
             self.make_adapter(broker)
             with self.assertRaises(BrokerUnavailable):
                 self.make_adapter(broker)
@@ -1111,8 +2209,9 @@ class FairBrokerHandoffTests(unittest.TestCase):
             worker.release.set()
             with self.assertRaises(BrokerShutdownError):
                 broker.close(timeout=3)
+            broker._thread.join(2)
         self.assertEqual(target.committed_bytes, 128)
-        self.assertIn(first.state, (RequestState.SUCCEEDED, RequestState.CANCELLED))
+        self.assertIn(first.state, (RequestState.SUCCEEDED, RequestState.CANCELLED, RequestState.FAILED))
 
     def test_shutdown_during_preparation_fails_the_claimed_ticket(self):
         entered, resume = threading.Event(), threading.Event()

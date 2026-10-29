@@ -1,0 +1,52 @@
+{
+  "attention_mask": [
+    [
+      1,
+      1,
+      1,
+      1
+    ]
+  ],
+  "bootstrap": {
+    "base_executable": "<python-base>\\python.exe",
+    "dont_write_bytecode": true,
+    "effective_sys_path": [
+      "<python-base>\\python311.zip",
+      "<python-base>\\DLLs",
+      "<python-base>\\Lib",
+      "<python-base>",
+      "<workspace>\\work\\.venv\\Lib\\site-packages"
+    ],
+    "hash_randomization": 1,
+    "ignore_environment": true,
+    "initial_sys_path": [
+      "<python-base>\\python311.zip",
+      "<python-base>\\DLLs",
+      "<python-base>\\Lib",
+      "<python-base>"
+    ],
+    "no_site": true,
+    "no_user_site": true,
+    "optimize": 0,
+    "prefix_initially_empty": true,
+    "private_pycache_prefix": "<workspace>\\work\\distilgpt2-intervention-dev-attempts\\absent-e2f67a9575034a65b61de45da1f1fe6d\\fresh-cache",
+    "project_root": "<workspace>\\work\\teams\\distilgpt2_intervention_dev",
+    "safe_path": true,
+    "site_packages": "<workspace>\\work\\.venv\\Lib\\site-packages"
+  },
+  "input_ids": [
+    [
+      50256,
+      50256,
+      50256,
+      50256
+    ]
+  ],
+  "model_id": "distilbert/distilgpt2",
+  "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "protocol": "distilgpt2-intervention-dev-v1",
+  "schema": "distilgpt2-intervention-dev-attempt-v1",
+  "seed": 1729,
+  "source_commit": "3f8de5d7fb299e4878dbf75f86bb58f2249d6a37",
+  "started_at_utc": "2026-10-29T01:52:10.800231+00:00"
+}

@@ -1,0 +1,2550 @@
+{
+  "protocol": "shared-model-throughput-v1",
+  "status": "complete",
+  "admission_status": "development_unprofiled",
+  "benchmark_session_id": "073fa7360f6d495cb6dc3da429b06c83",
+  "broker_id": "9ac28d38f585471b84de5421b14a14db",
+  "metadata": {
+    "source_commit": "c480e7e987ef7127ae61658ead3018e15ce9ae84",
+    "source_dirty": false,
+    "source_sha256": {
+      "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+      "looking_glass/throughput_benchmark.py": "601aa88f21a6b841bd576a83c7672a13720f304e685d532e81ccb0e5997ced8d",
+      "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+      "looking_glass/resident_worker.py": "4d2d9bb6c61ec904f337c8825934f95543f3a07d64f25887bf3fae03ea96d539",
+      "looking_glass/broker.py": "31bd59309ff0b6564085d0dcb00c36499d3bdfac32c0159321456cb38ba2e0da",
+      "looking_glass/fair_queue.py": "af9b1fdf9b8b86483ee446a9d13bce72ff844341266707b757807ea6265ad1fb",
+      "looking_glass/memory_budget.py": "27d7b1a352815b7a103e1d70a5f8f0a3ccffdd10dacb71a0744a47ad6f66e1b9",
+      "looking_glass/budgeted_worker.py": "31528b423f6b98dd2899a4e295190d6f2c72573b7ba2080db20cc6387bfcfc0a",
+      "looking_glass/device_lease.py": "6bb41af0ade9efff143aa1eb3cb0a25be1a801ad74a86d2f81ae36a0a9d05dfe",
+      "looking_glass/device_identity.py": "ad08eff6edbb1c94af9abec0d07d8a10944624488b8d723b10c75e8c67e10c45",
+      "looking_glass/supervisor.py": "d97a9b97384ea67eddd2f461003428aa0b8bd9b01c102b19b2bd2d6dd56c2537",
+      "docs/THROUGHPUT_PROTOCOL_V1.md": "e5dbc74d727719874b6442000cab28e96983d92914a94f842ac0cd62139821bd",
+      "scripts/throughput_bootstrap.py": "2fa3b02be7635c7cd6673bb1de6b6ae6a4f73a364b4a5cf03459dfdf1ffee46e"
+    },
+    "external_gpu_activity": "Not isolated; WDDM and other external GPU activity may be present.",
+    "environment": {
+      "python": "3.11.15",
+      "platform": "Windows-10-10.0.26200-SP0",
+      "torch": "2.8.0+cu128",
+      "transformers": "4.57.3",
+      "numpy": "2.4.6",
+      "cuda_runtime": "12.8",
+      "device": "cuda:0",
+      "torch_threads": 1,
+      "torch_interop_threads": 1,
+      "deterministic_algorithms": true,
+      "cublas_workspace_config": ":4096:8",
+      "cudnn_benchmark": false,
+      "cudnn_deterministic": true,
+      "cudnn_allow_tf32": false,
+      "matmul_allow_tf32": false,
+      "nvidia_inventory": {
+        "error": "CalledProcessError: Command '['nvidia-smi', '--query-gpu=index,uuid,name,driver_version,memory.total,memory.free', '--format=csv,noheader,nounits']' returned non-zero exit status 255."
+      },
+      "runtime_gpu_uuid": "<GPU_UUID_REDACTED>",
+      "cuda_environment": {
+        "CUDA_VISIBLE_DEVICES": "<GPU_UUID_REDACTED>",
+        "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+        "CUDA_MODULE_LOADING": "LAZY",
+        "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "NUMEXPR_NUM_THREADS": "1",
+        "BLIS_NUM_THREADS": "1",
+        "VECLIB_MAXIMUM_THREADS": "1"
+      },
+      "allocator_backend": "native",
+      "allocator_fraction": 0.25,
+      "bytecode_isolation": "empty_prefix_no_writes",
+      "python_no_site": true,
+      "python_ignores_environment": true,
+      "python_isolated": true,
+      "python_hash_randomization": true,
+      "device_name": "NVIDIA GeForce RTX 2070 SUPER",
+      "compute_capability": [
+        7,
+        5
+      ]
+    },
+    "workload_replay": {
+      "public_prompts": [
+        "The small bird landed on",
+        "A bright light appeared in"
+      ],
+      "teams": [
+        "team-a",
+        "team-b"
+      ],
+      "seed_rule": "1000 + prompt index",
+      "batch": 1,
+      "tokenizer_add_special_tokens": false,
+      "padding": false,
+      "max_tokens": 128,
+      "capture_policy": "none",
+      "unit": "input tensor positions, including any padding"
+    },
+    "smoke_only": true,
+    "memory_policy": {
+      "max_batch_size": 1,
+      "max_sequence_length": 128,
+      "max_input_bytes": 1048576,
+      "max_output_bytes": 8388608,
+      "max_gpu_trace_bytes": 0,
+      "max_host_trace_bytes": 0,
+      "gpu_model_load_estimate_bytes": 2147483648,
+      "gpu_per_forward_estimate_bytes": 1073741824,
+      "gpu_estimates_status": "provisional estimates; not measured hard limits",
+      "broker_max_pending": 4,
+      "broker_max_pending_per_team": 1,
+      "profiles": [
+        {
+          "profile_id": "fixed-v1-2079fdf92f118563",
+          "model_id": "422537d16c19050a82c56b591161aa57294a75572f101c9ab49acff168427740",
+          "device": "cuda:0",
+          "shape": [
+            1,
+            5
+          ],
+          "input_dtypes": [
+            [
+              "attention_mask",
+              "torch.int64"
+            ],
+            [
+              "input_ids",
+              "torch.int64"
+            ]
+          ],
+          "output_limit_bytes": 8388608,
+          "estimated_incremental_bytes": 1073741824
+        }
+      ]
+    },
+    "admission_status": "development_unprofiled"
+  },
+  "model_spec": {
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "tokenizer_id": "distilbert/distilgpt2",
+    "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "model_class": "GPT2LMHeadModel",
+    "tokenizer_class": "GPT2TokenizerFast",
+    "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+    "asset_sha256": {
+      "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+      "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+      "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+      "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+      "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783",
+      "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+    },
+    "torch_version": "2.8.0+cu128",
+    "transformers_version": "4.57.3",
+    "device": "cuda:0",
+    "dtype": "float32",
+    "attention_implementation": "eager",
+    "use_cache": false,
+    "parameter_count": 81912576,
+    "eval_mode": true,
+    "capture_policy": "none",
+    "service_model_fingerprint": "422537d16c19050a82c56b591161aa57294a75572f101c9ab49acff168427740"
+  },
+  "unit_name": "input_positions_including_padding",
+  "manifest": {
+    "model_spec": {
+      "asset_sha256": {
+        "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+        "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+        "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+        "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+        "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+        "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+        "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+      },
+      "attention_implementation": "eager",
+      "capture_policy": "none",
+      "device": "cuda:0",
+      "dtype": "float32",
+      "eval_mode": true,
+      "model_class": "GPT2LMHeadModel",
+      "model_id": "distilbert/distilgpt2",
+      "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+      "parameter_count": 81912576,
+      "service_model_fingerprint": "422537d16c19050a82c56b591161aa57294a75572f101c9ab49acff168427740",
+      "tokenizer_class": "GPT2TokenizerFast",
+      "tokenizer_id": "distilbert/distilgpt2",
+      "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+      "torch_version": "2.8.0+cu128",
+      "transformers_version": "4.57.3",
+      "use_cache": false,
+      "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+    },
+    "unit_name": "input_positions_including_padding",
+    "jobs": [
+      {
+        "job_id": "team-a-0",
+        "team_id": "team-a",
+        "workload_class": "5-positions",
+        "units": 5,
+        "seed": 1000,
+        "input_digest": "257b8a00843dd34e32f32503bdfd6dd0fa8474839f9bf6406b7b223e558b3eb7",
+        "capture_policy": "none",
+        "request_sha256": "257b8a00843dd34e32f32503bdfd6dd0fa8474839f9bf6406b7b223e558b3eb7"
+      },
+      {
+        "job_id": "team-a-1",
+        "team_id": "team-a",
+        "workload_class": "5-positions",
+        "units": 5,
+        "seed": 1001,
+        "input_digest": "fd6d289b882c38973dac6d0b4b6ab89c07778ef0141fbafe13bfece611f5bf4b",
+        "capture_policy": "none",
+        "request_sha256": "fd6d289b882c38973dac6d0b4b6ab89c07778ef0141fbafe13bfece611f5bf4b"
+      },
+      {
+        "job_id": "team-b-0",
+        "team_id": "team-b",
+        "workload_class": "5-positions",
+        "units": 5,
+        "seed": 1000,
+        "input_digest": "a409e25911b17c7675eca975b34d133e1b659d39c1238f3395ccff2bb934c128",
+        "capture_policy": "none",
+        "request_sha256": "a409e25911b17c7675eca975b34d133e1b659d39c1238f3395ccff2bb934c128"
+      },
+      {
+        "job_id": "team-b-1",
+        "team_id": "team-b",
+        "workload_class": "5-positions",
+        "units": 5,
+        "seed": 1001,
+        "input_digest": "365f5464a53bdf1f257789551a8a7f52a6e707ef9ae1a04522930ad094894f46",
+        "capture_policy": "none",
+        "request_sha256": "365f5464a53bdf1f257789551a8a7f52a6e707ef9ae1a04522930ad094894f46"
+      }
+    ]
+  },
+  "manifest_sha256": "1c756a80e333c60199f466ab081b2bb2203c9ef975da4d8881f766458a1457c0",
+  "config": {
+    "protocol_seed": 0,
+    "repetitions": 1,
+    "warmup_rounds_per_job_and_mode": 1,
+    "shared_clients": 2,
+    "max_outstanding_per_client": 1,
+    "wait_timeout_s": 120.0,
+    "cancel_timeout_s": 5.0
+  },
+  "clock": {
+    "name": "perf_counter_ns",
+    "implementation": "QueryPerformanceCounter()",
+    "resolution_seconds": 1e-07,
+    "monotonic": true,
+    "adjustable": false
+  },
+  "environment": {
+    "python": "3.11.15",
+    "platform": "Windows-10-10.0.26200-SP0"
+  },
+  "benchmark_source_sha256": "601aa88f21a6b841bd576a83c7672a13720f304e685d532e81ccb0e5997ced8d",
+  "windows": [
+    {
+      "mode": "serial",
+      "status": "complete",
+      "manifest": {
+        "model_spec": {
+          "asset_sha256": {
+            "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+            "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+            "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+            "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+            "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+            "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+            "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+          },
+          "attention_implementation": "eager",
+          "capture_policy": "none",
+          "device": "cuda:0",
+          "dtype": "float32",
+          "eval_mode": true,
+          "model_class": "GPT2LMHeadModel",
+          "model_id": "distilbert/distilgpt2",
+          "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+          "parameter_count": 81912576,
+          "service_model_fingerprint": "422537d16c19050a82c56b591161aa57294a75572f101c9ab49acff168427740",
+          "tokenizer_class": "GPT2TokenizerFast",
+          "tokenizer_id": "distilbert/distilgpt2",
+          "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+          "torch_version": "2.8.0+cu128",
+          "transformers_version": "4.57.3",
+          "use_cache": false,
+          "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+        },
+        "unit_name": "input_positions_including_padding",
+        "jobs": [
+          {
+            "job_id": "team-a-0",
+            "team_id": "team-a",
+            "workload_class": "5-positions",
+            "units": 5,
+            "seed": 1000,
+            "input_digest": "257b8a00843dd34e32f32503bdfd6dd0fa8474839f9bf6406b7b223e558b3eb7",
+            "capture_policy": "none",
+            "request_sha256": "257b8a00843dd34e32f32503bdfd6dd0fa8474839f9bf6406b7b223e558b3eb7"
+          },
+          {
+            "job_id": "team-a-1",
+            "team_id": "team-a",
+            "workload_class": "5-positions",
+            "units": 5,
+            "seed": 1001,
+            "input_digest": "fd6d289b882c38973dac6d0b4b6ab89c07778ef0141fbafe13bfece611f5bf4b",
+            "capture_policy": "none",
+            "request_sha256": "fd6d289b882c38973dac6d0b4b6ab89c07778ef0141fbafe13bfece611f5bf4b"
+          },
+          {
+            "job_id": "team-b-0",
+            "team_id": "team-b",
+            "workload_class": "5-positions",
+            "units": 5,
+            "seed": 1000,
+            "input_digest": "a409e25911b17c7675eca975b34d133e1b659d39c1238f3395ccff2bb934c128",
+            "capture_policy": "none",
+            "request_sha256": "a409e25911b17c7675eca975b34d133e1b659d39c1238f3395ccff2bb934c128"
+          },
+          {
+            "job_id": "team-b-1",
+            "team_id": "team-b",
+            "workload_class": "5-positions",
+            "units": 5,
+            "seed": 1001,
+            "input_digest": "365f5464a53bdf1f257789551a8a7f52a6e707ef9ae1a04522930ad094894f46",
+            "capture_policy": "none",
+            "request_sha256": "365f5464a53bdf1f257789551a8a7f52a6e707ef9ae1a04522930ad094894f46"
+          }
+        ]
+      },
+      "manifest_sha256": "1c756a80e333c60199f466ab081b2bb2203c9ef975da4d8881f766458a1457c0",
+      "start_ns": 1248845979844800,
+      "end_ns": 1248846069594100,
+      "samples": [
+        {
+          "job_id": "team-a-0",
+          "team_id": "team-a",
+          "workload_class": "5-positions",
+          "units": 5,
+          "attempt_ns": 1248845979886100,
+          "submitted_ns": 1248845979978300,
+          "ready_ns": 1248845980141800,
+          "started_ns": 1248845980214100,
+          "finished_ns": 1248846000653000,
+          "returned_ns": 1248846002631400,
+          "state": "succeeded",
+          "output_digest": "c1aa47859f7e5f572e0ee6e62c81b3a4971cb25edf6f0d1694f4d4d4dbd300ee",
+          "error": null,
+          "error_type": null,
+          "broker_id": "9ac28d38f585471b84de5421b14a14db",
+          "timed_out": false,
+          "cancel_requested": false,
+          "broker_job_id": 5
+        },
+        {
+          "job_id": "team-a-1",
+          "team_id": "team-a",
+          "workload_class": "5-positions",
+          "units": 5,
+          "attempt_ns": 1248846002647100,
+          "submitted_ns": 1248846002757600,
+          "ready_ns": 1248846002863500,
+          "started_ns": 1248846002941600,
+          "finished_ns": 1248846024699000,
+          "returned_ns": 1248846026654700,
+          "state": "succeeded",
+          "output_digest": "ab440e7ea662637c0a7dc6514a99e9bc0b074c75718037900a03843a2731f2e4",
+          "error": null,
+          "error_type": null,
+          "broker_id": "9ac28d38f585471b84de5421b14a14db",
+          "timed_out": false,
+          "cancel_requested": false,
+          "broker_job_id": 6
+        },
+        {
+          "job_id": "team-b-0",
+          "team_id": "team-b",
+          "workload_class": "5-positions",
+          "units": 5,
+          "attempt_ns": 1248846026672600,
+          "submitted_ns": 1248846026761600,
+          "ready_ns": 1248846026888300,
+          "started_ns": 1248846026951300,
+          "finished_ns": 1248846045680800,
+          "returned_ns": 1248846047797500,
+          "state": "succeeded",
+          "output_digest": "e1e8f7d4ff522cda50c54e406b5bbc44b399e1c9644a73394919c8749116bebf",
+          "error": null,
+          "error_type": null,
+          "broker_id": "9ac28d38f585471b84de5421b14a14db",
+          "timed_out": false,
+          "cancel_requested": false,
+          "broker_job_id": 7
+        },
+        {
+          "job_id": "team-b-1",
+          "team_id": "team-b",
+          "workload_class": "5-positions",
+          "units": 5,
+          "attempt_ns": 1248846047823800,
+          "submitted_ns": 1248846047930200,
+          "ready_ns": 1248846048077200,
+          "started_ns": 1248846048155800,
+          "finished_ns": 1248846067597500,
+          "returned_ns": 1248846069532900,
+          "state": "succeeded",
+          "output_digest": "e0d952d95563cc74c2fb622fbe33d6a7ff6fd77e34aa799b6fd2c269d65c88b9",
+          "error": null,
+          "error_type": null,
+          "broker_id": "9ac28d38f585471b84de5421b14a14db",
+          "timed_out": false,
+          "cancel_requested": false,
+          "broker_job_id": 8
+        }
+      ],
+      "unattempted_job_ids": [],
+      "fatal_errors": [],
+      "summary": {
+        "counts": {
+          "attempted": 4,
+          "accepted": 4,
+          "succeeded": 4,
+          "failed": 0,
+          "cancelled": 0,
+          "rejected": 0,
+          "unresolved": 0,
+          "invalid_output": 0,
+          "submit_error": 0
+        },
+        "successful_units": 20,
+        "units_definition": "caller_declared",
+        "successes_per_second": 44.568592735542225,
+        "successful_units_per_second": 222.8429636777111,
+        "nonsuccess_rate": 0.0,
+        "queue_wait_ns_started": {
+          "p50": 75200.0,
+          "p95": 78600,
+          "max": 78600,
+          "n": 4
+        },
+        "submission_to_service_ns_started": {
+          "p50": 207650.0,
+          "p95": 235800,
+          "max": 235800,
+          "n": 4
+        },
+        "service_ns_started": {
+          "p50": 19940300.0,
+          "p95": 21757400,
+          "max": 21757400,
+          "n": 4
+        },
+        "broker_response_ns_terminal": {
+          "p50": 20171000.0,
+          "p95": 21941400,
+          "max": 21941400,
+          "n": 4
+        },
+        "response_ns_all_attempts": {
+          "p50": 22227200.0,
+          "p95": 24007600,
+          "max": 24007600,
+          "n": 4
+        },
+        "response_ns_succeeded": {
+          "p50": 22227200.0,
+          "p95": 24007600,
+          "max": 24007600,
+          "n": 4
+        },
+        "timing_by_state": {
+          "succeeded": {
+            "response_ns": {
+              "p50": 22227200.0,
+              "p95": 24007600,
+              "max": 24007600,
+              "n": 4
+            },
+            "queue_wait_ns": {
+              "p50": 75200.0,
+              "p95": 78600,
+              "max": 78600,
+              "n": 4
+            },
+            "submission_to_service_ns": {
+              "p50": 207650.0,
+              "p95": 235800,
+              "max": 235800,
+              "n": 4
+            },
+            "service_ns": {
+              "p50": 19940300.0,
+              "p95": 21757400,
+              "max": 21757400,
+              "n": 4
+            }
+          },
+          "failed": {
+            "response_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "queue_wait_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "submission_to_service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            }
+          },
+          "cancelled": {
+            "response_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "queue_wait_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "submission_to_service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            }
+          },
+          "rejected": {
+            "response_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "queue_wait_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "submission_to_service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            }
+          },
+          "unresolved": {
+            "response_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "queue_wait_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "submission_to_service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            }
+          },
+          "invalid_output": {
+            "response_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "queue_wait_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "submission_to_service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            }
+          },
+          "submit_error": {
+            "response_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "queue_wait_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "submission_to_service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            }
+          }
+        },
+        "elapsed_ns": 89749300,
+        "teams": {
+          "team-a": {
+            "counts": {
+              "attempted": 2,
+              "accepted": 2,
+              "succeeded": 2,
+              "failed": 0,
+              "cancelled": 0,
+              "rejected": 0,
+              "unresolved": 0,
+              "invalid_output": 0,
+              "submit_error": 0
+            },
+            "successful_units": 10,
+            "units_definition": "caller_declared",
+            "successes_per_second": 22.284296367771113,
+            "successful_units_per_second": 111.42148183885556,
+            "nonsuccess_rate": 0.0,
+            "queue_wait_ns_started": {
+              "p50": 75200.0,
+              "p95": 78100,
+              "max": 78100,
+              "n": 2
+            },
+            "submission_to_service_ns_started": {
+              "p50": 209900.0,
+              "p95": 235800,
+              "max": 235800,
+              "n": 2
+            },
+            "service_ns_started": {
+              "p50": 21098150.0,
+              "p95": 21757400,
+              "max": 21757400,
+              "n": 2
+            },
+            "broker_response_ns_terminal": {
+              "p50": 21308050.0,
+              "p95": 21941400,
+              "max": 21941400,
+              "n": 2
+            },
+            "response_ns_all_attempts": {
+              "p50": 23376450.0,
+              "p95": 24007600,
+              "max": 24007600,
+              "n": 2
+            },
+            "response_ns_succeeded": {
+              "p50": 23376450.0,
+              "p95": 24007600,
+              "max": 24007600,
+              "n": 2
+            },
+            "timing_by_state": {
+              "succeeded": {
+                "response_ns": {
+                  "p50": 23376450.0,
+                  "p95": 24007600,
+                  "max": 24007600,
+                  "n": 2
+                },
+                "queue_wait_ns": {
+                  "p50": 75200.0,
+                  "p95": 78100,
+                  "max": 78100,
+                  "n": 2
+                },
+                "submission_to_service_ns": {
+                  "p50": 209900.0,
+                  "p95": 235800,
+                  "max": 235800,
+                  "n": 2
+                },
+                "service_ns": {
+                  "p50": 21098150.0,
+                  "p95": 21757400,
+                  "max": 21757400,
+                  "n": 2
+                }
+              },
+              "failed": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "cancelled": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "rejected": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "unresolved": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "invalid_output": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "submit_error": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              }
+            }
+          },
+          "team-b": {
+            "counts": {
+              "attempted": 2,
+              "accepted": 2,
+              "succeeded": 2,
+              "failed": 0,
+              "cancelled": 0,
+              "rejected": 0,
+              "unresolved": 0,
+              "invalid_output": 0,
+              "submit_error": 0
+            },
+            "successful_units": 10,
+            "units_definition": "caller_declared",
+            "successes_per_second": 22.284296367771113,
+            "successful_units_per_second": 111.42148183885556,
+            "nonsuccess_rate": 0.0,
+            "queue_wait_ns_started": {
+              "p50": 70800.0,
+              "p95": 78600,
+              "max": 78600,
+              "n": 2
+            },
+            "submission_to_service_ns_started": {
+              "p50": 207650.0,
+              "p95": 225600,
+              "max": 225600,
+              "n": 2
+            },
+            "service_ns_started": {
+              "p50": 19085600.0,
+              "p95": 19441700,
+              "max": 19441700,
+              "n": 2
+            },
+            "broker_response_ns_terminal": {
+              "p50": 19293250.0,
+              "p95": 19667300,
+              "max": 19667300,
+              "n": 2
+            },
+            "response_ns_all_attempts": {
+              "p50": 21417000.0,
+              "p95": 21709100,
+              "max": 21709100,
+              "n": 2
+            },
+            "response_ns_succeeded": {
+              "p50": 21417000.0,
+              "p95": 21709100,
+              "max": 21709100,
+              "n": 2
+            },
+            "timing_by_state": {
+              "succeeded": {
+                "response_ns": {
+                  "p50": 21417000.0,
+                  "p95": 21709100,
+                  "max": 21709100,
+                  "n": 2
+                },
+                "queue_wait_ns": {
+                  "p50": 70800.0,
+                  "p95": 78600,
+                  "max": 78600,
+                  "n": 2
+                },
+                "submission_to_service_ns": {
+                  "p50": 207650.0,
+                  "p95": 225600,
+                  "max": 225600,
+                  "n": 2
+                },
+                "service_ns": {
+                  "p50": 19085600.0,
+                  "p95": 19441700,
+                  "max": 19441700,
+                  "n": 2
+                }
+              },
+              "failed": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "cancelled": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "rejected": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "unresolved": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "invalid_output": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "submit_error": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              }
+            }
+          }
+        },
+        "workload_classes": {
+          "5-positions": {
+            "counts": {
+              "attempted": 4,
+              "accepted": 4,
+              "succeeded": 4,
+              "failed": 0,
+              "cancelled": 0,
+              "rejected": 0,
+              "unresolved": 0,
+              "invalid_output": 0,
+              "submit_error": 0
+            },
+            "successful_units": 20,
+            "units_definition": "caller_declared",
+            "successes_per_second": 44.568592735542225,
+            "successful_units_per_second": 222.8429636777111,
+            "nonsuccess_rate": 0.0,
+            "queue_wait_ns_started": {
+              "p50": 75200.0,
+              "p95": 78600,
+              "max": 78600,
+              "n": 4
+            },
+            "submission_to_service_ns_started": {
+              "p50": 207650.0,
+              "p95": 235800,
+              "max": 235800,
+              "n": 4
+            },
+            "service_ns_started": {
+              "p50": 19940300.0,
+              "p95": 21757400,
+              "max": 21757400,
+              "n": 4
+            },
+            "broker_response_ns_terminal": {
+              "p50": 20171000.0,
+              "p95": 21941400,
+              "max": 21941400,
+              "n": 4
+            },
+            "response_ns_all_attempts": {
+              "p50": 22227200.0,
+              "p95": 24007600,
+              "max": 24007600,
+              "n": 4
+            },
+            "response_ns_succeeded": {
+              "p50": 22227200.0,
+              "p95": 24007600,
+              "max": 24007600,
+              "n": 4
+            },
+            "timing_by_state": {
+              "succeeded": {
+                "response_ns": {
+                  "p50": 22227200.0,
+                  "p95": 24007600,
+                  "max": 24007600,
+                  "n": 4
+                },
+                "queue_wait_ns": {
+                  "p50": 75200.0,
+                  "p95": 78600,
+                  "max": 78600,
+                  "n": 4
+                },
+                "submission_to_service_ns": {
+                  "p50": 207650.0,
+                  "p95": 235800,
+                  "max": 235800,
+                  "n": 4
+                },
+                "service_ns": {
+                  "p50": 19940300.0,
+                  "p95": 21757400,
+                  "max": 21757400,
+                  "n": 4
+                }
+              },
+              "failed": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "cancelled": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "rejected": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "unresolved": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "invalid_output": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "submit_error": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              }
+            }
+          }
+        },
+        "completion_balance_jain": 1.0
+      },
+      "repetition": 0,
+      "admission_status": "development_unprofiled",
+      "memory": {
+        "before": {
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "process_allocated_bytes": 368299008,
+          "process_reserved_bytes": 406847488
+        },
+        "after": {
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "process_allocated_bytes": 368299008,
+          "process_reserved_bytes": 406847488,
+          "process_peak_allocated_bytes": 369520128,
+          "process_peak_reserved_bytes": 406847488
+        }
+      }
+    },
+    {
+      "mode": "shared",
+      "status": "complete",
+      "manifest": {
+        "model_spec": {
+          "asset_sha256": {
+            "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+            "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+            "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+            "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+            "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+            "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+            "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+          },
+          "attention_implementation": "eager",
+          "capture_policy": "none",
+          "device": "cuda:0",
+          "dtype": "float32",
+          "eval_mode": true,
+          "model_class": "GPT2LMHeadModel",
+          "model_id": "distilbert/distilgpt2",
+          "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+          "parameter_count": 81912576,
+          "service_model_fingerprint": "422537d16c19050a82c56b591161aa57294a75572f101c9ab49acff168427740",
+          "tokenizer_class": "GPT2TokenizerFast",
+          "tokenizer_id": "distilbert/distilgpt2",
+          "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+          "torch_version": "2.8.0+cu128",
+          "transformers_version": "4.57.3",
+          "use_cache": false,
+          "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+        },
+        "unit_name": "input_positions_including_padding",
+        "jobs": [
+          {
+            "job_id": "team-a-0",
+            "team_id": "team-a",
+            "workload_class": "5-positions",
+            "units": 5,
+            "seed": 1000,
+            "input_digest": "257b8a00843dd34e32f32503bdfd6dd0fa8474839f9bf6406b7b223e558b3eb7",
+            "capture_policy": "none",
+            "request_sha256": "257b8a00843dd34e32f32503bdfd6dd0fa8474839f9bf6406b7b223e558b3eb7"
+          },
+          {
+            "job_id": "team-a-1",
+            "team_id": "team-a",
+            "workload_class": "5-positions",
+            "units": 5,
+            "seed": 1001,
+            "input_digest": "fd6d289b882c38973dac6d0b4b6ab89c07778ef0141fbafe13bfece611f5bf4b",
+            "capture_policy": "none",
+            "request_sha256": "fd6d289b882c38973dac6d0b4b6ab89c07778ef0141fbafe13bfece611f5bf4b"
+          },
+          {
+            "job_id": "team-b-0",
+            "team_id": "team-b",
+            "workload_class": "5-positions",
+            "units": 5,
+            "seed": 1000,
+            "input_digest": "a409e25911b17c7675eca975b34d133e1b659d39c1238f3395ccff2bb934c128",
+            "capture_policy": "none",
+            "request_sha256": "a409e25911b17c7675eca975b34d133e1b659d39c1238f3395ccff2bb934c128"
+          },
+          {
+            "job_id": "team-b-1",
+            "team_id": "team-b",
+            "workload_class": "5-positions",
+            "units": 5,
+            "seed": 1001,
+            "input_digest": "365f5464a53bdf1f257789551a8a7f52a6e707ef9ae1a04522930ad094894f46",
+            "capture_policy": "none",
+            "request_sha256": "365f5464a53bdf1f257789551a8a7f52a6e707ef9ae1a04522930ad094894f46"
+          }
+        ]
+      },
+      "manifest_sha256": "1c756a80e333c60199f466ab081b2bb2203c9ef975da4d8881f766458a1457c0",
+      "start_ns": 1248846166940500,
+      "end_ns": 1248846262967400,
+      "samples": [
+        {
+          "job_id": "team-a-0",
+          "team_id": "team-a",
+          "workload_class": "5-positions",
+          "units": 5,
+          "attempt_ns": 1248846166980900,
+          "submitted_ns": 1248846167546900,
+          "ready_ns": 1248846167884400,
+          "started_ns": 1248846198191600,
+          "finished_ns": 1248846221020100,
+          "returned_ns": 1248846223146500,
+          "state": "succeeded",
+          "output_digest": "c1aa47859f7e5f572e0ee6e62c81b3a4971cb25edf6f0d1694f4d4d4dbd300ee",
+          "error": null,
+          "error_type": null,
+          "broker_id": "9ac28d38f585471b84de5421b14a14db",
+          "timed_out": false,
+          "cancel_requested": false,
+          "broker_job_id": 14
+        },
+        {
+          "job_id": "team-b-0",
+          "team_id": "team-b",
+          "workload_class": "5-positions",
+          "units": 5,
+          "attempt_ns": 1248846167071800,
+          "submitted_ns": 1248846167336300,
+          "ready_ns": 1248846167738800,
+          "started_ns": 1248846167816100,
+          "finished_ns": 1248846197598700,
+          "returned_ns": 1248846200319300,
+          "state": "succeeded",
+          "output_digest": "e1e8f7d4ff522cda50c54e406b5bbc44b399e1c9644a73394919c8749116bebf",
+          "error": null,
+          "error_type": null,
+          "broker_id": "9ac28d38f585471b84de5421b14a14db",
+          "timed_out": false,
+          "cancel_requested": false,
+          "broker_job_id": 13
+        },
+        {
+          "job_id": "team-b-1",
+          "team_id": "team-b",
+          "workload_class": "5-positions",
+          "units": 5,
+          "attempt_ns": 1248846200338900,
+          "submitted_ns": 1248846200616900,
+          "ready_ns": 1248846200762300,
+          "started_ns": 1248846221126000,
+          "finished_ns": 1248846239664700,
+          "returned_ns": 1248846241997100,
+          "state": "succeeded",
+          "output_digest": "e0d952d95563cc74c2fb622fbe33d6a7ff6fd77e34aa799b6fd2c269d65c88b9",
+          "error": null,
+          "error_type": null,
+          "broker_id": "9ac28d38f585471b84de5421b14a14db",
+          "timed_out": false,
+          "cancel_requested": false,
+          "broker_job_id": 15
+        },
+        {
+          "job_id": "team-a-1",
+          "team_id": "team-a",
+          "workload_class": "5-positions",
+          "units": 5,
+          "attempt_ns": 1248846223164800,
+          "submitted_ns": 1248846223400400,
+          "ready_ns": 1248846223566400,
+          "started_ns": 1248846239743600,
+          "finished_ns": 1248846261046800,
+          "returned_ns": 1248846262899400,
+          "state": "succeeded",
+          "output_digest": "ab440e7ea662637c0a7dc6514a99e9bc0b074c75718037900a03843a2731f2e4",
+          "error": null,
+          "error_type": null,
+          "broker_id": "9ac28d38f585471b84de5421b14a14db",
+          "timed_out": false,
+          "cancel_requested": false,
+          "broker_job_id": 16
+        }
+      ],
+      "unattempted_job_ids": [],
+      "fatal_errors": [],
+      "summary": {
+        "counts": {
+          "attempted": 4,
+          "accepted": 4,
+          "succeeded": 4,
+          "failed": 0,
+          "cancelled": 0,
+          "rejected": 0,
+          "unresolved": 0,
+          "invalid_output": 0,
+          "submit_error": 0
+        },
+        "successful_units": 20,
+        "units_definition": "caller_declared",
+        "successes_per_second": 41.654994590057576,
+        "successful_units_per_second": 208.2749729502879,
+        "nonsuccess_rate": 0.0,
+        "queue_wait_ns_started": {
+          "p50": 18270450.0,
+          "p95": 30307200,
+          "max": 30307200,
+          "n": 4
+        },
+        "submission_to_service_ns_started": {
+          "p50": 18426150.0,
+          "p95": 30644700,
+          "max": 30644700,
+          "n": 4
+        },
+        "service_ns_started": {
+          "p50": 22065850.0,
+          "p95": 29782600,
+          "max": 29782600,
+          "n": 4
+        },
+        "broker_response_ns_terminal": {
+          "p50": 38347100.0,
+          "p95": 53473200,
+          "max": 53473200,
+          "n": 4
+        },
+        "response_ns_all_attempts": {
+          "p50": 40696400.0,
+          "p95": 56165600,
+          "max": 56165600,
+          "n": 4
+        },
+        "response_ns_succeeded": {
+          "p50": 40696400.0,
+          "p95": 56165600,
+          "max": 56165600,
+          "n": 4
+        },
+        "timing_by_state": {
+          "succeeded": {
+            "response_ns": {
+              "p50": 40696400.0,
+              "p95": 56165600,
+              "max": 56165600,
+              "n": 4
+            },
+            "queue_wait_ns": {
+              "p50": 18270450.0,
+              "p95": 30307200,
+              "max": 30307200,
+              "n": 4
+            },
+            "submission_to_service_ns": {
+              "p50": 18426150.0,
+              "p95": 30644700,
+              "max": 30644700,
+              "n": 4
+            },
+            "service_ns": {
+              "p50": 22065850.0,
+              "p95": 29782600,
+              "max": 29782600,
+              "n": 4
+            }
+          },
+          "failed": {
+            "response_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "queue_wait_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "submission_to_service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            }
+          },
+          "cancelled": {
+            "response_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "queue_wait_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "submission_to_service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            }
+          },
+          "rejected": {
+            "response_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "queue_wait_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "submission_to_service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            }
+          },
+          "unresolved": {
+            "response_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "queue_wait_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "submission_to_service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            }
+          },
+          "invalid_output": {
+            "response_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "queue_wait_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "submission_to_service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            }
+          },
+          "submit_error": {
+            "response_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "queue_wait_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "submission_to_service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            },
+            "service_ns": {
+              "p50": null,
+              "p95": null,
+              "max": null,
+              "n": 0
+            }
+          }
+        },
+        "elapsed_ns": 96026900,
+        "teams": {
+          "team-a": {
+            "counts": {
+              "attempted": 2,
+              "accepted": 2,
+              "succeeded": 2,
+              "failed": 0,
+              "cancelled": 0,
+              "rejected": 0,
+              "unresolved": 0,
+              "invalid_output": 0,
+              "submit_error": 0
+            },
+            "successful_units": 10,
+            "units_definition": "caller_declared",
+            "successes_per_second": 20.827497295028788,
+            "successful_units_per_second": 104.13748647514394,
+            "nonsuccess_rate": 0.0,
+            "queue_wait_ns_started": {
+              "p50": 23242200.0,
+              "p95": 30307200,
+              "max": 30307200,
+              "n": 2
+            },
+            "submission_to_service_ns_started": {
+              "p50": 23493950.0,
+              "p95": 30644700,
+              "max": 30644700,
+              "n": 2
+            },
+            "service_ns_started": {
+              "p50": 22065850.0,
+              "p95": 22828500,
+              "max": 22828500,
+              "n": 2
+            },
+            "broker_response_ns_terminal": {
+              "p50": 45559800.0,
+              "p95": 53473200,
+              "max": 53473200,
+              "n": 2
+            },
+            "response_ns_all_attempts": {
+              "p50": 47950100.0,
+              "p95": 56165600,
+              "max": 56165600,
+              "n": 2
+            },
+            "response_ns_succeeded": {
+              "p50": 47950100.0,
+              "p95": 56165600,
+              "max": 56165600,
+              "n": 2
+            },
+            "timing_by_state": {
+              "succeeded": {
+                "response_ns": {
+                  "p50": 47950100.0,
+                  "p95": 56165600,
+                  "max": 56165600,
+                  "n": 2
+                },
+                "queue_wait_ns": {
+                  "p50": 23242200.0,
+                  "p95": 30307200,
+                  "max": 30307200,
+                  "n": 2
+                },
+                "submission_to_service_ns": {
+                  "p50": 23493950.0,
+                  "p95": 30644700,
+                  "max": 30644700,
+                  "n": 2
+                },
+                "service_ns": {
+                  "p50": 22065850.0,
+                  "p95": 22828500,
+                  "max": 22828500,
+                  "n": 2
+                }
+              },
+              "failed": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "cancelled": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "rejected": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "unresolved": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "invalid_output": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "submit_error": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              }
+            }
+          },
+          "team-b": {
+            "counts": {
+              "attempted": 2,
+              "accepted": 2,
+              "succeeded": 2,
+              "failed": 0,
+              "cancelled": 0,
+              "rejected": 0,
+              "unresolved": 0,
+              "invalid_output": 0,
+              "submit_error": 0
+            },
+            "successful_units": 10,
+            "units_definition": "caller_declared",
+            "successes_per_second": 20.827497295028788,
+            "successful_units_per_second": 104.13748647514394,
+            "nonsuccess_rate": 0.0,
+            "queue_wait_ns_started": {
+              "p50": 10220500.0,
+              "p95": 20363700,
+              "max": 20363700,
+              "n": 2
+            },
+            "submission_to_service_ns_started": {
+              "p50": 10494450.0,
+              "p95": 20509100,
+              "max": 20509100,
+              "n": 2
+            },
+            "service_ns_started": {
+              "p50": 24160650.0,
+              "p95": 29782600,
+              "max": 29782600,
+              "n": 2
+            },
+            "broker_response_ns_terminal": {
+              "p50": 34655100.0,
+              "p95": 39047800,
+              "max": 39047800,
+              "n": 2
+            },
+            "response_ns_all_attempts": {
+              "p50": 37452850.0,
+              "p95": 41658200,
+              "max": 41658200,
+              "n": 2
+            },
+            "response_ns_succeeded": {
+              "p50": 37452850.0,
+              "p95": 41658200,
+              "max": 41658200,
+              "n": 2
+            },
+            "timing_by_state": {
+              "succeeded": {
+                "response_ns": {
+                  "p50": 37452850.0,
+                  "p95": 41658200,
+                  "max": 41658200,
+                  "n": 2
+                },
+                "queue_wait_ns": {
+                  "p50": 10220500.0,
+                  "p95": 20363700,
+                  "max": 20363700,
+                  "n": 2
+                },
+                "submission_to_service_ns": {
+                  "p50": 10494450.0,
+                  "p95": 20509100,
+                  "max": 20509100,
+                  "n": 2
+                },
+                "service_ns": {
+                  "p50": 24160650.0,
+                  "p95": 29782600,
+                  "max": 29782600,
+                  "n": 2
+                }
+              },
+              "failed": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "cancelled": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "rejected": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "unresolved": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "invalid_output": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "submit_error": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              }
+            }
+          }
+        },
+        "workload_classes": {
+          "5-positions": {
+            "counts": {
+              "attempted": 4,
+              "accepted": 4,
+              "succeeded": 4,
+              "failed": 0,
+              "cancelled": 0,
+              "rejected": 0,
+              "unresolved": 0,
+              "invalid_output": 0,
+              "submit_error": 0
+            },
+            "successful_units": 20,
+            "units_definition": "caller_declared",
+            "successes_per_second": 41.654994590057576,
+            "successful_units_per_second": 208.2749729502879,
+            "nonsuccess_rate": 0.0,
+            "queue_wait_ns_started": {
+              "p50": 18270450.0,
+              "p95": 30307200,
+              "max": 30307200,
+              "n": 4
+            },
+            "submission_to_service_ns_started": {
+              "p50": 18426150.0,
+              "p95": 30644700,
+              "max": 30644700,
+              "n": 4
+            },
+            "service_ns_started": {
+              "p50": 22065850.0,
+              "p95": 29782600,
+              "max": 29782600,
+              "n": 4
+            },
+            "broker_response_ns_terminal": {
+              "p50": 38347100.0,
+              "p95": 53473200,
+              "max": 53473200,
+              "n": 4
+            },
+            "response_ns_all_attempts": {
+              "p50": 40696400.0,
+              "p95": 56165600,
+              "max": 56165600,
+              "n": 4
+            },
+            "response_ns_succeeded": {
+              "p50": 40696400.0,
+              "p95": 56165600,
+              "max": 56165600,
+              "n": 4
+            },
+            "timing_by_state": {
+              "succeeded": {
+                "response_ns": {
+                  "p50": 40696400.0,
+                  "p95": 56165600,
+                  "max": 56165600,
+                  "n": 4
+                },
+                "queue_wait_ns": {
+                  "p50": 18270450.0,
+                  "p95": 30307200,
+                  "max": 30307200,
+                  "n": 4
+                },
+                "submission_to_service_ns": {
+                  "p50": 18426150.0,
+                  "p95": 30644700,
+                  "max": 30644700,
+                  "n": 4
+                },
+                "service_ns": {
+                  "p50": 22065850.0,
+                  "p95": 29782600,
+                  "max": 29782600,
+                  "n": 4
+                }
+              },
+              "failed": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "cancelled": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "rejected": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "unresolved": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "invalid_output": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              },
+              "submit_error": {
+                "response_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "queue_wait_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "submission_to_service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                },
+                "service_ns": {
+                  "p50": null,
+                  "p95": null,
+                  "max": null,
+                  "n": 0
+                }
+              }
+            }
+          }
+        },
+        "completion_balance_jain": 1.0
+      },
+      "repetition": 0,
+      "admission_status": "development_unprofiled",
+      "memory": {
+        "before": {
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "process_allocated_bytes": 368299008,
+          "process_reserved_bytes": 406847488
+        },
+        "after": {
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "process_allocated_bytes": 368299008,
+          "process_reserved_bytes": 406847488,
+          "process_peak_allocated_bytes": 369520128,
+          "process_peak_reserved_bytes": 406847488
+        }
+      }
+    }
+  ],
+  "comparisons": [
+    {
+      "repetition": 0,
+      "valid_mode_pair": true,
+      "same_manifest": true,
+      "compared_successes": 4,
+      "matching_common_outputs": true,
+      "all_jobs_succeeded_in_both": true,
+      "valid_paired_comparison": true
+    }
+  ],
+  "evidence_sha256": {
+    "manifest.json": "a306bd201237d24b94a135e7cdaaa146b4506447c2f8db8fdebd2915d0cbcc8f",
+    "warmup_samples.jsonl": "ac297babc41fba05e9b7d1bec84cf3aaeb97369a5fb05f6afc8bb835b9a1e48a",
+    "raw_samples.jsonl": "060d57896dc597d5bd537dc24d14347074bb60abaf49d6f3406f8774fbd23d21",
+    "partial_windows.jsonl": "5a84967af29944762f8adf3723b5b4432d96cbcbff89dfd1302d77f456040969"
+  }
+}

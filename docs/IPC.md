@@ -8,6 +8,10 @@ limits, model lifetime and cancellation accounting. The transport does not yet
 run traces, interventions, generation, arbitrary Python, model loading or
 concurrent GPU kernels. It is not a public or multi-tenant service.
 
+The optional, trusted guardian notification seam is described in
+[IPC_CUSTODY_NOTIFICATION.md](IPC_CUSTODY_NOTIFICATION.md). It does not
+enable traced IPC jobs or prove result or client-buffer disposal.
+
 ## Owner and clients
 
 The owner process creates its trusted model, `ResidentWorker`, and `Broker`,
@@ -26,6 +30,16 @@ writes a discovery file or persists secrets. Convey credentials through an
 appropriately private, out-of-band channel. Avoid putting tokens in logs or
 command-line arguments. Do not expose the endpoint through a proxy, tunnel or
 port forward.
+
+The client does not authenticate the server. If an owner exits and its port is
+reused by another local process, a stale client can send that process its
+bearer token. Create clients with freshly distributed addresses and tokens for
+each server lifetime; discard them when the owner stops or a connection fails,
+and do not retry them after an unexpected disconnect. Each completed job closes
+its own connection normally. This lifecycle discipline does not eliminate the
+port-reuse race. Use the transport only among trusted local processes. A broker
+ID sent by an unauthenticated peer would not by itself prove the server's
+identity.
 
 ```python
 # In the model-owning process, after constructing a trusted model:
@@ -61,6 +75,22 @@ not trace events. Record `(broker_id, job_id)` together: `job_id` uniquely
 identifies a job only within one broker lifetime, and caller-provided request
 IDs may repeat across teams or submissions.
 There is no durable registry or result replay after a connection closes.
+
+For finite CPU `torch.float32` results, each JSON number represents the exact
+binary32 value as a binary64 number, including subnormals and the sign of zero,
+independently of the serializer thread's denormal-flush setting. This is a
+numeric wire format, not a raw tensor-byte format: consumers must use a
+binary64-capable parser that preserves signed zero. A later conversion back to
+float32 may itself flush subnormals, depending on the consumer's environment.
+The default encoder also accepts normal values and signed zeros for float16,
+bfloat16, and float64; it rejects their subnormals as `invalid_result` until
+their transport is independently verified. Other floating dtypes, non-strided
+layouts, and lazy negative or conjugate views are rejected. Nonfinite results
+are rejected for every supported dtype.
+When available, NumPy converts float32 integer bit views in bulk; otherwise a
+standard-library decoder provides the same wire values. Conversion can hold
+temporary integer copies, NumPy arrays, Python numbers, and JSON buffers at
+once. The wire-size preflight is not a reservation or bound on that host memory.
 
 In per-team mode, the server rejects a token used with a different configured
 team before broker admission. Token possession is the identity; tokens do not

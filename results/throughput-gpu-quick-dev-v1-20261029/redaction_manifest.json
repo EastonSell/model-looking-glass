@@ -1,0 +1,115 @@
+{
+  "schema": "throughput-redacted-publication-v1",
+  "source_commit": "c480e7e987ef7127ae61658ead3018e15ce9ae84",
+  "redactions": "Only full physical GPU UUID strings and numeric process IDs were replaced. Original event streams are unchanged. Private originals were preserved; hashes in original evidence records still refer to those original bytes.",
+  "files": [
+    {
+      "path": "controller_manifest.json",
+      "original_bytes": 342,
+      "original_sha256": "693e4bd5f7838a707c3cd9133958ddafbdfc59821d9d12736d1a712bc771479b",
+      "published_bytes": 342,
+      "published_sha256": "693e4bd5f7838a707c3cd9133958ddafbdfc59821d9d12736d1a712bc771479b",
+      "gpu_uuid_values_redacted": 0,
+      "process_ids_redacted": 0
+    },
+    {
+      "path": "controller_status.json",
+      "original_bytes": 1719,
+      "original_sha256": "988ff6289eee537f73b2fdda42f47a30cc6941de0cbdc1ff492b9c13e2679357",
+      "published_bytes": 1697,
+      "published_sha256": "8974741ba0e9847dfe913bc94f7bc76135dfefb5c3564ac65e40fcc53d1fed5f",
+      "gpu_uuid_values_redacted": 1,
+      "process_ids_redacted": 1
+    },
+    {
+      "path": "owner/admission_profiles.json",
+      "original_bytes": 598,
+      "original_sha256": "a14ad7e76c327d2e6272a76d316e660b32270f16a5d359f9b61b3c800f652277",
+      "published_bytes": 598,
+      "published_sha256": "a14ad7e76c327d2e6272a76d316e660b32270f16a5d359f9b61b3c800f652277",
+      "gpu_uuid_values_redacted": 0,
+      "process_ids_redacted": 0
+    },
+    {
+      "path": "owner/cleanup.json",
+      "original_bytes": 432,
+      "original_sha256": "dd1dad27afff09a36915193f2c14776041a4f583960e81a8fc0d3961142564a8",
+      "published_bytes": 432,
+      "published_sha256": "dd1dad27afff09a36915193f2c14776041a4f583960e81a8fc0d3961142564a8",
+      "gpu_uuid_values_redacted": 0,
+      "process_ids_redacted": 0
+    },
+    {
+      "path": "owner/measurements/manifest.json",
+      "original_bytes": 10497,
+      "original_sha256": "a306bd201237d24b94a135e7cdaaa146b4506447c2f8db8fdebd2915d0cbcc8f",
+      "published_bytes": 10455,
+      "published_sha256": "26300d9176dab347016f8fc15b6d645088ca5fb737c1b988c1eaa47e05e06751",
+      "gpu_uuid_values_redacted": 2,
+      "process_ids_redacted": 0
+    },
+    {
+      "path": "owner/measurements/partial_windows.jsonl",
+      "original_bytes": 34874,
+      "original_sha256": "5a84967af29944762f8adf3723b5b4432d96cbcbff89dfd1302d77f456040969",
+      "published_bytes": 34874,
+      "published_sha256": "5a84967af29944762f8adf3723b5b4432d96cbcbff89dfd1302d77f456040969",
+      "gpu_uuid_values_redacted": 0,
+      "process_ids_redacted": 0
+    },
+    {
+      "path": "owner/measurements/raw_samples.jsonl",
+      "original_bytes": 5460,
+      "original_sha256": "060d57896dc597d5bd537dc24d14347074bb60abaf49d6f3406f8774fbd23d21",
+      "published_bytes": 5460,
+      "published_sha256": "060d57896dc597d5bd537dc24d14347074bb60abaf49d6f3406f8774fbd23d21",
+      "gpu_uuid_values_redacted": 0,
+      "process_ids_redacted": 0
+    },
+    {
+      "path": "owner/measurements/results.json",
+      "original_bytes": 79318,
+      "original_sha256": "8f1072f08c4d6131f99294002a1f6a404081bfae82916ea9dd0306df2c29f39a",
+      "published_bytes": 79276,
+      "published_sha256": "3099ab7b5a5ba30b84c034f1289e522ce755c02208b5468f476375cfb9e90c02",
+      "gpu_uuid_values_redacted": 2,
+      "process_ids_redacted": 0
+    },
+    {
+      "path": "owner/measurements/warmup_samples.jsonl",
+      "original_bytes": 5611,
+      "original_sha256": "ac297babc41fba05e9b7d1bec84cf3aaeb97369a5fb05f6afc8bb835b9a1e48a",
+      "published_bytes": 5611,
+      "published_sha256": "ac297babc41fba05e9b7d1bec84cf3aaeb97369a5fb05f6afc8bb835b9a1e48a",
+      "gpu_uuid_values_redacted": 0,
+      "process_ids_redacted": 0
+    },
+    {
+      "path": "owner/run_status.json",
+      "original_bytes": 181,
+      "original_sha256": "20ef58440658ae6818f54d0d4798e2064b06571f13294c0a420e03e5657c1e23",
+      "published_bytes": 181,
+      "published_sha256": "20ef58440658ae6818f54d0d4798e2064b06571f13294c0a420e03e5657c1e23",
+      "gpu_uuid_values_redacted": 0,
+      "process_ids_redacted": 0
+    },
+    {
+      "path": "owner/setup.json",
+      "original_bytes": 4526,
+      "original_sha256": "2ad9f4c3792552d3d2c3cc5e9cfa9aa95d226e188c432dacef7092f1a4524733",
+      "published_bytes": 4483,
+      "published_sha256": "ffb24e859beaa1a6c18931544878cf5cf964479bd9f58a821f2ac6225ea23412",
+      "gpu_uuid_values_redacted": 2,
+      "process_ids_redacted": 1
+    },
+    {
+      "path": "preflight.json",
+      "original_bytes": 4945,
+      "original_sha256": "b0e100f760d5e578cbbcaa7b3cc509a7ca6f553e1cf06c17b38c2ac454d64e60",
+      "published_bytes": 4924,
+      "published_sha256": "8b449d524872e3315fb0aaa75232537fcd3c9a26bf68035d708bdddeee41e1f7",
+      "gpu_uuid_values_redacted": 1,
+      "process_ids_redacted": 0
+    }
+  ]
+}

@@ -49,6 +49,58 @@ class RegistryTests(unittest.TestCase):
         arguments.update(changes)
         return create_run(path, **arguments)
 
+    def test_short_pending_writes_never_publish_truncated_bytes(self):
+        original_open = Path.open
+        class ShortWriter:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+            def write(self, data):
+                return self.stream.write(data[:2])
+            def flush(self):
+                return self.stream.flush()
+            def fileno(self):
+                return self.stream.fileno()
+        def open_short(path, *args, **kwargs):
+            stream = original_open(path, *args, **kwargs)
+            return ShortWriter(stream) if path.name == ".pending" and args[0] == "xb" else stream
+        with tempfile.TemporaryDirectory() as directory:
+            run = self.make_run(Path(directory) / "run")
+            payload = b"complete predictions"
+            with patch.object(Path, "open", new=open_short):
+                run.write_artifact("predictions.json", payload)
+                run.write_artifact("results.json", b"complete results")
+                run.finalize("succeeded", {"reason": "complete"})
+            self.assertEqual((run.path / "artifacts" / "predictions.json").read_bytes(), payload)
+            self.assertEqual(run.status()["state"], "succeeded")
+
+    def test_no_progress_in_pending_write_does_not_publish(self):
+        original_open = Path.open
+        class NoProgress:
+            def __init__(self, stream):
+                self.stream = stream
+            def __enter__(self):
+                self.stream.__enter__()
+                return self
+            def __exit__(self, *args):
+                return self.stream.__exit__(*args)
+            def write(self, data):
+                return 0
+        def open_stalled(path, *args, **kwargs):
+            stream = original_open(path, *args, **kwargs)
+            return NoProgress(stream) if path.name == ".pending" and args[0] == "xb" else stream
+        with tempfile.TemporaryDirectory() as directory:
+            run = self.make_run(Path(directory) / "run")
+            with patch.object(Path, "open", new=open_stalled):
+                with self.assertRaises(OSError):
+                    run.write_artifact("predictions.json", b"must not truncate")
+            self.assertFalse((run.path / "artifacts" / "predictions.json").exists())
+            self.assertEqual(run.status()["state"], "incomplete")
+
     def test_manifest_records_canonical_identities_and_never_reuses_output(self):
         from looking_glass.registry import create_run
 

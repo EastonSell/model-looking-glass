@@ -1,5 +1,8 @@
 """CPU-only integration tests of trusted admission, execution and cleanup."""
 import threading
+import inspect
+import dis
+import sys
 from types import SimpleNamespace
 import unittest
 from unittest.mock import PropertyMock, patch
@@ -130,6 +133,7 @@ class BudgetedWorkerTests(unittest.TestCase):
         try:
             self.assertTrue(entered.wait(5))
             self.assertEqual(budget.snapshot().active_leases, 1)
+            self.assertFalse(wrapper.quarantined, 'a running forward is not stale')
             self.assertEqual(budget.snapshot().committed_incremental_bytes, 1024)
         finally:
             finish.set()
@@ -380,6 +384,307 @@ class BudgetedWorkerTests(unittest.TestCase):
         self.assertFalse(admission.quarantined)
         self.assertEqual(budget.snapshot().active_leases, 0)
 
+    def test_unexpected_interrupted_acquire_quarantines_and_keeps_unknown_lease(self):
+        model = SmallModel()
+        wrapper, _, budget, admission = make_wrapper(make_worker(model))
+        acquire = budget.try_acquire
+
+        def interrupt_after_registration(*args, **kwargs):
+            acquire(*args, **kwargs)
+            raise KeyboardInterrupt('acquire completion unknown')
+
+        with patch.object(budget, 'try_acquire', side_effect=interrupt_after_registration):
+            with self.assertRaises(KeyboardInterrupt):
+                wrapper.execute(request())
+        self.assertEqual(model.calls, 0)
+        self.assertTrue(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+        with self.assertRaises(DeviceQuarantined):
+            wrapper.execute(request('later'))
+
+    def test_admission_error_after_publication_is_not_mistaken_for_rejection(self):
+        wrapper, _, budget, admission = make_wrapper()
+        acquire = budget.try_acquire
+
+        def fail_after_registration(*args, **kwargs):
+            acquire(*args, **kwargs)
+            raise AdmissionError('interrupted after registration')
+
+        with patch.object(budget, 'try_acquire', side_effect=fail_after_registration):
+            with self.assertRaises(AdmissionError):
+                wrapper.execute(request())
+        self.assertTrue(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+
+    def test_ordinary_admission_rejection_does_not_quarantine(self):
+        model = SmallModel()
+        wrapper, _, budget, admission = make_wrapper(make_worker(model))
+        with patch.object(budget, 'try_acquire', return_value=None):
+            with self.assertRaises(AdmissionError):
+                wrapper.execute(request())
+        self.assertEqual(model.calls, 0)
+        self.assertFalse(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 0)
+
+    def test_uncertain_acquire_does_not_wait_for_unavailable_budget_lock(self):
+        model = SmallModel()
+        wrapper, _, budget, admission = make_wrapper(make_worker(model))
+        locked, release, finished = threading.Event(), threading.Event(), threading.Event()
+        errors = []
+
+        def hold_ledger_lock():
+            with budget._lock:
+                locked.set()
+                release.wait(5)
+
+        def execute():
+            try:
+                wrapper.execute(request())
+            except BaseException as exc:
+                errors.append(exc)
+            finally:
+                finished.set()
+
+        holder = threading.Thread(target=hold_ledger_lock, daemon=True)
+        holder.start()
+        self.assertTrue(locked.wait(5))
+        runner = threading.Thread(target=execute, daemon=True)
+        try:
+            with patch.object(budget, 'try_acquire', side_effect=KeyboardInterrupt('unknown ledger state')):
+                runner.start()
+                self.assertTrue(finished.wait(2), 'quarantine attempted to acquire the budget lock')
+                self.assertTrue(admission.quarantined)
+                with self.assertRaises(DeviceQuarantined):
+                    wrapper.execute(request('later'))
+        finally:
+            release.set()
+            holder.join(5)
+            runner.join(5)
+        self.assertEqual(len(errors), 1)
+        self.assertIsInstance(errors[0], KeyboardInterrupt)
+        self.assertEqual(model.calls, 0)
+
+    def test_interruption_across_lease_lifetime_quarantines(self):
+        source, first = inspect.getsourcelines(BudgetedWorker._execute)
+        markers = ('if self._process_is_quarantined():', 'self._release(lease)',
+                   'try-before-precheck', 'try-before-forward')
+        for marker in markers:
+            if marker.startswith('try-before-'):
+                following = 'self._check_available()' if marker.endswith('precheck') else 'result = self._worker.execute(snapshot, cancel_event)'
+                offset = next(i for i, line in enumerate(source[:-1])
+                              if line.strip() == 'try:' and source[i + 1].strip() == following)
+            else:
+                offset = max(i for i, line in enumerate(source) if line.strip() == marker)
+            target = first + offset
+            wrapper, _, budget, admission = make_wrapper()
+
+            def trace(frame, event, arg):
+                if frame.f_code is BudgetedWorker._execute.__code__ and event == 'line' and frame.f_lineno == target:
+                    sys.settrace(None)
+                    raise KeyboardInterrupt('lease lifetime interrupted')
+                return trace
+
+            with self.subTest(marker=marker):
+                try:
+                    sys.settrace(trace)
+                    with self.assertRaises(KeyboardInterrupt):
+                        wrapper.execute(request())
+                finally:
+                    sys.settrace(None)
+                self.assertTrue(admission.quarantined)
+                self.assertEqual(budget.snapshot().active_leases, 1)
+                with self.assertRaises(DeviceQuarantined):
+                    wrapper.execute(request('later'))
+
+    def test_stranded_marker_is_visible_to_health_and_rejects_other_workers(self):
+        wrapper, worker, budget, admission = make_wrapper()
+        other = BudgetedWorker(make_worker(), admission, (profile(),))
+        admission._lease_inflight = True  # Simulate a gate exit with no receipt.
+        self.assertTrue(admission.quarantined)
+        self.assertTrue(wrapper.quarantined)
+        with self.assertRaises(DeviceQuarantined):
+            other.execute(request('later'))
+        self.assertEqual(budget.snapshot().active_leases, 0)
+        self.assertFalse(worker.poisoned)
+
+    def test_close_retains_model_if_an_admission_marker_was_stranded(self):
+        model = SmallModel()
+        wrapper, worker, budget, admission = make_wrapper(make_worker(model))
+        lease = budget.acquire(1024, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        admission._lease_inflight = True
+        wrapper.close()
+        self.assertTrue(admission.quarantined)
+        self.assertIs(worker._model, model)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+        self.assertFalse(lease.released)
+        held_count = len(admission._holds)
+        for _ in range(100):
+            wrapper.close()
+        self.assertEqual(len(admission._holds), held_count)
+
+    def test_interrupted_gate_cleanup_then_close_retains_model_and_lease(self):
+        model = SmallModel()
+        wrapper, worker, budget, admission = make_wrapper(make_worker(model))
+        source, first = inspect.getsourcelines(BudgetedWorker._gate.__wrapped__)
+        target = first + max(i for i, line in enumerate(source)
+                             if line.strip() == 'if self._admission._lease_inflight:')
+        fired = []
+
+        def trace(frame, event, arg):
+            if (frame.f_code is BudgetedWorker._gate.__wrapped__.__code__
+                    and event == 'line' and frame.f_lineno == target):
+                sys.settrace(None)
+                fired.append(True)
+                raise KeyboardInterrupt('gate cleanup interrupted')
+            return trace
+
+        try:
+            with self.assertRaises(KeyboardInterrupt):
+                with wrapper._gate(None):
+                    lease = budget.try_acquire(1024, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+                    admission._lease_inflight = True
+                    sys.settrace(trace)
+        finally:
+            sys.settrace(None)
+        self.assertEqual(fired, [True])
+        self.assertTrue(wrapper.quarantined)
+        wrapper.close()
+        self.assertTrue(admission._quarantined.is_set())
+        self.assertIs(worker._model, model)
+        self.assertFalse(lease.released)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+
+    def test_interrupted_gate_entry_releases_only_the_acquired_gate(self):
+        model = SmallModel()
+        wrapper, _, budget, admission = make_wrapper(make_worker(model))
+        source, first = inspect.getsourcelines(BudgetedWorker._gate.__wrapped__)
+        target = first + next(i for i, line in enumerate(source)
+                              if line.strip() == 'if self._admission._lease_inflight:')
+        fired = []
+
+        def trace(frame, event, arg):
+            if (frame.f_code is BudgetedWorker._gate.__wrapped__.__code__
+                    and event == 'line' and frame.f_lineno == target):
+                sys.settrace(None)
+                fired.append(True)
+                raise RuntimeError('gate entry interrupted')
+            return trace
+
+        try:
+            sys.settrace(trace)
+            with self.assertRaisesRegex(RuntimeError, 'gate entry interrupted'):
+                wrapper.execute(request())
+        finally:
+            sys.settrace(None)
+        self.assertEqual(fired, [True])
+        self.assertFalse(admission._lock.locked())
+        self.assertFalse(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 0)
+        self.assertEqual(model.calls, 0)
+        self.assertEqual(wrapper.execute(request('later')).request_id, 'later')
+
+    def test_interrupted_gate_acquire_is_reported_as_uncertain(self):
+        wrapper, _, budget, admission = make_wrapper()
+        original_lock = admission._lock
+
+        class InterruptingLock:
+            def acquire(self, *args, **kwargs):
+                acquired = original_lock.acquire(*args, **kwargs)
+                if 'timeout' in kwargs and acquired:
+                    raise RuntimeError('gate acquire return interrupted')
+                return acquired
+
+            def release(self):
+                return original_lock.release()
+
+            def locked(self):
+                return original_lock.locked()
+
+        admission._lock = InterruptingLock()
+        try:
+            with self.assertRaisesRegex(RuntimeError, 'gate acquire return interrupted'):
+                wrapper.execute(request())
+            self.assertTrue(admission.quarantined)
+            self.assertTrue(wrapper.quarantined)
+            self.assertEqual(budget.snapshot().active_leases, 0)
+            with self.assertRaises(DeviceQuarantined):
+                wrapper.execute(request('later'))
+        finally:
+            # The injected test knows no other owner held the real gate.
+            if original_lock.locked():
+                original_lock.release()
+
+    def test_opcode_interrupt_at_gate_acquire_return_when_supported(self):
+        def probe():
+            return 1
+
+        seen = []
+
+        def trace_probe(frame, event, arg):
+            if frame.f_code is not probe.__code__:
+                return None
+            if event == 'call':
+                frame.f_trace_opcodes = True
+            if event == 'opcode':
+                seen.append(True)
+            return trace_probe
+
+        try:
+            sys.settrace(trace_probe)
+            probe()
+        finally:
+            sys.settrace(None)
+        if not seen:
+            self.skipTest('interpreter does not emit opcode trace events')
+
+        wrapper, _, budget, admission = make_wrapper()
+        code = BudgetedWorker._gate.__wrapped__.__code__
+        stores = [ins.offset for ins in dis.get_instructions(code)
+                  if ins.opname == 'STORE_FAST' and ins.argval == 'acquired']
+        self.assertGreaterEqual(len(stores), 2)
+        target = stores[1]
+        fired = []
+
+        def trace(frame, event, arg):
+            if frame.f_code is code and event == 'call':
+                frame.f_trace_opcodes = True
+            if frame.f_code is code and event == 'opcode' and frame.f_lasti == target:
+                sys.settrace(None)
+                fired.append(True)
+                raise RuntimeError('gate acquire return interrupted')
+            return trace
+
+        try:
+            try:
+                sys.settrace(trace)
+                with self.assertRaisesRegex(RuntimeError, 'gate acquire return interrupted'):
+                    wrapper.execute(request())
+            finally:
+                sys.settrace(None)
+            self.assertEqual(fired, [True])
+            self.assertTrue(admission.quarantined)
+            self.assertTrue(wrapper.quarantined)
+            self.assertEqual(budget.snapshot().active_leases, 0)
+            with self.assertRaises(DeviceQuarantined):
+                wrapper.execute(request('later'))
+        finally:
+            # Test-only recovery: this probe knows no other owner held the gate.
+            if admission._lock.locked():
+                admission._lock.release()
+
+    def test_interrupt_after_release_but_before_return_quarantines(self):
+        wrapper, _, budget, admission = make_wrapper()
+
+        def release_then_interrupt(lease, original=None):
+            lease.release()
+            raise KeyboardInterrupt('release completion uncertain')
+
+        with patch.object(wrapper, '_release', side_effect=release_then_interrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                wrapper.execute(request())
+        self.assertTrue(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 0)
+
     def test_state_mutation_before_failed_forward_quarantines_lease(self):
         for exception, classified in ((torch.OutOfMemoryError('injected oom'), 'WorkerOutOfMemory'),
                                       (RuntimeError('injected failure'), 'WorkerExecutionError')):
@@ -512,6 +817,183 @@ class BudgetedWorkerTests(unittest.TestCase):
                 self.assertTrue(admission.quarantined)
                 self.assertEqual(budget.snapshot().active_leases, 1)
 
+    def test_peer_quarantine_during_forward_retains_lease_and_suppresses_result(self):
+        for should_raise in (False, True):
+            with self.subTest(should_raise=should_raise):
+                wrapper, worker, budget, admission = make_wrapper()
+                entered, finish = threading.Event(), threading.Event()
+                results, errors = [], []
+
+                def blocked_forward(snapshot, cancel_event):
+                    entered.set()
+                    self.assertTrue(finish.wait(5))
+                    if should_raise:
+                        raise WorkerExecutionError('verified worker failure')
+                    return ForwardResult(snapshot.request_id, torch.ones(1, 2, 2))
+
+                def run():
+                    try:
+                        results.append(wrapper.execute(request()))
+                    except BaseException as exc:
+                        errors.append(exc)
+
+                with patch.object(worker, 'execute', side_effect=blocked_forward):
+                    thread = threading.Thread(target=run)
+                    thread.start()
+                    try:
+                        self.assertTrue(entered.wait(5))
+                        self.assertEqual(budget.snapshot().active_leases, 1)
+                        admission._quarantined.set()
+                    finally:
+                        finish.set()
+                        thread.join(5)
+                self.assertFalse(thread.is_alive())
+                self.assertEqual(results, [])
+                self.assertEqual(len(errors), 1)
+                self.assertIsInstance(errors[0], DeviceQuarantined)
+                if should_raise:
+                    self.assertIn('WorkerExecutionError', str(errors[0]))
+                    self.assertIn('verified worker failure', str(errors[0]))
+                self.assertTrue(admission.quarantined)
+                self.assertEqual(budget.snapshot().active_leases, 1)
+
+    def test_peer_quarantine_before_execution_retains_acquired_lease(self):
+        model = SmallModel()
+        wrapper, _, budget, admission = make_wrapper(make_worker(model))
+        original = budget.try_acquire
+
+        def acquire_and_quarantine(*args, **kwargs):
+            lease = original(*args, **kwargs)
+            admission._quarantined.set()
+            return lease
+
+        with patch.object(budget, 'try_acquire', side_effect=acquire_and_quarantine):
+            with self.assertRaises(DeviceQuarantined):
+                wrapper.execute(request())
+        self.assertEqual(model.calls, 0)
+        self.assertTrue(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+
+    def test_failed_quarantine_notification_still_stops_running_peer(self):
+        entered, finish = threading.Event(), threading.Event()
+        results, errors = [], []
+
+        class Blocking(SmallModel):
+            def forward(self, input_ids, **kwargs):
+                entered.set()
+                if not finish.wait(5):
+                    raise RuntimeError('test timed out')
+                return super().forward(input_ids, **kwargs)
+
+        first, _, budget, admission = make_wrapper(make_worker(Blocking()))
+        second = BudgetedWorker(make_worker(), admission, (profile(),))
+        original_lock = admission._lock
+
+        class InterruptedWaitLock:
+            def acquire(self, *args, **kwargs):
+                acquired = original_lock.acquire(*args, **kwargs)
+                if 'timeout' in kwargs and not acquired:
+                    raise KeyboardInterrupt('gate acquisition result unavailable')
+                return acquired
+
+            def release(self):
+                return original_lock.release()
+
+            def locked(self):
+                return original_lock.locked()
+
+        admission._lock = InterruptedWaitLock()
+
+        def run(worker, name):
+            try:
+                results.append(worker.execute(request(name)))
+            except BaseException as exc:
+                errors.append(exc)
+
+        a = threading.Thread(target=run, args=(first, 'first'))
+        b = threading.Thread(target=run, args=(second, 'second'))
+        with patch.object(admission._quarantined, 'set', side_effect=MemoryError('notification failed')):
+            a.start()
+            try:
+                self.assertTrue(entered.wait(5))
+                b.start()
+                b.join(5)
+                self.assertFalse(b.is_alive())
+            finally:
+                finish.set()
+                a.join(5)
+        self.assertFalse(a.is_alive())
+        self.assertEqual(results, [])
+        self.assertTrue(any(isinstance(exc, KeyboardInterrupt) for exc in errors))
+        self.assertTrue(any(isinstance(exc, DeviceQuarantined) for exc in errors))
+        self.assertTrue(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+
+    def test_process_quarantine_survives_failed_admission_notification(self):
+        wrapper, worker, budget, admission = make_wrapper()
+        with patch.object(ResidentWorker, 'quarantined', new_callable=PropertyMock, return_value=True):
+            with patch.object(admission._quarantined, 'set', side_effect=MemoryError('notification failed')):
+                with self.assertRaises(DeviceQuarantined):
+                    wrapper.execute(request())
+                wrapper.close()
+        self.assertTrue(admission.quarantined)
+        self.assertIsNotNone(worker._model)
+        self.assertEqual(budget.snapshot().active_leases, 0)
+
+    def test_close_latches_stranded_lease_when_notification_fails(self):
+        wrapper, worker, budget, admission = make_wrapper()
+        lease = budget.try_acquire(1024, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        admission._lease_inflight = True
+        with patch.object(admission._quarantined, 'set', side_effect=MemoryError('notification failed')):
+            wrapper.close()
+        self.assertTrue(admission.quarantined)
+        self.assertIsNotNone(worker._model)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+        self.assertIsNotNone(lease)
+
+    def test_interrupted_notification_propagates_with_sticky_quarantine(self):
+        wrapper, worker, budget, admission = make_wrapper()
+        lease = budget.try_acquire(1024, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        admission._lease_inflight = True
+        with patch.object(admission._quarantined, 'set', side_effect=KeyboardInterrupt('notification interrupted')):
+            with self.assertRaises(KeyboardInterrupt):
+                wrapper.close()
+        self.assertTrue(admission.quarantined)
+        self.assertIsNotNone(worker._model)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+        self.assertIsNotNone(lease)
+
+    def test_peer_quarantine_after_release_suppresses_result(self):
+        wrapper, _, budget, admission = make_wrapper()
+        original = wrapper._release
+
+        def release_and_quarantine(lease, original_error=None):
+            original(lease, original_error)
+            admission._quarantined.set()
+
+        with patch.object(wrapper, '_release', side_effect=release_and_quarantine):
+            with self.assertRaises(DeviceQuarantined):
+                wrapper.execute(request())
+        self.assertTrue(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 0)
+
+    def test_health_poll_does_not_acquire_the_admission_event_lock(self):
+        wrapper, _, _, admission = make_wrapper()
+        finished = threading.Event()
+        seen = []
+
+        def poll():
+            seen.append((wrapper.quarantined, wrapper.failed, wrapper.poisoned))
+            finished.set()
+
+        with patch.object(ResidentWorker, 'quarantined', new_callable=PropertyMock, return_value=True):
+            with admission._quarantined._cond:
+                reader = threading.Thread(target=poll, daemon=True)
+                reader.start()
+                self.assertTrue(finished.wait(2), 'health poll blocked on admission event lock')
+            reader.join(5)
+        self.assertEqual(seen, [(True, True, True)])
+
     def test_repeated_rejection_after_process_quarantine_does_not_accumulate_holds(self):
         wrapper, _, budget, admission = make_wrapper()
         with patch.object(ResidentWorker, 'quarantined', new_callable=PropertyMock, return_value=True):
@@ -608,6 +1090,7 @@ class BudgetedWorkerTests(unittest.TestCase):
             self.assertEqual(len(errors), 1)
             self.assertIsInstance(errors[0], RequestCancelled)
             self.assertTrue(t1.is_alive(), 'the running forward must still be blocked')
+            self.assertTrue(admission._lock.locked(), 'cancelled waiter released another owner\'s gate')
         finally:
             finish.set()
             for thread in (t1, t2, status):

@@ -11,7 +11,7 @@ import threading
 
 import torch
 
-from .memory_budget import MemoryBudget
+from .memory_budget import AdmissionError, MemoryBudget
 from .resident_worker import (
     ForwardResult, InvalidRequest, RequestCancelled, ResidentWorker,
     WorkerExecutionError, WorkerStateError, WorkerSynchronizationError, WorkerUnavailable,
@@ -79,17 +79,43 @@ class DeviceAdmission:
         self.max_estimated_incremental_bytes = max_estimated_incremental_bytes
         self._lock = threading.Lock()
         self._quarantined = threading.Event()
+        # Existing storage for the sticky state is populated before the Event
+        # notification, which may itself fail under memory pressure.
+        self._quarantine_latched = False
+        # Protected by the admission gate. A stranded marker means an
+        # admission may have published a lease without a cleanup receipt.
+        self._lease_inflight = False
         # On uncertainty, keep leases and objects alive until process exit.
         self._holds = []
 
     @property
     def quarantined(self):
-        return self._quarantined.is_set()
+        if self._is_latched():
+            return True
+        # Distinguish a healthy active owner from a marker left after the gate
+        # became free. Never wait for a damaged or long-running gate here.
+        if not self._lock.acquire(blocking=False):
+            return False
+        try:
+            return self._lease_inflight
+        finally:
+            self._lock.release()
+
+    def _is_latched(self):
+        return self._quarantine_latched or self._quarantined.is_set()
+
+    def _latch(self):
+        self._quarantine_latched = True
+        try:
+            self._quarantined.set()
+        except Exception:
+            # The sticky state is authoritative even if notification fails.
+            pass
 
     def _quarantine(self, lease, worker, detail=None):
         # Set first: retaining additional references may itself fail during OOM.
         # MemoryBudget already keeps the lease alive even if this append fails.
-        self._quarantined.set()
+        self._latch()
         try:
             self._holds.append((lease, worker, detail))
         except BaseException:
@@ -200,9 +226,7 @@ class BudgetedWorker:
     @property
     def quarantined(self):
         """Nonblocking signal that the owner must replace the execution process."""
-        if self._process_is_quarantined():
-            self._admission._quarantined.set()
-        return self._admission.quarantined
+        return self._process_is_quarantined() or self._admission.quarantined
 
     @property
     def failed(self):
@@ -247,7 +271,7 @@ class BudgetedWorker:
 
     def _check_available(self):
         if self._process_is_quarantined():
-            self._admission._quarantined.set()
+            self._admission._latch()
         if self._admission.quarantined:
             raise DeviceQuarantined('device completion is unverified; replace the process')
         if not self._binding_matches() or not self._cache_matches():
@@ -262,6 +286,15 @@ class BudgetedWorker:
         return self._worker.snapshot_request(request)
 
     def _release(self, lease, original=None):
+        # Another waiter can discover an ambiguous gate acquisition while this
+        # forward is running. If that signal is already visible, keep this
+        # lease and its worker under the same process-replacement quarantine.
+        if self._admission._is_latched():
+            self._admission._quarantine(lease, self._worker, original)
+            message = 'device admission quarantined; replace the process'
+            if original is not None:
+                message += f'; original execution failure: {_describe_error(original)}'
+            raise DeviceQuarantined(message) from original
         try:
             lease.release()
         except BaseException as exc:
@@ -275,17 +308,48 @@ class BudgetedWorker:
     def _gate(self, cancel_event):
         # A waiter has launched no device work and can be cancelled without
         # waiting for an unrelated, potentially stuck forward to finish.
-        while not self._admission._lock.acquire(timeout=0.05):
-            self._check_available()
-            if cancel_event is not None and cancel_event.is_set():
-                raise RequestCancelled('request cancelled while awaiting admission')
+        acquired = False
+        attempting = False
         try:
+            while not acquired:
+                attempting = True
+                acquired = self._admission._lock.acquire(timeout=0.05)
+                attempting = False
+                if not acquired:
+                    self._check_available()
+                    if cancel_event is not None and cancel_event.is_set():
+                        raise RequestCancelled('request cancelled while awaiting admission')
+            if self._admission._lease_inflight:
+                self._admission._quarantine(None, self._worker)
+                raise DeviceQuarantined('previous admission did not finish; replace the process')
             yield
         finally:
-            self._admission._lock.release()
+            try:
+                if attempting:
+                    # An interrupted acquire may have taken the gate without
+                    # returning its result; do not guess who owns the lock.
+                    self._admission._quarantine(None, self._worker)
+            finally:
+                if acquired:
+                    try:
+                        if self._admission._lease_inflight:
+                            self._admission._quarantine(None, self._worker)
+                    finally:
+                        self._admission._lock.release()
 
     def execute(self, request, cancel_event=None):
         """Admit and run one request, holding its lease through verified cleanup."""
+        return self._execute(request, cancel_event)
+
+    def _execute_grouped(self, request, group, launch, cancel_event=None):
+        # The only allowed handoff is a fixed, service-owned GroupPlan. This is
+        # not a request-supplied callback and never takes the broker condition.
+        from .grouped_worker import GroupPlan
+        if type(group) is not GroupPlan or group._owner._worker is not self:
+            raise ValueError('group does not belong to this worker')
+        return self._execute(request, cancel_event, group=group, launch=launch)
+
+    def _execute(self, request, cancel_event=None, *, group=None, launch=None):
         if cancel_event is not None and type(cancel_event) is not threading.Event:
             raise InvalidRequest('cancel_event must be a threading.Event')
         if cancel_event is not None and cancel_event.is_set():
@@ -305,62 +369,120 @@ class BudgetedWorker:
             if cancel_event is not None and cancel_event.is_set():
                 raise RequestCancelled('request cancelled while awaiting admission')
             _require_no_autocast()
-            lease = self._admission._budget.acquire(profile.estimated_incremental_bytes,
-                                                     max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+            if group is not None:
+                all_cancelled = group._abort_if_all_cancelled(launch)
+                if all_cancelled is not None:
+                    return all_cancelled
+            self._admission._lease_inflight = True
+            lease = None
+            reconciled = False
             try:
-                self._check_available()
-                _require_no_autocast()
-                if cancel_event is not None and cancel_event.is_set():
-                    raise RequestCancelled('request cancelled before execution')
-            except BaseException as exc:
-                if self.quarantined:
+                lease = self._admission._budget.try_acquire(profile.estimated_incremental_bytes,
+                                                            max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+                if lease is None:
+                    reconciled = True
+                    self._admission._lease_inflight = False
+                    raise AdmissionError('insufficient memory budget')
+                try:
+                    self._check_available()
+                    _require_no_autocast()
+                    if cancel_event is not None and cancel_event.is_set():
+                        raise RequestCancelled('request cancelled before execution')
+                except BaseException as exc:
+                    if self.quarantined:
+                        self._admission._quarantine(lease, self._worker, exc)
+                    else:
+                        self._release(lease, exc)
+                        reconciled = True
+                        self._admission._lease_inflight = False
+                    raise
+                if group is not None:
+                    try:
+                        group._start_under_gate(launch, profile, snapshot)
+                    except BaseException as exc:
+                        if group._started:
+                            self._admission._quarantine(lease, self._worker, exc)
+                        else:
+                            self._release(lease, exc)
+                            reconciled = True
+                            self._admission._lease_inflight = False
+                        raise
+                try:
+                    result = self._worker.execute(snapshot, cancel_event)
+                except WorkerSynchronizationError as exc:
                     self._admission._quarantine(lease, self._worker, exc)
-                else:
+                    raise
+                except WorkerStateError as exc:
+                    self._admission._quarantine(lease, self._worker, exc)
+                    raise WorkerContractError(
+                        f'worker model state or cache policy changed during execution: {_describe_error(exc)}') from exc
+                except (InvalidRequest, RequestCancelled, WorkerUnavailable, WorkerExecutionError) as exc:
+                    if group is not None and group._started:
+                        self._admission._quarantine(lease, self._worker, exc)
+                        group._fail_under_gate(launch, exc)
+                        raise
+                    if self._process_is_quarantined():
+                        self._admission._quarantine(lease, self._worker, exc)
+                        raise WorkerSynchronizationError(
+                            f'worker process quarantined; original failure: {_describe_error(exc)}') from exc
+                    if (not self._binding_matches()
+                            or (not self._worker.poisoned and not self._cache_matches())):
+                        self._admission._quarantine(lease, self._worker, exc)
+                        raise WorkerContractError('worker binding changed during execution') from exc
                     self._release(lease, exc)
-                raise
-            try:
-                result = self._worker.execute(snapshot, cancel_event)
-            except WorkerSynchronizationError as exc:
-                self._admission._quarantine(lease, self._worker, exc)
-                raise
-            except WorkerStateError as exc:
-                self._admission._quarantine(lease, self._worker, exc)
-                raise WorkerContractError(
-                    f'worker model state or cache policy changed during execution: {_describe_error(exc)}') from exc
-            except (InvalidRequest, RequestCancelled, WorkerUnavailable, WorkerExecutionError) as exc:
+                    reconciled = True
+                    self._admission._lease_inflight = False
+                    raise
+                except BaseException as exc:
+                    self._admission._quarantine(lease, self._worker, exc)
+                    raise
                 if self._process_is_quarantined():
-                    self._admission._quarantine(lease, self._worker, exc)
-                    raise WorkerSynchronizationError(
-                        f'worker process quarantined; original failure: {_describe_error(exc)}') from exc
-                if (not self._binding_matches()
-                        or (not self._worker.poisoned and not self._cache_matches())):
-                    self._admission._quarantine(lease, self._worker, exc)
-                    raise WorkerContractError('worker binding changed during execution') from exc
-                self._release(lease, exc)
-                raise
-            except BaseException as exc:
-                self._admission._quarantine(lease, self._worker, exc)
-                raise
-            if self._process_is_quarantined():
-                self._admission._quarantine(lease, self._worker, result)
-                raise WorkerSynchronizationError('worker process quarantined after execution')
-            if not self._binding_matches() or not self._cache_matches():
-                self._admission._quarantine(lease, self._worker, result)
-                raise WorkerContractError('worker binding changed during execution')
-            if (type(result) is not ForwardResult or result.request_id != snapshot.request_id
-                    or type(result.logits) is not torch.Tensor
-                    or result.logits.device.type != 'cpu'
-                    or result.logits.requires_grad or not result.logits.is_floating_point()
-                    or result.logits.ndim != 3 or tuple(result.logits.shape[:2]) != profile.shape
-                    or result.logits.numel() * result.logits.element_size() > profile.output_limit_bytes):
-                self._admission._quarantine(lease, self._worker, result)
-                raise WorkerContractError('worker returned an unsupported or oversized result')
-            self._release(lease)
-            return result
+                    self._admission._quarantine(lease, self._worker, result)
+                    raise WorkerSynchronizationError('worker process quarantined after execution')
+                if self._admission._is_latched():
+                    self._admission._quarantine(lease, self._worker, result)
+                    raise DeviceQuarantined('device admission quarantined during execution')
+                if not self._binding_matches() or not self._cache_matches():
+                    self._admission._quarantine(lease, self._worker, result)
+                    raise WorkerContractError('worker binding changed during execution')
+                if (type(result) is not ForwardResult or result.request_id != snapshot.request_id
+                        or type(result.logits) is not torch.Tensor
+                        or result.logits.device.type != 'cpu'
+                        or result.logits.requires_grad or not result.logits.is_floating_point()
+                        or result.logits.ndim != 3 or tuple(result.logits.shape[:2]) != profile.shape
+                        or result.logits.numel() * result.logits.element_size() > profile.output_limit_bytes):
+                    self._admission._quarantine(lease, self._worker, result)
+                    raise WorkerContractError('worker returned an unsupported or oversized result')
+                if group is not None:
+                    try:
+                        result = group._finish_under_gate(launch, result)
+                        if result.quarantine_required:
+                            raise WorkerContractError('grouped result failed validation or splitting')
+                    except BaseException as exc:
+                        self._admission._quarantine(lease, self._worker, exc)
+                        raise
+                self._release(lease)
+                reconciled = True
+                self._admission._lease_inflight = False
+                # The drain is verified and the lease has been released, but a
+                # concurrent quarantine signal can still suppress this result.
+                if self._admission._is_latched():
+                    raise DeviceQuarantined('device admission quarantined after execution')
+                return result
+            finally:
+                # One guard spans admission, forward, validation and cleanup.
+                # A missing local release receipt is not proof that no lease
+                # exists, and the budget lock may itself be unavailable.
+                if not reconciled:
+                    self._admission._quarantine(lease, self._worker)
 
     def close(self):
         """Close safely; a quarantined worker and its lease remain retained."""
         with self._admission._lock:
+            # The gate is held here, so its nonblocking health probe cannot
+            # observe a stranded marker. Inspect and latch it directly.
+            if self._admission._lease_inflight and not self._admission._is_latched():
+                self._admission._latch()
             if self._closed:
                 return
             self._closed = True

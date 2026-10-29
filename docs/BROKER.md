@@ -13,6 +13,8 @@ the exact `cancellation_exception` type. Submissions and worker snapshots
 must have the exact `ForwardRequest` type; worker results must have the exact
 `ForwardResult` type and contain a detached, mutable plain CPU tensor for logits
 (inference-mode tensors are rejected because they cannot be mutated normally).
+Both dataclasses must have exactly their declared instance fields: extra
+attributes are rejected before the broker rewrites their request IDs.
 Subclasses and trace-bearing wrappers are rejected. The resident worker
 validates and copies bounded named CPU token tensors for forward inference;
 arbitrary code, hooks, interventions, and tracing are not supported by this
@@ -81,6 +83,18 @@ with Broker(worker, max_pending=8, max_pending_per_team=2) as broker:
   another handle. The preparing request itself has no handle yet and cannot
   be cancelled through this API; a stuck snapshot can hold its slot and delay
   worker shutdown indefinitely.
+- The broker also preallocates `max_pending + 1` job roots. Each preparation
+  reserves one before invoking the worker, and a job stays rooted through
+  queue publication, dispatch, cancellation and known cleanup. A full root
+  table rejects admission, including when a removed job is still retiring.
+  Uncertain queue removal or cleanup quarantines the owner and keeps these
+  roots until process exit. The table bounds broker-owned job references, not
+  total host memory or copies retained in caller, worker or cleanup frames.
+  Retirement commits under the broker condition: quarantine that wins first
+  keeps the input rooted; retirement that wins first completes its already
+  authorized input disposal outside the condition, with its slot still charged
+  until disposal returns. The worker must honor the forward-only ownership
+  contract; a root cannot prove disposal of aliases owned by other components.
 - Ready jobs dispatch in round-robin order among teams with queued work, FIFO
   within each team's **readiness** order. Concurrent same-team submissions can
   become ready out of submit-call order. This is fairness by dispatched job,
@@ -114,6 +128,10 @@ Terminal outcomes contain error type and message rather than an exception
 traceback. Quarantined exceptions and their tracebacks are retained privately
 until process exit because their frames may own unresolved resources; they can
 also contain sensitive input references.
+Public errors from a quarantined operation are fresh sanitized exceptions,
+without a link to those private tracebacks. `KeyboardInterrupt`, `SystemExit`
+and `GeneratorExit` keep their interruption categories; the worker must still
+hold any opaque object that never reached the broker across a return boundary.
 On a poisoned worker it fails pending jobs when cleanup is known. An
 unexpected owner failure quarantines the broker and pending status may be
 unknown. It rejects new work and does not automatically retry, lower precision, drop
@@ -142,7 +160,10 @@ false when it has not stopped by the timeout; another call can wait again.
 running call and all preparations finish, unless quarantined. Worker-close
 errors retain the exception and worker, quarantine the owner, and surface as
 `BrokerShutdownError`; any resources a faulty close already released cannot be
-recovered. The context manager waits without a timeout on exit.
+recovered. A quarantined close reports failure promptly even when an orphaned
+preparation or non-preemptible worker thread has not stopped; a supervisor must
+terminate the owning process and preserve its resource quarantine. The context
+manager waits without a timeout on exit only while ownership remains known.
 
 ## Timing and memory boundaries
 

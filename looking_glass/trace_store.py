@@ -100,11 +100,16 @@ class HostTraceStore:
         if self._entries.get(key) is not entry:
             raise RuntimeError("trace store reservation is not active")
         remaining_bytes = remaining_items = None
-        value = entry._value if transfer else None
+        value = None
         try:
+            # Pop the sole transfer reference at return time: otherwise an
+            # interruption at RETURN_VALUE can keep a local tensor alive through
+            # the traceback after the store claim was released. Construct the
+            # box inside this protected block so an interrupted setup clears it.
+            value = [entry._value] if transfer else None
             entry._state = "releasing"
             # Drop the store's reference while its claim still counts.
-            # On take(), value deliberately transfers it to the caller.
+            # On take(), the one-element box holds the transfer reference.
             entry._value = None
             # Disposal can invoke reentrant weakref callbacks that change the
             # totals, so calculate the remaining counts only afterwards.
@@ -114,7 +119,7 @@ class HostTraceStore:
             self._claimed_bytes = remaining_bytes
             self._claimed_items = remaining_items
             entry._state = state
-            return value
+            return value.pop() if transfer else None
         except BaseException:
             value = None
             entry._state = "releasing"
@@ -226,8 +231,9 @@ class TraceReservation:
             if nbytes != self._nbytes:
                 raise ValueError("payload size does not match its reservation")
             with store._lock:
-                if self._state == "cancelling":
-                    raise TraceStoreCancelled("reservation was cancelled before copying")
+                cancelled_before_copy = self._state == "cancelling"
+            if cancelled_before_copy:
+                raise TraceStoreCancelled("reservation was cancelled before copying")
             snapshot = _clone_tensor(value)
             actual_bytes, actual_shape, actual_dtype = _payload_info(snapshot)
             if (actual_bytes != self._nbytes or actual_shape != shape or actual_dtype != dtype
@@ -241,6 +247,10 @@ class TraceReservation:
                 if self._state == "cancelling":
                     raise TraceStoreCancelled("reservation was cancelled during copying")
                 self._value = snapshot
+                # The entry must be the store's sole snapshot owner before it
+                # becomes removable. Otherwise a concurrent drop or a retained
+                # return traceback can outlive the entry's released claim.
+                snapshot = None
                 self._state = "ready"
             return self
         except BaseException:

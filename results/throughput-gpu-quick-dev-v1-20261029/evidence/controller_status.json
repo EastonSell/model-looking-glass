@@ -1,0 +1,37 @@
+{
+  "status": "development_only",
+  "admission_status": "development_unprofiled",
+  "supervisor": {
+    "run_id": "8813b1c2a214455a97bc8492264af6fb",
+    "pid": null,
+    "exit_code": 0,
+    "clean": true,
+    "timed_out": false,
+    "reason": "clean device teardown"
+  },
+  "runtime_gpu_uuid": "<GPU_UUID_REDACTED>",
+  "evidence": {
+    "status": "complete",
+    "manifest_sha256": "1c756a80e333c60199f466ab081b2bb2203c9ef975da4d8881f766458a1457c0",
+    "evidence_sha256": {
+      "manifest.json": "a306bd201237d24b94a135e7cdaaa146b4506447c2f8db8fdebd2915d0cbcc8f",
+      "warmup_samples.jsonl": "ac297babc41fba05e9b7d1bec84cf3aaeb97369a5fb05f6afc8bb835b9a1e48a",
+      "raw_samples.jsonl": "060d57896dc597d5bd537dc24d14347074bb60abaf49d6f3406f8774fbd23d21",
+      "partial_windows.jsonl": "5a84967af29944762f8adf3723b5b4432d96cbcbff89dfd1302d77f456040969"
+    },
+    "owner_file_sha256": {
+      "setup.json": "2ad9f4c3792552d3d2c3cc5e9cfa9aa95d226e188c432dacef7092f1a4524733",
+      "admission_profiles.json": "a14ad7e76c327d2e6272a76d316e660b32270f16a5d359f9b61b3c800f652277",
+      "cleanup.json": "dd1dad27afff09a36915193f2c14776041a4f583960e81a8fc0d3961142564a8",
+      "run_status.json": "20ef58440658ae6818f54d0d4798e2064b06571f13294c0a420e03e5657c1e23",
+      "measurements/results.json": "8f1072f08c4d6131f99294002a1f6a404081bfae82916ea9dd0306df2c29f39a"
+    }
+  },
+  "error": null,
+  "owner_reported_status": null,
+  "controller_evidence_sha256": {
+    "controller_manifest.json": "693e4bd5f7838a707c3cd9133958ddafbdfc59821d9d12736d1a712bc771479b",
+    "preflight.json": "b0e100f760d5e578cbbcaa7b3cc509a7ca6f553e1cf06c17b38c2ac454d64e60"
+  },
+  "controller_evidence_hash_errors": {}
+}

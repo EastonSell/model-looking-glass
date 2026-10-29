@@ -55,13 +55,21 @@ cancels a pending one; `handle.cancel()` only cancels an uncommitted item.
 `handle.take()` transfers a ready payload and releases its store claim.
 `handle.read()` returns an independent copy and leaves the store item in place.
 
+Before publishing a ready item, commit drops its own reference to the
+snapshot under the store lock, so a concurrent removal does not leave that
+snapshot in the still-running commit frame. The input is separately owned and
+must remain claimed until the copying call and all source aliases are gone.
+
 `request.cancel()` removes its ready and reserved items and prevents future
 reservations on that handle. If a copy is already in progress, cancellation is
 cooperative: it marks the copy for rejection, keeps the reservation charged,
 and returns without waiting for the copying thread. That thread must finish or
 fail before the claim is released. A caller that needs to establish completion
 must join or await its copy operation; aggregate `usage()` alone cannot prove a
-particular request has quiesced. A concurrent read and removal serialize
+particular request has quiesced. Python asynchronous exceptions at lock
+context-manager boundaries can strand a lock; use cooperative cancellation
+and have a supervisor quarantine and restart the process if it becomes
+unresponsive. A concurrent read and removal serialize
 through the store lock. A read that wins first returns a caller-owned copy;
 a take that wins first transfers its payload to the caller.
 
@@ -73,8 +81,12 @@ source tensors, metadata and Python objects, allocator rounding/reservations,
 temporary cloning workspace, and copies or payloads held by consumers after
 `read()` or `take()`. Consequently, concurrent reads or caller-retained outputs
 can exceed the store cap in total host memory. Exceptions or framework internals
-may also retain tensor references through tracebacks. Store bookkeeping is not an OS
-memory reservation and cannot prevent out-of-memory errors.
+may also retain tensor references through tracebacks. An interruption during or
+immediately after a `take()` or `read()` return can leave a buffer in an
+exception graph even when the caller did not receive the value. The store's
+internal `take()` return avoids retaining its own transfer local at that
+boundary, but cannot clear caller or framework frames. Store bookkeeping is not
+an OS memory reservation and cannot prevent out-of-memory errors.
 
 The shared broker must separately claim every live host and GPU buffer through
 its `MemoryLease` or another authoritative owner before allocation. In
@@ -82,7 +94,10 @@ particular, dispatcher source and store copy overlap during `put`; GPU and host
 copies may overlap during offload; each `read()` creates another caller-owned
 copy; and a `take()` transfers ownership beyond the store's claim. An
 appropriate claim must remain active until each consumer acknowledges
-disposal, even if the store usage is already zero. The current API neither
+disposal, even if the store usage is already zero. An ambiguous interrupted
+handoff requires the separate owner to remain charged until all retained
+payload and exception references are disposed or quarantined; cancellation or
+a timeout does not prove disposal. The current API neither
 creates nor transfers such claims automatically. Do not combine independent
 caps into a claim that total system memory is bounded.
 

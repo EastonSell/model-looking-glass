@@ -1,0 +1,14 @@
+{
+  "status": "complete",
+  "broker_state": "stopped",
+  "memory_lease_released": true,
+  "owner_attested_clean": true,
+  "cuda_allocator_after_cleanup": {
+    "pre_workspace_clear_allocated_bytes": 33554432,
+    "pre_workspace_clear_reserved_bytes": 33554432,
+    "workspace_clear_api": "torch._C._cuda_clearCublasWorkspaces",
+    "allocated_bytes": 0,
+    "reserved_bytes": 0
+  },
+  "admission_status": "development_unprofiled"
+}

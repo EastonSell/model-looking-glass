@@ -27,6 +27,13 @@ def git(repo, *args):
     return subprocess.check_output(["git", "-C", str(repo), *args], text=True).strip()
 
 
+def _unittest_command(executable, private_prefix):
+    """Launch the test parent with a private, initially empty bytecode cache."""
+    return [str(executable), "-I", "-B", "-X", f"pycache_prefix={private_prefix}",
+            "-m", "unittest", "discover", "-s", "tests", "-p",
+            "test_bootstrap_pretrained_cpu.py", "-v"]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--repository", type=Path, required=True)
@@ -98,9 +105,7 @@ def main():
                            "input_shape": [1, 2], "input_dtype": "torch.int64", "input_limit_bytes": 65536,
                            "output_shape": [1, 2, 50257], "output_dtype": "torch.float32",
                            "output_tensor_limit_bytes": 524288, "response_frame_limit_bytes": 4194304},
-              "invocation": {"command": ["python", "-I", "-B", "-X", "pycache_prefix=<private-empty>",
-                                         "-m", "unittest", "discover", "-s", "tests", "-p",
-                                         "test_bootstrap_pretrained_cpu.py", "-v"],
+              "invocation": {"command": _unittest_command("python", "<private-empty>"),
                              "cache_policy": "explicit local cache; download disabled",
                              "cache_path_existed_before": cache.exists(), "summary_enabled": True,
                              "collector": "tools/bootstrap_pretrained_cpu_evidence.py"},
@@ -114,9 +119,7 @@ def main():
         with tempfile.TemporaryDirectory(prefix="bootstrap-evidence-parent-", dir=scratch) as temp:
             private_prefix = Path(temp) / "pycache"
             private_prefix.mkdir()
-            command = [sys.executable, "-I", "-B", "-X", f"pycache_prefix={private_prefix}",
-                       "-m", "unittest", "discover", "-s", "tests", "-p",
-                       "test_bootstrap_pretrained_cpu.py", "-v"]
+            command = _unittest_command(sys.executable, private_prefix)
             completed = subprocess.run(command, cwd=repo, env=env, capture_output=True, timeout=240, check=False)
             record["unittest_parent_pycache_empty_after"] = not any(private_prefix.iterdir())
         record["exit_code"] = completed.returncode

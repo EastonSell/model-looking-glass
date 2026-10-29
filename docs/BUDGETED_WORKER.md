@@ -25,7 +25,35 @@ The wrapper rejects ambient CPU or CUDA autocast on the execution thread before 
 
 ## Execution and failure handling
 
-After a profile matches, the worker waits for the shared admission gate, checks cancellation and binding again, samples live device memory through `MemoryBudget.acquire`, and holds the resulting lease while the resident worker runs, offloads its result to CPU and synchronizes the device. A cancelled waiter can exit without waiting for another forward to finish. Cancellation of an already launched forward remains cooperative; the lease stays active until the resident worker returns after its drain. A failed admission runs no model work.
+After a profile matches, the worker waits for the shared admission gate, checks cancellation and binding again, samples live device memory through `MemoryBudget.try_acquire`, and holds the resulting lease while the resident worker runs, offloads its result to CPU and synchronizes the device. A cancelled waiter can exit without waiting for another forward to finish. Cancellation of an already launched forward remains cooperative; the lease stays active until the resident worker returns after its drain. A failed admission runs no model work.
+
+An explicit no-capacity return from `MemoryBudget.try_acquire` becomes an
+ordinary `AdmissionError` rejection. Any exception during acquisition,
+including an `AdmissionError`, leaves publication or lock state potentially
+unknown: the wrapper latches the device quarantine without reacquiring the
+budget lock and requires process replacement. The owner must not infer that a
+lease was absent merely because the call did not return a handle.
+The admission's pre-existing sticky flag is set before its best-effort event
+notification, so a notification allocation failure does not clear the health
+signal or allow another wrapper to proceed.
+
+A peer can latch the shared admission quarantine while a forward is in
+progress. If the owner observes the latch before releasing its lease, it
+retains that lease and does not return a result. If it observes the latch just
+after verified release, it suppresses the result but the lease is already
+released. These checks are not atomic with a later broker publication: the
+supervisor and broker must separately observe quarantine and suppress or
+discard work as appropriate. An arbitrary asynchronous interruption around
+the checks still requires watchdog-driven process replacement.
+
+The admission gate records an in-flight marker before acquisition and clears
+it only after a no-capacity receipt or verified lease release. Gate exit and
+re-entry fail closed if that marker remains. Health reads do not wait on the
+gate: they inspect a marker only when a nonblocking gate acquisition succeeds,
+so an ordinary active forward is not reported as quarantined. Arbitrary
+asynchronous interruption can strand an interpreter lock even around cleanup;
+an unresponsive owner must be treated as uncertain by an external watchdog
+and replaced rather than assumed safe to reuse.
 
 On a valid successful return or a documented resident-worker failure known to occur before execution or after a successful drain, the wrapper releases its lease. An OOM after a verified drain is surfaced and poisons that worker, while its safely drained incremental lease is released. A failed synchronization, a set or unreadable worker process-quarantine latch, an unexpected exception, changed binding after execution, a result that violates the worker contract, or failed lease cleanup quarantines the shared gate and retains the lease. When cleanup fails after another failure, the visible error includes both. Quarantine is set before attempting to preserve extra references, since retaining them can itself fail under memory pressure. The budget independently retains its active leases. There is deliberately no in-process reset: replace the process after failure, and preserve a failure record. A dropped model reference or a cancellation request is not proof of device completion.
 

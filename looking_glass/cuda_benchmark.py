@@ -430,15 +430,24 @@ class _NvidiaMonitor:
 
 
 def verify_equivalence(invoke, session_factory, identity):
-    """Require identical outputs and matched, exact value snapshots before timing."""
+    """Require matching outputs and captures under torch.equal before timing.
+
+    This is numeric equality without a tolerance, not stored-bit identity.
+    In particular, signed zeros compare equal and subnormal handling can
+    depend on the execution backend.
+    """
     import torch
 
     sessions = {}
     with torch.no_grad():
         baseline = invoke()
+        if not bool(torch.isfinite(baseline).all()):
+            raise AssertionError("baseline model output contains non-finite values")
         for mode in ("id", "direct", "gradient"):
             with session_factory(mode) as session:
                 output = invoke()
+            if not bool(torch.isfinite(output).all()):
+                raise AssertionError(f"model output for mode {mode} contains non-finite values")
             if (baseline.dtype != output.dtype or baseline.device != output.device
                     or baseline.shape != output.shape or not torch.equal(baseline, output)):
                 raise AssertionError(f"model outputs differ for mode {mode}")
@@ -476,6 +485,10 @@ def verify_equivalence(invoke, session_factory, identity):
             "event_identities": keys,
             "value_layouts": [{"shape": list(event.value.shape), "dtype": str(event.value.dtype),
                                "device": str(event.value.device)} for event in reference],
+            "comparison": {"operator": "torch.equal", "tolerance": "none",
+                           "guarantees_bitwise_identity": False,
+                           "subnormal_handling": "backend-dependent"},
+            "outputs_finite": True,
             "outputs_exact": True, "values_exact": True}
 
 
