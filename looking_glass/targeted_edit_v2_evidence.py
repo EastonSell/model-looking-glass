@@ -22,7 +22,8 @@ from . import targeted_edit_cpu_v2 as v2
 
 PHASE = "development"
 CONDITIONS = ("original", *(name for name, _ in v2.GRID))
-DOCUMENTS = ("started.json", "metadata.json", "selection.json", "observations.jsonl", "condition_states.jsonl")
+DOCUMENTS = ("started.json", "owner.json", "metadata.json", "selection.json",
+             "observations.jsonl", "condition_states.jsonl")
 CLEANUP_KEYS = ("attempted", "weight_restored", "state_restored", "flags_restored",
                 "grads_cleared", "hooks_restored")
 DENORMAL_PROBE = {"subnormal_times_one_bits": 1, "normal_times_half_bits": 0x00400000,
@@ -81,6 +82,65 @@ def _identity(record, run_id, manifest_sha, source_commit):
             record.get("source_commit") == source_commit)
 
 
+def _check_supervision(value):
+    """Validate the recorded child/reaped-parent match as an attestation."""
+    if type(value) is not dict or set(value) != {"owner", "supervisor"}:
+        raise v1.StudyError("supervision attestation is incomplete")
+    owner, parent = value["owner"], value["supervisor"]
+    if (type(owner) is not dict or set(owner) != {"run_id", "pid"} or
+            not _run_id(owner.get("run_id")) or type(owner.get("pid")) is not int or owner["pid"] <= 0 or
+            type(parent) is not dict or set(parent) != {"run_id", "pid", "exit_code", "clean", "timed_out", "reaped"} or
+            not _run_id(parent.get("run_id")) or type(parent.get("pid")) is not int or parent["pid"] <= 0 or
+            type(parent.get("exit_code")) is not int or parent["exit_code"] != 0 or
+            parent.get("clean") is not True or parent.get("timed_out") is not False or parent.get("reaped") is not True or
+            parent["run_id"] != owner["run_id"] or parent["pid"] != owner["pid"]):
+        raise v1.StudyError("supervision did not record a matching clean reaped child")
+    return owner
+
+
+def _check_analysis_probes(metadata):
+    """Validate saved calling-thread probes around scoring and controls."""
+    try:
+        valid = all(type(metadata.get(key)) is dict and
+                    v1._canonical(metadata[key]) == _DENORMAL_CANONICAL
+                    for key in ("analysis_denormal_probe_before", "analysis_denormal_probe_after"))
+    except (TypeError, ValueError, OverflowError, RecursionError, UnicodeError) as exc:
+        raise v1.StudyError("invalid analysis denormal probes") from exc
+    if not valid:
+        raise v1.StudyError("analysis denormal probes are incomplete or inconsistent")
+
+
+def _check_runtime_settings(value, environment):
+    """Validate supplemental v2 runtime fields without claiming v1 recorded them."""
+    keys = {"float32_matmul_precision", "mkldnn_deterministic", "deterministic_warn_only",
+            "intraop_threads", "interop_threads", "deterministic_algorithms", "mkldnn_enabled",
+            "cpu_autocast_enabled", "inference_mode_enabled", "cuda_initialized", "cuda_visibility",
+            "hf_hub_offline", "transformers_offline", "omp_num_threads", "mkl_num_threads"}
+    same_as_environment = ("intraop_threads", "interop_threads", "deterministic_algorithms",
+                           "mkldnn_enabled", "cuda_initialized", "omp_num_threads", "mkl_num_threads")
+    if (type(value) is not dict or set(value) != keys or type(environment) is not dict or
+            any(key not in environment for key in same_as_environment)):
+        raise v1.StudyError("supplemental runtime settings are incomplete")
+    if (value["float32_matmul_precision"] not in ("highest", "high", "medium") or
+            type(value["float32_matmul_precision"]) is not str or
+            type(value["mkldnn_deterministic"]) is not bool or type(value["mkldnn_enabled"]) is not bool or
+            type(value["intraop_threads"]) is not int or value["intraop_threads"] != 1 or
+            type(value["interop_threads"]) is not int or value["interop_threads"] != 1 or
+            value["deterministic_warn_only"] is not False or value["deterministic_algorithms"] is not True or
+            value["cpu_autocast_enabled"] is not False or value["inference_mode_enabled"] is not False or
+            value["cuda_initialized"] is not False or value["cuda_visibility"] != "" or
+            value["hf_hub_offline"] != "1" or value["transformers_offline"] != "1" or
+            any(value[key] is not None and type(value[key]) is not str
+                for key in ("omp_num_threads", "mkl_num_threads"))):
+        raise v1.StudyError("supplemental runtime settings contradict the CPU protocol")
+    try:
+        differs = any(v1._canonical(value[key]) != v1._canonical(environment[key]) for key in same_as_environment)
+    except (TypeError, ValueError, OverflowError, RecursionError, UnicodeError) as exc:
+        raise v1.StudyError("invalid recorded runtime environment") from exc
+    if differs:
+        raise v1.StudyError("supplemental runtime settings differ from the recorded environment")
+
+
 def _inspect(directory, manifest_sha, terminal_sha):
     if not _digest(manifest_sha) or not _digest(terminal_sha):
         raise v1.StudyError("an externally supplied manifest and terminal digest are required")
@@ -120,6 +180,7 @@ def _inspect(directory, manifest_sha, terminal_sha):
         if name.endswith(".f32") and len(files[name]) != matrix_bytes:
             raise v1.StudyError("development matrix has the wrong byte length")
     started = v1._decode_document(files["started.json"])
+    owner_record = v1._decode_document(files["owner.json"])
     selection = v1._decode_document(files["selection.json"])
     metadata = v1._decode_document(files["metadata.json"])
     if (not _identity(started, run_id, manifest_sha, source_commit) or
@@ -129,8 +190,20 @@ def _inspect(directory, manifest_sha, terminal_sha):
             set(selection) != {"version", "phase", "run_id", "manifest_sha256", "source_commit", "selection"} or
             not _identity(metadata, run_id, manifest_sha, source_commit)):
         raise v1.StudyError("development record identities or times differ")
+    owner = _check_supervision(metadata.get("supervision"))
+    _check_analysis_probes(metadata)
+    _check_runtime_settings(metadata.get("runtime_settings"), metadata.get("environment"))
+    if (not _identity(owner_record, run_id, manifest_sha, source_commit) or
+            set(owner_record) != {"version", "phase", "run_id", "manifest_sha256", "source_commit",
+                                  "supervisor_run_id", "pid"} or
+            not _run_id(owner_record.get("supervisor_run_id")) or
+            type(owner_record.get("pid")) is not int or owner_record["pid"] <= 0 or
+            owner_record["supervisor_run_id"] != owner["run_id"] or owner_record["pid"] != owner["pid"]):
+        raise v1.StudyError("owner record differs from the reaped child attestation")
     compatibility, grid = metadata.get("compatibility"), metadata.get("grid")
+    buffer_sha = metadata.get("buffer_state_sha256")
     if (type(compatibility) is not dict or type(grid) is not dict or
+            not _digest(buffer_sha) or
             set(grid) != set(CONDITIONS[1:]) or
             any(not _digest(compatibility.get(key)) for key in
                 ("model_state_sha256", "weight_sha256", "discovery_logit_sha256")) or
@@ -149,7 +222,8 @@ def _inspect(directory, manifest_sha, terminal_sha):
         expected = {"version": v2.VERSION, "phase": PHASE, "run_id": run_id, "condition": condition,
                     "model_state_before_sha256": state_sha, "weight_before_sha256": weight_sha,
                     "applied_weight_sha256": applied_sha, "model_state_after_sha256": state_sha,
-                    "weight_after_sha256": weight_sha, "flags_restored": True,
+                    "weight_after_sha256": weight_sha, "buffer_state_before_sha256": buffer_sha,
+                    "buffer_state_after_sha256": buffer_sha, "flags_restored": True,
                     "grads_cleared": True, "hooks_restored": True}
         if v1._canonical(v1._decode_document(state_lines[index])) != v1._canonical(expected):
             raise v1.StudyError("condition state journal is incomplete or inconsistent")
