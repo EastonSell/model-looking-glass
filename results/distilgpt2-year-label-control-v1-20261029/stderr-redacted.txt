@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "<SOURCE_ROOT>\scripts\year_label_control_v1.py", line 510, in <module>
+    main()
+  File "<SOURCE_ROOT>\scripts\year_label_control_v1.py", line 443, in main
+    plan = plan_family(noops, labels)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<SOURCE_ROOT>\scripts\year_label_control_v1.py", line 106, in plan_family
+    return intervention.plan_family(noops, labels)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<SOURCE_ROOT>\looking_glass\year_label_intervention.py", line 76, in plan_family
+    'year_at_zero': {'position': 0, **_delivery(raw[:ROW_BYTES], year, dose)},
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<SOURCE_ROOT>\looking_glass\year_transfer_intervention.py", line 43, in _delivery
+    raise ValueError('realized float32 dose is outside the fixed tolerance')
+ValueError: realized float32 dose is outside the fixed tolerance
