@@ -6,15 +6,46 @@ service owner. The broker owns this object and disables its ordinary submit
 path before making it available.
 """
 
+from contextlib import nullcontext
 from dataclasses import replace
+from queue import Empty, SimpleQueue
 from time import perf_counter_ns
 
 import torch
 
-from .broker import BrokerUnavailable, RequestHandle, _Job, _validate_forward_snapshot
+from .broker import (BrokerUnavailable, RequestHandle, _Job, _raise_sanitized,
+                     _sanitized_failure, _validate_forward_snapshot)
 from .fair_adapter import HANDOFF_PROTOCOL
 from .fair_admission import AdmissionRequest
 from .host_budget import HostBudget, HostBudgetExceeded
+
+
+_MISSING_BINDING = object()
+_MAX_BINDING_READERS = 256
+
+
+class _BindingProbeSlot:
+    """Pre-root one graph-read failure independently of other readers."""
+
+    __slots__ = ('error', 'notification_error', 'retention_error', 'guard_error',
+                 'guard_notification_error', 'guard_retention_error')
+
+    def __init__(self):
+        self.error = None
+        self.notification_error = None
+        self.retention_error = None
+        self.guard_error = None
+        self.guard_notification_error = None
+        self.guard_retention_error = None
+
+
+class _BindingProbeState:
+    """Keep the reserved slot visible to an outer interruption guard."""
+
+    __slots__ = ('slot',)
+
+    def __init__(self):
+        self.slot = None
 
 
 class FairPreparationError(RuntimeError):
@@ -149,6 +180,16 @@ class BrokerFairHandoff:
         if max_result_bytes < output_limit:
             raise ValueError('result commitment is below the worker output limit')
         self._broker = broker
+        self._broker_binding = broker
+        self._worker_binding = broker._worker
+        self._authority_binding = broker._completion_authority
+        self._binding_observation_failed = False
+        self._binding_start_error = None
+        self._binding_slots = [_BindingProbeSlot() for _ in range(_MAX_BINDING_READERS)]
+        self._free_binding_slots = SimpleQueue()
+        self._binding_pool_binding = self._free_binding_slots
+        for slot in self._binding_slots:
+            self._free_binding_slots.put(slot)
         self._decoder = decoder
         self._max_item_bytes = max_item_bytes
         self._max_decoded_bytes = max_decoded_bytes
@@ -189,8 +230,9 @@ class BrokerFairHandoff:
         return self._max_result_bytes
 
     def bind_waiting_queue(self, teams, max_item_bytes):
-        broker = self._broker
+        broker = self._broker_binding
         with broker._condition:
+            self._check_owner_binding_locked()
             if broker._fair_handoff is not self:
                 raise BrokerUnavailable('target is not owned by this broker')
             if broker._closed or broker._unavailable or broker.quarantined or broker._worker_poisoned_locked():
@@ -199,7 +241,10 @@ class BrokerFairHandoff:
                 raise ValueError('adapter teams or item limit do not match the target')
             if self._bound:
                 raise BrokerUnavailable('target already has a waiting adapter')
-            self._bound = True
+            with self._owner_decision():
+                if not self._owner_safe():
+                    raise BrokerUnavailable('owner became unsafe before adapter binding')
+                self._bound = True
             broker._condition.notify_all()
 
     @property
@@ -211,20 +256,188 @@ class BrokerFairHandoff:
         """Declared result bytes held for unacknowledged receipt custody."""
         return self._receipt_budget.snapshot().used_bytes
 
+    def _owner_binding_valid(self):
+        """Observe the pinned graph without taking another component's lock.
+
+        This is a cooperative integrity check, not synchronization against a
+        concurrent actor deliberately mutating private fields.
+        """
+        broker = self._broker_binding
+        worker = self._worker_binding
+        authority = self._authority_binding
+        return (getattr(self, '_broker', _MISSING_BINDING) is broker and
+                getattr(broker, '_fair_handoff', _MISSING_BINDING) is self and
+                getattr(broker, '_worker', _MISSING_BINDING) is worker and
+                getattr(broker, '_completion_authority', _MISSING_BINDING) is authority and
+                (authority is None or
+                 (getattr(authority, '_broker', _MISSING_BINDING) is broker and
+                  getattr(authority, '_worker', _MISSING_BINDING) is worker and
+                  getattr(worker, '_authority', _MISSING_BINDING) is authority)))
+
+    def _mark_owner_binding_unknown(self):
+        """Latch without acquiring the broker lock, including from ingress locks."""
+        broker = self._broker_binding
+        try:
+            self._signal_owner_unsafe()
+        finally:
+            # The live broker authority may already be different, so do not
+            # rely on its notification helper to mark our pinned authority.
+            # Sticky assignments do not wait for the broker condition: the
+            # adapter can be called while the broker holds that condition.
+            broker._quarantine_latched = True
+            broker._fatal_cleanup_failure = True
+            broker._unavailable = 'fair owner binding changed; process replacement required'
+            self._binding_observation_failed = True
+
+    def _observe_owner_binding(self, predicate):
+        """Bound concurrent graph reads and root each uncertain failure."""
+        state = None
+        try:
+            state = _BindingProbeState()
+            return self._observe_owner_binding_inner(predicate, state)
+        except BaseException as error:
+            # An interruption can replace a graph error while its first
+            # handler is entering. The escaping error's private context then
+            # contains that original failure; the reserved slot roots both.
+            notification = None
+            try:
+                self._mark_owner_binding_unknown()
+            except BaseException as interrupted:
+                notification = interrupted
+            finally:
+                self._binding_observation_failed = True
+                if self._authority_binding is not None:
+                    self._authority_binding._unsafe = True
+                self._broker_binding._quarantine_latched = True
+                self._broker_binding._fatal_cleanup_failure = True
+                slot = None if state is None else state.slot
+                if slot is not None:
+                    try:
+                        slot.guard_error = error
+                        slot.guard_notification_error = notification
+                    except BaseException as storage_error:
+                        slot.guard_retention_error = storage_error
+                        slot.guard_error = error
+                        slot.guard_notification_error = notification
+                elif self._binding_start_error is None:
+                    self._binding_start_error = error
+            reported = (notification if notification is not None and
+                        not isinstance(notification, Exception) and isinstance(error, Exception)
+                        else error)
+            if (slot is not None and slot.guard_retention_error is not None and
+                    not isinstance(slot.guard_retention_error, Exception) and isinstance(reported, Exception)):
+                reported = slot.guard_retention_error
+            public_error = _sanitized_failure(reported, BrokerUnavailable)
+        _raise_sanitized(public_error)
+
+    def _observe_owner_binding_inner(self, predicate, state):
+        if self._binding_observation_failed:
+            return False
+        slot = None
+        try:
+            # The reservation primitive is owner-created native state, not a
+            # callback that may allocate opaque resources before returning.
+            if (self._free_binding_slots is not self._binding_pool_binding or
+                    type(self._free_binding_slots) is not SimpleQueue):
+                self._mark_owner_binding_unknown()
+                return False
+            try:
+                slot = self._free_binding_slots.get_nowait()
+            except Empty:
+                self._mark_owner_binding_unknown()
+                return False
+            state.slot = slot
+            if self._binding_observation_failed:
+                state.slot = None
+                returned, slot = slot, None
+                self._free_binding_slots.put(returned)
+                return False
+            valid = predicate()
+            if not valid:
+                self._mark_owner_binding_unknown()
+            # After the graph read succeeds, return its unique slot. A later
+            # interruption has no unrooted graph-read exception to preserve.
+            state.slot = None
+            returned, slot = slot, None
+            self._free_binding_slots.put(returned)
+            return valid
+        except BaseException as error:
+            notification = None
+            try:
+                self._mark_owner_binding_unknown()
+            except BaseException as interrupted:
+                notification = interrupted
+            finally:
+                # Even if the notification was interrupted before its body,
+                # latch the pinned graph and keep each read's private error.
+                self._binding_observation_failed = True
+                if self._authority_binding is not None:
+                    self._authority_binding._unsafe = True
+                self._broker_binding._quarantine_latched = True
+                self._broker_binding._fatal_cleanup_failure = True
+                if slot is not None:
+                    try:
+                        slot.error = error
+                        slot.notification_error = notification
+                    except BaseException as storage_error:
+                        # A single interruption before this assignment must
+                        # not expose or lose the original graph-read frames.
+                        slot.retention_error = storage_error
+                        slot.error = error
+                        slot.notification_error = notification
+                elif self._binding_start_error is None:
+                    self._binding_start_error = error
+            reported = (notification if notification is not None and
+                        not isinstance(notification, Exception) and isinstance(error, Exception)
+                        else error)
+            if (slot is not None and slot.retention_error is not None and
+                    not isinstance(slot.retention_error, Exception) and isinstance(reported, Exception)):
+                reported = slot.retention_error
+            public_error = _sanitized_failure(reported, BrokerUnavailable)
+        _raise_sanitized(public_error)
+
+    def _check_owner_binding_locked(self):
+        """Latch the original owner before allowing a changed graph to retire custody."""
+        if self._observe_owner_binding(self._owner_binding_valid):
+            return
+        self._broker_binding._condition.notify_all()
+        raise BrokerUnavailable('fair owner binding changed; process replacement required')
+
+    def _owner_decision(self):
+        self._check_owner_binding_locked()
+        authority = self._authority_binding
+        return authority._decision_lock if authority is not None else nullcontext()
+
+    def _owner_safe(self):
+        self._check_owner_binding_locked()
+        authority = self._authority_binding
+        return authority is None or not authority.unsafe
+
+    def _signal_owner_unsafe(self):
+        authority = self._authority_binding
+        try:
+            if authority is not None:
+                authority.mark_unsafe()
+        finally:
+            if authority is not None:
+                authority._unsafe = True
+
     def wait_for_capacity(self, timeout=None):
         """Wait for declared byte and global slot capacity, not a team turn.
 
         Use a finite timeout when an external actor can poison the worker; that
         state change need not notify the broker condition.
         """
-        broker = self._broker
+        broker = self._broker_binding
         with broker._condition:
+            self._check_owner_binding_locked()
             broker._condition.wait_for(
                 lambda: broker._closed or broker._unavailable or broker.quarantined or broker._worker_poisoned_locked() or
                 (self._bound and broker._pending_slots < broker._max_pending and
                  any(job is None for job in broker._job_roots) and
                  self.committed_bytes + self._commitment <= self._budget.max_bytes and
                  self._receipt_budget.snapshot().used_items < self._receipt_budget.max_items), timeout)
+            self._check_owner_binding_locked()
             return (self._bound and not broker._closed and not broker._unavailable and not broker.quarantined and
                     not broker._worker_poisoned_locked() and
                     broker._pending_slots < broker._max_pending and
@@ -233,7 +446,7 @@ class BrokerFairHandoff:
                     self._receipt_budget.snapshot().used_items < self._receipt_budget.max_items)
 
     def _reserve_locked(self, budget, job_id, stage, amount):
-        request = budget.open_request(f'lg-{self._broker.broker_id}-{job_id}')
+        request = budget.open_request(f'lg-{self._broker_binding.broker_id}-{job_id}')
         try:
             custody = _InputCustody(request, None)
             custody._claim = request.reserve('broker', stage, amount)
@@ -242,7 +455,7 @@ class BrokerFairHandoff:
             try:
                 request.close()
             except BaseException as cleanup_exc:
-                self._broker._mark_cleanup_failed_locked()
+                self._broker_binding._mark_cleanup_failed_locked()
                 if not isinstance(cleanup_exc, Exception):
                     raise
             raise
@@ -252,17 +465,19 @@ class BrokerFairHandoff:
         try:
             custody.release()
         except BaseException as exc:
-            with self._broker._condition:
-                self._broker._mark_cleanup_failed_locked()
+            self._signal_owner_unsafe()
+            with self._broker_binding._condition:
+                self._broker_binding._mark_cleanup_failed_locked()
             if not isinstance(exc, Exception):
                 raise
             raise BrokerUnavailable('input custody cleanup failed') from None
-        with self._broker._condition:
-            self._broker._condition.notify_all()
+        with self._broker_binding._condition:
+            self._broker_binding._condition.notify_all()
 
     def recover_receipt(self, sequence):
         """Trusted owner lookup; the adapter checks ticket namespace first."""
-        with self._broker._condition:
+        with self._broker_binding._condition:
+            self._check_owner_binding_locked()
             record = self._receipts.get(sequence)
             if record is None:
                 return None
@@ -274,10 +489,11 @@ class BrokerFairHandoff:
 
     def acknowledge_receipt(self, sequence, handle):
         """Transfer result custody to an already-budgeted trusted owner."""
-        broker = self._broker
+        broker = self._broker_binding
         mutating = False
         try:
             with broker._condition:
+                self._check_owner_binding_locked()
                 record = self._receipts.get(sequence)
                 if record is None:
                     return False
@@ -287,40 +503,48 @@ class BrokerFairHandoff:
                     raise BrokerUnavailable('receipt outcome is unknown')
                 if record.acknowledged:
                     return False
-                mutating = True
-                record.acknowledged = True
-                if not record.retired:
-                    return True
-                del self._receipts[sequence]
-                record.handle = None
+                with self._owner_decision():
+                    if not self._owner_safe():
+                        raise BrokerUnavailable('owner became unsafe before receipt transfer')
+                    mutating = True
+                    record.acknowledged = True
+                    if not record.retired:
+                        return True
+                    del self._receipts[sequence]
+                    record.handle = None
             self._release(record.custody)
             return True
         except BaseException:
             if mutating:
+                self._signal_owner_unsafe()
                 with broker._condition:
                     broker._mark_cleanup_failed_locked()
             raise
 
     def retire_receipt(self, job):
         """Complete result retirement after broker-local aliases are dropped."""
-        broker = self._broker
+        broker = self._broker_binding
         held_handle = None
         custody = None
         try:
             with broker._condition:
+                self._check_owner_binding_locked()
                 record = job.receipt_record
                 if record is None:
                     return
                 if broker._fatal_cleanup_failure or broker.quarantined:
                     return
                 retirement = record.retirement
-                record.retired = True
-                job.receipt_record = None
-                if record.acknowledged:
-                    del self._receipts[record.sequence]
-                    held_handle = record.handle
-                    record.handle = None
-                    custody = record.custody
+                with self._owner_decision():
+                    if not self._owner_safe():
+                        return
+                    record.retired = True
+                    job.receipt_record = None
+                    if record.acknowledged:
+                        del self._receipts[record.sequence]
+                        held_handle = record.handle
+                        record.handle = None
+                        custody = record.custody
             del held_handle
             if custody is not None:
                 self._release(custody)
@@ -328,10 +552,13 @@ class BrokerFairHandoff:
             # execution-thread/job alias has been dropped and cleanup finished.
             # An unacknowledged receipt can still retain the handle itself.
             with broker._condition:
-                if not broker._fatal_cleanup_failure and not broker.quarantined:
-                    retirement.complete = True
-                    broker._condition.notify_all()
+                with self._owner_decision():
+                    if (not broker._fatal_cleanup_failure and not broker.quarantined
+                            and self._owner_safe()):
+                        retirement.complete = True
+                        broker._condition.notify_all()
         except BaseException:
+            self._signal_owner_unsafe()
             with broker._condition:
                 broker._mark_cleanup_failed_locked()
             raise
@@ -343,8 +570,9 @@ class BrokerFairHandoff:
 
     def _retire_unpublished(self, job, job_id, result_custody):
         """Dispose an unpublished job only if cleanup wins against quarantine."""
-        broker = self._broker
+        broker = self._broker_binding
         with broker._condition:
+            self._check_owner_binding_locked()
             if broker._fatal_cleanup_failure or broker.quarantined:
                 return False
             # Construct the guard before detaching any staged references. The
@@ -352,16 +580,23 @@ class BrokerFairHandoff:
             staged = (job.staged_raw, job.staged_decoded, job.retained_error,
                       job.retained_status_error)
             job.retiring_staged = staged
-            job.staged_raw = None
-            job.staged_decoded = None
-            job.retained_error = None
-            job.retained_status_error = None
-            # This locked transition commits cleanup before a later
-            # quarantine; the guard prevents finalizers under the condition.
-            job.retiring_staged = None
+            with self._owner_decision():
+                if not self._owner_safe():
+                    return False
+                job.staged_raw = None
+                job.staged_decoded = None
+                job.retained_error = None
+                job.retained_status_error = None
+                # This locked transition commits cleanup before a later
+                # quarantine; the guard prevents finalizers under the condition.
+                job.retiring_staged = None
         staged = None
         if not broker._retire_job(job):
             return False
+        with broker._condition:
+            with self._owner_decision():
+                if broker._fatal_cleanup_failure or broker.quarantined or not self._owner_safe():
+                    return False
         self._release(result_custody)
         job.pending_result_custody = None
         with broker._condition:
@@ -370,15 +605,19 @@ class BrokerFairHandoff:
 
     def _drop_success_staged(self, job):
         """Commit disposal of copied request inputs against quarantine."""
-        broker = self._broker
+        broker = self._broker_binding
         with broker._condition:
+            self._check_owner_binding_locked()
             if broker._fatal_cleanup_failure or broker.quarantined:
                 return False
             staged = (job.staged_raw, job.staged_decoded)
             job.retiring_staged = staged
-            job.staged_raw = None
-            job.staged_decoded = None
-            job.retiring_staged = None
+            with self._owner_decision():
+                if not self._owner_safe():
+                    return False
+                job.staged_raw = None
+                job.staged_decoded = None
+                job.retiring_staged = None
         staged = None
         return True
 
@@ -391,7 +630,7 @@ class BrokerFairHandoff:
                 return
         # A trusted owner must bound concurrent transfer calls. Retain an
         # unexpected excess in the broker's separate bounded quarantine pool.
-        self._broker._store_quarantine_value_locked(state)
+        self._broker_binding._store_quarantine_value_locked(state)
 
     def accept_next(self, claim):
         state = _HandoffState()
@@ -400,12 +639,15 @@ class BrokerFairHandoff:
         except BaseException as exc:
             if not state.active:
                 raise
-            with self._broker._condition:
+            # A failure on a claimed or provisionally reserved handoff must
+            # suppress other owner decisions before waiting for this condition.
+            self._signal_owner_unsafe()
+            with self._broker_binding._condition:
                 state.retained_error = exc
-                if self._broker._fair_orphan_state is None:
+                if self._broker_binding._fair_orphan_state is None:
                     # Also cover a failure between removing a completed
                     # preparation from the set and returning to this guard.
-                    self._broker._fair_orphan_state = state
+                    self._broker_binding._fair_orphan_state = state
                 if state.job is not None:
                     # If a cleanup transition was interrupted, its traceback
                     # can still hold detached local references.
@@ -413,11 +655,11 @@ class BrokerFairHandoff:
                 # Latch before inspecting the exception: classification can
                 # itself fail while the original private traceback owns data.
                 try:
-                    self._broker._quarantine_latched = True
+                    self._broker_binding._quarantine_latched = True
                 finally:
-                    self._broker._quarantine_latched = True
-                    self._broker._fatal_cleanup_failure = True
-                    self._broker._unavailable = 'broker cleanup failed; request status is unknown'
+                    self._broker_binding._quarantine_latched = True
+                    self._broker_binding._fatal_cleanup_failure = True
+                    self._broker_binding._unavailable = 'broker cleanup failed; request status is unknown'
                 try:
                     self._root_failure_state_locked(state)
                 except BaseException as root_error:
@@ -428,7 +670,7 @@ class BrokerFairHandoff:
                         state.retained_root_retry_error = retry_error
                         # The shared quarantine pool is a separate bounded
                         # fallback if the preallocated target table fails.
-                        self._broker._store_quarantine_value_locked(state)
+                        self._broker_binding._store_quarantine_value_locked(state)
                 try:
                     kind, name = _failure_identity(exc)
                     if state.fatal_kind:
@@ -449,30 +691,30 @@ class BrokerFairHandoff:
                 # mutation. Retain all uncertain slots and ledger claims.
                 mark_failed = False
                 try:
-                    self._broker._mark_cleanup_failed_locked()
+                    self._broker_binding._mark_cleanup_failed_locked()
                 except BaseException as mark_error:
                     # Even an interrupted or repeatedly failing notification
                     # must not expose the private exception chain or leave the
                     # broker available. The pre-existing state is broker-rooted.
                     state.retained_quarantine_error = mark_error
-                    self._broker._quarantine_latched = True
-                    self._broker._fatal_cleanup_failure = True
-                    self._broker._unavailable = 'broker cleanup failed; request status is unknown'
+                    self._broker_binding._quarantine_latched = True
+                    self._broker_binding._fatal_cleanup_failure = True
+                    self._broker_binding._unavailable = 'broker cleanup failed; request status is unknown'
                     mark_failed = True
                     if kind == 0 and _failure_kind(mark_error) != 0:
                         name, kind = type(mark_error).__name__, _failure_kind(mark_error)
                 try:
-                    self._broker._condition.notify_all()
+                    self._broker_binding._condition.notify_all()
                 except BaseException as notification_error:
                     state.retained_notification_error = notification_error
-                    self._broker._quarantine_latched = True
-                    self._broker._fatal_cleanup_failure = True
-                    self._broker._unavailable = 'broker cleanup failed; request status is unknown'
+                    self._broker_binding._quarantine_latched = True
+                    self._broker_binding._fatal_cleanup_failure = True
+                    self._broker_binding._unavailable = 'broker cleanup failed; request status is unknown'
                     mark_failed = True
                     if kind == 0 and _failure_kind(notification_error) != 0:
                         name, kind = type(notification_error).__name__, _failure_kind(notification_error)
                 if not mark_failed:
-                    self._broker._fair_preparations.discard(state)
+                    self._broker_binding._fair_preparations.discard(state)
             # Do not expose the private retained exception: a caller can
             # clear its traceback frames, releasing unknown worker-owned data.
         # Raise outside the handler so __context__ does not point back to the
@@ -480,9 +722,10 @@ class BrokerFairHandoff:
         _raise_sanitized_failure(kind, name)
 
     def _accept_next(self, claim, state):
-        broker = self._broker
+        broker = self._broker_binding
         request = None
         with broker._condition:
+            self._check_owner_binding_locked()
             if broker._fair_handoff is not self or not self._bound:
                 raise BrokerUnavailable('fair handoff target is not bound')
             if broker._closed or broker._unavailable or broker.quarantined or broker._worker_poisoned_locked():
@@ -500,6 +743,9 @@ class BrokerFairHandoff:
                 return None
             next_team_counts = {team: broker._team_slots.get(team, 0) + 1 for team in eligible}
             next_id = broker._next_job_id + 1
+            with self._owner_decision():
+                if not self._owner_safe():
+                    raise BrokerUnavailable('owner became unsafe before fair admission')
             # Guard starts before the first ledger mutation. An interruption
             # during any later stage must fail closed and retain uncertainty.
             try:
@@ -511,6 +757,7 @@ class BrokerFairHandoff:
                 state.active = True
                 state.retained_error = registration_error
                 broker._fair_orphan_state = state
+                self._signal_owner_unsafe()
                 broker._quarantine_latched = True
                 broker._fatal_cleanup_failure = True
                 broker._unavailable = 'broker cleanup failed; request status is unknown'
@@ -612,6 +859,7 @@ class BrokerFairHandoff:
                 job.retained_error = exc
                 if not isinstance(exc, Exception) or isinstance(exc, (MemoryError, torch.OutOfMemoryError)):
                     job.quarantine_required = True
+                    self._signal_owner_unsafe()
                     with broker._condition:
                         broker._mark_cleanup_failed_locked()
                 raise
@@ -623,6 +871,7 @@ class BrokerFairHandoff:
                 # unsupported returned object may own unrecognized resources.
                 # It is already rooted in the preallocated inflight job.
                 job.quarantine_required = True
+                self._signal_owner_unsafe()
                 with broker._condition:
                     broker._mark_cleanup_failed_locked()
                 raise
@@ -637,6 +886,7 @@ class BrokerFairHandoff:
                 job.retained_error = exc
                 if not isinstance(exc, Exception) or isinstance(exc, (MemoryError, torch.OutOfMemoryError)):
                     job.quarantine_required = True
+                    self._signal_owner_unsafe()
                     with broker._condition:
                         broker._mark_cleanup_failed_locked()
                 raise
@@ -650,6 +900,7 @@ class BrokerFairHandoff:
             except BaseException:
                 # job.request roots the exact rejected worker snapshot.
                 job.quarantine_required = True
+                self._signal_owner_unsafe()
                 with broker._condition:
                     broker._mark_cleanup_failed_locked()
                 raise
@@ -670,6 +921,7 @@ class BrokerFairHandoff:
                 poisoned = True
             elif (job.quarantine_required or not isinstance(exc, Exception) or
                     isinstance(exc, (MemoryError, torch.OutOfMemoryError))):
+                self._signal_owner_unsafe()
                 with broker._condition:
                     broker._mark_cleanup_failed_locked()
                 poisoned = True
@@ -680,12 +932,14 @@ class BrokerFairHandoff:
                     poisoned = True
                     job.retained_status_error = status_exc
                     if not isinstance(status_exc, Exception):
+                        self._signal_owner_unsafe()
                         with broker._condition:
                             broker._mark_cleanup_failed_locked()
                         raise
             if poisoned:
                 # A poisoned worker can retain unknown preparation inputs even
                 # when it raises an ordinary Exception such as WorkerOutOfMemory.
+                self._signal_owner_unsafe()
                 with broker._condition:
                     broker._mark_cleanup_failed_locked()
         request = None

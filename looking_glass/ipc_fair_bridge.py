@@ -26,6 +26,8 @@ from .resident_worker import ForwardRequest
 
 _IDENTIFIER = re.compile(r'[A-Za-z0-9_.-]{1,64}\Z')
 _INPUTS = frozenset(('input_ids', 'attention_mask', 'token_type_ids', 'position_ids'))
+_WAIT_TIMEOUT = object()
+_MISSING_BINDING = object()
 
 
 class FatalBridgeFailure(BaseException):
@@ -236,7 +238,7 @@ class _Proxy:
                 self._operation_lock.release()
                 gate_complete = True
         except BaseException as error:
-            if gate_complete:
+            if gate_complete and not isinstance(error, TimeoutError):
                 raise
             # Acquisition or release may have taken effect without returning.
             # Root the private failure and require owner-process recovery.
@@ -248,7 +250,22 @@ class _Proxy:
         return self._invoke(self._owner._cancel)
 
     def wait(self, timeout=None):
-        return self._invoke(self._owner._wait, timeout)
+        _validate_timeout(timeout, allow_none=True)
+        try:
+            result = self._invoke(self._owner._wait, timeout)
+            if result is _WAIT_TIMEOUT:
+                # A normal timeout is raised only after the inner frames have
+                # returned and their handle/outcome aliases were cleared.
+                result = None
+            else:
+                return result
+        except TimeoutError as error:
+            # A timeout-shaped interruption before that safe point may have
+            # a terminal outcome in its traceback. It is not a poll timeout.
+            self._owner._retain_wait_failure(error, self._record)
+            kind = _failure_kind(error)
+            _raise_public_failure(kind)
+        raise TimeoutError('request is still in flight')
 
     @property
     def cancel_requested(self):
@@ -266,18 +283,109 @@ class _ServerConstruction:
     classification_error: object = None
 
 
+class _BridgeConstructionGuard:
+    """Owner-retained one-shot bridge construction with idempotent adoption."""
+
+    def __init__(self, adapter, candidate):
+        self._adapter = adapter
+        self._candidate = candidate
+        self._started = False
+        self._ready = False
+        self._attempt_marker = None
+        self._error = None
+        self._guard_error = None
+        self._classification_error = None
+
+    def construct(self, *, codec, team_credentials, custody_epoch, max_connections,
+                  max_request_bytes, max_response_bytes, connection_commitment_bytes,
+                  request_validator=None):
+        marker = object()
+        try:
+            return self._construct_guarded(
+                marker, codec, team_credentials, custody_epoch, max_connections,
+                max_request_bytes, max_response_bytes, connection_commitment_bytes,
+                request_validator)
+        except BaseException as error:
+            if self._attempt_marker is not marker:
+                raise
+            try:
+                self._adapter._mark_indeterminate()
+            finally:
+                if self._error is None:
+                    self._error = error
+                else:
+                    self._guard_error = error
+            try:
+                kind, _ = _failure_identity(error)
+                if kind == 0:
+                    kind, _ = _failure_identity(self._error)
+            except BaseException as classification_error:
+                self._classification_error = classification_error
+                kind = _failure_kind(error) or _failure_kind(classification_error)
+        _raise_public_failure(kind)
+
+    def _construct_guarded(self, marker, codec, team_credentials, custody_epoch, max_connections,
+                           max_request_bytes, max_response_bytes, connection_commitment_bytes,
+                           request_validator):
+        with self._adapter._lock:
+            self._adapter._check_transition_locked()
+            if self._adapter._bridge_guard is not self or self._started:
+                raise ValueError('bridge construction guard is foreign or already used')
+            self._attempt_marker = marker
+            self._started = True
+        try:
+            FairIPCBridge.__init__(
+                self._candidate, self._adapter, codec=codec, team_credentials=team_credentials,
+                custody_epoch=custody_epoch, max_connections=max_connections,
+                max_request_bytes=max_request_bytes, max_response_bytes=max_response_bytes,
+                connection_commitment_bytes=connection_commitment_bytes,
+                request_validator=request_validator,
+                completion_authority=self._adapter._completion_authority,
+                _construction_guard=self)
+            with self._adapter._lock:
+                self._adapter._check_transition_locked()
+                self._ready = True
+                self._attempt_marker = None
+        except BaseException as error:
+            try:
+                self._adapter._mark_indeterminate()
+            finally:
+                self._error = error
+            kind = _failure_kind(error)
+            _raise_public_failure(kind)
+        return self._candidate
+
+    def adopt(self):
+        """Return the same fully initialized bridge, or None while unfinished."""
+        with self._adapter._lock:
+            self._adapter._check_transition_locked()
+            return self._candidate if self._ready else None
+
+
 class FairIPCBridge:
     """Single-owner fair dispatch with separately budgeted IPC custody."""
 
     def __init__(self, adapter, *, codec, team_credentials, custody_epoch,
                  max_connections, max_request_bytes, max_response_bytes,
-                 connection_commitment_bytes, request_validator=None):
+                 connection_commitment_bytes, request_validator=None,
+                 completion_authority=None, _construction_guard=None):
         if type(adapter) is not ExperimentalFairAdapter or type(codec) is not ForwardCodec:
             raise ValueError('exact trusted adapter and codec are required')
         target = adapter._target
         if (type(target) is not BrokerFairHandoff or type(target._broker) is not Broker or
                 target._broker._fair_handoff is not target):
             raise ValueError('the adapter must use a bound fair broker target')
+        broker_authority = getattr(target._broker, '_completion_authority', None)
+        if (completion_authority is not broker_authority or
+                completion_authority is not adapter._completion_authority):
+            raise ValueError('bridge, adapter and broker completion authorities must match')
+        if completion_authority is not None:
+            if (type(_construction_guard) is not _BridgeConstructionGuard or
+                    adapter._bridge_guard is not _construction_guard or
+                    _construction_guard._candidate is not self or not _construction_guard._started):
+                raise ValueError('authority-bound bridges require their rooted construction guard')
+        elif _construction_guard is not None:
+            raise ValueError('construction guards require a completion authority')
         if type(team_credentials) is not dict or not team_credentials:
             raise ValueError('team credentials are required')
         if request_validator is not None and not callable(request_validator):
@@ -307,9 +415,14 @@ class FairIPCBridge:
         if set(team_credentials) != set(adapter._target.teams):
             raise ValueError('bridge teams must match the target')
         for team, credential in team_credentials.items():
-            adapter.registration_guard(credential, b'', team_id=team)
+            principal = adapter._verify(credential)
+            if adapter._principal_teams[principal] != team:
+                raise PermissionError('verified principal does not belong to the required team')
         self._adapter, self._codec = adapter, codec
         self._target, self._target_broker = target, target._broker
+        self._completion_authority = completion_authority
+        self._adapter_binding, self._target_binding = adapter, target
+        self._broker_binding, self._authority_binding = target._broker, completion_authority
         self._request_validator = request_validator
         self._credentials = dict(team_credentials)
         self._epoch = custody_epoch
@@ -340,7 +453,8 @@ class FairIPCBridge:
     @property
     def quarantined(self):
         construction = self._server_construction
-        return (self._quarantined or
+        return (self._quarantined or not self._observe_owner_binding() or
+                (self._authority_binding is not None and self._authority_binding.unsafe) or
                 (construction is not None and
                  (construction.error is not None or construction.guard_error is not None)) or
                 self._adapter.indeterminate or
@@ -360,43 +474,104 @@ class FairIPCBridge:
     def committed_bytes(self):
         return self._budget.snapshot().used_bytes
 
+    def _mark_quarantined(self):
+        """Signal the shared owner before making a bridge fault observable."""
+        authority = self._authority_binding
+        try:
+            if authority is not None:
+                authority.mark_unsafe()
+        finally:
+            try:
+                if authority is not None:
+                    authority._unsafe = True
+            finally:
+                self._quarantined = True
+
+    def _owner_binding_valid(self):
+        adapter, target, broker = self._adapter_binding, self._target_binding, self._broker_binding
+        return (getattr(self, '_adapter', _MISSING_BINDING) is adapter and
+                getattr(self, '_target', _MISSING_BINDING) is target and
+                getattr(self, '_target_broker', _MISSING_BINDING) is broker and
+                getattr(self, '_completion_authority', _MISSING_BINDING) is self._authority_binding and
+                getattr(adapter, '_target', _MISSING_BINDING) is target and
+                adapter._authority_binding is self._authority_binding and
+                getattr(target, '_broker', _MISSING_BINDING) is broker and
+                target._authority_binding is self._authority_binding and
+                adapter._owner_binding_valid())
+
+    def _check_owner_binding_locked(self):
+        if self._observe_owner_binding():
+            return
+        raise BrokerUnavailable('fair owner binding changed; process replacement required')
+
+    def _observe_owner_binding(self):
+        try:
+            valid = self._target_binding._observe_owner_binding(self._owner_binding_valid)
+        except BaseException:
+            self._mark_quarantined()
+            raise
+        if not valid:
+            try:
+                self._adapter_binding._mark_indeterminate()
+            finally:
+                self._mark_quarantined()
+        return valid
+
     def _check_locked(self):
+        self._check_owner_binding_locked()
         if self._transition is not None:
-            self._quarantined = True
+            self._mark_quarantined()
         if self.quarantined:
             raise BrokerUnavailable('bridge custody is indeterminate')
 
+    def _commit_owner_decision_locked(self):
+        """Order a bridge publication or cleanup against the unsafe signal."""
+        self._check_owner_binding_locked()
+        authority = self._authority_binding
+        if authority is not None:
+            with authority._decision_lock:
+                if authority.unsafe:
+                    raise BrokerUnavailable('service owner is unsafe; process replacement required')
+
     def _retain_failure(self, error, record=None):
-        if record is not None:
-            if record.failure is None:
-                record.failure = error
-        else:
-            if self._owner_failure is None:
-                self._owner_failure = error
-        self._quarantined = True
+        try:
+            self._mark_quarantined()
+        finally:
+            if record is not None:
+                if record.failure is None:
+                    record.failure = error
+            else:
+                if self._owner_failure is None:
+                    self._owner_failure = error
 
     def _retain_wait_failure(self, error, record):
         # A proxy has at most one active operation. Keep the wait's original
         # error separately from a dispatcher/observer failure for this record.
-        if record.wait_failure is None:
-            record.wait_failure = error
-        self._quarantined = True
+        try:
+            self._mark_quarantined()
+        finally:
+            if record.wait_failure is None:
+                record.wait_failure = error
 
     def _retain_gate_failure(self, error, record):
-        if record.gate_failure is None:
-            record.gate_failure = error
-        self._quarantined = True
+        try:
+            self._mark_quarantined()
+        finally:
+            if record.gate_failure is None:
+                record.gate_failure = error
 
     def _latch(self, marker, error, record=None):
         if self._transition is marker:
             # Only the transition's own caller has this marker; an observer
             # reporting quarantine cannot displace its original exception.
-            if record is None:
-                if self._owner_transition_failure is None:
-                    self._owner_transition_failure = error
-            elif record.transition_failure is None:
-                record.transition_failure = error
-            self._quarantined = True
+            try:
+                self._mark_quarantined()
+            finally:
+                if record is None:
+                    if self._owner_transition_failure is None:
+                        self._owner_transition_failure = error
+                elif record.transition_failure is None:
+                    record.transition_failure = error
             return True
         if self.quarantined:
             self._retain_failure(error, record)
@@ -432,6 +607,7 @@ class FairIPCBridge:
                 # payload, or asynchronous registration was created.
                 raise IPCCustodyCapacity('connection custody is full')
             record = _Record(key, handler_thread=threading.current_thread())
+            self._commit_owner_decision_locked()
             self._transition = marker
             self._records[key] = record
             record.request_guard = self._budget.request_guard(f'{self._epoch}:{key.connection_generation}')
@@ -461,6 +637,7 @@ class FairIPCBridge:
             record = self._records.get(key)
             if record is None or record.team is not None:
                 raise ValueError('unknown or already authenticated connection')
+            self._commit_owner_decision_locked()
             self._transition = marker
             record.team, record.request_id = team_id, request_id
             self._transition = None
@@ -486,6 +663,7 @@ class FairIPCBridge:
             if self._next_job >= 2**63:
                 raise BrokerUnavailable('bridge job IDs exhausted')
             proxy = _Proxy(self, record, self._next_job)
+            self._commit_owner_decision_locked()
             self._transition = marker
             self._next_job += 1
             record.proxy = proxy
@@ -527,7 +705,7 @@ class FairIPCBridge:
             if record.team != team_id or record.request_id != request_id:
                 raise PermissionError('connection identity does not match')
             if record.proxy is not None and record.ticket is None and record.synthetic is None:
-                self._quarantined = True
+                self._mark_quarantined()
                 raise BrokerUnavailable('submission state is indeterminate')
             proxy = record.proxy
         return proxy
@@ -551,6 +729,7 @@ class FairIPCBridge:
                 raise ValueError('unknown custody key')
             if self._server is not None and record.handler_thread is not threading.current_thread():
                 raise PermissionError('notice must come from the registered handler')
+            self._commit_owner_decision_locked()
             self._transition = marker
             record.notice_thread = threading.current_thread()
             record.handler_closed = True
@@ -610,15 +789,18 @@ class FairIPCBridge:
             self._check_locked()
             if record.retired or record.handler_closed or record.synthetic is not None or record.cancel_requested:
                 return False
+            self._commit_owner_decision_locked()
+            # Root an uncertain cancellation before obtaining a handle; even
+            # a typed interruption can retain it through its traceback.
+            self._transition = marker
             handle = self._target_locked(record)
             if handle is not None:
-                try:
-                    handle.wait(timeout=0)
-                except TimeoutError:
-                    pass
-                else:
+                with self._target_broker._condition:
+                    finished = handle._outcome is not None
+                if finished:
+                    handle = None
+                    self._transition = None
                     return False
-            self._transition = marker
             record.cancel_requested = True
             accepted = True
             if handle is not None:
@@ -649,8 +831,6 @@ class FairIPCBridge:
         _validate_timeout(timeout, allow_none=True)
         try:
             return self._wait_inner(record, timeout)
-        except TimeoutError:
-            raise
         except BrokerUnavailable as error:
             if not self.quarantined:
                 raise
@@ -669,26 +849,37 @@ class FairIPCBridge:
                 if record.retired or record.handler_closed:
                     raise BrokerUnavailable('handler custody has ended')
                 if record.synthetic is not None:
+                    self._commit_owner_decision_locked()
                     return record.synthetic
-                try:
-                    handle = self._target_locked(record)
-                    self._forward_cancel_locked(record, handle)
-                    outcome = handle.wait(timeout=0) if handle is not None else None
-                except TimeoutError:
-                    outcome = None
+                handle = self._target_locked(record)
+                self._forward_cancel_locked(record, handle)
+                outcome = None
+                if handle is not None:
+                    with self._target_broker._condition:
+                        finished = handle._outcome is not None
+                    # RequestHandle.wait performs the normal observation only
+                    # for a known terminal outcome. Any exception, including
+                    # TimeoutError, is then an uncertain custody failure.
+                    if finished:
+                        outcome = handle.wait(timeout=0)
                 if outcome is not None:
                     self._check_locked()
                     if self._target_locked(record) is not handle:
                         raise BrokerUnavailable('target receipt changed before delivery')
                     if (outcome.team_id != record.team or outcome.request_id != record.request_id or
                             outcome.job_id != handle.job_id or outcome.broker_id != handle._broker.broker_id):
-                        self._quarantined = True
+                        self._mark_quarantined()
                         raise BrokerUnavailable('target outcome identity mismatch')
+                    self._commit_owner_decision_locked()
                     return replace(outcome, broker_id=self.broker_id, job_id=record.proxy.job_id,
                                    submitted_ns=record.submitted_ns)
+                # A poll timeout must not expose a frame that owns a handle
+                # which can later receive an outcome.
+                handle = None
+                outcome = None
                 remaining = None if deadline is None else deadline - time.monotonic()
                 if remaining is not None and remaining <= 0:
-                    raise TimeoutError('request is still in flight')
+                    return _WAIT_TIMEOUT
                 self._condition.wait(.02 if remaining is None else min(.02, remaining))
 
     def start(self):
@@ -729,8 +920,10 @@ class FairIPCBridge:
                     self._condition.notify_all()
                     self._condition.wait(.01)
         except BaseException as error:
-            self._dispatch_failure = error
-            self._quarantined = True
+            try:
+                self._mark_quarantined()
+            finally:
+                self._dispatch_failure = error
 
     def _handle_handoff_failure(self, ticket):
         with self._condition:
@@ -765,9 +958,11 @@ class FairIPCBridge:
         try:
             return self._collect_closed_inner()
         except BaseException as error:
-            if self._disposal_failure is None:
-                self._disposal_failure = error
-            self._quarantined = True
+            try:
+                self._mark_quarantined()
+            finally:
+                if self._disposal_failure is None:
+                    self._disposal_failure = error
             kind = _failure_kind(error)
         _raise_public_failure(kind)
 
@@ -794,6 +989,7 @@ class FairIPCBridge:
                         if record.synthetic is None and not self._retire_target(record):
                             continue
                     self._check_locked()
+                    self._commit_owner_decision_locked()
                     record.disposal = (record.request, record.owned_request, record.payload,
                                        record.guard, record.synthetic, record.target_handle, record.proxy)
                     record.retiring = True
@@ -808,6 +1004,7 @@ class FairIPCBridge:
             candidate.disposal = None
             with self._condition:
                 self._check_locked()
+                self._commit_owner_decision_locked()
                 candidate.retired = True
                 candidate.claim.release()
                 candidate.claim = candidate.claim_guard = None
@@ -830,11 +1027,13 @@ class FairIPCBridge:
                 raise
             # An interruption in the first failure handler must not expose its
             # original private context or leave admission enabled.
-            if state.error is None:
-                state.error = error
-            else:
-                state.guard_error = error
-            self._quarantined = True
+            try:
+                self._mark_quarantined()
+            finally:
+                if state.error is None:
+                    state.error = error
+                else:
+                    state.guard_error = error
             try:
                 kind, _ = _failure_identity(error)
                 if kind == 0:
@@ -856,8 +1055,10 @@ class FairIPCBridge:
                 raise
             # Keep the original traceback private: it can own partially
             # initialized state beyond the candidate server and factory.
-            state.error = error
-            self._quarantined = True
+            try:
+                self._mark_quarantined()
+            finally:
+                state.error = error
             kind = _failure_kind(error)
         _raise_public_failure(kind)
 
@@ -876,7 +1077,8 @@ class FairIPCBridge:
         IPCServer.__init__(state.server, self, team_ids=tuple(self._credentials), custody_guardian=self,
                            request_factory=state.request_factory, custody_epoch=self._epoch,
                            max_connections=self._max_connections, max_request_bytes=self._max_request_bytes,
-                           max_response_bytes=self._max_response_bytes, max_batch=self._codec.max_batch,
+                           max_response_bytes=self._max_response_bytes,
+                           completion_authority=self._completion_authority, max_batch=self._codec.max_batch,
                            max_tokens=self._codec.max_tokens, io_timeout=io_timeout, job_timeout=job_timeout)
         with self._condition:
             self._check_locked()
