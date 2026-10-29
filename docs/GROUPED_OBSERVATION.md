@@ -70,12 +70,14 @@ metadata overhead need their own host budget; the worker's tensor claims are
 not a bound on them. A report cannot be revoked if the caller falsely attests
 that producers stopped before a later write.
 
-There is not yet a matching serial-broker observation path. A grouped-only
-record is useful for correctness integration, not an unbiased serial-versus-
-grouped throughput comparison. Before making that comparison, instrument both
-modes at matching model-entry, synchronized-finish, client and output-hashing
-boundaries, use the same clock and recorder policy, disclose overhead, and run
-a controlled supervised experiment. Keep its raw observations and separately
-record warmup, resource profiles, numerical agreement and device telemetry.
-The resident worker also checks the thread-local hook on unobserved forwards;
-that path is not timing-identical to the worker before these hooks were added.
+The experimental [serial path](SERIAL_OBSERVATION.md) uses the same resident
+model-entry and synchronized-finish hooks. Its broker queue and delayed event
+copy boundaries differ and must be disclosed. The paired CPU fixture uses two
+model instances and synthetic owner metadata; it checks schema and outputs,
+not resident-model continuity or comparative performance. A real comparison
+still requires independently verified model and input identity, symmetric
+instrumentation and output hashing, measured observer costs, raw observations,
+warmup, resource profiles, numerical agreement, device telemetry and a
+controlled supervised experiment. Unobserved resident and budgeted forwards
+also perform thread-local hook checks; their timing is not identical to the
+worker before the hooks were added.
