@@ -54,3 +54,26 @@ requires the separate independent raw numerical/landing audit. If the terminal
 is absent, incomplete or cleanup is unverified, preserve all files and do not
 claim a successful evaluation. Observe the owner process's actual exit and
 retain its receipt before publishing any sanitized projection.
+
+Before any phase claim, the custodian can run a separate source-and-runtime
+rehearsal after publishing the operational binding. Pass `--validate-only`
+before the configuration path to the same verified bootstrap. Place its
+path-only configuration at `validation-config.json` in the fresh, unclaimed
+sibling directory `natural-heldout-validation-<operational binding SHA-256>`;
+set `phase_dir` to that directory. The commitment URL is a syntactically valid
+placeholder at this stage and is not accessed. The parent verifies the public
+operation and starts the gated child in validation mode. Neither process reads
+a claim, nonce, commitment or held-out record or loads a model.
+
+The successful private terminal says `validated_no_model_forward`, binds the
+supervisor and configuration bytes, records zero tensor bytes, and is neither
+study evidence nor authorization for a draw. A trusted custodian retains the
+validation parent's process handle through exit and reaping, verifies the inner
+receipt and writes `parent-observation.json` only after a zero exit and clean
+outer Job drain. That bounded private record binds the process identity,
+command and exact operation, configuration, terminal and supervisor digests.
+The custodian verifies and accounts the complete rehearsal root before a phase
+claim; the owner repeats this verification and accounting before forwarding.
+It is charged within the natural held-out physical share and its combined
+16 MiB side-artifact reserve. Preserve failed or partial outputs; they are also
+charged and do not authorize a retry or draw.
