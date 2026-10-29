@@ -381,6 +381,27 @@ def test_decoder_out_of_memory_is_terminal_and_pair_is_retained(tmp_path, monkey
         journal.append(public, private)
 
 
+def test_reused_thread_object_does_not_admit_a_different_thread(tmp_path, monkeypatch):
+    import threading
+    from looking_glass import injection_heldout as module
+    rows = tuple((1000 + i, 2000 + i, 3000 + i) for i in range(8))
+    stale = object()
+    monkeypatch.setattr(module, 'current_thread', lambda: stale)
+    journal = HeldoutJournal(tmp_path / 'journal', codec=bind_heldout_codec(rows), binding=fake_binding(),
+                             site=2, max_disk_bytes=8 * 1024 * 1024)
+    errors = []
+    def attempt():
+        try:
+            journal.append(b'malformed-public', b'bounded-private')
+        except BaseException as error:
+            errors.append(error)
+    worker = threading.Thread(target=attempt)
+    worker.start()
+    worker.join()
+    assert len(errors) == 1 and type(errors[0]) is RuntimeError
+    assert not (tmp_path / 'journal/000.frame').exists()
+
+
 def test_final_ack_write_failure_cannot_substitute_for_returned_receipt(tmp_path, monkeypatch):
     from looking_glass import injection_heldout as module
     rows = tuple((1000 + i, 2000 + i, 3000 + i) for i in range(8))
