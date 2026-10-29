@@ -438,6 +438,39 @@ def _output_tensor(value, shape, cap):
     return owned
 
 
+def _screen_intervals(items, *, threshold_ns, possible):
+    below = sorted(identity for identity, duration in items if duration < threshold_ns)
+    return {'observed': len(items), 'not_observed': possible - len(items),
+            'below_threshold': len(below), 'zero_duration': sum(duration == 0 for _, duration in items),
+            'below_threshold_ids': below}
+
+
+def _nominal_resolution_screen(window, jobs, by_id, calls):
+    # This fixed multiplier is a warning screen, not a guarantee of timing
+    # accuracy. The trusted driver records actual clock implementation and
+    # the protocol must establish what precision is useful for its claim.
+    threshold = 100 * window['clock_resolution_ns']
+    rows = list(by_id.items())
+    response = [(job_id, row['returned_ns'] - row['attempt_ns']) for job_id, row in rows]
+    ready = [(job_id, row['selected_ns'] - row['ready_ns']) for job_id, row in rows
+             if row['ready_ns'] is not None and row['selected_ns'] is not None]
+    launch = [(job_id, calls[row['call_id']]['launch_ns'] - row['selected_ns'])
+              for job_id, row in rows if row['call_id'] is not None]
+    service = [(call_id, call['finish_ns'] - call['launch_ns']) for call_id, call in calls.items()
+               if call['finish_ns'] is not None and call['synchronized']]
+    duration = window['end_ns'] - window['start_ns']
+    planned = len(jobs)
+    return {'clock': window['clock'], 'clock_resolution_ns': window['clock_resolution_ns'],
+            'multiplier': 100, 'threshold_ns': threshold,
+            'planned_jobs': planned, 'attempted_jobs': len(rows),
+            'unattempted_jobs': planned - len(rows),
+            'window': {'duration_ns': duration, 'below_threshold': duration < threshold},
+            'attempt_to_return': _screen_intervals(response, threshold_ns=threshold, possible=planned),
+            'ready_to_selection': _screen_intervals(ready, threshold_ns=threshold, possible=planned),
+            'selection_to_launch': _screen_intervals(launch, threshold_ns=threshold, possible=planned),
+            'synchronized_call': _screen_intervals(service, threshold_ns=threshold, possible=len(calls))}
+
+
 def analyze_pair(protocol, serial_window, grouped_window, *, expected_protocol_sha256,
                  serial_outputs, grouped_outputs):
     """Reconcile two measured windows and compare their retained actual logits.
@@ -473,6 +506,8 @@ def analyze_pair(protocol, serial_window, grouped_window, *, expected_protocol_s
     positions = protocol['input_shape'][1]
     summaries = {'serial': _summarize(serial, jobs, left, left_calls, positions),
                  'grouped': _summarize(grouped, jobs, right, right_calls, positions)}
+    resolution = {'serial': _nominal_resolution_screen(serial, jobs, left, left_calls),
+                  'grouped': _nominal_resolution_screen(grouped, jobs, right, right_calls)}
     all_succeeded = (set(left) == set(jobs) and set(right) == set(jobs)
                      and all(row['state'] == 'succeeded' for row in left.values())
                      and all(row['state'] == 'succeeded' for row in right.values()))
@@ -499,6 +534,7 @@ def analyze_pair(protocol, serial_window, grouped_window, *, expected_protocol_s
                            'error_type': type(exc).__name__})
     matched = all_succeeded and len(checks) == len(jobs) and all(c['status'] == 'matched' for c in checks)
     return {'version': VERSION, 'protocol_sha256': digest, 'summaries': summaries,
+            'nominal_resolution_screen': resolution,
             'same_recorded_broker': bool(serial_brokers and serial_brokers == grouped_brokers),
             'all_jobs_succeeded': all_succeeded, 'observed_mixed_group': mixed,
             'output_checks': checks, 'all_outputs_matched': matched,

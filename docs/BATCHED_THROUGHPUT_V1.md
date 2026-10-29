@@ -143,6 +143,25 @@ but unlaunched cohort as a model call. `measured_pair_consistent` is only a
 consistency statement about supplied records and tensors; it is not profile
 approval, a held-out certificate, proof of execution or a GPU safety claim.
 
+The separate `nominal_resolution_screen` reports each window duration and
+counts the observed client attempt-to-return, ready-to-selection,
+selection-to-launch and
+synchronized-call intervals below a fixed warning threshold of 100 times the
+recorded nominal clock resolution. It also identifies the short jobs/calls,
+counts zero durations and reports planned, attempted and unattempted jobs.
+Job-based missing counts use the full planned inventory; an unresolved client's
+return can be a timeout or disconnection rather than a terminal response. Call
+counts cover only recorded calls and cannot infer entirely unobserved calls;
+event completeness remains a separate producer attestation. Missing data are
+not treated as passing measurements. The screen does not change
+`measured_pair_consistent`: that flag describes supplied-record consistency.
+The 100-times threshold is a protocol warning, not a physical law or an
+accuracy, isolation or scheduler-jitter guarantee. A short interval may be
+real or affected by quantization, and passing the screen does not validate a
+performance claim. The driver must separately save the actual clock
+implementation and monotonic/adjustable properties, and compare queue timings
+only when their source boundaries are aligned or their differences disclosed.
+
 The manifest binds one-batch input and output shapes, float32 output dtype, a
 per-output logical cap, common seed and distinct full-input hashes, model and
 runtime fingerprints, checkpoint and source-manifest digests, separate serial
