@@ -1,0 +1,9 @@
+{
+  "bound_source_count": 22,
+  "claim_sha256": "f66d618fdd98d18f513b60b8c0ac2e4a627816dee0f0b282dc6896f8510f4210",
+  "result_sha256": "15e4c8d0f36387a0a162e6651db4164efca88170bb0f0021aedeabecef12b16b",
+  "saved_git_checkout_hashes_match": true,
+  "schema": "independent-color-v2-closed-source-review-v1",
+  "scope": "Saved hashes, frozen Git blobs and present checkout bytes agree; this does not attest the bytes executed or model execution.",
+  "source_commit": "dc3914af4df43135cc701e425514046790d63f3a"
+}

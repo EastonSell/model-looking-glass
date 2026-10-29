@@ -72,14 +72,33 @@ def _evaluation(details, candidate, comparator):
                       ("passes_fixed_rule" if criterion else "does_not_pass_fixed_rule")}
 
 
+def _exploratory_comparison(details, candidate, comparator):
+    """Recompute descriptive statistics without asserting a new pass/fail rule."""
+    result = _evaluation(details, candidate, comparator)
+    result.pop("criterion")
+    result.pop("status")
+    for frame in result["frames"]:
+        frame.pop("criterion")
+    return result
+
+
 def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
-          expected_width=768, expected_nheads=12, expected_vocab=50257):
+          expected_width=768, expected_nheads=12, expected_vocab=50257, reference_observations=None):
     """Recompute one closed attempt; callers separately verify source and admission."""
     _rounding_probe()
     root = Path(directory)
-    if (phase not in ("development", "evaluation") or len(rows) != 16 or len(heads) < 2
-            or (phase == "evaluation" and len(heads) != 2) or len(set(heads)) != len(heads)):
+    if (phase not in ("development", "evaluation", "exploratory") or len(rows) != 16 or len(heads) < 2
+            or (phase != "development" and len(heads) != 2) or len(set(heads)) != len(heads)):
         raise ValueError("invalid phase, row or head specification")
+    version = "v3" if phase == "exploratory" else "v2"
+    opposite_xor = 3 if phase == "exploratory" else 1
+    protocol = "distilgpt2-agreement-heads-fixed-donor-v3" if phase == "exploratory" else "distilgpt2-agreement-heads-v2"
+    if phase == "exploratory" and (type(reference_observations) is not tuple or len(reference_observations) != 16
+            or any(type(pair) is not tuple or len(pair) != 2 or any(type(value) is not bytes or not value for value in pair)
+                   for pair in reference_observations)):
+        raise ValueError("exploratory replay requires the 16 prior clean witnesses")
+    if phase != "exploratory" and reference_observations is not None:
+        raise ValueError("prior witnesses are only supported by the exploratory protocol")
     if (any(type(value) is not int or value <= 0 for value in (expected_width, expected_nheads, expected_vocab))
             or expected_width % expected_nheads):
         raise ValueError("invalid expected model layout")
@@ -90,7 +109,7 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
                          "disposition": "dose_ineligible"}
     ineligible_terminal = (terminal.get("status") == "failed" and terminal.get("detail") == ineligible_detail
                            and type(terminal.get("detail", {}).get("completed_forwards")) is int)
-    if (started.get("phase") != phase or started.get("protocol") != "distilgpt2-agreement-heads-v2"
+    if (started.get("phase") != phase or started.get("protocol") != protocol
             or (terminal.get("status") != "complete_candidate" and not ineligible_terminal)
             or terminal.get("storage_accounting_complete") is not True
             or type(terminal.get("event_log_bytes")) is not int or type(terminal.get("events")) is not int
@@ -153,7 +172,7 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
         point = event["point"]
         width, nheads = point["input_shape"][-1], point["heads"]
         if (type(width) is not int or type(nheads) is not int or (width, nheads) != (expected_width, expected_nheads)
-                or point != {"run_id": f"{phase}-v2-{ordinal}", "module_path": "transformer.h.3.attn.c_proj",
+                or point != {"run_id": f"{phase}-{version}-{ordinal}", "module_path": "transformer.h.3.attn.c_proj",
                     "layer": 3, "batch": 0, "token": len(rows[row]) - 1, "invocation": 0,
                     "head": head, "heads": nheads, "head_width": width // nheads,
                     "feature_start": head * (width // nheads), "feature_end": (head + 1) * (width // nheads),
@@ -181,6 +200,8 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
         event, data, width, nheads = read_forward(row, 0, "observe")
         if data["before"] != data["after"]:
             raise ValueError("observation changed input")
+        if phase == "exploratory" and (data["before"], data["last_logits"]) != reference_observations[row]:
+            raise ValueError("clean observation differs from prior saved witnesses")
         observations.append((data, width, nheads))
     if len({(x[1], x[2]) for x in observations}) != 1:
         raise ValueError("head layout changed")
@@ -194,7 +215,7 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
         return observations[row][0]["before"][start:start + head_width * 4]
 
     _rounding_probe()
-    targets = [i for i in range(16) if phase == "evaluation" or i % 4 < 2]
+    targets = [i for i in range(16) if phase != "development" or i % 4 < 2]
     head_records, reconstructed = [], {}
     for head in heads:
         cells, proposed = [], {}
@@ -205,7 +226,7 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
             norm = math.sqrt(math.fsum(x * x for x in source_values))
             q = 0.05 * norm
             donors = []
-            for name, donor in (("opposite", group + (local ^ 1)), ("same", group + (local ^ 2))):
+            for name, donor in (("opposite", group + (local ^ opposite_xor)), ("same", group + (local ^ 2))):
                 donors.append({"kind": name, "donor": donor,
                                "distance": _distance(source, selected(donor, head)), "realized_q": None})
             status = "eligible"
@@ -240,16 +261,17 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
     if plan["tensors"] or plan["event"] != {"type": "dose_plan", **expected_plan}:
         raise ValueError("relative dose or saved eligibility plan differs")
     active = tuple(entry["head"] for entry in head_records if entry["eligible"])
-    if len(active) < 2 or (phase == "evaluation" and active != heads):
+    if len(active) < 2 or (phase != "development" and active != heads):
         if (not ineligible_terminal or ordinal != 16 or cursor != len(events)
                 or terminal.get("retained_tensor_bytes") != sum(unique.values())
                 or sum(unique.values()) > 128 * 1024 * 1024):
             raise ValueError("dose-ineligible terminal or saved prefix differs")
         _rounding_probe()
         return {"phase": phase, "outcome": "dose_ineligible", "forward_count": ordinal,
-                "dose_plan": expected_plan, "candidate": heads[0] if phase == "evaluation" else None,
-                "comparator": heads[1] if phase == "evaluation" else None,
+                "dose_plan": expected_plan, "candidate": heads[0] if phase != "development" else None,
+                "comparator": heads[1] if phase != "development" else None,
                 "ranking": None, "details": [], "evaluation": None,
+                **({"comparison": None} if phase == "exploratory" else {}),
                 "retained_tensor_bytes": sum(unique.values()),
                 "expected_layout": {"width": expected_width, "heads": expected_nheads, "vocab": expected_vocab},
                 "scope": "saved bytes and arithmetic; not execution, exposure or descendant-drain proof"}
@@ -257,7 +279,7 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
         raise ValueError("dose-ineligible terminal has an eligible plan")
     cells = {(entry["head"], cell["target"]): cell for entry in head_records for cell in entry["targets"]}
     _rounding_probe()
-    self_targets = targets if phase == "evaluation" else targets[:1]
+    self_targets = targets if phase != "development" else targets[:1]
     for head in active:
         for target in self_targets:
             event, data, _, _ = read_forward(target, head, "self")
@@ -272,7 +294,7 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
             margins, secondary, doses = {}, {}, {}
             cell = cells[(head, target)]
             q = cell["requested_q"]
-            for name, donor in (("opposite", group + (local ^ 1)), ("same", group + (local ^ 2))):
+            for name, donor in (("opposite", group + (local ^ opposite_xor)), ("same", group + (local ^ 2))):
                 event, data, _, _ = read_forward(target, head, name, donor)
                 source, other = selected(target, head), selected(donor, head)
                 distance = _distance(source, other)
@@ -315,11 +337,13 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
     summary = summary_record["event"].copy()
     summary.pop("type")
     expected_evaluation = _evaluation(details, heads[0], heads[1]) if phase == "evaluation" else None
+    expected_comparison = _exploratory_comparison(details, heads[0], heads[1]) if phase == "exploratory" else None
     if (summary_record["tensors"] or summary.get("phase") != phase or summary.get("forward_count") != ordinal
             or summary.get("dose_plan") != expected_plan or summary.get("ranking") != ranking or summary.get("details") != details
             or summary.get("candidate") != (ranking[0]["head"] if phase == "development" else heads[0])
             or summary.get("comparator") != (ranking[1]["head"] if phase == "development" else heads[1])
             or (phase == "evaluation" and summary.get("evaluation") != expected_evaluation)
+            or (phase == "exploratory" and summary.get("comparison") != expected_comparison)
             or terminal.get("detail") != summary or cursor != len(events)
             or terminal.get("retained_tensor_bytes") != sum(unique.values())
             or sum(unique.values()) > 128 * 1024 * 1024):
@@ -329,5 +353,6 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
             "dose_plan": expected_plan, "ranking": ranking,
             "candidate": summary["candidate"], "comparator": summary["comparator"],
             "details": details, "evaluation": expected_evaluation, "retained_tensor_bytes": sum(unique.values()),
+            **({"comparison": expected_comparison} if phase == "exploratory" else {}),
             "expected_layout": {"width": expected_width, "heads": expected_nheads, "vocab": expected_vocab},
             "scope": "saved bytes and arithmetic; not execution, exposure or descendant-drain proof"}
