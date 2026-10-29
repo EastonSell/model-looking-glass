@@ -1,0 +1,520 @@
+{
+  "aggregates": [
+    {
+      "expected": "positive",
+      "name": "two_positive",
+      "pairs": [
+        [
+          "positive",
+          "positive"
+        ],
+        [
+          "positive",
+          "positive"
+        ],
+        [
+          "baseline-unsupported",
+          "negative"
+        ]
+      ]
+    },
+    {
+      "expected": "negative",
+      "name": "two_negative",
+      "pairs": [
+        [
+          "negative",
+          "positive"
+        ],
+        [
+          "negative",
+          "negative"
+        ],
+        [
+          "dose-ineligible",
+          "negative"
+        ]
+      ]
+    },
+    {
+      "expected": "inconclusive",
+      "name": "split_unevaluable",
+      "pairs": [
+        [
+          "positive",
+          "positive"
+        ],
+        [
+          "negative",
+          "positive"
+        ],
+        [
+          "negative",
+          "dose-unmatchable"
+        ]
+      ]
+    },
+    {
+      "expected": "inconclusive",
+      "name": "none_evaluable",
+      "pairs": [
+        [
+          "alignment-ineligible",
+          "negative"
+        ],
+        [
+          "baseline-unsupported",
+          "positive"
+        ],
+        [
+          "dose-ineligible",
+          "dose-unmatchable"
+        ]
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "delta": 10.0,
+      "expected_flags": [],
+      "expected_status": "positive",
+      "instruction": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "name": "positive",
+      "punctuation": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "word": [
+        [
+          0.3,
+          0.6,
+          1.0
+        ],
+        [
+          0.3,
+          0.6,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta": 10.0,
+      "expected_flags": [
+        "weak_endpoint"
+      ],
+      "expected_status": "negative",
+      "instruction": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "name": "weak_endpoint",
+      "punctuation": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "word": [
+        [
+          0.2,
+          0.3,
+          0.49
+        ],
+        [
+          0.3,
+          0.6,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta": 10.0,
+      "expected_flags": [
+        "control_comparison",
+        "nonmonotone",
+        "reversed"
+      ],
+      "expected_status": "negative",
+      "instruction": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "name": "reversed_one_direction",
+      "punctuation": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "word": [
+        [
+          -0.2,
+          0.4,
+          1.0
+        ],
+        [
+          0.3,
+          0.6,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta": 10.0,
+      "expected_flags": [
+        "nonmonotone"
+      ],
+      "expected_status": "negative",
+      "instruction": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "name": "nonmonotone",
+      "punctuation": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "word": [
+        [
+          0.4,
+          0.35,
+          1.0
+        ],
+        [
+          0.3,
+          0.6,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta": 10.0,
+      "expected_flags": [
+        "control_comparison"
+      ],
+      "expected_status": "negative",
+      "instruction": [
+        [
+          0.1,
+          0.3,
+          0.9
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "name": "control_comparison",
+      "punctuation": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "word": [
+        [
+          0.2,
+          0.4,
+          1.0
+        ],
+        [
+          0.3,
+          0.6,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta": 10.0,
+      "expected_flags": [],
+      "expected_status": "positive",
+      "instruction": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "name": "equal_endpoint_threshold",
+      "punctuation": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "word": [
+        [
+          0.1,
+          0.2,
+          0.5
+        ],
+        [
+          0.3,
+          0.6,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta": 10.0,
+      "expected_flags": [],
+      "expected_status": "positive",
+      "instruction": [
+        [
+          0.1,
+          0.2,
+          0.3
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "name": "equal_control_threshold",
+      "punctuation": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "word": [
+        [
+          0.16666666666666669,
+          0.33333333333333337,
+          0.5
+        ],
+        [
+          0.3,
+          0.6,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta": 10.0,
+      "expected_flags": [],
+      "expected_status": "positive",
+      "instruction": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "name": "equal_ordering_tolerance",
+      "punctuation": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "word": [
+        [
+          0.2,
+          0.19990000000000002,
+          1.0
+        ],
+        [
+          0.3,
+          0.6,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta": 10.0,
+      "expected_flags": [
+        "nonmonotone"
+      ],
+      "expected_status": "negative",
+      "instruction": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "name": "beyond_ordering_tolerance",
+      "punctuation": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "word": [
+        [
+          0.2,
+          0.1999,
+          1.0
+        ],
+        [
+          0.3,
+          0.6,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta": 10.0,
+      "expected_flags": [
+        "weak_endpoint"
+      ],
+      "expected_status": "negative",
+      "instruction": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "name": "second_direction_weak",
+      "punctuation": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "word": [
+        [
+          0.3,
+          0.6,
+          1.0
+        ],
+        [
+          0.2,
+          0.3,
+          0.49
+        ]
+      ]
+    }
+  ],
+  "fractions": [
+    0.3333333333333333,
+    0.6666666666666666,
+    1.0
+  ],
+  "ordering_tolerance_nats": 0.0001,
+  "schema": "fabricated-dose-response-decision-fixtures-v1",
+  "scope": "No model execution, pretrained data or real study results."
+}
