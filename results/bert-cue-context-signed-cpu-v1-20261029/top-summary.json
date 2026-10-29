@@ -1,0 +1,58 @@
+{
+  "events": 1096,
+  "journal_sha256": "a6c586dd9a8f125f60aa4003a8d8cbeac9cfae0f7862332412b5dde4a6417909",
+  "scope": "Top-token identities from saved full logits; not dose, landing or execution attestation.",
+  "source_commit": "91f9960e419cf20df9df156a6ebc1980d1b6a864",
+  "status": "passed",
+  "summaries": [
+    {
+      "site": "cue2",
+      "split": "discovery",
+      "top_token_changes": 0,
+      "transfers": 56
+    },
+    {
+      "site": "object2",
+      "split": "discovery",
+      "top_token_changes": 0,
+      "transfers": 56
+    },
+    {
+      "site": "mask2",
+      "split": "discovery",
+      "top_token_changes": 0,
+      "transfers": 56
+    },
+    {
+      "site": "cue5",
+      "split": "discovery",
+      "top_token_changes": 0,
+      "transfers": 56
+    },
+    {
+      "site": "cue2",
+      "split": "evaluation",
+      "top_token_changes": 4,
+      "transfers": 168
+    },
+    {
+      "site": "object2",
+      "split": "evaluation",
+      "top_token_changes": 0,
+      "transfers": 168
+    },
+    {
+      "site": "mask2",
+      "split": "evaluation",
+      "top_token_changes": 6,
+      "transfers": 168
+    },
+    {
+      "site": "cue5",
+      "split": "evaluation",
+      "top_token_changes": 0,
+      "transfers": 168
+    }
+  ],
+  "transfers": 896
+}
