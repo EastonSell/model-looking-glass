@@ -10,6 +10,7 @@ import json
 import math
 import os
 from pathlib import Path
+import struct
 import subprocess
 import threading
 import time
@@ -25,9 +26,14 @@ _MARKER_ENV = "MLG_UNSAFE_MARKER_PATH"
 _SUPERVISOR_ENV = "MLG_SUPERVISOR_PID"
 _SUPERVISOR_BIRTH_ENV = "MLG_SUPERVISOR_BIRTH"
 _IDENTITY_ENV = "MLG_DEVICE_IDENTITY"
+_STARTUP_HANDLE_ENV = "MLG_STARTUP_CHANNEL_HANDLE"
+_STARTUP_LIMIT_ENV = "MLG_STARTUP_CHANNEL_LIMIT"
 _VERSION = 1
 _watchdog_lock = threading.Lock()
 _watchdogs = {}
+_startup_spawn_lock = threading.Lock()
+_startup_reader_slots = threading.BoundedSemaphore(16)
+_MAX_STARTUP_BYTES = 65536
 
 
 class SupervisorError(RuntimeError):
@@ -36,6 +42,260 @@ class SupervisorError(RuntimeError):
 
 class UnsafeOwnerError(SupervisorError):
     """A prior or ambiguous owner prevents a new owner from starting."""
+
+
+class StartupChannelError(SupervisorError):
+    """A private startup message could not be delivered."""
+
+
+class StartupChannel:
+    """One bounded child-to-parent frame, with fail-closed startup handling.
+
+    A dedicated daemon reads the synchronous pipe. Waiting callers never block
+    inside a pipe read; see SUPERVISOR.md for its resource and trust limits.
+    """
+
+    def __init__(self, max_bytes=_MAX_STARTUP_BYTES):
+        if type(max_bytes) is not int or not 1 <= max_bytes <= _MAX_STARTUP_BYTES:
+            raise ValueError("max_bytes must be between 1 and 65536")
+        read_fd = None
+        owner_lock = None
+        acquired = False
+        try:
+            if not (acquired := _startup_reader_slots.acquire(blocking=False)):
+                raise StartupChannelError("startup reader capacity is exhausted")
+            self._write_fd = None
+            self._lock = threading.Lock()
+            self._delivery_lock = threading.Lock()
+            self._receive_lock = threading.Lock()
+            owner_lock = threading.Lock()
+            self._reader_owner = "pending"
+            self._reader_owner_lock = owner_lock
+            self._failed = threading.Event()
+            self._ready = threading.Event()
+            self._reader_done = threading.Event()
+            self._reader_closed = False
+            self._max_bytes = max_bytes
+            self._payload = None
+            self._partial = bytearray()
+            self._frame_valid = False
+            self._claimed = False
+            self._receive_claimed = False
+            read_fd, self._write_fd = os.pipe()
+            os.set_inheritable(read_fd, False)
+            os.set_inheritable(self._write_fd, False)
+            thread = threading.Thread(target=self._reader_entry, args=(read_fd,),
+                                      name="looking-glass-startup-reader", daemon=True)
+            thread.start()
+        except BaseException:
+            if not acquired:
+                raise
+            # start() can be interrupted after the OS thread actually starts.
+            # Close the writer first, then transfer read-fd/slot cleanup exactly
+            # once under the ownership lock; never close an active reader's fd.
+            try:
+                write_fd = getattr(self, "_write_fd", None)
+                if write_fd is not None:
+                    os.close(write_fd)
+                    self._write_fd = None
+            finally:
+                if owner_lock is None:
+                    try:
+                        if read_fd is not None:
+                            os.close(read_fd)
+                    finally:
+                        _startup_reader_slots.release()
+                else:
+                    with owner_lock:
+                        if getattr(self, "_reader_owner", "pending") == "pending":
+                            self._reader_owner = "revoked"
+                            try:
+                                if read_fd is not None:
+                                    os.close(read_fd)
+                            finally:
+                                _startup_reader_slots.release()
+            raise
+
+    def _reader_entry(self, fd):
+        with self._reader_owner_lock:
+            if self._reader_owner != "pending":
+                return
+            self._reader_owner = "reader"
+        self._read_frame(fd)
+
+    def _read_frame(self, fd):
+        data = self._partial
+        part = None
+
+        def read_exact(size):
+            nonlocal part
+            while True:
+                with self._delivery_lock:
+                    if self._failed.is_set():
+                        raise StartupChannelError("startup channel was interrupted")
+                    remaining = size - len(data)
+                if remaining == 0:
+                    return
+                part = os.read(fd, remaining)
+                with self._delivery_lock:
+                    if not part or self._failed.is_set():
+                        raise StartupChannelError("startup channel was interrupted")
+                    data.extend(part)
+                # Do not retain the previous immutable read result while the
+                # next synchronous read may block.
+                part = None
+
+        try:
+            read_exact(4)
+            with self._delivery_lock:
+                size = struct.unpack("!I", data)[0]
+                self._clear_partial()
+            if not 1 <= size <= self._max_bytes:
+                raise StartupChannelError("invalid startup frame")
+            read_exact(size)
+            with self._delivery_lock:
+                if self._failed.is_set():
+                    raise StartupChannelError("startup channel was interrupted")
+                self._payload = bytes(data)
+                self._clear_partial()
+                self._frame_valid = True
+                self._ready.set()
+        except BaseException:
+            self._failed.set()
+            with self._delivery_lock:
+                self._payload = None
+                self._discard_partial()
+            self._ready.set()
+        finally:
+            part = None
+            try:
+                with self._delivery_lock:
+                    self._discard_partial()
+            finally:
+                try:
+                    os.close(fd)
+                    self._reader_closed = True
+                except BaseException:
+                    self._failed.set()
+                    with self._delivery_lock:
+                        self._payload = None
+                        self._discard_partial()
+                    self._ready.set()
+                finally:
+                    _startup_reader_slots.release()
+                    self._reader_done.set()
+
+    def _clear_partial(self):
+        # Caller holds _delivery_lock. Python cannot guarantee erasure of
+        # immutable allocator copies or values already handed to callers.
+        for index in range(len(self._partial)):
+            self._partial[index] = 0
+        self._partial.clear()
+
+    def _discard_partial(self):
+        # A wipe can fail even during memory exhaustion. Always release the
+        # buffer reference, reader descriptor, and capacity slot on failure.
+        try:
+            self._clear_partial()
+        except BaseException:
+            try:
+                self._partial.clear()
+            except BaseException:
+                pass
+
+    def _claim(self):
+        with self._lock:
+            if self._claimed:
+                raise StartupChannelError("startup channel is unavailable")
+            if self._failed.is_set():
+                if self._write_fd is not None:
+                    os.close(self._write_fd)
+                    self._write_fd = None
+                raise StartupChannelError("startup channel is unavailable")
+            self._claimed = True
+
+    def _spawn(self, command, *, cwd, child_env):
+        # On Windows an inheritable handle is briefly needed for Popen's
+        # explicit handle list. Cooperating spawns share this lock; callers
+        # must also exclude other broad-inheritance spawns from the launcher.
+        with _startup_spawn_lock, self._lock:
+            if self._failed.is_set() or self._write_fd is None:
+                raise StartupChannelError("startup channel is unavailable")
+            fd = self._write_fd
+            try:
+                if os.name == "nt":
+                    import msvcrt
+                    endpoint = msvcrt.get_osfhandle(fd)
+                    os.set_inheritable(fd, True)
+                    info = subprocess.STARTUPINFO()
+                    info.lpAttributeList = {"handle_list": [endpoint]}
+                    options = {"startupinfo": info, "close_fds": True}
+                elif os.name == "posix":
+                    endpoint = fd
+                    options = {"pass_fds": (fd,), "close_fds": True}
+                else:
+                    raise StartupChannelError("startup channels are unsupported on this platform")
+                child_env[_STARTUP_HANDLE_ENV] = str(endpoint)
+                child_env[_STARTUP_LIMIT_ENV] = str(self._max_bytes)
+                return subprocess.Popen(command, cwd=cwd, env=child_env,
+                                        stdin=subprocess.DEVNULL, **options)
+            finally:
+                os.close(fd)
+                self._write_fd = None
+
+    def receive(self, *, timeout):
+        """Receive one bytes frame, or fail the owner startup on deadline."""
+        _finite_timeout(timeout, "timeout")
+        with self._receive_lock:
+            if self._receive_claimed:
+                raise StartupChannelError("startup channel can only be received once")
+            self._receive_claimed = True
+        if not self._ready.wait(timeout):
+            # Never wait on the synchronous reader or the spawn lock here.
+            # This short delivery lock contains no I/O, so a frame published
+            # concurrently with the deadline cannot retain a stale secret.
+            self._failed.set()
+            with self._delivery_lock:
+                self._payload = None
+                self._discard_partial()
+            raise StartupChannelError("startup channel timed out")
+        with self._delivery_lock:
+            if self._failed.is_set() or not self._frame_valid:
+                self._payload = None
+                self._discard_partial()
+                raise StartupChannelError("startup channel failed")
+            payload, self._payload = self._payload, None
+            return payload
+
+    def abort(self):
+        """Reject startup, including after a caller rejects the received data."""
+        self._failed.set()
+        with self._delivery_lock:
+            self._payload = None
+            self._discard_partial()
+        self._ready.set()
+        # A concurrent Popen may not return promptly. In that case the spawn
+        # owner closes its endpoint in _spawn's finally; abort must not wait.
+        if self._lock.acquire(blocking=False):
+            try:
+                if self._write_fd is not None:
+                    os.close(self._write_fd)
+                    self._write_fd = None
+            finally:
+                self._lock.release()
+
+    def close(self):
+        """Close an unused channel; explicitly abort rejected startup data."""
+        with self._delivery_lock:
+            should_abort = (not self._frame_valid or not self._receive_claimed
+                            or self._payload is not None)
+        if should_abort:
+            self.abort()
+
+    def wait_closed(self, *, timeout):
+        """Return whether the reader exited and closed its pipe endpoint."""
+        _finite_timeout(timeout, "timeout")
+        return self._reader_done.wait(timeout) and self._reader_closed
 
 
 @dataclass(frozen=True)
@@ -252,7 +512,7 @@ class OwnerSession:
     """The run identity provided by a supervising parent to its child."""
 
     def __init__(self, run_id, device_lease_path, marker_path, supervisor_pid, supervisor_birth,
-                 identity_spec=None):
+                 identity_spec=None, startup_fd=None, startup_max=None):
         if (type(run_id) is not str or len(run_id) != 32
                 or any(char not in "0123456789abcdef" for char in run_id)):
             raise ValueError("run_id must be a lowercase UUID hex value")
@@ -269,6 +529,9 @@ class OwnerSession:
         self._identity = None
         self._runtime_verified = False
         self._bound_lease = None
+        self._startup_fd = startup_fd
+        self._startup_max = startup_max
+        self._startup_send_lock = threading.Lock()
 
     @property
     def identity(self):
@@ -277,15 +540,40 @@ class OwnerSession:
 
     @classmethod
     def from_environment(cls):
+        fd = None
         try:
             encoded_identity = os.environ.get(_IDENTITY_ENV)
             if encoded_identity is not None and len(encoded_identity) > 32768:
                 raise ValueError("device identity is too large")
             spec = json.loads(encoded_identity) if encoded_identity is not None else None
-            return cls(os.environ[_RUN_ENV], os.environ[_LEASE_ENV], os.environ[_MARKER_ENV],
-                       int(os.environ[_SUPERVISOR_ENV]), os.environ[_SUPERVISOR_BIRTH_ENV], spec)
-        except (KeyError, ValueError) as exc:
+            endpoint = os.environ.pop(_STARTUP_HANDLE_ENV, None)
+            limit = os.environ.pop(_STARTUP_LIMIT_ENV, None)
+            if (endpoint is None) != (limit is None):
+                raise ValueError("incomplete startup channel")
+            startup_max = None
+            if endpoint is not None:
+                endpoint = int(endpoint)
+                startup_max = int(limit)
+                if endpoint < 0 or not 1 <= startup_max <= _MAX_STARTUP_BYTES:
+                    raise ValueError("invalid startup channel")
+                if os.name == "nt":
+                    import msvcrt
+                    fd = msvcrt.open_osfhandle(endpoint, os.O_WRONLY | os.O_BINARY)
+                elif os.name == "posix":
+                    fd = endpoint
+                else:
+                    raise ValueError("unsupported startup channel")
+                os.set_inheritable(fd, False)
+            session = cls(os.environ[_RUN_ENV], os.environ[_LEASE_ENV], os.environ[_MARKER_ENV],
+                          int(os.environ[_SUPERVISOR_ENV]), os.environ[_SUPERVISOR_BIRTH_ENV],
+                          spec, fd, startup_max)
+            fd = None  # The session owns the endpoint.
+            return session
+        except (KeyError, ValueError, OSError) as exc:
             raise SupervisorError("supervised owner environment is incomplete") from exc
+        finally:
+            if fd is not None:
+                os.close(fd)
 
     def check(self, lease):
         """Check the run marker while this child holds the actual device lease."""
@@ -328,6 +616,59 @@ class OwnerSession:
             "clean": True,
         })
 
+    def send_startup(self, lease, payload):
+        """Send a single bounded bytes frame to the supervising parent."""
+        fd = None
+        chunk = None
+        view = None
+        failed = False
+        interrupted = None
+        try:
+            OwnerSession.check(self, lease)
+            if self._identity_spec is not None and not self._runtime_verified:
+                raise SupervisorError("the actual runtime device identity was not verified")
+            if type(payload) is not bytes or not 1 <= len(payload) <= (self._startup_max or 0):
+                raise StartupChannelError("invalid startup payload")
+            with self._startup_send_lock:
+                fd, self._startup_fd = self._startup_fd, None
+                if fd is None:
+                    raise StartupChannelError("startup channel is unavailable")
+            for chunk in (struct.pack("!I", len(payload)), payload):
+                view = memoryview(chunk)
+                while view:
+                    count = os.write(fd, view)
+                    if count <= 0:
+                        raise OSError("startup write did not progress")
+                    view = view[count:]
+        except KeyboardInterrupt:
+            failed = True
+            interrupted = KeyboardInterrupt
+        except SystemExit:
+            failed = True
+            interrupted = SystemExit
+        except Exception:
+            failed = True
+        finally:
+            # Avoid retaining the payload in this method's failure traceback.
+            # Callers' frames and Python/OS copies remain outside this guarantee.
+            payload = chunk = view = None
+            if failed and fd is None:
+                with self._startup_send_lock:
+                    fd, self._startup_fd = self._startup_fd, None
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    failed = True
+        if failed:
+            # Raise only after leaving the exception handler: neither context
+            # nor cause should retain a lower-level traceback with payloads.
+            if interrupted is KeyboardInterrupt:
+                raise KeyboardInterrupt()
+            if interrupted is SystemExit:
+                raise SystemExit(1)
+            raise StartupChannelError("startup channel could not be sent")
+
 
 def _stop_child(child, grace):
     """Terminate only the exact child represented by this process handle."""
@@ -344,8 +685,27 @@ def _stop_child(child, grace):
 
 
 def run_supervised(command, *, device_lease_path, marker_path, timeout,
-                   lease_timeout=5, terminate_grace=5, cwd=None, env=None, identity=None):
+                   lease_timeout=5, terminate_grace=5, cwd=None, env=None, identity=None,
+                   startup_channel=None):
     """Run one trusted owner and clear the sticky marker only after clean exit."""
+    if startup_channel is not None:
+        if type(startup_channel) is not StartupChannel:
+            raise ValueError("startup_channel must be a StartupChannel")
+        startup_channel._claim()
+    try:
+        return _run_supervised(
+            command, device_lease_path=device_lease_path, marker_path=marker_path,
+            timeout=timeout, lease_timeout=lease_timeout, terminate_grace=terminate_grace,
+            cwd=cwd, env=env, identity=identity, startup_channel=startup_channel,
+        )
+    except BaseException:
+        if startup_channel is not None:
+            startup_channel.abort()
+        raise
+
+
+def _run_supervised(command, *, device_lease_path, marker_path, timeout,
+                    lease_timeout, terminate_grace, cwd, env, identity, startup_channel):
     _finite_timeout(timeout, "timeout")
     _finite_timeout(lease_timeout, "lease_timeout")
     _finite_timeout(terminate_grace, "terminate_grace")
@@ -378,6 +738,8 @@ def run_supervised(command, *, device_lease_path, marker_path, timeout,
         if env is not None:
             child_env.update(env)
         child_env.pop(_IDENTITY_ENV, None)
+        child_env.pop(_STARTUP_HANDLE_ENV, None)
+        child_env.pop(_STARTUP_LIMIT_ENV, None)
         if identity is not None:
             child_env[_IDENTITY_ENV] = json.dumps(_identity_spec(identity), separators=(",", ":"))
         else:
@@ -385,21 +747,54 @@ def run_supervised(command, *, device_lease_path, marker_path, timeout,
             child_env["CUDA_VISIBLE_DEVICES"] = ""
         child_env.update({_RUN_ENV: run_id, _LEASE_ENV: str(device), _MARKER_ENV: str(marker),
                           _SUPERVISOR_ENV: str(os.getpid()), _SUPERVISOR_BIRTH_ENV: _supervisor_birth()})
-        child = subprocess.Popen(command, cwd=cwd, env=child_env, stdin=subprocess.DEVNULL)
+        if startup_channel is None:
+            child = subprocess.Popen(command, cwd=cwd, env=child_env, stdin=subprocess.DEVNULL)
+        else:
+            child = startup_channel._spawn(command, cwd=cwd, child_env=child_env)
         timed_out = False
+        startup_failed = False
         try:
-            try:
-                exit_code = child.wait(timeout=timeout)
-            except subprocess.TimeoutExpired:
-                timed_out = True
-                exit_code = _stop_child(child, terminate_grace)
+            if startup_channel is None:
+                try:
+                    exit_code = child.wait(timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    timed_out = True
+                    exit_code = _stop_child(child, terminate_grace)
+            else:
+                deadline = time.monotonic() + timeout
+                while True:
+                    if startup_channel._failed.is_set():
+                        startup_failed = True
+                        exit_code = _stop_child(child, terminate_grace)
+                        break
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        timed_out = True
+                        exit_code = _stop_child(child, terminate_grace)
+                        break
+                    try:
+                        exit_code = child.wait(timeout=min(remaining, .05))
+                        break
+                    except subprocess.TimeoutExpired:
+                        pass
         except BaseException:
             _stop_child(child, terminate_grace)
             raise
 
         if timed_out:
+            if startup_channel is not None:
+                startup_channel.abort()
             return SupervisionResult(run_id, child.pid, exit_code, False, timed_out,
                                      "timeout")
+        if startup_channel is not None:
+            # A dead owner must have sent a complete frame. If another process
+            # retained the pipe, do not wait indefinitely or clear quarantine.
+            startup_channel._ready.wait(terminate_grace)
+            if (startup_failed or startup_channel._failed.is_set()
+                    or not startup_channel._frame_valid):
+                startup_channel.abort()
+                return SupervisionResult(run_id, child.pid, exit_code, False, False,
+                                         "startup channel failed")
 
         cleanup_lease = DeviceLease.acquire(device, timeout=lease_timeout)
         clean = False
