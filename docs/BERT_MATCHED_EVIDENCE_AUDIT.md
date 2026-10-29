@@ -7,6 +7,11 @@ forward. Its caller must bind the exact reviewed source, manifest, closed journa
 runtime and model identity, retain all original records, and establish that the
 input is quiescent while it is read. The checker snapshots supplied Python
 objects; it is not a sandbox against a concurrent writer.
+The caller must independently validate the complete frozen manifest, including
+globally distinct rows and the prescribed cyclic relationship between each
+family's B lemma and the next family's A lemma and token IDs. This checker
+validates each family's internal donor mapping and the supplied family order;
+it does not establish those cross-family manifest conditions.
 
 `audit_family_events(manifest, records, split=..., family=..., mask_id=...)`
 requires one complete ordered family: 60 started/completed forwards, four dose
