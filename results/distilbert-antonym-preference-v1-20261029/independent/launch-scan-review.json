@@ -1,0 +1,14 @@
+{
+  "claim_sha256": "74d4c6a14b24efd0cb4aefa94919a8825f418bdb171b862bbf51d5973c58f8da",
+  "external_references": 1585,
+  "external_relations": 0,
+  "external_sources": 32,
+  "independent_input_sha256": "4ceb4f99869edd4f46b0073f752619bc5d0a7cecd8f10f8844fae54fc14857bc",
+  "launch_main": "1e6955f491851344f02ee83a68498914ccba815a",
+  "launch_public_scan_sha256": "6af311f258b2168fc5289ea99befc78c1949de7394d78e6e6a1ac3061f60f819",
+  "prelaunch_sha256": "61815c5a738c981701456b1bc6f170df391edfaaf7dc87334d52f9f1862c6eff",
+  "prepared_main": "9c2ed04085337361bb616292ff2e4ed33d6fc926",
+  "row_pairs_compared": 87175,
+  "schema": "antonym-independent-launch-scan-review-v1",
+  "scope": "Named public Git inputs at the recorded snapshot, not private, unknown or pretraining history."
+}

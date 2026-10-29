@@ -1,0 +1,383 @@
+{
+  "candidate_eligible": {
+    "banana": false,
+    "lemon": false,
+    "strawberry": false
+  },
+  "journal_sha256": "3e55c8eebf990e930f73f902a635d7866f0a7f314b30dc62f41e43277b97fb83",
+  "manifest_sha256": "4f00000cf205137347d551fc2837e082ac632a515e92c1e5893b3312f1f71623",
+  "rows": [
+    {
+      "case_id": "banana-discovery",
+      "eligible": false,
+      "object": "banana",
+      "role": "discovery",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -2.6118765936536286,
+          "logit": 10.90587043762207,
+          "probability": 0.07339667870371541,
+          "rank": 3
+        },
+        "factual": {
+          "id": 3756,
+          "log_probability": -2.3442565069837067,
+          "logit": 11.173490524291992,
+          "probability": 0.09591849035377811,
+          "rank": 2
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -2.8333188162488434,
+          "logit": 10.684428215026855,
+          "probability": 0.05881732549231582,
+          "rank": 4
+        }
+      },
+      "top_five_ids": [
+        4589,
+        3756,
+        6379,
+        2630,
+        5061
+      ],
+      "top_ids": [
+        4589
+      ],
+      "top_representative": 4589,
+      "unique_top": 4589
+    },
+    {
+      "case_id": "banana-calibration-01",
+      "eligible": false,
+      "object": "banana",
+      "role": "calibration-01",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -10.819639549711868,
+          "logit": 2.5743956565856934,
+          "probability": 2.0002774886450377e-05,
+          "rank": 1022
+        },
+        "factual": {
+          "id": 3756,
+          "log_probability": -8.259590015867873,
+          "logit": 5.1344451904296875,
+          "probability": 0.0002587650590456729,
+          "rank": 180
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -10.35363303230159,
+          "logit": 3.0404021739959717,
+          "probability": 3.1876769818749665e-05,
+          "rank": 769
+        }
+      },
+      "top_five_ids": [
+        8828,
+        10202,
+        21006,
+        22629,
+        13237
+      ],
+      "top_ids": [
+        8828
+      ],
+      "top_representative": 8828,
+      "unique_top": 8828
+    },
+    {
+      "case_id": "banana-calibration-02",
+      "eligible": false,
+      "object": "banana",
+      "role": "calibration-02",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -5.148936761784897,
+          "logit": 8.929789543151855,
+          "probability": 0.0058055741547771425,
+          "rank": 28
+        },
+        "factual": {
+          "id": 3756,
+          "log_probability": -4.405495180058823,
+          "logit": 9.67323112487793,
+          "probability": 0.012210058740017848,
+          "rank": 17
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -5.564909471440659,
+          "logit": 8.513816833496094,
+          "probability": 0.0038299272473473708,
+          "rank": 37
+        }
+      },
+      "top_five_ids": [
+        5744,
+        21006,
+        15892,
+        16800,
+        15875
+      ],
+      "top_ids": [
+        5744
+      ],
+      "top_representative": 5744,
+      "unique_top": 5744
+    },
+    {
+      "case_id": "strawberry-discovery",
+      "eligible": false,
+      "object": "strawberry",
+      "role": "discovery",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -2.5126366132174303,
+          "logit": 10.805643081665039,
+          "probability": 0.08105424855645246,
+          "rank": 2
+        },
+        "factual": {
+          "id": 2417,
+          "log_probability": -3.897176217404442,
+          "logit": 9.421103477478027,
+          "probability": 0.020299150981013064,
+          "rank": 13
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -2.7744802945528795,
+          "logit": 10.54379940032959,
+          "probability": 0.062381888473895045,
+          "rank": 5
+        }
+      },
+      "top_five_ids": [
+        4589,
+        6379,
+        3756,
+        5061,
+        2630
+      ],
+      "top_ids": [
+        4589
+      ],
+      "top_representative": 4589,
+      "unique_top": 4589
+    },
+    {
+      "case_id": "strawberry-calibration-01",
+      "eligible": false,
+      "object": "strawberry",
+      "role": "calibration-01",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -9.148085888610094,
+          "logit": 3.4113032817840576,
+          "probability": 0.0001064233139901884,
+          "rank": 538
+        },
+        "factual": {
+          "id": 2417,
+          "log_probability": -7.249013479933947,
+          "logit": 5.310375690460205,
+          "probability": 0.00071087533581982,
+          "rank": 133
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -9.057074841246813,
+          "logit": 3.502314329147339,
+          "probability": 0.00011656344496195186,
+          "rank": 505
+        }
+      },
+      "top_five_ids": [
+        8828,
+        21006,
+        13237,
+        10202,
+        22629
+      ],
+      "top_ids": [
+        8828
+      ],
+      "top_representative": 8828,
+      "unique_top": 8828
+    },
+    {
+      "case_id": "strawberry-calibration-02",
+      "eligible": false,
+      "object": "strawberry",
+      "role": "calibration-02",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -4.899359829896983,
+          "logit": 9.157958030700684,
+          "probability": 0.007451351676972639,
+          "rank": 25
+        },
+        "factual": {
+          "id": 2417,
+          "log_probability": -4.83605111407667,
+          "logit": 9.221266746520996,
+          "probability": 0.007938339837377241,
+          "rank": 23
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -5.576891072267588,
+          "logit": 8.480426788330078,
+          "probability": 0.0037843124030014054,
+          "rank": 37
+        }
+      },
+      "top_five_ids": [
+        5744,
+        16800,
+        15892,
+        21006,
+        5931
+      ],
+      "top_ids": [
+        5744
+      ],
+      "top_representative": 5744,
+      "unique_top": 5744
+    },
+    {
+      "case_id": "lemon-discovery",
+      "eligible": false,
+      "object": "lemon",
+      "role": "discovery",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -2.6731153730675064,
+          "logit": 10.495209693908691,
+          "probability": 0.06903681450847941,
+          "rank": 4
+        },
+        "factual": {
+          "id": 3756,
+          "log_probability": -2.3202177290245376,
+          "logit": 10.84810733795166,
+          "probability": 0.0982521909216363,
+          "rank": 2
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -2.6394354109093032,
+          "logit": 10.528889656066895,
+          "probability": 0.0714015707264058,
+          "rank": 3
+        }
+      },
+      "top_five_ids": [
+        4589,
+        3756,
+        2630,
+        6379,
+        5061
+      ],
+      "top_ids": [
+        4589
+      ],
+      "top_representative": 4589,
+      "unique_top": 4589
+    },
+    {
+      "case_id": "lemon-calibration-01",
+      "eligible": false,
+      "object": "lemon",
+      "role": "calibration-01",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -9.529916662147661,
+          "logit": 3.5257697105407715,
+          "probability": 7.264567787496529e-05,
+          "rank": 544
+        },
+        "factual": {
+          "id": 3756,
+          "log_probability": -7.284067052772662,
+          "logit": 5.7716193199157715,
+          "probability": 0.0006863883017967452,
+          "rank": 110
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -9.060083049705645,
+          "logit": 3.995603322982788,
+          "probability": 0.0001162133247022193,
+          "rank": 381
+        }
+      },
+      "top_five_ids": [
+        8828,
+        10202,
+        2109,
+        6871,
+        21006
+      ],
+      "top_ids": [
+        8828
+      ],
+      "top_representative": 8828,
+      "unique_top": 8828
+    },
+    {
+      "case_id": "lemon-calibration-02",
+      "eligible": false,
+      "object": "lemon",
+      "role": "calibration-02",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -4.78483730347467,
+          "logit": 9.238759994506836,
+          "probability": 0.00835548304542235,
+          "rank": 23
+        },
+        "factual": {
+          "id": 3756,
+          "log_probability": -3.91366916687799,
+          "logit": 10.109928131103516,
+          "probability": 0.019967103854614938,
+          "rank": 11
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -5.082384643867736,
+          "logit": 8.94121265411377,
+          "probability": 0.0062050944188391955,
+          "rank": 27
+        }
+      },
+      "top_five_ids": [
+        5744,
+        21006,
+        16800,
+        15892,
+        5061
+      ],
+      "top_ids": [
+        5744
+      ],
+      "top_representative": 5744,
+      "unique_top": 5744
+    }
+  ],
+  "scope": "Saved full-logit and input-record consistency only; execution, source, process identity and uncited history require separate evidence.",
+  "selected_object": null,
+  "status": "baseline-ineligible"
+}

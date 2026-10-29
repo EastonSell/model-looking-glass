@@ -1,0 +1,1904 @@
+{
+  "case_revision": "2e7072cd8e4d211d9dd7d327bffd030794863d12",
+  "case_sha256": "188782606abd576cde029408bb34975e7fd7ac2113bf17299dbb7e1aa2ddd76b",
+  "model_forward_performed_by_builder": false,
+  "new_forwards_per_phase": 96,
+  "new_forwards_total": 192,
+  "ordered_action_candidates": [
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4"
+  ],
+  "receivers": [
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f0_c2_n1_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f0_c2_n0_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f0_c2_n0_these"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f0_c2_n1_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "orientation": -1,
+      "receiver_case_id": "v2_discovery_target_f0_c2_n0_this",
+      "receiver_token_ids": [
+        2953,
+        40048,
+        11,
+        428,
+        24535,
+        1474,
+        262,
+        30987
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f0_c2_n1_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f0_c2_n0_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f0_c2_n0_this"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f0_c2_n1_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "orientation": 1,
+      "receiver_case_id": "v2_discovery_target_f0_c2_n0_these",
+      "receiver_token_ids": [
+        2953,
+        40048,
+        11,
+        777,
+        24535,
+        1474,
+        262,
+        30987
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f1_c0_n1_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f1_c0_n0_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f1_c0_n0_this"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f1_c0_n1_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 0,
+      "orientation": 1,
+      "receiver_case_id": "v2_discovery_target_f1_c0_n0_these",
+      "receiver_token_ids": [
+        8421,
+        26428,
+        11,
+        777,
+        24535,
+        6716
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f1_c0_n1_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f1_c0_n0_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f1_c0_n0_these"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f1_c0_n1_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 0,
+      "orientation": -1,
+      "receiver_case_id": "v2_discovery_target_f1_c0_n0_this",
+      "receiver_token_ids": [
+        8421,
+        26428,
+        11,
+        428,
+        24535,
+        6716
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f1_c2_n1_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f1_c2_n0_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f1_c2_n0_this"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f1_c2_n1_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "orientation": 1,
+      "receiver_case_id": "v2_discovery_target_f1_c2_n0_these",
+      "receiver_token_ids": [
+        8421,
+        26428,
+        11,
+        777,
+        24535,
+        1474,
+        262,
+        18791
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f1_c2_n1_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f1_c2_n0_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f1_c2_n0_these"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f1_c2_n1_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "orientation": -1,
+      "receiver_case_id": "v2_discovery_target_f1_c2_n0_this",
+      "receiver_token_ids": [
+        8421,
+        26428,
+        11,
+        428,
+        24535,
+        1474,
+        262,
+        18791
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f0_c1_n0_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f0_c1_n1_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f0_c1_n1_this"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f0_c1_n0_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "orientation": 1,
+      "receiver_case_id": "v2_discovery_target_f0_c1_n1_these",
+      "receiver_token_ids": [
+        2953,
+        40048,
+        11,
+        777,
+        49411,
+        1474,
+        262,
+        8966
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f0_c1_n0_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f0_c1_n1_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f0_c1_n1_these"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f0_c1_n0_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "orientation": -1,
+      "receiver_case_id": "v2_discovery_target_f0_c1_n1_this",
+      "receiver_token_ids": [
+        2953,
+        40048,
+        11,
+        428,
+        49411,
+        1474,
+        262,
+        8966
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f0_c1_n1_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f0_c1_n0_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f0_c1_n0_these"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f0_c1_n1_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "orientation": -1,
+      "receiver_case_id": "v2_discovery_target_f0_c1_n0_this",
+      "receiver_token_ids": [
+        2953,
+        40048,
+        11,
+        428,
+        24535,
+        1474,
+        262,
+        8966
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f0_c1_n1_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f0_c1_n0_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f0_c1_n0_this"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f0_c1_n1_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "orientation": 1,
+      "receiver_case_id": "v2_discovery_target_f0_c1_n0_these",
+      "receiver_token_ids": [
+        2953,
+        40048,
+        11,
+        777,
+        24535,
+        1474,
+        262,
+        8966
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f0_c0_n0_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f0_c0_n1_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f0_c0_n1_this"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f0_c0_n0_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 1,
+      "orientation": 1,
+      "receiver_case_id": "v2_discovery_target_f0_c0_n1_these",
+      "receiver_token_ids": [
+        2953,
+        40048,
+        11,
+        777,
+        49411,
+        6716
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f0_c0_n0_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f0_c0_n1_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f0_c0_n1_these"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f0_c0_n0_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 1,
+      "orientation": -1,
+      "receiver_case_id": "v2_discovery_target_f0_c0_n1_this",
+      "receiver_token_ids": [
+        2953,
+        40048,
+        11,
+        428,
+        49411,
+        6716
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f0_c0_n1_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f0_c0_n0_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f0_c0_n0_these"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f0_c0_n1_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 0,
+      "orientation": -1,
+      "receiver_case_id": "v2_discovery_target_f0_c0_n0_this",
+      "receiver_token_ids": [
+        2953,
+        40048,
+        11,
+        428,
+        24535,
+        6716
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f0_c0_n1_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f0_c0_n0_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f0_c0_n0_this"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f0_c0_n1_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 0,
+      "orientation": 1,
+      "receiver_case_id": "v2_discovery_target_f0_c0_n0_these",
+      "receiver_token_ids": [
+        2953,
+        40048,
+        11,
+        777,
+        24535,
+        6716
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f1_c0_n0_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f1_c0_n1_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f1_c0_n1_these"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f1_c0_n0_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 1,
+      "orientation": -1,
+      "receiver_case_id": "v2_discovery_target_f1_c0_n1_this",
+      "receiver_token_ids": [
+        8421,
+        26428,
+        11,
+        428,
+        49411,
+        6716
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f1_c0_n0_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f1_c0_n1_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f1_c0_n1_this"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f1_c0_n0_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 1,
+      "orientation": 1,
+      "receiver_case_id": "v2_discovery_target_f1_c0_n1_these",
+      "receiver_token_ids": [
+        8421,
+        26428,
+        11,
+        777,
+        49411,
+        6716
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f0_c2_n0_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f0_c2_n1_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f0_c2_n1_this"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f0_c2_n0_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "orientation": 1,
+      "receiver_case_id": "v2_discovery_target_f0_c2_n1_these",
+      "receiver_token_ids": [
+        2953,
+        40048,
+        11,
+        777,
+        49411,
+        1474,
+        262,
+        30987
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f0_c2_n0_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f0_c2_n1_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f0_c2_n1_these"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f0_c2_n0_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "orientation": -1,
+      "receiver_case_id": "v2_discovery_target_f0_c2_n1_this",
+      "receiver_token_ids": [
+        2953,
+        40048,
+        11,
+        428,
+        49411,
+        1474,
+        262,
+        30987
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f1_c1_n0_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f1_c1_n1_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f1_c1_n1_these"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f1_c1_n0_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "orientation": -1,
+      "receiver_case_id": "v2_discovery_target_f1_c1_n1_this",
+      "receiver_token_ids": [
+        8421,
+        26428,
+        11,
+        428,
+        49411,
+        1474,
+        262,
+        5118
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f1_c1_n0_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f1_c1_n1_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f1_c1_n1_this"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f1_c1_n0_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "orientation": 1,
+      "receiver_case_id": "v2_discovery_target_f1_c1_n1_these",
+      "receiver_token_ids": [
+        8421,
+        26428,
+        11,
+        777,
+        49411,
+        1474,
+        262,
+        5118
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f1_c1_n1_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f1_c1_n0_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f1_c1_n0_this"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f1_c1_n1_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "orientation": 1,
+      "receiver_case_id": "v2_discovery_target_f1_c1_n0_these",
+      "receiver_token_ids": [
+        8421,
+        26428,
+        11,
+        777,
+        24535,
+        1474,
+        262,
+        5118
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f1_c1_n1_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f1_c1_n0_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f1_c1_n0_these"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f1_c1_n1_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "orientation": -1,
+      "receiver_case_id": "v2_discovery_target_f1_c1_n0_this",
+      "receiver_token_ids": [
+        8421,
+        26428,
+        11,
+        428,
+        24535,
+        1474,
+        262,
+        5118
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f1_c2_n0_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f1_c2_n1_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f1_c2_n1_these"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f1_c2_n0_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "orientation": -1,
+      "receiver_case_id": "v2_discovery_target_f1_c2_n1_this",
+      "receiver_token_ids": [
+        8421,
+        26428,
+        11,
+        428,
+        49411,
+        1474,
+        262,
+        18791
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "v2_discovery_target_f1_c2_n0_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "v2_discovery_target_f1_c2_n1_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "v2_discovery_target_f1_c2_n1_this"
+        },
+        "Q4": {
+          "donor_case_id": "v2_discovery_target_f1_c2_n0_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "orientation": 1,
+      "receiver_case_id": "v2_discovery_target_f1_c2_n1_these",
+      "receiver_token_ids": [
+        8421,
+        26428,
+        11,
+        777,
+        49411,
+        1474,
+        262,
+        18791
+      ],
+      "split": "discovery",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f1_c2_n0_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f1_c2_n1_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f1_c2_n1_this"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f1_c2_n0_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "orientation": 1,
+      "receiver_case_id": "evaluation_target_f1_c2_n1_these",
+      "receiver_token_ids": [
+        7191,
+        23608,
+        11,
+        777,
+        30060,
+        1474,
+        262,
+        10559
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f1_c2_n0_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f1_c2_n1_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f1_c2_n1_these"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f1_c2_n0_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "orientation": -1,
+      "receiver_case_id": "evaluation_target_f1_c2_n1_this",
+      "receiver_token_ids": [
+        7191,
+        23608,
+        11,
+        428,
+        30060,
+        1474,
+        262,
+        10559
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f1_c2_n1_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f1_c2_n0_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f1_c2_n0_these"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f1_c2_n1_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "orientation": -1,
+      "receiver_case_id": "evaluation_target_f1_c2_n0_this",
+      "receiver_token_ids": [
+        7191,
+        23608,
+        11,
+        428,
+        45126,
+        1474,
+        262,
+        10559
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f1_c2_n1_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f1_c2_n0_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f1_c2_n0_this"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f1_c2_n1_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "orientation": 1,
+      "receiver_case_id": "evaluation_target_f1_c2_n0_these",
+      "receiver_token_ids": [
+        7191,
+        23608,
+        11,
+        777,
+        45126,
+        1474,
+        262,
+        10559
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f0_c1_n1_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f0_c1_n0_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f0_c1_n0_this"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f0_c1_n1_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "orientation": 1,
+      "receiver_case_id": "evaluation_target_f0_c1_n0_these",
+      "receiver_token_ids": [
+        2953,
+        15896,
+        11,
+        777,
+        45126,
+        1474,
+        262,
+        3881
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f0_c1_n1_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f0_c1_n0_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f0_c1_n0_these"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f0_c1_n1_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "orientation": -1,
+      "receiver_case_id": "evaluation_target_f0_c1_n0_this",
+      "receiver_token_ids": [
+        2953,
+        15896,
+        11,
+        428,
+        45126,
+        1474,
+        262,
+        3881
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f1_c1_n0_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f1_c1_n1_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f1_c1_n1_this"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f1_c1_n0_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "orientation": 1,
+      "receiver_case_id": "evaluation_target_f1_c1_n1_these",
+      "receiver_token_ids": [
+        7191,
+        23608,
+        11,
+        777,
+        30060,
+        1474,
+        262,
+        3091
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f1_c1_n0_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f1_c1_n1_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f1_c1_n1_these"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f1_c1_n0_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 1,
+      "orientation": -1,
+      "receiver_case_id": "evaluation_target_f1_c1_n1_this",
+      "receiver_token_ids": [
+        7191,
+        23608,
+        11,
+        428,
+        30060,
+        1474,
+        262,
+        3091
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f0_c2_n0_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f0_c2_n1_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f0_c2_n1_these"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f0_c2_n0_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "orientation": -1,
+      "receiver_case_id": "evaluation_target_f0_c2_n1_this",
+      "receiver_token_ids": [
+        2953,
+        15896,
+        11,
+        428,
+        30060,
+        1474,
+        262,
+        12586
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f0_c2_n0_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f0_c2_n1_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f0_c2_n1_this"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f0_c2_n0_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "orientation": 1,
+      "receiver_case_id": "evaluation_target_f0_c2_n1_these",
+      "receiver_token_ids": [
+        2953,
+        15896,
+        11,
+        777,
+        30060,
+        1474,
+        262,
+        12586
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f0_c0_n1_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f0_c0_n0_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f0_c0_n0_this"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f0_c0_n1_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 0,
+      "orientation": 1,
+      "receiver_case_id": "evaluation_target_f0_c0_n0_these",
+      "receiver_token_ids": [
+        2953,
+        15896,
+        11,
+        777,
+        45126,
+        6716
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f0_c0_n1_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f0_c0_n0_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f0_c0_n0_these"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f0_c0_n1_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 0,
+      "orientation": -1,
+      "receiver_case_id": "evaluation_target_f0_c0_n0_this",
+      "receiver_token_ids": [
+        2953,
+        15896,
+        11,
+        428,
+        45126,
+        6716
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f1_c0_n0_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f1_c0_n1_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f1_c0_n1_this"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f1_c0_n0_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 1,
+      "orientation": 1,
+      "receiver_case_id": "evaluation_target_f1_c0_n1_these",
+      "receiver_token_ids": [
+        7191,
+        23608,
+        11,
+        777,
+        30060,
+        6716
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f1_c0_n0_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f1_c0_n1_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f1_c0_n1_these"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f1_c0_n0_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 1,
+      "orientation": -1,
+      "receiver_case_id": "evaluation_target_f1_c0_n1_this",
+      "receiver_token_ids": [
+        7191,
+        23608,
+        11,
+        428,
+        30060,
+        6716
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f1_c0_n1_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f1_c0_n0_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f1_c0_n0_these"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f1_c0_n1_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 0,
+      "orientation": -1,
+      "receiver_case_id": "evaluation_target_f1_c0_n0_this",
+      "receiver_token_ids": [
+        7191,
+        23608,
+        11,
+        428,
+        45126,
+        6716
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f1_c0_n1_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f1_c0_n0_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f1_c0_n0_this"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f1_c0_n1_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "noun_index": 0,
+      "orientation": 1,
+      "receiver_case_id": "evaluation_target_f1_c0_n0_these",
+      "receiver_token_ids": [
+        7191,
+        23608,
+        11,
+        777,
+        45126,
+        6716
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f0_c2_n1_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f0_c2_n0_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f0_c2_n0_this"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f0_c2_n1_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "orientation": 1,
+      "receiver_case_id": "evaluation_target_f0_c2_n0_these",
+      "receiver_token_ids": [
+        2953,
+        15896,
+        11,
+        777,
+        45126,
+        1474,
+        262,
+        12586
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f0_c2_n1_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f0_c2_n0_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f0_c2_n0_these"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f0_c2_n1_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 2,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 0,
+      "orientation": -1,
+      "receiver_case_id": "evaluation_target_f0_c2_n0_this",
+      "receiver_token_ids": [
+        2953,
+        15896,
+        11,
+        428,
+        45126,
+        1474,
+        262,
+        12586
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f1_c1_n1_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f1_c1_n0_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f1_c1_n0_these"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f1_c1_n1_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "orientation": -1,
+      "receiver_case_id": "evaluation_target_f1_c1_n0_this",
+      "receiver_token_ids": [
+        7191,
+        23608,
+        11,
+        428,
+        45126,
+        1474,
+        262,
+        3091
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f1_c1_n1_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f1_c1_n0_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f1_c1_n0_this"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f1_c1_n1_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "noun_index": 0,
+      "orientation": 1,
+      "receiver_case_id": "evaluation_target_f1_c1_n0_these",
+      "receiver_token_ids": [
+        7191,
+        23608,
+        11,
+        777,
+        45126,
+        1474,
+        262,
+        3091
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f0_c1_n0_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f0_c1_n1_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f0_c1_n1_these"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f0_c1_n0_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "orientation": -1,
+      "receiver_case_id": "evaluation_target_f0_c1_n1_this",
+      "receiver_token_ids": [
+        2953,
+        15896,
+        11,
+        428,
+        30060,
+        1474,
+        262,
+        3881
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f0_c1_n0_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f0_c1_n1_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f0_c1_n1_this"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f0_c1_n0_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 1,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "noun_index": 1,
+      "orientation": 1,
+      "receiver_case_id": "evaluation_target_f0_c1_n1_these",
+      "receiver_token_ids": [
+        2953,
+        15896,
+        11,
+        777,
+        30060,
+        1474,
+        262,
+        3881
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f0_c0_n0_this",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f0_c0_n1_these",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f0_c0_n1_these"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f0_c0_n0_these",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "this",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 1,
+      "orientation": -1,
+      "receiver_case_id": "evaluation_target_f0_c0_n1_this",
+      "receiver_token_ids": [
+        2953,
+        15896,
+        11,
+        428,
+        30060,
+        6716
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    },
+    {
+      "candidates": {
+        "Q1": {
+          "donor_case_id": "evaluation_target_f0_c0_n0_these",
+          "operation": "scaled-same-determiner-other-noun"
+        },
+        "Q2": {
+          "donor_case_id": "evaluation_target_f0_c0_n1_this",
+          "operation": "exact-same-noun-opposite-determiner"
+        },
+        "Q3": {
+          "operation": "cyclic-shift-Q2-displacement",
+          "source_donor_case_id": "evaluation_target_f0_c0_n1_this"
+        },
+        "Q4": {
+          "donor_case_id": "evaluation_target_f0_c0_n0_this",
+          "operation": "scaled-opposite-determiner-other-noun"
+        }
+      },
+      "context_index": 0,
+      "determiner": "these",
+      "determiner_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "noun_index": 1,
+      "orientation": 1,
+      "receiver_case_id": "evaluation_target_f0_c0_n1_these",
+      "receiver_token_ids": [
+        2953,
+        15896,
+        11,
+        777,
+        30060,
+        6716
+      ],
+      "split": "evaluation",
+      "subject_index": 4
+    }
+  ],
+  "schema": "natural-invariant-donor-transfer-successor-mapping-v2"
+}

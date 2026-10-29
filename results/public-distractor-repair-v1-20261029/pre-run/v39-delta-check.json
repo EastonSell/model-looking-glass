@@ -1,0 +1,12 @@
+{
+  "added_sequences": 80,
+  "bidirectional_pairs": 5120,
+  "case_sha256": "811a1f0251ff21ddaa1869ee96c80dfa47beb87a6b6c2f1e3b6505728fee1825",
+  "conflicts": 0,
+  "predecessor_records_preserved": true,
+  "proposed_sequences": 64,
+  "schema": "public-distractor-v39-delta-check-v1",
+  "scope": "public v39 delta; earlier public supports and v38 checked separately",
+  "v38_sha256": "f3a500dc02d85b8f004275ba2edd74febf9cec138e83755568e5be31045898a9",
+  "v39_sha256": "5e593d1b5a0ac35aba2791cd5eafe7114f7e93ba4bb1c90706e385d2fab0cadc"
+}

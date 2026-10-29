@@ -1,0 +1,16 @@
+{
+  "free_bytes": {
+    "E": 388174229504,
+    "cache": 1603596288,
+    "source": 1603596288
+  },
+  "freeze_merged_commit": "a597c136dbd20facc0f19ab9b8589dfa020c4b7e",
+  "freeze_public_head": "1cc04baf9143acb0d10bfd949d3293d30ecc873c",
+  "freeze_sha256": "6f93c91430ff7c5cd1dcc7a764e34e52b9cbd854cdea12a30bce7a1b7b88b6e4",
+  "independent_freeze_readback_reported_utc": "2026-10-29T12:44:40Z",
+  "latest_exposure_at_preceding_main": "distilgpt2-development-exposures-v39; blob 22020b9c4d463a347b70aeb0265a33d6c054e645",
+  "observed_main": "a597c136dbd20facc0f19ab9b8589dfa020c4b7e",
+  "observed_utc": "2026-10-29T12:45:04.845367+00:00",
+  "schema": "public-distractor-heldout-start-observation-v1",
+  "scope": "Cooperative operator observation; public freeze was independently read before held-out. No protected or unknown exposure coverage or execution attestation is claimed."
+}

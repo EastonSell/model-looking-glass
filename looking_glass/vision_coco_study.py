@@ -219,10 +219,12 @@ def _check_metadata(metadata, steps):
 
 
 def forward(model, pixels, evidence, label, *, path=None, tokens=None, replacement=None,
-            action="capture", reference=None):
+            action="capture", reference=None, numeric_guard=None):
     """Reserve before input/hook preparation; save bytes before control checks."""
     evidence.reserve(label)
     check_denormals()
+    if numeric_guard is not None:
+        numeric_guard()
     pixels = pixels.detach().clone()
     original_pixels = _bits(pixels)
     if path is None:
@@ -236,8 +238,11 @@ def forward(model, pixels, evidence, label, *, path=None, tokens=None, replaceme
             if action == "patch":
                 steps[-1]["value"] = replacement.to(pixels.device)
         else:
-            if len(tokens) != 4 or len(set(tokens)) != 4 or not all(1 <= t < 197 for t in tokens):
-                raise ValueError("invalid four-token intervention")
+            cls_token = len(tokens) == 1 and type(tokens[0]) is int and tokens[0] == 0
+            spatial_tokens = (len(tokens) == 4 and len(set(tokens)) == 4 and
+                              all(type(t) is int and 1 <= t < 197 for t in tokens))
+            if not (cls_token or spatial_tokens):
+                raise ValueError("invalid CLS or four-token intervention")
             for i, token in enumerate(tokens):
                 selected = dict(site, batch_index=0, token_index=token)
                 steps.extend([dict(name=f"before_{i}", operation="capture", **selected),
@@ -260,8 +265,12 @@ def forward(model, pixels, evidence, label, *, path=None, tokens=None, replaceme
         retained = True
         evidence.active["phase"] = "validation"
         check_denormals()
+        if numeric_guard is not None:
+            numeric_guard()
         metadata = plan.metadata
         record_score, _ = score(logits, reference)
+        if numeric_guard is not None:
+            numeric_guard()
         if evidence.labels is not None:
             record_score["top1_label"] = evidence.labels[record_score["top1_id"]]
         row = evidence.finish_forward(row, metadata, record_score)

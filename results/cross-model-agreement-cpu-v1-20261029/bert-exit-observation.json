@@ -1,0 +1,13 @@
+{
+  "attempt_name": "cross-model-bert-cpu-v1-20261029-01",
+  "child_pid": 1032,
+  "complete_sha256": "8ca452816ac95be6ccaa3f1e04587440322d54acc3c6bf67cacf72fd507ca15a",
+  "end_unix": 1793275847.335377,
+  "exit_code": 0,
+  "interrupted": null,
+  "metadata_sha256": "c5189b23c7e086063edb7ca175a69a784c008c1dd77feae8f77dcfb72829bb5b",
+  "schema": "cross-model-direct-child-exit-v1",
+  "source_commit": "763402e8311e2402c49eb865c1812c5a8b5380a2",
+  "start_unix": 1793275813.0543895,
+  "status": "complete"
+}

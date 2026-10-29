@@ -1,0 +1,83 @@
+{
+  "custody": {
+    "bidirectional_prefix_collisions": 0,
+    "case_rows": 24,
+    "comparison_sha256": "010d55e672b594ce02e7c99d7a565d5a0acd665d660b052390371bdc78000272",
+    "independent_selector_replay_sha256": "c2dcb34990c562530c01bc9ff6416c3ffba2b298e7a0d282a70fea9db70cef54",
+    "pairs_checked": 15360,
+    "pilot_comparison_sha256": "b741972e64b7ba23f23a2767ddaee4889a1b57790b6d6dd021724aec43e9eafd",
+    "pool_card_sha256": "f6e174110bcca104c9ec0cf3ba0abce986dbf7f7e5aadcbcda089418b6419563",
+    "public_pilot_rows": 640,
+    "selection_card_sha256": "05574d7c513716d946d70c67f190886a81b221cef0b17220c7f7b6135b411eca",
+    "selector_token_rows_recorded": 96
+  },
+  "development_handoff": {
+    "artifacts": 10,
+    "logit_parts": 54,
+    "public_revision": "3f3a2ff1512fd08cdeda1f70c0fd7c10c3e9a642",
+    "sha256": "de65e284b8b8047b6641acbe77d2a07d4a0986e4a28b66446267137be28dbda9"
+  },
+  "limits": [
+    "Cooperative recorded process and custodian observations; no authenticated execution or whole-tree teardown.",
+    "The original outer evaluation receipt lacks a phase hash or PID; its association is a later operator-created binding.",
+    "Disk observations are sampled points and not reservations or proof against concurrent writes.",
+    "State and row hashes are model-authored observations; full model-state bytes were not retained.",
+    "Pilot cross-check compares saved public token IDs; it does not retokenize or access protected pool rows.",
+    "This is a process/custody check; scientific thresholds require the separate saved-logit replay."
+  ],
+  "outer_elapsed_seconds": 231.771627,
+  "outer_launch_free_bytes": {
+    "c": 1980919808,
+    "e": 383494590464
+  },
+  "outer_observation_sha256": "1a82c73c6c1a1073453bd1c6520a3324be4fc998e37684a9d6655a3115d0d10b",
+  "outer_operator_exit_code": 0,
+  "outer_retrospective_binding_sha256": "cf1060dfe332bc4ff02aedf5463dffcff0a18d339cbd95c5b6266df5f5c2e661",
+  "process": {
+    "artifact_hashes": {
+      "events_sha256": "baa2ef56c3e84c9bef4aa4c83df614271b639e25fc908add2ea50d98585e53d3",
+      "logits_sha256": "e5165d0d8f2ce4cfd20b86b01cf8a281e24eeb0c015d088f22be7764e97ed4ef",
+      "resources_sha256": "883d668b79f58db770b53c479880275e2936c07f5090a3076e0025a8a056190f",
+      "result_sha256": "182775f8bded54c66e8ed358b3ce254078e18f04cb90c35de726b359790fe3df"
+    },
+    "calls": 419,
+    "claim_sha256": "f1fa068a0e42ab03dde2da4b861a75a7f7a94a3aaf957c6dfb0676ef1c44b115",
+    "manifest_sha256": "09623ddf8716a1467cc35ef0469f7bb6d2119fdf574fd35aafe13f55e9fa669b",
+    "operator_exit_sha256": "235b5c934840462ef5595e2849eed0cb4d974ab7475f60e9de28ed63f805cc5e",
+    "parent_disk": {
+      "output_free": 383488335872,
+      "source_free": 1957990400,
+      "source_margin_scope": "heuristic; not an OS reservation"
+    },
+    "phase_sha256": "192fbb1582cd5bd36a1618dd3795ef1078cd8c2aa0fb3e9ab9d4dbd5b99c160d",
+    "resource_summary": {
+      "checked_calls": 419,
+      "checks": 838,
+      "min_output_free": 383275704320,
+      "min_source_free": 1778401280
+    },
+    "scope": "Saved cooperative process and resource observations; not independent execution, filesystem reservation, whole-tree teardown, or scientific replay.",
+    "scope_sha256": "95cbe0d53aae495d984c387d403e9086c071e5e6228eaa3ba4d2db62325d9cb1",
+    "source_revision": "b3c7e19a5349cd2fb76ef4908407342233c7e240",
+    "status": "recorded_process_consistent"
+  },
+  "restoration": {
+    "calls": 419,
+    "completed_arms": 5,
+    "development_probe_match": true,
+    "events_sha256": "baa2ef56c3e84c9bef4aa4c83df614271b639e25fc908add2ea50d98585e53d3",
+    "logits_sha256": "e5165d0d8f2ce4cfd20b86b01cf8a281e24eeb0c015d088f22be7764e97ed4ef",
+    "phase_sha256": "192fbb1582cd5bd36a1618dd3795ef1078cd8c2aa0fb3e9ab9d4dbd5b99c160d",
+    "restoration_probe_matches": 5,
+    "scope": "Saved state/row/buffer hashes and exact saved probe bytes; does not independently authenticate process execution or reconstruct unsaved model-state bytes.",
+    "status": "recorded_restoration_consistent"
+  },
+  "reviewer_source_sha256": {
+    "compile_flan_v2_evaluation_custody_report.py": "64ab3e085bdfa8f422d1c8118e4d93959a44e9610760dd0a11339ffcc0a867f4",
+    "review_flan_v2_evaluation_process.py": "9874551d9a50ea84308fbfd51243ce5b39b3b5c513a251eb2ee2c3bdcf22400a",
+    "review_flan_v2_evaluation_restoration.py": "e547eb23554a490931a9dfebac6a7a76baa49f6662ed1cc4be9d4e83ca349896"
+  },
+  "schema": "independent-flan-v2-evaluation-custody-audit-v1",
+  "scope_age_at_reported_launch_seconds": 62.56051,
+  "status": "recorded_consistency_passed"
+}

@@ -1,0 +1,18 @@
+{
+  "copied_metric_tuples": 896,
+  "counts": {
+    "baseline": 4,
+    "clean": 32,
+    "radius": 4,
+    "repeat": 32,
+    "self": 128,
+    "transfer": 896
+  },
+  "events": 1096,
+  "journal_sha256": "cde003fb88e17fa4b9af3215e8e0ccbef23fb2d5df83e1ef859715b4bc5c17de",
+  "result_sha256": "3674c152b3c6e24383f191443ca50d2697baaf0c9334c22fa7766f759ace05c4",
+  "scope": "Independent post-outcome projection comparison; TV fields are compared with the result, not recomputed from the projection. No execution attestation.",
+  "selected_f32_pairs": 1088,
+  "status": "pass",
+  "subset_sha256": "43088c7fb9763bf80df52a4459b1c1e42d37b5de120582b58b37f59eacea2467"
+}

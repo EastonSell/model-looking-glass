@@ -1,0 +1,28 @@
+{
+  "direct_process_exit_code": 0,
+  "events_sha256": "7257fed9573c05b3710ca91c7c8dbb018508cf43307801a0be6d527b7eda65b1",
+  "original_observation_sha256": "1f1dba34cc4c5e0c4494fcfe8abddffeeb2e47b28dd75b0245368cce7a2a83db",
+  "parent_exit_sha256": "a64a325d07e76ade152c8533dc4c1953c421c9b2e49de22f2e4b43b04b1df27e",
+  "prelaunch_sha256": "2419e46d53c387a6861c77c3a0c42f9b4d62a2e76b30be3e25f82707ed590012",
+  "reader_pid": 55852,
+  "recorded_utc": "2026-10-29T11:57:56.029435+00:00",
+  "redaction": "The original local command contains absolute paths and is retained locally; command paths are omitted from this public projection. The source-first replay interface is documented in the merged reader.",
+  "report_sha256": "a3bc57be6506e1464e2cfb3d4fcc534a44c06a958c01086cdf98964aa4a09a94",
+  "schema": "agreement-substitution-replay-operator-redacted-v1",
+  "scope": "Cooperative direct-process observation; does not authenticate execution or descendant drain.",
+  "source_hashes_after": {
+    "cases": "94910e59415936a09c18f81478e0eaffb790c9b69d0962ab3f6b70947fbe1dfe",
+    "entry": "382c86f368a9b6ca56945fc026dfca358daabfa240e02672209713ab6ed1caf5",
+    "helper": "917694d448b796359db0002a630877e5226a2583d273092871892fade7a38ac4",
+    "reader": "7ba5820aa7821a357aba59b44ef20abc62aa4707f4bd25b741ac1e6053e7e8ae"
+  },
+  "source_hashes_before": {
+    "cases": "94910e59415936a09c18f81478e0eaffb790c9b69d0962ab3f6b70947fbe1dfe",
+    "entry": "382c86f368a9b6ca56945fc026dfca358daabfa240e02672209713ab6ed1caf5",
+    "helper": "917694d448b796359db0002a630877e5226a2583d273092871892fade7a38ac4",
+    "reader": "7ba5820aa7821a357aba59b44ef20abc62aa4707f4bd25b741ac1e6053e7e8ae"
+  },
+  "status": "completed",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256": "2533a0ee50eec90789c0e7a3e2ca6bdc8b4d9de9507a1c1c4631831a342ee9e4"
+}

@@ -1,5 +1,8 @@
 # Eager FLAN-T5 encoder/decoder traces
 
+For a bounded donor-state patch with same-site and off-target controls, see the
+[T5 intervention workflow](FLAN_T5_INTERVENTION_WORKFLOW.md).
+
 `looking_glass.flan_t5_trace` captures selected token vectors during one
 standard `T5ForConditionalGeneration` forward. The caller supplies an already
 loaded model, encoder IDs and mask, decoder IDs and mask; the adapter does not
@@ -36,6 +39,9 @@ The event does not retain the input IDs or masks: preserve them separately
 when comparing traces. A module path identifies the selected registered module,
 not independently verified call-site provenance.
 
+For an explicit two-stack input/mask comparison on CPU, use the separately
+documented [paired uncached-forward contract](FLAN_T5_TRACE_COMPARISON.md).
+
 | Boundary | Module path | Meaning of captured tensor |
 | --- | --- | --- |
 | `self_attention` | `{stack}.block.{layer}.layer.0` | Tuple element 0 from `T5LayerSelfAttention`, **after** its residual addition. |
@@ -59,6 +65,18 @@ The adapter uses inference mode and the cooperative model lease provided by
 Hook checks are preflight checks under a cooperative process assumption; they
 do not prevent another thread from installing a hook during the forward.
 The current checkpoint smoke and unit tests run on CPU, not CUDA.
+
+`synchronous_cpu=True` explicitly opts a CPU trace into the
+[synchronous CPU plan wrapper](INTERVENTION_PLANS.md). The caller must
+ensure exclusive, quiescent ownership and synchronous CPU execution with no
+deferred native or device work; tensor-device checks do not establish these
+conditions. A supported root-call exception can unwind the plan's Python hooks
+and cooperative lease without returning a partial trace. An uncertain plan
+transition, lifecycle race or known non-CPU output instead requires retaining
+the model, error/traceback and accessible plan and resource roots and
+quarantining the worker. The default remains
+a direct forward, and CUDA lifetime and cleanup are not established by this
+option.
 
 Limits apply to the number of points, aggregate captured bytes, each captured
 boundary tensor, total input tokens and the expected full logits tensor. They

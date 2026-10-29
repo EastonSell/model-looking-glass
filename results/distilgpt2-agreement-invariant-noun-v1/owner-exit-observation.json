@@ -1,0 +1,22 @@
+{
+  "child_custody_sha256": "0fe24d04a8bbd0cbbf17600a100fa194c12b9fb9ede6dde2c9eeac23280a3dd8",
+  "entry_failure_sha256": "b837ccabf133360900a70c2b3d7b4c7005688a810414e875070bdcf00dbca32e",
+  "events_sha256": "0be814ca696b4da0b90c99609098e926db3d489f2010da70c0bc9fd0adc3874d",
+  "normal_path_model_returns": 302,
+  "observer_clean": false,
+  "observer_exit_code": 1,
+  "observer_stdout_observed": "PermissionError while opening events.jsonl for append; pending-forward evidence could not be saved: JournalError.",
+  "operator_monitoring": "The operator sampled the live journal by enumerating .NET File.ReadLines and counting lines. A Windows file-sharing conflict may have caused the append error; this is a hypothesis, not yet an established causal attribution.",
+  "operator_recorded_utc": "2026-10-29T13:13:09.913516+00:00",
+  "owner_pid": 52728,
+  "prelaunch_sha256": "d5c825436fcd7cacad34ff94799ff8c0589478335a29e6da29a5fd6b69ae8025",
+  "reported_forward_starts": 302,
+  "run_id": "68e4fb94f9a74cbab41cb06859970d62",
+  "saved_forward_records": 301,
+  "schema": "agreement-invariant-owner-exit-observation-v1",
+  "scope": "Direct observer exit and cooperative record consistency; no authenticated execution or descendant-drain claim. The unsaved 302nd returned forward and any associated tensors remain uncertain; no automatic retry.",
+  "storage_accounting_complete": false,
+  "supervisor_sha256": "1bb93d58c686bde0f5b87ada9720f8c6319d6a8b77e4acb6b17996d6c99e839c",
+  "terminal_sha256": "32326e95b19b9632ed459f06eb781206427a3961a6f6f93df1a442a9277cc26b",
+  "terminal_status": "failed"
+}

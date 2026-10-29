@@ -1,0 +1,136 @@
+{
+  "case_sha256": "f1e1043fc302e701b1224248122efc7f79938665ce12cd48ebb7dd713b353789",
+  "direct_receipt_sha256": "a53fdf018647dc281eddbc78eb8225d437f7156d56745e520d1d944de6fa1a3a",
+  "discovery": {
+    "A": {
+      "constant_site": 1,
+      "first_changed_site": 1,
+      "first_changed_votes": [
+        8,
+        0,
+        0,
+        0
+      ],
+      "magnitude_scores": [
+        4.000000041909516,
+        2.52333156217522,
+        2.1480788055011115,
+        2.3076893772488294
+      ],
+      "magnitude_site": 1,
+      "random_site": 2,
+      "selector": {
+        "ranking": [
+          1,
+          4,
+          2,
+          3
+        ],
+        "scores": [
+          0.10663270950317383,
+          0.007161140441894531,
+          0.0022125244140625,
+          0.020781517028808594
+        ],
+        "selected_site": 1,
+        "signed_predictions": [
+          0.10663270950317383,
+          0.007161140441894531,
+          0.0022125244140625,
+          0.020781517028808594
+        ],
+        "tied_max_sites": [
+          1
+        ]
+      },
+      "uniform_site_reference": 0.25
+    },
+    "B": {
+      "constant_site": 1,
+      "first_changed_site": 4,
+      "first_changed_votes": [
+        0,
+        0,
+        0,
+        8
+      ],
+      "magnitude_scores": [
+        0.0,
+        0.0,
+        0.0,
+        4.000000016763806
+      ],
+      "magnitude_site": 4,
+      "random_site": 4,
+      "selector": {
+        "ranking": [
+          4,
+          1,
+          2,
+          3
+        ],
+        "scores": [
+          0.0,
+          0.0,
+          0.0,
+          0.11855363845825195
+        ],
+        "selected_site": 4,
+        "signed_predictions": [
+          0.0,
+          0.0,
+          0.0,
+          0.11855363845825195
+        ],
+        "tied_max_sites": [
+          4
+        ]
+      },
+      "uniform_site_reference": 0.25
+    }
+  },
+  "evidence": {
+    "actions": 120,
+    "events_sha256": "5902378daa10a84b10ddee3bc4f3aa9e8a8161678e8b7aafa0d0be9a8211d06d",
+    "raw_bytes": 33345504,
+    "raw_files": {
+      "known-injection-01": {
+        "bytes": 4044540,
+        "sha256": "3d5de9496eb1683e21da6ff8bf55761f5d3d397d40ee9a294d7159d5a40967ed"
+      },
+      "known-injection-02": {
+        "bytes": 4327164,
+        "sha256": "08497c7bb6f582cc2917c291594d807d9ebcbb2e134e7740985146c6c6f4d293"
+      },
+      "known-injection-03": {
+        "bytes": 4327164,
+        "sha256": "0f28c93d5bdd3dcbc73a8659f51f3e069dde82007df238d82d9ba0b957cc33ed"
+      },
+      "known-injection-04": {
+        "bytes": 4044540,
+        "sha256": "4eb9975108e4e9d64853699b678c536d8c1346d150fac0efd658274329d52aca"
+      },
+      "known-injection-05": {
+        "bytes": 4185852,
+        "sha256": "74075d1f08259f32d8d57a4b6db095858b5e544ca8b6c156de6acfc343480362"
+      },
+      "known-injection-06": {
+        "bytes": 4044540,
+        "sha256": "5a8489cfe396d46c4faffdb156653f2a78e2b13b594367fbe84e415b8ce85898"
+      },
+      "known-injection-07": {
+        "bytes": 4044540,
+        "sha256": "290cb2874cc6894686d84caa957c2f2f0fe75f96ddc23f9ba6a289eaec05e77e"
+      },
+      "known-injection-08": {
+        "bytes": 4327164,
+        "sha256": "40bfe44a9f64108355e6579ce45400e3d0ca8377259457e5252392442eeae1fc"
+      }
+    }
+  },
+  "pre_run_sha256": "b4f632ed69f0b20ceb82a176ee64047a815771231072ec04bb60dc880c18d6c6",
+  "reservation_sha256": "e5ae202c1e3449a67e92788a83cd0dc62d404a3fa1e052716a11770ee92cc00c",
+  "schema": "public-known-injection-discovery-freeze-v1",
+  "selector_sha256": "17451e00aeafe309697fac6f5cbc401791ef88edfeaf151febbf3c91f5227d40",
+  "source_commit": "ea3f1e78e9074e3455087919d96c84d7c20db0cc"
+}

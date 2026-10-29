@@ -1,0 +1,21 @@
+{
+  "exception_message": "insufficient point-in-time output or source-volume headroom",
+  "exception_type": "RuntimeError",
+  "exit_code": 1,
+  "operator_observed_after_exit_free_bytes": {
+    "output_volume": 384874676224,
+    "source_volume": 952442880
+  },
+  "operator_observed_owner_output_directory_after_exit": false,
+  "process_waited": true,
+  "scope": "Sanitized operator projection of closed stderr and post-exit observation; not execution attestation.",
+  "source_commit": "b6667ad5bfcadac6e0f45d4ad6530cca1f4584ca",
+  "status": "incomplete_before_owner_output",
+  "stderr_sha256": "46962f3641d666a7e719f2ea895c50e6c5cc3291524642dd831c8078c81bb39b",
+  "traceback_location": {
+    "file": "scripts/bert_cue_donor_context_retention_v1.py",
+    "function": "run",
+    "line": 97,
+    "operation": "require_space(repo, output, prelaunch=True)"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "schema": "agreement-invariant-v2-progress-metadata-observation-v1",
+  "observed_utc": "2026-10-29T14:06:34.4938500+00:00",
+  "observer_start_utc": "2026-10-29T14:03:20.4091234+00:00",
+  "admission_creation_utc": "2026-10-29T14:05:43.1296291Z",
+  "model_admission_creation_utc": "2026-10-29T14:05:57.1698574Z",
+  "tensor_files_observed": 474,
+  "method": "Directory listing and file-creation metadata only; no live journal or tensor content opened.",
+  "interpretation": "At least one forward returned and began saving tensor evidence according to the fixed source. Tensor-file count is not a forward count; timestamps are cooperative filesystem observations."
+}

@@ -1,0 +1,10 @@
+{
+  "bidirectional_pairs": 10240,
+  "cross_model_sequences": 160,
+  "cross_model_sha256": "b1d6dbad76240f07be3a55196ace982767400b60e497d4e7fc75aaae82c8c503",
+  "distractor_sequences": 64,
+  "distractor_sha256": "811a1f0251ff21ddaa1869ee96c80dfa47beb87a6b6c2f1e3b6505728fee1825",
+  "relations": 0,
+  "schema": "distractor-cross-model-public-comparison-v1",
+  "scope": "public rows only; no model, protected or outside exposure attestation"
+}

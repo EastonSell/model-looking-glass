@@ -43,6 +43,14 @@ class ServiceProcessConfigTests(unittest.TestCase):
                          ('1' * 64, '2' * 64, '3' * 64))
         self.assertEqual(config.stop_path, self.stop)
 
+    def test_observation_flag_is_exact_and_path_is_derived_from_private_config(self):
+        config = child._parse_config(self.data({**self.value, 'observe_serving_memory': True}))
+        self.assertEqual(config.serving_memory_path, self.stop.parent / 'serving-memory.json')
+        self.assertIsNone(child._parse_config(self.data()).serving_memory_path)
+        for value in (False, 1, 'true', None):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, 'invalid private service'):
+                child._parse_config(self.data({**self.value, 'observe_serving_memory': value}))
+
     def test_invalid_configuration_is_rejected_before_owner(self):
         for mutate in (
             lambda x: x.update(schema='other'),

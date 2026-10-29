@@ -1,0 +1,505 @@
+{
+  "schema": "public-distractor-repair-cases-v1",
+  "protocol_sha256": "6d87a579eb27f214db3e8769232b5940d263da59490480765118174ef99b5d70",
+  "protocol_commit": "29698dc5319e8c578c3e9f87ca1bb5377b9fa270",
+  "tokenizer_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+  "model_forward": false,
+  "cases": [
+    {
+      "case_id": "distractor-repair-01",
+      "split": "discovery",
+      "public_text": "The violinist beside the mossy courtyard gate.",
+      "token_ids": [
+        464,
+        38283,
+        396,
+        13970,
+        262,
+        42853,
+        88,
+        34941,
+        8946,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        464,
+        38283,
+        396,
+        13970,
+        262,
+        42853,
+        88,
+        34941,
+        8946
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 8,
+      "future_position": 9
+    },
+    {
+      "case_id": "distractor-repair-02",
+      "split": "discovery",
+      "public_text": "The sailors beyond the narrow harbor bridge.",
+      "token_ids": [
+        464,
+        29996,
+        3675,
+        262,
+        7135,
+        25451,
+        7696,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        464,
+        29996,
+        3675,
+        262,
+        7135,
+        25451,
+        7696
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 6,
+      "future_position": 7
+    },
+    {
+      "case_id": "distractor-repair-03",
+      "split": "discovery",
+      "public_text": "A lantern hanging above the library staircase.",
+      "token_ids": [
+        32,
+        41207,
+        10938,
+        2029,
+        262,
+        5888,
+        27656,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        32,
+        41207,
+        10938,
+        2029,
+        262,
+        5888,
+        27656
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 6,
+      "future_position": 7
+    },
+    {
+      "case_id": "distractor-repair-04",
+      "split": "discovery",
+      "public_text": "The farmers along the quiet mountain road.",
+      "token_ids": [
+        464,
+        9818,
+        1863,
+        262,
+        5897,
+        8598,
+        2975,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        464,
+        9818,
+        1863,
+        262,
+        5897,
+        8598,
+        2975
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 6,
+      "future_position": 7
+    },
+    {
+      "case_id": "distractor-repair-05",
+      "split": "discovery",
+      "public_text": "This delicate instrument beneath the table.",
+      "token_ids": [
+        1212,
+        19217,
+        8875,
+        11061,
+        262,
+        3084,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        1212,
+        19217,
+        8875,
+        11061,
+        262,
+        3084
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 5,
+      "future_position": 6
+    },
+    {
+      "case_id": "distractor-repair-06",
+      "split": "discovery",
+      "public_text": "Those young artists outside the crowded gallery.",
+      "token_ids": [
+        9627,
+        1862,
+        7912,
+        2354,
+        262,
+        18012,
+        15604,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        9627,
+        1862,
+        7912,
+        2354,
+        262,
+        18012,
+        15604
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 6,
+      "future_position": 7
+    },
+    {
+      "case_id": "distractor-repair-07",
+      "split": "discovery",
+      "public_text": "The committee near the old riverside hall.",
+      "token_ids": [
+        464,
+        5583,
+        1474,
+        262,
+        1468,
+        18180,
+        485,
+        6899,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        464,
+        5583,
+        1474,
+        262,
+        1468,
+        18180,
+        485,
+        6899
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 7,
+      "future_position": 8
+    },
+    {
+      "case_id": "distractor-repair-08",
+      "split": "discovery",
+      "public_text": "Several clouds behind the distant ridge.",
+      "token_ids": [
+        14945,
+        15114,
+        2157,
+        262,
+        12899,
+        32525,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        14945,
+        15114,
+        2157,
+        262,
+        12899,
+        32525
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 5,
+      "future_position": 6
+    },
+    {
+      "case_id": "distractor-repair-09",
+      "split": "held-out",
+      "public_text": "A traveler beside the orchard's wooden fence.",
+      "token_ids": [
+        32,
+        40168,
+        13970,
+        262,
+        393,
+        30215,
+        338,
+        13510,
+        13990,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        32,
+        40168,
+        13970,
+        262,
+        393,
+        30215,
+        338,
+        13510,
+        13990
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 8,
+      "future_position": 9
+    },
+    {
+      "case_id": "distractor-repair-10",
+      "split": "held-out",
+      "public_text": "The carpenters beyond the restored brick tower.",
+      "token_ids": [
+        464,
+        1097,
+        16923,
+        364,
+        3675,
+        262,
+        15032,
+        17214,
+        10580,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        464,
+        1097,
+        16923,
+        364,
+        3675,
+        262,
+        15032,
+        17214,
+        10580
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 8,
+      "future_position": 9
+    },
+    {
+      "case_id": "distractor-repair-11",
+      "split": "held-out",
+      "public_text": "Our patient neighbor behind the blue curtain.",
+      "token_ids": [
+        5122,
+        5827,
+        4780,
+        2157,
+        262,
+        4171,
+        29461,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        5122,
+        5827,
+        4780,
+        2157,
+        262,
+        4171,
+        29461
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 6,
+      "future_position": 7
+    },
+    {
+      "case_id": "distractor-repair-12",
+      "split": "held-out",
+      "public_text": "Those small boats near the eastern jetty.",
+      "token_ids": [
+        9627,
+        1402,
+        16659,
+        1474,
+        262,
+        10183,
+        12644,
+        774,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        9627,
+        1402,
+        16659,
+        1474,
+        262,
+        10183,
+        12644,
+        774
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 7,
+      "future_position": 8
+    },
+    {
+      "case_id": "distractor-repair-13",
+      "split": "held-out",
+      "public_text": "The scholar beneath the garden's ancient oak.",
+      "token_ids": [
+        464,
+        15606,
+        11061,
+        262,
+        11376,
+        338,
+        6156,
+        26210,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        464,
+        15606,
+        11061,
+        262,
+        11376,
+        338,
+        6156,
+        26210
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 7,
+      "future_position": 8
+    },
+    {
+      "case_id": "distractor-repair-14",
+      "split": "held-out",
+      "public_text": "Two apprentices outside the workshop door.",
+      "token_ids": [
+        7571,
+        38523,
+        2354,
+        262,
+        20243,
+        3420,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        7571,
+        38523,
+        2354,
+        262,
+        20243,
+        3420
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 5,
+      "future_position": 6
+    },
+    {
+      "case_id": "distractor-repair-15",
+      "split": "held-out",
+      "public_text": "A silver vessel on the shaded terrace.",
+      "token_ids": [
+        32,
+        8465,
+        8837,
+        319,
+        262,
+        427,
+        5286,
+        8812,
+        558,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        32,
+        8465,
+        8837,
+        319,
+        262,
+        427,
+        5286,
+        8812,
+        558
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 8,
+      "future_position": 9
+    },
+    {
+      "case_id": "distractor-repair-16",
+      "split": "held-out",
+      "public_text": "Many visitors near the northern meadow.",
+      "token_ids": [
+        7085,
+        9692,
+        1474,
+        262,
+        7840,
+        502,
+        4584,
+        13
+      ],
+      "scored_prefix_token_ids": [
+        7085,
+        9692,
+        1474,
+        262,
+        7840,
+        502,
+        4584
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ],
+      "scored_position": 6,
+      "future_position": 7
+    }
+  ]
+}

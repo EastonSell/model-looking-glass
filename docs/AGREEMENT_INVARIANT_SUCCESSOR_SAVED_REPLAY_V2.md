@@ -1,0 +1,9 @@
+# Invariant-noun successor saved-byte replay
+
+This is a model-free reader for the fixed 68-case, 612-action successor. It independently reconstructs the v1 action order and maps only the 34 discovery case IDs to the `v2_discovery_` namespace; the 34 original evaluation IDs remain unchanged. It verifies the successor case file, ordered token rows, saved contract, action order, tensor references, landing witnesses, full-vocabulary diagnostics, baseline coverage, active controls, factorial contrasts and terminal accounting. Incomplete attempts do not become results.
+
+The case file is public and records protocol digest `58e8b4fb26ca04afe727b76938c5ed3ece58a9dd7f37e5a8a18fd7504ef80deb`; the caller separately verifies the actual protocol bytes. The evaluation cases were already public and carried forward after the incomplete attempt; they are not blind to public exposure, and disjointness from unknown or separately protected history is unverified.
+
+Before replay, an operator verifies and executes the exact published entry source in an isolated source-first process. The entry compiles its hash-pinned reader bytes, and the reader similarly compiles its pinned numeric-helper bytes. The caller independently supplies the closed attempt, case and direction paths, numeric helper path, a fresh report path outside the attempt, owner source revision, prelaunch/reservation/latest-exposure SHA-256 values, event SHA-256 and the exact start scope `public prospective agreement invariant-noun successor v2`. Owner exit, source/currentness, process cleanup and unsaved sequence logits require separate evidence; this saved-byte audit does not attest execution.
+
+The replay preserves the v1 numerical method and predeclared sensitivity and number-over-noun criteria. It reports both raw criteria and baseline-limited interpretation, without dropping cases based on their outcomes.

@@ -1,0 +1,20 @@
+{
+  "annotation_sha256": "610fce4944abdeb15354cc765333805529359d12d88f2f711393ca586901d01d",
+  "archive_sha256": "113a836d90195ee1f884e704da6304dfaaecff1f023f49b6ca93c4aaae470268",
+  "candidate_images_after_image_filters": 30396,
+  "images_with_animal_annotations": 1990,
+  "manifest_sha256": "d2fa15c4287f15f78ff5f1a1cc1eab2551d73ee2ac876b5f7bb956f31b1d2931",
+  "mixed_species_images_excluded": 56,
+  "model_forwards": 0,
+  "prior_images_excluded": 107,
+  "scope": "annotation-only reconstruction; origin, pretraining exposure, execution and chronology not attested",
+  "selected_per_species": {
+    "cat": 32,
+    "dog": 32
+  },
+  "status": "complete-annotation-ranking-verified",
+  "tested_in_rank_order": {
+    "17": 52,
+    "18": 69
+  }
+}

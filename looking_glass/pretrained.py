@@ -76,8 +76,8 @@ def _copy_verified(source, destination, name, expected_size, expected_digest):
         raise CheckpointIntegrityError(f"Checkpoint integrity failure for {name}: size or SHA-256 mismatch")
 
 
-def load_distilgpt2(*, cache_dir, allow_download=False):
-    """Load the pinned checkpoint; external dependencies are optional."""
+def load_distilgpt2(*, cache_dir, allow_download=False, stage_dir=None):
+    """Load the pinned checkpoint, staging verified copies in ``stage_dir`` when supplied."""
     try:
         cache_dir = os.fspath(cache_dir)
     except TypeError as exc:
@@ -86,6 +86,15 @@ def load_distilgpt2(*, cache_dir, allow_download=False):
         raise ValueError("cache_dir must be an explicit nonempty path")
     if type(allow_download) is not bool:
         raise ValueError("allow_download must be a boolean")
+    if stage_dir is None:
+        stage_dir = cache_dir
+    else:
+        try:
+            stage_dir = os.fspath(stage_dir)
+        except TypeError as exc:
+            raise ValueError("stage_dir must be an existing directory") from exc
+        if not isinstance(stage_dir, str) or not stage_dir.strip() or not os.path.isdir(stage_dir):
+            raise ValueError("stage_dir must be an existing directory")
     try:
         import transformers
     except ImportError as exc:
@@ -115,7 +124,7 @@ def load_distilgpt2(*, cache_dir, allow_download=False):
         )
     if allow_download:
         os.makedirs(cache_dir, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="looking-glass-stage-", dir=cache_dir) as stage:
+    with tempfile.TemporaryDirectory(prefix="looking-glass-stage-", dir=stage_dir) as stage:
         for name, (size, digest) in ASSETS.items():
             try:
                 source = hf_hub_download(

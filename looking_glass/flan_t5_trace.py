@@ -52,17 +52,22 @@ def trace_t5_forward(model, *, input_ids, attention_mask, decoder_input_ids,
                      decoder_attention_mask, points, run_id,
                      max_events=128, max_trace_bytes=16 * 1024 * 1024,
                      max_tensor_bytes=16 * 1024 * 1024, max_input_tokens=4096,
-                     max_logits_bytes=128 * 1024 * 1024):
+                     max_logits_bytes=128 * 1024 * 1024, synchronous_cpu=False):
     """Return the model output and selected boundary-token records for one forward.
 
     This is inference-only and passes ``use_cache=False``. The positions are
     local tensor indices in the explicitly supplied encoder or decoder inputs;
     they are not generation steps or absolute cache positions. Trace budgets
     cover saved captures and individual boundary tensors, not all model memory.
+    ``synchronous_cpu=True`` is an explicit caller assertion of exclusive,
+    quiescent ownership and synchronous CPU execution with no deferred work;
+    it does not establish native or CUDA cleanup.
     """
     from transformers import T5ForConditionalGeneration
     from transformers.models.t5.modeling_t5 import T5Block, T5LayerFF, T5LayerSelfAttention
 
+    if type(synchronous_cpu) is not bool:
+        raise TypeError("synchronous_cpu must be a boolean")
     if type(model) is not T5ForConditionalGeneration:
         raise TypeError("model must be a standard T5ForConditionalGeneration")
     if any(module.training for module in model.modules()) or model.is_gradient_checkpointing:
@@ -98,6 +103,8 @@ def trace_t5_forward(model, *, input_ids, attention_mask, decoder_input_ids,
     parameter = next(model.parameters())
     if parameter.device.type not in ("cpu", "cuda"):
         raise ValueError("only CPU and CUDA tensors are supported")
+    if synchronous_cpu and parameter.device.type != "cpu":
+        raise ValueError("synchronous_cpu requires a CPU model")
     if torch.is_autocast_enabled(parameter.device.type):
         raise ValueError("autocast must be disabled")
     if any(value.device != parameter.device or value.dtype != torch.float32 for value in model.parameters()):
@@ -147,9 +154,10 @@ def trace_t5_forward(model, *, input_ids, attention_mask, decoder_input_ids,
     plan = ActivationPlan(model, steps, max_steps=max_events, max_invocations=1,
                           max_tensor_bytes=max_tensor_bytes, max_capture_bytes=max_trace_bytes)
     with torch.inference_mode(), plan:
-        output = model(input_ids=input_ids, attention_mask=attention_mask,
-                       decoder_input_ids=decoder_input_ids, decoder_attention_mask=decoder_attention_mask,
-                       use_cache=False, output_attentions=False, output_hidden_states=False, return_dict=True)
+        forward = plan.run_synchronous_cpu if synchronous_cpu else model
+        output = forward(input_ids=input_ids, attention_mask=attention_mask,
+                         decoder_input_ids=decoder_input_ids, decoder_attention_mask=decoder_attention_mask,
+                         use_cache=False, output_attentions=False, output_hidden_states=False, return_dict=True)
     if output.past_key_values is not None or tuple(output.logits.shape) != (
             input_ids.shape[0], decoder_input_ids.shape[1], head.shape[0]) or output.logits.dtype != torch.float32:
         raise ValueError("model output differs from the supported uncached forward")

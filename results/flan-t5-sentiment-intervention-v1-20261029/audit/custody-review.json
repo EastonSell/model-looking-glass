@@ -1,0 +1,51 @@
+{
+  "copied_paths": [
+    "custody/exposure-descriptors.json",
+    "custody/independent-selection-replay.json",
+    "custody/lexical-candidates.json",
+    "custody/pool-card-local-verification.json",
+    "custody/pool-card.json",
+    "custody/pool-observation.json",
+    "custody/pool.json",
+    "custody/selection-card-local-verification.json",
+    "custody/selection-card.json",
+    "custody/selection-incomplete-closure.json",
+    "custody/selection-observation.json",
+    "custody/selection.json",
+    "custody/semantic-draft.json",
+    "custody/semantic-verdicts.json",
+    "custody/weight-lexical-observation.json",
+    "custody/weight-pool-comparison.json",
+    "process/commit-pool-stage-exit.json",
+    "process/commit-pool-stage-runtime.json",
+    "process/commit-pool-stage-start.json",
+    "process/commit-pool-outer-exit.json",
+    "process/select-stage-exit.json",
+    "process/select-stage-runtime.json",
+    "process/select-stage-start.json",
+    "process/select-outer-exit.json",
+    "custody/pool-salt.hex",
+    "custody/selection-salt.hex"
+  ],
+  "nonexclusive_group_failures": {
+    "adjective-alignment": 22,
+    "semantic-rejected": 4,
+    "token-difference": 22
+  },
+  "observed_utc": "2026-10-29T12:27:23.388438+00:00",
+  "readme_sha256": "76a1ebb8b5eeac6051c31b2c921b7aaa0a5b5370bc1c353357a1caf28927a5ad",
+  "recorded_collisions": 0,
+  "recorded_public_comparisons": 60000,
+  "rows": 96,
+  "scope": "Retained custody-to-staging consistency and arithmetic; no execution, timing, secrecy or semantic-truth attestation.",
+  "selected_units": 1,
+  "semantic_accepted": 10,
+  "status": "consistent",
+  "unaligned_span_token_counts": {
+    "2": 18,
+    "3": 4,
+    "4": 10,
+    "5": 2
+  },
+  "units": 12
+}

@@ -1,0 +1,16 @@
+{
+  "case_sha256": "96ffdac66a540cef8ff2a64e08649184a7f6fc148b4ef44eb5eedf96b4a18734",
+  "distinct_case_prefix_relations": 0,
+  "expanded_public_sequences": 5991,
+  "input_and_continuation_rows": 384,
+  "input_prefix_count": 9011,
+  "planned_rows": 192,
+  "predecessor_records_preserved": 1251,
+  "public_prefix_relations": 0,
+  "public_successor_rows": 256,
+  "public_support_rows": 128,
+  "scope": "Known public snapshot only; no model, protected cases or pretraining attestation.",
+  "status": "pass",
+  "v40_sha256": "685391b672c356dd627923681c4a93fc9a310c03a40fdd22e0b29af2ae9f7be3",
+  "v41_sha256": "110ebcf674168e794544c257d158b3c3242f98bcf108375cdc073bb145e2bfad"
+}

@@ -137,9 +137,28 @@ def observe(model, ids, indices, *, site=None, source=None, self_patch=False, ex
     original, attention = ids.clone(), torch.ones_like(ids)
     plan = ActivationPlan(model, steps, max_tensor_bytes=1024 * 1024, max_capture_bytes=2 * 1024 * 1024,
                           max_source_bytes=1024 * 1024, max_steps=5, max_invocations=1)
-    with torch.inference_mode(), plan:
-        output = model(input_ids=ids, attention_mask=attention, output_attentions=False,
-                       output_hidden_states=False, return_dict=True)
+    output, returned = None, False
+    try:
+        with torch.inference_mode(), plan:
+            output = model(input_ids=ids, attention_mask=attention, output_attentions=False,
+                           output_hidden_states=False, return_dict=True)
+            returned = True
+    except BaseException as exc:
+        if not returned:
+            raise
+        # Plan exit may clear captures even after a model has returned. Preserve
+        # only an independently bounded mask-logit slice and label the missing
+        # captures; do not treat the failed plan as a successful observation.
+        payload = {}
+        try:
+            logits = output.logits
+            if (type(logits) is torch.Tensor and logits.device.type == "cpu" and logits.dtype == torch.float32
+                    and logits.ndim == 3 and tuple(logits.shape[:2]) == tuple(ids.shape)
+                    and 1 <= logits.shape[2] <= 100000):
+                payload["mask_logits"] = logits[0, indices["mask"]].detach().clone()
+        except Exception:
+            pass
+        raise CompletedObservationFailure("plan_exit", payload) from exc
     captures = plan.captures
     payload = {"captures": captures} if site is None else {
         "before": captures["before"], "after": captures["after"],
@@ -182,6 +201,8 @@ def observe(model, ids, indices, *, site=None, source=None, self_patch=False, ex
 def _emit_witness_failure(emit, meta, ids, phase, payload, **extra):
     record = {"kind": "forward_failed", "phase": phase, "input_ids": ids[0].tolist(), **meta, **extra}
     record["omitted_components"] = [] if "mask_logits" in payload else ["mask_logits_unavailable_or_unbounded"]
+    if phase == "plan_exit":
+        record["omitted_components"].append("plan_captures_unavailable_or_cleared")
     for key, value in payload.items():
         if key == "captures":
             record["captures_f32le"] = {name: _bits(tensor) for name, tensor in value.items()}

@@ -1,0 +1,7 @@
+case_id,split,frame,role,verb,object,baseline_eligible,dose_eligible,min_baseline_gap,radius,specificity_passed,margin_not,margin_hardly,margin_really,margin_certainly
+eval-subject_relative-01,evaluation,subject_relative,inspector,examined,packages,True,True,3.811171531677246,0.7678012722173636,False,0.0032472610473632812,0.05439567565917969,0.054383277893066406,0.11455631256103516
+eval-subject_relative-02,evaluation,subject_relative,assistant,sorted,reports,True,True,3.2376041412353516,0.820893744828079,False,0.017716407775878906,0.016371726989746094,0.04221534729003906,0.09235191345214844
+eval-subject_relative-03,evaluation,subject_relative,worker,cleaned,tools,True,True,4.6534013748168945,0.8845103066621928,False,-0.012845039367675781,0.024817466735839844,0.09826946258544922,0.1782207489013672
+eval-causal_adjunct-01,evaluation,causal_adjunct,inspector,examined,packages,True,True,4.904850006103516,0.9992309039337139,False,0.023977279663085938,0.025659561157226562,0.2507286071777344,0.2770824432373047
+eval-causal_adjunct-02,evaluation,causal_adjunct,assistant,sorted,reports,True,True,4.589805603027344,0.8878151935423807,False,0.04792308807373047,0.06468582153320312,0.10112190246582031,0.1133270263671875
+eval-causal_adjunct-03,evaluation,causal_adjunct,worker,cleaned,tools,True,True,5.5879645347595215,0.9121254730917923,False,0.035045623779296875,0.07370185852050781,0.16692256927490234,0.1829051971435547

@@ -1,0 +1,72 @@
+{
+  "assets": {
+    "config.json": {
+      "bytes": 483,
+      "sha256": "69c94b0222d5d1f4b0ad027ca7416cdafb98378cbbb8305d0bf47c9365c60c83"
+    },
+    "model.safetensors": {
+      "bytes": 267954768,
+      "sha256": "5e3f1108e3cb34ee048634875d8482665b65ac713291a7e32396fb18f6ff0063"
+    },
+    "tokenizer.json": {
+      "bytes": 466062,
+      "sha256": "ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98"
+    },
+    "tokenizer_config.json": {
+      "bytes": 48,
+      "sha256": "a025160ef0431f1a392f6f050c1310f4c5d9fb6f275932dbccba73c4d214bf10"
+    },
+    "vocab.txt": {
+      "bytes": 231508,
+      "sha256": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+    }
+  },
+  "cpu_environment": {
+    "ATEN_CPU_CAPABILITY": {
+      "present": false,
+      "value": null
+    },
+    "MKL_CBWR": {
+      "present": false,
+      "value": null
+    }
+  },
+  "event_max": 2097152,
+  "journal_max": 536870912,
+  "maximum_forwards": 816,
+  "seed": 2026102906,
+  "source_commit": "40752bde00f11b69832066c2d16ce52c49f96810",
+  "source_sha256": {
+    "docs/BERT_CUE_CONTEXT_TRANSFER_V1.md": "2404699a8c626572c11567a56169d5ae95267bbf7b30b8e617368520653f217e",
+    "docs/BERT_NEGATION_CUE_V1.md": "624210b55973b79b421256481da231b3c7ae5268ef43c9fd8d30f6b6caf5d96d",
+    "experiments/bert_cue_context_public_exposure_check_v1.json": "1c04ca6e268b0b84337ed47cbaf037ef4790766c2861dc773820abd6c70100b9",
+    "experiments/bert_cue_context_public_exposure_independent_v1.json": "afcbccb6360ade55bc959818ddbcea1768c0e5a4a74c9df694ac307baeab3a1c",
+    "experiments/bert_cue_context_transfer_cases_v1.json": "4fb31c4b49c24e78f6a4b0b59d928ebb6204a55ecdc2c9c4cd55528700d592a7",
+    "experiments/bert_negation_public_cases_v1.json": "4308e7977e36eb731948193cce27ffa399421bf1bd8bbdd4e42dfa7cc6f4a8ff",
+    "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+    "looking_glass/bert_cue_class.py": "bda7e8e60bdbe66966cd5f6b66be8c965a9a6e70eff14ba2d32a8fc14d3d0513",
+    "looking_glass/bert_cue_context_transfer.py": "58f541ea544140122a195dfff7f4d9061a9b11436185f96254482e4f1f2a299a",
+    "looking_glass/bert_cue_factorial.py": "8fde76425176c7c09214a4b73e8d6186087b3545c7882ced0098afb0d1704955",
+    "looking_glass/bert_negation_cue.py": "2757bd3d7d694dec5a62e4c8e9fc03aae53150d522e5132b77f636ccbda8a6e4",
+    "looking_glass/intervention_plan.py": "6470676938e73e48234128c30ba1d10a49104ee8513434871bc6e973c55d6120",
+    "looking_glass/interventions.py": "71cbcf4776660d2dd883b82815f710b0c909228fd1762504f9e3f984f7f6c60f",
+    "looking_glass/model_ownership.py": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434",
+    "scripts/bert_cue_context_transfer_v1.py": "46f8a2ef6fe7ea14496a55093588a47ca043a9e3322bb9a7feaf332497c1a161",
+    "scripts/bert_negation_cue_v1.py": "7580c4041901a567f2693c8609b939984ed5632afa30ac297af0f463c4c5e204",
+    "scripts/build_bert_cue_context_cases.py": "0200e6ea541c71733e1bc70249bcf9ebcc50cd2351adfc04e5dc6419f8b4c9ba"
+  },
+  "tokenizer": {
+    "any_id": 2151,
+    "contexts": 6,
+    "pairs": 3,
+    "rows": 24,
+    "some_id": 2070
+  },
+  "versions": {
+    "numpy": "2.4.6",
+    "safetensors": "0.8.0",
+    "tokenizers": "0.22.2",
+    "torch": "2.8.0+cu128",
+    "transformers": "4.57.3"
+  }
+}

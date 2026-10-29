@@ -1,0 +1,74 @@
+{
+  "custody": {
+    "bidirectional_prefix_collisions": 0,
+    "case_rows": 24,
+    "comparison_sha256": "010d55e672b594ce02e7c99d7a565d5a0acd665d660b052390371bdc78000272",
+    "independent_selector_replay_sha256": "c2dcb34990c562530c01bc9ff6416c3ffba2b298e7a0d282a70fea9db70cef54",
+    "pairs_checked": 15360,
+    "pilot_comparison_sha256": "b741972e64b7ba23f23a2767ddaee4889a1b57790b6d6dd021724aec43e9eafd",
+    "pool_card_sha256": "f6e174110bcca104c9ec0cf3ba0abce986dbf7f7e5aadcbcda089418b6419563",
+    "public_pilot_rows": 640,
+    "selection_card_sha256": "05574d7c513716d946d70c67f190886a81b221cef0b17220c7f7b6135b411eca",
+    "selector_token_rows_recorded": 96
+  },
+  "limits": [
+    "Cooperative recorded process and custodian observations; no authenticated execution or whole-tree teardown.",
+    "Disk observations are sampled points and not reservations or proof against concurrent writes.",
+    "State and row hashes are model-authored observations; full model-state bytes were not retained.",
+    "Pilot cross-check compares saved public token IDs; it does not retokenize or access protected pool rows.",
+    "This is a process/custody check; scientific thresholds require the separate saved-logit replay."
+  ],
+  "outer_elapsed_seconds": 434.591255,
+  "outer_launch_free_bytes": {
+    "c": 1745305600,
+    "e": 384624975872
+  },
+  "outer_observation_sha256": "278a42e1377973ebd376899ddcec9e51358606d03c81ef4addf45d7e27568dd8",
+  "outer_operator_exit_code": 0,
+  "process": {
+    "artifact_hashes": {
+      "events_sha256": "30f1436905747ca42e08fb2c01a7125c07d005766cdf9c559b4b98de8095876e",
+      "logits_sha256": "c7adf5a795b4a585537363e182285aa79a35ff92c9bcb5db8e14fea9a92718d8",
+      "resources_sha256": "31ce9a53a7cb6840db873bb466357ab1fbe7f44f47fe2df9541b45f5592a3046",
+      "result_sha256": "aa4422ba4c3a01c285452392bab7e42a2b2a288f1e68ae96c959507f5cc83128"
+    },
+    "calls": 370,
+    "claim_sha256": "366d9f2bb37000d43777f09bf2dde8bb7c7049d7d060f857f577991e68489aa7",
+    "manifest_sha256": "09623ddf8716a1467cc35ef0469f7bb6d2119fdf574fd35aafe13f55e9fa669b",
+    "operator_exit_sha256": "a4ab4a47448ff373ab76673a055a9efe48656ae05aee05ea195ea5336c353b35",
+    "parent_disk": {
+      "output_free": 384624472064,
+      "source_free": 2565537792,
+      "source_margin_scope": "heuristic; not an OS reservation"
+    },
+    "phase_sha256": "1cd8e44c5294a2d0074d352f4280eaa365947d572cfd959ae29ab9fc12703a2b",
+    "resource_summary": {
+      "checked_calls": 370,
+      "checks": 740,
+      "min_output_free": 383425241088,
+      "min_source_free": 2260770816
+    },
+    "scope": "Saved cooperative process and resource observations; not independent execution, filesystem reservation, whole-tree teardown, or scientific replay.",
+    "scope_sha256": "33b3c71ed70ad398013d4ac162879a34ae018af688cbaf004371b7664d5cc091",
+    "source_revision": "b3c7e19a5349cd2fb76ef4908407342233c7e240",
+    "status": "recorded_process_consistent"
+  },
+  "restoration": {
+    "calls": 370,
+    "completed_arms": 29,
+    "events_sha256": "30f1436905747ca42e08fb2c01a7125c07d005766cdf9c559b4b98de8095876e",
+    "logits_sha256": "c7adf5a795b4a585537363e182285aa79a35ff92c9bcb5db8e14fea9a92718d8",
+    "phase_sha256": "1cd8e44c5294a2d0074d352f4280eaa365947d572cfd959ae29ab9fc12703a2b",
+    "restoration_probe_matches": 29,
+    "scope": "Saved state/row/buffer hashes and exact saved probe bytes; does not independently authenticate process execution or reconstruct unsaved model-state bytes.",
+    "status": "recorded_restoration_consistent"
+  },
+  "reviewer_source_sha256": {
+    "compile_flan_v2_custody_report.py": "59ed29567b6677b8dc8dabae4baad5476d7ec2d207fe0b3d83c9e1ad8b2af2e7",
+    "review_flan_v2_closed_process.py": "e1c7449b6ec8e612b3951f687be6dfbda9c0053c3672b5ca9f842f32726f1b2a",
+    "review_flan_v2_restoration_records.py": "92ba37235c06587540dd4cb2b323cc99269e504e9d600806bf6c14d7e662e9c3"
+  },
+  "schema": "independent-flan-v2-development-custody-audit-v1",
+  "scope_age_at_reported_launch_seconds": 14.218225,
+  "status": "recorded_consistency_passed"
+}

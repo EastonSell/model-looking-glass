@@ -1,0 +1,654 @@
+{
+  "baseline": {
+    "calibration-1-donor": {
+      "ids": [
+        2841,
+        1
+      ],
+      "label": "negative",
+      "margin": 5.608359094564718,
+      "supported": true
+    },
+    "calibration-1-target": {
+      "ids": [
+        1465,
+        1
+      ],
+      "label": "positive",
+      "margin": -5.974989970246632,
+      "supported": true
+    },
+    "calibration-2-donor": {
+      "ids": [
+        2841,
+        1
+      ],
+      "label": "negative",
+      "margin": 4.5902895854006545,
+      "supported": true
+    },
+    "calibration-2-target": {
+      "ids": [
+        1465,
+        1
+      ],
+      "label": "positive",
+      "margin": -5.133661159553242,
+      "supported": true
+    },
+    "discovery-1-donor": {
+      "ids": [
+        2841,
+        1
+      ],
+      "label": "negative",
+      "margin": 5.793167750804324,
+      "supported": true
+    },
+    "discovery-1-target": {
+      "ids": [
+        1465,
+        1
+      ],
+      "label": "positive",
+      "margin": -6.203600820798846,
+      "supported": true
+    },
+    "discovery-2-donor": {
+      "ids": [
+        2841,
+        1
+      ],
+      "label": "negative",
+      "margin": 4.650173815428111,
+      "supported": true
+    },
+    "discovery-2-target": {
+      "ids": [
+        1465,
+        1
+      ],
+      "label": "positive",
+      "margin": -5.5524662019605895,
+      "supported": true
+    }
+  },
+  "calibration_eligible": true,
+  "calls": 370,
+  "case_sha256": "a118dde671351d21c519b6a61957e9478c9501bac52d55aa34e8394772e933d5",
+  "controls": {
+    "broad": {
+      "choice": {
+        "dose": 2.0,
+        "effects": [
+          {
+            "margin_gain": 11.949985027952314,
+            "negative": true,
+            "target_gain": 5.9752736791265235
+          },
+          {
+            "margin_gain": 10.267327785657743,
+            "negative": true,
+            "target_gain": 5.133892608512651
+          }
+        ],
+        "matched": true,
+        "maximum_ratio": 0.5588027489606779
+      },
+      "points": [
+        {
+          "dose": 0.25,
+          "effects": [
+            {
+              "margin_gain": 1.493747711211658,
+              "negative": false,
+              "target_gain": 1.485032724332127
+            },
+            {
+              "margin_gain": 1.2834172249008102,
+              "negative": false,
+              "target_gain": 1.2682469591768422
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 8.710435381983384
+        },
+        {
+          "dose": 0.5,
+          "effects": [
+            {
+              "margin_gain": 2.9874949455944084,
+              "negative": false,
+              "target_gain": 2.940862252786767
+            },
+            {
+              "margin_gain": 2.566833019292047,
+              "negative": false,
+              "target_gain": 2.4987520830277954
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 7.420871175617063
+        },
+        {
+          "dose": 0.75,
+          "effects": [
+            {
+              "margin_gain": 4.481243491289753,
+              "negative": false,
+              "target_gain": 4.281276349295547
+            },
+            {
+              "margin_gain": 3.850246906336462,
+              "negative": false,
+              "target_gain": 3.611590204826521
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 6.131305837183854
+        },
+        {
+          "dose": 1.0,
+          "effects": [
+            {
+              "margin_gain": 5.97499227541679,
+              "negative": false,
+              "target_gain": 5.2845240836981855
+            },
+            {
+              "margin_gain": 5.133664131242542,
+              "negative": false,
+              "target_gain": 4.446508798310329
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 4.841740292910614
+        },
+        {
+          "dose": 1.25,
+          "effects": [
+            {
+              "margin_gain": 7.4687380793281015,
+              "negative": true,
+              "target_gain": 5.775203701922647
+            },
+            {
+              "margin_gain": 6.417079210382475,
+              "negative": true,
+              "target_gain": 4.895137832019005
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 3.5521773214819885
+        },
+        {
+          "dose": 1.5,
+          "effects": [
+            {
+              "margin_gain": 8.962489605306066,
+              "negative": true,
+              "target_gain": 5.928615270496534
+            },
+            {
+              "margin_gain": 7.700497150545585,
+              "negative": true,
+              "target_gain": 5.065781551614883
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 2.2626094101464145
+        },
+        {
+          "dose": 2.0,
+          "effects": [
+            {
+              "margin_gain": 11.949985027952314,
+              "negative": true,
+              "target_gain": 5.9752736791265235
+            },
+            {
+              "margin_gain": 10.267327785657743,
+              "negative": true,
+              "target_gain": 5.133892608512651
+            }
+          ],
+          "matched": true,
+          "maximum_ratio": 0.5588027489606779
+        },
+        {
+          "dose": 3.0,
+          "effects": [
+            {
+              "margin_gain": 17.92497873486027,
+              "negative": true,
+              "target_gain": 5.977806230908059
+            },
+            {
+              "margin_gain": 15.400990486274528,
+              "negative": true,
+              "target_gain": 5.139736821591404
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 5.8382028973837095
+        },
+        {
+          "dose": 4.0,
+          "effects": [
+            {
+              "margin_gain": 23.899967675105547,
+              "negative": true,
+              "target_gain": 5.977812674598846
+            },
+            {
+              "margin_gain": 20.53465461673063,
+              "negative": true,
+              "target_gain": 5.1397713710893935
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 11.117604516237181
+        }
+      ]
+    },
+    "opposite": {
+      "choice": {
+        "dose": 4.0,
+        "effects": [
+          {
+            "margin_gain": 0.8917725460685927,
+            "negative": false,
+            "target_gain": 0.8880356183893038
+          },
+          {
+            "margin_gain": 0.9725611608761477,
+            "negative": false,
+            "target_gain": 0.9629210786089644
+          }
+        ],
+        "matched": false,
+        "maximum_ratio": 9.23012546623698
+      },
+      "points": [
+        {
+          "dose": 0.25,
+          "effects": [
+            {
+              "margin_gain": -0.03314889367831925,
+              "negative": false,
+              "target_gain": -0.03307518791405887
+            },
+            {
+              "margin_gain": -0.07484706256118577,
+              "negative": false,
+              "target_gain": -0.07442488787106917
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 10.14511146181166
+        },
+        {
+          "dose": 0.5,
+          "effects": [
+            {
+              "margin_gain": -0.0033766378836029417,
+              "negative": false,
+              "target_gain": -0.0033845191222707295
+            },
+            {
+              "margin_gain": -0.08917362520492425,
+              "negative": false,
+              "target_gain": -0.08867437853797669
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 10.172894700455279
+        },
+        {
+          "dose": 0.75,
+          "effects": [
+            {
+              "margin_gain": 0.047693304815648235,
+              "negative": false,
+              "target_gain": 0.04754300339787343
+            },
+            {
+              "margin_gain": -0.07134028922672227,
+              "negative": false,
+              "target_gain": -0.07093937541548084
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 10.138315511934389
+        },
+        {
+          "dose": 1.0,
+          "effects": [
+            {
+              "margin_gain": 0.10138692468911044,
+              "negative": false,
+              "target_gain": 0.10107703379996369
+            },
+            {
+              "margin_gain": -0.034979105197038826,
+              "negative": false,
+              "target_gain": -0.03478383215466324
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 10.067820494941406
+        },
+        {
+          "dose": 1.25,
+          "effects": [
+            {
+              "margin_gain": 0.1504344824121864,
+              "negative": false,
+              "target_gain": 0.14996956708426942
+            },
+            {
+              "margin_gain": 0.010261495428543599,
+              "negative": false,
+              "target_gain": 0.010190454430302937
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 9.98944719518055
+        },
+        {
+          "dose": 1.5,
+          "effects": [
+            {
+              "margin_gain": 0.1946945912139617,
+              "negative": false,
+              "target_gain": 0.19408330739885188
+            },
+            {
+              "margin_gain": 0.061320934268966544,
+              "negative": false,
+              "target_gain": 0.06093535961723335
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 9.936938250843374
+        },
+        {
+          "dose": 2.0,
+          "effects": [
+            {
+              "margin_gain": 0.28349491461740045,
+              "negative": false,
+              "target_gain": 0.2825791690617982
+            },
+            {
+              "margin_gain": 0.18778396289311372,
+              "negative": false,
+              "target_gain": 0.18655205204002737
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 9.806885115095259
+        },
+        {
+          "dose": 3.0,
+          "effects": [
+            {
+              "margin_gain": 0.5443401606586428,
+              "negative": false,
+              "target_gain": 0.5424141570656072
+            },
+            {
+              "margin_gain": 0.5576229661782187,
+              "negative": false,
+              "target_gain": 0.5532263586792763
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 9.53006668657489
+        },
+        {
+          "dose": 4.0,
+          "effects": [
+            {
+              "margin_gain": 0.8917725460685927,
+              "negative": false,
+              "target_gain": 0.8880356183893038
+            },
+            {
+              "margin_gain": 0.9725611608761477,
+              "negative": false,
+              "target_gain": 0.9629210786089644
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 9.23012546623698
+        }
+      ]
+    },
+    "random": {
+      "choice": {
+        "dose": 4.0,
+        "effects": [
+          {
+            "margin_gain": 3.971055750286567,
+            "negative": false,
+            "target_gain": 3.847037153039399
+          },
+          {
+            "margin_gain": 3.8133188952222397,
+            "negative": false,
+            "target_gain": 3.582387444151481
+          }
+        ],
+        "matched": false,
+        "maximum_ratio": 6.571755087351983
+      },
+      "points": [
+        {
+          "dose": 0.25,
+          "effects": [
+            {
+              "margin_gain": 0.017450603743253815,
+              "negative": false,
+              "target_gain": 0.017398827999382367
+            },
+            {
+              "margin_gain": -0.05975210081644462,
+              "negative": false,
+              "target_gain": -0.05942559071243732
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 10.115866272479197
+        },
+        {
+          "dose": 0.5,
+          "effects": [
+            {
+              "margin_gain": 0.05269223733801419,
+              "negative": false,
+              "target_gain": 0.05253816041270777
+            },
+            {
+              "margin_gain": -0.08679981073090746,
+              "negative": false,
+              "target_gain": -0.08634025496261741
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 10.168343694820493
+        },
+        {
+          "dose": 0.75,
+          "effects": [
+            {
+              "margin_gain": 0.10104129049627081,
+              "negative": false,
+              "target_gain": 0.10074618637785944
+            },
+            {
+              "margin_gain": -0.10104738510953709,
+              "negative": false,
+              "target_gain": -0.10052923941842054
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 10.196008960229713
+        },
+        {
+          "dose": 1.0,
+          "effects": [
+            {
+              "margin_gain": 0.16598594669743713,
+              "negative": false,
+              "target_gain": 0.16549708085252157
+            },
+            {
+              "margin_gain": -0.11654257378772022,
+              "negative": false,
+              "target_gain": -0.11596294943919289
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 10.226101155009653
+        },
+        {
+          "dose": 1.25,
+          "effects": [
+            {
+              "margin_gain": 0.2574663503327192,
+              "negative": false,
+              "target_gain": 0.2566886016931955
+            },
+            {
+              "margin_gain": -0.12745772008575962,
+              "negative": false,
+              "target_gain": -0.12683805520787053
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 10.247305117025466
+        },
+        {
+          "dose": 1.5,
+          "effects": [
+            {
+              "margin_gain": 0.40240198080839684,
+              "negative": false,
+              "target_gain": 0.40111319931198286
+            },
+            {
+              "margin_gain": -0.10023661074367561,
+              "negative": false,
+              "target_gain": -0.09976628337090725
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 10.194521370922967
+        },
+        {
+          "dose": 2.0,
+          "effects": [
+            {
+              "margin_gain": 0.9884112600903385,
+              "negative": false,
+              "target_gain": 0.9841134758866769
+            },
+            {
+              "margin_gain": 0.28020449908396255,
+              "negative": false,
+              "target_gain": 0.2782406405263523
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 9.7118408901553
+        },
+        {
+          "dose": 3.0,
+          "effects": [
+            {
+              "margin_gain": 2.814863937123464,
+              "negative": false,
+              "target_gain": 2.7758221266139396
+            },
+            {
+              "margin_gain": 2.381518721326316,
+              "negative": false,
+              "target_gain": 2.325530158129234
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 7.56990493735992
+        },
+        {
+          "dose": 4.0,
+          "effects": [
+            {
+              "margin_gain": 3.971055750286567,
+              "negative": false,
+              "target_gain": 3.847037153039399
+            },
+            {
+              "margin_gain": 3.8133188952222397,
+              "negative": false,
+              "target_gain": 3.582387444151481
+            }
+          ],
+          "matched": false,
+          "maximum_ratio": 6.571755087351983
+        }
+      ]
+    }
+  },
+  "events_sha256": "30f1436905747ca42e08fb2c01a7125c07d005766cdf9c559b4b98de8095876e",
+  "exit_sha256": "a4ab4a47448ff373ab76673a055a9efe48656ae05aee05ea195ea5336c353b35",
+  "logits_sha256": "c7adf5a795b4a585537363e182285aa79a35ff92c9bcb5db8e14fea9a92718d8",
+  "outcomes_replayed": 68,
+  "phase_sha256": "1cd8e44c5294a2d0074d352f4280eaa365947d572cfd959ae29ab9fc12703a2b",
+  "primary_calibration_effects": [
+    {
+      "margin_gain": 11.58334906481135,
+      "negative": true,
+      "target_gain": 5.973715333534461
+    },
+    {
+      "margin_gain": 9.723950744953896,
+      "negative": true,
+      "target_gain": 5.128808361648607
+    }
+  ],
+  "recorded_restorations": 29,
+  "result_sha256": "aa4422ba4c3a01c285452392bab7e42a2b2a288f1e68ae96c959507f5cc83128",
+  "same_polarity_effects": [
+    {
+      "margin_gain": -0.21921179345344313,
+      "negative": false,
+      "target_gain": -0.21890435734035185
+    },
+    {
+      "margin_gain": -0.33139857497317915,
+      "negative": false,
+      "target_gain": -0.3300298793409401
+    }
+  ],
+  "schema": "flan-v2-independent-development-science-review-v1",
+  "scope": "closed saved bytes and self-reported process/state; no proof of execution, physical restoration, custody or chronology; no evaluation or locality evidence",
+  "substitution": {
+    "calibration-1": {
+      "identical_generated_ids": true,
+      "matched_prefix_spans": 4
+    },
+    "calibration-2": {
+      "identical_generated_ids": true,
+      "matched_prefix_spans": 4
+    },
+    "discovery-1": {
+      "identical_generated_ids": true,
+      "matched_prefix_spans": 4
+    },
+    "discovery-2": {
+      "identical_generated_ids": true,
+      "matched_prefix_spans": 4
+    }
+  }
+}

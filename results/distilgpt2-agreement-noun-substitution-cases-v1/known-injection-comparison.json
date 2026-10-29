@@ -1,0 +1,10 @@
+{
+  "bidirectional_pairs": 23328,
+  "case_sha256": "f1e1043fc302e701b1224248122efc7f79938665ce12cd48ebb7dd713b353789",
+  "conflicts": 0,
+  "pending_sequences": 486,
+  "pending_sha256": "94910e59415936a09c18f81478e0eaffb790c9b69d0962ab3f6b70947fbe1dfe",
+  "proposed_sequences": 48,
+  "schema": "known-injection-pending-public-comparison-v1",
+  "scope": "tokenizer-only pending bundle; no protected split or execution attestation"
+}
