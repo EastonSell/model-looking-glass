@@ -33,6 +33,9 @@ from .trusted_service_profile import (FORWARD_CASE_SHA256, JOB_COMMITMENT,
     resolve_trusted_service_profiles)
 
 
+TRUSTED_SERVICE_COLLECTOR_CONTRACT = 'two-token-worker-profile-v1'
+
+
 class CollectorError(RuntimeError):
     """A sample, evidence record or worker result did not meet the protocol."""
 
