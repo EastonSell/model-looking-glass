@@ -46,7 +46,9 @@ for ineligibility, **before any patch forward**. A head is eligible only when
 every one of its target pairs passes the fixed rule. If fewer than two heads
 are eligible, record an explicit `DoseIneligible` terminal and stop without
 patching; the saved-byte reader checks the clean-prefix plan before reporting
-`dose_ineligible` with no candidate or ranking. No head is
+`dose_ineligible` with no new ranking. An ineligible development has no selected
+heads; an ineligible evaluation retains the already frozen candidate and
+comparator identities without an evaluation decision. No head is
 substituted, no dose is changed, and no target is dropped based on outcome.
 Apply one self control per eligible head; execute all opposite and
 same donor patches for each eligible head and all eight fixed development

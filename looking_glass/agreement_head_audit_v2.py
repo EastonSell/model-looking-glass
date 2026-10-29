@@ -247,7 +247,8 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
             raise ValueError("dose-ineligible terminal or saved prefix differs")
         _rounding_probe()
         return {"phase": phase, "outcome": "dose_ineligible", "forward_count": ordinal,
-                "dose_plan": expected_plan, "candidate": None, "comparator": None,
+                "dose_plan": expected_plan, "candidate": heads[0] if phase == "evaluation" else None,
+                "comparator": heads[1] if phase == "evaluation" else None,
                 "ranking": None, "details": [], "evaluation": None,
                 "retained_tensor_bytes": sum(unique.values()),
                 "expected_layout": {"width": expected_width, "heads": expected_nheads, "vocab": expected_vocab},

@@ -210,11 +210,18 @@ def test_evaluation_ineligible_head_stops_before_all_patches_and_replays(tmp_pat
               "expected_width": 16, "expected_nheads": 2, "expected_vocab": 64}
     replay = audit(tmp_path / "ineligible", rows, **kwargs)
     assert replay["outcome"] == "dose_ineligible" and replay["forward_count"] == 16
-    assert replay["candidate"] is None and replay["ranking"] is None
+    assert (replay["candidate"], replay["comparator"]) == (0, 1)
+    assert replay["ranking"] is None and replay["evaluation"] is None
     terminal["detail"]["completed_forwards"] = 16.0
     terminal_path.write_bytes(json.dumps(terminal).encode())
     with pytest.raises(ValueError, match="not a bounded complete candidate"):
         audit(tmp_path / "ineligible", rows, **kwargs)
+    with pytest.raises(study.DoseIneligible):
+        run_development(model, rows, tmp_path / "dev-ineligible", heads=(0, 1),
+                        present_ids=(1, 2), secondary_ids=None, metadata={"fixture": True})
+    dev = audit(tmp_path / "dev-ineligible", rows, **{**kwargs, "phase": "development"})
+    assert dev["outcome"] == "dose_ineligible"
+    assert dev["candidate"] is None and dev["comparator"] is None and dev["ranking"] is None
     terminal["detail"]["completed_forwards"] = 16
     terminal["detail"]["error_type"] = "ValueError"
     terminal_path.write_bytes(json.dumps(terminal).encode())
