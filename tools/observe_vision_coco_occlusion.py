@@ -29,13 +29,26 @@ def digest(path):
 
 def cache_environment(temporary):
     temporary = Path(temporary)
-    return {'TEMP': str(temporary), 'TMP': str(temporary),
+    return {'TEMP': str(temporary), 'TMP': str(temporary), 'TMPDIR': str(temporary),
             'HF_HOME': str(temporary / 'huggingface'),
             'HF_HUB_CACHE': str(temporary / 'huggingface' / 'hub'),
+            'HUGGINGFACE_HUB_CACHE': str(temporary / 'huggingface' / 'hub'),
+            'HF_ASSETS_CACHE': str(temporary / 'huggingface' / 'assets'),
+            'HF_MODULES_CACHE': str(temporary / 'huggingface' / 'modules'),
+            'HF_DATASETS_CACHE': str(temporary / 'huggingface' / 'datasets'),
             'XDG_CACHE_HOME': str(temporary / 'xdg'), 'TORCH_HOME': str(temporary / 'torch'),
             'TORCHINDUCTOR_CACHE_DIR': str(temporary / 'torchinductor'),
-            'TRITON_CACHE_DIR': str(temporary / 'triton'),
+            'TRITON_CACHE_DIR': str(temporary / 'triton'), 'TORCH_EXTENSIONS_DIR': str(temporary / 'extensions'),
             'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1'}
+
+
+def child_environment(inherited, temporary):
+    env = dict(inherited)
+    for name in ('TRANSFORMERS_CACHE', 'PYTORCH_TRANSFORMERS_CACHE', 'PYTORCH_PRETRAINED_BERT_CACHE'):
+        env.pop(name, None)
+    env.update(cache_environment(temporary), CUDA_VISIBLE_DEVICES='', OMP_NUM_THREADS='1',
+               MKL_NUM_THREADS='1', MKL_CBWR='COMPATIBLE')
+    return env
 
 
 def claim_phase(custody, mode, revision):
@@ -154,8 +167,7 @@ def main():
         command += ['--screen-data', str(args.screen_data)]
     if args.discovery_archive is not None:
         command += ['--discovery-archive', str(args.discovery_archive)]
-    env = dict(os.environ, **cache_environment(temporary), CUDA_VISIBLE_DEVICES='',
-               OMP_NUM_THREADS='1', MKL_NUM_THREADS='1', MKL_CBWR='COMPATIBLE')
+    env = child_environment(os.environ, temporary)
     started = time.monotonic()
     with (args.outer / 'stdout.txt').open('xb') as stdout, (args.outer / 'stderr.txt').open('xb') as stderr:
         claim_phase(args.custody, args.mode, args.revision)

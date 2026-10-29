@@ -10,7 +10,9 @@ study. Evidence, observer logs, temporary files, Python bytecode prefix and
 explicit Hugging Face, XDG, Torch, TorchInductor and Triton cache directories
 are placed on E:. Network model downloads remain disabled. The CPU-only owner
 requires the output and these cache/temporary paths to be on the same volume,
-separate from the source volume. It checks at least 1.5 GiB free on the source
+separate from the source volume. `TEMP`, `TMP` and `TMPDIR` are all set to the
+E: temporary directory, and deprecated inherited Transformers cache overrides
+are removed. It checks at least 1.5 GiB free on the source
 volume and 1 GiB on the output volume immediately before a phase; before each
 model forward it stops if either volume has fallen below 1 GiB. This replaces
 the original owner's 2 GiB source-volume prephase check, without changing a

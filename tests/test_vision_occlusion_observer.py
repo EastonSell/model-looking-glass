@@ -22,15 +22,19 @@ def test_preflight_does_not_consume_a_one_shot_phase_claim(tmp_path):
 
 
 def test_model_and_hub_caches_are_placed_with_phase_temporary_files(tmp_path):
-    from tools.observe_vision_coco_occlusion import cache_environment
+    from tools.observe_vision_coco_occlusion import cache_environment, child_environment
 
     env = cache_environment(tmp_path)
-    assert env['TEMP'] == env['TMP'] == str(tmp_path)
+    assert env['TEMP'] == env['TMP'] == env['TMPDIR'] == str(tmp_path)
     for name in ('HF_HOME', 'HF_HUB_CACHE', 'XDG_CACHE_HOME', 'TORCH_HOME',
-                 'TORCHINDUCTOR_CACHE_DIR', 'TRITON_CACHE_DIR'):
+                 'TORCHINDUCTOR_CACHE_DIR', 'TRITON_CACHE_DIR', 'HF_ASSETS_CACHE',
+                 'HF_MODULES_CACHE', 'HF_DATASETS_CACHE', 'HUGGINGFACE_HUB_CACHE', 'TORCH_EXTENSIONS_DIR'):
         assert Path(env[name]).is_relative_to(tmp_path)
     assert env['HF_HUB_OFFLINE'] == env['TRANSFORMERS_OFFLINE'] == '1'
     assert 'HOME' not in env and 'USERPROFILE' not in env
+    child = child_environment({'TRANSFORMERS_CACHE': 'C:/legacy',
+                               'PYTORCH_TRANSFORMERS_CACHE': 'C:/legacy'}, tmp_path)
+    assert 'TRANSFORMERS_CACHE' not in child and 'PYTORCH_TRANSFORMERS_CACHE' not in child
 
 
 def test_owner_rejects_caches_or_bytecode_on_source_volume(tmp_path):
@@ -48,6 +52,10 @@ def test_owner_rejects_caches_or_bytecode_on_source_volume(tmp_path):
         validate_cache_placement(tmp_path / 'run', prefix, source, {**env, 'TORCH_HOME': str(source / 'torch')})
     with pytest.raises(ValueError, match='cache volume'):
         validate_cache_placement(tmp_path / 'run', source / 'bytecode', source, env)
+    with pytest.raises(ValueError, match='cache volume'):
+        validate_cache_placement(tmp_path / 'run', prefix, source, {**env, 'TMPDIR': str(source)})
+    with pytest.raises(ValueError, match='cache volume'):
+        validate_cache_placement(tmp_path / 'run', prefix, source, {**env, 'TRANSFORMERS_CACHE': str(source)})
 
 
 def test_supervisor_waits_for_real_direct_process_and_reports_failure(tmp_path):

@@ -317,13 +317,17 @@ def verify_public_discovery(freeze_raw, index_raw, observer_raw, readback_raw, a
 def validate_cache_placement(output, bytecode_prefix, source_root, environment):
     try:
         temporary = Path(environment['TEMP']).resolve(strict=True)
-        cache_names = ('HF_HOME', 'HF_HUB_CACHE', 'XDG_CACHE_HOME', 'TORCH_HOME',
-                       'TORCHINDUCTOR_CACHE_DIR', 'TRITON_CACHE_DIR')
-        if (Path(environment['TMP']).resolve() != temporary or not temporary.is_dir() or
+        cache_names = ('HF_HOME', 'HF_HUB_CACHE', 'HUGGINGFACE_HUB_CACHE', 'HF_ASSETS_CACHE',
+                       'HF_MODULES_CACHE', 'HF_DATASETS_CACHE', 'XDG_CACHE_HOME', 'TORCH_HOME',
+                       'TORCHINDUCTOR_CACHE_DIR', 'TRITON_CACHE_DIR', 'TORCH_EXTENSIONS_DIR')
+        if (Path(environment['TMP']).resolve() != temporary or Path(environment['TMPDIR']).resolve() != temporary or
+                not temporary.is_dir() or
                 temporary.drive.casefold() != output.drive.casefold() or
                 temporary.drive.casefold() == source_root.drive.casefold() or
                 Path(bytecode_prefix).resolve().drive.casefold() != temporary.drive.casefold() or
                 any(not Path(environment[name]).resolve().is_relative_to(temporary) for name in cache_names) or
+                any(environment.get(name) is not None for name in
+                    ('TRANSFORMERS_CACHE', 'PYTORCH_TRANSFORMERS_CACHE', 'PYTORCH_PRETRAINED_BERT_CACHE')) or
                 environment.get('HF_HUB_OFFLINE') != '1' or environment.get('TRANSFORMERS_OFFLINE') != '1'):
             raise ValueError('temporary, bytecode or model cache volume differs')
     except (KeyError, TypeError, OSError) as error:
