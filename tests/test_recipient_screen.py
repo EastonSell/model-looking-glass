@@ -34,6 +34,7 @@ def test_behavior_gate_requires_bidirectional_success_and_reports_all_cells():
     assert result['gate_passed'] is True
     assert result['both_positive_pairs'] == 32
     assert result['template_both_positive'] == [16, 16]
+    assert result['order_both_positive'] == [16, 16]
     assert result['name_pairs_meeting_requirement'] == 8
     # Fail one direction in every template-0 pair: 48/64 individual margins
     # remain positive, but only one template supports paired behavior.
@@ -43,6 +44,7 @@ def test_behavior_gate_requires_bidirectional_success_and_reports_all_cells():
     result = screen.summarize(cases, margins)
     assert result['positive_cases'] == 48
     assert result['both_positive_pairs'] == 16
+    assert result['order_both_positive'] == [8, 8]
     assert result['gate_passed'] is False
     margins[cases[0]['case_id']] = 0.0
     assert screen.summarize(cases, margins)['gate_passed'] is False

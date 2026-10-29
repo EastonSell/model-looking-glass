@@ -83,11 +83,13 @@ def summarize(cases, margins):
         raise ValueError('incomplete matched pairs')
     paired = {key: all(value > 0 for value in values) for key, values in groups.items()}
     by_template = [sum(paired[(p, t, o)] for p in range(8) for o in (0, 1)) for t in (0, 1)]
+    by_order = [sum(paired[(p, t, o)] for p in range(8) for t in (0, 1)) for o in (0, 1)]
     by_name_pair = [sum(paired[(p, t, o)] for t in (0, 1) for o in (0, 1)) for p in range(8)]
     both_positive = sum(paired.values())
     sufficient_names = sum(x >= 3 for x in by_name_pair)
     return {'positive_cases': sum(value > 0 for value in margins.values()),
             'both_positive_pairs': both_positive, 'template_both_positive': by_template,
+            'order_both_positive': by_order,
             'name_pair_both_positive': by_name_pair,
             'name_pairs_meeting_requirement': sufficient_names,
             'mean_margin': math.fsum(margins[c['case_id']] for c in cases) / 64,
