@@ -21,17 +21,7 @@ class EffectCase:
 def evaluate_effects(cases, *, zero_tolerance=0.0, bootstrap_samples=2000,
                      confidence=0.95, seed=0, prediction_interval_level=None):
     """Evaluate scalar effect predictions against observations and a zero null."""
-    if (isinstance(bootstrap_samples, bool) or not isinstance(bootstrap_samples, int)
-            or bootstrap_samples < 0 or bootstrap_samples == 1):
-        raise ValueError('bootstrap_samples must be zero or an integer of at least two')
-    if isinstance(seed, bool) or not isinstance(seed, int):
-        raise ValueError('seed must be an integer')
-    confidence = _finite_float(confidence, 'confidence')
-    zero_tolerance = _finite_float(zero_tolerance, 'zero_tolerance')
-    if not 0 < confidence < 1:
-        raise ValueError('confidence must be strictly between zero and one')
-    if zero_tolerance < 0:
-        raise ValueError('zero_tolerance must be nonnegative')
+    zero_tolerance, confidence = _validate_settings(zero_tolerance, bootstrap_samples, confidence, seed)
     cases = _validate_cases(cases)
     n = len(cases)
     if bootstrap_samples and n < 2:
@@ -44,16 +34,88 @@ def evaluate_effects(cases, *, zero_tolerance=0.0, bootstrap_samples=2000,
         if not 0 < prediction_interval_level < 1:
             raise ValueError('prediction_interval_level must be strictly between zero and one')
     eligible = sum(abs(case.observed) > zero_tolerance for case in cases)
-    point = _point_metrics(cases, zero_tolerance, prediction_interval_level)
+    terms = {case.case_id: _loss_terms(case.predicted, 0.0, case.observed) for case in cases}
+    point = _point_metrics(cases, zero_tolerance, prediction_interval_level, terms)
+    bootstrap = _bootstrap(cases, point,
+                           lambda sample: _point_metrics(sample, zero_tolerance, prediction_interval_level, terms),
+                           {'sign_accuracy', 'null_sign_accuracy', 'sign_accuracy_improvement_over_null'},
+                           eligible, bootstrap_samples, confidence, seed)
+    return {
+        'n_cases': n,
+        'zero_tolerance': zero_tolerance,
+        'prediction_interval_level': prediction_interval_level,
+        'directional_cases': {'included': eligible, 'excluded': n - eligible},
+        'point': point,
+        'bootstrap': bootstrap,
+        'case_errors': [{'case_id': case.case_id,
+                         'absolute_error': abs(case.predicted - case.observed),
+                         'null_absolute_error': abs(case.observed)} for case in cases],
+    }
+
+
+def compare_effects(candidate_cases, baseline_cases, *, zero_tolerance=0.0,
+                    bootstrap_samples=0, confidence=0.95, seed=0):
+    """Compare two predictors against exactly the same held-out observations."""
+    zero_tolerance, confidence = _validate_settings(zero_tolerance, bootstrap_samples, confidence, seed)
+    try:
+        original_candidate = list(candidate_cases)
+        original_baseline = list(baseline_cases)
+    except TypeError:
+        raise ValueError('cases must be an iterable of EffectCase records') from None
+    candidate = _validate_cases(original_candidate)
+    baseline = _validate_cases(original_baseline)
+    if candidate[0].interval_low is not None or baseline[0].interval_low is not None:
+        raise ValueError('compare_effects does not evaluate prediction intervals')
+    candidate_targets = {case.case_id: case.observed for case in original_candidate}
+    baseline_targets = {case.case_id: case.observed for case in original_baseline}
+    if candidate_targets != baseline_targets:
+        raise ValueError('candidate and baseline must have identical case IDs and observations')
+    pairs = list(zip(candidate, baseline))
+    n = len(pairs)
+    if bootstrap_samples and n < 2:
+        raise ValueError('at least two independent cases are required for bootstrap')
+    eligible = sum(abs(case.observed) > zero_tolerance for case in candidate)
+    terms = {a.case_id: _loss_terms(a.predicted, b.predicted, a.observed) for a, b in pairs}
+    point = _comparison_metrics(pairs, zero_tolerance, terms)
+    bootstrap = _bootstrap(pairs, point, lambda sample: _comparison_metrics(sample, zero_tolerance, terms),
+                           {'candidate_sign_accuracy', 'baseline_sign_accuracy', 'sign_accuracy_improvement'},
+                           eligible, bootstrap_samples, confidence, seed)
+    return {
+        'n_cases': n,
+        'zero_tolerance': zero_tolerance,
+        'directional_cases': {'included': eligible, 'excluded': n - eligible},
+        'point': point,
+        'bootstrap': bootstrap,
+        'case_errors': [{'case_id': a.case_id,
+                         'candidate_absolute_error': abs(a.predicted - a.observed),
+                         'baseline_absolute_error': abs(b.predicted - b.observed)} for a, b in pairs],
+    }
+
+
+def _validate_settings(zero_tolerance, bootstrap_samples, confidence, seed):
+    if (isinstance(bootstrap_samples, bool) or not isinstance(bootstrap_samples, int)
+            or bootstrap_samples < 0 or bootstrap_samples == 1):
+        raise ValueError('bootstrap_samples must be zero or an integer of at least two')
+    if isinstance(seed, bool) or not isinstance(seed, int):
+        raise ValueError('seed must be an integer')
+    confidence = _finite_float(confidence, 'confidence')
+    zero_tolerance = _finite_float(zero_tolerance, 'zero_tolerance')
+    if not 0 < confidence < 1:
+        raise ValueError('confidence must be strictly between zero and one')
+    if zero_tolerance < 0:
+        raise ValueError('zero_tolerance must be nonnegative')
+    return zero_tolerance, confidence
+
+
+def _bootstrap(cases, point, metric_fn, directional_metrics, eligible, bootstrap_samples, confidence, seed):
+    n = len(cases)
     rng = random.Random(seed)
-    replicates = [_point_metrics([cases[rng.randrange(n)] for _ in range(n)], zero_tolerance,
-                                  prediction_interval_level)
+    replicates = [metric_fn([cases[rng.randrange(n)] for _ in range(n)])
                   for _ in range(bootstrap_samples)]
     tail = (1 - confidence) / 2
     intervals = {}
     defined_samples = {}
     undefined_samples = {}
-    directional_metrics = {'sign_accuracy', 'null_sign_accuracy', 'sign_accuracy_improvement_over_null'}
     for metric in point:
         ordered = sorted(replicate[metric] for replicate in replicates if replicate[metric] is not None)
         defined_samples[metric] = len(ordered)
@@ -64,20 +126,10 @@ def evaluate_effects(cases, *, zero_tolerance=0.0, bootstrap_samples=2000,
         else:
             intervals[metric] = {'low': _percentile(ordered, tail),
                                  'high': _percentile(ordered, 1 - tail)}
-    return {
-        'n_cases': n,
-        'zero_tolerance': zero_tolerance,
-        'prediction_interval_level': prediction_interval_level,
-        'directional_cases': {'included': eligible, 'excluded': n - eligible},
-        'point': point,
-        'bootstrap': {'unit': 'independent_case', 'method': 'percentile' if bootstrap_samples else 'none',
-                      'samples': bootstrap_samples, 'confidence': confidence,
-                      'seed': seed, 'intervals': intervals,
-                      'defined_samples': defined_samples, 'undefined_samples': undefined_samples},
-        'case_errors': [{'case_id': case.case_id,
-                         'absolute_error': abs(case.predicted - case.observed),
-                         'null_absolute_error': abs(case.observed)} for case in cases],
-    }
+    return {'unit': 'independent_case', 'method': 'percentile' if bootstrap_samples else 'none',
+            'samples': bootstrap_samples, 'confidence': confidence,
+            'seed': seed, 'intervals': intervals,
+            'defined_samples': defined_samples, 'undefined_samples': undefined_samples}
 
 
 def _percentile(ordered, p):
@@ -102,6 +154,8 @@ def _finite_float(value, name):
         raise ValueError(f'{name} must be a finite real number') from None
     if not math.isfinite(result):
         raise ValueError(f'{name} must be a finite real number')
+    if result != value:
+        raise ValueError(f'{name}: value is not exactly representable as a float')
     return result
 
 
@@ -149,15 +203,6 @@ def _mean(values):
     return largest * (math.fsum(value / largest for value in values) / len(values))
 
 
-def _signed_mean(values):
-    try:
-        return math.fsum(values) / len(values)
-    except OverflowError:
-        # A finite mean can have a sum outside float range; preserve cancellation.
-        total = sum((Fraction.from_float(value) for value in values), Fraction())
-        return float(total / len(values))
-
-
 def _root_mean_square(values):
     largest = max(values)
     if largest == 0:
@@ -165,34 +210,66 @@ def _root_mean_square(values):
     return largest * math.sqrt(_mean([(value / largest) ** 2 for value in values]))
 
 
-def _rmse_improvement(null_errors, errors):
-    # Use the factored difference of squares instead of subtracting rounded RMSEs.
-    scale = max(max(null_errors), max(errors))
+def _loss_terms(candidate, baseline, observed):
+    # Exact real arithmetic on the supplied float values preserves small paired effects.
+    target = Fraction.from_float(observed)
+    candidate_error = abs(target - Fraction.from_float(candidate))
+    baseline_error = abs(target - Fraction.from_float(baseline))
+    difference = baseline_error - candidate_error
+    return difference, difference * (baseline_error + candidate_error)
+
+
+def _paired_loss_improvements(case_ids, terms, baseline_errors, errors):
+    n = len(case_ids)
+    mae = float(sum((terms[case_id][0] for case_id in case_ids), Fraction()) / n)
+    squared_difference = sum((terms[case_id][1] for case_id in case_ids), Fraction()) / n
+    scale = max(max(baseline_errors), max(errors))
     if scale == 0:
-        return 0.0
-    baseline = _root_mean_square([value / scale for value in null_errors])
+        return mae, 0.0
+    baseline = _root_mean_square([value / scale for value in baseline_errors])
     candidate = _root_mean_square([value / scale for value in errors])
-    differences = [((a - b) / scale) * (a / scale + b / scale)
-                   for a, b in zip(null_errors, errors)]
-    return scale * (_signed_mean(differences) / (baseline + candidate))
+    denominator = Fraction.from_float(scale) * Fraction.from_float(baseline + candidate)
+    return mae, float(squared_difference / denominator)
 
 
-def _point_metrics(cases, zero_tolerance, prediction_interval_level):
+def _direction_accuracy(cases, zero_tolerance):
 
     def sign(value):
         return 1 if value > zero_tolerance else -1 if value < -zero_tolerance else 0
 
+    directional = [case for case in cases if abs(case.observed) > zero_tolerance]
+    return (sum(sign(c.predicted) == sign(c.observed) for c in directional) / len(directional)
+            if directional else None)
+
+
+def _comparison_metrics(pairs, zero_tolerance, terms):
+    candidate_cases = [candidate for candidate, _ in pairs]
+    baseline_cases = [baseline for _, baseline in pairs]
+    candidate_errors = [abs(c.predicted - c.observed) for c in candidate_cases]
+    baseline_errors = [abs(c.predicted - c.observed) for c in baseline_cases]
+    candidate_sign = _direction_accuracy(candidate_cases, zero_tolerance)
+    baseline_sign = _direction_accuracy(baseline_cases, zero_tolerance)
+    mae_improvement, rmse_improvement = _paired_loss_improvements(
+        [case.case_id for case in candidate_cases], terms, baseline_errors, candidate_errors)
+    return {'candidate_mae': _mean(candidate_errors), 'baseline_mae': _mean(baseline_errors),
+            'candidate_rmse': _root_mean_square(candidate_errors), 'baseline_rmse': _root_mean_square(baseline_errors),
+            'candidate_sign_accuracy': candidate_sign, 'baseline_sign_accuracy': baseline_sign,
+            'mae_improvement': mae_improvement, 'rmse_improvement': rmse_improvement,
+            'sign_accuracy_improvement': (candidate_sign - baseline_sign if candidate_sign is not None else None)}
+
+
+def _point_metrics(cases, zero_tolerance, prediction_interval_level, terms):
     errors = [abs(case.predicted - case.observed) for case in cases]
     null_errors = [abs(case.observed) for case in cases]
     n = len(cases)
     mae = _mean(errors)
     rmse = _root_mean_square(errors)
-    directional = [case for case in cases if abs(case.observed) > zero_tolerance]
-    sign_accuracy = (sum(sign(c.predicted) == sign(c.observed) for c in directional) / len(directional)
-                     if directional else None)
+    sign_accuracy = _direction_accuracy(cases, zero_tolerance)
     null_mae = _mean(null_errors)
     null_rmse = _root_mean_square(null_errors)
-    null_sign_accuracy = 0.0 if directional else None
+    null_sign_accuracy = 0.0 if sign_accuracy is not None else None
+    mae_improvement, rmse_improvement = _paired_loss_improvements(
+        [case.case_id for case in cases], terms, null_errors, errors)
     coverage = (sum(c.interval_low <= c.observed <= c.interval_high for c in cases) / n
                 if cases[0].interval_low is not None else None)
     return {
@@ -205,8 +282,8 @@ def _point_metrics(cases, zero_tolerance, prediction_interval_level):
         'null_mae': null_mae,
         'null_rmse': null_rmse,
         'null_sign_accuracy': null_sign_accuracy,
-        'mae_improvement_over_null': _signed_mean([a - b for a, b in zip(null_errors, errors)]),
-        'rmse_improvement_over_null': _rmse_improvement(null_errors, errors),
+        'mae_improvement_over_null': mae_improvement,
+        'rmse_improvement_over_null': rmse_improvement,
         'sign_accuracy_improvement_over_null': (
             sign_accuracy - null_sign_accuracy if sign_accuracy is not None else None),
     }

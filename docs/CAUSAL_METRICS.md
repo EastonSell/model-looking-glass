@@ -69,6 +69,42 @@ the already-rounded displayed aggregate scores. Calculations still use finite
 floating-point values and cannot resolve effects below their representable
 precision.
 
+## Matched comparison with another predictor
+
+`compare_effects(candidate_cases, baseline_cases, ...)` reports paired
+candidate and baseline MAE, RMSE, and directional accuracy against the same
+observed scalar target, as well as their paired improvements and per-case
+absolute errors. Every ID and observation must match exactly between inputs;
+missing, duplicated, or mismatched cases raise `ValueError`. Observations are
+compared as supplied, before conversion to Python floats, so distinct integers
+that round to the same binary64 value do not falsely match. Inputs are sorted
+by ID and bootstrap resampling, when enabled, keeps the two predictions and
+their common observation together. Positive `mae_improvement` and
+`rmse_improvement` mean lower error for the candidate, and positive
+`sign_accuracy_improvement` means higher directional accuracy. The same
+directional exclusion and bootstrap-suppression rules described above apply.
+Prediction bounds are not evaluated by this comparator and are rejected;
+evaluate each predictor's coverage separately using `evaluate_effects`.
+
+The common-target requirement defines the estimand. For example, random-site
+responses can be compared with candidate-site responses as predictors of a
+shared desired correction, or as effectiveness against that target, provided
+the role is labeled. This is **not** a direct contrast between different
+interventions' observed effects: that would require separate per-intervention
+outcomes and its own declared estimand and analysis. This utility does not
+divide by a clean–corrupted gap, substitute an epsilon, or omit zero-denominator
+cases.
+
+The comparator defaults to `bootstrap_samples=0`; a nonzero setting asserts the
+independent, exchangeable case-sampling assumptions below. The older
+`evaluate_effects` API retains its default of 2,000 resamples, so set it to
+zero explicitly for a fixed suite. A seed by itself does not justify inference.
+Paired loss differences are formed from exact rational representations of the
+supplied finite floating-point values before averaging, avoiding cancellation
+from subtracting individually rounded losses. The RMSE denominator and the
+reported point errors still use finite floating-point arithmetic; numerical
+precision remains limited by the supplied inputs and that denominator.
+
 ## Bootstrap and its limits
 
 Use `bootstrap_samples=0` for descriptive analysis of a fixed suite when no
@@ -110,8 +146,10 @@ inferential interpretation for a fixed convenience suite.
 No silent case deletion or imputation is performed. Missing effects, partial or
 mixed bound coverage, nonfinite values, invalid levels, empty or duplicate IDs,
 and unrepresentable prediction differences raise `ValueError`. Values must be
-finite real scalars; booleans and numeric strings are rejected. Supplying fewer
-than two cases to an enabled bootstrap also raises `ValueError`. Define any
+finite real scalars; booleans and numeric strings are rejected. Values are
+converted to Python floats before metric calculations; values not exactly
+representable in binary64 are rejected rather than silently rounded. Supplying fewer than two cases to an enabled
+bootstrap also raises `ValueError`. Define any
 failure and missing-data analysis in the protocol, and retain the original
 failure records; do not drop hard cases after observing results.
 
@@ -129,6 +167,13 @@ cases = [
 result = evaluate_effects(cases, zero_tolerance=0.01,
                           prediction_interval_level=0.90,
                           bootstrap_samples=0)
+
+# Compare two predictors against exactly the same observed targets. Bounds are
+# intentionally omitted; coverage is evaluated separately with evaluate_effects.
+from looking_glass.causal_metrics import compare_effects
+candidate = [EffectCase("held-out-001", 0.3, 0.2), EffectCase("held-out-002", -0.2, -0.1)]
+baseline = [EffectCase("held-out-001", 0.0, 0.2), EffectCase("held-out-002", 0.0, -0.1)]
+paired = compare_effects(candidate, baseline, zero_tolerance=0.01)
 
 # Only when cases are independent exchangeable draws from a specified population:
 # result = evaluate_effects(cases, zero_tolerance=0.01,
