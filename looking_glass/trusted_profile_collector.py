@@ -550,7 +550,7 @@ def _private_driver_failure(error):
             return None
     elif not isinstance(cause, OSError):
         return None
-    allowed = ('PATH', 'PATHEXT', 'SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP',
+    allowed = ('PATH', 'PATHEXT', 'SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'PROGRAMFILES',
                'CUDA_VISIBLE_DEVICES', 'CUDA_DEVICE_ORDER')
     return {'failure_type': type(cause).__name__, 'command': command,
             'returncode': getattr(cause, 'returncode', None),

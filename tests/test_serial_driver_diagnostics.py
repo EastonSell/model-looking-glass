@@ -33,6 +33,7 @@ def _exercise_driver_failure_in_fresh_owner(tmp_path, monkeypatch):
     monkeypatch.setattr(trusted, 'prepare_trusted_source', lambda *_: source)
     monkeypatch.setenv('PATH', 'controlled-system-directory')
     monkeypatch.setenv('CUDA_VISIBLE_DEVICES', 'GPU-private')
+    monkeypatch.setenv('PROGRAMFILES', 'private-program-directory')
     monkeypatch.setenv('SERIAL_DIAGNOSTIC_SECRET', 'must-not-be-saved')
     command = ['nvidia-smi', '--query-gpu=uuid,driver_version', '--format=csv,noheader,nounits']
     failed = subprocess.CalledProcessError(255, command, output='out-' + 'x' * 9000,
@@ -55,6 +56,7 @@ def _exercise_driver_failure_in_fresh_owner(tmp_path, monkeypatch):
     assert diagnostic['stdout']['truncated'] is True
     assert diagnostic['environment']['PATH']['text'] == 'controlled-system-directory'
     assert diagnostic['environment']['CUDA_VISIBLE_DEVICES']['text'] == 'GPU-private'
+    assert diagnostic['environment']['PROGRAMFILES']['text'] == 'private-program-directory'
     assert 'must-not-be-saved' not in json.dumps(diagnostic)
     assert not (tmp_path / 'candidate.json').exists()
 

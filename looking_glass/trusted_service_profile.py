@@ -169,7 +169,16 @@ def _checked_environment(device_uuid, cache_root):
             raise ValueError('unreviewed CUDA, numerical or model-cache environment setting')
     if any(name in os.environ for name in _ABSENT_ENV):
         raise ValueError('incompatible runtime environment is present')
-    return {**required, **{name: None for name in _ABSENT_ENV}}
+    program_files = os.environ.get('PROGRAMFILES')
+    if program_files is not None:
+        try:
+            directory = Path(program_files)
+            if (not directory.is_absolute() or str(directory.resolve(strict=True)) != program_files
+                    or not directory.is_dir()):
+                raise ValueError('PROGRAMFILES must be a canonical directory')
+        except (OSError, RuntimeError, TypeError) as exc:
+            raise ValueError('PROGRAMFILES must be a canonical directory') from exc
+    return {**required, 'PROGRAMFILES': program_files, **{name: None for name in _ABSENT_ENV}}
 
 
 def _module_origin(module, expected_name):

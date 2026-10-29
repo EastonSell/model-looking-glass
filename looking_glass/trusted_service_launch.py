@@ -131,6 +131,18 @@ def prepare_trusted_launch(*, repo_root, site_packages, environment_root, privat
     keep = {"SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "TEMP", "TMP"}
     environment = {key: value for key, value in source.items()
                    if type(key) is str and key.upper() in keep and type(value) is str}
+    program_files = [(key, value) for key, value in source.items()
+                     if type(key) is str and key.upper() == 'PROGRAMFILES']
+    if len(program_files) > 1:
+        raise ValueError('ambiguous PROGRAMFILES environment')
+    if program_files:
+        value = program_files[0][1]
+        try:
+            if type(value) is not str or str(_directory(value)) != value:
+                raise ValueError('PROGRAMFILES must be a canonical directory')
+        except (OSError, RuntimeError) as exc:
+            raise ValueError('PROGRAMFILES must be a canonical directory') from exc
+        environment['PROGRAMFILES'] = value
     prefix = Path(tempfile.mkdtemp(prefix="looking-glass-service-pyc-", dir=private))
     info = prefix.lstat()
     environment.update({
