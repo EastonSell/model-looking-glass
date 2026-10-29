@@ -51,17 +51,31 @@ class OwnerCompletionAuthority:
     def unsafe(self):
         return self._unsafe
 
-    def _assert_recording_disabled(self):
-        from .grouped_observation import _local
-        if (getattr(_local, 'forward', None) is not None
-                or (self._broker is not None
-                    and getattr(self._broker, '_serial_observation', None) is not None)):
-            raise WorkerContractError('fixed service requires recording to be disabled')
+    def _assert_recording_policy(self):
+        from .grouped_observation import _local, _SerialForwardScope
+        worker = self._worker
+        observation = None if worker is None else worker._cpu_observation
+        if worker is not None and observation is not worker._cpu_observation_binding:
+            raise WorkerContractError('fixed service recording policy changed')
+        scope = getattr(_local, 'forward', None)
+        attached = None if self._broker is None else getattr(self._broker, '_serial_observation', None)
+        if observation is None:
+            if (scope is not None or attached is not None
+                    or (worker is not None and worker._observation_bound is not False)):
+                raise WorkerContractError('fixed service requires recording to be disabled')
+            return
+        if (worker._worker.device.type != 'cpu'
+                or (self._broker is not None and
+                    (worker._observation_bound is not True or attached is not observation))
+                or (scope is not None and
+                    (type(scope) is not _SerialForwardScope or scope.owner is not observation
+                     or self._broker is None or threading.current_thread() is not self._broker._thread))):
+            raise WorkerContractError('CPU observation owner or scope changed')
 
     def _before_device(self):
         """Commit one device operation after checking the actual owner lease."""
         try:
-            self._assert_recording_disabled()
+            self._assert_recording_policy()
             if self._unsafe or self._device_guard is not self._guard_binding:
                 raise DeviceQuarantined('owner is unsafe before device operation')
             # OwnerSession.check can perform I/O; do not hold the decision
@@ -70,7 +84,7 @@ class OwnerCompletionAuthority:
             if self._device_guard is not None:
                 self._device_guard()
             with self._decision_lock:
-                self._assert_recording_disabled()
+                self._assert_recording_policy()
                 if self._unsafe or self._device_guard is not self._guard_binding:
                     raise DeviceQuarantined('owner is unsafe before device operation')
         except BaseException:
@@ -147,7 +161,8 @@ class LifetimeWorkspaceWorker:
 
     cancellation_exception = RequestCancelled
 
-    def __init__(self, worker, budget, resident_lease, workspace_lease, *, profiles, authority):
+    def __init__(self, worker, budget, resident_lease, workspace_lease, *, profiles, authority,
+                 cpu_observation=None):
         if (type(worker) is not ResidentWorker or type(budget) is not MemoryBudget
                 or type(resident_lease) is not MemoryLease or type(workspace_lease) is not MemoryLease
                 or type(authority) is not OwnerCompletionAuthority):
@@ -157,6 +172,10 @@ class LifetimeWorkspaceWorker:
             raise ValueError('leases must be distinct capabilities of the supplied budget')
         if worker.device.type == 'cuda' and authority._device_guard is None:
             raise ValueError('CUDA workers require an exact owner lease guard')
+        if cpu_observation is not None:
+            from .service_serial_observation import ServiceSerialObservation
+            if type(cpu_observation) is not ServiceSerialObservation or worker.device.type != 'cpu':
+                raise ValueError('service observation capability is CPU-only')
         profiles = tuple(profiles)
         if len(profiles) not in (1, 2):
             raise ValueError('one warm profile or one cold/warm pair is required')
@@ -173,6 +192,8 @@ class LifetimeWorkspaceWorker:
                 or type(self._workspace_bytes) is not int or self._workspace_bytes <= 0):
             raise ValueError('fixed lease commitments must be positive integers')
         self._authority = authority
+        self._cpu_observation = self._cpu_observation_binding = cpu_observation
+        self._observation_bound = False
         self._device_guard = authority._device_guard
         self._binding = _worker_binding(worker)
         self._cache_binding = _model_cache_binding(worker)
@@ -224,7 +245,19 @@ class LifetimeWorkspaceWorker:
 
     def _recorder_attached(self):
         broker = self._authority._broker
-        return broker is not None and getattr(broker, '_serial_observation', None) is not None
+        observation = self._cpu_observation
+        if observation is not self._cpu_observation_binding:
+            return True
+        if broker is None:
+            return False
+        attached = getattr(broker, '_serial_observation', None)
+        if observation is None:
+            return attached is not None or self._observation_bound is not False
+        # The CPU test capability may be bound after broker construction but
+        # before the first submission; _check_available rejects use before it.
+        if self._observation_bound is True:
+            return attached is not observation
+        return self._observation_bound is not False or (attached is not None and attached is not observation)
 
     @property
     def poisoned(self):
@@ -244,6 +277,8 @@ class LifetimeWorkspaceWorker:
         if self.quarantined or self._closed or self._worker.poisoned:
             raise DeviceQuarantined('owner is unavailable; replace the process')
         try:
+            if self._cpu_observation is not None:
+                self._authority._assert_recording_policy()
             matches = (_worker_binding(self._worker) == self._binding
                        and _model_cache_binding(self._worker) == self._cache_binding
                        and self._worker._owner_completion is self._authority
@@ -313,20 +348,26 @@ class LifetimeWorkspaceWorker:
                 raise RequestCancelled('request cancelled before execution')
             self._check_leases()
             _require_no_autocast()
-            from .grouped_observation import _local
-            if getattr(_local, 'forward', None) is not None:
+            from .grouped_observation import _local, _bind_serial_forward
+            try:
+                self._authority._assert_recording_policy()
+                if (self._cpu_observation is not None and self._authority._broker is not None
+                        and getattr(_local, 'forward', None) is None and not self._cpu_observation._faulted):
+                    raise WorkerContractError('CPU observation execution scope is missing')
+            except BaseException:
                 self._authority.mark_unsafe()
-                raise WorkerContractError('fixed service requires recording to be disabled')
+                raise
             self._custody.generation += 1
             self._custody.request = snapshot
             self._custody.error = None
             try:
+                if self._cpu_observation is not None:
+                    _bind_serial_forward(self._worker, profile, snapshot)
                 result = self._worker._execute_with_custody(snapshot, cancel_event, self._custody)
                 if self._authority.unsafe or self._worker.quarantined or self._worker.poisoned:
                     self._authority.mark_unsafe()
                     raise DeviceQuarantined('owner became unsafe during execution')
-                if self._recorder_attached() or getattr(_local, 'forward', None) is not None:
-                    raise WorkerContractError('fixed service recording policy changed during execution')
+                self._authority._assert_recording_policy()
                 if (_worker_binding(self._worker) != self._binding
                         or _model_cache_binding(self._worker) != self._cache_binding
                         or self._worker._owner_completion is not self._authority

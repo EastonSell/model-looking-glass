@@ -258,7 +258,55 @@ class RequestHandle:
                 raise TimeoutError('request is still in flight')
             if self._outcome is None:
                 raise BrokerUnavailable('request status is unknown after broker cleanup failure')
-            return self._outcome
+            outcome = self._outcome
+        broker = self._broker
+        # A terminal already committed before quarantine remains readable.
+        # Do not repeatedly enter an observer after owner health is unknown.
+        if broker.quarantined:
+            return outcome
+        try:
+            observation = broker._service_observer()
+        except BaseException as exc:
+            try:
+                notification_failure = broker._retain_observation_failure()
+            except BaseException as interrupted:
+                if broker._observation_cleanup_failure is None:
+                    broker._observation_cleanup_failure = interrupted
+                broker._quarantine_latched = True
+                if broker._completion_authority is not None:
+                    broker._completion_authority._unsafe = True
+                notification_failure = interrupted
+            public_error = _sanitized_failure(notification_failure if notification_failure is not None else exc,
+                                              BrokerUnavailable)
+        else:
+            if observation is not None:
+                try:
+                    observation._capture_bounded(self, outcome)
+                except Exception:
+                    # Ordinary metadata failures do not alter the terminal
+                    # result. The observation's own latch is independent.
+                    observation._fault()
+                    return outcome
+                except BaseException as exc:
+                    # The single pre-rooted callback state holds its exact
+                    # handle, outcome and failure. One slot covers all errors
+                    # from that state rather than one per caller.
+                    try:
+                        notification_failure = broker._retain_observation_failure()
+                    except BaseException as interrupted:
+                        if broker._observation_cleanup_failure is None:
+                            broker._observation_cleanup_failure = interrupted
+                        broker._quarantine_latched = True
+                        if broker._completion_authority is not None:
+                            broker._completion_authority._unsafe = True
+                        notification_failure = interrupted
+                    public_error = _sanitized_failure(notification_failure if notification_failure is not None else exc,
+                                                      BrokerUnavailable)
+                else:
+                    return outcome
+            else:
+                return outcome
+        _raise_sanitized(public_error)
 
     def wait_for_retirement(self, timeout=None):
         """Wait until fair-handoff execution aliases have been retired.
@@ -312,6 +360,10 @@ class Broker:
         elif completion_authority is not None:
             raise ValueError('completion authority requires the fixed-workspace worker')
         self._completion_authority = completion_authority
+        self._serial_observation = None
+        self._observation_owner = (worker._cpu_observation if completion_authority is not None else None)
+        self._observation_failure_owner = None
+        self._observation_cleanup_failure = None
         if completion_authority is not None:
             completion_authority._bind_broker(self, worker)
         self._queue = FairTeamQueue(max_pending, max_pending_per_team)
@@ -437,6 +489,59 @@ class Broker:
     def _signal_completion_unsafe(self):
         if self._completion_authority is not None:
             self._completion_authority.mark_unsafe()
+
+    def _service_observer(self):
+        """Return the exact optional CPU observer or fail its owner closed."""
+        try:
+            observer = self._serial_observation
+            authority = self._completion_authority
+            if authority is None:
+                if observer is not None or self._observation_owner is not None:
+                    raise RuntimeError('serial observation requires a fixed owner')
+                return None
+            worker = self._worker
+            expected = worker._cpu_observation
+            if (self._observation_owner is not expected or worker._cpu_observation_binding is not expected
+                    or worker._authority is not authority or authority._worker is not worker
+                    or authority._broker is not self):
+                raise RuntimeError('fixed owner observation policy changed')
+            if expected is None:
+                if observer is not None or worker._observation_bound is not False:
+                    raise RuntimeError('fixed owner requires recording to be disabled')
+                return None
+            if (observer is not expected or worker._observation_bound is not True
+                    or worker._worker.device.type != 'cpu'):
+                raise RuntimeError('CPU observation owner identity changed')
+            return observer
+        except BaseException:
+            self._signal_completion_unsafe()
+            raise
+
+    def _retain_observation_failure(self):
+        """Latch a dedicated, preallocated root for observation failures."""
+        try:
+            owner = self._observation_owner
+            # The broker was registered before its thread started. Its
+            # dedicated field roots the exact observer and both callback
+            # states, without consuming the job/owner quarantine slots.
+            self._observation_failure_owner = owner if owner is not None else self
+            self._quarantine_latched = True
+            if self._completion_authority is not None:
+                self._completion_authority.mark_unsafe()
+            if owner is not None:
+                owner._faulted = True
+            with self._condition:
+                self._mark_cleanup_failed_locked()
+        except BaseException as exc:
+            # The supervisor must replace an owner if this transition or its
+            # notification is interrupted, even when its lock is stranded.
+            if self._observation_cleanup_failure is None:
+                self._observation_cleanup_failure = exc
+            self._quarantine_latched = True
+            if self._completion_authority is not None:
+                self._completion_authority._unsafe = True
+            return exc
+        return None
 
     def _worker_poisoned_locked(self):
         """Probe trusted worker status while preserving unknown failures."""
@@ -660,16 +765,50 @@ class Broker:
         The calling client must not mutate its input during snapshotting.
         """
         preparation_token = object()
+        handle = None
+        observation = None
         try:
-            return self._submit(team_id, request, preparation_token)
+            handle = self._submit(team_id, request, preparation_token)
+            try:
+                observation = self._service_observer()
+                if observation is not None:
+                    observation._register_bounded(handle)
+            except BaseException as exc:
+                try:
+                    notification_failure = self._retain_observation_failure()
+                except BaseException as interrupted:
+                    if self._observation_cleanup_failure is None:
+                        self._observation_cleanup_failure = interrupted
+                    self._quarantine_latched = True
+                    if self._completion_authority is not None:
+                        self._completion_authority._unsafe = True
+                    notification_failure = interrupted
+                if notification_failure is not None:
+                    raise notification_failure
+                raise
+            return handle
         except BaseException as exc:
             with self._condition:
                 unresolved = any(job is not None and job.preparation_token is preparation_token
                                  for job in self._job_roots)
-            if unresolved:
+            if unresolved and handle is None:
                 # Also covers interruption after slot release but before a
                 # failed preparation's root has been retired.
                 self._retain_unknown(exc)
+            elif handle is not None and not self.quarantined:
+                # An interruption can occur after acceptance but before the
+                # observation helper begins. No metadata callback ran yet.
+                try:
+                    notification_failure = self._retain_observation_failure()
+                except BaseException as interrupted:
+                    if self._observation_cleanup_failure is None:
+                        self._observation_cleanup_failure = interrupted
+                    self._quarantine_latched = True
+                    if self._completion_authority is not None:
+                        self._completion_authority._unsafe = True
+                    notification_failure = interrupted
+                if notification_failure is not None:
+                    exc = notification_failure
             if not self.quarantined:
                 raise
             public_error = _sanitized_failure(exc, BrokerUnavailable)
@@ -974,7 +1113,11 @@ class Broker:
             fatal = False
             removed = []
             try:
-                result = self._worker.execute(job.request, handle._cancel)
+                observation = self._service_observer()
+                if observation is None:
+                    result = self._worker.execute(job.request, handle._cancel)
+                else:
+                    result = observation._execute(self._worker, handle, job.request, handle._cancel)
             except BaseException as exc:
                 job.retained_error = exc
                 if not isinstance(exc, Exception) or isinstance(exc, (MemoryError, torch.OutOfMemoryError)):
