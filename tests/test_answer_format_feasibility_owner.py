@@ -170,6 +170,48 @@ def test_latest_inventory_requires_fresh_scoped_public_tree(monkeypatch, tmp_pat
             owner._check_latest_inventory(launch, tmp_path, report, "distilgpt2-development-exposures-v28", "c" * 64)
 
 
+@pytest.mark.parametrize("expired", ["none", "inventory", "custody"])
+def test_launch_rechecks_saved_observations_and_expiry_calls_no_child(monkeypatch, tmp_path, expired):
+    checkout, attempt = tmp_path / "checkout", tmp_path / "attempt"
+    source = checkout / "looking_glass/pretrained_exposures_v28.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("synthetic", encoding="utf-8")
+    attempt.mkdir()
+    now = datetime.now(timezone.utc)
+    old = (now - timedelta(minutes=15)).isoformat()
+    current = now.isoformat()
+    report = {"observed_utc": old if expired == "inventory" else current, "reviewed_commit": "a" * 40,
+              "latest_main_commit": "b" * 40, "latest_inventory_version": "distilgpt2-development-exposures-v28",
+              "latest_inventory_sha256": "c" * 64, "no_unreserved_relevant_inputs_reported": True,
+              "currentness_reported_by": "fabricated", "source_path": "looking_glass/pretrained_exposures_v28.py"}
+    timestamp = old if expired == "custody" else current
+    custody = {"observations": [{"custodian": "natural", "reported_by": "fabricated", "observed_utc": timestamp,
+               "status": "public_frame_clear", "case_sha256": owner.base.CASES_SHA,
+               "frame_sha256": owner.SUPPORT_SHA, "report_sha256": owner.FRAME_SHA,
+               "commitment_sha256": owner.NAT_COMMITMENT_SHA, "original_split_unchanged": True,
+               "no_additional_relevant_splits_reported": True, "successor_status": "no_successor_split_reported"},
+              {"custodian": "injection", "reported_by": "fabricated", "observed_utc": timestamp,
+               "status": "no_protected_rows_reported"}]}
+    report_raw, custody_raw = owner.base.canonical(report), owner.base.canonical(custody)
+    (attempt / "public-exposure-attestation.json").write_bytes(report_raw)
+    (attempt / "custody-observation.json").write_bytes(custody_raw)
+    launch = SimpleNamespace(_git=lambda *args: b"looking_glass/pretrained_exposures_v28.py\n",
+                             _checked_path=lambda p: Path(p).resolve(strict=True))
+    monkeypatch.setattr(owner.base, "commit_object", lambda *a: None)
+    monkeypatch.setattr(owner.base, "committed_file", lambda *a: None)
+    calls = []
+    monkeypatch.setattr(owner.base, "supervise_child", lambda *a, **kw: calls.append(True) or "launched")
+    args = (launch, checkout, attempt, owner.base.digest(custody_raw), owner.base.digest(report_raw),
+            "distilgpt2-development-exposures-v28", "c" * 64, None, [], tmp_path)
+    if expired == "none":
+        assert owner._supervise_checked(*args, env={}, job=None) == "launched"
+        assert calls == [True]
+    else:
+        with pytest.raises(owner.base.StudyError):
+            owner._supervise_checked(*args, env={}, job=None)
+        assert calls == []
+
+
 def test_abbreviated_child_phase_rejected():
     with pytest.raises(SystemExit):
         owner.main(["child", "--checkout", str(ROOT), "--venv", str(ROOT), "--dependency", str(ROOT),
@@ -195,10 +237,17 @@ def test_development_handoff_fences_inconsistent_review_before_heldout(monkeypat
              "buffer_state_sha256": "2" * 64, "runtime_settings": {"cpu": True},
              "post_work_checkpoint_assets": {}, "imported_sources": {}, "finished_utc": now}
     child_raw = owner.base.canonical(child)
-    started_raw = owner.base.canonical({"started_utc": now})
+    extra_artifacts = {"custody-observation.json": {"sha256": "6" * 64},
+                       "manifest-review-attestation.json": {"sha256": "7" * 64},
+                       "public-exposure.json": {"sha256": "8" * 64},
+                       "public-exposure-attestation.json": {"sha256": "9" * 64}}
+    started_raw = owner.base.canonical({"started_utc": now, "phase": "development", "source_commit": source,
+        "manifest_sha256": manifest_sha, "custody_observation_sha256": "6" * 64,
+        "manifest_review_sha256": "7" * 64, "public_exposure_file_sha256": "8" * 64,
+        "public_exposure_attestation_sha256": "9" * 64})
     (directory / "child-result.json").write_bytes(child_raw)
     (directory / "started.json").write_bytes(started_raw)
-    artifacts = {"child-result.json": {"sha256": owner.base.digest(child_raw)},
+    artifacts = {**extra_artifacts, "child-result.json": {"sha256": owner.base.digest(child_raw)},
                  "started.json": {"sha256": owner.base.digest(started_raw)},
                  "development/matrix.f32": {"sha256": matrix_sha},
                  "development/results.json": {"sha256": result_sha}}

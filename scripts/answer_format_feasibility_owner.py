@@ -125,7 +125,7 @@ def check_public_payload(payload, expected_sha, cases, minimum_rows=(), *, obser
         raise base.StudyError("invalid public inventory") from exc
 
 
-def check_custody(path):
+def check_custody(path, *, max_age=900):
     """Require fresh scoped observations; never read protected rows."""
     doc = json.loads(base.read(base.ordinary(path)))
     rows = doc.get("observations")
@@ -136,7 +136,7 @@ def check_custody(path):
     for row in rows:
         try:
             observed = datetime.fromisoformat(row["observed_utc"])
-            if (observed.tzinfo is None or not 0 <= (now - observed).total_seconds() <= 900
+            if (observed.tzinfo is None or not 0 <= (now - observed).total_seconds() <= max_age
                     or type(row["reported_by"]) is not str or not row["reported_by"]):
                 raise base.StudyError("custodian observation is stale or missing")
             if row["custodian"] == "natural":
@@ -189,13 +189,13 @@ def _current(launch, checkout, head, raw, sha, attestation, minimum_rows=(), *, 
     return result
 
 
-def _check_latest_inventory(launch, checkout, attestation, version, sha):
+def _check_latest_inventory(launch, checkout, attestation, version, sha, *, max_age=900):
     """Require a fresh cooperative official-tree and relevant-exposure observation."""
     try:
         observed = datetime.fromisoformat(attestation["observed_utc"])
         age = (datetime.now(timezone.utc) - observed).total_seconds()
         latest = attestation["latest_main_commit"]
-        if (observed.tzinfo is None or not 0 <= age <= 900
+        if (observed.tzinfo is None or not 0 <= age <= max_age
                 or type(latest) is not str or re.fullmatch(r"[0-9a-f]{40}", latest) is None
                 or attestation.get("latest_inventory_version") != version
                 or attestation.get("latest_inventory_sha256") != sha
@@ -373,7 +373,7 @@ def child(args):
 
 
 def _inventory(attempt, phase, observed, source_revision):
-    names = ["started.json", "child-result.json", "manifest-review-attestation.json",
+    names = ["started.json", "child-result.json", "manifest-review-attestation.json", "custody-observation.json",
              "public-exposure.json", "public-exposure-attestation.json"]
     if phase == "heldout":
         names.append("development-review-attestation.json")
@@ -494,6 +494,13 @@ def _check_development(launch, checkout, head, manifest, manifest_sha, manifest_
             or inventory["started.json"]["sha256"] != record["started_sha256"]):
         raise base.StudyError("development process evidence differs")
     started = json.loads(base.read(directory / "started.json"))
+    if (started["phase"] != "development" or started["source_commit"] != manifest["source_commit"]
+            or started["manifest_sha256"] != manifest_sha
+            or started["custody_observation_sha256"] != inventory["custody-observation.json"]["sha256"]
+            or started["manifest_review_sha256"] != inventory["manifest-review-attestation.json"]["sha256"]
+            or started["public_exposure_file_sha256"] != inventory["public-exposure.json"]["sha256"]
+            or started["public_exposure_attestation_sha256"] != inventory["public-exposure-attestation.json"]["sha256"]):
+        raise base.StudyError("development start and saved observations differ")
     base.check_reported_order(manifest["created_utc"], started["started_utc"], child["finished_utc"],
                               record["finished_utc"], review["observed_utc"], base.utc())
     _inventory(directory, "development", child, manifest["source_commit"])
@@ -520,6 +527,20 @@ def _check_development(launch, checkout, head, manifest, manifest_sha, manifest_
     return directory, matrix_sha, result_sha
 
 
+def _supervise_checked(launch, checkout, attempt, custody_sha, inventory_review_sha, version, inventory_sha,
+                       run_cpu_study, command, study_root, *, env, job):
+    """Recheck the saved launch observations immediately before starting a child."""
+    custody_path = base.ordinary(attempt / "custody-observation.json")
+    review_path = base.ordinary(attempt / "public-exposure-attestation.json")
+    custody_raw, review_raw = base.read(custody_path), base.read(review_path)
+    if base.digest(custody_raw) != custody_sha or base.digest(review_raw) != inventory_review_sha:
+        raise base.StudyError("saved launch observations changed")
+    # Leave a short admission margin for the bounded lease wait and process start.
+    _check_latest_inventory(launch, checkout, json.loads(review_raw), version, inventory_sha, max_age=870)
+    check_custody(custody_path, max_age=870)
+    return base.supervise_child(run_cpu_study, command, study_root, cwd=attempt, env=env, job=job)
+
+
 def main(argv=None):
     global _ACTIVE_ATTEMPT, _ATTEMPT_OWNED
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
@@ -539,7 +560,10 @@ def main(argv=None):
         return 0
     if not all((args.inventory, args.inventory_sha, args.inventory_attestation, args.custody_observation)):
         raise base.StudyError("current inventory and relevant custody observations are required")
+    custody_raw = base.read(base.ordinary(args.custody_observation))
     custody = check_custody(args.custody_observation)
+    if base.read(base.ordinary(args.custody_observation)) != custody_raw:
+        raise base.StudyError("custody observation changed during validation")
     public_raw = base.read(base.ordinary(args.inventory), 5_000_000)
     inventory_review_raw = base.read(base.ordinary(args.inventory_attestation))
     manifest_raw = None
@@ -652,13 +676,14 @@ def main(argv=None):
     try:
         (attempt / "pycache").mkdir()
         base.write(attempt / "manifest-review-attestation.json", review_raw)
+        base.write(attempt / "custody-observation.json", custody_raw)
         base.write(attempt / "public-exposure.json", public_raw)
         base.write(attempt / "public-exposure-attestation.json", inventory_review_raw)
         if development_review_raw is not None:
             base.write(attempt / "development-review-attestation.json", development_review_raw)
         started = base.canonical({"phase": args.phase, "source_commit": revision, "checkout_commit": head,
             "manifest_sha256": args.manifest_sha, "manifest_review_sha256": base.digest(review_raw),
-            "custodian_observations": custody,
+            "custodian_observations": custody, "custody_observation_sha256": base.digest(custody_raw),
             "current_public_exposure": {k: v for k, v in public.items() if k != "known_complete_rows"},
             "public_exposure_file_sha256": base.digest(public_raw),
             "public_exposure_attestation_sha256": base.digest(inventory_review_raw),
@@ -685,7 +710,9 @@ def main(argv=None):
         env.update({"PATH": str(Path(env.get("SYSTEMROOT", "C:/Windows")) / "System32"),
                     "TEMP": str(attempt), "TMP": str(attempt), "HF_HUB_OFFLINE": "1",
                     "TRANSFORMERS_OFFLINE": "1", "TOKENIZERS_PARALLELISM": "false"})
-        result = base.supervise_child(run_cpu_study, command, study_root, cwd=attempt, env=env, job=job)
+        result = _supervise_checked(launch, checkout, attempt, base.digest(custody_raw),
+                    base.digest(inventory_review_raw), public["version"], args.inventory_sha,
+                    run_cpu_study, command, study_root, env=env, job=job)
         if (result.clean is not True or type(result.exit_code) is not int or result.exit_code != 0
                 or result.timed_out is not False or type(result.pid) is not int or result.pid <= 0
                 or type(result.run_id) is not str or re.fullmatch(r"[0-9a-f]{32}", result.run_id) is None
