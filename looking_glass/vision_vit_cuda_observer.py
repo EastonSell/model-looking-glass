@@ -322,8 +322,13 @@ def _measure(session, lease, torch, assets, reference, run_dir):
         _held(session, lease)
         return result
     if (torch.__version__ != "2.8.0+cu128" or torch.version.cuda != "12.8"
-            or transformers.__version__ != "4.57.3" or torch.cuda.is_initialized()):
-        raise RuntimeError("unexpected runtime or premature CUDA initialization")
+            or transformers.__version__ != "4.57.3"):
+        raise RuntimeError("unexpected runtime")
+    # From the first CUDA-facing setup call onward, a failed call or lost
+    # owner check leaves completion unverified until an explicit guarded sync.
+    _ROOT["pending"] = True
+    if guarded(torch.cuda.is_initialized):
+        raise RuntimeError("premature CUDA initialization")
     if guarded(torch.cuda.device_count) != 1:
         raise RuntimeError("exactly one CUDA device must be visible")
     properties = guarded(torch.cuda.get_device_properties, 0)
@@ -339,6 +344,8 @@ def _measure(session, lease, torch, assets, reference, run_dir):
     if guarded(torch.cuda.get_per_process_memory_fraction, 0) != cap / properties.total_memory:
         raise RuntimeError("allocator cap readback differs")
     guarded(torch.cuda.reset_peak_memory_stats, 0)
+    guarded(torch.cuda.synchronize, 0)
+    _ROOT["pending"] = False
 
     def check():
         _held(session, lease)
@@ -764,6 +771,7 @@ def owner_main(run_dir, assets, run_id, commit, git):
                 "run_id": run_id, "status": "incomplete", "error_type": type(exc).__name__,
                 "submission": _ROOT["submission"], "label": _ROOT["label"],
                 "cuda_completion_unverified": _ROOT["pending"],
+                "cleanup_attested": False,
                 "model_return_observed": observation is not None and observation.output is not None,
                 "detail": traceback.format_exc()[-8192:]}, max_bytes=16384)
         except BaseException as error:

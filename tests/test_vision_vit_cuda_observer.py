@@ -328,6 +328,7 @@ def test_untrained_vit_executes_all_six_controls_on_cpu(tmp_path):
     """Exercise the real Transformers hook geometry without any checkpoint or image."""
     from transformers import ViTConfig, ViTForImageClassification
     previous_threads = torch.get_num_threads()
+    previous_rng = torch.random.get_rng_state()
     torch.set_num_threads(1)
     try:
         torch.manual_seed(51)
@@ -353,4 +354,5 @@ def test_untrained_vit_executes_all_six_controls_on_cpu(tmp_path):
         assert outputs[3]["logits"] == outputs[4]["logits"]
         assert outputs[3]["logits"] != outputs[0]["logits"]
     finally:
+        torch.random.set_rng_state(previous_rng)
         torch.set_num_threads(previous_threads)

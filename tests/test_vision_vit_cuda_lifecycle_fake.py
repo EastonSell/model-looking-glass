@@ -31,9 +31,10 @@ class FakeModel:
 
 class FakeCuda:
     total = 8 * 1024 ** 3
-    def __init__(self, fail_sync=None):
+    def __init__(self, fail_sync=None, fail_allocator=False):
         self.sync_calls = 0
         self.fail_sync = fail_sync
+        self.fail_allocator = fail_allocator
         self.empty_calls = 0
 
     def is_initialized(self): return False
@@ -41,7 +42,10 @@ class FakeCuda:
     def get_device_properties(self, _index):
         return SimpleNamespace(name="NVIDIA GeForce RTX 2070 SUPER", major=7, minor=5,
                                total_memory=self.total, uuid="fake")
-    def get_allocator_backend(self): return "native"
+    def get_allocator_backend(self):
+        if self.fail_allocator:
+            raise RuntimeError("fabricated allocator failure")
+        return "native"
     def set_per_process_memory_fraction(self, fraction, _index): assert fraction == .25
     def get_per_process_memory_fraction(self, _index): return .25
     def reset_peak_memory_stats(self, _index): pass
@@ -61,9 +65,9 @@ class FakeCuda:
 class FakeTorch:
     __version__ = "2.8.0+cu128"
     float32 = object()
-    def __init__(self, fail_sync=None):
+    def __init__(self, fail_sync=None, fail_allocator=False):
         self.version = SimpleNamespace(cuda="12.8")
-        self.cuda = FakeCuda(fail_sync)
+        self.cuda = FakeCuda(fail_sync, fail_allocator)
         self.backends = SimpleNamespace(cuda=SimpleNamespace(matmul=SimpleNamespace(allow_tf32=True)),
             cudnn=SimpleNamespace(allow_tf32=True, benchmark=True, deterministic=False))
         self.random = SimpleNamespace(default_generator=SimpleNamespace(manual_seed=lambda _seed: None))
@@ -86,10 +90,10 @@ class FakeTorch:
         return FakeTensor()
 
 
-def _fake_measure(monkeypatch, tmp_path, *, fail_sync=None):
+def _fake_measure(monkeypatch, tmp_path, *, fail_sync=None, fail_allocator=False):
     from transformers import ViTForImageClassification
 
-    torch = FakeTorch(fail_sync)
+    torch = FakeTorch(fail_sync, fail_allocator)
     session, lease = object(), object()
     roots = dict(observer._ROOT)
     roots.update(session=session, lease=lease, budget=None, memory_lease=None, model=None, pixels=None,
@@ -138,11 +142,49 @@ def test_simulated_full_lifecycle_retains_commitment_through_cleanup(tmp_path, m
 
 
 def test_simulated_failed_live_drain_keeps_roots_and_never_attempts_cleanup(tmp_path, monkeypatch):
-    torch, roots, calls, run = _fake_measure(monkeypatch, tmp_path, fail_sync=11)
+    torch, roots, calls, run = _fake_measure(monkeypatch, tmp_path, fail_sync=12)
     with pytest.raises(RuntimeError, match="synchronize failure"):
         run()
     assert calls == [(1, "cat-clean")]
     assert roots["pending"] is True and roots["model"] is not None and roots["pixels"] is not None
     assert roots["observation"].output is not None and roots["observation"].captures is not None
     assert roots["budget"].active_leases() == (roots["memory_lease"],)
-    assert torch.cuda.empty_calls == 0 and torch.workspace_clears == 0 and torch.cuda.sync_calls == 11
+    assert torch.cuda.empty_calls == 0 and torch.workspace_clears == 0 and torch.cuda.sync_calls == 12
+
+
+def test_simulated_failed_setup_keeps_cuda_completion_unverified(tmp_path, monkeypatch):
+    torch, roots, calls, run = _fake_measure(monkeypatch, tmp_path, fail_allocator=True)
+    with pytest.raises(RuntimeError, match="allocator failure"):
+        run()
+    assert roots["pending"] is True and roots["model"] is None and roots["budget"] is None
+    assert not calls and torch.cuda.sync_calls == 0
+    assert torch.cuda.empty_calls == 0 and torch.workspace_clears == 0
+
+
+def test_owner_failure_receipt_never_claims_cleanup_attestation(tmp_path, monkeypatch):
+    import json
+    roots = dict(observer._ROOT)
+    roots.update(entered=False, pending=False, session=None, lease=None, observation=None,
+                 submission=0, label=None, failure=None, diagnostic_failure=None)
+    monkeypatch.setattr(observer, "_ROOT", roots)
+    monkeypatch.setattr(observer, "_startup", lambda: None)
+    monkeypatch.setattr(observer, "_require_pristine", lambda: None)
+    monkeypatch.setattr(observer, "_validate_workspace_spec", lambda *_args: None)
+    monkeypatch.setattr(observer, "_validate_workspace_binding", lambda *_args: None)
+    monkeypatch.setattr(observer, "_held", lambda *_args: None)
+    monkeypatch.setattr(observer, "_source_identity", lambda *_args: ("a" * 40, {}))
+    monkeypatch.setattr(observer, "_asset_inventory", lambda *_args: {})
+    monkeypatch.setattr(observer, "_load_reference", lambda *_args: {})
+    monkeypatch.setattr(observer.OwnerSession, "from_environment", lambda: SimpleNamespace(
+        run_id="b" * 32, device_lease_path="fake"))
+    monkeypatch.setattr(observer.DeviceLease, "acquire", lambda *_args, **_kwargs: object())
+    monkeypatch.setenv("LOOKING_GLASS_VISION_REFERENCE", str(tmp_path))
+    def fail_measure(*_args):
+        roots["pending"] = True
+        raise RuntimeError("fabricated setup failure")
+    monkeypatch.setattr(observer, "_measure", fail_measure)
+    assert observer.owner_main(tmp_path, tmp_path, "run", "a" * 40, "git") == 1
+    failure = json.loads((tmp_path / "failure.json").read_bytes())
+    assert failure["cuda_completion_unverified"] is True
+    assert failure["cleanup_attested"] is False
+    assert not (tmp_path / "final.json").exists()
