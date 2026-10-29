@@ -114,7 +114,7 @@ class TransitionTests(unittest.TestCase):
         self.assertEqual(output.getvalue().strip(), 'commitment_announced:natural')
         self.assertTrue((self.root / 'natural-commitment.json').is_file())
 
-    def test_committed_peer_requires_a_matching_clear_receipt(self):
+    def test_committed_peer_cannot_be_cleared_by_a_published_lookalike_receipt(self):
         self.transition.operate('commit', 'natural', self.root, self.sources, helper=self.helper,
             source_reader=self.reader, commitment_bytes=self.public, publication_check=lambda raw: raw == self.public)
         self.clear_modules()
@@ -142,9 +142,10 @@ class TransitionTests(unittest.TestCase):
             'injection_commitment_file_sha256': hashlib.sha256(injected_raw).hexdigest(),
             'comparator_source_sha256': 'f' * 64, 'natural_case_count': 16, 'injection_case_count': 16}
         raw = json.dumps(receipt, sort_keys=True, separators=(',', ':')).encode()
-        value = self.transition.operate('forward', 'natural', self.root, self.sources,
-            helper=self.helper, source_reader=self.reader, receipt_bytes=raw, receipt_check=lambda data: data == raw)
-        self.assertEqual(value['comparison'], 'clear')
+        with self.assertRaises(Exception):
+            self.transition.operate('forward', 'natural', self.root, self.sources,
+                helper=self.helper, source_reader=self.reader, receipt_bytes=raw, receipt_check=lambda data: data == raw)
+        self.assertFalse((self.root / 'natural-forward.json').exists())
 
 
 if __name__ == '__main__':
