@@ -9,8 +9,10 @@ owner source and command, and complete a model-free supervised rehearsal.
 The worker reuses the earlier reviewed direction runner, delivery and journal
 primitives, with a separately checked 486-action schedule and a 256 MiB
 retained-tensor, 32 MiB event-log, 4 MiB per-forward and 512 MiB post-run
-physical-attempt limit. A failed full-sequence output and rejected candidate
-remain reservable. Those bounds are not a live OS disk quota. The entry checks
+apparent-attempt limit. The last limit sums file lengths and does not measure
+allocated storage. The operator separately measures allocated file bytes at
+closure. A failed full-sequence output and rejected candidate remain
+reservable. These bounds are not a live OS disk quota. The entry checks
 2 GiB output and 512 MiB cache staging, jointly when they share a volume,
 before the one-shot claim. These checks are point-in-time observations.
 

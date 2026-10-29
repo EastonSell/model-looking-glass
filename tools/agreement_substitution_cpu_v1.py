@@ -64,7 +64,7 @@ VERSIONS = {'python': '3.11.15', 'torch': '2.8.0+cu128', 'transformers': '4.57.3
 LIMITS = {'expected_forwards': 486, 'logical_success_bytes': 127891224,
           'failed_return_reserve_bytes': 2492208, 'invalid_candidate_reserve_bytes': 6144,
           'per_forward_bytes': 4 * 1024**2, 'retained_tensor_bytes': 256 * 1024**2,
-          'event_log_bytes': 32 * 1024**2, 'physical_attempt_bytes': 512 * 1024**2,
+          'event_log_bytes': 32 * 1024**2, 'apparent_attempt_bytes': 512 * 1024**2,
           'external_receipt_allowance_bytes': 16 * 1024**2,
           'minimum_free_disk_bytes': 2 * 1024**3,
           'minimum_cache_free_bytes': 512 * 1024**2, 'automatic_retry': False}
@@ -669,12 +669,12 @@ def run_owner(args, record, prelaunch_raw):
         session.check(lease)
         if verify_source(root, record, captured, helper, Path(__file__).resolve()) != sources:
             raise ValueError('source changed during the attempt')
-        physical = helper._physical_bytes(output)
-        if physical > LIMITS['physical_attempt_bytes'] - LIMITS['external_receipt_allowance_bytes']:
-            raise ValueError('physical attempt bytes exceeded the limit')
+        apparent = helper._physical_bytes(output)  # Sum of st_size, not allocated disk bytes.
+        if apparent > LIMITS['apparent_attempt_bytes'] - LIMITS['external_receipt_allowance_bytes']:
+            raise ValueError('apparent attempt bytes exceeded the limit')
         helper._write(output / 'entry-result.json', {
             'status': 'complete_candidate', 'binding': binding, 'worker': result,
-            'physical_attempt_bytes_before_result': physical, 'owner_pid': os.getpid(),
+            'apparent_attempt_bytes_before_result': apparent, 'owner_pid': os.getpid(),
             'owner_run_id': session.run_id, 'model_disposed': True,
             'external_receipt_allowance_bytes': LIMITS['external_receipt_allowance_bytes'],
             'scope': 'candidate only; external exit and independent scientific audit required'})
