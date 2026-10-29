@@ -66,6 +66,18 @@ def main():
         spec = importlib.util.find_spec('torch')
         print(json.dumps({'status': 'ok', 'torch_available': spec is not None}))
         return 0
+    if sys.argv[1:] == ['--check-imports']:
+        import torch
+        import transformers
+        import huggingface_hub
+        import safetensors
+        import tokenizers
+        import numpy
+        if torch.cuda.is_initialized():
+            raise RuntimeError('CUDA was initialized in the CPU import check')
+        print(json.dumps({'status': 'ok', 'torch': str(torch.__version__),
+                          'transformers': transformers.__version__, 'cuda_initialized': False}))
+        return 0
     package = (repo / 'looking_glass').resolve(strict=True)
     spec = importlib.util.spec_from_file_location('looking_glass', package / '__init__.py',
                                                  submodule_search_locations=[str(package)])
