@@ -17,6 +17,17 @@ launcher/bootstrap/runner/scorer bytes, model-state hashes, runtime settings,
 and current exclusions before publication. The builder's list is a minimum,
 not proof that it includes every executed module or native dependency.
 
+The runtime record also binds inter-op thread count, float32 matmul precision,
+MKLDNN enabled/deterministic flags, deterministic-algorithm and warning flags,
+CPU dispatch capability, and a bounded, exact six-key thread-environment map.
+The launcher must inspect these settings from the actual process before
+publication and verify they remain unchanged across execution. Recording a
+value is not proof of its provenance or of native-code behavior. The minimum
+inventory includes the runtime-preflight and v1-case sources plus the exact
+pilot and current development-union files; their recorded hashes must match
+the corresponding preparation commitments. A later union requires an
+appropriately revised source binding before a real attempt.
+
 `build_freeze` requires all ordered opaque cells and validates public sparse
 traces, repeated clean observations, candidate/control outputs and reused
 clean baselines across cells. It independently reconstructs each float32
