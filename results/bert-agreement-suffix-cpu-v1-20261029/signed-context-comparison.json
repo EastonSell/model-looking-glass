@@ -1,0 +1,9 @@
+{
+  "hits": [],
+  "pairs": 2048,
+  "scope": "These fixed public/tokenizer-only input bundles only; no private or pretraining claim",
+  "signed_rows": 32,
+  "signed_sha256": "843649c3f105e26185d96f31d769b0585d219bb7a45ba445cf2c2548598927df",
+  "suffix_rows": 64,
+  "suffix_sha256": "1da4f8e4773009fedc750480c21597fc60ecaa0c990dcff0af15a5c7101c3dca"
+}
