@@ -111,35 +111,47 @@ def compare(case_bytes, inventory_bytes):
 
 
 def compare_pending(case_bytes, bundle_bytes):
-    """Compare the public fixed France proposal, including declared continuations."""
+    """Compare a known fixed public pending bundle and its declared continuations."""
     if digest(case_bytes) != CASE_SHA:
         raise ValueError('fixed public case bytes differ')
     cases = json.loads(case_bytes)['cases']
     bundle = json.loads(bundle_bytes)
-    if bundle.get('schema') != 'france-full-top-fixed-cases-v3':
-        raise ValueError('unsupported pending input schema')
-    if (type(bundle.get('rows')) is not list or len(bundle['rows']) != 27
-            or type(bundle.get('projection_basis')) is not list or len(bundle['projection_basis']) != 4):
-        raise ValueError('unexpected France case count')
-    items = bundle['rows'] + bundle['projection_basis']
+    schema = bundle.get('schema')
     foreign = []
-    for item in items:
-        base = row(item['token_ids'])
-        mask = item['attention_mask']
-        if type(mask) is not list or len(mask) != len(base) or any(type(x) is not int or x != 1 for x in mask):
-            raise ValueError('unexpected France attention mask')
-        foreign.append(base)
-        continuations = item['continuations']
-        if type(continuations) is not list:
-            raise ValueError('invalid France continuations')
-        for continuation in continuations:
-            token = continuation['token_id']
-            candidate = row(continuation['appended_token_ids'])
-            if type(token) is not int or candidate != base + (token,):
-                raise ValueError('invalid France continuation')
-            foreign.append(candidate)
-    if len(foreign) != 73:
-        raise ValueError('unexpected France continuation count')
+    if schema == 'france-full-top-fixed-cases-v3':
+        if (type(bundle.get('rows')) is not list or len(bundle['rows']) != 27
+                or type(bundle.get('projection_basis')) is not list or len(bundle['projection_basis']) != 4):
+            raise ValueError('unexpected France case count')
+        for item in bundle['rows'] + bundle['projection_basis']:
+            base = row(item['token_ids'])
+            mask = item['attention_mask']
+            if type(mask) is not list or len(mask) != len(base) or any(type(x) is not int or x != 1 for x in mask):
+                raise ValueError('unexpected France attention mask')
+            foreign.append(base)
+            continuations = item['continuations']
+            if type(continuations) is not list:
+                raise ValueError('invalid France continuations')
+            for continuation in continuations:
+                token = continuation['token_id']
+                candidate = row(continuation['appended_token_ids'])
+                if type(token) is not int or candidate != base + (token,):
+                    raise ValueError('invalid France continuation')
+                foreign.append(candidate)
+        if len(foreign) != 73:
+            raise ValueError('unexpected France continuation count')
+    elif schema == 'distilgpt2-paired-continuation-cases-v1':
+        rows = bundle.get('cases')
+        if type(rows) is not list or len(rows) != 64:
+            raise ValueError('unexpected copying case count')
+        for item in rows:
+            base = row(item['token_ids'])
+            choices = (item['candidate_f_id'], item['candidate_g_id'])
+            if any(type(x) is not int or not 0 <= x < 50257 for x in choices) or choices[0] == choices[1]:
+                raise ValueError('invalid copying continuations')
+            foreign.append(base)
+            foreign.extend(base + (x,) for x in choices)
+    else:
+        raise ValueError('unsupported pending input schema')
     proposals = []
     for case in cases:
         base = row(case['token_ids'])

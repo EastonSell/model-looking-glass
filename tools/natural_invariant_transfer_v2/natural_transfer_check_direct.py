@@ -9,6 +9,8 @@ class DirectObserverTests(unittest.TestCase):
     def good(self):
         receipt = {'phase': 'discovery', 'exit_code': 0, 'interrupted': False,
                    'prefix_empty_after': True, 'stage_empty_after': True, 'stderr': {'bytes': 0},
+                   'prior_audit_sha256': 'a'*64, 'prior_audit_observation_sha256': 'b'*64,
+                   'prior_audit_observation_public_sha256': 'c'*64,
                    'run_files': {'started.json': {}, 'events.jsonl': {}, 'terminal.json': {}}}
         terminal = {'status': 'complete_candidate', 'storage_accounting_complete': True, 'events': 97,
                     'detail': {'status': 'complete_candidate', 'phase': 'discovery', 'forwards': 96,
@@ -20,7 +22,7 @@ class DirectObserverTests(unittest.TestCase):
         self.assertTrue(direct.assess_receipt(receipt, terminal))
         for field, value in (('exit_code', False), ('exit_code', 1), ('interrupted', True),
                              ('prefix_empty_after', False), ('stage_empty_after', False),
-                             ('stderr', {'bytes': 1}), ('stderr', {'bytes': False}), ('run_files', {}), ('phase', 'evaluation')):
+                             ('stderr', {'bytes': 1}), ('stderr', {'bytes': False}), ('prior_audit_observation_sha256', None), ('run_files', {}), ('phase', 'evaluation')):
             changed = dict(receipt, **{field: value})
             self.assertFalse(direct.assess_receipt(changed, terminal), field)
         for field, value in (('status', 'failed'), ('events', 96), ('events', True),

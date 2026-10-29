@@ -24,7 +24,7 @@ TOKENIZER_SHA = '8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a
 HEX = re.compile(r'[0-9a-f]{64}\Z')
 STUDY = ('natural_transfer_direct.py', 'natural_transfer_phase.py', 'natural_transfer_numeric.py',
          'natural_transfer_prior.py', 'natural_transfer_executor.py', 'natural_transfer_analyze.py',
-         'natural_transfer_freeze.py', 'natural_transfer_currentness.py')
+         'natural_transfer_freeze.py', 'natural_transfer_currentness.py', 'natural_transfer_baseline.py')
 DEPENDENCIES = tuple('looking_glass/' + x + '.py' for x in (
     '__init__', 'pretrained', 'agreement_direction_study_v1', 'agreement_substitution_executor_v1',
     'agreement_journal', 'agreement_patch_runner', 'agreement_numeric', 'agreement_metrics',
@@ -86,20 +86,6 @@ def verify_reservations(inventory, cases):
     return {'own_cases': 68, 'scope': 'public inventory only; unknown and protected exposure unverified'}
 
 
-def verify_prior_receipt(receipt, prior):
-    """Check the owner's cooperative closed observation and its pinned journal."""
-    if (receipt.get('schema') != 'agreement-invariant-owner-exit-observation-v1'
-            or type(receipt.get('observer_exit_code')) is not int or receipt['observer_exit_code'] != 0
-            or receipt.get('observer_clean') is not True
-            or type(receipt.get('normal_path_model_returns')) is not int or receipt['normal_path_model_returns'] != 612
-            or type(receipt.get('saved_forward_records')) is not int or receipt['saved_forward_records'] != 612
-            or receipt.get('storage_accounting_complete') is not True
-            or receipt.get('terminal_status') != 'complete_candidate'
-            or receipt.get('events_sha256') != prior['events_sha256']
-            or receipt.get('terminal_sha256') != prior['terminal_sha256']):
-        raise ValueError('prior receipt does not describe the complete successor')
-
-
 def verify_evaluation_freeze(*, private, pre, pre_sha, prior, observed_sha, width=768, vocabulary=50257):
     """Read public-observation record and recompute discovery before model import."""
     observation = json.loads(checked(private['freeze_observation'], observed_sha))
@@ -111,6 +97,9 @@ def verify_evaluation_freeze(*, private, pre, pre_sha, prior, observed_sha, widt
             or receipt.get('phase') != 'discovery' or receipt.get('accepted_complete_phase') is not True
             or receipt.get('pre_run_sha256') != pre_sha
             or receipt.get('prior_receipt_sha256') != pre['prior']['receipt_sha256']
+            or receipt.get('prior_audit_sha256') != pre['prior']['audit_sha256']
+            or receipt.get('prior_audit_observation_sha256') != pre['prior']['audit_observation_sha256']
+            or receipt.get('prior_audit_observation_public_sha256') != pre['prior']['audit_observation_public_sha256']
             or receipt.get('latest_exposure_sha256') != pre['latest_exposure_sha256']
             or receipt.get('run_files', {}).get('events.jsonl', {}).get('sha256') != observation['discovery_events_sha256']
             or receipt.get('run_files', {}).get('terminal.json', {}).get('sha256') != observation['discovery_terminal_sha256']):
@@ -178,10 +167,18 @@ def main():
     checked(private['addendum'], ADDENDUM_SHA)
     prior_info = pre['prior']
     receipt = json.loads(checked(private['prior_receipt'], prior_info['receipt_sha256']))
-    checked(private['prior_audit'], prior_info['audit_sha256'])
-    verify_prior_receipt(receipt, prior_info)
+    supervisor = json.loads(checked(private['prior_supervisor'], prior_info['supervisor_sha256']))
+    custody = json.loads(checked(private['prior_child_custody'], prior_info['child_custody_sha256']))
+    entry = json.loads(checked(private['prior_entry_result'], prior_info['entry_result_sha256']))
+    model_admission = json.loads(checked(private['prior_model_admission'], prior_info['model_admission_sha256']))
+    launch = json.loads(checked(private['prior_prelaunch'], prior_info['prelaunch_sha256']))
+    terminal = json.loads(checked(Path(private['prior_dir']) / 'terminal.json', prior_info['terminal_sha256']))
+    audit = json.loads(checked(private['prior_audit'], prior_info['audit_sha256']))
     sys.path.insert(0, str(source))
     sys.path.insert(0, str(study))
+    import natural_transfer_baseline
+    natural_transfer_baseline.verify_records(receipt, supervisor, custody, entry, model_admission,
+                                             launch, terminal, audit, prior_info)
     import natural_transfer_prior
     prior = natural_transfer_prior.load_prior(private['prior_dir'], cases, mapping,
         events_sha256=prior_info['events_sha256'], started_sha256=prior_info['started_sha256'],
@@ -254,6 +251,7 @@ def main():
     if shutil.disk_usage(attempt).free < 2 * 1024 ** 3:
         raise ValueError('insufficient initial E: reserve')
     custody_check()
+    natural_transfer_baseline.verify_audit_observation(private, prior_info)
     # No project or model import above this line loads Torch. In particular,
     # evaluation reaches here only after recomputing the public freeze.
     import torch
@@ -272,6 +270,7 @@ def main():
     torch.set_num_threads(1)
     torch.set_num_interop_threads(1)
     torch.use_deterministic_algorithms(True)
+    torch.set_float32_matmul_precision('highest')
     if not torch.set_flush_denormal(False):
         raise RuntimeError('unable to disable subnormal flushing')
     torch.manual_seed(0)
@@ -279,6 +278,10 @@ def main():
     if (any(stage.iterdir()) or loaded.metadata['model_revision'] != REVISION
             or loaded.metadata['weights_sha256'] != WEIGHTS_SHA
             or loaded.metadata['asset_sha256']['tokenizer.json'] != TOKENIZER_SHA
+            or loaded.metadata['torch_version'] != model_admission['checkpoint']['torch_version']
+            or loaded.metadata['transformers_version'] != model_admission['checkpoint']['transformers_version']
+            or loaded.metadata['device'] != 'cpu' or loaded.metadata['dtype'] != 'float32'
+            or loaded.metadata['attention_implementation'] != 'eager' or loaded.metadata['use_cache'] is not False
             or loaded.model.config.n_embd != 768 or loaded.model.config.vocab_size != 50257):
         raise ValueError('checkpoint identity or stage differs')
     for case in cases:

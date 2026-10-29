@@ -56,6 +56,16 @@ class CurrentnessTests(unittest.TestCase):
         bundle['rows'][0]['continuations'][0]['appended_token_ids'].append(1)
         with self.assertRaises(ValueError):
             c.compare_pending(self.case_bytes, json.dumps(bundle).encode())
+    def test_fixed_pending_copying_and_candidate_validation(self):
+        raw = Path(os.environ['NATURAL_PENDING_COPY']).read_bytes()
+        report = c.compare_pending(self.case_bytes, raw)
+        self.assertEqual(report['own_sequences'], 612)
+        self.assertEqual(report['foreign_sequences'], 192)
+        self.assertEqual(report['relations'], 0)
+        bundle = json.loads(raw)
+        bundle['cases'][0]['candidate_f_id'] = bundle['cases'][0]['candidate_g_id']
+        with self.assertRaises(ValueError):
+            c.compare_pending(self.case_bytes, json.dumps(bundle).encode())
     def test_false_own_identity_and_boolean_token_reject(self):
         inventory = copy.deepcopy(self.minimal)
         inventory['records'][0]['record_id'] = 'missing-own'

@@ -22,19 +22,6 @@ def gitblob(raw):
 
 
 class PreflightTests(unittest.TestCase):
-    def test_closed_prior_observer_must_match_complete_journal(self):
-        prior = {'events_sha256': 'a'*64, 'terminal_sha256': 'b'*64}
-        receipt = {'schema': 'agreement-invariant-owner-exit-observation-v1', 'observer_exit_code': 0,
-                   'observer_clean': True, 'normal_path_model_returns': 612, 'saved_forward_records': 612,
-                   'storage_accounting_complete': True, 'terminal_status': 'complete_candidate', **prior}
-        phase.verify_prior_receipt(receipt, prior)
-        for key, value in (('observer_exit_code', False), ('observer_exit_code', 1), ('observer_clean', False),
-                           ('normal_path_model_returns', 301), ('saved_forward_records', 611),
-                           ('storage_accounting_complete', False), ('terminal_status', 'failed'),
-                           ('events_sha256', 'c'*64), ('terminal_sha256', 'd'*64)):
-            with self.subTest(key=key, value=value), self.assertRaises(ValueError):
-                phase.verify_prior_receipt(dict(receipt, **{key: value}), prior)
-
     def test_exact_public_reservations_and_tampering(self):
         cases = json.loads(Path(os.environ['NATURAL_CASES']).read_bytes())['cases']
         inventory = json.loads(Path(os.environ['NATURAL_INVENTORY']).read_bytes())
@@ -79,6 +66,8 @@ class PreflightTests(unittest.TestCase):
                        'accepted_complete_phase':True, 'exit_code':0, 'interrupted':False,
                        'prefix_empty_after':True, 'stage_empty_after':True, 'stderr':{'bytes':0},
                        'pre_run_sha256':'1'*64, 'prior_receipt_sha256':'1'*64,
+                       'prior_audit_sha256':'2'*64, 'prior_audit_observation_sha256':'3'*64,
+                       'prior_audit_observation_public_sha256':'4'*64,
                        'latest_exposure_sha256':'1'*64,
                        'run_files':{'started.json':{}, 'events.jsonl':{'sha256':meta['phases']['discovery']['events_sha256']},
                                     'terminal.json':{'sha256':meta['phases']['discovery']['terminal_sha256']}}}
@@ -95,7 +84,9 @@ class PreflightTests(unittest.TestCase):
             private = {'freeze_observation':tmp/'obs.json', 'discovery_receipt':tmp/'receipt.json',
                        'mapping':fixture/'toy-mapping.json', 'discovery_dir':fixture/'discovery',
                        'discovery_freeze':fixture/'freeze.json'}
-            pre = {'prior': {'receipt_sha256':'1'*64, 'events_sha256':meta['prior_events_sha256']},
+            pre = {'prior': {'receipt_sha256':'1'*64, 'audit_sha256':'2'*64,
+                             'audit_observation_sha256':'3'*64, 'audit_observation_public_sha256':'4'*64,
+                             'events_sha256':meta['prior_events_sha256']},
                    'latest_exposure_sha256':'1'*64}
             with mock.patch.object(phase, 'MAPPING_SHA', meta['mapping_sha256']):
                 result = phase.verify_evaluation_freeze(private=private, pre=pre, pre_sha='1'*64,

@@ -50,6 +50,10 @@ def assess_receipt(receipt, terminal):
     if type(detail) is not dict or type(detail.get('displacement_inventory')) is not dict:
         return False
     inventory = detail['displacement_inventory']
+    for key in ('prior_audit_sha256', 'prior_audit_observation_sha256', 'prior_audit_observation_public_sha256'):
+        value = receipt.get(key)
+        if type(value) is not str or len(value) != 64 or any(x not in '0123456789abcdef' for x in value):
+            return False
     return (type(receipt.get('exit_code')) is int and receipt['exit_code'] == 0
             and receipt.get('interrupted') is False
             and receipt.get('prefix_empty_after') is True and receipt.get('stage_empty_after') is True
@@ -123,7 +127,7 @@ def main():
         raise ValueError('discovery must not consume an evaluation observation')
     env = os.environ.copy()
     env.update({'CUDA_VISIBLE_DEVICES': '-1', 'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
-                'HF_HUB_DISABLE_PROGRESS_BARS': '1', 'OMP_NUM_THREADS': '1',
+                'HF_HUB_DISABLE_PROGRESS_BARS': '1', 'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1',
                 'PYTHONPATH': os.pathsep.join((str(study), str(source))), 'TEMP': str(temp), 'TMP': str(temp)})
     for key in ('MKL_CBWR', 'ATEN_CPU_CAPABILITY'):
         env.pop(key, None)
@@ -139,10 +143,14 @@ def main():
             if not path.is_file() or len(files) >= 4096:
                 raise ValueError('unexpected closed run inventory')
             files[path.relative_to(output).as_posix()] = {'bytes': path.stat().st_size, 'sha256': sha(path)}
+
     receipt = {'schema': 'natural-invariant-transfer-direct-receipt-v2', 'phase': args.phase, **observed,
                'pre_run_sha256': args.pre_run_sha256, 'freeze_observation_sha256': args.freeze_observation_sha256,
                'source_revision': pre['source_revision'], 'source_tree': pre['source_tree'],
                'prior_receipt_sha256': pre['prior']['receipt_sha256'],
+               'prior_audit_sha256': pre['prior']['audit_sha256'],
+               'prior_audit_observation_sha256': pre['prior']['audit_observation_sha256'],
+               'prior_audit_observation_public_sha256': pre['prior']['audit_observation_public_sha256'],
                'latest_exposure_sha256': exposure_sha,
                'prefix_empty_after': not any(prefix.iterdir()), 'stage_empty_after': not any(stage.iterdir()),
                'free_bytes_after': {'output': shutil.disk_usage(attempt).free, 'source': shutil.disk_usage(source).free,
