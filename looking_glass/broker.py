@@ -148,6 +148,7 @@ class _Job:
     retained_result: Any = None
     retained_cleanup_error: Any = None
     retiring_staged: Any = None
+    retiring_completion: Any = None
     pending_result_custody: Any = None
     quarantine_required: bool = False
 
@@ -251,7 +252,7 @@ class RequestHandle:
         if timeout is not None and (isinstance(timeout, bool) or timeout < 0):
             raise ValueError('timeout must be nonnegative or None')
         with self._broker._condition:
-            if not self._broker._condition.wait_for(
+            if not self._broker._wait_condition_locked(
                     lambda: self._outcome is not None or self._broker._fatal_cleanup_failure
                     or self._broker.quarantined, timeout):
                 raise TimeoutError('request is still in flight')
@@ -272,7 +273,7 @@ class RequestHandle:
         with broker._condition:
             if not self._retirement_supported:
                 raise BrokerUnavailable('retirement tracking requires fair handoff')
-            if not broker._condition.wait_for(
+            if not broker._wait_condition_locked(
                     lambda: self._retirement.complete or broker._fatal_cleanup_failure
                     or broker.quarantined, timeout):
                 raise TimeoutError('request retirement is still in flight')
@@ -289,9 +290,10 @@ class Broker:
     forward-only types. Clients must not otherwise access the worker's model.
     """
 
-    def __init__(self, worker, *, max_pending, max_pending_per_team):
+    def __init__(self, worker, *, max_pending, max_pending_per_team, completion_authority=None):
         try:
-            self._initialize(worker, max_pending=max_pending, max_pending_per_team=max_pending_per_team)
+            self._initialize(worker, max_pending=max_pending, max_pending_per_team=max_pending_per_team,
+                             completion_authority=completion_authority)
             return
         except BaseException as exc:
             if not getattr(self, '_quarantine_latched', False):
@@ -299,7 +301,19 @@ class Broker:
             public_error = _sanitized_failure(exc, BrokerUnavailable)
         _raise_sanitized(public_error)
 
-    def _initialize(self, worker, *, max_pending, max_pending_per_team):
+    def _initialize(self, worker, *, max_pending, max_pending_per_team, completion_authority):
+        from .owner_completion import LifetimeWorkspaceWorker, OwnerCompletionAuthority
+        if type(worker) is LifetimeWorkspaceWorker:
+            if (type(completion_authority) is not OwnerCompletionAuthority
+                    or worker._authority is not completion_authority):
+                raise ValueError('fixed-workspace worker requires its completion authority')
+            if worker._cold_pending:
+                raise ValueError('cold warmup must finish before broker startup')
+        elif completion_authority is not None:
+            raise ValueError('completion authority requires the fixed-workspace worker')
+        self._completion_authority = completion_authority
+        if completion_authority is not None:
+            completion_authority._bind_broker(self, worker)
         self._queue = FairTeamQueue(max_pending, max_pending_per_team)
         cancellation_exception = getattr(worker, 'cancellation_exception', None)
         if (not isinstance(cancellation_exception, type)
@@ -373,6 +387,18 @@ class Broker:
         """Unique identifier for this broker lifetime, for artifact correlation."""
         return self._identity_prefix
 
+    def _wait_condition_locked(self, predicate, timeout=None):
+        """Poll the lock-free owner signal without blocking its publisher."""
+        if self._completion_authority is None:
+            return self._condition.wait_for(predicate, timeout)
+        deadline = None if timeout is None else monotonic() + max(0, timeout)
+        while not predicate():
+            interval = 0.05 if deadline is None else min(0.05, max(0, deadline - monotonic()))
+            if interval <= 0:
+                return False
+            self._condition.wait(interval)
+        return True
+
     @property
     def health_snapshot(self):
         """Observe broker-owned latches without waiting for admission or a worker.
@@ -381,7 +407,7 @@ class Broker:
         are read. They cannot authorize admission or prove device completion.
         Supervisors must separately monitor worker and transport health.
         """
-        quarantined = self._quarantine_latched
+        quarantined = self.quarantined
         return BrokerHealth(
             failed=bool(self._unavailable or self._fatal_cleanup_failure or quarantined),
             quarantined=quarantined,
@@ -405,7 +431,12 @@ class Broker:
     @property
     def quarantined(self):
         """Unknown worker-owned data requires terminating the owner process."""
-        return self._quarantine_latched
+        return (self._quarantine_latched or
+                (self._completion_authority is not None and self._completion_authority.unsafe))
+
+    def _signal_completion_unsafe(self):
+        if self._completion_authority is not None:
+            self._completion_authority.mark_unsafe()
 
     def _worker_poisoned_locked(self):
         """Probe trusted worker status while preserving unknown failures."""
@@ -424,6 +455,7 @@ class Broker:
                 self._mark_cleanup_failed_locked()
             except BaseException as recovery_exc:
                 self._status_recovery_error = recovery_exc
+                self._signal_completion_unsafe()
                 self._quarantine_latched = True
                 self._fatal_cleanup_failure = True
                 self._unavailable = 'broker cleanup failed; request status is unknown'
@@ -451,6 +483,7 @@ class Broker:
                 self._mark_cleanup_failed_locked()
             except BaseException as cleanup_exc:
                 self._status_cleanup_error = cleanup_exc
+                self._signal_completion_unsafe()
                 self._quarantine_latched = True
                 self._fatal_cleanup_failure = True
                 self._unavailable = 'broker cleanup failed; request status is unknown'
@@ -487,6 +520,15 @@ class Broker:
     def _retain_unknown(self, value):
         # Retain before signaling. A failed notification must not release the
         # object; quarantine remains independently visible to admission/close.
+        # Signal the fixed owner before waiting for an occupied condition; the
+        # producer frame still owns value until its durable slot is populated.
+        try:
+            self._signal_completion_unsafe()
+        finally:
+            # Even an interruption before the helper enters must leave the
+            # fixed owner's nonblocking signal latched.
+            if self._completion_authority is not None:
+                self._completion_authority.mark_unsafe()
         with self._condition:
             try:
                 try:
@@ -564,12 +606,29 @@ class Broker:
                     raise RuntimeError('job has no broker-owned root')
                 # Commit disposal against quarantine under the same lock.
                 # The local reference prevents a finalizer from running here.
-                retiring_request = job.request
-                job.request = None
+                if self._completion_authority is not None:
+                    # Pre-root every result/error alias before the authority's
+                    # retirement decision. The unsafe flag read linearizes
+                    # this cleanup before or after a concurrent unsafe mark.
+                    job.retiring_completion = (job.retained_result, job.retained_error,
+                                                job.retained_status_error)
+                    with self._completion_authority._decision_lock:
+                        if self._completion_authority.unsafe:
+                            return False
+                        retiring_request = job.request
+                        job.request = None
+                        job.retained_result = None
+                        job.retained_error = None
+                        job.retained_status_error = None
+                else:
+                    retiring_request = job.request
+                    job.request = None
             # Retirement has won against later quarantine. Keep the root
             # occupied until releasing the input really returns, including
             # while a finalizer blocks; no finalizer runs under the condition.
             retiring_request = None
+            # Last-reference finalizers run outside the broker condition.
+            job.retiring_completion = None
             self._retire_job_input(job)
             self._retire_job_result(job)
             with self._condition:
@@ -758,10 +817,15 @@ class Broker:
 
     def _mark_cleanup_failed_locked(self):
         # Do not discard pending requests or decrement unverified reservations.
-        self._quarantine_latched = True
-        self._fatal_cleanup_failure = True
-        self._unavailable = 'broker cleanup failed; request status is unknown'
-        self._condition.notify_all()
+        try:
+            self._signal_completion_unsafe()
+        finally:
+            if self._completion_authority is not None:
+                self._completion_authority.mark_unsafe()
+            self._quarantine_latched = True
+            self._fatal_cleanup_failure = True
+            self._unavailable = 'broker cleanup failed; request status is unknown'
+            self._condition.notify_all()
 
     def _retire_job_input(self, job):
         """Dispose a finished job's input before releasing its host claim."""
@@ -805,6 +869,7 @@ class Broker:
             if self._owner_failure is None:
                 original = BaseException.__getattribute__(exc, '__context__')
                 self._owner_failure = original if isinstance(original, BaseException) else exc
+            self._signal_completion_unsafe()
             self._quarantine_latched = True
 
     def _run_inner(self):
@@ -825,9 +890,11 @@ class Broker:
                 self._owner_failure = exc
             finally:
                 try:
+                    self._signal_completion_unsafe()
                     self._quarantine_latched = True
                 finally:
                     self._owner_failure = exc
+                    self._signal_completion_unsafe()
                     self._quarantine_latched = True
             self._retain_unknown(exc)
             failure = _describe_exception(exc)
@@ -853,6 +920,7 @@ class Broker:
             if not serve_returned:
                 # This also covers an interruption before the failure handler
                 # could root its exception or notify the supervisor.
+                self._signal_completion_unsafe()
                 self._quarantine_latched = True
                 escaping = sys.exc_info()[1]
                 if escaping is not None:
@@ -863,8 +931,8 @@ class Broker:
             # A snapshot in progress may still use the worker. Never close it
             # until all accepted preparation reservations have been released.
             with self._condition:
-                self._condition.wait_for(lambda: self._preparing == 0 and not self._fair_preparations and
-                                         (self.quarantined or all(job is None for job in self._job_roots)))
+                self._wait_condition_locked(lambda: self._preparing == 0 and not self._fair_preparations and
+                                            (self.quarantined or all(job is None for job in self._job_roots)))
             del removed
             if not self.quarantined:
                 try:
@@ -884,8 +952,8 @@ class Broker:
     def _serve(self):
         while True:
             with self._condition:
-                self._condition.wait_for(lambda: len(self._queue) or self._closed or self._unavailable
-                                         or self.quarantined)
+                self._wait_condition_locked(lambda: len(self._queue) or self._closed or self._unavailable
+                                            or self.quarantined)
                 if self._closed or self._unavailable or self.quarantined:
                     return
                 item = self._queue.pop()
@@ -915,11 +983,19 @@ class Broker:
                 cancellation = isinstance(exc, self._cancellation_exception)
                 fatal = not isinstance(exc, Exception)
             else:
+                # Root the producer's exact object before any validation or
+                # relabeling can fail. The fixed worker independently retains
+                # it until this job root has taken custody.
+                original_result = result
+                job.retained_result = result
                 try:
                     _validate_forward_result(result, handle._worker_request_id)
                     if self._fair_handoff is not None:
                         self._fair_handoff.validate_result_storage(result)
                     result = replace(result, request_id=handle.request_id)
+                    job.retained_result = result
+                    if self._completion_authority is not None and not self.quarantined:
+                        self._worker._transfer_result(original_result)
                 except BaseException:
                     self._retain_unknown(result)
                     failure = ('InvalidWorkerResult', 'worker returned an invalid request identity or result')
@@ -928,6 +1004,16 @@ class Broker:
             # Keep the exact returned object rooted if the status probe itself
             # fails; its fields may own resources beyond numerical ledgers.
             job.retained_result = result
+            if self._completion_authority is not None and failure is None:
+                try:
+                    # Recheck the supervised lease without holding the broker
+                    # condition. External revocation can still race afterward;
+                    # only the authority flag is ordered with publication.
+                    self._completion_authority._before_device()
+                except BaseException as exc:
+                    job.retained_status_error = exc
+                    failure = _describe_exception(exc)
+                    fatal = not isinstance(exc, Exception)
             with self._condition:
                 if self.quarantined:
                     poisoned = True
@@ -957,7 +1043,21 @@ class Broker:
                 elif cancellation or handle._cancel.is_set():
                     self._finish_locked(handle, RequestState.CANCELLED)
                 else:
-                    self._finish_locked(handle, RequestState.SUCCEEDED, result=result)
+                    if self._completion_authority is None:
+                        self._finish_locked(handle, RequestState.SUCCEEDED, result=result)
+                    else:
+                        authority = self._completion_authority
+                        # All validation, cancellation checks and job rooting
+                        # precede this read. A later unsafe request is ordered
+                        # after this success decision even if delivery follows.
+                        with authority._decision_lock:
+                            if authority.unsafe:
+                                self._mark_cleanup_failed_locked()
+                                self._finish_locked(handle, RequestState.FAILED,
+                                    error_type='WorkerUnavailable',
+                                    error_message='owner became unsafe before success')
+                            else:
+                                self._finish_locked(handle, RequestState.SUCCEEDED, result=result)
                 self._running = None
                 if (poisoned or fatal) and not self._fatal_cleanup_failure and not self.quarantined:
                     self._unavailable = 'worker failed and cannot be reused'
@@ -968,13 +1068,15 @@ class Broker:
                 item = None
                 handle = None
                 result = None
+                original_result = None
             # Do not retain finished inputs, exceptions, or results in the owner
             # thread while waiting for the next job.
             if not self._fatal_cleanup_failure and not self.quarantined:
                 if not poisoned and not fatal:
-                    job.retained_error = None
-                    job.retained_status_error = None
-                    job.retained_result = None
+                    if self._completion_authority is None:
+                        job.retained_error = None
+                        job.retained_status_error = None
+                        job.retained_result = None
                     self._retire_job(job)
                     with self._condition:
                         if not self._fatal_cleanup_failure and not self.quarantined:
@@ -982,9 +1084,10 @@ class Broker:
                 elif job.input_custody is None:
                     # The base trusted-worker contract permits clean disposal
                     # after an ordinary poisoned direct execution failure.
-                    job.retained_error = None
-                    job.retained_status_error = None
-                    job.retained_result = None
+                    if self._completion_authority is None:
+                        job.retained_error = None
+                        job.retained_status_error = None
+                        job.retained_result = None
                     self._retire_job(job)
                 self._retire_items(removed)
             del item, job, handle, result, failure, removed
