@@ -25,8 +25,12 @@ and completion authority, and observes broker, worker, and IPC latches without
 taking the broker admission condition. It marks the same authority when an
 observation is uncertain and privately retains known observation exceptions
 and tracebacks in separate preallocated owner-thread and shutdown-thread slots.
-The public failure has detached cause and context; its provider traceback frame
-does not retain the private exception or its custody slot. These
+Those slots also preallocate the public failure categories before observation,
+so a later error does not require constructing a new exception. Once cleanup
+completes, the public failure has detached cause and context, and its provider
+traceback frame does not retain the private exception or its custody slot.
+The tested interruption cases are recovered; arbitrary interruption of cleanup
+or failure in Python's traceback machinery still requires process recovery. These
 are non-atomic, cooperative observations, not admission decisions or a proof
 that work has completed; source-time fault signals and an external watchdog
 remain necessary. The two-slot contract assumes the one service caller and its

@@ -9,6 +9,7 @@ import threading
 import unittest
 import gc
 import ctypes
+import inspect
 import os
 from pathlib import Path
 import sys
@@ -17,6 +18,7 @@ import tempfile
 import traceback
 import weakref
 from dataclasses import asdict, dataclass, replace
+from contextlib import nullcontext
 import hashlib
 import json
 from types import SimpleNamespace
@@ -841,17 +843,33 @@ class ConcreteBackendContractTests(unittest.TestCase):
         class Claim:
             pass
 
-        for interrupt in (False, True):
-            with self.subTest(interrupted_retention=interrupt), \
+        class Guard:
+            def check(self):
+                pass
+
+        for fault in ('ordinary', 'interrupted_retention', 'interrupted_recovery',
+                      'interrupted_selection', 'interrupted_clear', 'interrupted_authority_clear',
+                      'public_allocation'):
+            interrupt = fault in ('interrupted_retention', 'interrupted_recovery',
+                                  'interrupted_selection', 'interrupted_clear', 'interrupted_authority_clear')
+            with self.subTest(fault=fault), \
                  patch.object(resident_module, '_process_quarantined', threading.Event()), \
                  patch.object(resident_module, '_process_quarantine_latch', None):
                 _reset_fake_owner()
-                model, _, budget, load, workspace, authority, worker, broker, request = make_owner()
+                guard = Guard()
+                model, _, budget, load, workspace, authority, worker, broker, request = make_owner(
+                    device_guard=guard.check)
                 gpu_service._OWNER_COMPLETION = authority
                 server = IPCServer(broker, team_ids=('alpha',), completion_authority=authority)
                 health = gpu_service._DirectOwnerHealth(server, broker, worker, authority)
+                guard.health = health  # The real backend also roots this observer.
                 handle = broker.submit('alpha', request)
-                aliases, claims, fired = [], [], []
+                aliases, claims, fired, observed = [], [], [], []
+                source, first_line = inspect.getsourcelines(gpu_service._DirectOwnerHealth.__call__)
+                clear_line = next(first_line + index for index, line in enumerate(source)
+                                  if line.strip() == 'self = slot = None')
+                authority_clear_line = next(first_line + index for index, line in enumerate(source)
+                                            if line.strip() == 'authority = None')
 
                 def failed_snapshot(_broker):
                     claim = Claim()
@@ -862,17 +880,34 @@ class ConcreteBackendContractTests(unittest.TestCase):
                     raise MemoryError('health observation failed')
 
                 def trace(frame, event, arg):
-                    if (interrupt and event == 'call'
-                            and frame.f_code is gpu_service._HealthFailureSlot.retain.__code__
-                            and not fired):
+                    if (fault == 'interrupted_clear' and event == 'line'
+                            and frame.f_code is gpu_service._DirectOwnerHealth.__call__.__code__
+                            and frame.f_lineno == clear_line and not fired):
                         fired.append(True)
-                        raise KeyboardInterrupt('health retention interrupted')
+                        raise KeyboardInterrupt('health frame clearing interrupted')
+                    if (fault == 'interrupted_authority_clear' and event == 'line'
+                            and frame.f_code is gpu_service._DirectOwnerHealth.__call__.__code__
+                            and frame.f_lineno == authority_clear_line and not fired):
+                        fired.append(True)
+                        raise KeyboardInterrupt('health authority clearing interrupted')
+                    target = (gpu_service._HealthFailureSlot.public_for.__code__
+                              if fault == 'interrupted_selection'
+                              else gpu_service._HealthFailureSlot.retain.__code__)
+                    if (interrupt and fault not in ('interrupted_clear', 'interrupted_authority_clear')
+                            and event == 'call' and frame.f_code is target):
+                        observed.append(True)
+                        if len(observed) == (3 if fault == 'interrupted_recovery' else 1):
+                            fired.append(True)
+                            raise KeyboardInterrupt('health retention interrupted')
                     return trace
 
                 previous_trace = sys.gettrace()
                 try:
                     self.assertTrue(model.entered.wait(5))
-                    with patch.object(Broker, 'health_snapshot', property(failed_snapshot)):
+                    allocator = (patch.object(gpu_service, 'RuntimeError', create=True,
+                                              side_effect=MemoryError('public allocation failed'))
+                                 if fault == 'public_allocation' else nullcontext())
+                    with patch.object(Broker, 'health_snapshot', property(failed_snapshot)), allocator as allocate:
                         sys.settrace(trace)
                         try:
                             try:
@@ -889,7 +924,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
                                     if frame.tb_frame.f_code.co_filename == gpu_service.__file__:
                                         provider_frames.append(frame.tb_frame.f_code.co_name)
                                         values = tuple(frame.tb_frame.f_locals.values())
-                                        self.assertFalse(any(value is private or value is health
+                                        self.assertFalse(any(value is private or value is health or value is authority
                                                              or value is health._owner_failures
                                                              for value in values))
                                     frame = frame.tb_next
@@ -900,6 +935,8 @@ class ConcreteBackendContractTests(unittest.TestCase):
                                 self.fail('health failure did not escape')
                         finally:
                             sys.settrace(previous_trace)
+                        if fault == 'public_allocation':
+                            allocate.assert_not_called()
                     self.assertEqual(fired, [True] if interrupt else [])
                     self.assertTrue(authority.unsafe)
                     self.assertIsInstance(health._owner_failures.error, MemoryError)
@@ -989,6 +1026,61 @@ class ConcreteBackendContractTests(unittest.TestCase):
                     broker.close(timeout=5)
                 except BrokerShutdownError:
                     broker._thread.join(5)
+
+    def test_interrupted_healthy_observation_cleanup_quarantines_inflight_work(self):
+        from looking_glass.broker import BrokerShutdownError, BrokerUnavailable, RequestState
+        from looking_glass.ipc import IPCServer
+        import looking_glass.resident_worker as resident_module
+        from test_owner_completion import make_owner
+
+        for assignment in ('self = slot = None', 'authority = None'):
+            with self.subTest(assignment=assignment), \
+                 patch.object(resident_module, '_process_quarantined', threading.Event()), \
+                 patch.object(resident_module, '_process_quarantine_latch', None):
+                _reset_fake_owner()
+                model, _, budget, load, workspace, authority, worker, broker, request = make_owner()
+                gpu_service._OWNER_COMPLETION = authority
+                server = IPCServer(broker, team_ids=('alpha',), completion_authority=authority)
+                health = gpu_service._DirectOwnerHealth(server, broker, worker, authority)
+                handle = broker.submit('alpha', request)
+                source, first_line = inspect.getsourcelines(gpu_service._DirectOwnerHealth.__call__)
+                target = next(first_line + index for index, line in enumerate(source)
+                              if line.strip() == assignment)
+                fired = []
+
+                def trace(frame, event, arg):
+                    if (event == 'line' and frame.f_code is gpu_service._DirectOwnerHealth.__call__.__code__
+                            and frame.f_lineno == target and not fired):
+                        fired.append(True)
+                        raise KeyboardInterrupt('healthy observation cleanup interrupted')
+                    return trace
+
+                previous_trace = sys.gettrace()
+                try:
+                    self.assertTrue(model.entered.wait(5))
+                    sys.settrace(trace)
+                    try:
+                        with self.assertRaises(KeyboardInterrupt):
+                            health()
+                    finally:
+                        sys.settrace(previous_trace)
+                    self.assertEqual(fired, [True])
+                    self.assertTrue(authority.unsafe)
+                    self.assertEqual(set(budget.active_leases()), {load, workspace})
+                finally:
+                    sys.settrace(previous_trace)
+                    model.release.set()
+                    try:
+                        broker.close(timeout=5)
+                    except BrokerShutdownError:
+                        broker._thread.join(5)
+                self.assertFalse(broker._thread.is_alive())
+                try:
+                    outcome = handle.wait(2)
+                except BrokerUnavailable:
+                    pass
+                else:
+                    self.assertNotEqual(outcome.state, RequestState.SUCCEEDED)
 
     def test_direct_constructor_bounds_wire_connections_and_pending_jobs(self):
         import socket

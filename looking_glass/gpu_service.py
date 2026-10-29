@@ -202,6 +202,26 @@ class _HealthFailureSlot:
     def __init__(self):
         self.error = self.traceback = None
         self.cleanup_error = self.cleanup_traceback = None
+        # Allocate the public errors while the observer is still healthy.
+        # Once an observation fails, constructing an exception may itself run
+        # out of memory and expose the original failure as its context.
+        message = 'owner health is uncertain; terminate the owner process'
+        self.public_keyboard = KeyboardInterrupt(message)
+        self.public_system_exit = SystemExit(message)
+        self.public_generator_exit = GeneratorExit(message)
+        self.public_runtime = RuntimeError(message)
+        self.public_base = BaseException(message)
+
+    def public_for(self, exc):
+        if isinstance(exc, KeyboardInterrupt):
+            return self.public_keyboard
+        if isinstance(exc, SystemExit):
+            return self.public_system_exit
+        if isinstance(exc, GeneratorExit):
+            return self.public_generator_exit
+        if isinstance(exc, Exception):
+            return self.public_runtime
+        return self.public_base
 
     def retain(self, exc):
         traceback = BaseException.__dict__['__traceback__'].__get__(exc, BaseException)
@@ -215,22 +235,6 @@ class _HealthFailureSlot:
             raise RuntimeError('health failure custody is exhausted')
 
 
-def _new_public_health_failure(exc):
-    """Create a category-only failure, without carrying private arguments."""
-    message = 'owner health is uncertain; terminate the owner process'
-    if isinstance(exc, KeyboardInterrupt):
-        error = KeyboardInterrupt(message)
-    elif isinstance(exc, SystemExit):
-        error = SystemExit(message)
-    elif isinstance(exc, GeneratorExit):
-        error = GeneratorExit(message)
-    elif isinstance(exc, Exception):
-        error = RuntimeError(message)
-    else:
-        error = BaseException(message)
-    return error
-
-
 class _DirectOwnerHealth:
     """Observe one exact owner graph without taking the broker condition."""
 
@@ -242,38 +246,84 @@ class _DirectOwnerHealth:
         self._owner_failures, self._shutdown_failures = _HealthFailureSlot(), _HealthFailureSlot()
 
     def __call__(self):
-        slot = self._owner_failures if current_thread() is self._owner_thread else self._shutdown_failures
+        authority = self.authority
+        slot = None
         try:
+            slot = self._owner_failures if current_thread() is self._owner_thread else self._shutdown_failures
             try:
-                return self._read()
+                try:
+                    return self._read()
+                except BaseException as exc:
+                    try:
+                        try:
+                            authority._unsafe = True
+                        finally:
+                            authority._unsafe = True
+                    finally:
+                        try:
+                            slot.retain(exc)
+                        finally:
+                            slot.retain(exc)
+                    raise
             except BaseException as exc:
                 try:
                     try:
-                        self.authority._unsafe = True
+                        slot.retain(exc)
                     finally:
-                        self.authority._unsafe = True
-                finally:
+                        authority._unsafe = True
+                    public_error = slot.public_for(exc)
+                except BaseException as recovery_error:
+                    # An interruption during capture or category selection
+                    # still has the original private error as context.
                     try:
-                        slot.retain(exc)
+                        slot.retain(recovery_error)
                     finally:
-                        slot.retain(exc)
-                raise
-        except BaseException as exc:
+                        authority._unsafe = True
+                    public_error = slot.public_for(recovery_error)
+            # Leave the private exception handler before raising the public
+            # category, including when the caller already has an active error.
             try:
-                slot.retain(exc)
+                raise public_error from None
+            except BaseException:
+                public_error.__context__ = None
+                public_error.__cause__ = None
+                raise
+        finally:
+            # Clear the private graph from this public traceback frame on both
+            # ordinary exit and exceptional exit, including an interruption
+            # at the first assignment. The observer remains rooted by backend.
+            try:
+                try:
+                    self = slot = None
+                finally:
+                    self = slot = None
+            except BaseException as cleanup_error:
+                try:
+                    authority._unsafe = True
+                finally:
+                    authority._unsafe = True
+                cleanup_error.__context__ = None
+                cleanup_error.__cause__ = None
+                raise
             finally:
-                self.authority._unsafe = True
-            public_error = _new_public_health_failure(exc)
-        # Raise only after leaving the handler, and avoid exposing the private
-        # observer graph in this public traceback frame's locals. A caller may
-        # legitimately clear the public traceback frames after catching it.
-        self = slot = None
-        try:
-            raise public_error from None
-        except BaseException:
-            public_error.__context__ = None
-            public_error.__cause__ = None
-            raise
+                try:
+                    try:
+                        authority = None
+                    finally:
+                        authority = None
+                except BaseException as final_error:
+                    # The global is the exact authority validated by a healthy
+                    # observation. A failed graph check has already marked
+                    # its pinned authority before reaching this cleanup.
+                    try:
+                        if _OWNER_COMPLETION is not None:
+                            _OWNER_COMPLETION._unsafe = True
+                    finally:
+                        if _OWNER_COMPLETION is not None:
+                            _OWNER_COMPLETION._unsafe = True
+                    final_error.__context__ = None
+                    final_error.__cause__ = None
+                    raise
 
     def _read(self):
         from .broker import Broker, BrokerHealth
