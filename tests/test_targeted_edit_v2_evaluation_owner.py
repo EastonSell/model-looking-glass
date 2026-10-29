@@ -1,6 +1,7 @@
 """Synthetic evaluation-writer and independent-reader checks; no checkpoint."""
 
 import shutil
+import dis
 from types import SimpleNamespace
 
 import numpy as np
@@ -9,6 +10,7 @@ import torch
 
 from test_targeted_edit_v2_evaluation_evidence import saved_evaluation
 from test_targeted_edit_v2_gate import fake_handoff
+from opcode_support import run_opcode_trace
 from looking_glass import targeted_edit_cpu_v1 as v1
 from looking_glass import targeted_edit_cpu_v2 as v2
 from looking_glass import targeted_edit_v2_evidence as evidence
@@ -16,6 +18,7 @@ from looking_glass import targeted_edit_v2_evaluation_evidence as audit
 from looking_glass import targeted_edit_v2_evaluation_owner as writer
 from looking_glass import targeted_edit_v2_gate as gate
 from looking_glass import targeted_edit_v2_owner as owner
+from looking_glass.supervisor import SupervisionResult
 
 
 def _common(directory):
@@ -209,3 +212,171 @@ def test_update_drift_after_baseline_stops_before_that_control(monkeypatch, tmp_
         writer._evaluation_conditions(tmp_path, identity, snapshot, guard, updates, applied, v1, v2, evidence, gate)
     assert rows == [(1,), (1,), (1,)] and torch.equal(model.weight, original)
     assert not (tmp_path / "opposite.f32").exists() and not (tmp_path / "terminal.json").exists()
+
+
+def _publication_inputs(saved_evaluation, tmp_path):
+    saved, args = saved_evaluation
+    staging, destination = tmp_path / "staging", tmp_path / "published"
+    staging.mkdir()
+    for path in saved.iterdir():
+        if path.name not in ("metadata.json", "terminal.json"):
+            shutil.copyfile(path, staging / path.name)
+    identity = _common(saved)
+    metadata = v1._decode_document((saved / "metadata.json").read_bytes())
+    candidate = {key: value for key, value in metadata.items() if key not in {*identity, "supervision"}}
+    terminal = v1._decode_document((saved / "terminal.json").read_bytes())
+    sup = metadata["supervision"]["supervisor"]
+    result = SupervisionResult(sup["run_id"], sup["pid"], 0, True, False, "synthetic-only")
+    kwargs = {"staging": staging, "destination": destination, "identity": identity,
+              "snapshot": args["snapshot"], "candidate": candidate, "cleanup": terminal["cleanup"],
+              "supervisor_result": result, "witness_observed_utc": args["witness_observed_utc"],
+              "finished_utc": terminal["finished_utc"], "v1": v1, "v2": v2, "evidence": evidence,
+              "gate": gate, "audit": audit, "torch": torch}
+    return saved, args, kwargs
+
+
+def test_parent_publishes_only_after_reaped_identity_cleanup_and_audit(saved_evaluation, tmp_path):
+    saved, args, kwargs = _publication_inputs(saved_evaluation, tmp_path)
+    result = writer._publish_evaluation(**kwargs)
+    assert not kwargs["staging"].exists() and kwargs["destination"].is_dir()
+    assert result["terminal_sha256"] == args["terminal_sha256"]
+    assert all((kwargs["destination"] / path.name).read_bytes() == path.read_bytes() for path in saved.iterdir())
+    assert audit.audit_evaluation(kwargs["destination"], **args)["status"] == "matching_saved_evaluation"
+
+
+def test_evaluation_rejects_a_dangling_destination(saved_evaluation, tmp_path):
+    _saved, _args, kwargs = _publication_inputs(saved_evaluation, tmp_path)
+    destination = kwargs["destination"]
+    try:
+        destination.symlink_to(destination.parent / "missing-target", target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"creating a symlink is unavailable: {exc}")
+    assert destination.is_symlink() and not destination.exists()
+    with pytest.raises(owner.OwnerError, match="new destination"):
+        writer._publish_evaluation(**kwargs)
+    assert destination.is_symlink() and kwargs["staging"].is_dir()
+    assert not (kwargs["staging"] / "terminal.json").exists()
+
+
+def test_evaluation_rejects_a_lexical_entry_even_when_exists_is_false(saved_evaluation, monkeypatch, tmp_path):
+    _saved, _args, kwargs = _publication_inputs(saved_evaluation, tmp_path)
+    destination = kwargs["destination"]
+    assert not destination.exists()
+    original = type(destination).lstat
+    seen = []
+    def lstat(path):
+        if path == destination:
+            seen.append(True)
+            return SimpleNamespace()
+        return original(path)
+    monkeypatch.setattr(type(destination), "lstat", lstat)
+    with pytest.raises(owner.OwnerError, match="new destination"):
+        writer._publish_evaluation(**kwargs)
+    assert seen == [True] and kwargs["staging"].is_dir()
+    assert not (kwargs["staging"] / "terminal.json").exists()
+
+
+@pytest.mark.parametrize("failure", ["unclean", "timeout", "wrong_pid", "wrong_owner", "no_disposal",
+                                     "missing_cleanup", "missing_metadata", "late_witness", "wrong_selection",
+                                     "destination_exists", "extra_artifact"])
+def test_parent_rejects_incomplete_attempt_before_terminal(saved_evaluation, tmp_path, failure):
+    _saved, _args, kwargs = _publication_inputs(saved_evaluation, tmp_path)
+    result = kwargs["supervisor_result"]
+    if failure == "unclean":
+        kwargs["supervisor_result"] = SupervisionResult(result.run_id, result.pid, 0, False, False, "failure")
+    elif failure == "timeout":
+        kwargs["supervisor_result"] = SupervisionResult(result.run_id, result.pid, 0, True, True, "timeout")
+    elif failure == "wrong_pid":
+        kwargs["supervisor_result"] = SupervisionResult(result.run_id, result.pid + 1, 0, True, False, "wrong")
+    elif failure == "wrong_owner":
+        kwargs["supervisor_result"] = SupervisionResult("7" * 32, result.pid, 0, True, False, "wrong")
+    elif failure == "no_disposal":
+        kwargs["cleanup"]["model_disposed"] = False
+    elif failure == "missing_cleanup":
+        del kwargs["cleanup"]["model_disposed"]
+    elif failure == "missing_metadata":
+        del kwargs["candidate"]["controls"]
+    elif failure == "late_witness":
+        kwargs["witness_observed_utc"] = "2026-10-29T03:32:01+00:00"
+    elif failure == "wrong_selection":
+        kwargs["identity"]["selection_terminal_sha256"] = "0" * 64
+    elif failure == "destination_exists":
+        kwargs["destination"].mkdir()
+        (kwargs["destination"] / "existing").write_text("keep", encoding="utf-8")
+    else:
+        (kwargs["staging"] / "unexpected").write_text("keep", encoding="utf-8")
+    with pytest.raises((owner.OwnerError, v1.StudyError)):
+        writer._publish_evaluation(**kwargs)
+    assert kwargs["staging"].is_dir() and not (kwargs["staging"] / "terminal.json").exists()
+    if failure == "destination_exists":
+        assert (kwargs["destination"] / "existing").read_text(encoding="utf-8") == "keep"
+    else:
+        assert not kwargs["destination"].exists()
+
+
+def test_failed_reader_audit_keeps_the_terminal_private_and_unpublished(saved_evaluation, tmp_path):
+    _saved, _args, kwargs = _publication_inputs(saved_evaluation, tmp_path)
+    report = kwargs["staging"] / "report.json"
+    value = v1._decode_document(report.read_bytes())
+    value["result"]["decision"] = "negative"
+    report.write_bytes(v1._canonical(value))
+    with pytest.raises(v1.StudyError):
+        writer._publish_evaluation(**kwargs)
+    assert kwargs["staging"].is_dir() and (kwargs["staging"] / "terminal.json").is_file()
+    assert not kwargs["destination"].exists()
+
+
+def test_interrupted_rename_reconciles_exact_published_terminal(saved_evaluation, monkeypatch, tmp_path):
+    _saved, args, kwargs = _publication_inputs(saved_evaluation, tmp_path)
+    rename = writer.os.rename
+    def rename_then_interrupt(source, destination):
+        rename(source, destination)
+        raise KeyboardInterrupt()
+    monkeypatch.setattr(writer.os, "rename", rename_then_interrupt)
+    with pytest.raises(KeyboardInterrupt) as caught:
+        writer._publish_evaluation(**kwargs)
+    assert caught.value.published_terminal == "complete_verified"
+    assert not kwargs["staging"].exists() and kwargs["destination"].is_dir()
+    assert audit.audit_evaluation(kwargs["destination"], **args)["status"] == "matching_saved_evaluation"
+
+
+def test_fresh_reconciliation_interrupt_takes_priority(saved_evaluation, monkeypatch, tmp_path):
+    _saved, _args, kwargs = _publication_inputs(saved_evaluation, tmp_path)
+    rename, reconcile = writer.os.rename, writer._reconcile_evaluation
+    calls = []
+    def checked(*args, **kwargs):
+        calls.append(True)
+        if len(calls) == 2:
+            raise KeyboardInterrupt()
+        return reconcile(*args, **kwargs)
+    def rename_then_error(source, destination):
+        rename(source, destination)
+        raise OSError("lost rename return")
+    monkeypatch.setattr(writer, "_reconcile_evaluation", checked)
+    monkeypatch.setattr(writer.os, "rename", rename_then_error)
+    with pytest.raises(KeyboardInterrupt) as caught:
+        writer._publish_evaluation(**kwargs)
+    assert isinstance(caught.value.__cause__, OSError)
+    assert caught.value.published_terminal == "unknown" and kwargs["destination"].is_dir()
+
+
+def test_lost_publisher_return_is_reconciled_by_the_controller(saved_evaluation, tmp_path):
+    _saved, args, kwargs = _publication_inputs(saved_evaluation, tmp_path)
+    code = writer._publish_evaluation.__code__
+    return_offsets = {item.offset for item in dis.get_instructions(code)
+                      if item.opname in ("RETURN_VALUE", "RETURN_CONST")}
+    observed = []
+    def interrupt(frame, event, _arg):
+        if frame.f_code is code:
+            if event == "call":
+                frame.f_trace_opcodes = True
+            elif event == "opcode" and frame.f_lasti in return_offsets:
+                observed.append(frame.f_lasti)
+                raise KeyboardInterrupt()
+        return interrupt
+    with pytest.raises(KeyboardInterrupt):
+        run_opcode_trace(interrupt, lambda: writer._publish_evaluation(**kwargs))
+    assert len(observed) == 1 and kwargs["destination"].is_dir() and not kwargs["staging"].exists()
+    terminal = evidence._read(kwargs["destination"] / "terminal.json", evidence.MAX_JSON)
+    args["terminal_sha256"] = v1._sha(terminal)
+    assert audit.audit_evaluation(kwargs["destination"], **args)["status"] == "matching_saved_evaluation"
