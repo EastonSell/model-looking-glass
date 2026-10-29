@@ -97,7 +97,9 @@ def prepare_projected_edits(weight, calibration, input_factor, output_factor, gr
     calibration matrix and 3072 by 768 site weight, and reserve sufficient
     memory before calling. This helper is not a memory-admission guard. The
     result contains mutable updates and factors; the owner must retain
-    exclusive custody or recheck their digests before using them.
+    exclusive custody or recheck their digests before using them. This call
+    sets the calling thread's Torch denormal mode to preservation and does
+    not restore its previous mode; the owner must account for that change.
     """
     if not torch.set_flush_denormal(False):
         raise ProjectionError("the calling thread cannot preserve denormals")
