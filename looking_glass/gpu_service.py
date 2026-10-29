@@ -187,7 +187,8 @@ class _TorchServiceBackend:
     """
 
     def __init__(self, *, session, device_lease, cache_dir, team_ids,
-                 live_key_builder, verify_loaded_model, shutdown_timeout=10):
+                 live_key_builder, verify_loaded_model, verify_device_model,
+                 shutdown_timeout=10):
         from .ipc import _identifier
 
         cache_dir = Path(cache_dir)
@@ -202,12 +203,15 @@ class _TorchServiceBackend:
             raise TypeError('a verified live-key builder is required')
         if not callable(verify_loaded_model):
             raise TypeError('a CPU model verifier is required')
+        if not callable(verify_device_model):
+            raise TypeError('a device model verifier is required')
         if type(shutdown_timeout) not in (int, float) or not 0 < shutdown_timeout <= 300:
             raise ValueError('invalid shutdown timeout')
         self.session, self.device_lease = session, device_lease
         self.cache_dir, self.team_ids = cache_dir, team_ids
         self.live_key_builder, self.shutdown_timeout = live_key_builder, shutdown_timeout
         self.verify_loaded_model = verify_loaded_model
+        self.verify_device_model = verify_device_model
         self._resolved_keys = None
         # These slots are allocated while still CPU-only.  Filling a fixed slot
         # avoids allocating an ever-growing failure-time retention list.
@@ -280,6 +284,13 @@ class _TorchServiceBackend:
         torch.cuda.synchronize(0)
         _require_unquarantined(allow_pending=True)
 
+    @staticmethod
+    def _require_conversion_policy():
+        import torch
+        if (torch.__future__.get_overwrite_module_params_on_conversion() is not False
+                or torch.__future__.get_swap_module_params_on_conversion() is not False):
+            raise RuntimeError('model conversion flags must both be explicitly false')
+
     def construct(self, budget, resident_lease, profiles):
         """Load once and complete a separately admitted same-signature warmup."""
         _require_unquarantined()
@@ -330,10 +341,31 @@ class _TorchServiceBackend:
             from .memory_budget import AdmissionError
             raise AdmissionError('live headroom changed before the model copy')
         _require_unquarantined()
-        model.to(device='cuda:0', dtype=torch.float32)
+        self._require_conversion_policy()
+        _require_unquarantined()
+        converted = model.to(device='cuda:0', dtype=torch.float32)
+        if converted is not model:
+            # A nonstandard conversion may have produced another device object.
+            # Keep it reachable while the owner exits under quarantine.
+            self._retained[6] = converted
+            raise RuntimeError('model conversion did not preserve the model object')
         _require_unquarantined()
         self.synchronize()
         self._check_runtime()
+        self._require_conversion_policy()
+        _require_unquarantined()
+        # Tied weights can split during module conversion even when the CPU
+        # model was correct. Verify the actual post-copy model and owner under
+        # the same live lease, before creating a worker or running a warmup.
+        if self.verify_device_model(model, self.session.identity, self.session,
+                                    self.device_lease) is not True:
+            raise RuntimeError('device model verification did not explicitly succeed')
+        _require_unquarantined()
+        self._check_runtime()
+        self.synchronize()
+        self._check_runtime()
+        self._require_conversion_policy()
+        _require_unquarantined()
         resident = ResidentWorker(load.key.model_id, model, device='cuda:0',
                                   max_batch_size=1, max_sequence_length=2,
                                   max_input_bytes=64 * 1024,

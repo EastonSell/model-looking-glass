@@ -170,10 +170,13 @@ class RuntimeUuidTests(unittest.TestCase):
     def test_cpu_guard_blocks_runtime_driver_and_tensor_copy(self):
         import torch
         self.assertEqual(os.environ.get('CUDA_VISIBLE_DEVICES'), '')
-        for fn in (torch.cuda.device_count, torch.cuda.get_device_properties,
-                   torch._C._cuda_init, lambda: torch.tensor([1]).to('cuda:0'),
+        guarded = [torch.cuda.device_count, torch.cuda.get_device_properties,
+                   lambda: torch.tensor([1]).to('cuda:0'),
                    lambda: ctypes.CDLL('nvcuda.dll'),
-                   lambda: subprocess.Popen(['nvidia-smi'])):
+                   lambda: subprocess.Popen(['nvidia-smi'])]
+        if hasattr(torch._C, '_cuda_init'):
+            guarded.append(torch._C._cuda_init)
+        for fn in guarded:
             with self.subTest(fn=fn), self.assertRaisesRegex(AssertionError, 'never call CUDA'):
                 fn()
 
@@ -490,7 +493,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
         events, latched = [], [False]
         backend = _TorchServiceBackend(session=FakeSession(events), device_lease=object(),
             cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
-            verify_loaded_model=lambda model: True)
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
         def count():
             latched[0] = True
             return 1
@@ -508,7 +511,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
         events, latched = [], [False]
         backend = _TorchServiceBackend(session=FakeSession(events), device_lease=object(),
             cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
-            verify_loaded_model=lambda model: True)
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
         def available():
             latched[0] = True
             return True
@@ -526,7 +529,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
         events = []
         backend = _TorchServiceBackend(session=FakeSession(events), device_lease=object(),
             cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
-            verify_loaded_model=lambda model: True)
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
         backend.runtime_binding = lambda: events.append('cuda-query') or (UUID, 1)
         with patch.object(gpu_service._QUARANTINED, 'is_set', return_value=True):
             with self.assertRaisesRegex(RuntimeError, 'quarantined'):
@@ -539,7 +542,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
         session = FakeSession([])
         backend = _TorchServiceBackend(session=session, device_lease=object(),
             cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
-            verify_loaded_model=lambda model: True)
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
         backend._resolved_keys = ()
         backend.runtime_binding = lambda: (UUID, 1)
         backend.synchronize = lambda: None
@@ -598,13 +601,123 @@ class ConcreteBackendContractTests(unittest.TestCase):
             with self.subTest(teams=teams), self.assertRaises(ValueError):
                 _TorchServiceBackend(session=FakeSession([]), device_lease=object(),
                     cache_dir=Path.cwd(), team_ids=teams,
-                    live_key_builder=lambda identity: (), verify_loaded_model=lambda model: True)
+                    live_key_builder=lambda identity: (), verify_loaded_model=lambda model: True,
+                    verify_device_model=lambda *args: True)
 
     def test_actual_cpu_model_verifier_is_required(self):
         with self.assertRaisesRegex(TypeError, 'model verifier'):
             _TorchServiceBackend(session=FakeSession([]), device_lease=object(),
                 cache_dir=Path.cwd(), team_ids=('alpha',),
-                live_key_builder=lambda identity: (), verify_loaded_model=None)
+                live_key_builder=lambda identity: (), verify_loaded_model=None,
+                verify_device_model=lambda *args: True)
+
+    def test_actual_device_model_verifier_is_required(self):
+        for verifier in (None, False):
+            with self.subTest(verifier=verifier), self.assertRaisesRegex(TypeError, 'device model verifier'):
+                _TorchServiceBackend(session=FakeSession([]), device_lease=object(),
+                    cache_dir=Path.cwd(), team_ids=('alpha',),
+                    live_key_builder=lambda identity: (), verify_loaded_model=lambda model: True,
+                    verify_device_model=verifier)
+
+    def test_copy_flags_and_postcopy_verifier_gate_worker_creation(self):
+        import torch
+        from looking_glass.memory_budget import MemoryBudget
+
+        class WorkerReached(Exception):
+            pass
+
+        def run_case(initial_flags, *, after_copy=None, verification=True, other_copy=False,
+                     quarantine_on_verification=False):
+            events, flags, latched = [], list(initial_flags), [False]
+            session, device_lease = FakeSession(events), object()
+
+            class CpuModel:
+                training = False
+                config = SimpleNamespace(use_cache=False, _attn_implementation='eager',
+                                         vocab_size=50257, n_positions=1024)
+                def to(self, **kwargs):
+                    events.append('copy')
+                    if after_copy is not None:
+                        flags[:] = after_copy
+                    return object() if other_copy else self
+
+            model = CpuModel()
+
+            def verify_device(received, identity, verified_session, verified_lease):
+                events.append('verify-device')
+                self.assertIs(received, model)
+                self.assertIs(identity, session.identity)
+                self.assertIs(verified_session, session)
+                self.assertIs(verified_lease, device_lease)
+                if quarantine_on_verification:
+                    latched[0] = True
+                if isinstance(verification, Exception):
+                    raise verification
+                return verification
+
+            backend = _TorchServiceBackend(session=session, device_lease=device_lease,
+                cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+                verify_loaded_model=lambda model: True, verify_device_model=verify_device)
+            backend._resolved_keys = ()
+            backend.runtime_binding = lambda: (UUID, 1)
+            backend.synchronize = lambda: events.append('synchronize')
+            budget = MemoryBudget(lambda: CudaMemorySnapshot(7 * GIB, 8 * GIB, 0, 0),
+                                  max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+            lease = budget.acquire(GIB, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+            fake_service = SimpleNamespace(make_gpt2_request_factory=lambda **kwargs: None)
+            load = SimpleNamespace(key=SimpleNamespace(model_id='c' * 64))
+
+            def make_resident(*args, **kwargs):
+                events.append('worker')
+                raise WorkerReached()
+
+            with patch.dict(sys.modules, {'looking_glass.service': fake_service}), \
+                 patch.object(gpu_service._QUARANTINED, 'is_set', side_effect=lambda: latched[0]), \
+                 patch('looking_glass.pretrained.load_distilgpt2', return_value=SimpleNamespace(model=model)), \
+                 patch('looking_glass.resident_worker.ResidentWorker', side_effect=make_resident), \
+                 patch.object(torch.__future__, 'get_overwrite_module_params_on_conversion', side_effect=lambda: flags[0]), \
+                 patch.object(torch.__future__, 'get_swap_module_params_on_conversion', side_effect=lambda: flags[1]):
+                try:
+                    backend.construct(budget, lease, (load, None, None))
+                except Exception as exc:
+                    return events, exc
+            self.fail('construction unexpectedly completed')
+
+        for flags in ((True, False), (False, True), (None, False)):
+            with self.subTest(initial_flags=flags):
+                events, error = run_case(flags)
+                self.assertIsInstance(error, RuntimeError)
+                self.assertNotIn('copy', events)
+                self.assertNotIn('worker', events)
+        for flags in ((True, False), (False, True)):
+            with self.subTest(changed_flags=flags):
+                events, error = run_case((False, False), after_copy=flags)
+                self.assertIsInstance(error, RuntimeError)
+                self.assertIn('copy', events)
+                self.assertIn('synchronize', events)
+                self.assertNotIn('verify-device', events)
+                self.assertNotIn('worker', events)
+        for result in (False, None, 1, ValueError('invalid post-copy model')):
+            with self.subTest(device_verification=result):
+                events, error = run_case((False, False), verification=result)
+                self.assertIsInstance(error, (RuntimeError, ValueError))
+                self.assertLess(events.index('copy'), events.index('synchronize'))
+                self.assertLess(events.index('synchronize'), events.index('verify-device'))
+                self.assertNotIn('worker', events)
+        events, error = run_case((False, False), quarantine_on_verification=True)
+        self.assertIsInstance(error, RuntimeError)
+        self.assertNotIn('worker', events)
+        events, error = run_case((False, False), other_copy=True)
+        self.assertIsInstance(error, RuntimeError)
+        self.assertNotIn('worker', events)
+        events, error = run_case((False, False))
+        self.assertIsInstance(error, WorkerReached)
+        self.assertLess(events.index('copy'), events.index('synchronize'))
+        self.assertLess(events.index('synchronize'), events.index('verify-device'))
+        self.assertLess(events.index('verify-device'), events.index('worker'))
+        self.assertEqual(events.count('synchronize'), 2)
+        self.assertGreater(events.index('synchronize', events.index('verify-device')),
+                           events.index('verify-device'))
 
     def test_load_cold_and_warm_profiles_must_all_match_live_keys_exactly(self):
         from looking_glass.resource_profile import ProfileRegistry, ProfileUnavailable
@@ -612,7 +725,8 @@ class ConcreteBackendContractTests(unittest.TestCase):
         session = FakeSession([])
         backend = _TorchServiceBackend(session=session, device_lease=object(),
             cache_dir=Path.cwd(), team_ids=('alpha', 'beta'),
-            live_key_builder=lambda identity: keys, verify_loaded_model=lambda model: True)
+            live_key_builder=lambda identity: keys, verify_loaded_model=lambda model: True,
+            verify_device_model=lambda *args: True)
         self.assertEqual(backend.live_keys(session.identity), keys)
         load, cold, warm = backend.resolve_profiles(registry, keys)
         self.assertEqual(load.key, keys[0])
@@ -630,7 +744,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
         session = FakeSession(events)
         backend = _TorchServiceBackend(session=session, device_lease=object(),
             cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
-            verify_loaded_model=lambda model: True)
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
         backend._resolved_keys = ()
         backend.runtime_binding = lambda: (UUID, 1)
         class CpuModel:
@@ -660,7 +774,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
         session = FakeSession(events)
         backend = _TorchServiceBackend(session=session, device_lease=object(),
             cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
-            verify_loaded_model=lambda model: True)
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
         backend._resolved_keys = ()
         backend.runtime_binding = lambda: (UUID, 1)
         class CpuModel:
@@ -692,7 +806,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
             raise ValueError('model bytes do not match checkpoint')
         backend = _TorchServiceBackend(session=session, device_lease=object(),
             cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
-            verify_loaded_model=reject_model)
+            verify_loaded_model=reject_model, verify_device_model=lambda *args: True)
         backend._resolved_keys = ()
         backend.runtime_binding = lambda: (UUID, 1)
         class CpuModel:
@@ -716,7 +830,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
         session = FakeSession([])
         backend = _TorchServiceBackend(session=session, device_lease=object(),
             cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
-            verify_loaded_model=lambda model: False)
+            verify_loaded_model=lambda model: False, verify_device_model=lambda *args: True)
         backend._resolved_keys = ()
         class CpuModel:
             training = False
@@ -802,6 +916,55 @@ class OwnerOrderTests(unittest.TestCase):
         return _run_bound_owner(session, object(), backend=backend,
                                 registry=object(), stop_event=threading.Event(),
                                 announce=lambda server: None)
+
+    def test_failed_post_verifier_sync_retains_model_and_lease_without_attesting(self):
+        events = []
+        session, device_lease = FakeSession(events), object()
+        keys = service_keys()
+        backend = _TorchServiceBackend(session=session, device_lease=device_lease,
+            cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: keys,
+            verify_loaded_model=lambda model: True,
+            verify_device_model=lambda *args: events.append('verified-device') or True)
+        backend._resolved_keys = keys
+        backend.runtime_binding = lambda: (UUID, 1)
+        backend.telemetry = lambda: CudaMemorySnapshot(7 * GIB, 8 * GIB, 0, 0)
+        backend.resolve_profiles = lambda registry, selected: (
+            SimpleNamespace(key=keys[0], estimated_incremental_bytes=GIB), None, None)
+
+        class CpuModel:
+            training = False
+            config = SimpleNamespace(use_cache=False, _attn_implementation='eager',
+                                     vocab_size=50257, n_positions=1024)
+            def to(self, **kwargs):
+                events.append('copy')
+                return self
+
+        model = CpuModel()
+        model_ref = weakref.ref(model)
+        syncs = []
+        def sync():
+            syncs.append(None)
+            if len(syncs) == 2:
+                raise RuntimeError('second sync failed')
+        backend.synchronize = sync
+        fake_service = SimpleNamespace(make_gpt2_request_factory=lambda **kwargs: None)
+        with patch.dict(sys.modules, {'looking_glass.service': fake_service}), \
+             patch('looking_glass.pretrained.load_distilgpt2', return_value=SimpleNamespace(model=model)), \
+             patch('looking_glass.resident_worker.ResidentWorker', side_effect=AssertionError('worker started')):
+            with self.assertRaisesRegex(RuntimeError, 'second sync failed'):
+                _run_bound_owner(session, device_lease, backend=backend, registry=object(),
+                                 stop_event=threading.Event(), announce=lambda server: None)
+        self.assertEqual(len(syncs), 2)
+        self.assertIn('verified-device', events)
+        self.assertNotIn('attest', events)
+        self.assertTrue(gpu_service._owner_is_unsafe())
+        lease = gpu_service._OWNER_CUSTODY[5]
+        self.assertFalse(lease.released)
+        lease_ref = weakref.ref(lease)
+        del lease, model, backend
+        gc.collect()
+        self.assertIsNotNone(model_ref())
+        self.assertIsNotNone(lease_ref())
 
     def test_supervisor_check_precedes_any_runtime_call(self):
         events, session, backend = self.setup_run()
