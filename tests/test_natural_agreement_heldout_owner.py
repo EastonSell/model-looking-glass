@@ -292,6 +292,281 @@ def test_unpublished_commitment_stops_before_owner_spawn(tmp_path, monkeypatch):
     assert calls == [] and not owner._QUARANTINED
 
 
+def validation_fixture(tmp_path, phase=None):
+    phase = phase or tmp_path / 'rehearsal'
+    output = phase / 'owner'
+    output.mkdir(parents=True)
+    (phase / 'validation-config.json').write_bytes(b'{}')
+    (output / 'stdout.txt').write_bytes(encoded({'status': 'validated_no_model_forward'}) + b'\n')
+    (output / 'stderr.txt').write_bytes(b'')
+    (output / 'runtime-overrides.json').write_bytes(encoded({
+        'schema': 'mlg-natural-heldout-runtime-overrides-v1', 'MKL_CBWR': None, 'ATEN_CPU_CAPABILITY': None}))
+    (output / 'checkpoint-staging-before.json').write_bytes(encoded({
+        'cache_free_bytes': 4 * 1024 ** 3, 'destination_free_bytes': 4 * 1024 ** 3,
+        'required_free_bytes': 3 * 1024 ** 3, 'entries': []}))
+    (output / 'checkpoint-staging-after.json').write_bytes(encoded({'entries': [], 'new_unresolved_names': []}))
+    return phase, output
+
+
+def validation_receipt_fixture(tmp_path, fault=None):
+    operation, binding = b'fabricated-public-operation', b'fabricated-discovery-binding'
+    phase = tmp_path / 'heldout'
+    validation = owner._validation_root(phase, operation)
+    _, output = validation_fixture(tmp_path, validation)
+    validation_config = {'frozen_root': str(tmp_path / 'frozen'), 'cache_dir': str(tmp_path / 'cache'),
+                         'phase_dir': str(validation), 'preparation_supervisor': str(tmp_path / 'old-preparation'),
+                         'public_files': {'binding': str(tmp_path / 'binding')},
+                         'public_urls': {'operational_binding_url': 'https://example.invalid/operation',
+                                         'commitment_url': 'https://example.invalid/not-yet-published'}}
+    config = copy.deepcopy(validation_config)
+    config['phase_dir'] = str(phase)
+    config['preparation_supervisor'] = str(tmp_path / 'new-preparation')
+    config['public_urls']['commitment_url'] = 'https://example.invalid/committed-after-validation'
+    if fault == 'config':
+        config['cache_dir'] = str(tmp_path / 'other-cache')
+    config_path = validation / 'validation-config.json'
+    config_path.write_bytes(encoded(validation_config))
+    child = SimpleNamespace(_load_config=lambda path: (Path(path).read_bytes(), json.loads(Path(path).read_bytes())))
+    interpreter, child_path, bootstrap = str(tmp_path / 'python.exe'), str(tmp_path / 'child.py'), 'frozen bootstrap'
+    callback = owner.audit_validation(validation, output / 'attempt', 0, True)
+    if fault == 'callback-accounting-type':
+        callback['validation_accounting']['apparent_bytes'] = float(callback['validation_accounting']['apparent_bytes'])
+    if fault == 'callback-inventory-type':
+        callback['inventory']['retained_tensor_bytes'] = False
+    supervisor = {'status': 'incomplete', 'exit_code': 0, 'child_pid': 123,
+                  'child_reaped': True, 'job_drained': True, 'job_closed': True,
+                  'logs_complete': True, 'cleanup_verified': True, 'quarantined': False,
+                  'retry_safe': False, 'postexit_active_processes': 0, 'supervisor_error': None,
+                  'log_overflow': False, 'cancellation_requested': False, 'audit': callback,
+                  'retained_tensor_files': {'accounting_complete': True, 'total_bytes': 0},
+                  'stdout_sha256': owner._digest((output / 'stdout.txt').read_bytes()),
+                  'stderr_sha256': owner._digest((output / 'stderr.txt').read_bytes()),
+                  'command': [interpreter, '-I', '-S', '-B', '-X', 'pycache_prefix=' + str(tmp_path / 'pycache'),
+                              '-c', bootstrap, child_path, '--validate-only', str(config_path)]}
+    if fault == 'pid':
+        supervisor['child_pid'] = True
+    elif fault == 'exit':
+        supervisor['exit_code'] = 0.0
+    elif fault == 'active':
+        supervisor['postexit_active_processes'] = False
+    elif fault == 'cancelled':
+        supervisor['cancellation_requested'] = True
+    elif fault == 'unreaped':
+        supervisor['child_reaped'] = False
+    elif fault == 'command':
+        supervisor['command'][9] = '--other-mode'
+    elif fault == 'stdout-digest':
+        supervisor['stdout_sha256'] = '0' * 64
+    supervisor_raw = encoded(supervisor)
+    (output / 'supervisor.json').write_bytes(supervisor_raw)
+    accounting = owner._validation_account(validation, supervisor_record=True, reserve=65536)
+    if fault == 'terminal-accounting-type':
+        accounting['apparent_bytes'] = float(accounting['apparent_bytes'])
+    terminal = {'schema': 'mlg-natural-heldout-owner-validation-v1',
+                'status': 'validated_no_model_forward', 'cleanup_verified': True,
+                'binding_sha256': owner._digest(binding), 'operational_binding_sha256': owner._digest(operation),
+                'validation_config_sha256': owner._digest(config_path.read_bytes()),
+                'supervisor_sha256': owner._digest(supervisor_raw), 'validation_accounting_before_terminal': accounting,
+                'scientific_validation': 'not applicable; no held-out evidence'}
+    if fault == 'binding':
+        terminal['binding_sha256'] = '0' * 64
+    if fault == 'supervisor-digest':
+        terminal['supervisor_sha256'] = '0' * 64
+    terminal_raw = encoded(terminal)
+    (output / 'owner-terminal.json').write_bytes(terminal_raw)
+    owner_path, outer_bootstrap = str(tmp_path / 'owner.py'), 'fabricated outer gate'
+    observation = {'schema': 'mlg-natural-heldout-validation-parent-observation-v1', 'status': 'completed',
+                   'exit_code': 0, 'parent_reaped': True, 'outer_job_drained': True, 'outer_job_closed': True,
+                   'parent_pid': 456, 'parent_birth_100ns': 123456789,
+                   'command': [interpreter, '-I', '-S', '-B', '-X', 'pycache_prefix=' + str(tmp_path / 'pycache2'),
+                               '-c', outer_bootstrap, owner_path, '--validate-only', str(config_path)],
+                   'validation_config_sha256': owner._digest(config_path.read_bytes()),
+                   'owner_terminal_sha256': owner._digest(terminal_raw),
+                   'supervisor_sha256': owner._digest(supervisor_raw),
+                   'operational_binding_sha256': owner._digest(operation)}
+    if fault == 'parent-pid':
+        observation['parent_pid'] = True
+    elif fault == 'parent-child-pid':
+        observation['parent_pid'] = supervisor['child_pid']
+    elif fault == 'parent-birth':
+        observation['parent_birth_100ns'] = 1.0
+    elif fault == 'parent-exit':
+        observation['exit_code'] = 1
+    elif fault == 'parent-unreaped':
+        observation['parent_reaped'] = False
+    elif fault == 'parent-job':
+        observation['outer_job_drained'] = False
+    elif fault == 'parent-command':
+        observation['command'][9] = '--other-mode'
+    elif fault == 'parent-terminal-digest':
+        observation['owner_terminal_sha256'] = '0' * 64
+    elif fault == 'parent-extra':
+        observation['unexpected'] = True
+    if fault != 'parent-missing':
+        (validation / 'parent-observation.json').write_bytes(encoded(observation))
+    if fault == 'extra-artifact':
+        (output / 'extra.txt').write_bytes(b'extra')
+    if fault == 'claim':
+        (validation / 'claim.json').write_bytes(b'no claim is allowed')
+    args = (child, phase, config, binding, operation)
+    kwargs = {'child_path': child_path, 'bootstrap': bootstrap, 'outer_bootstrap': outer_bootstrap,
+              'owner_path': owner_path, 'interpreter': interpreter}
+    return validation, args, kwargs
+
+
+def test_validation_receipt_can_be_checked_without_a_claim_or_commitment(tmp_path):
+    validation, args, kwargs = validation_receipt_fixture(tmp_path)
+    assert owner._check_validation_receipt(*args, **kwargs) == validation
+    assert not (validation / 'claim.json').exists()
+    assert not (validation / 'commitment.json').exists()
+
+
+def test_observer_can_check_inner_receipt_before_writing_parent_observation(tmp_path):
+    validation, args, kwargs = validation_receipt_fixture(tmp_path, 'parent-missing')
+    with pytest.raises(FileNotFoundError):
+        owner._check_validation_receipt(*args, **kwargs)
+    assert owner._check_validation_receipt(*args, **kwargs, require_parent_observation=False) == validation
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Windows Job and source handles')
+def test_real_gated_validation_receipt_without_phase_claim(tmp_path):
+    from scripts.v2_source_guards import InheritableHandles, SourceFileLease
+    from looking_glass.natural_heldout_supervisor import supervise_heldout
+    operation, binding = b'fabricated-public-operation', b'fabricated-discovery-binding'
+    phase = tmp_path / 'heldout'
+    validation = owner._validation_root(phase, operation)
+    validation.mkdir()
+    validation_config = {'frozen_root': str(tmp_path / 'core'), 'cache_dir': str(tmp_path / 'cache'),
+                         'phase_dir': str(validation), 'preparation_supervisor': str(tmp_path / 'unused'),
+                         'public_files': {'binding': str(tmp_path / 'binding')},
+                         'public_urls': {'operational_binding_url': 'https://example.invalid/operation',
+                                         'commitment_url': 'https://example.invalid/placeholder'}}
+    config_path = validation / 'validation-config.json'
+    config_path.write_bytes(encoded(validation_config))
+    config = copy.deepcopy(validation_config)
+    config['phase_dir'] = str(phase)
+    child = SimpleNamespace(_load_config=lambda path: (Path(path).read_bytes(), json.loads(Path(path).read_bytes())))
+    roots = [tmp_path / 'core', tmp_path / 'operational']
+    for root in roots:
+        root.mkdir()
+        (root / 'source.py').write_text('fabricated')
+    leases = [SourceFileLease(root, [root / 'source.py']) for root in roots]
+    child_path = str(roots[1] / 'source.py')
+    bootstrap = '''import json,pathlib,sys
+if sys.stdin.buffer.readline()!=b'MLG-natural-discovery-start-v1\\n': raise SystemExit(1)
+if sys.argv[2]!='--validate-only': raise SystemExit(2)
+phase=pathlib.Path(json.loads(pathlib.Path(sys.argv[3]).read_bytes())['phase_dir'])
+output=phase/'owner'
+def put(name,value): (output/name).write_text(json.dumps(value),encoding='utf-8')
+put('runtime-overrides.json',{'schema':'mlg-natural-heldout-runtime-overrides-v1','MKL_CBWR':None,'ATEN_CPU_CAPABILITY':None})
+put('checkpoint-staging-before.json',{'cache_free_bytes':4*1024**3,'destination_free_bytes':4*1024**3,
+                                     'required_free_bytes':3*1024**3,'entries':[]})
+put('checkpoint-staging-after.json',{'entries':[],'new_unresolved_names':[]})
+print(json.dumps({'status':'validated_no_model_forward'}))
+'''
+    interpreter = sys._base_executable
+    command = [interpreter, '-I', '-S', '-B', '-X', 'pycache_prefix=' + str(tmp_path / 'pycache'),
+               '-c', bootstrap, child_path, '--validate-only', str(config_path)]
+    def launch(acquired):
+        duplicates = InheritableHandles(leases[0].handles() + leases[1].handles())
+        acquired.append(duplicates)
+        handles = duplicates.__enter__()
+        return supervise_heldout(command, validation / 'owner', os.environ.copy(),
+                                  audit_result=lambda directory, code, reaped:
+                                      owner.audit_validation(validation, directory, code, reaped),
+                                  inherited_handles=handles)
+    def postcheck(result):
+        assert result['cleanup_verified'] is True and result['postexit_active_processes'] == 0
+        receipt = (validation / 'owner/supervisor.json').read_bytes()
+        return {'schema': 'mlg-natural-heldout-owner-validation-v1',
+                'status': 'validated_no_model_forward', 'cleanup_verified': True,
+                'binding_sha256': owner._digest(binding), 'operational_binding_sha256': owner._digest(operation),
+                'validation_config_sha256': owner._digest(config_path.read_bytes()),
+                'supervisor_sha256': owner._digest(receipt),
+                'validation_accounting_before_terminal': owner._validation_account(
+                    validation, supervisor_record=True, reserve=65536),
+                'scientific_validation': 'not applicable; no held-out evidence'}
+    terminal = owner.under_source_leases(leases, lambda: None, launch, postcheck)
+    owner._write_new(validation / 'owner/owner-terminal.json', terminal)
+    terminal_raw = (validation / 'owner/owner-terminal.json').read_bytes()
+    supervisor_raw = (validation / 'owner/supervisor.json').read_bytes()
+    owner_path, outer_bootstrap = str(tmp_path / 'owner.py'), 'fabricated outer gate'
+    (validation / 'parent-observation.json').write_bytes(encoded({
+        'schema': 'mlg-natural-heldout-validation-parent-observation-v1', 'status': 'completed',
+        'exit_code': 0, 'parent_reaped': True, 'outer_job_drained': True, 'outer_job_closed': True,
+        'parent_pid': 456, 'parent_birth_100ns': 123456789,
+        'command': [interpreter, '-I', '-S', '-B', '-X', 'pycache_prefix=' + str(tmp_path / 'outer-pycache'),
+                    '-c', outer_bootstrap, owner_path, '--validate-only', str(config_path)],
+        'validation_config_sha256': owner._digest(config_path.read_bytes()),
+        'owner_terminal_sha256': owner._digest(terminal_raw), 'supervisor_sha256': owner._digest(supervisor_raw),
+        'operational_binding_sha256': owner._digest(operation)}))
+    assert owner._check_validation_receipt(child, phase, config, binding, operation,
+                                            child_path=child_path, bootstrap=bootstrap,
+                                            outer_bootstrap=outer_bootstrap, owner_path=owner_path,
+                                            interpreter=interpreter) == validation
+    assert not (validation / 'claim.json').exists() and not (validation / 'owner/attempt').exists()
+
+
+@pytest.mark.parametrize('fault', ['config', 'pid', 'exit', 'active', 'cancelled', 'unreaped', 'command',
+                                   'stdout-digest', 'callback-accounting-type', 'callback-inventory-type',
+                                   'terminal-accounting-type', 'binding', 'supervisor-digest', 'extra-artifact',
+                                   'claim', 'parent-pid', 'parent-child-pid', 'parent-birth', 'parent-exit',
+                                   'parent-unreaped', 'parent-job', 'parent-command', 'parent-terminal-digest',
+                                   'parent-extra'])
+def test_validation_receipt_rejects_mismatches(tmp_path, fault):
+    _, args, kwargs = validation_receipt_fixture(tmp_path, fault)
+    with pytest.raises(owner.OwnerError):
+        owner._check_validation_receipt(*args, **kwargs)
+
+
+def test_validation_receipt_is_distinct_from_study_evidence(tmp_path):
+    phase, output = validation_fixture(tmp_path)
+    result = owner.audit_validation(phase, output / 'attempt', 0, True)
+    assert result['status'] == 'incomplete' and result['validation_only'] is True
+    assert result['validation_accounting']['phase_claim'] is False
+    assert result['inventory']['retained_tensor_bytes'] == 0
+    (output / 'supervisor.json').write_bytes(b'{}')
+    assert owner._validation_account(phase, supervisor_record=True, reserve=65536)['tensor_bytes'] == 0
+
+
+@pytest.mark.parametrize('fault', ['claimed', 'journal', 'marker', 'stderr', 'override', 'staging',
+                                   'staging-hidden', 'exit'])
+def test_validation_rejects_study_data_or_incomplete_process(tmp_path, fault):
+    phase, output = validation_fixture(tmp_path)
+    if fault == 'claimed':
+        (phase / 'claim.json').write_text('fabricated')
+    elif fault == 'journal':
+        (output / 'attempt').mkdir()
+    elif fault == 'marker':
+        (output / 'stdout.txt').write_bytes(b'{"status":"evidence_complete"}')
+    elif fault == 'stderr':
+        (output / 'stderr.txt').write_bytes(b'failure')
+    elif fault == 'override':
+        (output / 'runtime-overrides.json').write_bytes(encoded({'MKL_CBWR': 'AUTO'}))
+    elif fault == 'staging':
+        (output / 'checkpoint-staging-after.json').write_bytes(encoded({'entries': [],
+                                                                        'new_unresolved_names': ['orphan']}))
+    elif fault == 'staging-hidden':
+        (output / 'checkpoint-staging-after.json').write_bytes(encoded({
+            'entries': [{'name': 'looking-glass-stage-orphan', 'directory': True,
+                         'reparse': False, 'mtime_ns': 1}], 'new_unresolved_names': []}))
+    with pytest.raises(owner.OwnerError):
+        owner.audit_validation(phase, output / 'attempt', 7 if fault == 'exit' else 0, True)
+
+
+def test_main_dispatches_distinct_no_model_validation(monkeypatch, capsys):
+    calls = []
+    def execute(path, *, validation_only=False):
+        calls.append((path, validation_only))
+        return {'status': 'validated_no_model_forward', 'scientific_validation': 'not applicable'}
+    monkeypatch.setattr(owner, 'execute', execute)
+    monkeypatch.setattr(owner.sys, 'argv', ['owner', '--validate-only', 'private-config'])
+    with pytest.raises(SystemExit) as error:
+        owner.main()
+    assert error.value.code == 0 and calls == [('private-config', True)]
+    assert json.loads(capsys.readouterr().out)['status'] == 'validated_no_model_forward'
+
+
 def test_broken_diagnostic_cannot_skip_the_quarantine_hold(monkeypatch):
     class Broken:
         def write(self, value):
