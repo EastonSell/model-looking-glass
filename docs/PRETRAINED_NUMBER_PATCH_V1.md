@@ -176,7 +176,8 @@ revealed remains incomplete; any later held-out test for it requires a new
 prospective attempt with fresh cases. Thus an injection-track failure need not
 suppress a completed natural track, and vice versa. Shared clean/control or
 model-integrity failures invalidate every result that depends on them. Report
-each track's status and the composite status, with all partial data retained.
+each track's status and the composite status, retaining all completed records
+and any available bounded partial evidence.
 
 For reproducible commitments use these exact records. `canonical(record)` is
 UTF-8 encoding of JSON serialized with sorted keys, `ensure_ascii=True`,
@@ -426,8 +427,12 @@ plans and check the hook registry after each forward; hash model parameters and
 buffers before and after the study, and run fresh clean forwards after each
 family. Cleanup equality demonstrates restoration of the instrument, not
 preservation of unrelated capabilities while the intervention is active.
-Save terminal failure/incomplete status and all data obtained so far; never
-overwrite a prior attempt or convert a partial run into a success.
+Save terminal failure/incomplete status, the failed phase and sanitized error,
+and all prior completed forward records. Preserve any bounded partial evidence
+that is actually available. The current plan API may discard uncommitted
+snapshots from the failed forward; disclose that limitation and do not claim
+those snapshots were retained. Never overwrite a prior attempt or convert a
+partial run into a success.
 
 When both tracks share their matching clean baselines, the planned maximum is
 178 root forwards per family: 8 clean and repeat;
