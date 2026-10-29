@@ -35,6 +35,14 @@ was actually taken after its family; identities alone do not prove execution
 order. No checksum here proves faithful execution or secrecy from another
 process using the same account.
 
+The 32-hex request IDs are caller-supplied and become public in the prediction
+record. Their syntax alone does not establish that they are opaque: an ID can
+encode a hidden layer. Before execution the custodian must assign and verify
+IDs from a site-independent precommitted request plan or independent randomness,
+and check that public paths, observation ordering, error reports and other
+released metadata do not encode the private site. This helper cannot establish
+that blinding property from the supplied IDs or metadata.
+
 `freeze_discovery` returns UTF-8 canonical JSON bytes with no newline. Its
 per-case records include all observed votes, decoded norms, present- and
 past-tense margins, forward and reverse effects, public trace/action metadata,
