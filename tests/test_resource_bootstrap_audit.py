@@ -45,6 +45,7 @@ def make_synthetic_run(root):
     files = [
         {"path": "docs/RESOURCE_PROFILE_BOOTSTRAP_V1.md", "size": 10, "sha256": protocol_sha},
         {"path": "looking_glass/__init__.py", "size": 5, "sha256": "6" * 64},
+        {"path": "looking_glass/gpu_bootstrap.py", "size": 8, "sha256": "8" * 64},
         {"path": "looking_glass/gpu_service.py", "size": 20, "sha256": "2" * 64},
         {"path": "looking_glass/live_profile.py", "size": 15, "sha256": "7" * 64},
         {"path": "looking_glass/pretrained.py", "size": 30, "sha256": "3" * 64},
@@ -339,11 +340,14 @@ class BootstrapRunAuditTests(unittest.TestCase):
             source = json.loads((root / "source.json").read_bytes())
             started = json.loads((root / "started.json").read_bytes())
             audit._check_source(source, started)
-            for kind in ("missing", "unnormalized", "duplicate", "unsorted", "empty_files"):
+            for kind in ("missing", "unnormalized", "duplicate", "unsorted", "empty_files", "missing_launcher"):
                 with self.subTest(kind=kind):
                     altered = json.loads(json.dumps(source))
                     packages = altered["distributions"]
-                    if kind == "missing":
+                    if kind == "missing_launcher":
+                        altered['repository_files'] = [item for item in altered['repository_files']
+                                                       if item['path'] != 'looking_glass/gpu_bootstrap.py']
+                    elif kind == "missing":
                         packages[:] = [item for item in packages if item["name"] != "numpy"]
                     elif kind == "unnormalized":
                         packages[0]["name"] = "Bad_Name"
