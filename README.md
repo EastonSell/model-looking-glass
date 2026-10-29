@@ -74,6 +74,8 @@ In a [matched-dose taste follow-up](results/bert-taste-matched-dose-v1-20261029/
 
 The [DistilBERT exposed-pair GPU observation](results/bert-gpu-exposed-pair-v1-20261028/README.md) reduced the `is − are` margin from +5.2040 to +0.0572 on one previously exposed public pair, without reversing that two-word preference. Its peak PyTorch reserved memory was 324 MiB; this allocator counter does not measure total or worst-case GPU memory.
 
+The [grouped DistilGPT2 GPU pilot](results/grouped-gpu-resource-v3-20261029/README.md) used one resident model for eight single-row and four two-row calls. The owner reported that the grouped samples matched their serial references; logits were not retained for independent recomputation. The largest recorded per-forward PyTorch allocated/reserved peaks were 353/388 MiB, and both counters were zero after cleanup. These sampled, shape-specific observations are not a throughput result or a general memory bound; activation tracing was disabled.
+
 The [DistilGPT2 agreement preflight](results/distilgpt2-agreement-preflight-v1-20261028/README.md) found the grammatical verb preferred on all 16 fixed public development prompts; it establishes a small behavior to investigate, not a held-out or causal result.
 
 The independently audited [agreement discovery](results/distilgpt2-natural-agreement-v1-20261028/README.md) selected the layer 3 attention output at the final token. Across four public families, opposite-number donors caused a mean 3.095-logit greater shift away from the target's present-tense agreement margin than same-number donors. They reversed the margin in 10 of 32 donor–target pairs involving six distinct targets, versus none of 32 same-number pairs. These are development results, and a shift can reflect weakening rather than transfer of number information; held-out prediction remains to be tested.
@@ -99,6 +101,8 @@ The [FLAN-T5 encoder study](results/flan-t5-equal-dose-cpu-v1-20261029/README.md
 The separate [FLAN-T5 dose-response attempt](results/flan-t5-dose-response-cpu-v1-20261029/README.md) was inconclusive: all six cases failed the baseline, and no patches ran. The differing target lengths are a possible contributor, not an established explanation.
 
 In a [length-matched FLAN-T5 follow-up](results/flan-t5-equal-length-response-cpu-v1-20261029/README.md), four public word pairs met the fixed three-dose directional-response rule in both templates; two pairs were baseline-unsupported and were not patched. The largest matched-dose word-position patch reversed the original two-target preference in only one of 16 evaluable cell-direction comparisons. This is a small teacher-forced score study, not evidence of generated translation, generalization or a unique mechanism; equal token lengths do not remove lexical-prior differences.
+
+The [pretrained ViT intervention study](results/vision-coco-vit-v1-20261029/README.md) found that none of four evaluable held-out image pairs met the preset rule; four other pairs were baseline-ineligible. The patches had nonzero effects and were large relative to recipient token-state norms. Same-species controls were available for only four of 16 receiver sides, and outside-box controls can include other objects, so the result does not establish the absence of visual effects or a uniquely localized object representation.
 
 A [targeted parameter-edit experiment](results/targeted-edit-cpu-v1-20261028/README.md) changed the intended answer preference but failed its preset locality thresholds on public probes. The negative result and a same-host replay are preserved; the study does not establish general capability preservation.
 
@@ -182,6 +186,7 @@ Full activations can contain sensitive information. This synthetic benchmark sav
 - [Implementation plan](docs/superpowers/plans/2026-10-28-runtime-probes.md)
 
 This work grew out of the [Trojan Regularizer Audit](https://github.com/EastonSell/turing-complete-malware-pytorch-backward-pass-audit), but addresses trusted runtime instrumentation. It is not a general backdoor detector or model-safety certification. Ordinary PyTorch hooks and the gradient identity are standard mechanisms; possible value lies in the measured placement, provenance and operating costs, not a novelty claim for those mechanisms.
+
 
 
 
