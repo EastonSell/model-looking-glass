@@ -1,6 +1,6 @@
 {
-  "archive_bytes": 1342868,
-  "archive_sha256": "76933a44b088bddbc9151848ebf43b598e4b28f426b0e75b6a2ec85b955e17c3",
+  "archive_bytes": 1349523,
+  "archive_sha256": "46ae82a25342fc7620eed2ba65bba8ff586061331cde99395c733fae3c29c27b",
   "members": [
     {
       "bytes": 3072,
@@ -108,9 +108,14 @@
       "sha256": "45b4c70569531e8d6534797430dc57718b9094f06f8083aaab789caf7a77b794"
     },
     {
-      "bytes": 747,
+      "bytes": 18977,
+      "path": "first-attempt-smoke.py",
+      "sha256": "2742c18e7b6f21043760c5abc2884143b737d1c9d197a2b9dd5f20bc2b4caa83"
+    },
+    {
+      "bytes": 1083,
       "path": "incomplete-attempt.json",
-      "sha256": "5d79c75197be8be527672adec1236015ff9b74f25ca32edf6b7d732bfd6da939"
+      "sha256": "170833f321e7f3ccdb50de465ff91a803bda50117bdc367a217f0936ef62d541"
     },
     {
       "bytes": 915,
@@ -118,9 +123,9 @@
       "sha256": "68b00bf230e663a55df383aa59828d6d84ffaee49f5905196c4016df392ea56f"
     },
     {
-      "bytes": 4365,
+      "bytes": 4529,
       "path": "inventory.json",
-      "sha256": "c141effb18a82804ce6b1104b2aac70dc52b3ab6c73f5aae0476ff2eb6b2d6c3"
+      "sha256": "c54bb747fb9cf00f276e6cdcec655f4b61190786351a12c7de59cb43ae803e44"
     },
     {
       "bytes": 819,
@@ -128,9 +133,9 @@
       "sha256": "c85b33a7b73eb128f23fa598a819b9f85db28eab6fc8a7e2b72a50c85a8c3bf7"
     },
     {
-      "bytes": 2407,
+      "bytes": 2663,
       "path": "README.md",
-      "sha256": "70969b9112e44787e8c6a09433231285d5c05b8e9312b8aefc1d55a55eef8449"
+      "sha256": "b30bc1e9794ccb76b3ea59df53abecedda725f0717d099b618e992b542c58c3a"
     },
     {
       "bytes": 19057,
@@ -160,9 +165,9 @@
       "sha256": "ba0b2b7b8324eb96bb3b4d27fd2c37f29c1aadce29fa490ef9e4f2fbc43b9afa"
     },
     {
-      "bytes": 190492,
+      "bytes": 199364,
       "path": "parts/part-004.txt",
-      "sha256": "e40861150f1da94a9254069f81e378978351be114e148e97621e431aa99f881a"
+      "sha256": "db4a2fd2b615a28a321e52c4b6ea8453ef6a5343952f23b4cc36df9017d0ff0c"
     }
   ],
   "schema": "brokered-cpu-trace-smoke-archive-v1"
