@@ -1,0 +1,29 @@
+{
+  "status": "saved_consistency_verified",
+  "revision": "b56d07e16d275a0f3ee9326bcd878277b89ec99d",
+  "split": "development",
+  "audit_reader_sha256": "17fe52fe25b54506d3f59869187091f16c0efc4a547615d9afed2d010efdb228",
+  "support_reader_sha256": "db8fdb6907ef045fd5b5834644c43b2a7cb29c9ffaca518870e540810c95a674",
+  "synthetic_rehearsal": false,
+  "source_files": 17,
+  "forwards": 114,
+  "model_labels_checked": true,
+  "model_state_checked": true,
+  "pairs": 4,
+  "pair_status_counts": {
+    "baseline-ineligible": 4,
+    "dose-ineligible": 0,
+    "dose-unmatchable": 0,
+    "negative": 0,
+    "positive": 0
+  },
+  "terminal_sha256": "a2ae5f0280168609e5f5b6f26d3e3bbef3183718906099568187e2fff6626b71",
+  "supervisor_sha256": "9cf7a5c83839a79f4c72e1b9e68df992a06059b9f59a41eea2a982b377f8d6c8",
+  "aggregate": null,
+  "development_terminal_sha256": null,
+  "development_receipt_verified": false,
+  "limitations": [
+    "Consistency of saved files and logits does not prove actual execution or physical process-tree cleanup.",
+    "This reader does not independently verify hook landing or prospective publication timing."
+  ]
+}
