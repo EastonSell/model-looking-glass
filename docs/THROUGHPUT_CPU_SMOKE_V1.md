@@ -4,13 +4,16 @@ This is a functionality smoke check of the version-1 throughput harness, not a
 performance study. It used the pinned DistilGPT2 revision
 `2290a62682d06624634c1f46a6ad5be0f47f38aa` on CPU, one model and one broker,
 with two public short prompts per team, one warmup of each job per mode, and a
-single measured window per mode. The exact source was clean Git commit
-`a36c83c3adecca7740a24ce2d02902d72e08b211`; the run records source and model
-asset SHA-256 hashes.
+single measured window per mode. It records clean Git commit
+`a36c83c3adecca7740a24ce2d02902d72e08b211` and matching source and model
+asset SHA-256 hashes. The run did not isolate Python bytecode reads, so those
+source hashes do not prove which cached bytecode was executed.
 
 Both modes completed four measured requests, with no rejections, failures,
-cancellations, or invalid outputs. All four matched requests had bit-exact
-finite logits across modes. The broker stopped cleanly and the run's final
+cancellations, or invalid outputs. All four matched requests have equal recorded
+full-result digests; the runner reported finite logits. Since output tensors were
+not retained, an offline reader cannot recompute those digests or finiteness
+checks. The broker stopped cleanly and the run's final
 status is `complete`. The raw rows, manifests, summary, file hashes and cleanup
 record are preserved in
 [`results/throughput-cpu-smoke-v1-20261028`](../results/throughput-cpu-smoke-v1-20261028/).
