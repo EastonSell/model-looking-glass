@@ -20,6 +20,15 @@ from looking_glass import flan_t5_sentiment_owner_v1 as owner
 from looking_glass import flan_t5_sentiment_selector_v1 as selector
 
 
+_REAL_DISK_USAGE = shutil.disk_usage
+
+
+@pytest.fixture(autouse=True)
+def _fabricated_free_space(monkeypatch):
+    usage = namedtuple('DiskUsage', 'total used free')
+    monkeypatch.setattr(shutil, 'disk_usage', lambda path: usage(8 * 1024**3, 4 * 1024**3, 4 * 1024**3))
+
+
 def _selector_fixture():
     path = Path(__file__).with_name('test_flan_t5_sentiment_selector_v1.py')
     spec = importlib.util.spec_from_file_location('selector_fabricated_fixture', path)
@@ -260,6 +269,37 @@ def test_operator_timeout_kills_reaps_and_retains_incomplete_receipt(tmp_path, m
     result = json.loads((tmp_path / 'attempt' / 'operator-exit.json').read_text())
     assert child.killed and result['child_reaped'] and result['timed_out']
     assert not result['terminal_consistent']
+
+
+@pytest.mark.parametrize('selector_stage', [False, True])
+def test_low_realistic_free_space_rejects_before_spawn(tmp_path, monkeypatch, selector_stage):
+    op = _operator()
+    root = Path(op.__file__).resolve().parents[1]
+    revision = 'a' * 40
+    if selector_stage:
+        launcher = _tool('observe_flan_sentiment_selector_stage_v1.py')
+        stage = SimpleNamespace(_snapshot=lambda root, revision: {'fabricated': 'a' * 64},
+                                _dependency_site=lambda venv: (Path(venv), 'a' * 64))
+        monkeypatch.setattr(launcher, '_empty_prefix', lambda: None)
+        monkeypatch.setattr(launcher, '_bootstrap', lambda *args: None)
+        monkeypatch.setattr(launcher, '_load', lambda path, name: stage if name == '_flan_stage_helper' else op)
+        attempt = tmp_path / 'selector-stage'
+        arguments = ['--revision', revision, '--attempt', str(attempt), '--venv', str(tmp_path),
+                     '--', 'select', '--repo', str(root)]
+    else:
+        launcher = op
+        monkeypatch.setattr(launcher, '_empty_prefix', lambda: None)
+        monkeypatch.setattr(launcher, '_load_owner', lambda root, revision:
+                            SimpleNamespace(source_snapshot=lambda root, revision: {'revision': revision}))
+        attempt = tmp_path / 'attempt'
+        arguments = _operator_args(tmp_path)
+    usage = namedtuple('DiskUsage', 'total used free')
+    monkeypatch.setattr(shutil, 'disk_usage', lambda path: usage(4 * 1024**3, 2 * 1024**3 + 1, 2 * 1024**3 - 1))
+    spawned = []
+    monkeypatch.setattr(launcher.subprocess, 'Popen', lambda *a, **k: spawned.append(True))
+    with pytest.raises(ValueError, match='less than 2 GiB free'):
+        launcher.main(arguments)
+    assert not spawned and not attempt.exists()
 
 
 def test_log_drain_bounds_saved_bytes_and_still_consumes_the_pipe(tmp_path):
@@ -537,6 +577,8 @@ def test_invalid_custody_stops_before_tokenizer_or_model_loading(tmp_path, monke
 
 @pytest.mark.parametrize('time_out', [False, True])
 def test_real_isolated_stage_observer_records_exit_and_ignores_checkout_shadow(tmp_path, time_out):
+    if _REAL_DISK_USAGE(tmp_path).free < 2 * 1024**3 + 256 * 1024**2:
+        pytest.skip('real direct-child rehearsal requires the actual free-space reserve')
     source = Path(__file__).resolve().parents[1]
     repo = tmp_path / 'fixture-repo'
     repo.mkdir()
@@ -591,6 +633,8 @@ def test_real_isolated_stage_observer_records_exit_and_ignores_checkout_shadow(t
                        GIT_DIR=str(foreign / '.git'), GIT_WORK_TREE=str(repo))
     result = subprocess.run(command, cwd=repo, env=environment, capture_output=True, timeout=120, check=False)
     diagnostic = result.stderr.decode(errors='replace')
+    if not attempt.exists() and 'less than 2 GiB free' in diagnostic:
+        pytest.skip('actual free space fell below the reserve before stage allocation')
     for name in ('stage-exit.json', 'stderr.log'):
         path = attempt / name
         if path.is_file():
@@ -623,6 +667,8 @@ def test_real_isolated_stage_observer_records_exit_and_ignores_checkout_shadow(t
 
 @pytest.mark.parametrize('time_out', [False, True])
 def test_real_isolated_owner_operator_observes_the_working_child(tmp_path, time_out):
+    if _REAL_DISK_USAGE(tmp_path).free < 2 * 1024**3 + 256 * 1024**2:
+        pytest.skip('real direct-child rehearsal requires the actual free-space reserve')
     source = Path(__file__).resolve().parents[1]
     repo = tmp_path / 'owner-fixture-repo'
     repo.mkdir()
@@ -665,6 +711,8 @@ def test_real_isolated_owner_operator_observes_the_working_child(tmp_path, time_
         command.extend(['--' + name, str(path)])
     environment = dict(os.environ, FAKE_OWNER_TIMEOUT='1' if time_out else '0')
     result = subprocess.run(command, cwd=repo, env=environment, capture_output=True, timeout=120, check=False)
+    if not attempt.exists() and b'less than 2 GiB free' in result.stderr:
+        pytest.skip('actual free space fell below the reserve before owner allocation')
     assert (result.returncode != 0) == time_out, result.stderr.decode(errors='replace')
     record = json.loads((attempt / 'operator-exit.json').read_bytes())
     identity = json.loads((attempt / 'stdout.log').read_bytes().splitlines()[0])
