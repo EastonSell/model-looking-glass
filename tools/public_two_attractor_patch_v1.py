@@ -77,12 +77,14 @@ def _incomplete(stream, evidence, plan, output, returned, context, error):
             unavailable.append('capture ' + name)
     try:
         bits = _selected_bits(output) if output is not None else None
+        if bits is None:
+            unavailable.append('selected logit bits')
     except BaseException:
         bits = None
         unavailable.append('selected logit bits')
     try:
         _append(stream, {'event': 'forward_incomplete', **context,
-                         'model_returned': returned, 'error_type': type(error).__name__,
+                         'model_returned': True if returned else None, 'error_type': type(error).__name__,
                          'selected_float32_le_hex': bits, 'captures': refs,
                          'unavailable': unavailable})
     except BaseException as evidence_error:

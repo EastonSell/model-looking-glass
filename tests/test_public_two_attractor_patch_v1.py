@@ -131,3 +131,36 @@ def test_invalid_return_retains_available_evidence(tmp_path):
     for ref in incomplete['captures'].values():
         assert hashlib.sha256((output / ref['path']).read_bytes()).hexdigest() == ref['sha256']
     assert not (output / 'result.json').exists()
+
+
+def test_wrong_shape_marks_selected_bits_unavailable(tmp_path):
+    class ShortToy(ToyModel):
+        def forward(self, *args, **kwargs):
+            output = super().forward(*args, **kwargs)
+            output.logits = output.logits[:, :, :547]
+            return output
+
+    output = tmp_path / 'short'
+    with pytest.raises(ValueError, match='output'):
+        patch.execute(ShortToy().eval(), CASES, output, {'fake_model': True})
+    records = [json.loads(line) for line in (output / 'attempt.jsonl').read_text().splitlines()]
+    incomplete = records[-1]
+    assert incomplete['event'] == 'forward_incomplete' and incomplete['model_returned'] is True
+    assert incomplete['selected_float32_le_hex'] is None
+    assert 'selected logit bits' in incomplete['unavailable']
+    assert set(incomplete['captures']) == {'site_0', 'site_1'}
+
+
+def test_unobserved_return_is_uncertain(tmp_path):
+    class InterruptedToy(ToyModel):
+        def forward(self, *args, **kwargs):
+            super().forward(*args, **kwargs)
+            raise KeyboardInterrupt()
+
+    output = tmp_path / 'interrupted'
+    with pytest.raises(KeyboardInterrupt):
+        patch.execute(InterruptedToy().eval(), CASES, output, {'fake_model': True})
+    records = [json.loads(line) for line in (output / 'attempt.jsonl').read_text().splitlines()]
+    assert records[-1]['event'] == 'forward_incomplete'
+    assert records[-1]['model_returned'] is None
+    assert not (output / 'result.json').exists()
