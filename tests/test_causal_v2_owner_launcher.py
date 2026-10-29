@@ -64,14 +64,18 @@ def checkout(tmp_path):
     return repo, venv, site, work, tmp_path / "new-evidence"
 
 
-def _run(fixture, mode):
+def _run(fixture, mode, *, mask=True):
     repo, venv, site, work, output = fixture
     base_python = Path(sys.base_prefix) / "python.exe"
     args = [str(base_python), "-I", "-S", "-B", str(repo / "scripts" / "run_synthetic_v2.py"), mode,
             "--checkout", str(repo), "--venv-root", str(venv), "--dependency", str(site),
             "--work-dir", str(work), "--output", str(output), "--timeout", "60"]
-    return subprocess.run(args, capture_output=True, text=True, cwd=work,
-                          env={**os.environ, "CUDA_VISIBLE_DEVICES": "-1"}, timeout=90)
+    env = dict(os.environ)
+    if mask:
+        env["CUDA_VISIBLE_DEVICES"] = "-1"
+    else:
+        env.pop("CUDA_VISIBLE_DEVICES", None)
+    return subprocess.run(args, capture_output=True, text=True, cwd=work, env=env, timeout=90)
 
 
 def test_guarded_real_cpu_rehearsal_does_not_generate_cases_or_forwards(checkout):
@@ -86,12 +90,42 @@ def test_guarded_real_cpu_rehearsal_does_not_generate_cases_or_forwards(checkout
     assert list(checkout[3].iterdir()) == []
 
 
-def test_study_mode_is_disabled_before_source_or_case_work(checkout):
-    result = _run(checkout, "--study")
+def test_study_mode_requires_cpu_mask_before_source_or_case_work(checkout):
+    result = _run(checkout, "--study", mask=False)
     assert result.returncode != 0
     assert json.loads(result.stderr)["status"] == "failed"
     assert not checkout[4].exists()
+    assert not checkout[4].with_name(checkout[4].name + ".attempt.json").exists()
     assert list(checkout[3].iterdir()) == []
+
+
+def test_study_bootstrap_rejects_missing_guarded_start_before_project_import(checkout, tmp_path):
+    repo, venv, site, work, output = checkout
+    prefix = tmp_path / "empty-prefix"
+    prefix.mkdir()
+    base_python = Path(sys.base_prefix) / "python.exe"
+    args = [str(base_python), "-I", "-S", "-B", "-X", f"pycache_prefix={prefix}",
+            str(repo / "scripts" / "v2_source_bootstrap.py"), "--study-owner", "--checkout", str(repo),
+            "--sources", str(tmp_path / "unused.json"), "--venv-root", str(venv),
+            "--dependency", str(site), "--prefix", str(prefix), "--source-revision", "1" * 40,
+            "--output", str(output)]
+    result = subprocess.run(args, capture_output=True, text=True, cwd=work,
+                            env={**os.environ, "CUDA_VISIBLE_DEVICES": "-1"}, timeout=15)
+    assert result.returncode != 0
+    assert json.loads(result.stderr)["error_type"] == "BootstrapError"
+    assert not output.exists()
+    assert not output.with_name(output.name + ".attempt.json").exists()
+
+
+@pytest.mark.parametrize("script", ["run_synthetic_v2.py", "v2_source_launcher.py"])
+def test_help_preserves_successful_exit(checkout, script):
+    repo, _, _, work, _ = checkout
+    base_python = Path(sys.base_prefix) / "python.exe"
+    result = subprocess.run([str(base_python), "-I", "-S", "-B", str(repo / "scripts" / script), "--help"],
+                            capture_output=True, text=True, cwd=work, timeout=15)
+    assert result.returncode == 0
+    assert "usage:" in result.stdout
+    assert result.stderr == ""
 
 
 def test_uncommitted_source_blocks_rehearsal_before_output(checkout):

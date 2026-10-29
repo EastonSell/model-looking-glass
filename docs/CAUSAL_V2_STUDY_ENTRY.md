@@ -32,9 +32,9 @@ or cryptographic attestation of interpreter and native-library bytes.
 guarded start frame, leased committed sources, private empty cache, Windows job,
 and source-only bootstrap to check this owner with the real six CPU model
 initializations. It generates no v2 inputs, performs zero model forwards and
-does not create the requested evidence directory. `--study` is disabled in
-both the parent and bootstrap pending independent review of the whole launch
-path and phase-inventory integration. Supply a fresh absolute output path
+does not create the requested evidence directory. An explicit `--study`
+invocation prepares private inputs and runs one attempt after the same guarded
+checks; it never resumes an incomplete attempt. Supply a fresh absolute output path
 outside the checkout, an existing separate work directory, the venv root and
 its explicit dependency directory, and set `CUDA_VISIBLE_DEVICES=-1`.
 
@@ -48,7 +48,9 @@ The parent labels this `terminal_verified` with scope
 scorer, intervention controls, or scientific conclusions. If a later cleanup
 fails, `recorded_success` separately indicates
 whether that committed success was verified; it is not overwritten by the
-cleanup status. The zero in a rehearsal report describes the no-forward
+cleanup status. A nonzero child exit, timeout or cancellation is reconciled
+against existing saved terminals only after the job is drained, without
+changing the failure or cancellation classification. The zero in a rehearsal report describes the no-forward
 rehearsal contract and is also exercised by a fatal-forward test fixture.
 
 The owner-composition tests use fabricated source trees, a stubbed custodian
