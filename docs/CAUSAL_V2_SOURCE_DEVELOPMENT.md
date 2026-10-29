@@ -35,15 +35,47 @@ cleanup is a failure: retained handles must be retried and the process
 quarantined until cleanup succeeds. The cache is never recursively deleted; a
 nonempty prefix is retained for inspection.
 
-Direct-interpreter subprocess tests check that a child with explicitly
-inherited duplicate file handles retains protections after the owner dies,
-and that a job terminates its child on owner death. A complete launcher must
-independently compose these primitives: bind the launcher, bootstrap and
-allowlist to the committed source revision, protect them for the entire
-child lifetime, restrict inherited handles, block a child from project imports
-until job assignment succeeds, kill and reap it on failure, and verify the
-actual interpreter process is tracked. In particular, a virtual-environment
-launcher may be a process shim: observing only the shim's exit is insufficient
-to prove that its actual interpreter has exited. Windows cleanup after a
-crash also requires a separate recovery policy for a leftover disposable ACL.
-These tests do not establish that the eventual launcher meets those conditions.
+`scripts/v2_source_launcher.py` composes these checks for the **diagnostic
+only**. It checks the launcher's, bootstrap's, guard's and project Python
+sources against tracked Git blobs, acquires source and manifest leases plus
+an empty-cache guard, then verifies them again. The parent starts the actual
+base interpreter directly with no inherited protection handles, assigns it to
+a kill-on-close job, duplicates noninheritable protections **directly into
+that child**, and only then sends their child-local values in a bounded start
+frame. The child verifies its handles and rejects EOF, a partial frame or
+invalid values before project imports. No temporary inheritable protection
+copies are created in the parent. Run the diagnostic in a fresh dedicated
+process: a check for Python-managed threads catches routine misuse but cannot
+prove that no native or low-level thread exists. On normal and failed returns
+the parent terminates and drains the job before releasing protection;
+assignment failure kills and reaps the still-unassigned interpreter.
+Subprocess tests exercise a fabricated Git checkout, dirty sources, source
+locks, parent interruption, assignment failure and unknown bytecode. The
+host's versioned interpreter alias is a Windows junction, so this diagnostic
+resolves and checks its canonical target while retaining the no-reparse rule
+for protected checkout and cache paths. A virtual-environment launcher may
+be a process shim: observing only the shim's exit does not prove that its
+actual interpreter has exited.
+
+The launcher permits only the trusted committed `looking_glass.trace_schema`
+diagnostic import; Python also executes its package initializer, so this is
+not a sandbox for untrusted project sources. The diagnostic records the
+checked source list, but does not yet retain the
+child's complete imported-module inventory, bind study protocols or custody,
+or verify dependencies and native code. Windows cleanup after an owner crash
+also needs a recovery policy for a leftover disposable ACL. An embedding
+caller can retain the `LaunchError.quarantine` object and retry cleanup; if
+the CLI cannot clean up after a retry, it reports protection as unknown on
+process exit. Owner death can
+close the job and parent handles in an unspecified order; for a project that
+spawns descendants, this implementation has not established that every
+descendant retains protection until it exits. A study launcher must address
+that limitation or prohibit descendant processes, and be reviewed separately.
+These checks do not authorize a v2 run.
+
+Use the tested direct-script invocation with the canonical base interpreter
+and `-I -S -B`, not an imported launcher from an embedding process. The Git
+checks authenticate the on-disk launcher bytes against the selected commit;
+they are not a cryptographic attestation of the bytes already executing. An
+embedding process could import a timestamp-valid cached launcher before this
+check, and neither the interpreter nor native dependencies are attested here.

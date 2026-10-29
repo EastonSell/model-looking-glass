@@ -115,6 +115,8 @@ class V2SourceGuardTests(unittest.TestCase):
             CreateJobObjectW = kernel.CreateJobObjectW
             SetInformationJobObject = kernel.SetInformationJobObject
             AssignProcessToJobObject = kernel.AssignProcessToJobObject
+            TerminateJobObject = kernel.TerminateJobObject
+            QueryInformationJobObject = kernel.QueryInformationJobObject
             def __init__(self):
                 self.closed = []
             def CloseHandle(self, handle):
@@ -126,6 +128,93 @@ class V2SourceGuardTests(unittest.TestCase):
             with self.assertRaises(OSError):
                 guards.WindowsJob()
         self.assertEqual(len(tracking.closed), 1)
+
+    def test_terminate_and_wait_drains_the_entire_job(self):
+        import ctypes
+        from ctypes import wintypes
+        guards = _load_guards()
+        base_python = str(Path(sys.base_prefix) / "python.exe")
+        with tempfile.TemporaryDirectory() as directory:
+            ready = Path(directory) / "grandchild.txt"
+            code = f'''
+import pathlib, subprocess, sys, threading
+sys.stdin.readline()
+child = subprocess.Popen([{base_python!r}, "-I", "-S", "-B", "-c",
+                          "import threading; threading.Event().wait(3600)"],
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
+pathlib.Path({str(ready)!r}).write_text(str(child.pid))
+threading.Event().wait(3600)
+'''
+            child = subprocess.Popen([base_python, "-I", "-S", "-B", "-c", code],
+                                     stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
+            kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+            kernel.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+            kernel.OpenProcess.restype = wintypes.HANDLE
+            kernel.WaitForSingleObject.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+            kernel.WaitForSingleObject.restype = wintypes.DWORD
+            kernel.CloseHandle.argtypes = (wintypes.HANDLE,)
+            grandchild = None
+            job = guards.WindowsJob()
+            try:
+                job.assign(child)
+                child.stdin.write(b"go\n")
+                child.stdin.close()
+                child.stdin = None
+                deadline = time.monotonic() + 10
+                while not ready.exists() and child.poll() is None and time.monotonic() < deadline:
+                    time.sleep(0.05)
+                self.assertTrue(ready.exists())
+                grandchild = kernel.OpenProcess(0x00100000, False, int(ready.read_text()))
+                self.assertTrue(grandchild)
+                job.terminate_and_wait()
+                child.wait(timeout=5)
+                self.assertEqual(kernel.WaitForSingleObject(grandchild, 0), 0)
+            finally:
+                job.close()
+                if child.poll() is None:
+                    child.kill()
+                child.wait(timeout=5)
+                if grandchild:
+                    kernel.CloseHandle(grandchild)
+
+    def test_remote_duplicates_protect_source_after_parent_lease_closes(self):
+        guards = _load_guards()
+        base_python = str(Path(sys.base_prefix) / "python.exe")
+        code = ("import json,os,sys\n"
+                "handles=json.loads(sys.stdin.readline())\n"
+                "assert all(not os.get_handle_inheritable(h) for h in handles)\n"
+                "print('ready',flush=True)\n"
+                "sys.stdin.readline()\n")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "module.py"
+            source.write_text("original\n")
+            child = subprocess.Popen([base_python, "-I", "-S", "-B", "-c", code],
+                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE, text=True, close_fds=True,
+                                     creationflags=subprocess.CREATE_NO_WINDOW)
+            try:
+                with guards.SourceFileLease(root, [source]) as lease:
+                    self.assertTrue(all(not os.get_handle_inheritable(h) for h in lease.handles()))
+                    handles = guards.duplicate_to_process(lease.handles(), child)
+                    child.stdin.write(__import__("json").dumps(handles) + "\n")
+                    child.stdin.flush()
+                    self.assertEqual(child.stdout.readline().strip(), "ready")
+                with self.assertRaises(PermissionError):
+                    source.write_text("changed\n")
+                child.stdin.write("stop\n")
+                child.stdin.flush()
+                self.assertEqual(child.wait(timeout=5), 0)
+                source.write_text("released\n")
+            finally:
+                if child.poll() is None:
+                    child.kill()
+                child.wait(timeout=5)
+                child.stdin.close()
+                child.stdout.close()
+                child.stderr.close()
 
     def test_rejected_outside_path_and_exception_cleanup(self):
         guards = _load_guards()

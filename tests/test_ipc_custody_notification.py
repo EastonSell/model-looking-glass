@@ -580,6 +580,72 @@ class IPCCustodyNotificationTests(unittest.TestCase):
         self.assertTrue(server.close(3))
         self.assertTrue(guardian.notified.is_set())
 
+    def test_post_notice_bookkeeping_failure_latches_before_thread_exit(self):
+        for location in ("clients", "handlers", "slots"):
+            for after_mutation in (False, True):
+                with self.subTest(location=location, after_mutation=after_mutation):
+                    class ObservingGuardian(FakeGuardian):
+                        def handler_closed(self, key):
+                            self.handler_thread = threading.current_thread()
+                            with self.lock:
+                                self.records[key]["notice"] = True
+                            self.notified.set()
+
+                    class FaultSet(set):
+                        def discard(self, item):
+                            if after_mutation:
+                                super().discard(item)
+                            raise RuntimeError("bookkeeping outcome unknown")
+
+                    guardian = ObservingGuardian()
+                    broker = RegisteredBroker(guardian)
+                    server = self.make_server(guardian, broker)
+                    seen = threading.Event()
+                    failures = []
+
+                    def observe_exception(args):
+                        failures.append(args.exc_type)
+                        seen.set()
+
+                    released = []
+                    if location == "slots":
+                        original = server._slots.release
+
+                        def fail_release():
+                            if after_mutation:
+                                original()
+                                released.append(True)
+                            raise RuntimeError("slot outcome unknown")
+
+                        fault = patch.object(server._slots, "release", fail_release)
+                    else:
+                        name = "_" + location
+                        fault = patch.object(server, name, FaultSet(getattr(server, name)))
+
+                    with fault, patch.object(threading, "excepthook", observe_exception):
+                        result = IPCClient(server.address, server.team_tokens["team"]).submit(
+                            team_id="team", request_id="case", inputs={"input_ids": [[1]]}).wait(3)
+                        self.assertEqual(result["status"], "succeeded")
+                        self.assertTrue(guardian.notified.wait(3))
+                        self.assertTrue(seen.wait(3))
+                        guardian.handler_thread.join(3)
+                        self.assertFalse(guardian.handler_thread.is_alive())
+                        self.assertEqual(failures, [RuntimeError])
+                        self.assertTrue(server.custody_quarantined)
+                        record = guardian.records[broker.calls[0][0]]
+                        self.assertTrue(record["notice"])
+                        self.assertTrue(record["charged"])
+                        if not (location == "handlers" and after_mutation):
+                            self.assertFalse(server.close(.01))
+                    # Test-only reconciliation after confirmed thread exit;
+                    # production must independently reconcile uncertain state.
+                    with server._lock:
+                        server._handlers = set()
+                        server._clients = set()
+                    if location == "slots" and not released:
+                        server._slots.release()
+                    self.assertTrue(server.close(3))
+
     def test_generations_are_distinct_within_server_lifetime(self):
         guardian = FakeGuardian()
         broker = RegisteredBroker(guardian)

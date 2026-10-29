@@ -625,10 +625,24 @@ class IPCServer:
                     except BaseException:
                         # The guardian must keep uncertain records charged.
                         self._custody_quarantine.set()
-                with self._lock:
-                    self._clients.discard(client)
-                    self._handlers.discard(threading.current_thread())
-                self._slots.release()
+                try:
+                    with self._lock:
+                        try:
+                            self._clients.discard(client)
+                            # Keep the handler discoverable until connection
+                            # accounting has actually completed.
+                            self._slots.release()
+                            self._handlers.discard(threading.current_thread())
+                        except BaseException:
+                            # A notice may already have been observed. Latch
+                            # before releasing the lock or the handler exits.
+                            if self._custody_guardian is not None:
+                                self._custody_quarantine.set()
+                            raise
+                except BaseException:
+                    if self._custody_guardian is not None:
+                        self._custody_quarantine.set()
+                    raise
             if cancellation_exception is not None and not pending_exception:
                 raise cancellation_exception
 
