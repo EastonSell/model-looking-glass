@@ -354,6 +354,13 @@ def _check_public_operation(config, raw, *, require_commitment=True):
         raise BootstrapError('public operational commitment is invalid') from error
 
 
+def _check_current_exposure(custody, snapshot):
+    observed = custody.observe_current_inventory()
+    if (type(observed) is not dict or observed.get('inventory_sha256') != snapshot.sha256
+            or observed.get('source_sha256') != custody.CURRENT_INVENTORY_SOURCE_SHA256):
+        raise BootstrapError('official exposure changed during the held-out owner')
+
+
 def _run_pipeline(frozen, config, binding, public, custody, wrapper_bytes, dependencies, state):
     """Use only validated committed cases and the pre-frozen scoring source."""
     cache, phase = Path(config['cache_dir']), Path(config['phase_dir'])
@@ -386,6 +393,7 @@ def _run_pipeline(frozen, config, binding, public, custody, wrapper_bytes, depen
                                               current_inventory_sha256=snapshot.sha256)
     cases = custody.tokenize_assignment(allocation, bundle.tokenizer)
     custody.reject_known_row_prefixes(cases, public.inventory)
+    _check_current_exposure(custody, snapshot)
     resealed = commitments.seal_heldout(freeze, nonce, cases, allocation=allocation,
                                          inventory_snapshot=snapshot, current_inventory_sha256=snapshot.sha256)
     if (resealed.record_bytes != record
@@ -401,6 +409,7 @@ def _run_pipeline(frozen, config, binding, public, custody, wrapper_bytes, depen
                                  split_nonce=nonce, record_bytes=record,
                                  heldout_commitment=commitment['heldout_commitment'],
                                  inventory_snapshot=snapshot, current_inventory_sha256=snapshot.sha256)
+    _check_current_exposure(custody, snapshot)
     if dependencies['state_hash'](bundle.model) != MODEL_STATE_SHA256:
         raise BootstrapError('model state changed during held-out execution')
 

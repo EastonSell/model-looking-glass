@@ -305,13 +305,20 @@ def test_validation_rejects_an_unresolved_marker_path(tmp_path, monkeypatch):
         child._execute(path, {}, validation_only=True)
 
 
-def _fake_pipeline(tmp_path, *, fail_verification=False, fail_owner=False, wrong_state=False, prefix_collision=False):
+def _fake_pipeline(tmp_path, *, fail_verification=False, fail_owner=False, wrong_state=False,
+                   prefix_collision=False, exposure_change_at=None):
     steps = []
     freeze, snapshot = SimpleNamespace(sha256='freeze'), SimpleNamespace(sha256='inventory')
     commitment = {'heldout_commitment': 'c' * 64}
     prepared = (freeze, snapshot, b'private-nonce', b'private-record', commitment)
     class Custody:
-        observe_current_inventory = object()
+        CURRENT_INVENTORY_SOURCE_SHA256 = 'source'
+        observations = 0
+        def observe_current_inventory(self):
+            self.observations += 1
+            steps.append('observe')
+            return {'inventory_sha256': 'changed' if self.observations == exposure_change_at else 'inventory',
+                    'source_sha256': 'source'}
         def verify_prepared(self, *args, **kwargs):
             steps.append('verify')
             if fail_verification:
@@ -386,7 +393,8 @@ def test_committed_verification_and_one_shot_start_precede_model_and_forward(tmp
     steps, run = _fake_pipeline(tmp_path)
     run()
     assert steps == ['tokenizer', 'verify', 'start', 'model', 'hash', 'public-alignment',
-                     'resample', 'heldout-alignment', 'prefix-check', 'reseal', 'journal', 'runner', 'run', 'hash']
+                     'resample', 'heldout-alignment', 'prefix-check', 'observe', 'reseal', 'journal',
+                     'runner', 'run', 'observe', 'hash']
 
 
 @pytest.mark.parametrize('failure', ['verification', 'owner', 'state', 'prefix'])
@@ -401,3 +409,14 @@ def test_rejected_gates_never_reach_a_forward(tmp_path, failure):
         assert 'model' not in steps
     if failure == 'prefix':
         assert 'prefix-check' in steps and 'reseal' not in steps and 'journal' not in steps
+
+
+@pytest.mark.parametrize('observation', [1, 2])
+def test_changed_exposure_stops_before_forward_or_promotion(tmp_path, observation):
+    steps, run = _fake_pipeline(tmp_path, exposure_change_at=observation)
+    with pytest.raises(child.BootstrapError, match='exposure changed'):
+        run()
+    if observation == 1:
+        assert 'run' not in steps and 'journal' not in steps
+    else:
+        assert 'run' in steps and steps[-1] == 'observe'

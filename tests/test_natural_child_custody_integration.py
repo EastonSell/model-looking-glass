@@ -51,7 +51,8 @@ def test_child_requires_real_custody_preparation_and_loaded_token_checks(mode):
             return fixtures.custody.reject_known_row_prefixes(*args)
         custody = SimpleNamespace(verify_prepared=verify, start_owner_once=start,
                                   tokenize_assignment=tokenize, reject_known_row_prefixes=reject_prefixes,
-                                  observe_current_inventory=fixture.observe_inventory)
+                                  observe_current_inventory=fixture.observe_inventory,
+                                  CURRENT_INVENTORY_SOURCE_SHA256=fixtures.custody.CURRENT_INVENTORY_SOURCE_SHA256)
         class Preflight:
             def _tokenizer(self, cache):
                 return fixtures.FakeTokenizer()
