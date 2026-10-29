@@ -88,6 +88,27 @@ supervisor to retain the worker, ledger and device ownership until a safely
 reaped process; it must not declare cleanup merely because a method returned.
 The supervisor should monitor both the nonblocking `failed` and `quarantined`
 properties: a failed worker can be unavailable even if its device was drained.
+`unavailable` also signals a pending health decision; it is not itself a
+permanent quarantine. A supervisor must not certify a clean owner while this
+state is unresolved. A dispatch timeout bounds waiting before a cohort is
+claimed. Once a snapshot or cohort has been staged, a pending health probe
+can delay progress until it resolves; the associated claims remain charged.
+An unresponsive probe requires the external watchdog to replace the process.
+
+The optional session-bound `GroupedWorkspaceWorker` has a separate binding
+transition from the serial service. Broker construction holds its preflight
+gate and checks that the exact worker has no active control or untransferred
+producer result; a busy owner returns `HostBusy` before binding. This does not
+certify a GPU profile or enable timing observations. After admission has been
+closed and the broker, worker and resident are closed, the trusted owner may
+call `retire_grouped_owner(worker, broker, callers_quiescent=True)` only after
+joining all dispatch, control, delivery, cancellation, disposal and health
+callers and disposing every associated alias and exception graph. The helper
+checks the exact binding, empty ledgers and custody slots before permanently
+detaching the broker and worker. It retains no proof of external or native
+alias disposal, and it does not release the physical lease or either fixed
+device commitment. Those capabilities and the relevant roots must remain
+held through process exit; uncertain retirement requires process replacement.
 
 `close()` releases the exclusive ledger only after all healthy jobs,
 deliveries and groups are disposed and no dispatcher remains active. It does
