@@ -754,12 +754,15 @@ def _await_launch_grant():
 class _SpawnCustody:
     """Root a direct child before grant; recover only after its launcher stops."""
 
-    def __init__(self, run_id):
+    def __init__(self, run_id, process_job=None):
         self.run_id = run_id
         self._child = None
         self._attempted = False
         self._read_fd = None
         self._write_fd = None
+        self._process_job = process_job
+        self._job_drain_uncertain = False
+        self._job_assigned = False
 
     def _register(self):
         with _spawn_custody_lock:
@@ -767,6 +770,9 @@ class _SpawnCustody:
                 raise SupervisorError("supervised child recovery capacity is exhausted")
             if self.run_id in _spawn_custodies:
                 raise SupervisorError("duplicate supervised child recovery identity")
+            if (self._process_job is not None
+                    and any(record._process_job is self._process_job for record in _spawn_custodies.values())):
+                raise SupervisorError("the process job already belongs to another supervised run")
             _spawn_custodies[self.run_id] = self
 
     def _open_gate(self):
@@ -820,8 +826,42 @@ class _SpawnCustody:
             if _spawn_custodies.get(self.run_id) is self:
                 del _spawn_custodies[self.run_id]
 
+    def _finish_job(self, terminate_grace, *, allow_recovery=False):
+        """Confirm process-tree termination before releasing the job capability."""
+        job = self._process_job
+        if job is not None:
+            if self._job_drain_uncertain and not allow_recovery:
+                raise UnsafeOwnerError("process-job drain is uncertain; retain custody")
+            self._job_drain_uncertain = True
+            was_quiescent = False
+            if not allow_recovery:
+                try:
+                    counts = job.process_counts()
+                    if (type(counts) is not tuple or len(counts) != 2
+                            or any(type(value) is not int or value < 0 for value in counts)
+                            or counts[1] > counts[0] or (self._job_assigned and counts[0] < 1)):
+                        raise SupervisorError("process-job counts are invalid")
+                    active = counts[1]
+                    was_quiescent = active == 0
+                except BaseException as query_error:
+                    # Even if the count is unknown, attempt to stop members;
+                    # keep the job rooted and never turn this into a clean run.
+                    try:
+                        job.terminate_and_wait(timeout=terminate_grace)
+                    except BaseException as cleanup_error:
+                        if (isinstance(cleanup_error, (KeyboardInterrupt, SystemExit))
+                                and not isinstance(query_error, (KeyboardInterrupt, SystemExit))):
+                            raise cleanup_error from query_error
+                    raise
+            job.terminate_and_wait(timeout=terminate_grace)
+            job.close()
+            self._process_job = None
+            self._job_drain_uncertain = False
+            return was_quiescent
+        return True
+
     def recover(self, *, terminate_grace=5):
-        """Stop/reap this exact child after the launcher is known quiescent.
+        """Stop/reap this child and its job after the launcher is quiescent.
 
         Unknown native-spawn outcomes cannot be proved reaped with this API.
         Recovery never removes the sticky device marker.
@@ -834,6 +874,7 @@ class _SpawnCustody:
         if not self._attempted:
             # The launcher is quiescent and never reached Popen: there is no
             # direct child to stop or reap. Quarantine is still untouched.
+            self._finish_job(terminate_grace, allow_recovery=True)
             self._retire()
             return None
         if not self._known_child():
@@ -841,6 +882,7 @@ class _SpawnCustody:
         exit_code = _stop_child(self._child, terminate_grace)
         if exit_code is None:
             raise UnsafeOwnerError("direct child exit could not be confirmed")
+        self._finish_job(terminate_grace, allow_recovery=True)
         self._retire()
         return exit_code
 
@@ -873,8 +915,17 @@ def _spawn_with_gate(command, *, cwd, child_env, custody, startup_fd=None):
 
 def run_supervised(command, *, device_lease_path, marker_path, timeout,
                    lease_timeout=5, terminate_grace=5, cwd=None, env=None, identity=None,
-                   startup_channel=None, inherit_environment=True):
-    """Run one trusted owner and clear the sticky marker only after clean exit."""
+                   startup_channel=None, inherit_environment=True, process_job=None):
+    """Run one trusted owner and clear the sticky marker only after clean exit.
+
+    On Windows an optional trusted, single-run process-job capability provides
+    ``assign``, ``process_counts``, ``terminate_and_wait`` and ``close``. The
+    caller must supply an independently reviewed job implementation and never share it with other
+    work. This function assigns the rooted child before granting startup, and
+    keeps the job in recovery custody until its drain and close are confirmed.
+    Process-tree guarantees depend on the supplied capability and do not cover
+    processes that escape or are outside its job.
+    """
     if startup_channel is not None:
         if type(startup_channel) is not StartupChannel:
             raise ValueError("startup_channel must be a StartupChannel")
@@ -884,20 +935,38 @@ def run_supervised(command, *, device_lease_path, marker_path, timeout,
             command, device_lease_path=device_lease_path, marker_path=marker_path,
             timeout=timeout, lease_timeout=lease_timeout, terminate_grace=terminate_grace,
             cwd=cwd, env=env, identity=identity, startup_channel=startup_channel,
-            inherit_environment=inherit_environment,
+            inherit_environment=inherit_environment, process_job=process_job,
         )
-    except BaseException:
+    except BaseException as primary_error:
         if startup_channel is not None:
-            startup_channel.abort()
+            try:
+                startup_channel.abort()
+            except BaseException as abort_error:
+                if isinstance(primary_error, (KeyboardInterrupt, SystemExit)):
+                    pass
+                elif isinstance(abort_error, (KeyboardInterrupt, SystemExit)):
+                    raise abort_error from primary_error
+                else:
+                    raise
         raise
 
 
 def _run_supervised(command, *, device_lease_path, marker_path, timeout,
                     lease_timeout, terminate_grace, cwd, env, identity, startup_channel,
-                    inherit_environment):
+                    inherit_environment, process_job):
     _finite_timeout(timeout, "timeout")
     _finite_timeout(lease_timeout, "lease_timeout")
     _finite_timeout(terminate_grace, "terminate_grace")
+    if process_job is not None:
+        if os.name != "nt" or not 0 < terminate_grace <= 10:
+            raise ValueError("a Windows process job requires a drain timeout in (0, 10]")
+        if any(not callable(getattr(process_job, name, None))
+               for name in ("assign", "process_counts", "terminate_and_wait", "close")):
+            raise ValueError("an assignable, drainable process-job capability is required")
+        counts = process_job.process_counts()
+        if (type(counts) is not tuple or len(counts) != 2
+                or any(type(value) is not int for value in counts) or counts != (0, 0)):
+            raise ValueError("the process job must be fresh and empty before launch")
     if type(inherit_environment) is not bool:
         raise ValueError("inherit_environment must be a boolean")
     if isinstance(command, (str, bytes)) or not command:
@@ -943,9 +1012,10 @@ def _run_supervised(command, *, device_lease_path, marker_path, timeout,
             child_env["CUDA_VISIBLE_DEVICES"] = ""
         child_env.update({_RUN_ENV: run_id, _LEASE_ENV: str(device), _MARKER_ENV: str(marker),
                           _SUPERVISOR_ENV: str(os.getpid()), _SUPERVISOR_BIRTH_ENV: _supervisor_birth()})
-        custody = _SpawnCustody(run_id)
+        custody = _SpawnCustody(run_id, process_job)
         timed_out = False
         startup_failed = False
+        job_quiescent = True
         try:
             custody._register()
             custody._open_gate()
@@ -957,6 +1027,9 @@ def _run_supervised(command, *, device_lease_path, marker_path, timeout,
                 startup_channel._spawn(command, cwd=cwd, child_env=child_env,
                                        custody=custody)
             child = custody._child
+            if process_job is not None:
+                process_job.assign(child)
+                custody._job_assigned = True
             if startup_channel is not None:
                 startup_channel._authorize_launch()
             custody._grant()
@@ -985,22 +1058,37 @@ def _run_supervised(command, *, device_lease_path, marker_path, timeout,
                     except subprocess.TimeoutExpired:
                         pass
             if exit_code is not None:
+                job_quiescent = custody._finish_job(terminate_grace)
                 custody._retire()
-        except BaseException:
-            # Keep the original exception. Even if cleanup is interrupted or
-            # fails, the exact record remains rooted for trusted recovery.
+        except BaseException as primary_error:
+            # Retain the original failure unless cleanup receives a first
+            # fatal interruption. In either case the exact record stays rooted
+            # when cleanup cannot prove that the child and job are gone.
+            cleanup_interrupt = None
             try:
                 custody._close_gate()
+            except (KeyboardInterrupt, SystemExit) as error:
+                cleanup_interrupt = error
             except BaseException:
                 pass
             try:
-                if custody._known_child():
+                with _spawn_custody_lock:
+                    registered = _spawn_custodies.get(custody.run_id) is custody
+                if registered and custody._known_child():
                     if _stop_child(custody._child, terminate_grace) is not None:
+                        custody._finish_job(terminate_grace)
                         custody._retire()
-                elif not custody._attempted:
+                elif registered and not custody._attempted:
+                    custody._finish_job(terminate_grace)
                     custody._retire()
+            except (KeyboardInterrupt, SystemExit) as error:
+                if cleanup_interrupt is None:
+                    cleanup_interrupt = error
             except BaseException:
                 pass
+            if (cleanup_interrupt is not None
+                    and not isinstance(primary_error, (KeyboardInterrupt, SystemExit))):
+                raise cleanup_interrupt from primary_error
             raise
 
         if timed_out:
@@ -1017,6 +1105,10 @@ def _run_supervised(command, *, device_lease_path, marker_path, timeout,
                 startup_channel.abort()
                 return SupervisionResult(run_id, child.pid, exit_code, False, False,
                                          "startup channel failed")
+
+        if not job_quiescent:
+            return SupervisionResult(run_id, child.pid, exit_code, False, False,
+                                     "process job had live members after owner exit")
 
         cleanup_lease = DeviceLease.acquire(device, timeout=lease_timeout)
         clean = False
