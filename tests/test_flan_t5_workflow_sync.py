@@ -6,6 +6,7 @@ from transformers import T5Config, T5ForConditionalGeneration
 
 from looking_glass.flan_t5_intervention_workflow import compare_t5_donor_patch
 from looking_glass.flan_t5_trace import T5TracePoint, trace_t5_forward
+from looking_glass.intervention_plan import ActivationPlan
 from looking_glass.model_ownership import ModelLease
 
 
@@ -193,6 +194,41 @@ def test_sync_workflow_quarantines_reentrant_root_call(monkeypatch):
     with pytest.raises(RuntimeError, match="exactly one root model forward") as caught:
         compare_t5_donor_patch(model, **inputs, synchronous_cpu=True)
     assert caught.value.__traceback__ is not None
+    assert any(module._forward_hooks or module._forward_pre_hooks for module in model.modules())
+    with pytest.raises(RuntimeError, match="already leased"):
+        ModelLease(model).acquire()
+
+
+@pytest.mark.parametrize("stack", ["encoder", "decoder"])
+@pytest.mark.parametrize("failing_step", [1, 5], ids=["receiver", "self-patch"])
+@pytest.mark.parametrize("exception_type", [KeyboardInterrupt, SystemExit])
+def test_target_hook_interrupt_keeps_original_and_quarantines(monkeypatch, stack, failing_step, exception_type):
+    model = tiny_t5()
+    original = ActivationPlan._apply_step
+    interruption = exception_type("inside target hook")
+    calls = 0
+    observed = []
+
+    def interrupt(plan, step, output, preceding):
+        nonlocal calls
+        calls += 1
+        if calls == failing_step:
+            observed.append(plan)
+            raise interruption
+        return original(plan, step, output, preceding)
+
+    monkeypatch.setattr(ActivationPlan, "_apply_step", interrupt)
+    with pytest.raises(exception_type) as caught:
+        compare_t5_donor_patch(model, **workflow_inputs(stack), synchronous_cpu=True)
+    assert caught.value is interruption and calls == failing_step
+    plan = observed[0]
+    traceback = caught.value.__traceback__
+    plan_in_traceback = False
+    while traceback is not None:
+        if traceback.tb_frame.f_locals.get("self") is plan:
+            plan_in_traceback = True
+        traceback = traceback.tb_next
+    assert plan_in_traceback
     assert any(module._forward_hooks or module._forward_pre_hooks for module in model.modules())
     with pytest.raises(RuntimeError, match="already leased"):
         ModelLease(model).acquire()
