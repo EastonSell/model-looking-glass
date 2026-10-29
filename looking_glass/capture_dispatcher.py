@@ -240,6 +240,7 @@ class CaptureDispatcher:
                     raise RuntimeError("CaptureDispatcher is single-use")
                 self._state = "active"
                 self._owner_thread = threading.get_ident()
+            output = events = None
             try:
                 output = forward()
                 if isinstance(output, Future) or inspect.isawaitable(output) or inspect.isgenerator(output) \
@@ -256,6 +257,10 @@ class CaptureDispatcher:
                     self._state = "finished"
                 return output, events
             except BaseException as exc:
+                # Retained tracebacks include this frame. Drop references to
+                # model outputs and closures as well as owned trace payloads.
+                output = events = None
+                forward = None
                 self._abort(type(exc).__name__)
                 with self._state_lock:
                     self._state = "failed"
@@ -267,17 +272,23 @@ class CaptureDispatcher:
         """Record one module invocation; the surrounding hook must return None."""
         with self._state_lock:
             if self._state != "active":
+                output = None
                 raise RuntimeError("record is only valid inside an active forward")
             if threading.get_ident() != self._owner_thread:
                 self._abort("wrong thread")
+                output = None
                 raise RuntimeError("cross-thread record is unsupported")
             if self._recording:
                 self._abort("reentrant record")
+                output = None
                 raise RuntimeError("reentrant record is unsupported")
             if self._failure_kind is not None:
+                output = None
                 raise CaptureAbortedError("capture was already aborted")
             self._recording = True
 
+        pending = []
+        detached = indices = selected = None
         try:
             _text("module_path", module_path)
             _text("module_kind", module_kind)
@@ -322,7 +333,6 @@ class CaptureDispatcher:
 
             # Capture into a private pending list. Nothing is published until
             # the full event and the containing forward both succeed.
-            pending = []
             sequence_numbers = dict(self._sequences)
             detached = output.detach()
             invocation = self._module_counts[module_path]
@@ -359,6 +369,10 @@ class CaptureDispatcher:
                     self._request_events[request_id] += n_events
                     self._request_bytes[request_id] += n_bytes
         except BaseException as exc:
+            # A consumer may retain this exception and its traceback. Clear
+            # this frame's private payloads before propagating the failure.
+            pending.clear()
+            detached = indices = selected = output = None
             self._abort(type(exc).__name__)
             raise
         finally:

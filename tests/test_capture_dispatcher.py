@@ -270,6 +270,70 @@ class CaptureDispatcherTests(unittest.TestCase):
         self.assertIsNone(refs[0]())
         self.assertEqual(d.retained_bytes, 0)
 
+    def test_retained_error_does_not_keep_partial_event_snapshots(self):
+        original_select = torch.Tensor.index_select
+        refs = []
+        calls = 0
+        def fail_second_selection(tensor, *args, **kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise RuntimeError("simulated selection failure")
+            value = original_select(tensor, *args, **kwargs)
+            refs.append(weakref.ref(value))
+            return value
+        r = request("a", [SampleSelection(0, "a0", (0,)),
+                          SampleSelection(1, "a1", (0,))])
+        d = make_dispatcher((r,), batch_size=2, sequence_length=1,
+                            max_events=2, max_trace_bytes=64)
+        source = torch.ones(2, 1, 1)
+        retained_error = None
+        with mock.patch.object(torch.Tensor, "index_select", fail_second_selection):
+            try:
+                d.run(lambda: d.record("tap", layer_index=0, module_kind="block",
+                                       output=source))
+            except RuntimeError as error:
+                retained_error = error
+        self.assertIsNotNone(retained_error)
+        self.assertIsNotNone(retained_error.__traceback__)
+        gc.collect()
+        self.assertEqual(len(refs), 1)
+        self.assertIsNone(refs[0]())
+        self.assertEqual(d.retained_bytes, 0)
+
+    def test_interrupted_publication_drops_result_tuple_from_retained_traceback(self):
+        class InterruptOnce(list):
+            def __init__(self):
+                super().__init__()
+                self.interrupt = True
+            def clear(self):
+                super().clear()
+                if self.interrupt:
+                    self.interrupt = False
+                    raise KeyboardInterrupt("simulated publication interrupt")
+        original_select = torch.Tensor.index_select
+        refs = []
+        def track_select(tensor, *args, **kwargs):
+            value = original_select(tensor, *args, **kwargs)
+            refs.append(weakref.ref(value))
+            return value
+        r = request("a", [SampleSelection(0, "s", (0,))])
+        d = make_dispatcher((r,), batch_size=1, sequence_length=1,
+                            max_events=2, max_trace_bytes=64)
+        d._events = InterruptOnce()
+        retained_error = None
+        with mock.patch.object(torch.Tensor, "index_select", track_select):
+            try:
+                d.run(lambda: d.record("tap", layer_index=0, module_kind="block",
+                                       output=torch.ones(1, 1, 1)))
+            except KeyboardInterrupt as error:
+                retained_error = error
+        self.assertIsNotNone(retained_error.__traceback__)
+        gc.collect()
+        self.assertEqual(len(refs), 1)
+        self.assertIsNone(refs[0]())
+        self.assertEqual(d.retained_bytes, 0)
+
     def test_forward_and_input_gradients_match_uninstrumented_reference(self):
         model = RepeatedTap()
         reference = torch.tensor([[[2., -3.], [4., 5.]]], requires_grad=True)

@@ -99,7 +99,11 @@ The entire batch is transactional: an overflow, malformed record, wrong
 thread, or failed forward clears all internally held snapshots and yields no
 results. A hook failure poisons the run even if model code catches it.
 Exceptions do not carry retained snapshots in dispatcher state; external
-tracebacks and model code may still hold their own tensors. Successful
+tracebacks and model code may still hold tensors. The dispatcher also clears
+temporary snapshot references from its own failing frames, but a traceback
+from PyTorch, a hook, or other caller code can still retain arguments or
+allocations. `retained_bytes == 0` therefore does not prove actual process or
+device memory was released. Successful
 results transfer ownership to the caller, who must release them. Retrying is
 a new run and must not silently change its capture configuration.
 
