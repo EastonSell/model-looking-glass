@@ -14,7 +14,7 @@ import time
 from .supervisor import _supervisor_birth
 from .tap_repeated_parent import (_check_preflight_interval, _clock_margin, _decode_mapping,
                                   _decode_ready, _publish_barrier, _read_plain_frame)
-from .tap_repeated_protocol import CROSS_PROVIDER_TOTAL_TOLERANCE_BYTES
+from .tap_repeated_protocol import CROSS_PROVIDER_TOTAL_TOLERANCE_BYTES, START_GRANT_MAX_NS
 
 
 _IDENTITY = ('session_index', 'owner_pid', 'owner_birth', 'supervisor_run_id', 'challenge',
@@ -104,7 +104,7 @@ class ChildBarriers:
             if (any(type(value) is not int for value in
                     (ready, received, issued, expires, oldest, latest, process_start, process_end))
                     or not ready + margin <= received <= oldest <= latest < process_start <= process_end <= issued
-                    or not issued < expires <= issued + 500_000_000):
+                    or not issued < expires <= issued + START_GRANT_MAX_NS):
                 raise ValueError('start grant ordering differs')
             _check_preflight_interval(grant, seen_ns=observed_ns, lower_ns=observed_ns, upper_ns=observed_ns)
         except BaseException:

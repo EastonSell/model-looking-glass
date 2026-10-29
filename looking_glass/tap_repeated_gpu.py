@@ -1,4 +1,4 @@
-"""Source-bound controller for one provisional v1.2 timing session.
+"""Source-bound controller for one provisional v1.3 timing session.
 
 The parent verifies committed sources and an offline checkpoint before it
 starts a Job-supervised child. The child verifies a hash-bound source manifest
@@ -28,7 +28,7 @@ import time
 _SOURCE_PATHS = (
     'scripts/tap_repeated_gpu_bootstrap.py', 'scripts/v2_source_guards.py',
     'evidence/gpu-tap-latency-repeated-v1/schedule.json',
-    'docs/GPU_TAP_LATENCY_REPEATED_V1_2_DRAFT.md',
+    'docs/GPU_TAP_LATENCY_REPEATED_V1_3_DRAFT.md',
     'looking_glass/__init__.py', 'looking_glass/tap_repeated_gpu.py',
     'looking_glass/tap_repeated_gpu_owner.py', 'looking_glass/tap_repeated_gpu_evidence.py',
     'looking_glass/tap_repeated_parent.py', 'looking_glass/tap_repeated_child_barrier.py',

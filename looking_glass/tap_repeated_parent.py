@@ -17,7 +17,7 @@ import threading
 
 from .device_identity import DeviceIdentity, normalize_gpu_uuid
 from .supervisor import SupervisionResult, _identity_spec, _marker, inspect_live_child, run_supervised
-from .tap_repeated_protocol import (CROSS_PROVIDER_TOTAL_TOLERANCE_BYTES, EXPERIMENT_PROTOCOL,
+from .tap_repeated_protocol import (CROSS_PROVIDER_TOTAL_TOLERANCE_BYTES, EXPERIMENT_PROTOCOL, START_GRANT_MAX_NS,
                                     check_initial_activity, classify_activity, clock_minimum,
                                     summarize_session)
 
@@ -142,9 +142,9 @@ def _make_start_grant(ready, *, parent_clock, parent_runtime, received_ns, snaps
         raise ValueError('initial activity is not ordered after owner startup')
     # The child's final preflight-start check must use these same boundaries,
     # not just the time when the parent created the grant.
-    expires = min(issued_ns + 500_000_000, oldest + 2_000_000_000 - margin,
+    expires = min(issued_ns + START_GRANT_MAX_NS, oldest + 2_000_000_000 - margin,
                   process_start + 2_000_000_000 - margin)
-    if expires <= issued_ns:
+    if expires <= issued_ns or expires >= 2 ** 63:
         raise ValueError('initial activity is stale')
     return {'schema': 'tap-repeated-start-grant-v1', 'session_index': ready['session_index'],
             'owner_pid': ready['owner_pid'], 'owner_birth': ready['owner_birth'],

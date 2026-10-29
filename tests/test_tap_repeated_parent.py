@@ -235,6 +235,42 @@ def test_start_grant_binds_all_initial_timestamps_and_expires_before_staleness()
     assert grant['activity_smi_total_bytes'] == _SMI_TOTAL
 
 
+def test_v13_grant_covers_observed_handoff_but_never_extends_activity_freshness():
+    ready = _ready()
+    ready['ready_ns'] = 8_000_000_000
+    kwargs = dict(parent_clock=_clock(), parent_runtime=_runtime(), received_ns=8_100_000_000,
+                  snapshot=_snapshot(), gpu_uuid=_GPU, expected_smi_total=_SMI_TOTAL)
+    grant = parent._make_start_grant(ready, issued_ns=9_200_000_000, **kwargs)
+    assert grant['expires_ns'] == grant['issued_ns'] + 1_000_000_000
+    lower = grant['issued_ns'] + 268_292_800
+    parent._check_preflight_interval(grant, seen_ns=9_250_000_000,
+                                     lower_ns=lower, upper_ns=lower + 250_000_000)
+    with pytest.raises(ValueError):
+        parent._check_preflight_interval(grant, seen_ns=9_250_000_000,
+                                         lower_ns=lower, upper_ns=grant['expires_ns'] + 1)
+    near_stale = parent._make_start_grant(ready, issued_ns=10_300_000_000, **kwargs)
+    assert near_stale['expires_ns'] <= near_stale['initial_oldest_query_started_ns'] + 2_000_000_000
+    with pytest.raises(ValueError):
+        parent._check_preflight_interval(near_stale, seen_ns=10_301_000_000,
+            lower_ns=10_310_000_000, upper_ns=near_stale['expires_ns'] + 1)
+
+
+def test_v13_grant_rejects_expiry_outside_the_signed_clock_range():
+    shift = 2 ** 63 - 100_000_000 - 9_200_000_000
+    ready = _ready()
+    ready['ready_ns'] = 8_000_000_000 + shift
+    snapshot = _snapshot()
+    for point in snapshot['observations']:
+        for key in ('query_started_ns', 'query_ended_ns', 'observed_ns'):
+            point[key] += shift
+    for key in ('query_started_ns', 'query_ended_ns'):
+        snapshot['process_queries'][0][key] += shift
+    with pytest.raises(ValueError):
+        parent._make_start_grant(ready, parent_clock=_clock(), parent_runtime=_runtime(),
+            received_ns=8_100_000_000 + shift, snapshot=snapshot, gpu_uuid=_GPU,
+            expected_smi_total=_SMI_TOTAL, issued_ns=9_200_000_000 + shift)
+
+
 def test_start_grant_rejects_wrong_device_or_cross_provider_total():
     ready = _ready()
     ready['ready_ns'] = 8_000_000_000
