@@ -366,7 +366,7 @@ def test_client_plan_change_during_host_check_blocks_owner(monkeypatch, tmp_path
     assert subject._HOST_CLAIM_SLOT[0] is run._host_claim
 
 
-def bootstrap_fixture(monkeypatch, tmp_path, *, available=10 * GIB):
+def bootstrap_fixture(monkeypatch, tmp_path, *, available=8 * GIB):
     service, clients, _ = prepared_gate_fixture(tmp_path)
     monkeypatch.setattr(subject, '_HOST_CLAIM_SLOT', [None])
     monkeypatch.setattr(subject, '_canonical_methods', lambda *_: True)
@@ -384,8 +384,8 @@ def test_development_bootstrap_has_own_fixed_allowance_and_is_one_shot(monkeypat
         run.run_development_bootstrap()
     assert service.start.call_count == 1
     assert subject._HOST_CLAIM_SLOT[0] is run._host_claim
-    assert run._host_claim.commitment_bytes == 8 * GIB
-    assert run._host_claim.required_headroom_bytes == 10 * GIB
+    assert run._host_claim.commitment_bytes == 4 * GIB
+    assert run._host_claim.required_headroom_bytes == 8 * GIB
     assert run._host_claim.admission_mode == 'development-bootstrap'
     with pytest.raises(subject.ConcurrentServiceError, match='one-shot'):
         run.run_development_bootstrap()
@@ -395,7 +395,7 @@ def test_development_bootstrap_has_own_fixed_allowance_and_is_one_shot(monkeypat
 @pytest.mark.parametrize('problem', ['insufficient', 'missing-profile', 'requested-cancellation'])
 def test_development_bootstrap_rejects_before_owner_on_missing_prerequisite(monkeypatch, tmp_path, problem):
     service, clients, run = bootstrap_fixture(monkeypatch, tmp_path,
-        available=10 * GIB - 1 if problem == 'insufficient' else 10 * GIB)
+        available=8 * GIB - 1 if problem == 'insufficient' else 8 * GIB)
     if problem == 'missing-profile':
         def reject_profiles(*_):
             raise ValueError('profiles unavailable')
@@ -403,6 +403,21 @@ def test_development_bootstrap_rejects_before_owner_on_missing_prerequisite(monk
     if problem == 'requested-cancellation':
         clients._slots[0].cancel = True
     with pytest.raises((subject.ConcurrentServiceError, ValueError)):
+        run.run_development_bootstrap()
+    assert subject._HOST_CLAIM_SLOT == [None]
+    service.start.assert_not_called()
+
+
+@pytest.mark.parametrize('field', ['available_physical_bytes',
+                                   'available_system_commit_bytes',
+                                   'available_caller_commit_bytes'])
+def test_development_bootstrap_rejects_each_counter_below_floor(monkeypatch, tmp_path, field):
+    service, clients, run = bootstrap_fixture(monkeypatch, tmp_path)
+    snapshot = {'physical_total_bytes': 64 * GIB, 'available_physical_bytes': 8 * GIB,
+                'available_system_commit_bytes': 8 * GIB, 'available_caller_commit_bytes': 8 * GIB}
+    snapshot[field] -= 1
+    monkeypatch.setattr(subject, '_windows_host_snapshot', lambda: snapshot)
+    with pytest.raises(subject.ConcurrentServiceError, match='insufficient fresh host'):
         run.run_development_bootstrap()
     assert subject._HOST_CLAIM_SLOT == [None]
     service.start.assert_not_called()

@@ -43,14 +43,22 @@ explicit opt-in on the same one-shot run object. It uses the same fixed
 no-requested-cancellation 1×2 client plan, supervisor and worker, and still
 requires all three independently approved profiles for the exact final source
 and live owner path. It does not accept an approved host record or approve the
-observation it produces. Before startup it charges a fixed 8 GiB logical host
-allowance and requires a separate 2 GiB reserve, so all three fresh physical,
-system-commit and calling-process-commit values must be at least 10 GiB. The
+observation it produces. Before startup it charges a fixed 4 GiB logical host
+allowance and requires a separate 2 GiB reserve. The existing 8 GiB minimum
+still applies, so all three fresh physical, system-commit and
+calling-process-commit values must be at least 8 GiB. The
 claim and original run graph stay rooted until controller process exit even
 if startup, collection or shutdown is uncertain. The returned result and the
 retained claim identify `development-bootstrap`; a returned result must still
 be checked for actual client outcomes and clean supervision. This allowance is
-a provisional policy choice, not an OS reservation or an RSS cap.
+a provisional policy choice, not an OS reservation or an RSS cap. The earlier
+[two-client observation](../results/serial-two-client-gpu-bootstrap-v1-20261029/summary.json)
+recorded separate owner and controller lifetime private-commit peaks totaling
+2,636,173,312 bytes, leaving 1,658,793,984 bytes below the 4 GiB allowance.
+Those peaks need not be simultaneous, do not include every process or system
+allocation, and came from one successful run on an earlier source and cache
+path. They do not bound this source, cancellation, out-of-memory failures or
+future runs. Source changes require new matching worker profiles before use.
 
 The bootstrap itself does not collect or approve a host profile. Use a
 separately reviewed bounded observer on the exact final source to record

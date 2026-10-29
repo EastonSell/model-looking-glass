@@ -289,7 +289,7 @@ def _reserve_host_claim(claim, envelope, *, development_bootstrap=False):
     """Atomically retain one logical host charge until this process exits."""
     if type(claim) is not _HostClaim or claim._record is not None:
         raise ConcurrentServiceError('host claim is invalid or already used')
-    if development_bootstrap and envelope != {'commitment_bytes': 8 * 1024 ** 3,
+    if development_bootstrap and envelope != {'commitment_bytes': 4 * 1024 ** 3,
                                                'reserve_bytes': 2 * 1024 ** 3}:
         raise ConcurrentServiceError('invalid development host allowance')
     with _HOST_CLAIM_LOCK:
@@ -369,7 +369,7 @@ def _require_measured_host_envelope(service, source_base_sha256, profile_ids, *,
 def _require_development_bootstrap(service, source_base_sha256, profile_ids, *, clients, claim):
     """Screen one unmeasured fixed-path run under a conservative policy allowance."""
     _prepared_host_binding(service, source_base_sha256, profile_ids, clients=clients, claim=claim)
-    _reserve_host_claim(claim, {'commitment_bytes': 8 * 1024 ** 3, 'reserve_bytes': 2 * 1024 ** 3},
+    _reserve_host_claim(claim, {'commitment_bytes': 4 * 1024 ** 3, 'reserve_bytes': 2 * 1024 ** 3},
                         development_bootstrap=True)
 
 
