@@ -14,10 +14,11 @@ The roadmap is a research plan, not a claim that its milestones are complete. Th
 - The [trace schema](docs/TRACE_SCHEMA.md) records execution coordinates separately from tensor values and hypotheses. Unknown coordinates remain unknown.
 - The [fair queue](docs/FAIR_QUEUE.md) rotates among admitted teams; it does not by itself guarantee admission fairness or equal GPU time.
 - The [memory budget](docs/MEMORY_BUDGET.md) tracks conservative leases and trace allowances. Estimates and logical byte counts are not peak-memory guarantees or proof of device enforcement.
-- The [resident worker](docs/RESIDENT_WORKER.md) and [broker](docs/BROKER.md) reuse one trusted model for queued in-process forwards. Their current execution is serial; cross-process GPU service and concurrent device throughput require separate integration and validation.
-- The [experiment registry](docs/REGISTRY.md) records manifests, artifacts and terminal states. [Research cases](docs/RESEARCH_CASES.md), [localization](docs/LOCALIZATION.md), and [causal metrics](docs/CAUSAL_METRICS.md) support controlled, reproducible evaluations; the public held-out cases are not a protected blind benchmark.
+- The [resident worker](docs/RESIDENT_WORKER.md) and [broker](docs/BROKER.md) reuse one trusted model for queued forwards. Their current execution is serial; GPU-wide admission, supervised device ownership and concurrent device throughput require separate integration and validation.
+- The [local transport](docs/IPC.md) lets authenticated cooperating client processes submit bounded forwards over loopback. It does not by itself enforce GPU budgets or provide trace delivery.
+- The [experiment registry](docs/REGISTRY.md) records manifests, artifacts and terminal states. [Research cases](docs/RESEARCH_CASES.md), [localization](docs/LOCALIZATION.md), and [causal metrics](docs/CAUSAL_METRICS.md) support controlled evaluations; the public held-out cases are not a protected blind benchmark. [Transformer trace comparison](docs/TRANSFORMER_LOCALIZATION.md) requires independently verified pairing and execution context.
 
-These components have their own tests and limits; their presence alone does not establish end-to-end model sharing, causal discovery, or GPU throughput.
+These components have their own tests and limits; their presence alone does not establish supervised shared GPU execution, causal discovery, or measured GPU throughput.
 
 ## First experiment
 
