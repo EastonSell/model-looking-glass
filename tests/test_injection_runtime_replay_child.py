@@ -75,6 +75,16 @@ def test_published_plan_binds_fixed_design_and_exact_child():
             child.validate_plan(child._canonical(candidate), child_source_sha256='2' * 64)
 
 
+def test_plan_requires_actual_driver_and_transitive_process_sources():
+    required = {'driver', 'controller', 'cpu_job', 'observer_audit', 'observer_custody', 'auditor_core'}
+    assert required <= child._SOURCE_NAMES
+    for missing in required:
+        plan = _plan()
+        del plan['sources'][missing]
+        with pytest.raises(ValueError):
+            child.validate_plan(child._canonical(plan), child_source_sha256='2' * 64)
+
+
 def test_runtime_difference_is_exactly_the_disclosed_fingerprint():
     before = {'schema': 'fake', 'system_environment_sha256': '1' * 64, 'numerics': {'x': 1}}
     after = {'schema': 'fake', 'system_environment_sha256': '2' * 64, 'numerics': {'x': 1}}
