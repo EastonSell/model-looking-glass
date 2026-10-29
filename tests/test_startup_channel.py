@@ -137,13 +137,53 @@ class StartupChannelTests(unittest.TestCase):
         self.assertTrue(self.marker.exists())
 
     def test_failed_spawn_unblocks_receiver(self):
-        channel = api.StartupChannel(max_bytes=32)
-        thread, result = self.launch(channel, "", executable=str(self.root / 'missing'))
-        with self.assertRaises(api.StartupChannelError):
-            channel.receive(timeout=6)
-        thread.join(timeout=5)
-        self.assertFalse(thread.is_alive())
-        self.assertIsInstance(result.get("error"), OSError)
+        # Failed native spawn can retain an unknown custody record. Isolate
+        # that deliberate quarantine until the supervising process exits.
+        driver = textwrap.dedent("""
+            import os, sys, threading
+            from pathlib import Path
+            from looking_glass import supervisor as api
+            root = Path(sys.argv[1])
+            device, marker = root / 'gpu.lock', root / 'gpu.unsafe.json'
+            channel = api.StartupChannel(max_bytes=32)
+            result = {}
+            def launch():
+                try:
+                    api.run_supervised([str(root / 'missing')], device_lease_path=device,
+                        marker_path=marker, timeout=12, lease_timeout=3,
+                        terminate_grace=1, startup_channel=channel)
+                except BaseException as error:
+                    result['error'] = error
+            thread = threading.Thread(target=launch, daemon=True)
+            thread.start()
+            try:
+                channel.receive(timeout=6)
+            except api.StartupChannelError:
+                pass
+            else:
+                raise AssertionError('failed spawn did not unblock receiver with an error')
+            thread.join(timeout=5)
+            if thread.is_alive() or not isinstance(result.get('error'), OSError):
+                raise AssertionError('failed-spawn launcher did not finish with OSError')
+            if not marker.exists():
+                raise AssertionError('failed spawn lost its unsafe marker')
+            records = api.pending_supervised_children()
+            if os.name == 'nt':
+                if len(records) != 1 or not records[0]._attempted or records[0]._known_child():
+                    raise AssertionError('unknown spawn did not retain custody')
+                try:
+                    records[0].recover()
+                except api.UnsafeOwnerError:
+                    pass
+                else:
+                    raise AssertionError('unknown spawn must remain quarantined')
+            channel.close()
+        """)
+        result = subprocess.run(
+            [sys._base_executable, '-c', driver, str(self.root)],
+            cwd=Path(__file__).resolve().parents[1], capture_output=True, text=True, timeout=20,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(self.marker.exists())
 
     def test_late_writer_cannot_deliver_after_timeout(self):
