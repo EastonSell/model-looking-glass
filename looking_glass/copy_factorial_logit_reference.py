@@ -211,6 +211,7 @@ def analyze_saved(case_raw, manifest_raw, result_raw, pre_run_raw, receipt_raw, 
     if (result.get("schema") != "distilgpt2-copy-head-factorial-result-v1" or result.get("status") != "complete"
             or result.get("manifest_sha256") != sha(manifest_raw)
             or type(result.get("submitted_forwards")) is not int or result["submitted_forwards"] != 224
+            or type(result.get("model_call_returns_observed")) is not int or result["model_call_returns_observed"] != 224
             or type(result.get("returned_forwards")) is not int or result["returned_forwards"] != 224
             or type(result.get("raw_payload_bytes")) is not int
             or result["raw_payload_bytes"] != sum(len(data) for data in raw_files.values())):
