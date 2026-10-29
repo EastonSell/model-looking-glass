@@ -12,7 +12,8 @@ import sys
 
 
 _MODULES = frozenset(('bert_agreement_study', 'bert_agreement_cases', 'bert_agreement_exposures_v2',
-                      'bert_agreement_exposures_v3', 'bert_evaluation_ledger', 'bert_agreement_runner',
+                      'bert_agreement_exposures_v3', 'bert_agreement_exposures_v4',
+                      'bert_evaluation_ledger', 'bert_agreement_runner',
                       'bert_agreement_audit', 'pretrained', 'intervention_plan',
                       'interventions', 'model_ownership', 'cpu_study_supervision',
                       'supervisor', 'device_lease', 'device_identity'))

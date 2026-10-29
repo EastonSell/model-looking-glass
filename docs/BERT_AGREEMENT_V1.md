@@ -1,9 +1,10 @@
-# DistilBERT masked agreement: protocol draft v1
+# DistilBERT masked agreement: protocol v1
 
-Status: **draft for independent review; no held-out model forward has run**.
+Status: **frozen before evaluation.**
 The public development probe used four exposed prompts and motivated the
 candidate location below. It is exploratory and does not establish a general
-mechanism. This draft will be versioned and frozen before held-out execution.
+mechanism. No evaluation attempt on these cases is known from the cited records
+at this source freeze; exposure outside those records remains unverified.
 
 ## Question and model
 
@@ -52,12 +53,12 @@ denormal check does not attest every native thread. An unavailable OS machine
 string is recorded as `unknown` rather than inferred from the host. The interpreter, installed
 dependency contents, OS and absence of concurrent filesystem/model mutation
 are trusted; source hashes do not independently prove faithful execution.
-This protocol remains a draft; the owner refuses evaluation until the unique
-status line is frozen in a committed source revision. Evaluation is also
-hard-disabled in both controller and owner until the reviewed child-process
-custody mechanism is integrated. An interruption while starting a development
-owner may leave a child active without a recoverable handle; such an attempt is
-incomplete and any possible child must be resolved before retrying.
+Evaluation requires this unique frozen status line in a committed, published
+source revision, the source-isolated launcher, two separate supervised CPU
+custody roots, and the matching append-only attempt ledger. An interruption
+while starting a legacy unsupervised development owner may leave a child active
+without a recoverable handle; that attempt is incomplete and any possible child
+must be resolved before retrying.
 
 The optional supervised CPU development path uses the cooperative CPU-study
 contract and one explicitly supplied persistent custody directory, separate
@@ -122,8 +123,14 @@ The subsequent supervised CPU retry is preserved in
 development-family-1 rows. The append-only v3 snapshot in
 `experiments/bert_agreement_exposures_v3.json`, SHA-256
 `6945a478e3af37083af055bf20bf65628fa979e0ee8b253ea8bacb475cb9e9f2`,
-records that retry and is the cited pre-evaluation snapshot. It does not
-certify all prior exposure or replace later attempt records.
+records that retry. The later supervised 140-forward GPU development-family
+profile is preserved in `results/bert-gpu-family-profile-v1-20261029/` and
+reused the same eight already exposed rows. The append-only v4 snapshot in
+`experiments/bert_agreement_exposures_v4.json`, SHA-256
+`1f9ae67040646341097414f5ef6da1f66d0ccc5f0be47deeee36cfe66550e32e`,
+records that attempt and is the cited pre-evaluation snapshot. The candidate,
+controls and thresholds below were not changed in response to that profile.
+The snapshot does not certify all prior exposure or replace later attempt records.
 
 Held-out families use the distinct template `The {subject} beside the
 {distractor} [MASK] ready.` and ordered pairs `(painter, artist)`, `(actor,
@@ -312,7 +319,7 @@ The CPU evaluation uses the fixed, machine-specific root identities in
 custody roots for the controller and model owner, and a persistent attempt
 ledger. Their path hashes identify the
 chosen roots and are not secrets. The controller acquires the ledger's
-cross-process lock, validates the cited v3 snapshot and exact 64 target/donor
+cross-process lock, validates the cited v4 snapshot and exact 64 target/donor
 rows, and publishes a no-clobber reservation before granting a child. Each
 reservation binds the source, protocol, checkpoint, manifest, roots, controller
 PID and supervisor birth token, exact rows, and hashes of all prior attempt

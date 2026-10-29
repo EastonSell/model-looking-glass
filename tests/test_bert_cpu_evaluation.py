@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 from looking_glass import bert_agreement_study as study
 from looking_glass.bert_agreement_cases import build_manifest, manifest_digest
-from looking_glass.bert_agreement_exposures_v3 import canonical_snapshot_bytes
+from looking_glass.bert_agreement_exposures_v4 import canonical_snapshot_bytes
 from looking_glass.bert_evaluation_ledger import (EvaluationLedger, read_record, root_identity,
                                                   verify_reservation, write_record)
 
@@ -40,12 +40,12 @@ class CpuEvaluationIntegrationTest(unittest.TestCase):
                         'exposure_sha256': hashlib.sha256(exposure).hexdigest(), 'evaluation_rows': 64,
                         'maximum_attempts': 32}
         self.profile_path = self.repo / 'experiments/bert_agreement_cpu_evaluation_v1.json'
-        self.exposure_path = self.repo / 'experiments/bert_agreement_exposures_v3.json'
+        self.exposure_path = self.repo / 'experiments/bert_agreement_exposures_v4.json'
         self.profile_path.write_bytes(json.dumps(self.profile, sort_keys=True).encode('ascii') + b'\n')
         self.exposure_path.write_bytes(exposure)
         self.hashes = {'experiments/bert_agreement_cpu_evaluation_v1.json':
                        hashlib.sha256(self.profile_path.read_bytes()).hexdigest(),
-                       'experiments/bert_agreement_exposures_v3.json': hashlib.sha256(exposure).hexdigest(),
+                       'experiments/bert_agreement_exposures_v4.json': hashlib.sha256(exposure).hexdigest(),
                        'docs/BERT_AGREEMENT_V1.md': 'c' * 64}
 
     def binding(self, manifest=None):
@@ -63,7 +63,7 @@ class CpuEvaluationIntegrationTest(unittest.TestCase):
         self.exposure_path.write_bytes(self.exposure_path.read_bytes() + b' ')
         with self.assertRaises(RuntimeError):
             self.binding()
-        self.hashes['experiments/bert_agreement_exposures_v3.json'] = hashlib.sha256(self.exposure_path.read_bytes()).hexdigest()
+        self.hashes['experiments/bert_agreement_exposures_v4.json'] = hashlib.sha256(self.exposure_path.read_bytes()).hexdigest()
         with self.assertRaises(ValueError):
             self.binding()
 
@@ -270,21 +270,22 @@ class CpuEvaluationIntegrationTest(unittest.TestCase):
             run.assert_not_called()
         self.assertFalse((site / 'nested-work').exists())
 
-    def test_real_bootstrap_launcher_entry_rejects_the_disabled_gate(self):
-        site, prefix = self.root / 'site', self.root / 'prefix'
+    def test_real_bootstrap_launcher_rejects_a_mismatched_dependency_site(self):
+        site, other_site, prefix = self.root / 'site', self.root / 'other-site', self.root / 'prefix'
         site.mkdir()
+        other_site.mkdir()
         prefix.mkdir()
         repo = Path(__file__).resolve().parents[1]
         work = self.root / 'launcher-work'
         command = [sys._base_executable, '-I', '-S', '-B', '-X', 'pycache_prefix=' + str(prefix),
                    str(repo / 'scripts/bert_agreement_bootstrap.py'), '--bootstrap-site', str(site), '--launcher',
-                   '--repo', str(repo), '--cache', str(self.cache), '--site', str(site), '--commit', 'a' * 40,
+                   '--repo', str(repo), '--cache', str(self.cache), '--site', str(other_site), '--commit', 'a' * 40,
                    '--custody-root', str(self.custody), '--controller-custody-root', str(self.controller_custody),
                    '--ledger-root', str(self.ledger_root), '--work-dir', str(work)]
         env = dict(os.environ, CUDA_VISIBLE_DEVICES='-1')
         child = subprocess.run(command, cwd=self.root, env=env, capture_output=True, text=True, timeout=30)
         self.assertNotEqual(child.returncode, 0)
-        self.assertIn('evaluation remains disabled', child.stderr)
+        self.assertIn('launcher and bootstrap dependency directories differ', child.stderr)
         self.assertFalse(work.exists())
         self.assertFalse((self.controller_custody / 'cpu-study.unsafe.json').exists())
 
