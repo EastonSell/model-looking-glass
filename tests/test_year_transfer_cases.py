@@ -123,3 +123,29 @@ def test_clean_summary_rejects_missing_or_invalid_values():
     del scores[rows[0]['case_id']]
     with pytest.raises(ValueError):
         study.summarize_clean(rows, scores)
+
+
+def test_intervention_summary_keeps_both_directions_and_distinct_gates():
+    rows = study.make_inventory()['cases']
+    clean = {}
+    actions = {}
+    for row in rows:
+        # Strong symmetric clean pattern and a smaller neutral direction.
+        value = {'forward': 2.0, 'reverse': -1.0, 'neutral': 1.0}[row['condition']]
+        value = value if row['year_role'] == 'low' else 0.0
+        clean[row['case_id']] = value
+        direction = -1.0 if row['year_role'] == 'low' else 1.0
+        effect = {'forward': 1.0, 'reverse': -1.0, 'neutral': 0.4}[row['condition']] * direction
+        actions[row['case_id']] = {name: value + (effect if name == 'year_final' else 0.0)
+                                   for name in ('self', 'year_final', 'year_at_zero', 'rotated_final')}
+    result = study.summarize_interventions(rows, clean, actions)
+    assert result['comparator_pattern_supported']
+    assert result['preference_pattern_supported']
+    assert len(result['pairs']) == 8
+    first = result['pairs'][0]
+    assert first['conditions']['forward']['year_final']['low_E'] == -1.0
+    assert first['conditions']['forward']['year_final']['high_E'] == 1.0
+    assert first['conditions']['reverse']['year_final']['donorward_mean'] == -1.0
+    del actions[rows[0]['case_id']]['self']
+    with pytest.raises(ValueError):
+        study.summarize_interventions(rows, clean, actions)
