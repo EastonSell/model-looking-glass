@@ -49,6 +49,50 @@ def test_default_forward_and_explicit_evidence_limits_fail_closed(tmp_path):
         Evidence(tmp_path / 'bad', limit=True)
 
 
+@pytest.mark.parametrize('bad_attribute', ['logits', 'encoder'])
+def test_raising_output_attribute_salvages_other_tensor_and_action_witnesses(tmp_path, bad_attribute):
+    class BrokenOutput:
+        def __init__(self, logits, state):
+            self._logits, self._state = logits, state
+
+        @property
+        def logits(self):
+            if bad_attribute == 'logits':
+                raise RuntimeError('injected output getter')
+            return self._logits
+
+        @property
+        def encoder_last_hidden_state(self):
+            if bad_attribute == 'encoder':
+                raise RuntimeError('injected output getter')
+            return self._state
+
+    class FakeModel(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.encoder = torch.nn.Module()
+            self.encoder.final_layer_norm = torch.nn.Identity()
+
+        def forward(self, input_ids, decoder_input_ids, **kwargs):
+            state = self.encoder.final_layer_norm(input_ids.float().unsqueeze(-1).expand(-1, -1, 512).clone())
+            logits = torch.zeros((1, decoder_input_ids.shape[1], 32128), dtype=torch.float32)
+            return BrokenOutput(logits, state)
+
+    evidence, records, active = Evidence(tmp_path / 'attempt'), [], {'case_id': 'fabricated'}
+    source = {'input_ids': [2, 3, 1], 'attention_mask': [1, 1, 1]}
+    target = {'input_ids': [7, 1]}
+    with pytest.raises(RuntimeError, match='output getter'):
+        run_forward(FakeModel().eval(), evidence, records, active, source, target, 'broken',
+                    'patch', torch.full((512,), 7.0), 1)
+    layout = active['tensor_layout']
+    other = 'encoder' if bad_attribute == 'logits' else 'logits'
+    assert not layout[bad_attribute]['available'] and layout[bad_attribute]['error_type'] == 'RuntimeError'
+    assert layout[other]['available'] and layout[other]['bytes'] > 0
+    assert layout['before']['bytes'] == layout['after']['bytes'] == 2048
+    assert active['return_observed'] and (evidence.path / active['saved_file']).is_file()
+    assert (evidence.path / 'forward-000-observed.json').is_file()
+
+
 def test_smallest_level_must_be_positive_and_rounding_unmatchable_is_not_negative():
     positions = {'word': 0, 'instruction': 1, 'punctuation': 2}
     states = [torch.zeros((1, 3, 512), dtype=torch.float32) for _ in range(2)]
