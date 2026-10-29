@@ -47,7 +47,7 @@ must check those published and locally executed bytes, and a trusted
 the prebound discovery scoring source before either claim or nonce draw.
 V3 binds exact `runtime_deviation_sha256` and `heldout_runtime_sha256` bytes;
 it also binds the separately published compatibility-replay plan, the replay
-producer, claimant, supervised owner and read-only preclaim-guard sources, and
+producer, claimant, supervised owner, read-only preclaim-guard and phase-accounting sources, and
 the completed replay evidence. A trusted source check must verify the actual
 published and executed bytes for each of those identities.
 The caller must independently verify the observed current runtime and replay
@@ -67,7 +67,9 @@ protected ledger row and phase path, original claim history, and all phase-side
 evidence rather than pass a cached or caller-created grant. The fixed study entry
 uses `prepare_study_preclaimed`: it writes an exclusive durable start marker,
 checks that real ledger row and reconciles side evidence through trusted callbacks,
-and never makes a second claim. A failed or interrupted handoff must be retained
+and never makes a second claim. The reconciliation callback receives explicit
+`before_phase_creation` and `before_nonce` stages; it must verify an absent phase
+at the former and the expected claim-only phase at the latter. A failed or interrupted handoff must be retained
 and cannot be retried, including a failure before the marker can be written.
 The helper latches a start attempt in the current process before marker creation,
 so a failed open cannot be retried there. The separately supervised owner must
@@ -134,3 +136,9 @@ ACLs, and the split-comparison handoff. The evaluator separately verifies all
 commitments and frozen predictions and keeps the concealed site unavailable to
 the selector. Neither known-exposure checks nor the public sampling frame prove
 unknown historical or pretraining independence.
+
+The final ledger check and nonce call run while the source-bound owner holds the
+reviewed guard's short SQLite `BEGIN IMMEDIATE` reservation. The gate lease must
+already be released so no network or long-running work is performed under that
+reservation. The owner must also prevent out-of-band database replacement. An
+uncertain lock release after entropy access is incomplete and cannot be retried.

@@ -194,6 +194,24 @@ class PreclaimGuardTests(unittest.TestCase):
         self.assertIs(outcome.exception, cancellation)
         self.assertIsInstance(outcome.exception.__cause__, OSError)
 
+    def test_verified_lock_serializes_competing_ledger_writers_until_release(self):
+        with guard.hold_existing_claim(self.db_path, 'injection_heldout',
+                                       output_path=self.phase, anchor=self.anchor) as valid:
+            self.assertIs(valid, True)
+            with closing(sqlite3.connect(self.db_path, timeout=0, isolation_level=None)) as other:
+                with self.assertRaises(sqlite3.OperationalError):
+                    other.execute('BEGIN IMMEDIATE')
+        with closing(sqlite3.connect(self.db_path, timeout=0, isolation_level=None)) as other:
+            other.execute('BEGIN IMMEDIATE')
+            other.execute('ROLLBACK')
+
+    def test_interrupt_in_verified_lock_releases_without_modifying_the_row(self):
+        with self.assertRaises(KeyboardInterrupt):
+            with guard.hold_existing_claim(self.db_path, 'injection_heldout',
+                                           output_path=self.phase, anchor=self.anchor):
+                raise KeyboardInterrupt()
+        self.assertTrue(self.verify())
+
 
 if __name__ == '__main__':
     unittest.main()

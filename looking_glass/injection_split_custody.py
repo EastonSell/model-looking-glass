@@ -5,6 +5,7 @@ ledger and pinned-tokenizer operations. This module does not attest those
 operations, create an OS security boundary, launch a model or publish anything.
 It preserves the frozen discovery commitment and never draws a replacement.
 """
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 import hashlib
 import hmac
@@ -41,7 +42,8 @@ _OP_V2_KEYS = _OP_KEYS | {'preparation_child_source_sha256',
 _OP_V3_KEYS = _OP_V2_KEYS | {'runtime_deviation_sha256', 'heldout_runtime_sha256',
                              'runtime_replay_plan_sha256', 'runtime_replay_source_sha256',
                              'runtime_replay_claim_source_sha256', 'runtime_replay_owner_source_sha256',
-                             'preclaim_guard_source_sha256', 'runtime_replay_evidence_sha256'}
+                             'preclaim_guard_source_sha256', 'phase_accounting_source_sha256',
+                             'runtime_replay_evidence_sha256'}
 _STUDY_FREEZE = 'c327e191214cfb661b429c6d0a66900ca773c148782e1cc88be669c54deaee98'
 _STUDY_SOURCE = 'e84f66ae63b6f20e6df81789f2e4741b13598fb1'
 _STUDY_RUNTIME = 'b6860ec21fe6f0ab626164b86b494d783f3c18c92a697744b118be4cdb33754e'
@@ -203,7 +205,8 @@ def _check_inputs(public, site_nonce, site_record_bytes, publication_check, sour
                     or _sha(public.runtime_replay_evidence_bytes) != _hex(binding['runtime_replay_evidence_sha256'])):
                 raise CustodyError('published runtime deviation or held-out runtime differs')
             for key in ('runtime_replay_source_sha256', 'runtime_replay_claim_source_sha256',
-                        'runtime_replay_owner_source_sha256', 'preclaim_guard_source_sha256'):
+                        'runtime_replay_owner_source_sha256', 'preclaim_guard_source_sha256',
+                        'phase_accounting_source_sha256'):
                 _hex(binding[key])
         if type(binding['inventory_source_commit']) is not str or not _HEX40.fullmatch(binding['inventory_source_commit']):
             raise CustodyError('inventory source revision is invalid')
@@ -422,7 +425,7 @@ def _write_new(path, data):
 def prepare_once(public, private_parent, ledger_path, *, site_nonce, site_record_bytes,
                  tokenizer, claim_phase, publication_check, observe_inventory,
                  source_check, prediction_check, gate_allocation, runtime_check=None,
-                 preclaim_handoff_sha256=None, pre_draw_check=None):
+                 preclaim_handoff_sha256=None, pre_draw_guard=None):
     """Claim the injection phase, draw one OS nonce and seal a private split.
 
     Readback, currentness, tokenizer asset/source verification, private ACLs and
@@ -434,9 +437,9 @@ def prepare_once(public, private_parent, ledger_path, *, site_nonce, site_record
     operation = _parse_canonical(public.operational_binding_bytes)
     if operation.get('schema') == 'mlg-injection-heldout-operational-binding-v3':
         _hex(preclaim_handoff_sha256)
-        if not callable(pre_draw_check):
+        if not callable(pre_draw_guard):
             raise CustodyError('a pre-draw preclaim recheck is required')
-    elif preclaim_handoff_sha256 is not None or pre_draw_check is not None:
+    elif preclaim_handoff_sha256 is not None or pre_draw_guard is not None:
         raise CustodyError('a preclaim handoff belongs to operation v3')
     if not callable(claim_phase) or not callable(observe_inventory) or not callable(gate_allocation):
         raise CustodyError('trusted ledger and exposure observers are required')
@@ -481,9 +484,13 @@ def prepare_once(public, private_parent, ledger_path, *, site_nonce, site_record
         if (observe_inventory() != snapshot.sha256
                 or _read_source_hash() != json.loads(public.operational_binding_bytes)['custody_source_sha256']):
             raise CustodyError('bound source or exposure inventory changed before the draw')
-        if pre_draw_check is not None and pre_draw_check() is not True:
-            raise CustodyError('the claim or handoff changed before the draw')
-        nonce = secrets.token_bytes(32)
+        if pre_draw_guard is None:
+            nonce = secrets.token_bytes(32)
+        else:
+            with pre_draw_guard() as guarded:
+                if guarded is not True:
+                    raise CustodyError('the claim or handoff changed before the draw')
+                nonce = secrets.token_bytes(32)
         if type(nonce) is not bytes or len(nonce) != 32:
             raise CustodyError('OS nonce generation failed')
         _write_new(phase / 'nonce.bin', nonce)
@@ -597,8 +604,8 @@ def _read_handoff(path):
     return data
 
 
-def prepare_study_preclaimed(public, private_parent, ledger_path, *, verify_preclaim, reconcile_phase,
-                             config_bytes, config_sha256, **kwargs):
+def prepare_study_preclaimed(public, private_parent, ledger_path, *, verify_preclaim, protect_preclaim,
+                             reconcile_phase, config_bytes, config_sha256, **kwargs):
     """Consume one durable handoff for an already claimed injection phase.
 
     The source-bound caller must have claimed the exact phase once before the
@@ -607,8 +614,8 @@ def prepare_study_preclaimed(public, private_parent, ledger_path, *, verify_prec
     This function never creates or retries a ledger claim.
     """
     _check_study(public)
-    if (not callable(verify_preclaim) or not callable(reconcile_phase)
-            or 'claim_phase' in kwargs or 'preclaim_handoff_sha256' in kwargs or 'pre_draw_check' in kwargs
+    if (not callable(verify_preclaim) or not callable(protect_preclaim) or not callable(reconcile_phase)
+            or 'claim_phase' in kwargs or 'preclaim_handoff_sha256' in kwargs or 'pre_draw_guard' in kwargs
             or type(config_bytes) is not bytes or not 0 < len(config_bytes) <= 65536
             or _sha(config_bytes) != _hex(config_sha256)):
         raise CustodyError('a verified preclaim, reconciliation and configuration are required')
@@ -630,21 +637,26 @@ def prepare_study_preclaimed(public, private_parent, ledger_path, *, verify_prec
     marker_bytes = _canonical(_preclaim_record(public, ledger, phase, config_sha256))
     _write_new(marker, marker_bytes)
 
-    def verified_existing_grant(path, phase_name, *, output_path):
+    def verified_existing_grant(path, phase_name, *, output_path, stage='before_phase_creation'):
         if (Path(path) != ledger or phase_name != 'injection_heldout' or Path(output_path) != phase
                 or verify_preclaim(ledger, phase_name, output_path=phase) is not True
                 or reconcile_phase(phase, pilot_logical_bytes=8 * 1024 ** 2,
-                    pilot_disk_bytes=16 * 1024 ** 2, rehearsal_disk_bytes=4 * 1024 ** 2) is not True
+                    pilot_disk_bytes=16 * 1024 ** 2, rehearsal_disk_bytes=4 * 1024 ** 2,
+                    stage=stage) is not True
                 or _read_handoff(marker) != marker_bytes):
             raise CustodyError('the existing claim or side evidence did not verify')
         return _PreclaimedGrant('injection_heldout', str(phase), _LOGICAL_LIMIT, _DISK_LIMIT)
 
-    def verify_before_draw():
-        verified_existing_grant(ledger, 'injection_heldout', output_path=phase)
-        return True
+    @contextmanager
+    def guard_before_draw():
+        with protect_preclaim(ledger, 'injection_heldout', output_path=phase) as protected:
+            if protected is not True:
+                raise CustodyError('the existing claim is not protected through the draw')
+            verified_existing_grant(ledger, 'injection_heldout', output_path=phase, stage='before_nonce')
+            yield True
 
     return prepare_once(public, parent, ledger, claim_phase=verified_existing_grant,
-                        preclaim_handoff_sha256=_sha(marker_bytes), pre_draw_check=verify_before_draw, **kwargs)
+                        preclaim_handoff_sha256=_sha(marker_bytes), pre_draw_guard=guard_before_draw, **kwargs)
 
 
 @dataclass(frozen=True)

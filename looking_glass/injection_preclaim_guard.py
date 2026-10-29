@@ -109,8 +109,9 @@ def _history_hash(db):
 
 
 @contextmanager
-def _read_only_connection(path):
-    db = sqlite3.connect(path.as_uri() + '?mode=ro', uri=True, timeout=30, isolation_level=None)
+def _read_only_connection(path, *, exclusive=False):
+    mode = 'rw' if exclusive else 'ro'
+    db = sqlite3.connect(path.as_uri() + '?mode=' + mode, uri=True, timeout=30, isolation_level=None)
     try:
         yield db
     except BaseException as primary:
@@ -128,8 +129,9 @@ def _read_only_connection(path):
         db.close()
 
 
-def verify_existing_claim(ledger_path, phase, *, output_path, anchor):
-    """Verify a consumed phase row and the reviewed v6 state in one read snapshot.
+@contextmanager
+def _verified_existing_claim(ledger_path, phase, *, output_path, anchor, exclusive):
+    """Validate a consumed phase row and yield while its transaction is open.
 
     ``anchor`` must come from the caller's independently verified protected
     configuration, not from this database. The caller also checks ACLs,
@@ -150,9 +152,13 @@ def verify_existing_claim(ledger_path, phase, *, output_path, anchor):
         if (_database_identity(ledger) != (anchor.db_dev, anchor.db_ino)
                 or _path(ledger.resolve(strict=True)) != _path(anchor.ledger_path)):
             raise PreclaimError('the protected database differs from its anchor')
-        with _read_only_connection(ledger) as db:
-            db.execute('PRAGMA query_only=ON')
-            db.execute('BEGIN')
+        with _read_only_connection(ledger, exclusive=exclusive) as db:
+            if exclusive:
+                db.execute('BEGIN IMMEDIATE')
+                db.execute('PRAGMA query_only=ON')
+            else:
+                db.execute('PRAGMA query_only=ON')
+                db.execute('BEGIN')
             length = db.execute('SELECT LENGTH(CAST(data AS BLOB)) + LENGTH(CAST(inventory AS BLOB)) '
                                 'FROM meta WHERE id=1').fetchone()
             if length is None or type(length[0]) is not int or not 0 < length[0] <= _MAX_META:
@@ -199,11 +205,34 @@ def verify_existing_claim(ledger_path, phase, *, output_path, anchor):
                         continue
                     if common in (left, right):
                         raise PreclaimError('claim output paths overlap')
+            if _database_identity(ledger) != (anchor.db_dev, anchor.db_ino):
+                raise PreclaimError('the protected database identity changed before authorization')
+            yield True
+            if _database_identity(ledger) != (anchor.db_dev, anchor.db_ino):
+                raise PreclaimError('the protected database identity changed before release')
             db.execute('ROLLBACK')
         if _database_identity(ledger) != (anchor.db_dev, anchor.db_ino):
             raise PreclaimError('the protected database identity changed during verification')
-        return True
     except PreclaimError:
         raise
     except (OSError, sqlite3.Error, TypeError, ValueError, KeyError, RecursionError):
         raise PreclaimError('the protected phase claim could not be verified') from None
+
+
+def verify_existing_claim(ledger_path, phase, *, output_path, anchor):
+    """Perform a read-only point-in-time check of the anchored consumed row."""
+    with _verified_existing_claim(ledger_path, phase, output_path=output_path,
+                                  anchor=anchor, exclusive=False) as verified:
+        return verified
+
+
+def hold_existing_claim(ledger_path, phase, *, output_path, anchor):
+    """Hold a short verified write reservation through the single nonce call.
+
+    The context exposes no database handle and makes no writes. SQLite v6
+    claim/reconciliation transactions cannot commit until this context exits.
+    The caller must forbid out-of-band database replacement and must never retry
+    an ambiguous or interrupted draw or transaction release.
+    """
+    return _verified_existing_claim(ledger_path, phase, output_path=output_path,
+                                    anchor=anchor, exclusive=True)

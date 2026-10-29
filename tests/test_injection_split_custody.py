@@ -9,6 +9,7 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest import mock
+from contextlib import contextmanager
 
 from looking_glass import pretrained_exposures_v3 as exposures
 from looking_glass import pretrained_number_commitments as commitments
@@ -38,6 +39,11 @@ def digest(data):
 def canonical(value):
     return json.dumps(value, sort_keys=True, ensure_ascii=True, allow_nan=False,
                       separators=(',', ':')).encode('utf-8')
+
+
+@contextmanager
+def simulated_protection(*args, **kwargs):
+    yield True
 
 
 class FakeTokenizer:
@@ -166,7 +172,7 @@ class InjectionCustodyTests(unittest.TestCase):
             'runtime_deviation_sha256': digest(deviation), 'heldout_runtime_sha256': digest(heldout_runtime),
             'runtime_replay_plan_sha256': digest(replay_plan), 'runtime_replay_source_sha256': '6' * 64,
             'runtime_replay_claim_source_sha256': '7' * 64, 'runtime_replay_owner_source_sha256': '8' * 64,
-            'preclaim_guard_source_sha256': '9' * 64,
+            'preclaim_guard_source_sha256': '9' * 64, 'phase_accounting_source_sha256': 'a' * 64,
             'runtime_replay_evidence_sha256': digest(replay)})
         raw = canonical(binding)
         return replace(self.inputs, operational_binding_bytes=raw, operational_binding_sha256=digest(raw),
@@ -178,6 +184,7 @@ class InjectionCustodyTests(unittest.TestCase):
         config = canonical({'schema': 'fabricated-preparation-config-v1'})
         return dict(site_nonce=SITE_NONCE, site_record_bytes=self.site.record_bytes,
             tokenizer=FakeTokenizer(), verify_preclaim=lambda path, phase, **kw: True,
+            protect_preclaim=simulated_protection,
             reconcile_phase=lambda path, **kw: True, config_bytes=config, config_sha256=digest(config),
             publication_check=lambda name, raw: True, source_check=lambda binding: True,
             prediction_check=lambda raw, sha: True, gate_allocation=lambda freeze: True,
@@ -243,7 +250,8 @@ class InjectionCustodyTests(unittest.TestCase):
             for field in ('preparation_child_source_sha256', 'preparation_audit_source_sha256',
                           'outer_observer_source_sha256', 'gate_allocation_caller_source_sha256',
                           'gate_transition_caller_source_sha256', 'runtime_replay_claim_source_sha256',
-                          'runtime_replay_owner_source_sha256', 'preclaim_guard_source_sha256'):
+                          'runtime_replay_owner_source_sha256', 'preclaim_guard_source_sha256',
+                          'phase_accounting_source_sha256'):
                 with self.subTest(field=field):
                     altered = json.loads(self.v3_public().operational_binding_bytes)
                     altered[field] = 'NOT-A-SHA256'
@@ -298,12 +306,13 @@ class InjectionCustodyTests(unittest.TestCase):
         def verify_preclaim(path, phase_name, *, output_path):
             calls.append('verify')
             return path == ledger and phase_name == 'injection_heldout' and output_path == phase
-        def reconcile_phase(output_path, *, pilot_logical_bytes, pilot_disk_bytes, rehearsal_disk_bytes):
-            calls.append('reconcile')
+        def reconcile_phase(output_path, *, pilot_logical_bytes, pilot_disk_bytes, rehearsal_disk_bytes, stage):
+            calls.append('reconcile:' + stage)
             return (output_path == phase and pilot_logical_bytes == 8 * 1024**2
                     and pilot_disk_bytes == 16 * 1024**2 and rehearsal_disk_bytes == 4 * 1024**2)
         options = dict(site_nonce=SITE_NONCE, site_record_bytes=self.site.record_bytes,
-            tokenizer=FakeTokenizer(), verify_preclaim=verify_preclaim, reconcile_phase=reconcile_phase,
+            tokenizer=FakeTokenizer(), verify_preclaim=verify_preclaim, protect_preclaim=simulated_protection,
+            reconcile_phase=reconcile_phase,
             publication_check=lambda name, raw: True, source_check=lambda binding: True,
             prediction_check=lambda raw, sha: True, gate_allocation=lambda freeze: True,
             observe_inventory=lambda: self.inventory_sha,
@@ -316,7 +325,8 @@ class InjectionCustodyTests(unittest.TestCase):
             claim = json.loads((result.phase_root / 'claim.json').read_bytes())
             self.assertEqual(claim['preclaim_handoff_sha256'], digest(marker.read_bytes()))
             self.assertIn('verify', calls)
-            self.assertIn('reconcile', calls)
+            self.assertEqual([item for item in calls if item.startswith('reconcile:')],
+                             ['reconcile:before_phase_creation', 'reconcile:before_nonce'])
             with self.assertRaises(ValueError):
                 custody.prepare_study_preclaimed(self.v3_public(), self.root, ledger, **options)
             self.assertEqual(draw.call_count, 1)
@@ -462,6 +472,52 @@ class InjectionCustodyTests(unittest.TestCase):
                     self.assertTrue((phase / 'preparation-failure.json').is_file())
                     self.assertFalse((phase / 'nonce.bin').exists())
             draw.assert_not_called()
+
+    def test_nonce_is_drawn_only_while_preclaim_protection_is_held(self):
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
+                '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        state = {'held': False}
+        @contextmanager
+        def guard(*args, **kwargs):
+            state['held'] = True
+            try:
+                yield True
+            finally:
+                state['held'] = False
+        def draw(size):
+            self.assertTrue(state['held'])
+            return SPLIT_NONCE
+        options = self.fixed_options()
+        options['protect_preclaim'] = guard
+        with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes', side_effect=draw):
+            result = custody.prepare_study_preclaimed(self.v3_public(), self.root,
+                                                       self.root / 'fake-ledger', **options)
+        self.assertFalse(state['held'])
+        self.assertTrue((result.phase_root / 'preparation-complete.json').is_file())
+
+    def test_uncertain_guard_release_stops_without_persisting_or_redrawing_nonce(self):
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
+                '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        @contextmanager
+        def failed_release(*args, **kwargs):
+            yield True
+            raise OSError('fabricated uncertain transaction release')
+        options = self.fixed_options()
+        options['protect_preclaim'] = failed_release
+        with mock.patch.multiple(custody, **pins), mock.patch.object(
+                custody.secrets, 'token_bytes', return_value=SPLIT_NONCE) as draw:
+            with self.assertRaises(custody.CustodyError):
+                custody.prepare_study_preclaimed(self.v3_public(), self.root,
+                                                  self.root / 'fake-ledger', **options)
+            phase = self.root / ('injection-heldout-' + self.freeze.sha256)
+            self.assertTrue((phase / 'preparation-failure.json').is_file())
+            self.assertFalse((phase / 'nonce.bin').exists())
+            with self.assertRaises(custody.CustodyError):
+                custody.prepare_study_preclaimed(self.v3_public(), self.root,
+                                                  self.root / 'fake-ledger', **options)
+            self.assertEqual(draw.call_count, 1)
 
     def test_preclaim_marker_binds_ledger_and_phase_path(self):
         public = self.v3_public()

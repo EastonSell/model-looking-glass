@@ -28,8 +28,14 @@ process exit. A successful row check is neither a process lease nor permission
 to start or repeat a split draw. This is a cooperative same-account boundary,
 not a defense against an adversary replacing files between operating-system calls.
 
-The production preparation invokes this check when consuming its durable handoff
-and again after the shared gate immediately before the nonce. Its retained
-handoff and the outer owner's separate durable launch marker prevent retries;
-no failed, interrupted or ambiguous phase is refunded or redrawn. All callbacks
-and saved receipts require their own source and lifecycle review.
+The production preparation uses a read-only check when consuming its durable
+handoff. After releasing the shared split gate, it enters `hold_existing_claim`,
+which takes a short SQLite `BEGIN IMMEDIATE` write reservation, enables
+query-only mode, verifies the same row/state on that transaction, and holds it
+through the single nonce call. Cooperating v6 claims and reconciliations wait
+only for this boundary. The lock does not prevent out-of-band database
+replacement; the protected owner must forbid it and check the pinned identity.
+A failed or uncertain nonce or lock release remains consumed and incomplete.
+The retained handoff and the outer owner's separate durable launch marker
+prevent retries. All callbacks and saved receipts require their own source and
+lifecycle review.
