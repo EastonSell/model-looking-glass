@@ -59,6 +59,23 @@ custody mechanism is integrated. An interruption while starting a development
 owner may leave a child active without a recoverable handle; such an attempt is
 incomplete and any possible child must be resolved before retrying.
 
+The optional supervised CPU development path uses the cooperative CPU-study
+contract and one explicitly supplied persistent custody directory, separate
+from the checkout and each attempt. Its child claims the matching launch grant
+and lease before importing NumPy, PyTorch or Transformers. The controller
+records the contract and a SHA-256 of the canonical custody path in preflight;
+this hash is an identifier, not secrecy against guesses. The child retains the
+lease through exit and attests only after the CPU workload and cleanup. Any
+uncertain or unclean owner state leaves the custody marker in place and blocks
+later cooperative use of that root. This contract does not attest GPU state or
+isolate a hostile process. The supervisor's raw reason is retained, and its
+result is explicitly scoped to cooperative CPU-study custody; a generic
+`clean device teardown` reason does not attest GPU teardown. The child uses an attempt-local working directory and
+TEMP/TMP, and omits `SYSTEMDRIVE` from the sanitized environment to contain the
+observed unexpanded relative cache path; absolute writes are not sandboxed.
+Use one agreed root for all attempts. The unsupervised development path remains
+legacy-only; it does not authorize evaluation.
+
 ## Inputs and exposure
 
 Each template produces a single masked token and single-WordPiece subject and
@@ -71,18 +88,35 @@ actual token IDs and attention mask for every forward.
 
 Development families use `The {subject} near the {distractor} [MASK] ready.`
 and the ordered singular lemma pairs `(farmer, nurse)`, `(pilot, soldier)`,
-`(driver, singer)`, `(doctor, dancer)`. Only four prompts have actually been
-forwarded: the singular and plural forms of `farmer` with `nurses`, and of
-`pilot` with `soldiers`. The other combinations in all four families are
-conservatively reserved for development, not claimed as already forwarded.
-Development data are for choosing implementation and the candidate only; they
-are not held-out evidence. Unknown prior exposure remains possible. Freeze a
+`(driver, singer)`, `(doctor, dancer)`. The original four-prompt pilot exposed
+singular and plural `farmer` with `nurses`, and singular and plural `pilot`
+with `soldiers`; the candidate site was selected from that pilot. Two later
+family-1 development attempts exposed all eight A/B subject-number and
+distractor-number rows, as recorded in
+`results/bert-agreement-dev-v1-20261028/`. Their complete and incomplete
+statuses are distinct. The original v1 manifest's exposure labels are an
+immutable earlier snapshot; the append-only
+`experiments/bert_agreement_exposures_v2.json` records those attempts and the
+GPU calibration. Its pinned SHA-256 is
+`224d683291b5b4f3a617697c8f9811351cf63bef19958fff9870c943e88fcdbc`.
+The owner checks that snapshot's exact bytes, its source binding and the full
+token-row disjointness of the cited development and evaluation cases before
+model loading. This snapshot covers the cited records, not every possible
+historical exposure; later attempts must be separately recorded before an
+evaluation freeze. All development rows are reserved for development, not
+held-out evidence; only the disclosed rows are known to have been forwarded. The
+candidate, comparisons, thresholds and held-out families below remain fixed
+after examining those development results. Unknown prior exposure remains possible. Freeze a
 separate DistilBERT-specific inventory with exact text, input IDs, attention
 masks, tokenizer and model asset hashes; another model's inventory cannot
 certify these inputs. The runner records the values of the tensors supplied at
 each model call, and the closed-journal auditor checks their integer types,
 order and values against the corresponding manifest row. These records remain
 self-reported execution evidence rather than independent execution proof.
+The separate four-forward GPU calibration in
+`results/bert-gpu-calibration-v1-20261029/` used only the previously exposed
+`farmer`/`farmers` rows with plural `nurses`; it added no unique input rows and
+is device/resource evidence, not a held-out behavioral result.
 
 Held-out families use the distinct template `The {subject} beside the
 {distractor} [MASK] ready.` and ordered pairs `(painter, artist)`, `(actor,
@@ -93,6 +127,19 @@ in eight distinct noun-pair families. The subject and distractor lemmas do not
 overlap development lemmas, and the preposition also changes. These are
 held-out from **our** development and site selection, not proven unseen in
 the checkpoint's training data. They are public fixtures, not a blind test.
+
+Before an evaluation owner can run, publish and independently review the
+complete source, protocol, exact manifest and launch-custody binding; record
+their hashes in a separate preflight. A started evaluation row is considered
+exposed even if its forward or the attempt later fails. If a partial journal
+or uncertain owner state cannot establish which rows were reached, conservatively
+treat every row in the selected workload as potentially exposed. Preserve each
+incomplete attempt and its observed or uncertain owner state. A retry is a new
+attempt under the same frozen protocol and source, never a pristine first
+evaluation; do not alter sites, examples, controls or thresholds in response
+to partial results. The first complete evaluation attempt is the primary
+result; any later complete runs under the same protocol are separately labeled
+replays. Retain all attempts and report which were inspected and the retry order.
 
 ## Interventions and comparisons
 

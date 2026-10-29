@@ -299,8 +299,20 @@ def run_family(model, manifest, *, split, family, is_id, are_id, mask_id, emit):
     return value is published only after all 140 forwards and controls pass.
     An exception or sink failure makes the attempt incomplete.
     """
+    return _run_family(model, manifest, split=split, family=family, is_id=is_id,
+                       are_id=are_id, mask_id=mask_id, emit=emit, observer=run_observation)
+
+
+def _run_family(model, manifest, *, split, family, is_id, are_id, mask_id, emit, observer):
+    """Run the same schedule with a trusted, internally supplied observer.
+
+    This private seam does not authenticate an observer or establish device,
+    checkpoint, resource, or evidence custody. The public entry remains CPU.
+    """
     if not callable(emit):
         raise ValueError('a forward event sink is required')
+    if not callable(observer):
+        raise ValueError('a trusted observation function is required')
     rows, targets, by_id = _family_rows(manifest, split, family, mask_id)
     sites = SITES
     if len(model.distilbert.transformer.layer) != 6:
@@ -319,9 +331,11 @@ def run_family(model, manifest, *, split, family, is_id, are_id, mask_id, emit):
         emit({'status': 'started', **record})
         try:
             inputs = torch.tensor([by_id[row_id]['input_ids']], dtype=torch.int64, device='cpu')
-            observation = run_observation(model, inputs, layer=layer, token=token,
-                                          mask_token=6, is_id=is_id, are_id=are_id,
-                                          source=source, self_patch=self_patch)
+            observation = observer(model, inputs, layer=layer, token=token,
+                                   mask_token=6, is_id=is_id, are_id=are_id,
+                                   source=source, self_patch=self_patch)
+            if type(observation) is not Observation:
+                raise TypeError('observer returned an unsupported observation')
             if (observation.model_input_ids != tuple(by_id[row_id]['input_ids'])
                     or observation.model_attention_mask != tuple(by_id[row_id]['attention_mask'])):
                 raise RuntimeError('model input values differ from the declared row')
