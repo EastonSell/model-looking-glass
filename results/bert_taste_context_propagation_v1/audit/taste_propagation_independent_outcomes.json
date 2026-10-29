@@ -1,0 +1,382 @@
+{
+  "status": "pass",
+  "full_vocab_vectors": 792,
+  "later_vectors": 768,
+  "taste_cells": 96,
+  "propagation_cells": 96,
+  "eligibility_descriptive": {
+    "apple-after": true,
+    "apple-with": true,
+    "bread-after": true,
+    "bread-with": true,
+    "cereal-after": true,
+    "cereal-with": false,
+    "orange-after": true,
+    "orange-with": false,
+    "soda-after": true,
+    "soda-with": true,
+    "toast-after": true,
+    "toast-with": true
+  },
+  "taste_means": {
+    "early_ingredient": {
+      "taste_specificity": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.03360941012700399
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.0058613121509552
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.027748097976048786
+        }
+      },
+      "context_specificity": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.026800115903218586
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.0009740392367045084
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.027774155139923096
+        }
+      },
+      "lex_signed_odd": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.0487519105275472
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.007135331630706787
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.041616578896840416
+        }
+      }
+    },
+    "late_ingredient": {
+      "taste_specificity": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.037042975425720215
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.001504451036453247
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.03854742646217346
+        }
+      },
+      "context_specificity": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.050962487856547035
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.00994954506556193
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.04101294279098511
+        }
+      },
+      "lex_signed_odd": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.064026673634847
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.009534676869710287
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.05449199676513672
+        }
+      }
+    },
+    "late_the": {
+      "taste_specificity": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.037326812744140625
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.012087464332580566
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.02523934841156006
+        }
+      },
+      "context_specificity": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.03267379601796468
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.006204068660736084
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.03887786467870077
+        }
+      },
+      "lex_signed_odd": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.021433313687642414
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.006336112817128499
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.015097200870513916
+        }
+      }
+    },
+    "late_tasted": {
+      "taste_specificity": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.09407718976338704
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.07038680712381999
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.02369038263956706
+        }
+      },
+      "context_specificity": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.00784615675608317
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.033412396907806396
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.041258553663889565
+        }
+      },
+      "lex_signed_odd": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.14801343282063803
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.08941807349522908
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.058595359325408936
+        }
+      }
+    }
+  },
+  "propagation_means": {
+    "late_ingredient": {
+      "propagation_specificity": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.04585975978006323
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.0010969201353866823
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.046956679915449905
+        }
+      },
+      "lex_projection": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.04798166517222485
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.0017552644767462853
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.04973692964897114
+        }
+      }
+    },
+    "late_the": {
+      "propagation_specificity": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.027478651139116867
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.001647736995923973
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.029126388135040843
+        }
+      },
+      "lex_projection": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.035012280312376354
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.000724912642324306
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.03573719295470066
+        }
+      }
+    },
+    "late_tasted": {
+      "propagation_specificity": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.02137715354310515
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.002923417723908011
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.024300571267013158
+        }
+      },
+      "lex_projection": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.0294242233516317
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.004673561768734521
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.03409778512036622
+        }
+      }
+    },
+    "late_mask": {
+      "propagation_specificity": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.018135930169254067
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.009304987376687848
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.027440917545941912
+        }
+      },
+      "lex_projection": {
+        "after": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.02709669986380891
+        },
+        "difference": {
+          "missing_count": 0,
+          "reason": null,
+          "value": -0.009979879992513397
+        },
+        "with": {
+          "missing_count": 0,
+          "reason": null,
+          "value": 0.03707657985632231
+        }
+      }
+    }
+  },
+  "scope": "closed saved vectors and summaries; no model, execution attestation or independently retained whole activation tensors"
+}

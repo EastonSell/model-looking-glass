@@ -1,0 +1,50 @@
+{
+  "cases_sha256": "341300932b0dab6d4004c3dd7007d73500162f8d945a91ca50538b9e2802c979",
+  "forwards_completed": 960,
+  "forwards_started": 960,
+  "inner_receipt_sha256": "fcc940ec02aa58c0a1ecd5dee104a3208114e74cd71802ab6684f9a521d74216",
+  "outer_receipt_sha256": "1bf73a4dd155b658415702de1c963a2196079b650e8d3e12e97642155ab1a5a0",
+  "result_sha256": "3eec17009dd595bee3311d57220c606b0daf4d69d98cba5ca305752c3e060870",
+  "scope": "Post-run saved-source, ordered-schedule and process-receipt consistency only; not proof of actual execution, chronology, whole-tree cleanup or numerical/scientific validity.",
+  "source_commit": "a27b34533c3da5f34a541ef2b8b57631bf42e819",
+  "source_file_count": 25,
+  "status": "passed",
+  "stems": {
+    "apple": {
+      "forwards_completed": 160,
+      "forwards_started": 160,
+      "full_logit_rows_retained": 132,
+      "journal_sha256": "9df0ad73ce580636a0b06e5b9b12fe1797b6e85fd7adbb3b927e97b29dbfebbd"
+    },
+    "bread": {
+      "forwards_completed": 160,
+      "forwards_started": 160,
+      "full_logit_rows_retained": 132,
+      "journal_sha256": "68ace2b0f3423abc7d43e7012b50a4d6bf35cee011270ffada54cdc15fd8e4a7"
+    },
+    "cereal": {
+      "forwards_completed": 160,
+      "forwards_started": 160,
+      "full_logit_rows_retained": 132,
+      "journal_sha256": "8f55c953cd05b6f53c94507a3fb93b459efdc2b3e791beb8c8ad7e937e4c5d95"
+    },
+    "orange": {
+      "forwards_completed": 160,
+      "forwards_started": 160,
+      "full_logit_rows_retained": 132,
+      "journal_sha256": "7ec8bb93b0e33ab25250f84eff79a681fa484ccc3bc7dadcb6865f3ce3ce2700"
+    },
+    "soda": {
+      "forwards_completed": 160,
+      "forwards_started": 160,
+      "full_logit_rows_retained": 132,
+      "journal_sha256": "edc58299a0943fd0483cbb9d0d3769d642b1107cecb633e10eaaa6eb34ec2d2e"
+    },
+    "toast": {
+      "forwards_completed": 160,
+      "forwards_started": 160,
+      "full_logit_rows_retained": 132,
+      "journal_sha256": "ba2410542a125cef1b4c480de6372f8f787217da58d888904aa01ee914ff7750"
+    }
+  }
+}

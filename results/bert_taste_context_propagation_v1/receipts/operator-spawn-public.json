@@ -1,0 +1,10 @@
+{
+  "operator_clock_utc": "2026-10-29T09:02:20.403024+00:00",
+  "original_record_sha256": "a6ceeee55572361fa8672fc426c258eff8120aae41c1865b6e3f795bc8d6a368",
+  "projection_scope": "Public projection; original private process record is not independently authenticated here.",
+  "redacted_fields": [
+    "process_id"
+  ],
+  "schema": "bert-propagation-operator-spawn-v1",
+  "source_commit": "a27b34533c3da5f34a541ef2b8b57631bf42e819"
+}
