@@ -352,6 +352,38 @@ class TrustedServiceProfileTests(unittest.TestCase):
             with self.assertRaises(ProfileUnavailable):
                 module.resolve_trusted_service_profiles(registry, identities[1], pins)
 
+    def test_programfiles_is_validated_and_changes_runtime_key(self):
+        module = importlib.import_module('looking_glass.trusted_service_profile')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            home, cache = root / 'home', root / 'home' / 'hub'
+            cache.mkdir(parents=True)
+            first, second = root / 'first-program-files', root / 'second-program-files'
+            first.mkdir()
+            second.mkdir()
+            required = {'CUDA_VISIBLE_DEVICES': UUID, 'CUDA_DEVICE_ORDER': 'PCI_BUS_ID',
+                        'PYTORCH_CUDA_ALLOC_CONF': 'backend:native', 'CUBLAS_WORKSPACE_CONFIG': ':4096:8',
+                        'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1', 'HF_HUB_OFFLINE': '1',
+                        'TRANSFORMERS_OFFLINE': '1', 'HF_HUB_DISABLE_TELEMETRY': '1', 'HF_HOME': str(home)}
+            runtimes = []
+            for selected in (first, second):
+                with patch.dict(os.environ, {**required, 'PROGRAMFILES': str(selected)}, clear=True):
+                    environment = module._checked_environment(UUID, str(cache))
+                self.assertEqual(environment['PROGRAMFILES'], str(selected))
+                runtime = fake_runtime()
+                runtime['environment'] = environment
+                runtimes.append(runtime)
+            base = self.make_identity()
+            source_hash = hashlib.sha256(base.source_manifest).hexdigest()
+            keys = [module._make_workload_keys(source_hash, runtime) for runtime in runtimes]
+            self.assertTrue(all(a.runtime_settings_sha256 != b.runtime_settings_sha256
+                                for a, b in zip(keys[0], keys[1])))
+            for invalid in ('relative', str(root / 'missing')):
+                with self.subTest(invalid=invalid), \
+                     patch.dict(os.environ, {**required, 'PROGRAMFILES': invalid}, clear=True), \
+                     self.assertRaises(ValueError):
+                    module._checked_environment(UUID, str(cache))
+
     def test_relative_import_paths_are_bound_to_the_actual_working_directory(self):
         module = importlib.import_module('looking_glass.trusted_service_profile')
         with tempfile.TemporaryDirectory() as directory:
