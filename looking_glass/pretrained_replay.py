@@ -166,6 +166,7 @@ def _validate(report, label):
              model.get("asset_sha256") == _ASSET_HASHES, f"{label} has the wrong pinned model assets")
     files = source.get("files")
     _require(_digest(source.get("git_commit"), 40) and source.get("clean") is True and
+             source.get("bytecode_attested") is False and
              source.get("scope") == "executed project files only" and
              isinstance(files, dict) and _REQUIRED_SOURCES <= set(files) and
              all(isinstance(key, str) and _digest(value) for key, value in files.items()),
@@ -200,6 +201,8 @@ def _validate(report, label):
              and _digest(environment.get("torch_build_config_sha256"))
              and isinstance(environment.get("torch_cpu_capability"), str)
              and environment["torch_cpu_capability"]
+             and type(environment.get("cpu_subnormal_multiply_bits")) is int
+             and environment["cpu_subnormal_multiply_bits"] in (0, 1)
              and all(key in environment and (environment[key] is None or isinstance(environment[key], str))
                      for key in ("omp_num_threads", "mkl_num_threads"))
              and type(environment.get("torch_intraop_threads")) is int

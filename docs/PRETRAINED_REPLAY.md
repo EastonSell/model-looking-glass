@@ -15,10 +15,14 @@ backend settings and device model, and an offline cache containing
 the pinned checkpoint assets. The reference and replay must use the same
 device; CPU and CUDA hashes cannot establish a tolerance-based comparison.
 Recorded environment identity includes the PyTorch build-configuration hash,
-CPU capability and thread settings, but does not capture every native library
+CPU capability, thread settings and one descriptive subnormal-multiplication
+probe, but does not capture every native library or floating-point mode
 or machine state; a match is not proof of exhaustive environment equivalence.
 Interpreter and package-origin path fingerprints can reveal guessed paths and
 do not hash package contents; they are not anonymous identifiers.
+The smoke runner checks committed source bytes but does not attest which Python
+bytecode was executed. A fresh empty bytecode cache prefix and disabled bytecode
+writes can reduce ordinary stale-cache reuse; this remains an operator setup.
 Physical GPU identifiers and raw device-visibility values are omitted. Thus,
 matching public metadata cannot distinguish two otherwise identical GPUs.
 
