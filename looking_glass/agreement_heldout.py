@@ -16,7 +16,7 @@ from .agreement_patch_runner import (AgreementCase, NaturalAgreementRunner, Stud
                                      _CANDIDATES, _discovery_selection)
 
 
-_PREDICTION_SCHEMA = 'mlg-number-natural-predictions-v1'
+_PREDICTION_SCHEMA = 'mlg-number-natural-predictions-v2'
 _MAX_PREDICTION_BYTES = 8 * 1024 * 1024
 _SITES = tuple(site['id'] for site in _CANDIDATES)
 _CELLS = ('same_lemma_same_number', 'same_lemma_opposite_number',
@@ -229,12 +229,18 @@ def load_frozen_natural_predictions(prediction_bytes, freeze):
         raise StudyFailure('invalid natural prediction JSON') from error
     if (type(record) is not dict or _canonical(record) != prediction_bytes
             or set(record) != {'schema', 'protocol_sha256', 'source_commit', 'checkpoint_revision',
+                               'discovery_event_sha256', 'independent_audit_sha256',
                                'selection', 'present_site_metrics', 'secondary_past_site_metrics'}
             or record['schema'] != _PREDICTION_SCHEMA
             or record['protocol_sha256'] != commitments.PROTOCOL_SHA256
             or record['checkpoint_revision'] != commitments.CHECKPOINT_REVISION
             or record['source_commit'] != track['source_commit']):
         raise StudyFailure('natural prediction file identity or schema differs')
+    try:
+        commitments._hex(record['discovery_event_sha256'], 64)
+        commitments._hex(record['independent_audit_sha256'], 64)
+    except ValueError as error:
+        raise StudyFailure('natural discovery evidence digests are invalid') from error
     summaries, cases, relations = _discovery_events(
         record['present_site_metrics'], 'present_site_metrics',
         {'first_token': ' is', 'first_id': 318, 'second_token': ' are', 'second_id': 389})

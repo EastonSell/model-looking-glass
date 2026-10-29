@@ -11,9 +11,10 @@ quarantined rather than becoming available for another lease.
 
 The same comparisons observe deterministic-algorithm and warning modes,
 intra/inter-op thread counts, float32 matmul precision, and the raw result bits
-of a small CPU underflow probe. The probe runs on the calling thread and does
-not attest floating-point modes in other worker or BLAS threads. The guard reads
-these settings; it does not reset them before comparing.
+of a small CPU result-underflow probe. The probe does not distinguish an
+independently changed denormal-input (DAZ) mode. It runs on the calling thread
+and does not attest floating-point modes in other worker or BLAS threads. The
+guard reads these settings; it does not reset them before comparing.
 
 This complements tensor value, storage identity, module-tree, hook and mode
 checks. It is a cooperative guard over explicitly listed settings, not a
