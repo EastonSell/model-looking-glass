@@ -7,3 +7,12 @@
 /looking_glass/targeted_edit_france_top_edits_v2.py -text
 /tests/test_france_top_v2.py -text
 /tests/test_france_top_edits_v2.py -text
+/docs/TARGETED_EDIT_FRANCE_FULL_TOP_V4.md -text
+/docs/TARGETED_EDIT_FRANCE_FULL_TOP_SCOPE_AMENDMENT_V2.md -text
+/scripts/assemble_france_full_top_v3.py -text
+/experiments/france_full_top_cases_v3.json -text
+/experiments/france_full_top_tokenizer_observation_v3.json -text
+/looking_glass/targeted_edit_france_baseline_v2.py -text
+/looking_glass/targeted_edit_france_baseline_audit_v2.py -text
+/tests/test_france_baseline_v2.py -text
+/tests/test_france_baseline_audit_v2.py -text
