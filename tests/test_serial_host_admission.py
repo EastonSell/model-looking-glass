@@ -88,6 +88,18 @@ def test_matching_approved_real_owner_evidence_is_validated_without_a_gpu():
     assert result['lifetime_peak_working_set_sum_bytes'] == 1800 * 1024 ** 2
 
 
+def test_evidence_can_sample_a_live_owner_before_readiness():
+    document = observed_document()
+    row = dict(document['measurement']['samples'][1], phase='owner_starting', timestamp_ns=1_500_000_000)
+    document['measurement']['samples'].insert(1, row)
+    raw = canonical(document)
+    assert subject._validate_host_evidence(raw, hashlib.sha256(raw).hexdigest(), BINDING)['commitment_bytes'] == 3 * GIB
+    row['owner_working_set_bytes'] = 0
+    raw = canonical(document)
+    with pytest.raises(subject.ConcurrentServiceError):
+        subject._validate_host_evidence(raw, hashlib.sha256(raw).hexdigest(), BINDING)
+
+
 @pytest.mark.parametrize('mutation', [
     lambda d: d['workload']['shape'].__setitem__(0, True),
     lambda d: d['workload'].__setitem__('trace_bytes', False),

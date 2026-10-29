@@ -76,6 +76,13 @@ a measured worst-case bound. `PeakPagefileUsage` is the Windows lifetime peak
 commit charge; it is distinct from peak working set and the current
 `PrivateUsage` value.
 
+A live child sampled before readiness uses the optional `owner_starting`
+phase; it must not be labelled as a zero-owner `before_start` sample. If the
+child's creation or handle identity is unknown, or the sampling gap exceeds
+two seconds before a trustworthy handle is obtained, the observation is
+incomplete. Short starts can move directly from `before_start` to
+`owner_ready` when the same gap and identity requirements hold.
+
 Immediately before service startup, the controller checks a fresh physical
 memory point and both system-wide and caller-available commit against the
 larger of 8 GiB or commitment plus reserve, and checks physical total against

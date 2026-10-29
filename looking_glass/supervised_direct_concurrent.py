@@ -160,7 +160,8 @@ def _validate_host_evidence(raw, approval_sha256, binding):
             or any(not integer(value, 1) for value in peaks.values())):
         reject()
     samples = measurement['samples']
-    phases = ('before_start', 'owner_ready', 'clients_active', 'clients_done', 'owner_exiting', 'owner_reaped')
+    phases = ('before_start', 'owner_starting', 'owner_ready', 'clients_active', 'clients_done',
+              'owner_exiting', 'owner_reaped')
     names = {'timestamp_ns', 'phase', 'controller_working_set_bytes', 'controller_private_commit_bytes',
              'owner_working_set_bytes', 'owner_private_commit_bytes', 'available_physical_bytes',
              'available_system_commit_bytes', 'available_caller_commit_bytes'}
@@ -177,7 +178,11 @@ def _validate_host_evidence(raw, approval_sha256, binding):
                 or sample['available_physical_bytes'] > measurement['physical_total_bytes']):
             reject()
         current = phases.index(sample['phase'])
-        if current < phase_index or current > phase_index + 1:
+        # A short startup may be observed only once it is already ready.
+        # If sampled while starting, the live owner must be charged instead
+        # of labelling it as a pre-start zero-owner observation.
+        if (current < phase_index or (current > phase_index + 1
+                                      and not (phase_index == 0 and current == 2))):
             reject()
         phase_index = current
         stamp = sample['timestamp_ns']
