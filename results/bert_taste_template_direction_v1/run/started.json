@@ -1,0 +1,30 @@
+{
+  "cases_path": "experiments/bert_taste_template_direction_public_cases_v1.json",
+  "seed": 20261031,
+  "source": {
+    "commit": "05e55bffacbf5019d181546286c2743b8ccbf487",
+    "selected_source_sha256": {
+      "docs/BERT_TASTE_TEMPLATE_DIRECTION_V1.md": "a24bee821839ffa4bd4ea2ac3805621d524491f3933009fd9450ca714fb5182d",
+      "experiments/bert_agreement_exposures_v6.json": "0d0b37539c30c8ff25ea5b1cfa95ecd4587f048434348a1c91ec010418553afb",
+      "experiments/bert_matched_public_cases_v1.json": "5b708600dba78db9e4ee676650bc5e1f6b3269d52179a8e45d5d45fee55219bb",
+      "experiments/bert_taste_matched_dose_public_cases_v1.json": "983be330b6691ce23986f26e50a345f77ca5cf46dd28a660a3a012a2cf598a7c",
+      "experiments/bert_taste_matched_dose_public_exposures_v2.json": "9b08e38927187c6f43d8659603e27e0f5397034e01143e665ab01a139a64e845",
+      "experiments/bert_taste_public_exposures_v2.json": "a766d20778191280122a6b498b9bcb34907bfac761152ae7c3cf4df0fb9c5aa1",
+      "experiments/bert_taste_template_direction_public_cases_v1.json": "e59f5e1da0b3ce8c99ea9c231b4998e1c1e685d09c20bff4fdb734dc4910256f",
+      "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+      "looking_glass/bert_agreement_runner.py": "e777a2eb647a1a5c024b369be0dc8941df664a7ee02958bcb3dec6f3f617739b",
+      "looking_glass/bert_agreement_study.py": "1ac734bba7ad3dbda95728909d616bd8810b310f1ba22f94388e00e2f1e7d0a6",
+      "looking_glass/bert_matched_numeric.py": "320a2975f4243a74133ef35bf063e297074bc41a7eebec472fc74c10f1a16a64",
+      "looking_glass/intervention_plan.py": "6470676938e73e48234128c30ba1d10a49104ee8513434871bc6e973c55d6120",
+      "looking_glass/interventions.py": "71cbcf4776660d2dd883b82815f710b0c909228fd1762504f9e3f984f7f6c60f",
+      "looking_glass/model_ownership.py": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434",
+      "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+      "scripts/bert_taste_matched_dose_v1.py": "e97eb8982c675cd728ca9d795b433742cd092908cda3702e85ef09e87bcd881e",
+      "scripts/bert_taste_patch_v1.py": "a25c74df2d2aeccad41d4f4ee22059d8112ecdf7e1da9e0565502f464aaa1e76",
+      "scripts/bert_taste_template_cases_v1.py": "d5755c0b72f5dcc0dc413a254548eaf3f9f47d9466ba01472479134c3981a75b",
+      "scripts/bert_taste_template_direction_v1.py": "52695325d3429ea5507965eb2245d27eef9895f0b179770f4d5d866122e93261",
+      "scripts/bert_taste_template_geometry_v1.py": "374b7dce2eb9a4d6ca2b0c0b6436315492c7d4a6d4a51c498c405472064997df"
+    }
+  },
+  "status": "started"
+}
