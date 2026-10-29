@@ -48,5 +48,5 @@ The trusted custodian must bind the actual checkpoint/tokenizer and current
 reviewed snapshot before use, retain immutable bytes for reveal, and keep
 candidate inputs quiescent during copying. A caught Python exception's
 traceback may retain private inputs; keep exceptions and tracebacks private and
-publish only sanitized statuses. No held-out case was generated for this
-snapshot.
+publish only sanitized statuses. No private or hidden held-out case was
+generated, and no model forward was run, while preparing this snapshot.
