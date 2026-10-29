@@ -72,6 +72,13 @@ The dedicated child exits with `os._exit` after its durable writes on both
 success and failure, so Python `atexit` handlers cannot enqueue GPU work after
 attestation or during quarantine. The supervisor observes its process exit.
 
+When the driver inventory subprocess fails, the private failure record may also
+contain its command, exit status, up to 4 KiB each of captured stdout and stderr,
+and a bounded allowlist of its launch environment. These fields can contain
+device identifiers or paths and remain private. The retained-size limit is not
+a bound on the subprocess's temporary output allocation. Missing diagnostics
+do not establish the cause, and collection does not retry or clear quarantine.
+
 CPU tests use fake device callbacks and a real CPU worker/IPC frame; they do
 not establish GPU behavior. The versioned protocol also records source and
 runtime identity, but does not authenticate all native dependencies or prove
