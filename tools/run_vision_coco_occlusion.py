@@ -32,6 +32,8 @@ V6_ARCHIVE = 'results/vision-coco-spatial-dose-v6-20261029/screen-evidence.zip'
 V6_ARCHIVE_SHA = '7b88dc730498fad1418b8b0c54a33e673357252093a460611f440187a63e0f76'
 RESULT = 'results/vision-coco-occlusion-v1-20261029'
 DISCOVERY = RESULT + '/discovery-freeze.json'
+DISCOVERY_INDEX = RESULT + '/discovery-evidence-index.json'
+DISCOVERY_OBSERVER = RESULT + '/discovery-observer.json'
 SCREEN = RESULT + '/screen-result.json'
 SCREEN_ARCHIVE = RESULT + '/screen-evidence.zip'
 MODEL_STATE = 'd1bfb26b30f847366de6388385d547fc29cc3c20b330c4faad993891e165eccd'
@@ -72,7 +74,7 @@ def snapshot(revision, mode):
         raise ValueError('local source revision differs')
     paths = list(SOURCES)
     if mode in ('screen', 'evaluation'):
-        paths.append(DISCOVERY)
+        paths.extend((DISCOVERY, DISCOVERY_INDEX, DISCOVERY_OBSERVER))
     if mode == 'evaluation':
         paths.extend((SCREEN, SCREEN_ARCHIVE))
     sources = {}
@@ -195,6 +197,102 @@ def verify_public_screen_archive(data, archive_bytes):
     return sha(archive_bytes)
 
 
+def verify_public_discovery(freeze_raw, index_raw, observer_raw, archive_bytes, *,
+                            manifest_sha=MANIFEST_SHA, model_state=MODEL_STATE):
+    """Bind the published discovery outcome to its archive, parts and direct exit."""
+    try:
+        freeze, index, observer = (json.loads(raw) for raw in (freeze_raw, index_raw, observer_raw))
+        ids = [328437, 142719, 476736, 503893]
+        if (freeze.get('schema') != 'vision-occlusion-v1-discovery-freeze' or
+                freeze.get('status') != 'complete' or freeze.get('manifest_sha256') != manifest_sha or
+                freeze.get('selected_ids') != ids or freeze.get('index_sha256') != sha(index_raw)):
+            raise ValueError('discovery freeze differs')
+        if (freeze.get('observer_sha256') != sha(observer_raw) or
+                observer.get('schema') != 'vision-occlusion-v1-direct-observer' or
+                observer.get('mode') != 'discovery' or observer.get('status') != 'complete' or
+                type(observer.get('exit_code')) is not int or observer['exit_code'] != 0 or
+                observer.get('timed_out') is not False or observer.get('forced_stop') is not False or
+                observer.get('reaped') is not True or observer.get('terminal_sha256') != freeze.get('terminal_sha256')):
+            raise ValueError('discovery observer differs')
+        if (index.get('schema') != 'vision-occlusion-v1-discovery-archive-index' or
+                type(archive_bytes) is not bytes or not 0 < len(archive_bytes) <= 100_000_000 or
+                type(index.get('archive_bytes')) is not int or index['archive_bytes'] != len(archive_bytes) or
+                index.get('archive_sha256') != sha(archive_bytes) or
+                freeze.get('archive_sha256') != index['archive_sha256']):
+            raise ValueError('discovery archive differs')
+        parts = index.get('parts')
+        if not isinstance(parts, list) or not 1 <= len(parts) <= 128:
+            raise ValueError('discovery archive parts differ')
+        offset = 0
+        for position, part in enumerate(parts):
+            if (not isinstance(part, dict) or part.get('file') != f'discovery-evidence.part-{position:03d}' or
+                    type(part.get('bytes')) is not int or not 0 < part['bytes'] <= 10_000_000):
+                raise ValueError('discovery archive part differs')
+            chunk = archive_bytes[offset:offset + part['bytes']]
+            if len(chunk) != part['bytes'] or part.get('sha256') != sha(chunk):
+                raise ValueError('discovery archive part differs')
+            offset += part['bytes']
+        if offset != len(archive_bytes):
+            raise ValueError('discovery archive part lengths differ')
+        members = index.get('members')
+        if not isinstance(members, list) or len({row.get('file') for row in members}) != len(members):
+            raise ValueError('discovery archive members differ')
+        with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+            names = archive.namelist()
+            if len(names) != len(members) or set(names) != {row.get('file') for row in members}:
+                raise ValueError('discovery archive inventory differs')
+            for row in members:
+                info = archive.getinfo(row['file'])
+                if (type(row.get('bytes')) is not int or not 0 <= row['bytes'] <= 5_000_000 or
+                        info.file_size != row['bytes'] or sha(archive.read(row['file'])) != row.get('sha256')):
+                    raise ValueError('discovery archive member differs')
+            terminal_raw, started_raw = archive.read('terminal.json'), archive.read('started.json')
+            terminal, started = json.loads(terminal_raw), json.loads(started_raw)
+            cases = terminal.get('cases')
+            if (sha(terminal_raw) != freeze.get('terminal_sha256') or
+                    terminal.get('schema') != 'vision-occlusion-v1-terminal' or
+                    terminal.get('mode') != 'discovery' or terminal.get('status') != 'complete' or
+                    terminal.get('manifest_sha256') != manifest_sha or terminal.get('selected') != 4 or
+                    started.get('schema') != 'vision-occlusion-v1-start' or started.get('mode') != 'discovery' or
+                    started.get('manifest_sha256') != manifest_sha or started.get('selected_ids') != ids or
+                    started.get('source', {}).get('revision') != terminal.get('source_revision') or
+                    observer.get('source_revision') != terminal.get('source_revision') or
+                    started.get('runtime') != terminal.get('runtime') or
+                    started.get('model_state_sha256') != model_state or
+                    terminal.get('model_state_sha256_before_after') != model_state or
+                    not isinstance(cases, list) or [row.get('image_id') for row in cases] != ids):
+                raise ValueError('discovery terminal differs')
+            sizes = {'matchable': 18, 'limited-dose': 18, 'dose-ineligible': 14, 'dose-unmatchable': 14}
+            count = sum(sizes[row['dose']['status']] for row in cases)
+            if (type(terminal.get('submissions')) is not int or terminal['submissions'] != count or
+                    type(terminal.get('saved_forwards')) is not int or terminal['saved_forwards'] != count):
+                raise ValueError('discovery forward count differs')
+            expected = {'started.json', 'terminal.json'}
+            for row in cases:
+                ident = row['image_id']
+                case_name = f'case-{ident}.json'
+                expected.add(case_name)
+                if json.loads(archive.read(case_name)) != row:
+                    raise ValueError('discovery case differs')
+                for name in ('clean', 'animal', 'background'):
+                    input_name = f'input-{ident}-{name}.bin'
+                    expected.add(input_name)
+                    if sha(archive.read(input_name)) != row['input_sha256'][name]:
+                        raise ValueError('discovery input differs')
+            for number in range(1, count + 1):
+                meta_name, data_name = f'forward-{number:03d}.json', f'forward-{number:03d}.bin'
+                expected.update((meta_name, data_name))
+                metadata = json.loads(archive.read(meta_name))
+                if (type(metadata.get('submission')) is not int or metadata['submission'] != number or
+                        metadata.get('sha256') != sha(archive.read(data_name))):
+                    raise ValueError('discovery forward differs')
+            if set(names) != expected:
+                raise ValueError('discovery archive inventory differs')
+        return terminal
+    except (KeyError, TypeError, AttributeError, OSError, zipfile.BadZipFile) as error:
+        raise ValueError('discovery archive or metadata differs') from error
+
+
 def main(args):
     if (os.environ.get('CUDA_VISIBLE_DEVICES') != '' or os.environ.get('MKL_CBWR') != 'COMPATIBLE' or
             not args.assets.is_absolute() or not args.output.is_absolute() or
@@ -205,7 +303,9 @@ def main(args):
         return first.is_relative_to(second) or second.is_relative_to(first)
     if (not args.assets.is_dir() or overlaps(args.output, ROOT) or overlaps(args.output, args.assets) or
             (args.screen_data is not None and (args.mode != 'evaluation' or
-             any(overlaps(args.screen_data, item) for item in (args.output, ROOT, args.assets))))):
+             any(overlaps(args.screen_data, item) for item in (args.output, ROOT, args.assets)))) or
+            (args.discovery_archive is not None and (args.mode not in ('screen', 'evaluation') or
+             not args.discovery_archive.is_absolute() or not args.discovery_archive.is_file()))):
         raise ValueError('source, assets, screen and new output roots must be separate')
     if shutil.disk_usage(ROOT).free < 2 * 1024**3 or shutil.disk_usage(args.output.parent).free < 1024**3:
         raise ValueError('insufficient source/cache or evidence space')
@@ -251,15 +351,16 @@ def main(args):
             images = select_discovery((ROOT / V6_MANIFEST).read_bytes(), (ROOT / V6_SCREEN).read_bytes())
             expected = prior_screen_logits(images)
         elif args.mode == 'screen':
-            freeze = json.loads((ROOT / DISCOVERY).read_bytes())
-            if (freeze.get('schema') != 'vision-occlusion-v1-discovery-freeze' or
-                    freeze.get('status') != 'complete' or freeze.get('manifest_sha256') != MANIFEST_SHA or
-                    freeze.get('selected_ids') != [328437, 142719, 476736, 503893] or
-                    type(freeze.get('terminal_sha256')) is not str or
-                    not re.fullmatch('[0-9a-f]{64}', freeze['terminal_sha256'])):
-                raise ValueError('published discovery freeze differs')
+            if args.discovery_archive is None:
+                raise ValueError('screen needs the published discovery archive')
+            verify_public_discovery((ROOT / DISCOVERY).read_bytes(), (ROOT / DISCOVERY_INDEX).read_bytes(),
+                                    (ROOT / DISCOVERY_OBSERVER).read_bytes(), args.discovery_archive.read_bytes())
             images, expected = manifest['images'], None
         else:
+            if args.discovery_archive is None:
+                raise ValueError('evaluation needs the published discovery archive')
+            verify_public_discovery((ROOT / DISCOVERY).read_bytes(), (ROOT / DISCOVERY_INDEX).read_bytes(),
+                                    (ROOT / DISCOVERY_OBSERVER).read_bytes(), args.discovery_archive.read_bytes())
             if args.screen_data is None or not args.screen_data.is_absolute() or not args.screen_data.is_dir():
                 raise ValueError('evaluation needs the closed screen data')
             screened = verify_saved_screen(manifest['images'], args.screen_data,
@@ -362,4 +463,5 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--revision', required=True)
     parser.add_argument('--screen-data', type=Path)
+    parser.add_argument('--discovery-archive', type=Path)
     raise SystemExit(main(parser.parse_args()))

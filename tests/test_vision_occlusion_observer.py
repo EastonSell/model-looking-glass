@@ -1,8 +1,11 @@
 """The observer records direct-process outcomes and prevents a phase retry."""
 
 import json
+import hashlib
+import io
 import subprocess
 import sys
+import zipfile
 
 import pytest
 
@@ -81,3 +84,63 @@ def test_terminal_identity_and_exact_count_types_are_required(tmp_path):
         assert not terminal_complete(path, 'preflight', 'a' * 40, 'b' * 64)
     path.write_text('{', encoding='utf-8')
     assert not terminal_complete(path, 'preflight', 'a' * 40, 'b' * 64)
+
+
+def test_published_discovery_handoff_binds_all_archive_parts_terminal_and_receipt():
+    from tools.run_vision_coco_occlusion import verify_public_discovery
+
+    ids = [328437, 142719, 476736, 503893]
+    source = {'revision': 'a' * 40, 'sources': {}}
+    cases = [{'image_id': item, 'dose': {'status': 'matchable'},
+              'input_sha256': {name: hashlib.sha256(f'{item}-{name}'.encode()).hexdigest()
+                               for name in ('clean', 'animal', 'background')}} for item in ids]
+    start = {'schema': 'vision-occlusion-v1-start', 'mode': 'discovery', 'manifest_sha256': 'b' * 64,
+             'source': source, 'runtime': {'fake': True}, 'model_state_sha256': 'c' * 64,
+             'selected_ids': ids}
+    terminal = {'schema': 'vision-occlusion-v1-terminal', 'mode': 'discovery', 'status': 'complete',
+                'manifest_sha256': 'b' * 64, 'source_revision': source['revision'], 'runtime': {'fake': True},
+                'model_state_sha256_before_after': 'c' * 64, 'cases': cases, 'selected': 4,
+                'submissions': 72, 'saved_forwards': 72}
+    encode = lambda value: (json.dumps(value, sort_keys=True) + '\n').encode()
+    files = {'started.json': encode(start), 'terminal.json': encode(terminal)}
+    for case in cases:
+        ident = case['image_id']
+        files[f'case-{ident}.json'] = encode(case)
+        for name in ('clean', 'animal', 'background'):
+            files[f'input-{ident}-{name}.bin'] = f'{ident}-{name}'.encode()
+    for i in range(1, 73):
+        raw = f'fake-forward-{i}'.encode()
+        files[f'forward-{i:03d}.bin'] = raw
+        files[f'forward-{i:03d}.json'] = encode({'submission': i, 'sha256': hashlib.sha256(raw).hexdigest()})
+    stream = io.BytesIO()
+    with zipfile.ZipFile(stream, 'w') as archive:
+        for name, raw in files.items():
+            archive.writestr(name, raw)
+    data = stream.getvalue()
+    parts = [data[:len(data) // 2], data[len(data) // 2:]]
+    index = {'schema': 'vision-occlusion-v1-discovery-archive-index',
+             'archive_sha256': hashlib.sha256(data).hexdigest(), 'archive_bytes': len(data),
+             'parts': [{'file': f'discovery-evidence.part-{i:03d}', 'bytes': len(raw),
+                        'sha256': hashlib.sha256(raw).hexdigest()} for i, raw in enumerate(parts)],
+             'members': [{'file': name, 'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()}
+                         for name, raw in sorted(files.items())]}
+    observer = {'schema': 'vision-occlusion-v1-direct-observer', 'mode': 'discovery',
+                'source_revision': source['revision'], 'exit_code': 0, 'timed_out': False,
+                'reaped': True, 'forced_stop': False, 'status': 'complete',
+                'terminal_sha256': hashlib.sha256(files['terminal.json']).hexdigest()}
+    index_raw, observer_raw = encode(index), encode(observer)
+    freeze = {'schema': 'vision-occlusion-v1-discovery-freeze', 'status': 'complete',
+              'manifest_sha256': 'b' * 64, 'selected_ids': ids,
+              'terminal_sha256': observer['terminal_sha256'], 'archive_sha256': index['archive_sha256'],
+              'index_sha256': hashlib.sha256(index_raw).hexdigest(),
+              'observer_sha256': hashlib.sha256(observer_raw).hexdigest()}
+    freeze_raw = encode(freeze)
+    assert verify_public_discovery(freeze_raw, index_raw, observer_raw, data,
+                                   manifest_sha='b' * 64, model_state='c' * 64) == terminal
+    with pytest.raises(ValueError, match='archive'):
+        verify_public_discovery(freeze_raw, index_raw, observer_raw, data[:-1] + b'X',
+                                manifest_sha='b' * 64, model_state='c' * 64)
+    broken = {**observer, 'reaped': False}
+    with pytest.raises(ValueError, match='observer'):
+        verify_public_discovery(freeze_raw, index_raw, encode(broken), data,
+                                manifest_sha='b' * 64, model_state='c' * 64)

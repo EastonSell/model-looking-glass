@@ -103,13 +103,15 @@ def main():
     for name in ('checkout', 'assets', 'output', 'outer', 'custody', 'site-packages', 'pillow'):
         parser.add_argument('--' + name, type=Path, required=True)
     parser.add_argument('--screen-data', type=Path)
+    parser.add_argument('--discovery-archive', type=Path)
     parser.add_argument('--timeout', type=int, default=3600)
     args = parser.parse_args()
     paths = (args.checkout, args.assets, args.output, args.outer, args.custody, args.site_packages, args.pillow)
     if (any(not path.is_absolute() for path in paths) or not re.fullmatch('[0-9a-f]{40}', args.revision) or
             not all(path.is_dir() for path in (args.checkout, args.assets, args.site_packages, args.pillow)) or
             args.output.exists() or args.outer.exists() or not args.output.parent.is_dir() or
-            args.timeout <= 0 or (args.screen_data is not None and not args.screen_data.is_absolute())):
+            args.timeout <= 0 or (args.screen_data is not None and not args.screen_data.is_absolute()) or
+            (args.discovery_archive is not None and not args.discovery_archive.is_absolute())):
         raise ValueError('observer arguments differ')
     def overlaps(a, b):
         a, b = a.resolve(), b.resolve()
@@ -139,6 +141,8 @@ def main():
                '--revision', args.revision, '--assets', str(args.assets), '--output', str(args.output)]
     if args.screen_data is not None:
         command += ['--screen-data', str(args.screen_data)]
+    if args.discovery_archive is not None:
+        command += ['--discovery-archive', str(args.discovery_archive)]
     env = dict(os.environ, CUDA_VISIBLE_DEVICES='', TEMP=str(temporary), TMP=str(temporary),
                OMP_NUM_THREADS='1', MKL_NUM_THREADS='1', MKL_CBWR='COMPATIBLE',
                HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1')
