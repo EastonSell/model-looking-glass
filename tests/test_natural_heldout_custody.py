@@ -1,5 +1,6 @@
 """Fabricated pools/nonces only: no real study cases or model forwards."""
 import hashlib
+import inspect
 import io
 import json
 import os
@@ -733,13 +734,46 @@ class CustodyTests(unittest.TestCase):
                     if outcome == 'raise': raise OSError('synthetic inner supervisor failure')
                     return {'cleanup_verified': False}
                 supervisor.supervise_heldout = run
-                with mock.patch.object(custody, '_hold_unverified_process') as hold:
+                def release(inner): inner._QUARANTINED.clear()
+                with mock.patch.object(custody, '_hold_unverified_process', side_effect=release) as hold:
                     if outcome == 'raise':
                         with self.assertRaises(OSError):
                             custody._supervise_preparation(supervisor, ['fake'], self.root, lambda *_: {})
                     else:
                         custody._supervise_preparation(supervisor, ['fake'], self.root, lambda *_: {})
                     hold.assert_called_with(supervisor)
+
+    @unittest.skipUnless(os.name == 'nt', 'requires a real Windows source lease')
+    def test_interruption_after_sleep_keeps_real_source_lease(self):
+        from scripts import v2_source_guards as guards
+        source = self.root / 'protected-source.py'
+        source.write_bytes(b'original')
+        lines, start = inspect.getsourcelines(custody._hold_unverified_process)
+        target = next(start + index for index, line in enumerate(lines)
+                      if 'if _test_release is not None' in line)
+        fired, locked = [], []
+        def tracer(frame, event, arg):
+            if (frame.f_code is custody._hold_unverified_process.__code__ and event == 'line'
+                    and frame.f_lineno == target and not fired):
+                fired.append(True)
+                raise KeyboardInterrupt()
+            return tracer
+        def release(_state):
+            try:
+                source.write_bytes(b'changed')
+            except PermissionError:
+                locked.append(True)
+            return True
+        with guards.SourceFileLease(self.root, [source]), \
+             mock.patch.object(custody.time, 'sleep', return_value=None), \
+             mock.patch.object(sys, 'stderr', new_callable=io.StringIO):
+            sys.settrace(tracer)
+            try:
+                custody._hold_unverified_process([None, None, True, False], _test_release=release)
+            finally:
+                sys.settrace(None)
+            self.assertEqual(fired, [True])
+            self.assertEqual(locked, [True])
 
     def test_observer_rejects_wrong_command_before_spawn(self):
         attempt, _ = self.prepare()
