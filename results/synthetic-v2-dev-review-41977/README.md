@@ -20,6 +20,9 @@ two further forwards checking patch delivery of signed zeros and minimum
 subnormals. The reviewer reported 1,248 ad hoc CPU root forwards in total at
 the time of this inventory.
 These checks are not the proposed recorded-run schedule or held-out evidence.
+The artificial patch source for the two subnormal checks had big-endian
+float32 bits `00000001 80000001 00000000 80000000 00800000 80800000 3f800000 bf800000`;
+it was a control source at block outputs 1 and 3, not an input tuple.
 
 The first coordinates, ±2.0, lie outside the proposed v2 input support; retain
 and explicitly exclude the full tuples from both v2 splits anyway. The exact

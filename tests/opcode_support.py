@@ -26,12 +26,28 @@ def run_opcode_trace(tracer, call):
     def warmup():
         return None
 
-    try:
-        # CPython 3.12 can wait until a later trace session to emit opcodes.
-        sys.settrace(tracer)
-        warmup()
-    finally:
-        sys.settrace(previous)
+    observed = []
+
+    def warmup_trace(frame, event, arg):
+        if frame.f_code is warmup.__code__:
+            if event == "call":
+                frame.f_trace_opcodes = True
+            elif event == "opcode":
+                observed.append(frame.f_lasti)
+        return warmup_trace
+
+    # CPython 3.12 can wait until a later trace session to emit opcodes. Use a
+    # separate tracer, because the supplied tracer may select only its target.
+    for _ in range(3):
+        try:
+            sys.settrace(warmup_trace)
+            warmup()
+        finally:
+            sys.settrace(previous)
+        if observed:
+            break
+    if not observed:
+        raise RuntimeError("interpreter did not emit opcode trace events")
     try:
         sys.settrace(tracer)
         call()

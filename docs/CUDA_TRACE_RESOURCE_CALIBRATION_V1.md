@@ -35,8 +35,10 @@ claim: signed zeros can compare equal. GPU subnormal behavior is not yet
 established for this workload. `torch.equal` also accepts matching infinities;
 the merged benchmark preflight separately checks finite logits for the
 baseline and every mode. Include those reductions and synchronization in the
-profiled composite preflight. Later timed outputs do not have the same finite
-check, so the preflight alone does not establish their finiteness.
+profiled composite preflight. Separately require a finite-logit check for each
+warmup and measured sample; the preflight alone does not establish that those
+later outputs are finite. Include each sample's actual reduction, temporary
+allocation and synchronization in both calibration and benchmark timing.
 
 Record separate stages for model load, **persistent setup plus combined
 equivalence preflight**, and each of `none`, `id`, `direct` and `gradient`.
@@ -66,8 +68,13 @@ round with the benchmark's actual schedule function and warmup seed transform
 `0x5A17`. Profile the warmup calls as well as measured calls, in their actual
 order, after the combined preflight and the benchmark's actual synchronized
 CUDA-event creation and priming, without `empty_cache()` between calls. Record
-and replay every intervening allocation-affecting setup and monitor policy. This
-captures observed allocator-cache transitions rather than treating four modes
+and replay every intervening allocation-affecting setup and monitor policy.
+Prime the events on the selected device's verified default stream; for every
+sample, check the current stream against that default at both boundaries and
+explicitly record both events on it. Boundary checks cannot prove that no
+unjoined custom stream was used transiently; device-wide wall synchronization
+and event spans have different coverage. This captures observed allocator-cache
+transitions rather than treating four modes
 as independent cold processes. Record every actual mode, round, position,
 phase and completed sample. Preserve the fixed PyTorch seed and schedule seeds.
 One input, device and process cannot establish a general resource bound. A
@@ -192,11 +199,12 @@ the equality comparator's signed-zero and subnormal semantics, and report any
 GPU-specific subnormal observations separately instead of assuming bitwise
 preservation.
 
-The existing benchmark discards warmup measurement rows and does not enforce
-per-sample event counts or output shape. Retaining and checking every warmup
-and sample therefore requires a reviewed refactor. Any added validation,
-allocation or changed lifetime must be present in both the calibrated path
-and the later benchmark path; otherwise their profiles do not match.
+The sample-guard follow-up retains warmup rows and checks per-sample event
+counts, output shape and finite logits. Before profiling, confirm that the
+final selected source actually contains those reviewed changes. Any added
+validation, allocation or changed lifetime must be present in both the
+calibrated path and the later benchmark path; otherwise their profiles do not
+match.
 
 Immediately before each sample, synchronize, check live ownership, budget and
 headroom, read device-wide free/total and process allocated/reserved bytes, and

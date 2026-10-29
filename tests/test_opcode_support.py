@@ -1,5 +1,7 @@
+import subprocess
 import sys
 import unittest
+from pathlib import Path
 
 from opcode_support import run_opcode_trace
 
@@ -29,3 +31,30 @@ class OpcodeTraceSupportTests(unittest.TestCase):
             self.assertEqual(calls, ["called"])
         finally:
             sys.settrace(previous)
+
+    def test_first_use_primes_a_target_selective_tracer(self):
+        # A subprocess makes this the interpreter's first tracing session even
+        # when this test runs after other opcode tests in the parent process.
+        script = """
+import sys
+sys.path.insert(0, sys.argv[1])
+from opcode_support import run_opcode_trace
+observed = []
+def target():
+    return 7
+def trace(frame, event, arg):
+    if frame.f_code is target.__code__:
+        if event == 'call':
+            frame.f_trace_opcodes = True
+        elif event == 'opcode':
+            observed.append(frame.f_lasti)
+    return trace
+run_opcode_trace(trace, target)
+if not observed:
+    raise AssertionError('no opcode events were delivered to the target')
+"""
+        process = subprocess.run(
+            [sys.executable, "-I", "-c", script, str(Path(__file__).resolve().parent)],
+            capture_output=True, text=True, timeout=10,
+        )
+        self.assertEqual(process.returncode, 0, process.stdout + process.stderr)
