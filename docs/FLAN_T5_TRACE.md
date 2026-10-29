@@ -36,6 +36,9 @@ The event does not retain the input IDs or masks: preserve them separately
 when comparing traces. A module path identifies the selected registered module,
 not independently verified call-site provenance.
 
+For an explicit two-stack input/mask comparison on CPU, use the separately
+documented [paired uncached-forward contract](FLAN_T5_TRACE_COMPARISON.md).
+
 | Boundary | Module path | Meaning of captured tensor |
 | --- | --- | --- |
 | `self_attention` | `{stack}.block.{layer}.layer.0` | Tuple element 0 from `T5LayerSelfAttention`, **after** its residual addition. |
