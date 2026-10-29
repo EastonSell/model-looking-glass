@@ -1,0 +1,38 @@
+# Activation intervention primitives
+
+The `ActivationCapture` and `ActivationIntervention` contexts provide explicit, bounded forward-hook operations for controlled experiments. They observe or change one selected module's **output**, not a unique explanation of the model. An observed effect is evidence about the specific intervention and tested inputs; an ablation or arbitrary replacement can also create an out-of-distribution state. Register candidate selection, controls, prediction metrics, seeds and held-out cases in a separate versioned experiment protocol.
+
+## Coordinates and ownership
+
+A context targets a fully qualified PyTorch module path relative to the root model; the empty string targets the root itself. `invocation` is the zero-based call count for that module in exactly one top-level `model(...)` call. It does not count across forwards, and is not an absolute generation position. A missing invocation fails rather than silently recording a no-op. `max_invocations` bounds calls to the selected module during the forward (default 1,024). To process another forward, create another context. `batch_index` and `token_index` must either both be omitted (the whole output), or both be nonnegative integers; when present, the output must be `[batch, token, hidden]`, and the selected value is the corresponding hidden vector. Tokens refer to positions in the current forward, including when a model uses a cache.
+
+A tensor output or the first tensor of an ordinary tuple output is supported; all other tuple elements are left intact. Consult the model adapter to determine the meaning of a given module output. The path is a lookup alias for a module object, not evidence of which Python call site invoked it. Metadata reports all registered aliases as `module_aliases`, and `call_site_known` is false; invocations of a shared object are counted together across aliases. Module paths and indices identify the intervention boundary, not a semantic feature or causal mechanism. List outputs, named tuples, other model-specific containers, checkpoint recomputation and compiled/distributed execution are not supported.
+
+A session attaches Python hooks to a model, so it requires **exclusive ownership of that model for its forward**. Do not run it concurrently with another request or attach independent modifying hooks to a broker-owned shared model. Intervention contexts detect overlapping model module trees within this API, but cannot enforce exclusivity against unrelated hook systems, threads or processes. The primitives do not implement request-local batching or isolation; a broker must schedule such work exclusively until it has an independently verified intervention dispatcher. Do not modify the model module tree during a session; the session checks target identity and tree membership at entry, forward start, target execution and forward completion, but these checks are not a lock against arbitrary external mutation. Exceptions remove the hooks; no parameters, model mode or RNG state are changed by the session. It does not restore unrelated changes made by caller code. Model forwards can consume RNG or update mutable buffers; protocols comparing separate forwards must control model mode, RNG, cache and mutable state explicitly.
+
+## Capture and controlled replacement
+
+```python
+from looking_glass.interventions import ActivationCapture, ActivationIntervention
+
+# The clean and altered tensors must be paired using the experiment protocol.
+# For a 2-D synthetic tap, omit batch_index and token_index for the whole output.
+with ActivationCapture(model, "blocks.0.output_tap", invocation=0,
+                       max_tensor_bytes=8_000_000) as clean_capture:
+    clean_output = model(clean_input)
+
+with ActivationIntervention(model, "blocks.0.output_tap", invocation=0,
+                            operation="patch", value=clean_capture.value,
+                            max_tensor_bytes=8_000_000):
+    restored_output = model(altered_input)
+```
+
+`capture.value` is a detached clone from the specified boundary; `capture.metadata` records path, invocation, coordinates, output shape, dtype and device. Both become available only after the root forward and context exit succeed; a failed or incomplete session discards the snapshot. Store any permitted activation data only according to the experiment's privacy and retention policy. `patch` replaces exactly the selected value with the supplied snapshot; no broadcasting, dtype conversion or device transfer is performed. The snapshot must match shape, dtype and device and be finite. Supplied values are detached and cloned when the intervention is constructed; gradients never flow into the source value or its graph. The caller is responsible for verifying model/checkpoint identity, input pairing and token alignment, since matching tensor shapes alone do not establish that two activations are comparable. Independently capture the altered value and patch it into a clean run to test the reverse direction. A patch from clean into altered is a *candidate rescue control*: whether it rescues the measured behavior must be evaluated, not presumed.
+
+Additional operations are `zero` (targeted ablation), `add` (a supplied, exact-shape delta), and `null` (a numerically identical hook control). `zero` and `null` take no value. A null result is not a substitute for untouched model baselines, random-location controls, alternate activation sources, or held-out examples. These primitives do not choose a target, infer a mechanism, establish necessity or sufficiency, or guarantee preservation of unrelated capabilities.
+
+## Bounds and failure semantics
+
+`max_tensor_bytes` bounds the size of the selected module's full output and any replacement tensor before cloning. It limits one snapshot/clone, **not** model memory, total peak memory, temporary allocations, queued outputs or disk use. Set it deliberately for each workload and apply broader broker-level VRAM and host-memory limits. Invalid coordinates, output types, nonfinite values (including an additive result that overflows), shape/dtype/device mismatches, missing targets and attempts to run more than one root forward fail explicitly. Finite-value checks can synchronize the device; repeated module-tree checks also add overhead. Include both when measuring end-to-end cost. Hooks are removed on normal exit and exceptions. The capture stays on the original device; move it explicitly if needed after the session, accounting for transfer and storage costs.
+
+Capture is detached. Interventions return a cloned output: patch and zero replace the selected component and cut its gradient to the original output, while add and null retain the corresponding identity gradient. These semantics support controlled local experiments, but are not an assertion that training-time hook combinations or concurrent execution are safe. Test the exact model, invocation and execution mode before relying on them.
