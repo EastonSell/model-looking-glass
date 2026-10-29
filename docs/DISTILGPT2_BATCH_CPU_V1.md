@@ -89,8 +89,9 @@ The source-only bootstrap `tools/run_distilgpt2_batch_cpu_v1.py` requires
 library before the explicitly selected virtual environment's dependency
 directory, rejects sourceless dependency loaders, and restricts project
 imports to listed `.py` files. It checks `CUDA_VISIBLE_DEVICES=-1` before
-importing dependencies, and records CUDA initialization as false before and
-after the run. Both freeze and execution verify that the
+importing dependencies, records that `torch.cuda.is_initialized()` is false
+before the run, and rechecks it afterward. This is PyTorch's process state,
+not an assertion about all native CUDA activity. Both freeze and execution verify that the
 recorded source commit is an ancestor of the clean checkout and that all
 tracked project source blobs match that commit. Publish the source commit,
 then freeze and publish the manifest as a subsequent commit before any model
