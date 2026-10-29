@@ -253,6 +253,22 @@ def test_private_failure_keeps_details_out_of_stderr(monkeypatch, capsys, tmp_pa
     assert b'fabricated-private-detail' in private and len(private) <= 128 * 1024
 
 
+def test_diagnostic_system_exit_zero_cannot_hide_original_failure(monkeypatch, capsys, tmp_path):
+    def execute(*args, **kwargs):
+        raise ValueError('fabricated-private-detail')
+    def diagnostic(*args, **kwargs):
+        raise SystemExit(0)
+    monkeypatch.setattr(child, '_execute', execute)
+    monkeypatch.setattr(child, '_record_private_failure', diagnostic)
+    monkeypatch.setattr(sys, 'argv', ['child', str(tmp_path / 'config')])
+    with pytest.raises(SystemExit) as error:
+        child.main()
+    assert error.value.code == 1
+    observed = json.loads(capsys.readouterr().err)
+    assert observed['status'] == 'incomplete' and observed['error_type'] == 'ValueError'
+    assert observed['private_diagnostic'] == 'unavailable' and observed['diagnostic_error_type'] == 'SystemExit'
+
+
 def test_public_validation_does_not_read_a_private_commitment(tmp_path, monkeypatch):
     config = _config(tmp_path)
     calls = []

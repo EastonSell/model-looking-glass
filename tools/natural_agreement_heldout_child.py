@@ -506,15 +506,21 @@ def main():
         # The bounded diagnostic is private and may contain held-out text;
         # stderr itself contains no exception message or sealed content.
         cancelled = isinstance(error, KeyboardInterrupt)
+        diagnostic_error = None
         try:
             diagnostic = _record_private_failure(error, state)
         except KeyboardInterrupt:
-            cancelled, diagnostic = True, 'unavailable'
-        except Exception:
-            diagnostic = 'unavailable'
-        print(json.dumps({'status': 'cancelled' if cancelled else 'incomplete', 'phase': state['phase'],
-                          'error_type': type(error).__name__, 'private_diagnostic': diagnostic}),
-              file=sys.stderr, flush=True)
+            cancelled, diagnostic, diagnostic_error = True, 'unavailable', 'KeyboardInterrupt'
+        except SystemExit as secondary:
+            cancelled |= secondary.code == 130
+            diagnostic, diagnostic_error = 'unavailable', 'SystemExit'
+        except Exception as secondary:
+            diagnostic, diagnostic_error = 'unavailable', type(secondary).__name__
+        status = {'status': 'cancelled' if cancelled else 'incomplete', 'phase': state['phase'],
+                  'error_type': type(error).__name__, 'private_diagnostic': diagnostic}
+        if diagnostic_error is not None:
+            status['diagnostic_error_type'] = diagnostic_error
+        print(json.dumps(status), file=sys.stderr, flush=True)
         raise SystemExit(130 if cancelled else 1) from None
     print(json.dumps({'status': state['phase']}), flush=True)
 
