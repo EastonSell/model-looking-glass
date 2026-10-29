@@ -20,9 +20,12 @@ its absolute document, evidence and source-manifest paths plus the independently
 approved full profile ID. Current profiles are checked during preparation and
 again immediately before startup; the child independently reconstructs live
 runtime identity, the fixed token case and ordered stage seeds under its lease.
-A fixed-commitment owner, a supervisor with the reviewed child-reaping contract,
-and collector source must also be present in the selected checkout before
-launch. This compatibility check does not prove
+A fixed-commitment owner, a supervisor with the reviewed launch-grant and child
+custody contract, and collector source must also be present in the selected
+checkout before launch. A native spawn interrupted before Python obtains a
+usable child handle remains uncertain and must retain the unsafe marker; the
+contract must prevent an ungranted child from doing GPU work without claiming
+that an unknown child has been reaped. This compatibility check does not prove
 that evidence was collected as claimed or independently reviewed; source custody
 and approved pins are trusted operator inputs.
 A source or runtime change requires new matching profiles. Measured estimates
@@ -41,7 +44,18 @@ lease and marker. It does not initialize CUDA or start the service.
 
 After the scheduled exclusive window begins, call `service.start()`, obtain a
 team client through `service.client(team)`, and submit the fixed request using
-the documented IPC interface. Signal and wait with `service.shutdown()`;
+the documented IPC interface:
+
+```python
+handle = service.client("team-a").submit(
+    team_id="team-a", request_id="example-1",
+    inputs={"input_ids": [[15496, 995]]}, seed=29,
+)
+outcome = handle.wait(timeout=60)
+```
+
+Check `outcome["status"]` before using the returned logits. Signal and wait
+with `service.shutdown()`;
 `service.wait()` can recheck a supervisor after a timeout. A shutdown before
 the supervisor is claimed closes the start gate and returns `None`. Otherwise
 consult the returned supervisor result and the local
