@@ -1,2 +1,5 @@
 # Keep the frozen case record byte-identical across checkout settings.
 targeted_edit_projected_public_cases_v1.json -text
+bert_taste_propagation_public_cases_v1.json -text
+bert_taste_propagation_selection_observation_v1.json -text
+bert_taste_propagation_public_exposures_v2.json -text

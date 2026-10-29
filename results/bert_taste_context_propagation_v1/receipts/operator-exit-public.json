@@ -1,0 +1,22 @@
+{
+  "cases_sha256": "341300932b0dab6d4004c3dd7007d73500162f8d945a91ca50538b9e2802c979",
+  "direct_child_exit_code": 0,
+  "direct_child_reaped": true,
+  "incomplete_marker_present": false,
+  "operator_clock_utc": "2026-10-29T09:06:12.601987+00:00",
+  "operator_exception_type": null,
+  "original_record_sha256": "fcc940ec02aa58c0a1ecd5dee104a3208114e74cd71802ab6684f9a521d74216",
+  "prefix_empty_after": true,
+  "projection_scope": "Public projection; original private process record is not independently authenticated here.",
+  "redacted_fields": [
+    "process_id"
+  ],
+  "result_sha256": "3eec17009dd595bee3311d57220c606b0daf4d69d98cba5ca305752c3e060870",
+  "saved_result_and_journal_hashes_consistent": true,
+  "schema": "bert-propagation-operator-exit-v1",
+  "scope": "Direct-child process observation and saved-file consistency only; no whole-tree or execution attestation.",
+  "source_commit": "a27b34533c3da5f34a541ef2b8b57631bf42e819",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "timed_out": false
+}
