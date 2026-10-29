@@ -1,0 +1,2116 @@
+{
+  "cases": [
+    {
+      "case_id": "synth-v1-heldout-01",
+      "clean_logits": [
+        [
+          -0.5278024673461914,
+          -0.2716880440711975
+        ]
+      ],
+      "clean_metric": 0.2561144232749939,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.004946321249008179,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          -0.572942852973938,
+          -0.32177475094795227
+        ]
+      ],
+      "corrupt_metric": 0.2511681020259857,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.004946321249008179,
+          "patched_metric": 0.2561144232749939,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.004946321249008179,
+          "patched_metric": 0.2561144232749939,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.004946321249008179,
+          "patched_metric": 0.2561144232749939,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.004946321249008179
+    },
+    {
+      "case_id": "synth-v1-heldout-02",
+      "clean_logits": [
+        [
+          0.4029221534729004,
+          0.7717214822769165
+        ]
+      ],
+      "clean_metric": 0.3687993288040161,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.004934906959533691,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          0.35641443729400635,
+          0.7202788591384888
+        ]
+      ],
+      "corrupt_metric": 0.3638644218444824,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.004934906959533691,
+          "patched_metric": 0.3687993288040161,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.004934906959533691,
+          "patched_metric": 0.3687993288040161,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.004934906959533691,
+          "patched_metric": 0.3687993288040161,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.004934906959533691
+    },
+    {
+      "case_id": "synth-v1-heldout-03",
+      "clean_logits": [
+        [
+          0.2987409830093384,
+          -0.1537623107433319
+        ]
+      ],
+      "clean_metric": -0.4525032937526703,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.006118297576904297,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          0.2526535987854004,
+          -0.2059679925441742
+        ]
+      ],
+      "corrupt_metric": -0.4586215913295746,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.006118297576904297,
+          "patched_metric": -0.4525032937526703,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.006118297576904297,
+          "patched_metric": -0.4525032937526703,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.006118297576904297,
+          "patched_metric": -0.4525032937526703,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.006118297576904297
+    },
+    {
+      "case_id": "synth-v1-heldout-04",
+      "clean_logits": [
+        [
+          0.7349199056625366,
+          0.7559916973114014
+        ]
+      ],
+      "clean_metric": 0.021071791648864746,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.0038175582885742188,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          0.6838133335113525,
+          0.7010675668716431
+        ]
+      ],
+      "corrupt_metric": 0.017254233360290527,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.0038175582885742188,
+          "patched_metric": 0.021071791648864746,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.0038175582885742188,
+          "patched_metric": 0.021071791648864746,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.0038175582885742188,
+          "patched_metric": 0.021071791648864746,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.0038175582885742188
+    },
+    {
+      "case_id": "synth-v1-heldout-05",
+      "clean_logits": [
+        [
+          0.038075968623161316,
+          -0.6762044429779053
+        ]
+      ],
+      "clean_metric": -0.7142804265022278,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.007078230381011963,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          -0.0018331706523895264,
+          -0.7231918573379517
+        ]
+      ],
+      "corrupt_metric": -0.7213586568832397,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.007078230381011963,
+          "patched_metric": -0.7142804265022278,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.007078230381011963,
+          "patched_metric": -0.7142804265022278,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.007078230381011963,
+          "patched_metric": -0.7142804265022278,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.007078230381011963
+    },
+    {
+      "case_id": "synth-v1-heldout-06",
+      "clean_logits": [
+        [
+          0.27063000202178955,
+          -0.08074742555618286
+        ]
+      ],
+      "clean_metric": -0.3513774275779724,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.005879640579223633,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          0.22584404051303864,
+          -0.1314130425453186
+        ]
+      ],
+      "corrupt_metric": -0.35725706815719604,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.005879640579223633,
+          "patched_metric": -0.3513774275779724,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.005879640579223633,
+          "patched_metric": -0.3513774275779724,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.005879640579223633,
+          "patched_metric": -0.3513774275779724,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.005879640579223633
+    },
+    {
+      "case_id": "synth-v1-heldout-07",
+      "clean_logits": [
+        [
+          0.5868432521820068,
+          0.2552517056465149
+        ]
+      ],
+      "clean_metric": -0.33159154653549194,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.008095026016235352,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          0.5416204929351807,
+          0.20193393528461456
+        ]
+      ],
+      "corrupt_metric": -0.3396865725517273,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.008095026016235352,
+          "patched_metric": -0.33159154653549194,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.008095026016235352,
+          "patched_metric": -0.33159154653549194,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.008095026016235352,
+          "patched_metric": -0.33159154653549194,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.008095026016235352
+    },
+    {
+      "case_id": "synth-v1-heldout-08",
+      "clean_logits": [
+        [
+          -0.5497106313705444,
+          0.3413304090499878
+        ]
+      ],
+      "clean_metric": 0.8910410404205322,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.01064002513885498,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          -0.5868334770202637,
+          0.29356756806373596
+        ]
+      ],
+      "corrupt_metric": 0.8804010152816772,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.01064002513885498,
+          "patched_metric": 0.8910410404205322,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.01064002513885498,
+          "patched_metric": 0.8910410404205322,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.01064002513885498,
+          "patched_metric": 0.8910410404205322,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.01064002513885498
+    },
+    {
+      "case_id": "synth-v1-heldout-09",
+      "clean_logits": [
+        [
+          0.38416242599487305,
+          -0.08557632565498352
+        ]
+      ],
+      "clean_metric": -0.46973875164985657,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.00518190860748291,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          0.3335990309715271,
+          -0.14132162928581238
+        ]
+      ],
+      "corrupt_metric": -0.4749206602573395,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.00518190860748291,
+          "patched_metric": -0.46973875164985657,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.00518190860748291,
+          "patched_metric": -0.46973875164985657,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.00518190860748291,
+          "patched_metric": -0.46973875164985657,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.00518190860748291
+    },
+    {
+      "case_id": "synth-v1-heldout-10",
+      "clean_logits": [
+        [
+          0.28779953718185425,
+          0.48340150713920593
+        ]
+      ],
+      "clean_metric": 0.19560196995735168,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.008508309721946716,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          0.2444290667772293,
+          0.4315227270126343
+        ]
+      ],
+      "corrupt_metric": 0.18709366023540497,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.008508309721946716,
+          "patched_metric": 0.19560196995735168,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.008508309721946716,
+          "patched_metric": 0.19560196995735168,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.008508309721946716,
+          "patched_metric": 0.19560196995735168,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.008508309721946716
+    },
+    {
+      "case_id": "synth-v1-heldout-11",
+      "clean_logits": [
+        [
+          0.12144949287176132,
+          0.011118397116661072
+        ]
+      ],
+      "clean_metric": -0.11033109575510025,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.006041236221790314,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          0.07975448668003082,
+          -0.03661784529685974
+        ]
+      ],
+      "corrupt_metric": -0.11637233197689056,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.006041236221790314,
+          "patched_metric": -0.11033109575510025,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.006041236221790314,
+          "patched_metric": -0.11033109575510025,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.006041236221790314,
+          "patched_metric": -0.11033109575510025,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.006041236221790314
+    },
+    {
+      "case_id": "synth-v1-heldout-12",
+      "clean_logits": [
+        [
+          -0.3449614942073822,
+          -0.05753016471862793
+        ]
+      ],
+      "clean_metric": 0.2874313294887543,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.003670215606689453,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          -0.3935103714466095,
+          -0.10974925756454468
+        ]
+      ],
+      "corrupt_metric": 0.2837611138820648,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.003670215606689453,
+          "patched_metric": 0.2874313294887543,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.003670215606689453,
+          "patched_metric": 0.2874313294887543,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.003670215606689453,
+          "patched_metric": 0.2874313294887543,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.003670215606689453
+    },
+    {
+      "case_id": "synth-v1-heldout-13",
+      "clean_logits": [
+        [
+          0.3206316828727722,
+          0.1507546603679657
+        ]
+      ],
+      "clean_metric": -0.16987702250480652,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.0035653114318847656,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          0.27386826276779175,
+          0.10042592883110046
+        ]
+      ],
+      "corrupt_metric": -0.17344233393669128,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.0035653114318847656,
+          "patched_metric": -0.16987702250480652,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.0035653114318847656,
+          "patched_metric": -0.16987702250480652,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.0035653114318847656,
+          "patched_metric": -0.16987702250480652,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.0035653114318847656
+    },
+    {
+      "case_id": "synth-v1-heldout-14",
+      "clean_logits": [
+        [
+          0.18043318390846252,
+          0.5784670114517212
+        ]
+      ],
+      "clean_metric": 0.39803382754325867,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.012809425592422485,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          0.14849990606307983,
+          0.533724308013916
+        ]
+      ],
+      "corrupt_metric": 0.3852244019508362,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.012809425592422485,
+          "patched_metric": 0.39803382754325867,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.012809425592422485,
+          "patched_metric": 0.39803382754325867,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.012809425592422485,
+          "patched_metric": 0.39803382754325867,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.012809425592422485
+    },
+    {
+      "case_id": "synth-v1-heldout-15",
+      "clean_logits": [
+        [
+          0.2648168206214905,
+          -0.17512407898902893
+        ]
+      ],
+      "clean_metric": -0.4399408996105194,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.009336978197097778,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          0.22462518513202667,
+          -0.22465267777442932
+        ]
+      ],
+      "corrupt_metric": -0.4492778778076172,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.009336978197097778,
+          "patched_metric": -0.4399408996105194,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.009336978197097778,
+          "patched_metric": -0.4399408996105194,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.009336978197097778,
+          "patched_metric": -0.4399408996105194,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.009336978197097778
+    },
+    {
+      "case_id": "synth-v1-heldout-16",
+      "clean_logits": [
+        [
+          -0.22017422318458557,
+          0.1192016750574112
+        ]
+      ],
+      "clean_metric": 0.33937591314315796,
+      "controls": {
+        "clean_null_effect": 0.0,
+        "clean_trace_difference": null,
+        "identity_patch_effect": 0.0,
+        "null_effect": 0.0,
+        "reverse_patch_effect": -0.006655573844909668,
+        "upstream_patch_effect": 0.0
+      },
+      "corrupt_logits": [
+        [
+          -0.2640480101108551,
+          0.06867232918739319
+        ]
+      ],
+      "corrupt_metric": 0.3327203392982483,
+      "interventions": {
+        "first_observed": {
+          "effect": 0.006655573844909668,
+          "patched_metric": 0.33937591314315796,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "magnitude": {
+          "effect": 0.006655573844909668,
+          "patched_metric": 0.33937591314315796,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.1.activation"
+        },
+        "random": {
+          "effect": 0.006655573844909668,
+          "patched_metric": 0.33937591314315796,
+          "predicted_effect": 0.0065164510160684586,
+          "site": "block.2.output"
+        }
+      },
+      "target_correction": 0.006655573844909668
+    }
+  ],
+  "evidence_status": "exploratory",
+  "first_observed_site_matches_injection": true,
+  "known_injection": "block.1.activation",
+  "limitations": [
+    "one untrained CPU model and one known injection",
+    "fixed public inputs are not a blind or population sample",
+    "same-input patches and first differences do not identify a unique mechanism",
+    "single random-site draw; final-state patch can restore by construction"
+  ],
+  "mode": "recorded-v1",
+  "precommit_sha256": "f5a3719b0b95b1436f3831956af25d4a14723d7ffd9d186453689ad616f288f0",
+  "protocol": "synthetic-causal-v1",
+  "sites": {
+    "first_observed": "block.1.activation",
+    "magnitude": "block.1.activation",
+    "random": "block.2.output"
+  },
+  "suite_sha256": "883b28112ccee7605125959a4c8209c9e20bb438b73938b323e3fc80994f1e8e",
+  "summaries": {
+    "first_observed": {
+      "intervention_prediction": {
+        "bootstrap": {
+          "confidence": 0.95,
+          "defined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "intervals": {
+            "mae": null,
+            "mae_improvement_over_null": null,
+            "null_mae": null,
+            "null_rmse": null,
+            "null_sign_accuracy": null,
+            "prediction_interval_coverage": null,
+            "prediction_interval_coverage_minus_nominal": null,
+            "rmse": null,
+            "rmse_improvement_over_null": null,
+            "sign_accuracy": null,
+            "sign_accuracy_improvement_over_null": null
+          },
+          "method": "none",
+          "samples": 0,
+          "seed": 0,
+          "undefined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "unit": "independent_case"
+        },
+        "case_errors": [
+          {
+            "absolute_error": 0.0015701297670602798,
+            "case_id": "synth-v1-heldout-01",
+            "null_absolute_error": 0.004946321249008179
+          },
+          {
+            "absolute_error": 0.0015815440565347672,
+            "case_id": "synth-v1-heldout-02",
+            "null_absolute_error": 0.004934906959533691
+          },
+          {
+            "absolute_error": 0.0003981534391641617,
+            "case_id": "synth-v1-heldout-03",
+            "null_absolute_error": 0.006118297576904297
+          },
+          {
+            "absolute_error": 0.00269889272749424,
+            "case_id": "synth-v1-heldout-04",
+            "null_absolute_error": 0.0038175582885742188
+          },
+          {
+            "absolute_error": 0.0005617793649435043,
+            "case_id": "synth-v1-heldout-05",
+            "null_absolute_error": 0.007078230381011963
+          },
+          {
+            "absolute_error": 0.0006368104368448257,
+            "case_id": "synth-v1-heldout-06",
+            "null_absolute_error": 0.005879640579223633
+          },
+          {
+            "absolute_error": 0.001578575000166893,
+            "case_id": "synth-v1-heldout-07",
+            "null_absolute_error": 0.008095026016235352
+          },
+          {
+            "absolute_error": 0.004123574122786522,
+            "case_id": "synth-v1-heldout-08",
+            "null_absolute_error": 0.01064002513885498
+          },
+          {
+            "absolute_error": 0.0013345424085855484,
+            "case_id": "synth-v1-heldout-09",
+            "null_absolute_error": 0.00518190860748291
+          },
+          {
+            "absolute_error": 0.0019918587058782578,
+            "case_id": "synth-v1-heldout-10",
+            "null_absolute_error": 0.008508309721946716
+          },
+          {
+            "absolute_error": 0.00047521479427814484,
+            "case_id": "synth-v1-heldout-11",
+            "null_absolute_error": 0.006041236221790314
+          },
+          {
+            "absolute_error": 0.0028462354093790054,
+            "case_id": "synth-v1-heldout-12",
+            "null_absolute_error": 0.003670215606689453
+          },
+          {
+            "absolute_error": 0.002951139584183693,
+            "case_id": "synth-v1-heldout-13",
+            "null_absolute_error": 0.0035653114318847656
+          },
+          {
+            "absolute_error": 0.006292974576354027,
+            "case_id": "synth-v1-heldout-14",
+            "null_absolute_error": 0.012809425592422485
+          },
+          {
+            "absolute_error": 0.0028205271810293198,
+            "case_id": "synth-v1-heldout-15",
+            "null_absolute_error": 0.009336978197097778
+          },
+          {
+            "absolute_error": 0.0001391228288412094,
+            "case_id": "synth-v1-heldout-16",
+            "null_absolute_error": 0.006655573844909668
+          }
+        ],
+        "directional_cases": {
+          "excluded": 0,
+          "included": 16
+        },
+        "n_cases": 16,
+        "point": {
+          "mae": 0.002000067150220275,
+          "mae_improvement_over_null": 0.004704868188127875,
+          "null_mae": 0.006704935338348149,
+          "null_rmse": 0.007166401644351332,
+          "null_sign_accuracy": 0.0,
+          "prediction_interval_coverage": null,
+          "prediction_interval_coverage_minus_nominal": null,
+          "rmse": 0.0025370614845677047,
+          "rmse_improvement_over_null": 0.004629340159783627,
+          "sign_accuracy": 1.0,
+          "sign_accuracy_improvement_over_null": 1.0
+        },
+        "prediction_interval_level": null,
+        "zero_tolerance": 1e-07
+      },
+      "repair_residual": {
+        "bootstrap": {
+          "confidence": 0.95,
+          "defined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "intervals": {
+            "mae": null,
+            "mae_improvement_over_null": null,
+            "null_mae": null,
+            "null_rmse": null,
+            "null_sign_accuracy": null,
+            "prediction_interval_coverage": null,
+            "prediction_interval_coverage_minus_nominal": null,
+            "rmse": null,
+            "rmse_improvement_over_null": null,
+            "sign_accuracy": null,
+            "sign_accuracy_improvement_over_null": null
+          },
+          "method": "none",
+          "samples": 0,
+          "seed": 0,
+          "undefined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "unit": "independent_case"
+        },
+        "case_errors": [
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-01",
+            "null_absolute_error": 0.004946321249008179
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-02",
+            "null_absolute_error": 0.004934906959533691
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-03",
+            "null_absolute_error": 0.006118297576904297
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-04",
+            "null_absolute_error": 0.0038175582885742188
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-05",
+            "null_absolute_error": 0.007078230381011963
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-06",
+            "null_absolute_error": 0.005879640579223633
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-07",
+            "null_absolute_error": 0.008095026016235352
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-08",
+            "null_absolute_error": 0.01064002513885498
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-09",
+            "null_absolute_error": 0.00518190860748291
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-10",
+            "null_absolute_error": 0.008508309721946716
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-11",
+            "null_absolute_error": 0.006041236221790314
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-12",
+            "null_absolute_error": 0.003670215606689453
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-13",
+            "null_absolute_error": 0.0035653114318847656
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-14",
+            "null_absolute_error": 0.012809425592422485
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-15",
+            "null_absolute_error": 0.009336978197097778
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-16",
+            "null_absolute_error": 0.006655573844909668
+          }
+        ],
+        "directional_cases": {
+          "excluded": 0,
+          "included": 16
+        },
+        "n_cases": 16,
+        "point": {
+          "mae": 0.0,
+          "mae_improvement_over_null": 0.00670493533834815,
+          "null_mae": 0.006704935338348149,
+          "null_rmse": 0.007166401644351332,
+          "null_sign_accuracy": 0.0,
+          "prediction_interval_coverage": null,
+          "prediction_interval_coverage_minus_nominal": null,
+          "rmse": 0.0,
+          "rmse_improvement_over_null": 0.007166401644351332,
+          "sign_accuracy": 1.0,
+          "sign_accuracy_improvement_over_null": 1.0
+        },
+        "prediction_interval_level": null,
+        "zero_tolerance": 1e-07
+      },
+      "target_prediction": {
+        "bootstrap": {
+          "confidence": 0.95,
+          "defined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "intervals": {
+            "mae": null,
+            "mae_improvement_over_null": null,
+            "null_mae": null,
+            "null_rmse": null,
+            "null_sign_accuracy": null,
+            "prediction_interval_coverage": null,
+            "prediction_interval_coverage_minus_nominal": null,
+            "rmse": null,
+            "rmse_improvement_over_null": null,
+            "sign_accuracy": null,
+            "sign_accuracy_improvement_over_null": null
+          },
+          "method": "none",
+          "samples": 0,
+          "seed": 0,
+          "undefined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "unit": "independent_case"
+        },
+        "case_errors": [
+          {
+            "absolute_error": 0.0015701297670602798,
+            "case_id": "synth-v1-heldout-01",
+            "null_absolute_error": 0.004946321249008179
+          },
+          {
+            "absolute_error": 0.0015815440565347672,
+            "case_id": "synth-v1-heldout-02",
+            "null_absolute_error": 0.004934906959533691
+          },
+          {
+            "absolute_error": 0.0003981534391641617,
+            "case_id": "synth-v1-heldout-03",
+            "null_absolute_error": 0.006118297576904297
+          },
+          {
+            "absolute_error": 0.00269889272749424,
+            "case_id": "synth-v1-heldout-04",
+            "null_absolute_error": 0.0038175582885742188
+          },
+          {
+            "absolute_error": 0.0005617793649435043,
+            "case_id": "synth-v1-heldout-05",
+            "null_absolute_error": 0.007078230381011963
+          },
+          {
+            "absolute_error": 0.0006368104368448257,
+            "case_id": "synth-v1-heldout-06",
+            "null_absolute_error": 0.005879640579223633
+          },
+          {
+            "absolute_error": 0.001578575000166893,
+            "case_id": "synth-v1-heldout-07",
+            "null_absolute_error": 0.008095026016235352
+          },
+          {
+            "absolute_error": 0.004123574122786522,
+            "case_id": "synth-v1-heldout-08",
+            "null_absolute_error": 0.01064002513885498
+          },
+          {
+            "absolute_error": 0.0013345424085855484,
+            "case_id": "synth-v1-heldout-09",
+            "null_absolute_error": 0.00518190860748291
+          },
+          {
+            "absolute_error": 0.0019918587058782578,
+            "case_id": "synth-v1-heldout-10",
+            "null_absolute_error": 0.008508309721946716
+          },
+          {
+            "absolute_error": 0.00047521479427814484,
+            "case_id": "synth-v1-heldout-11",
+            "null_absolute_error": 0.006041236221790314
+          },
+          {
+            "absolute_error": 0.0028462354093790054,
+            "case_id": "synth-v1-heldout-12",
+            "null_absolute_error": 0.003670215606689453
+          },
+          {
+            "absolute_error": 0.002951139584183693,
+            "case_id": "synth-v1-heldout-13",
+            "null_absolute_error": 0.0035653114318847656
+          },
+          {
+            "absolute_error": 0.006292974576354027,
+            "case_id": "synth-v1-heldout-14",
+            "null_absolute_error": 0.012809425592422485
+          },
+          {
+            "absolute_error": 0.0028205271810293198,
+            "case_id": "synth-v1-heldout-15",
+            "null_absolute_error": 0.009336978197097778
+          },
+          {
+            "absolute_error": 0.0001391228288412094,
+            "case_id": "synth-v1-heldout-16",
+            "null_absolute_error": 0.006655573844909668
+          }
+        ],
+        "directional_cases": {
+          "excluded": 0,
+          "included": 16
+        },
+        "n_cases": 16,
+        "point": {
+          "mae": 0.002000067150220275,
+          "mae_improvement_over_null": 0.004704868188127875,
+          "null_mae": 0.006704935338348149,
+          "null_rmse": 0.007166401644351332,
+          "null_sign_accuracy": 0.0,
+          "prediction_interval_coverage": null,
+          "prediction_interval_coverage_minus_nominal": null,
+          "rmse": 0.0025370614845677047,
+          "rmse_improvement_over_null": 0.004629340159783627,
+          "sign_accuracy": 1.0,
+          "sign_accuracy_improvement_over_null": 1.0
+        },
+        "prediction_interval_level": null,
+        "zero_tolerance": 1e-07
+      }
+    },
+    "magnitude": {
+      "intervention_prediction": {
+        "bootstrap": {
+          "confidence": 0.95,
+          "defined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "intervals": {
+            "mae": null,
+            "mae_improvement_over_null": null,
+            "null_mae": null,
+            "null_rmse": null,
+            "null_sign_accuracy": null,
+            "prediction_interval_coverage": null,
+            "prediction_interval_coverage_minus_nominal": null,
+            "rmse": null,
+            "rmse_improvement_over_null": null,
+            "sign_accuracy": null,
+            "sign_accuracy_improvement_over_null": null
+          },
+          "method": "none",
+          "samples": 0,
+          "seed": 0,
+          "undefined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "unit": "independent_case"
+        },
+        "case_errors": [
+          {
+            "absolute_error": 0.0015701297670602798,
+            "case_id": "synth-v1-heldout-01",
+            "null_absolute_error": 0.004946321249008179
+          },
+          {
+            "absolute_error": 0.0015815440565347672,
+            "case_id": "synth-v1-heldout-02",
+            "null_absolute_error": 0.004934906959533691
+          },
+          {
+            "absolute_error": 0.0003981534391641617,
+            "case_id": "synth-v1-heldout-03",
+            "null_absolute_error": 0.006118297576904297
+          },
+          {
+            "absolute_error": 0.00269889272749424,
+            "case_id": "synth-v1-heldout-04",
+            "null_absolute_error": 0.0038175582885742188
+          },
+          {
+            "absolute_error": 0.0005617793649435043,
+            "case_id": "synth-v1-heldout-05",
+            "null_absolute_error": 0.007078230381011963
+          },
+          {
+            "absolute_error": 0.0006368104368448257,
+            "case_id": "synth-v1-heldout-06",
+            "null_absolute_error": 0.005879640579223633
+          },
+          {
+            "absolute_error": 0.001578575000166893,
+            "case_id": "synth-v1-heldout-07",
+            "null_absolute_error": 0.008095026016235352
+          },
+          {
+            "absolute_error": 0.004123574122786522,
+            "case_id": "synth-v1-heldout-08",
+            "null_absolute_error": 0.01064002513885498
+          },
+          {
+            "absolute_error": 0.0013345424085855484,
+            "case_id": "synth-v1-heldout-09",
+            "null_absolute_error": 0.00518190860748291
+          },
+          {
+            "absolute_error": 0.0019918587058782578,
+            "case_id": "synth-v1-heldout-10",
+            "null_absolute_error": 0.008508309721946716
+          },
+          {
+            "absolute_error": 0.00047521479427814484,
+            "case_id": "synth-v1-heldout-11",
+            "null_absolute_error": 0.006041236221790314
+          },
+          {
+            "absolute_error": 0.0028462354093790054,
+            "case_id": "synth-v1-heldout-12",
+            "null_absolute_error": 0.003670215606689453
+          },
+          {
+            "absolute_error": 0.002951139584183693,
+            "case_id": "synth-v1-heldout-13",
+            "null_absolute_error": 0.0035653114318847656
+          },
+          {
+            "absolute_error": 0.006292974576354027,
+            "case_id": "synth-v1-heldout-14",
+            "null_absolute_error": 0.012809425592422485
+          },
+          {
+            "absolute_error": 0.0028205271810293198,
+            "case_id": "synth-v1-heldout-15",
+            "null_absolute_error": 0.009336978197097778
+          },
+          {
+            "absolute_error": 0.0001391228288412094,
+            "case_id": "synth-v1-heldout-16",
+            "null_absolute_error": 0.006655573844909668
+          }
+        ],
+        "directional_cases": {
+          "excluded": 0,
+          "included": 16
+        },
+        "n_cases": 16,
+        "point": {
+          "mae": 0.002000067150220275,
+          "mae_improvement_over_null": 0.004704868188127875,
+          "null_mae": 0.006704935338348149,
+          "null_rmse": 0.007166401644351332,
+          "null_sign_accuracy": 0.0,
+          "prediction_interval_coverage": null,
+          "prediction_interval_coverage_minus_nominal": null,
+          "rmse": 0.0025370614845677047,
+          "rmse_improvement_over_null": 0.004629340159783627,
+          "sign_accuracy": 1.0,
+          "sign_accuracy_improvement_over_null": 1.0
+        },
+        "prediction_interval_level": null,
+        "zero_tolerance": 1e-07
+      },
+      "repair_residual": {
+        "bootstrap": {
+          "confidence": 0.95,
+          "defined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "intervals": {
+            "mae": null,
+            "mae_improvement_over_null": null,
+            "null_mae": null,
+            "null_rmse": null,
+            "null_sign_accuracy": null,
+            "prediction_interval_coverage": null,
+            "prediction_interval_coverage_minus_nominal": null,
+            "rmse": null,
+            "rmse_improvement_over_null": null,
+            "sign_accuracy": null,
+            "sign_accuracy_improvement_over_null": null
+          },
+          "method": "none",
+          "samples": 0,
+          "seed": 0,
+          "undefined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "unit": "independent_case"
+        },
+        "case_errors": [
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-01",
+            "null_absolute_error": 0.004946321249008179
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-02",
+            "null_absolute_error": 0.004934906959533691
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-03",
+            "null_absolute_error": 0.006118297576904297
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-04",
+            "null_absolute_error": 0.0038175582885742188
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-05",
+            "null_absolute_error": 0.007078230381011963
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-06",
+            "null_absolute_error": 0.005879640579223633
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-07",
+            "null_absolute_error": 0.008095026016235352
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-08",
+            "null_absolute_error": 0.01064002513885498
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-09",
+            "null_absolute_error": 0.00518190860748291
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-10",
+            "null_absolute_error": 0.008508309721946716
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-11",
+            "null_absolute_error": 0.006041236221790314
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-12",
+            "null_absolute_error": 0.003670215606689453
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-13",
+            "null_absolute_error": 0.0035653114318847656
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-14",
+            "null_absolute_error": 0.012809425592422485
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-15",
+            "null_absolute_error": 0.009336978197097778
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-16",
+            "null_absolute_error": 0.006655573844909668
+          }
+        ],
+        "directional_cases": {
+          "excluded": 0,
+          "included": 16
+        },
+        "n_cases": 16,
+        "point": {
+          "mae": 0.0,
+          "mae_improvement_over_null": 0.00670493533834815,
+          "null_mae": 0.006704935338348149,
+          "null_rmse": 0.007166401644351332,
+          "null_sign_accuracy": 0.0,
+          "prediction_interval_coverage": null,
+          "prediction_interval_coverage_minus_nominal": null,
+          "rmse": 0.0,
+          "rmse_improvement_over_null": 0.007166401644351332,
+          "sign_accuracy": 1.0,
+          "sign_accuracy_improvement_over_null": 1.0
+        },
+        "prediction_interval_level": null,
+        "zero_tolerance": 1e-07
+      },
+      "target_prediction": {
+        "bootstrap": {
+          "confidence": 0.95,
+          "defined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "intervals": {
+            "mae": null,
+            "mae_improvement_over_null": null,
+            "null_mae": null,
+            "null_rmse": null,
+            "null_sign_accuracy": null,
+            "prediction_interval_coverage": null,
+            "prediction_interval_coverage_minus_nominal": null,
+            "rmse": null,
+            "rmse_improvement_over_null": null,
+            "sign_accuracy": null,
+            "sign_accuracy_improvement_over_null": null
+          },
+          "method": "none",
+          "samples": 0,
+          "seed": 0,
+          "undefined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "unit": "independent_case"
+        },
+        "case_errors": [
+          {
+            "absolute_error": 0.0015701297670602798,
+            "case_id": "synth-v1-heldout-01",
+            "null_absolute_error": 0.004946321249008179
+          },
+          {
+            "absolute_error": 0.0015815440565347672,
+            "case_id": "synth-v1-heldout-02",
+            "null_absolute_error": 0.004934906959533691
+          },
+          {
+            "absolute_error": 0.0003981534391641617,
+            "case_id": "synth-v1-heldout-03",
+            "null_absolute_error": 0.006118297576904297
+          },
+          {
+            "absolute_error": 0.00269889272749424,
+            "case_id": "synth-v1-heldout-04",
+            "null_absolute_error": 0.0038175582885742188
+          },
+          {
+            "absolute_error": 0.0005617793649435043,
+            "case_id": "synth-v1-heldout-05",
+            "null_absolute_error": 0.007078230381011963
+          },
+          {
+            "absolute_error": 0.0006368104368448257,
+            "case_id": "synth-v1-heldout-06",
+            "null_absolute_error": 0.005879640579223633
+          },
+          {
+            "absolute_error": 0.001578575000166893,
+            "case_id": "synth-v1-heldout-07",
+            "null_absolute_error": 0.008095026016235352
+          },
+          {
+            "absolute_error": 0.004123574122786522,
+            "case_id": "synth-v1-heldout-08",
+            "null_absolute_error": 0.01064002513885498
+          },
+          {
+            "absolute_error": 0.0013345424085855484,
+            "case_id": "synth-v1-heldout-09",
+            "null_absolute_error": 0.00518190860748291
+          },
+          {
+            "absolute_error": 0.0019918587058782578,
+            "case_id": "synth-v1-heldout-10",
+            "null_absolute_error": 0.008508309721946716
+          },
+          {
+            "absolute_error": 0.00047521479427814484,
+            "case_id": "synth-v1-heldout-11",
+            "null_absolute_error": 0.006041236221790314
+          },
+          {
+            "absolute_error": 0.0028462354093790054,
+            "case_id": "synth-v1-heldout-12",
+            "null_absolute_error": 0.003670215606689453
+          },
+          {
+            "absolute_error": 0.002951139584183693,
+            "case_id": "synth-v1-heldout-13",
+            "null_absolute_error": 0.0035653114318847656
+          },
+          {
+            "absolute_error": 0.006292974576354027,
+            "case_id": "synth-v1-heldout-14",
+            "null_absolute_error": 0.012809425592422485
+          },
+          {
+            "absolute_error": 0.0028205271810293198,
+            "case_id": "synth-v1-heldout-15",
+            "null_absolute_error": 0.009336978197097778
+          },
+          {
+            "absolute_error": 0.0001391228288412094,
+            "case_id": "synth-v1-heldout-16",
+            "null_absolute_error": 0.006655573844909668
+          }
+        ],
+        "directional_cases": {
+          "excluded": 0,
+          "included": 16
+        },
+        "n_cases": 16,
+        "point": {
+          "mae": 0.002000067150220275,
+          "mae_improvement_over_null": 0.004704868188127875,
+          "null_mae": 0.006704935338348149,
+          "null_rmse": 0.007166401644351332,
+          "null_sign_accuracy": 0.0,
+          "prediction_interval_coverage": null,
+          "prediction_interval_coverage_minus_nominal": null,
+          "rmse": 0.0025370614845677047,
+          "rmse_improvement_over_null": 0.004629340159783627,
+          "sign_accuracy": 1.0,
+          "sign_accuracy_improvement_over_null": 1.0
+        },
+        "prediction_interval_level": null,
+        "zero_tolerance": 1e-07
+      }
+    },
+    "random": {
+      "intervention_prediction": {
+        "bootstrap": {
+          "confidence": 0.95,
+          "defined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "intervals": {
+            "mae": null,
+            "mae_improvement_over_null": null,
+            "null_mae": null,
+            "null_rmse": null,
+            "null_sign_accuracy": null,
+            "prediction_interval_coverage": null,
+            "prediction_interval_coverage_minus_nominal": null,
+            "rmse": null,
+            "rmse_improvement_over_null": null,
+            "sign_accuracy": null,
+            "sign_accuracy_improvement_over_null": null
+          },
+          "method": "none",
+          "samples": 0,
+          "seed": 0,
+          "undefined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "unit": "independent_case"
+        },
+        "case_errors": [
+          {
+            "absolute_error": 0.0015701297670602798,
+            "case_id": "synth-v1-heldout-01",
+            "null_absolute_error": 0.004946321249008179
+          },
+          {
+            "absolute_error": 0.0015815440565347672,
+            "case_id": "synth-v1-heldout-02",
+            "null_absolute_error": 0.004934906959533691
+          },
+          {
+            "absolute_error": 0.0003981534391641617,
+            "case_id": "synth-v1-heldout-03",
+            "null_absolute_error": 0.006118297576904297
+          },
+          {
+            "absolute_error": 0.00269889272749424,
+            "case_id": "synth-v1-heldout-04",
+            "null_absolute_error": 0.0038175582885742188
+          },
+          {
+            "absolute_error": 0.0005617793649435043,
+            "case_id": "synth-v1-heldout-05",
+            "null_absolute_error": 0.007078230381011963
+          },
+          {
+            "absolute_error": 0.0006368104368448257,
+            "case_id": "synth-v1-heldout-06",
+            "null_absolute_error": 0.005879640579223633
+          },
+          {
+            "absolute_error": 0.001578575000166893,
+            "case_id": "synth-v1-heldout-07",
+            "null_absolute_error": 0.008095026016235352
+          },
+          {
+            "absolute_error": 0.004123574122786522,
+            "case_id": "synth-v1-heldout-08",
+            "null_absolute_error": 0.01064002513885498
+          },
+          {
+            "absolute_error": 0.0013345424085855484,
+            "case_id": "synth-v1-heldout-09",
+            "null_absolute_error": 0.00518190860748291
+          },
+          {
+            "absolute_error": 0.0019918587058782578,
+            "case_id": "synth-v1-heldout-10",
+            "null_absolute_error": 0.008508309721946716
+          },
+          {
+            "absolute_error": 0.00047521479427814484,
+            "case_id": "synth-v1-heldout-11",
+            "null_absolute_error": 0.006041236221790314
+          },
+          {
+            "absolute_error": 0.0028462354093790054,
+            "case_id": "synth-v1-heldout-12",
+            "null_absolute_error": 0.003670215606689453
+          },
+          {
+            "absolute_error": 0.002951139584183693,
+            "case_id": "synth-v1-heldout-13",
+            "null_absolute_error": 0.0035653114318847656
+          },
+          {
+            "absolute_error": 0.006292974576354027,
+            "case_id": "synth-v1-heldout-14",
+            "null_absolute_error": 0.012809425592422485
+          },
+          {
+            "absolute_error": 0.0028205271810293198,
+            "case_id": "synth-v1-heldout-15",
+            "null_absolute_error": 0.009336978197097778
+          },
+          {
+            "absolute_error": 0.0001391228288412094,
+            "case_id": "synth-v1-heldout-16",
+            "null_absolute_error": 0.006655573844909668
+          }
+        ],
+        "directional_cases": {
+          "excluded": 0,
+          "included": 16
+        },
+        "n_cases": 16,
+        "point": {
+          "mae": 0.002000067150220275,
+          "mae_improvement_over_null": 0.004704868188127875,
+          "null_mae": 0.006704935338348149,
+          "null_rmse": 0.007166401644351332,
+          "null_sign_accuracy": 0.0,
+          "prediction_interval_coverage": null,
+          "prediction_interval_coverage_minus_nominal": null,
+          "rmse": 0.0025370614845677047,
+          "rmse_improvement_over_null": 0.004629340159783627,
+          "sign_accuracy": 1.0,
+          "sign_accuracy_improvement_over_null": 1.0
+        },
+        "prediction_interval_level": null,
+        "zero_tolerance": 1e-07
+      },
+      "repair_residual": {
+        "bootstrap": {
+          "confidence": 0.95,
+          "defined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "intervals": {
+            "mae": null,
+            "mae_improvement_over_null": null,
+            "null_mae": null,
+            "null_rmse": null,
+            "null_sign_accuracy": null,
+            "prediction_interval_coverage": null,
+            "prediction_interval_coverage_minus_nominal": null,
+            "rmse": null,
+            "rmse_improvement_over_null": null,
+            "sign_accuracy": null,
+            "sign_accuracy_improvement_over_null": null
+          },
+          "method": "none",
+          "samples": 0,
+          "seed": 0,
+          "undefined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "unit": "independent_case"
+        },
+        "case_errors": [
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-01",
+            "null_absolute_error": 0.004946321249008179
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-02",
+            "null_absolute_error": 0.004934906959533691
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-03",
+            "null_absolute_error": 0.006118297576904297
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-04",
+            "null_absolute_error": 0.0038175582885742188
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-05",
+            "null_absolute_error": 0.007078230381011963
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-06",
+            "null_absolute_error": 0.005879640579223633
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-07",
+            "null_absolute_error": 0.008095026016235352
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-08",
+            "null_absolute_error": 0.01064002513885498
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-09",
+            "null_absolute_error": 0.00518190860748291
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-10",
+            "null_absolute_error": 0.008508309721946716
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-11",
+            "null_absolute_error": 0.006041236221790314
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-12",
+            "null_absolute_error": 0.003670215606689453
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-13",
+            "null_absolute_error": 0.0035653114318847656
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-14",
+            "null_absolute_error": 0.012809425592422485
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-15",
+            "null_absolute_error": 0.009336978197097778
+          },
+          {
+            "absolute_error": 0.0,
+            "case_id": "synth-v1-heldout-16",
+            "null_absolute_error": 0.006655573844909668
+          }
+        ],
+        "directional_cases": {
+          "excluded": 0,
+          "included": 16
+        },
+        "n_cases": 16,
+        "point": {
+          "mae": 0.0,
+          "mae_improvement_over_null": 0.00670493533834815,
+          "null_mae": 0.006704935338348149,
+          "null_rmse": 0.007166401644351332,
+          "null_sign_accuracy": 0.0,
+          "prediction_interval_coverage": null,
+          "prediction_interval_coverage_minus_nominal": null,
+          "rmse": 0.0,
+          "rmse_improvement_over_null": 0.007166401644351332,
+          "sign_accuracy": 1.0,
+          "sign_accuracy_improvement_over_null": 1.0
+        },
+        "prediction_interval_level": null,
+        "zero_tolerance": 1e-07
+      },
+      "target_prediction": {
+        "bootstrap": {
+          "confidence": 0.95,
+          "defined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "intervals": {
+            "mae": null,
+            "mae_improvement_over_null": null,
+            "null_mae": null,
+            "null_rmse": null,
+            "null_sign_accuracy": null,
+            "prediction_interval_coverage": null,
+            "prediction_interval_coverage_minus_nominal": null,
+            "rmse": null,
+            "rmse_improvement_over_null": null,
+            "sign_accuracy": null,
+            "sign_accuracy_improvement_over_null": null
+          },
+          "method": "none",
+          "samples": 0,
+          "seed": 0,
+          "undefined_samples": {
+            "mae": 0,
+            "mae_improvement_over_null": 0,
+            "null_mae": 0,
+            "null_rmse": 0,
+            "null_sign_accuracy": 0,
+            "prediction_interval_coverage": 0,
+            "prediction_interval_coverage_minus_nominal": 0,
+            "rmse": 0,
+            "rmse_improvement_over_null": 0,
+            "sign_accuracy": 0,
+            "sign_accuracy_improvement_over_null": 0
+          },
+          "unit": "independent_case"
+        },
+        "case_errors": [
+          {
+            "absolute_error": 0.0015701297670602798,
+            "case_id": "synth-v1-heldout-01",
+            "null_absolute_error": 0.004946321249008179
+          },
+          {
+            "absolute_error": 0.0015815440565347672,
+            "case_id": "synth-v1-heldout-02",
+            "null_absolute_error": 0.004934906959533691
+          },
+          {
+            "absolute_error": 0.0003981534391641617,
+            "case_id": "synth-v1-heldout-03",
+            "null_absolute_error": 0.006118297576904297
+          },
+          {
+            "absolute_error": 0.00269889272749424,
+            "case_id": "synth-v1-heldout-04",
+            "null_absolute_error": 0.0038175582885742188
+          },
+          {
+            "absolute_error": 0.0005617793649435043,
+            "case_id": "synth-v1-heldout-05",
+            "null_absolute_error": 0.007078230381011963
+          },
+          {
+            "absolute_error": 0.0006368104368448257,
+            "case_id": "synth-v1-heldout-06",
+            "null_absolute_error": 0.005879640579223633
+          },
+          {
+            "absolute_error": 0.001578575000166893,
+            "case_id": "synth-v1-heldout-07",
+            "null_absolute_error": 0.008095026016235352
+          },
+          {
+            "absolute_error": 0.004123574122786522,
+            "case_id": "synth-v1-heldout-08",
+            "null_absolute_error": 0.01064002513885498
+          },
+          {
+            "absolute_error": 0.0013345424085855484,
+            "case_id": "synth-v1-heldout-09",
+            "null_absolute_error": 0.00518190860748291
+          },
+          {
+            "absolute_error": 0.0019918587058782578,
+            "case_id": "synth-v1-heldout-10",
+            "null_absolute_error": 0.008508309721946716
+          },
+          {
+            "absolute_error": 0.00047521479427814484,
+            "case_id": "synth-v1-heldout-11",
+            "null_absolute_error": 0.006041236221790314
+          },
+          {
+            "absolute_error": 0.0028462354093790054,
+            "case_id": "synth-v1-heldout-12",
+            "null_absolute_error": 0.003670215606689453
+          },
+          {
+            "absolute_error": 0.002951139584183693,
+            "case_id": "synth-v1-heldout-13",
+            "null_absolute_error": 0.0035653114318847656
+          },
+          {
+            "absolute_error": 0.006292974576354027,
+            "case_id": "synth-v1-heldout-14",
+            "null_absolute_error": 0.012809425592422485
+          },
+          {
+            "absolute_error": 0.0028205271810293198,
+            "case_id": "synth-v1-heldout-15",
+            "null_absolute_error": 0.009336978197097778
+          },
+          {
+            "absolute_error": 0.0001391228288412094,
+            "case_id": "synth-v1-heldout-16",
+            "null_absolute_error": 0.006655573844909668
+          }
+        ],
+        "directional_cases": {
+          "excluded": 0,
+          "included": 16
+        },
+        "n_cases": 16,
+        "point": {
+          "mae": 0.002000067150220275,
+          "mae_improvement_over_null": 0.004704868188127875,
+          "null_mae": 0.006704935338348149,
+          "null_rmse": 0.007166401644351332,
+          "null_sign_accuracy": 0.0,
+          "prediction_interval_coverage": null,
+          "prediction_interval_coverage_minus_nominal": null,
+          "rmse": 0.0025370614845677047,
+          "rmse_improvement_over_null": 0.004629340159783627,
+          "sign_accuracy": 1.0,
+          "sign_accuracy_improvement_over_null": 1.0
+        },
+        "prediction_interval_level": null,
+        "zero_tolerance": 1e-07
+      }
+    }
+  }
+}

@@ -1,0 +1,269 @@
+{
+  "base": "same-input corrupt run",
+  "comparisons": [
+    "prediction versus own-site patch effect and same-site zero prediction",
+    "prediction versus clean-minus-corrupt target correction",
+    "patch effect versus target correction and zero correction"
+  ],
+  "controls": {
+    "clean_null": "clean base with null operation at first-observed site",
+    "clean_trace": "two clean dense traces on the same input",
+    "identity_patch": "corrupt source and corrupt base at first-observed site",
+    "null": "corrupt base at first-observed site, null operation",
+    "reverse_patch": "corrupt source and clean base at first-observed site",
+    "upstream_patch": "clean source and corrupt base at block.0.output"
+  },
+  "discovery_cases": [
+    {
+      "case_id": "synth-v1-discovery-01",
+      "content_sha256": "937c52e9c5e1ff113e0eba441a9a8606e2e96d009d11877fc726957775db0c6a"
+    },
+    {
+      "case_id": "synth-v1-discovery-02",
+      "content_sha256": "706707964e5270bdda59e2418dd71ab0d2171d8800363f6780820e2b3ca8f21a"
+    },
+    {
+      "case_id": "synth-v1-discovery-03",
+      "content_sha256": "e381f3780a426fa193e086283f40f23fc5c141bd74204f4bdb48e8b0c5e5057c"
+    },
+    {
+      "case_id": "synth-v1-discovery-04",
+      "content_sha256": "b78185d3fef36747165e49b70e3076db4c15cf950e18b38e2aca7ddc5b8853c3"
+    },
+    {
+      "case_id": "synth-v1-discovery-05",
+      "content_sha256": "50d7f48c02b4cbe5da39628e1ff6d8e39a9cb8b14a0a3bb2816125d8c766d87f"
+    },
+    {
+      "case_id": "synth-v1-discovery-06",
+      "content_sha256": "8deabdea202b3fc99266870771df449a90c4952d2d8d9642a8ba11849aa7ce02"
+    },
+    {
+      "case_id": "synth-v1-discovery-07",
+      "content_sha256": "1e865367810c93c77a5337e6dc0df661c60b35379adf102edc200e16a7a9e0e8"
+    },
+    {
+      "case_id": "synth-v1-discovery-08",
+      "content_sha256": "9c0ff13b62edee50e5cd7d07033c354491cda72fabec2f4a40c0c8ab32be802a"
+    }
+  ],
+  "evidence_status": "exploratory",
+  "heldout_cases": [
+    {
+      "case_id": "synth-v1-heldout-01",
+      "content_sha256": "566a4fe23b8e99ebfee91ce73b5e66f191afc68c3644581a7a2e9b7eb60b3b53"
+    },
+    {
+      "case_id": "synth-v1-heldout-02",
+      "content_sha256": "1257c22825a6e58313294ced69cdbc4f2ed05c1bee82e14da2fa0bc2304551da"
+    },
+    {
+      "case_id": "synth-v1-heldout-03",
+      "content_sha256": "bcf13de0a399a396f1493e5911868e6eccac25d7e747689a1f8479f3c8059fd6"
+    },
+    {
+      "case_id": "synth-v1-heldout-04",
+      "content_sha256": "a9b6b4906123545aaa4195ed28ed411483791e9287653df55bdff6ab687a1b26"
+    },
+    {
+      "case_id": "synth-v1-heldout-05",
+      "content_sha256": "5b1d5ab16098f83c6f651ea4946e0ff099b1901250ccb0b066c527dceff0419d"
+    },
+    {
+      "case_id": "synth-v1-heldout-06",
+      "content_sha256": "0cc4ce798eaddcd9eab1aba32fe19e6ceff89f9da10140fc433ca3c027870166"
+    },
+    {
+      "case_id": "synth-v1-heldout-07",
+      "content_sha256": "f5aa1acab2e5a74910abf517ecfdf7f65802cab340652dd8eb38b118800f62c6"
+    },
+    {
+      "case_id": "synth-v1-heldout-08",
+      "content_sha256": "738a5a8e25422a26ec8847e9e68af2f163839e8167bc114467dd1c11a6978a9b"
+    },
+    {
+      "case_id": "synth-v1-heldout-09",
+      "content_sha256": "6fe39ef28019c0c0fa5c28cc860e169882b4a76a7307b7d074a37d97c31dfd85"
+    },
+    {
+      "case_id": "synth-v1-heldout-10",
+      "content_sha256": "a8575b13bae4346f91884ed969cfac8d581bd34c40d765d114d7f7e241b0bb4f"
+    },
+    {
+      "case_id": "synth-v1-heldout-11",
+      "content_sha256": "055bc93884aa096c065d6232179d0ba8563a8648b722675ea45ebc6d040298c0"
+    },
+    {
+      "case_id": "synth-v1-heldout-12",
+      "content_sha256": "ada9442b29ea15d2161ae7538cf26c4832ec1dbf47a0e39ed945af13e6c298ca"
+    },
+    {
+      "case_id": "synth-v1-heldout-13",
+      "content_sha256": "b62ac010aed0537fe2516879e2a00c61a653af85ec00f9166e700e370c6077f9"
+    },
+    {
+      "case_id": "synth-v1-heldout-14",
+      "content_sha256": "6ed2fb4b792d9544de2722ef1de366c455186d4ee6f4147ddaba47859696b345"
+    },
+    {
+      "case_id": "synth-v1-heldout-15",
+      "content_sha256": "9c816ed691ca751853aa552386489e86a875e31984e1a3c4f357efedab949922"
+    },
+    {
+      "case_id": "synth-v1-heldout-16",
+      "content_sha256": "ee0c06e606d95023169728048b1318026579de1602bac4c78c7abcc6ce17e985"
+    }
+  ],
+  "injection": {
+    "delta": 1.0,
+    "element": [
+      0,
+      0
+    ],
+    "node_id": "block.1.activation"
+  },
+  "metric": "output[0,1] - output[0,0]",
+  "mode": "recorded-v1",
+  "model_seed": 2301,
+  "operation": "replace complete tap output",
+  "predictions": {
+    "first_observed": {
+      "descriptive_max": 0.011363625526428223,
+      "descriptive_min": 0.00356486439704895,
+      "discovery_effects": [
+        {
+          "case_id": "synth-v1-discovery-01",
+          "effect": 0.008603572845458984
+        },
+        {
+          "case_id": "synth-v1-discovery-02",
+          "effect": 0.008408814668655396
+        },
+        {
+          "case_id": "synth-v1-discovery-03",
+          "effect": 0.011363625526428223
+        },
+        {
+          "case_id": "synth-v1-discovery-04",
+          "effect": 0.00356486439704895
+        },
+        {
+          "case_id": "synth-v1-discovery-05",
+          "effect": 0.005294725298881531
+        },
+        {
+          "case_id": "synth-v1-discovery-06",
+          "effect": 0.004066109657287598
+        },
+        {
+          "case_id": "synth-v1-discovery-07",
+          "effect": 0.006231755018234253
+        },
+        {
+          "case_id": "synth-v1-discovery-08",
+          "effect": 0.004598140716552734
+        }
+      ],
+      "invocation": 0,
+      "module_path": "blocks.1.activation_tap",
+      "predicted_effect": 0.0065164510160684586,
+      "site": "block.1.activation"
+    },
+    "magnitude": {
+      "descriptive_max": 0.011363625526428223,
+      "descriptive_min": 0.00356486439704895,
+      "discovery_effects": [
+        {
+          "case_id": "synth-v1-discovery-01",
+          "effect": 0.008603572845458984
+        },
+        {
+          "case_id": "synth-v1-discovery-02",
+          "effect": 0.008408814668655396
+        },
+        {
+          "case_id": "synth-v1-discovery-03",
+          "effect": 0.011363625526428223
+        },
+        {
+          "case_id": "synth-v1-discovery-04",
+          "effect": 0.00356486439704895
+        },
+        {
+          "case_id": "synth-v1-discovery-05",
+          "effect": 0.005294725298881531
+        },
+        {
+          "case_id": "synth-v1-discovery-06",
+          "effect": 0.004066109657287598
+        },
+        {
+          "case_id": "synth-v1-discovery-07",
+          "effect": 0.006231755018234253
+        },
+        {
+          "case_id": "synth-v1-discovery-08",
+          "effect": 0.004598140716552734
+        }
+      ],
+      "invocation": 0,
+      "module_path": "blocks.1.activation_tap",
+      "predicted_effect": 0.0065164510160684586,
+      "site": "block.1.activation"
+    },
+    "random": {
+      "descriptive_max": 0.011363625526428223,
+      "descriptive_min": 0.00356486439704895,
+      "discovery_effects": [
+        {
+          "case_id": "synth-v1-discovery-01",
+          "effect": 0.008603572845458984
+        },
+        {
+          "case_id": "synth-v1-discovery-02",
+          "effect": 0.008408814668655396
+        },
+        {
+          "case_id": "synth-v1-discovery-03",
+          "effect": 0.011363625526428223
+        },
+        {
+          "case_id": "synth-v1-discovery-04",
+          "effect": 0.00356486439704895
+        },
+        {
+          "case_id": "synth-v1-discovery-05",
+          "effect": 0.005294725298881531
+        },
+        {
+          "case_id": "synth-v1-discovery-06",
+          "effect": 0.004066109657287598
+        },
+        {
+          "case_id": "synth-v1-discovery-07",
+          "effect": 0.006231755018234253
+        },
+        {
+          "case_id": "synth-v1-discovery-08",
+          "effect": 0.004598140716552734
+        }
+      ],
+      "invocation": 0,
+      "module_path": "blocks.2.output_tap",
+      "predicted_effect": 0.0065164510160684586,
+      "site": "block.2.output"
+    }
+  },
+  "protocol": "synthetic-causal-v1",
+  "random_seed": 918,
+  "sites": {
+    "first_observed": "block.1.activation",
+    "magnitude": "block.1.activation",
+    "random": "block.2.output"
+  },
+  "source": "same-input clean activation at selected tap, invocation 0",
+  "suite_sha256": "883b28112ccee7605125959a4c8209c9e20bb438b73938b323e3fc80994f1e8e",
+  "upstream_control": "block.0.output",
+  "zero_prediction": 0.0,
+  "zero_tolerance": 1e-07
+}
