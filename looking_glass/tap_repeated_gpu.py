@@ -42,7 +42,7 @@ _SOURCE_PATHS = (
     'looking_glass/cuda_cleanup.py', 'looking_glass/transformer_trace.py',
     'looking_glass/trace_schema.py', 'looking_glass/probes.py', 'looking_glass/model_ownership.py',
 )
-_ENABLED = False
+_ENABLED = True
 _PREFIX = 'LOOKING_GLASS_TAP_REPEATED_'
 _ROOTS = {}
 _ENTRY_LOCK = threading.Lock()

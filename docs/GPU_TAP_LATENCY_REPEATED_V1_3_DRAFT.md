@@ -5,7 +5,8 @@ This is a new, unexecuted protocol identity,
 selection, six warmups, 36 measured samples, paired order, sample intervals and
 activity screen from v1.2. It does not pool v1.1 or v1.2 attempts with v1.3.
 The two prior v1.2 attempts are incomplete; neither is a timing comparison.
-The v1.3 launcher is disabled pending review. A multi-session aggregate requires
+This reviewed launcher is enabled for one provisional v1.3 session, subject to
+fresh source, device and activity checks. A multi-session aggregate requires
 separate coordination.
 
 Only the start-grant lifetime changes: its maximum increases from 500 ms to

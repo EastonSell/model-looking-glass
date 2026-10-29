@@ -22,7 +22,7 @@ from .tap_repeated_protocol import (CROSS_PROVIDER_TOTAL_TOLERANCE_BYTES, EXPERI
                                     summarize_session)
 
 
-_PARENT_LAUNCH_ENABLED = False
+_PARENT_LAUNCH_ENABLED = True
 _MAX_FRAME = 4096
 _MAX_JOURNAL = 8 * 1024 * 1024
 _MAX_JOURNAL_LINE = 65536
