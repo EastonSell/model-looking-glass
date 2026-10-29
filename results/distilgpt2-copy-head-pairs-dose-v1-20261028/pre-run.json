@@ -1,0 +1,53 @@
+{
+  "schema": "copying-head-pairs-dose-launch-v1",
+  "recorded_utc": "2026-10-29T06:44:06Z",
+  "source_revision": "98d14df98ce04ce6b65a4346fe13c5f2cfc8aeef",
+  "source_tree": "2d1983ea62da91fa5c496d1288c7dd7233ff9992",
+  "protocol_revision": "8be210ce88a536dc9efcd769e40a8175b9beddfa",
+  "protocol_sha256": "811c18baef640e08ccff7f6cade26d041672edda969ddbc7a6babdb60d70bddb",
+  "case_revision": "0b045df6bb67c7a7f900d1b51e16cf956b99c9df",
+  "case_sha256": "3e5d40fff832a6976f5e4f8d3bda916ab203ed93936463a1a0726e88dcab1106",
+  "clarification_revision": "f5fe8441ff34d4eb2913ac2e369db92c3dbe21f1",
+  "clarification_sha256": "ecd382e00656eb3c9245051b9aa4463a3223fb168987cb8e2bb05f643cd4dbc6",
+  "exposure_inventories": {
+    "v13": "27ffe8d2ab312ccf2a62a07dab835d3cafce7364ca8abadbb1e73ec835e9aca8",
+    "v15": "6c6ed34755dd9daebdde9a2de07f65c0c5d20301656416d873f321fa2c146d34"
+  },
+  "official_main_at_check": "3a53d18aa42f9336effacfa0346139e2b5b32ac9",
+  "case_scope": "32 fixed public exploratory nonblind inputs. The protocol was published before case assembly; the numerical clarification was published after case assembly and before any study forward. V15 reserves the rows.",
+  "private_split_status": {
+    "case_sha256": "3e5d40fff832a6976f5e4f8d3bda916ab203ed93936463a1a0726e88dcab1106",
+    "natural": {
+      "reporter": "natural held-out custodian",
+      "status": "no_protected_rows",
+      "scope": "The custodian reports no held-out nonce, split or commitment; no private row comparison occurred.",
+      "reported_utc": "2026-10-29T06:44:06Z"
+    },
+    "injection": {
+      "reporter": "injection custodian",
+      "status": "no_protected_rows",
+      "scope": "The custodian reports no protected held-out split or rows; no private row comparison occurred. The existing concealed site remains sealed.",
+      "target_boundary": "proceed_no_direct_conflict",
+      "reported_utc": "2026-10-29T06:44:06Z"
+    }
+  },
+  "model_id": "distilbert/distilgpt2",
+  "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+  "device": "cpu",
+  "expected_forwards": 576,
+  "expected_raw_payload_bytes": 167696640,
+  "python_flags": ["-B", "-X pycache_prefix=<fresh empty absolute directory>"],
+  "environment": {
+    "CUDA_VISIBLE_DEVICES": "-1", "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1",
+    "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1", "MKL_CBWR": null, "ATEN_CPU_CAPABILITY": null
+  },
+  "intended_runtime": {
+    "python": "3.11.15", "torch": "2.8.0+cu128", "numpy": "2.4.6", "transformers": "4.57.3",
+    "dtype": "float32", "attention_implementation": "eager", "use_cache": false,
+    "intraop_threads": 1, "deterministic_algorithms": false,
+    "float32_matmul_precision": "highest", "cpu_rng_seed": 20261029
+  },
+  "independent_audit": "The independently reviewed saved-data numerical and journal reader will be published and bound to the result; its receipt wrapper is being finished in parallel. No complete scientific result will be claimed until the independent replay passes.",
+  "supervision": "One direct CPU child process; preserve incomplete or uncertain evidence without automatic retry. Custodian reported_utc values are operator recording times. Exit, timing and custody records are observations, not descendant or trusted timestamp attestation."
+}
