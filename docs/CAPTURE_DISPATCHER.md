@@ -7,6 +7,11 @@ pool, batching service, or proof that concurrent model execution is safe.
 The existing worker must not accept arbitrary client-supplied hooks or code.
 Integration must be done by its trusted model owner under an exclusive model
 lease and validated separately.
+The dispatcher does not receive a model identity and cannot acquire that
+lease itself. Its process-local lock serializes dispatcher calls only, not
+other tracing or intervention APIs. The owner must coordinate the same model
+and all its modules with those APIs, and hold the lease through registration,
+forward execution, device synchronization, hook removal and finalization.
 
 ## Ownership contract
 
@@ -47,7 +52,9 @@ capture only; it does not implement gradient readout, autograd sharing,
 interventions, generated cache tracking, or checkpoint recomputation.
 
 Each result is an independently owned detached sample slice; saved values do
-not alias the model output or another event. Each carries run/job/request and
+not alias the model output or another event. Even if the forward runs under
+`torch.inference_mode()`, the returned snapshot is a normal tensor that the
+caller may use outside that context. Each carries run/job/request and
 sample IDs, batch/token positions, forward and optional generation-step
 metadata, module path/kind/layer, invocation count per module within this
 forward, and a sequence number unique within the run. Original and saved
@@ -92,7 +99,11 @@ The entire batch is transactional: an overflow, malformed record, wrong
 thread, or failed forward clears all internally held snapshots and yields no
 results. A hook failure poisons the run even if model code catches it.
 Exceptions do not carry retained snapshots in dispatcher state; external
-tracebacks and model code may still hold their own tensors. Successful
+tracebacks and model code may still hold tensors. The dispatcher also clears
+temporary snapshot references from its own failing frames, but a traceback
+from PyTorch, a hook, or other caller code can still retain arguments or
+allocations. `retained_bytes == 0` therefore does not prove actual process or
+device memory was released. Successful
 results transfer ownership to the caller, who must release them. Retrying is
 a new run and must not silently change its capture configuration.
 
