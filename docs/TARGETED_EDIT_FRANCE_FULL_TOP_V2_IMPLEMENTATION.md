@@ -40,9 +40,22 @@ incomplete attempt. This extra construction does not select a dose or run a
 model. The inherited numerical dependencies are pinned by the future owner;
 neither helper proves application, state restoration or process cleanup.
 
+The baseline [journal core](../looking_glass/targeted_edit_france_baseline_v2.py)
+records each start, observed model entry and validated full-vocabulary row,
+and preserves a bounded returned-invalid or failed record on later errors.
+The [single-use call boundary](../looking_glass/targeted_edit_france_baseline_once_v2.py)
+fences the model even if the Python return is interrupted. The separate
+[stdlib saved-byte auditor](../looking_glass/targeted_edit_france_baseline_audit_v2.py)
+reconstructs all baseline tops and gates from the retained binary32 words.
+These are components, not a source-bound model-loading supervisor. A saved
+`completed.json` or `owner-return.json` remains provisional until a direct
+child exit and all required source, public-input and cleanup checks have been
+independently assessed. An uncertain call is never retried.
+
 The CPU-only synthetic tests can be run from the repository root with
 `python -I -B tests/test_france_top_v2.py` and
 `python -I -B tests/test_france_top_edits_v2.py` in an environment containing
-the declared Torch and NumPy dependencies. They use small fabricated tensors
-and never load a checkpoint. The original tokenizer observations, scientific
+the declared Torch and NumPy dependencies. The three `test_france_baseline_*`
+files exercise the journal, independent auditor and return boundary. They use
+small fabricated tensors and never load a checkpoint. The tokenizer observations, scientific
 reviews and executable source must be bound independently before a model run.
