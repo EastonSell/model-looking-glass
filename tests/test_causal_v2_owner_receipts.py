@@ -252,3 +252,43 @@ def test_post_success_cleanup_failure_preserves_recorded_success(fake_owner):
     assert fake_owner.events == ["drain", "audit", "release", "release"]
     assert error.value.recorded_success is True
     assert error.value.quarantine is not None
+
+
+@pytest.mark.parametrize("outcome", ["nonzero", "timeout", "cancel"])
+def test_nonzero_or_interrupted_child_reconciles_success_only_after_drain(fake_owner, monkeypatch, outcome):
+    class ChildAfterTerminal:
+        def __init__(self, *args, **kwargs):
+            self.stdin = io.BytesIO()
+        def wait(self, timeout):
+            fake_owner.output.mkdir()
+            if outcome == "timeout":
+                raise owner.subprocess.TimeoutExpired("fabricated-child", timeout)
+            if outcome == "cancel":
+                raise KeyboardInterrupt()
+            return 1
+    monkeypatch.setattr(owner.subprocess, "Popen", ChildAfterTerminal)
+    with pytest.raises(fake_owner.launcher.LaunchError) as error:
+        _run_fake(fake_owner)
+    assert fake_owner.events == ["drain", "audit", "release"]
+    assert error.value.recorded_success is True
+    assert error.value.status == ("cancelled" if outcome == "cancel" else "failed")
+
+
+def test_nonzero_child_with_invalid_terminal_does_not_claim_success(fake_owner, monkeypatch):
+    class ChildAfterFailure:
+        def __init__(self, *args, **kwargs):
+            self.stdin = io.BytesIO()
+        def wait(self, timeout):
+            fake_owner.output.mkdir()
+            return 1
+    def bad_terminal(*args):
+        assert fake_owner.events == ["drain"] and all(lease.active for lease in fake_owner.leases)
+        fake_owner.events.append("audit_failed")
+        raise ValueError("invalid saved terminal")
+    monkeypatch.setattr(owner.subprocess, "Popen", ChildAfterFailure)
+    monkeypatch.setattr(owner, "_verified_success", bad_terminal)
+    with pytest.raises(fake_owner.launcher.LaunchError) as error:
+        _run_fake(fake_owner)
+    assert fake_owner.events == ["drain", "audit_failed", "release"]
+    assert error.value.recorded_success is None
+    assert isinstance(error.value.__cause__.__cause__, ValueError)

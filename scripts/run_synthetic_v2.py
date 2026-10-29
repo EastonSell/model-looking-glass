@@ -1,4 +1,4 @@
-"""Guarded Windows CPU owner for synthetic v2; study launch is review-gated.
+"""Guarded Windows CPU owner for one explicitly requested synthetic-v2 attempt.
 
 Run with the direct base interpreter using -I -S -B and an explicit venv and
 dependency directory. Rehearsal initializes the fixed CPU models without a
@@ -18,7 +18,7 @@ import tempfile
 import types
 
 
-_STUDY_LAUNCH_ENABLED = False  # Enable only after independent launcher review.
+_STUDY_LAUNCH_ENABLED = True
 _EXTRA = (
     "scripts/run_synthetic_v2.py",
     "docs/CAUSAL_CONFIRMATION_V2.md",
@@ -211,21 +211,41 @@ def run(checkout, venv, dependencies, work, output, *, rehearsal, timeout):
         quarantine.child.stdin.write(frame)
         quarantine.child.stdin.close()
         quarantine.child.stdin = None
-        if quarantine.child.wait(timeout=timeout):
-            raise launcher.LaunchError("isolated owner failed; retained evidence may be incomplete")
+        pending = None
+        try:
+            if quarantine.child.wait(timeout=timeout):
+                pending = launcher.LaunchError("isolated owner failed; retained evidence may be incomplete")
+        except BaseException as error:
+            pending = error
         # A direct child's exit is not proof that its descendants have exited.
         # Drain the whole job while source/cache protections remain in place,
         # before treating saved outcomes as quiescent and reading their counts.
-        quarantine.child_reaped = launcher._stop_and_reap(quarantine.child, quarantine.job)
+        try:
+            quarantine.child_reaped = launcher._stop_and_reap(quarantine.child, quarantine.job)
+        except BaseException as drain_error:
+            if pending is not None:
+                if isinstance(drain_error, (KeyboardInterrupt, SystemExit)):
+                    raise drain_error from pending
+                raise pending from drain_error
+            raise
         quarantine.child = quarantine.job = None
-        if launcher._revision(checkout) != revision or launcher._verify_sources(checkout, sources) != before:
-            raise launcher.LaunchError("source verification failed after the owner exited")
-        if rehearsal:
-            submissions, forwards = 0, 0
-        else:
-            registry = _registry(checkout, launcher, before)
-            submissions, forwards = _verified_success(registry, output, revision, before)
-            recorded_success = True
+        try:
+            if launcher._revision(checkout) != revision or launcher._verify_sources(checkout, sources) != before:
+                raise launcher.LaunchError("source verification failed after the owner exited")
+            if rehearsal:
+                submissions, forwards = 0, 0
+            elif pending is None or output.exists():
+                registry = _registry(checkout, launcher, before)
+                submissions, forwards = _verified_success(registry, output, revision, before)
+                recorded_success = True
+            if pending is not None:
+                raise pending
+        except BaseException as verify_error:
+            if pending is not None and verify_error is not pending:
+                if isinstance(verify_error, (KeyboardInterrupt, SystemExit)):
+                    raise verify_error from pending
+                raise pending from verify_error
+            raise
         quarantine.retry_cleanup()
         report = {"status": "rehearsal" if rehearsal else "terminal_verified", "source_revision": revision,
                   "submissions": submissions, "root_forwards": forwards, "child_reaped": True,
@@ -234,11 +254,11 @@ def run(checkout, venv, dependencies, work, output, *, rehearsal, timeout):
         report["study_ready" if rehearsal else "scientific_replay_verified"] = False
         return report
     except BaseException as error:
-        status = "cancelled" if isinstance(error, KeyboardInterrupt) else "failed"
+        status = "cancelled" if isinstance(error, (KeyboardInterrupt, SystemExit)) else "failed"
         try:
             quarantine.retry_cleanup()
         except BaseException as cleanup:
-            if isinstance(cleanup, KeyboardInterrupt):
+            if isinstance(cleanup, (KeyboardInterrupt, SystemExit)):
                 status = "cancelled"
             failure = launcher.LaunchError("owner cleanup requires retry", quarantine.child_reaped,
                 status=status, quarantine=quarantine)
@@ -274,14 +294,14 @@ if __name__ == "__main__":
     try:
         main()
     except BaseException as error:
-        status = "cancelled" if isinstance(error, KeyboardInterrupt) else getattr(error, "status", "failed")
+        status = "cancelled" if isinstance(error, (KeyboardInterrupt, SystemExit)) else getattr(error, "status", "failed")
         quarantine = getattr(error, "quarantine", None)
         protection_state = "released"
         if quarantine is not None:
             try:
                 quarantine.retry_cleanup()
             except BaseException as retry:
-                if isinstance(retry, KeyboardInterrupt):
+                if isinstance(retry, (KeyboardInterrupt, SystemExit)):
                     status = "cancelled"
                 protection_state = "unknown_on_process_exit"
         print(json.dumps({"status": status, "protection_state": protection_state,
