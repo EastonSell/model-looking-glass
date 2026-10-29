@@ -1,6 +1,6 @@
 # Fresh response screen
 
-The fixed 64-image inventory, exactly disjoint from 299 recorded earlier cases, was screened on the pinned CPU ViT. All 64 clean predictions were saved before the 36 eligible animal/background mask forwards. Four cats and four dogs met recognition, paired geometry and the prespecified response contrast and were selected in fixed rank order. No token patch was run in this phase. These are response-conditioned cases, not a population estimate or an intervention result.
+The fixed 64-image inventory, exactly disjoint from 299 recorded earlier cases, was screened on the pinned CPU ViT. All 64 clean predictions were saved before the 36 eligible animal/background mask forwards. Four cats and six dogs met recognition, paired geometry and the prespecified response contrast; all four eligible cats and the first four eligible dogs were selected in fixed rank order. No token patch was run in this phase. These are response-conditioned cases, not a population estimate or an intervention result.
 
 | Species | Candidates | Paired geometry | Recognized | Both | Response eligible | Selected |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |

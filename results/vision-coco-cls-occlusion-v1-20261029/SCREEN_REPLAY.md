@@ -1,6 +1,6 @@
 # Independent response-screen replay
 
-The adjacent `screen-replay-sources.zip` contains the independently authored response-screen and cross-phase initial-byte checker, its pinned companion and fabricated-only tests. These exact bytes were reviewed on fabricated evidence before the fresh screen. No fresh model result is included at this commit.
+The adjacent `screen-replay-sources.zip` contains the independently authored response-screen and cross-phase initial-byte checker, its pinned companion and fabricated-only tests. These exact bytes were reviewed on fabricated evidence before the fresh screen. At the reader publication commit `4e6c50e19051c168f8b70ff3507896c431e49dae`, no fresh model result had been included.
 
 | File | SHA-256 |
 | --- | --- |
