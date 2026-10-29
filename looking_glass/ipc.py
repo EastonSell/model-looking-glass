@@ -724,6 +724,10 @@ class IPCServer:
         return self
 
     def _accept(self):
+        # Bind the exact authority before entering the accept loop, so its
+        # finally path can signal even if fault-path lookup is interrupted.
+        completion_authority = (None if self._completion_binding is None
+                                else self._completion_binding[0])
         try:
             self._accept_loop()
         except BaseException as exc:
@@ -739,15 +743,21 @@ class IPCServer:
                 self._mark_custody_fault()
             finally:
                 try:
-                    # The frame may own a socket between accept() and handoff.
-                    self._accept_failure = exc
+                    # An interrupted lookup or signal must be retried before
+                    # a potentially stalled exception-retention assignment.
+                    if completion_authority is not None:
+                        completion_authority._unsafe = True
                 finally:
                     try:
-                        self._mark_custody_fault()
+                        # The frame may own a socket between accept() and handoff.
+                        self._accept_failure = exc
                     finally:
-                        if self._completion_binding is not None or self._custody_guardian is not None:
-                            self._accept_uncertain = True
-                            self._accepting_stopped.set()
+                        try:
+                            self._mark_custody_fault()
+                        finally:
+                            if self._completion_binding is not None or self._custody_guardian is not None:
+                                self._accept_uncertain = True
+                                self._accepting_stopped.set()
             raise
 
     def _accept_loop(self):

@@ -486,3 +486,63 @@ def test_interrupted_accept_loop_signal_retains_original_failure(monkeypatch):
         server.close(timeout=3)
         threading.excepthook = previous_hook
         stop_owner(model, broker)
+
+
+def test_interrupted_binding_lookup_signals_before_stalled_exception_retention(monkeypatch):
+    """A single interrupted first signal cannot let a pending job succeed."""
+    model, _, _, _, _, authority, _, broker, request = make_owner()
+    server = IPCServer(broker, team_ids=['team'], completion_authority=authority)
+    handle = broker.submit('team', request)
+    entered, resume, reported, fired = threading.Event(), threading.Event(), threading.Event(), []
+    previous_trace, previous_hook = threading.gettrace(), threading.excepthook
+    lines, first_line = inspect.getsourcelines(IPCServer._accept)
+    binding_line = first_line + next(i for i, line in enumerate(lines)
+                                     if line.strip() == 'binding = self._completion_binding')
+    original_setattr = IPCServer.__setattr__
+
+    def blocked_assignment(obj, name, value):
+        if obj is server and name == '_accept_failure' and isinstance(value, BaseException):
+            entered.set()
+            if not resume.wait(8):
+                raise RuntimeError('fault-retention gate timed out')
+        return original_setattr(obj, name, value)
+
+    def fail_loop():
+        raise RuntimeError('injected accept-loop failure')
+
+    def trace(frame, event, arg):
+        if (frame.f_code is IPCServer._accept.__code__ and event == 'line'
+                and frame.f_lineno == binding_line and not fired):
+            fired.append(True)
+            raise KeyboardInterrupt('injected binding lookup interruption')
+        return trace
+
+    try:
+        assert model.entered.wait(3)
+        monkeypatch.setattr(IPCServer, '__setattr__', blocked_assignment)
+        monkeypatch.setattr(server, '_accept_loop', fail_loop)
+        threading.settrace(trace)
+        threading.excepthook = lambda args: reported.set()
+        server.start()
+        assert entered.wait(3) and fired == [True]
+        threading.settrace(previous_trace)
+        assert authority.unsafe
+        model.release.set()
+        try:
+            outcome = handle.wait(3)
+        except BrokerUnavailable:
+            pass
+        else:
+            assert outcome.state is not RequestState.SUCCEEDED
+        resume.set()
+        assert reported.wait(3)
+        assert type(server._accept_failure) is RuntimeError
+    finally:
+        threading.settrace(previous_trace)
+        resume.set()
+        model.release.set()
+        server.close(timeout=3)
+        if fired:
+            reported.wait(3)
+        threading.excepthook = previous_hook
+        stop_owner(model, broker)
