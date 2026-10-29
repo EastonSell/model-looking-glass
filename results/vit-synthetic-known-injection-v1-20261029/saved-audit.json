@@ -1,0 +1,82 @@
+{
+  "status": "saved_record_arithmetic_consistent",
+  "tensor_entries": 196,
+  "tensor_bytes": 14717568,
+  "completed_sha256": "07b2bddb044457d69a156d3bb93131d42bc2a995462a1c6f0a09fe42eedd541e",
+  "directional_hits": 4,
+  "magnitude_hits": 4,
+  "random_hits": 1,
+  "eligible_controls": 4,
+  "restoration_passes": 4,
+  "cases": [
+    {
+      "seed": 21,
+      "injected_token": 103,
+      "selected_token": 103,
+      "magnitude_token": 103,
+      "random_token": 166,
+      "eligible": true,
+      "initial_distance": 0.17183709958875384,
+      "arm_distances": {
+        "off_target": 0.40962994124060575,
+        "reflected": 1.6806837544411852,
+        "self": 0.17183709958875384,
+        "target": 0.019980509131492265
+      },
+      "selected_dose": 3.9353558327710254,
+      "passed": true
+    },
+    {
+      "seed": 22,
+      "injected_token": 166,
+      "selected_token": 166,
+      "magnitude_token": 166,
+      "random_token": 166,
+      "eligible": true,
+      "initial_distance": 0.21046503924089302,
+      "arm_distances": {
+        "off_target": 0.29497809474515363,
+        "reflected": 0.9735774481108111,
+        "self": 0.21046503924089302,
+        "target": 0.029223208463754546
+      },
+      "selected_dose": 4.133246866720281,
+      "passed": true
+    },
+    {
+      "seed": 23,
+      "injected_token": 16,
+      "selected_token": 16,
+      "magnitude_token": 16,
+      "random_token": 52,
+      "eligible": true,
+      "initial_distance": 0.2637338526154862,
+      "arm_distances": {
+        "off_target": 0.3409314159220929,
+        "reflected": 1.5572497092239639,
+        "self": 0.2637338526154862,
+        "target": 0.023125685538131033
+      },
+      "selected_dose": 3.9268278075303824,
+      "passed": true
+    },
+    {
+      "seed": 24,
+      "injected_token": 52,
+      "selected_token": 52,
+      "magnitude_token": 52,
+      "random_token": 166,
+      "eligible": true,
+      "initial_distance": 0.1315308805011177,
+      "arm_distances": {
+        "off_target": 0.4663594577175477,
+        "reflected": 0.8178171244923951,
+        "self": 0.1315308805011177,
+        "target": 0.022848250255844173
+      },
+      "selected_dose": 4.139226170872912,
+      "passed": true
+    }
+  ],
+  "scope": "Saved bytes and declared records only; no execution, chronology, model identity or cleanup attestation."
+}
