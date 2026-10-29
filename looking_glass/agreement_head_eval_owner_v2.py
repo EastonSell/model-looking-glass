@@ -21,7 +21,7 @@ SOURCE_FILES = (
     "looking_glass/agreement_preflight_v1.py", "looking_glass/copy_head_factorial.py",
     "looking_glass/copy_head_intervention.py", "looking_glass/gpt2_head_slice.py",
     "looking_glass/interventions.py", "looking_glass/model_ownership.py", "looking_glass/pretrained.py",
-    "looking_glass/pretrained_exposures.py", "looking_glass/pretrained_exposures_v2.py",
+    "looking_glass/pretrained_exposures.py", "looking_glass/pretrained_exposures_v2.py", "looking_glass/probes.py",
     "looking_glass/trace_schema.py", "looking_glass/transformer_trace.py",
 )
 

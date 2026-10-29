@@ -37,6 +37,9 @@ def test_committed_source_bytes_are_bound_and_dirty_files_reject(tmp_path, monke
     (tmp_path / "source.py").write_bytes(b"x = 2\n")
     with pytest.raises(ValueError, match="clean"):
         owner._source_binding(tmp_path, commit)
+    subprocess.run(["git", "-C", str(tmp_path), "update-index", "--assume-unchanged", "source.py"], check=True)
+    with pytest.raises(ValueError, match="source bytes differ"):
+        owner._source_binding(tmp_path, commit)
 
 
 def test_interrupted_launcher_wait_attempts_stop_and_retains_one_shot_claim(tmp_path, monkeypatch):
