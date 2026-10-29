@@ -196,6 +196,7 @@ def test_barrier_is_readable_at_the_instant_it_becomes_visible(monkeypatch, tmp_
 
 def test_controller_is_disabled_before_any_supervisor_or_query(monkeypatch, tmp_path):
     calls = []
+    monkeypatch.setattr(parent, '_PARENT_LAUNCH_ENABLED', False)
     monkeypatch.setattr(parent, 'run_supervised', lambda *a, **k: calls.append('spawn'))
     with pytest.raises(RuntimeError, match='disabled'):
         parent.run_session(attempt_dir=tmp_path / 'attempt')

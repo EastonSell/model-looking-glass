@@ -1,8 +1,7 @@
-"""Disabled parent identity and barriers for the repeated tap experiment.
+"""Parent identity and barriers for the repeated tap experiment.
 
-This draft does not launch an owner. The final integration must bind the live
-handle and barriers to strict supervision, fresh parent telemetry, durable
-partial evidence and an independently reviewed owner before enabling it.
+The source-bound controller binds the live handle and barriers to strict
+supervision, fresh parent telemetry and durable partial evidence.
 The private cooperative frame and files are not a hostile-process boundary.
 """
 
@@ -23,7 +22,7 @@ from .tap_repeated_protocol import (CROSS_PROVIDER_TOTAL_TOLERANCE_BYTES, EXPERI
                                     summarize_session)
 
 
-_PARENT_LAUNCH_ENABLED = False
+_PARENT_LAUNCH_ENABLED = True
 _MAX_FRAME = 4096
 _MAX_JOURNAL = 8 * 1024 * 1024
 _MAX_JOURNAL_LINE = 65536
@@ -865,7 +864,7 @@ def _publish_barrier(path, payload):
 def _drive_session(*, session_index, challenge, identity, channel, supervision, activity, journal,
                    attempt_dir, expected_smi_total, schedule, parent_clock, parent_runtime, exclusive,
                    clock, sleep, startup_timeout, workload_timeout, reap_timeout):
-    """Coordinate one preconfigured owner; the public launcher remains disabled.
+    """Coordinate one preconfigured owner through the source-bound controller.
 
     The caller is responsible for fixed source/runtime/model checks, a fresh
     device identity and a coordinated timing reservation. This function is

@@ -9,7 +9,8 @@ import pytest
 from looking_glass import tap_repeated_gpu as controller
 
 
-def test_disabled_controller_never_reaches_device_work(tmp_path):
+def test_disabled_controller_never_reaches_device_work(monkeypatch, tmp_path):
+    monkeypatch.setattr(controller, '_ENABLED', False)
     with pytest.raises(RuntimeError, match='disabled'):
         controller.run_session(workspace_root=tmp_path, cache_dir=tmp_path, output=tmp_path / 'result',
             session=0, cpu_context='unknown', coordinated_slot=True)
