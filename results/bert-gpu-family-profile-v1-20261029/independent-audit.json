@@ -1,0 +1,105 @@
+{
+  "allocator_cap_bytes": 2147401728,
+  "artifact_sha256": {
+    "candidate.json": "ed2fe34f5b2a9a2afe764468b7340246e08188ebefe539f446cac9fc8412630c",
+    "events.jsonl": "152e3f463a9bc7b8f8f0ef1e05e9304aa93c521b74ee19e5a2484af149246190",
+    "final.json": "04970dd3371432bfecca935ab08dd5f6791ee995793b14ea6a35f48df94581fc",
+    "memory.jsonl": "c6f71ba07738a9c889e490122d841c1ec8fe5be74078b9857e5c0d4d9595cea9",
+    "owner.json": "966dcd970064ce309e136eb804264868708c2dfaed70dbbb11a62617fef4a682",
+    "started.json": "663b13fd7a6c700b1917a6be1b875c2ec7fbfa3c2125b5a45d3080c43eccd422",
+    "supervision.json": "e84c72a20981d4780564ec65a90f96c6585d40b8a54e37cc70bb96d3996104be"
+  },
+  "cases": [
+    {
+      "baseline_are_bits": 1082495595,
+      "baseline_is_bits": 1092164621,
+      "case_id": "development-f01-s-s",
+      "effects": {
+        "block2_distractor": -0.09367704391479492,
+        "candidate": 6.780720829963684,
+        "random_block0_subject": 9.686864256858826,
+        "random_block3_distractor": -0.04636406898498535,
+        "random_block4_distractor": -0.008182287216186523
+      },
+      "target_row_id": "development-f01-A-s-s"
+    },
+    {
+      "baseline_are_bits": 1087886155,
+      "baseline_is_bits": 1090874330,
+      "case_id": "development-f01-s-p",
+      "effects": {
+        "block2_distractor": -0.7489895820617676,
+        "candidate": 6.624890565872192,
+        "random_block0_subject": 7.210913419723511,
+        "random_block3_distractor": -0.2048356533050537,
+        "random_block4_distractor": -0.026171445846557617
+      },
+      "target_row_id": "development-f01-A-s-p"
+    },
+    {
+      "baseline_are_bits": 1093132206,
+      "baseline_is_bits": 1087198418,
+      "case_id": "development-f01-p-s",
+      "effects": {
+        "block2_distractor": 0.0028252601623535156,
+        "candidate": 6.058743238449097,
+        "random_block0_subject": 9.842060089111328,
+        "random_block3_distractor": -0.09801816940307617,
+        "random_block4_distractor": -0.02027606964111328
+      },
+      "target_row_id": "development-f01-A-p-s"
+    },
+    {
+      "baseline_are_bits": 1092581862,
+      "baseline_is_bits": 1084028476,
+      "case_id": "development-f01-p-p",
+      "effects": {
+        "block2_distractor": -0.06465888023376465,
+        "candidate": 3.578718662261963,
+        "random_block0_subject": 7.326322078704834,
+        "random_block3_distractor": -0.051286935806274414,
+        "random_block4_distractor": -0.004896402359008789
+      },
+      "target_row_id": "development-f01-A-p-p"
+    }
+  ],
+  "cleanup_allocated_bytes": 0,
+  "cleanup_reserved_bytes": 0,
+  "control_counts": {
+    "clean_matches_candidate": 16,
+    "final_clean": 4,
+    "final_mask": 4,
+    "final_subject": 4,
+    "self_patch": 20
+  },
+  "controller_exit_observation_checked": true,
+  "device_total_bytes": 8589606912,
+  "event_record_count": 328,
+  "event_sha256": "152e3f463a9bc7b8f8f0ef1e05e9304aa93c521b74ee19e5a2484af149246190",
+  "forward_count": 140,
+  "limitations": [
+    "one public development family; no held-out or population claim",
+    "record consistency cannot authenticate actual execution or physical isolation",
+    "controller exit observation is operator-reported, not an independent operating-system attestation",
+    "locally rehashed checkpoint assets do not prove which bytes were used during execution",
+    "full mask logits were retained only as hashes; values and finiteness cannot be independently reconstructed",
+    "synchronized endpoints and allocator peaks can miss external or transient memory pressure"
+  ],
+  "local_asset_files_checked": true,
+  "manifest_sha256": "20a8ce96bab80c1f3b19ca86ac43e5d32f62c4b4a9bbd3c23e1a3fc9abfd91e5",
+  "memory_record_count": 287,
+  "memory_sha256": "c6f71ba07738a9c889e490122d841c1ec8fe5be74078b9857e5c0d4d9595cea9",
+  "minimum_device_free_bytes": 7085228032,
+  "peak_allocated_bytes": 307758080,
+  "peak_reserved_bytes": 339738624,
+  "schema": "bert-gpu-family-independent-audit-v1",
+  "site_means": {
+    "block2_distractor": -0.2261250615119934,
+    "candidate": 5.760768324136734,
+    "random_block0_subject": 8.516539961099625,
+    "random_block3_distractor": -0.10012620687484741,
+    "random_block4_distractor": -0.014881551265716553
+  },
+  "source_commit": "4a597641be89ee094145fbdacee4d3fcdd241e41",
+  "status": "saved_evidence_consistent"
+}
