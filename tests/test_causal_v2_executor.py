@@ -19,6 +19,122 @@ def _isolated(code):
 
 
 class DevelopmentExecutorTests(unittest.TestCase):
+    def test_missing_pre_reservation_rejects_before_hook_preparation(self):
+        code = r'''
+from unittest.mock import patch
+from looking_glass.causal_v2_executor import DevelopmentBudget,DevelopmentInvalid,_forward
+class Policy:
+    def verify(self): pass
+budget=DevelopmentBudget(3)
+with patch('looking_glass.causal_v2_executor._check_hooks') as hooks:
+    try: _forward(object(),None,budget,Policy(),reserved=True)
+    except DevelopmentInvalid: pass
+    else: raise AssertionError('missing reservation was accepted')
+    hooks.assert_not_called()
+assert budget.submissions==budget.root_forwards==0
+'''
+        result = _isolated(code)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_plan_source_preparation_failure_counts_submission(self):
+        code = r'''
+from looking_glass.causal_v2_executor import DevelopmentBudget,_plan
+class BadSource:
+    def detach(self): raise RuntimeError('fabricated source failure')
+budget=DevelopmentBudget(3)
+try: _plan(None,None,1,'forward',BadSource(),None,budget,None,None)
+except RuntimeError: pass
+else: raise AssertionError('source preparation unexpectedly succeeded')
+assert budget.submissions==1 and budget.root_forwards==0
+'''
+        result = _isolated(code)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_pre_reserved_forward_does_not_double_count(self):
+        code = r'''
+from unittest.mock import patch
+import torch
+from looking_glass.causal_v2_executor import DevelopmentBudget,_forward
+class Policy:
+    def verify(self): pass
+class Model:
+    def __call__(self,*args,**kwargs): return torch.zeros((1,2),device='cpu')
+budget=DevelopmentBudget(3); budget.reserve()
+with patch('looking_glass.causal_v2_executor._check_hooks'), \
+     patch('looking_glass.causal_v2_executor._equal',return_value=True):
+    result,_=_forward(Model(),None,budget,Policy(),reserved=True)
+assert tuple(result.shape)==(1,2) and budget.submissions==budget.root_forwards==1
+'''
+        result = _isolated(code)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_session_preparation_failure_counts_submission_without_root(self):
+        code = r'''
+from unittest.mock import patch
+from looking_glass.causal_v2_executor import DevelopmentBudget,_forward
+class Policy:
+    def verify(self): pass
+def broken(): raise RuntimeError('fabricated registration failure')
+budget=DevelopmentBudget(3)
+with patch('looking_glass.causal_v2_executor._check_hooks'):
+    try: _forward(object(),None,budget,Policy(),make_session=broken)
+    except RuntimeError: pass
+    else: raise AssertionError('session preparation unexpectedly succeeded')
+assert budget.submissions==1 and budget.root_forwards==0
+'''
+        result = _isolated(code)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_no_grad_entry_failure_does_not_count_root(self):
+        code = r'''
+from unittest.mock import patch
+from looking_glass.causal_v2_executor import DevelopmentBudget,_forward
+class Policy:
+    def verify(self): pass
+class BrokenContext:
+    def __enter__(self): raise RuntimeError('fabricated no_grad entry failure')
+    def __exit__(self,*args): pass
+budget=DevelopmentBudget(3)
+with patch('looking_glass.causal_v2_executor._check_hooks'), \
+     patch('looking_glass.causal_v2_executor.torch.no_grad',return_value=BrokenContext()):
+    try: _forward(object(),None,budget,Policy())
+    except RuntimeError: pass
+    else: raise AssertionError('no_grad entry unexpectedly succeeded')
+assert budget.submissions==1 and budget.root_forwards==0
+'''
+        result = _isolated(code)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_private_kernel_scope_reuses_captures_without_weakening_dev_guard(self):
+        code = r'''
+import torch
+from looking_glass.causal_v2_executor import (
+    DevelopmentBudget, DevelopmentInvalid, _STUDY_CACHE_TOKEN, _check_input,
+    _prepare_clean, _prepare_target, _run_active, prepare_development_target)
+from looking_glass.causal_v2_runtime import establish_numeric_policy
+from looking_glass.model import TinyResidual
+policy=establish_numeric_policy()
+with torch.random.fork_rng(devices=[]):
+    torch.random.default_generator.manual_seed(41977)
+    model=TinyResidual(width=8,depth=4).eval()
+x=torch.tensor([[2.,-.25,.5,.125,-.75,.2,-.3,.4]],dtype=torch.float32,device='cpu')
+budget=DevelopmentBudget(40)
+args=dict(scope=_STUDY_CACHE_TOKEN, input_check=_check_input)
+clean=_prepare_clean(model,x,budget,policy,budget_type=DevelopmentBudget,**args)
+target=_prepare_target(model,x,'block.2.activation',clean,budget,policy,**args)
+for strength in (.25,.75):
+    result=_run_active(model,x,'block.2.activation',strength,clean,target,budget,policy,**args)
+    assert len(result['plans']) == 13
+assert budget.submissions == budget.root_forwards == 35
+try: prepare_development_target(model,x,'block.2.activation',clean,budget,policy)
+except DevelopmentInvalid: pass
+else: raise AssertionError('study-scoped cache entered the development interface')
+assert budget.submissions == budget.root_forwards == 35
+assert not torch.cuda.is_initialized()
+'''
+        result = _isolated(code)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_tap_group_and_cpu_autocast_are_rejected_before_forward(self):
         code = r'''
 import torch
