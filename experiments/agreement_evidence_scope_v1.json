@@ -1,0 +1,34 @@
+{
+  "schema": "mlg-agreement-evidence-scope-amendment-v1",
+  "status": "prospective accounting-scope clarification after natural and injection discovery",
+  "previous_physical_amendment_sha256": "3f5da38000e86d978c1e2a83c751f08bbfdef3c2dd21097bf9ba02f45ac35b55",
+  "initial_gap_record_sha256": "fd010b515395dab724d056f0e236cee1602965a7052e489ff817ffe586f44c3f",
+  "initial_ledger_state_sha256": "7b63050c081ffff80ccf0077a88e1e59f2b560cb5cf3814c81ffee5f2655110f",
+  "initial_ledger_history_sha256": "a4df05201c9a057c5216d684c18d3ff5919b95a2d2655f977016a34deb9be14d",
+  "existing_claims_sha256": "9d81510a845eb6c6c072b3d6c9ecb375c1811f1720e9ebec9dbec9809390d914",
+  "study_logical_limit_bytes": 536870912,
+  "study_physical_limit_bytes": 8589934592,
+  "required_free_disk_bytes": 12884901888,
+  "logical_phase_reservations_bytes": {
+    "natural_discovery": 134217728,
+    "natural_heldout": 167772160,
+    "injection_discovery": 50331648,
+    "injection_heldout": 75497472
+  },
+  "physical_phase_reservations_bytes": {
+    "natural_discovery": 4294967296,
+    "natural_heldout": 234881024,
+    "injection_discovery": 134217728,
+    "injection_heldout": 201326592
+  },
+  "included_scope": "All study-created or study-retained evidence files, including originals, local publication and audit copies, audit scripts and results, receipts and reports, dedicated source snapshots retained as evidence, staging, failed attempts and orphans are charged wherever located. Distinct physical copies count separately; identical tensor payloads count once logically. Phase-owned outputs and their private side roots are checked against their existing phase share, not scanned or charged a second time as prior evidence. Study-specific Git objects or packs created or retained for this evidence count; a pathname alone does not determine ownership.",
+  "workspace_overhead": "Ordinary implementation and test files in developer checkouts, including those used by study owners, and shared Git objects/packs for general workspace operations are workspace overhead rather than evidence merely because an agent works there. Specific study evidence files, outputs, reports, staging and orphans deliberately created or retained for study, publication or review remain in scope wherever located, including inside a checkout. Dedicated publication or staging archives and Git representations retained as study evidence remain in scope. All workspace files still consume real disk and require the independent fresh free-space check. Existing conservative charges are preserved; this clarification does not imply those copies never existed.",
+  "checkpoint_staging": "Checkpoint assets and transient loader copies are separate workspace/resource use, not retained tensor evidence. The owner checks free space on the actual staging volume and accounts for any retained study-created orphan or failed-stage files according to their custody; no orphan may be silently discarded.",
+  "history_and_limits": "The initial inventory gap remains disclosed by the pinned public record. Its creation timing is unknown, and this amendment does not make the initial snapshot complete. The state digest covers the length-prefixed exact meta.data and meta.inventory strings; the sorted claim rows and ordered reconciliation/retired-evidence rows are bound separately. These digests do not hash the whole SQLite file or schema. The earlier v5 ledger did not itself record the initial manifest digest; linking that manifest to these saved strings is an independently reviewed external attestation. Both existing claims and all original claim, binding, amendment and commitment bytes remain unchanged. Reconciliation keeps previous per-file charges, including missing or replaced copies, and preserves previous metadata/inventory strings in bounded history. This amendment authorizes no refund or private-site redraw; operators separately report past draw chronology.",
+  "observation": {
+    "free_disk_observed_utc": "2026-10-29T05:59:48.306814Z",
+    "free_disk_bytes": 116846608384,
+    "description": "Point-in-time free space on the shared destination filesystem; not allocated-block usage, a reservation, or a substitute for a fresh pre-claim check."
+  },
+  "limitations": "The 8 GiB bound is an apparent study-evidence-file allowance, not a total machine-disk, GPU-memory, allocated-block, or peak-memory limit. The custodian independently identifies and reconciles the current study-owned evidence and all phase side roots, including newly created copies and orphans. SHA pins do not prove inventory completeness or timing. Check actual free space again on every output and staging volume before use; it can change immediately. This storage clarification changes no scientific cases, predictions, logical limits, phase shares, or results."
+}

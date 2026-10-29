@@ -36,6 +36,9 @@ SOURCE_PATHS = (*v1.SOURCE_PATHS, "looking_glass/pretrained_exposures_v3.py",
                 "looking_glass/targeted_edit_v2_witness.py", "docs/TARGETED_EDIT_V2_REMOTE_WITNESS.md",
                 "looking_glass/targeted_edit_v2_evaluation_evidence.py", "docs/TARGETED_EDIT_V2_EVALUATION_EVIDENCE.md",
                 "looking_glass/targeted_edit_v2_evaluation_owner.py", "docs/TARGETED_EDIT_V2_EVALUATION_OWNER.md",
+                "scripts/targeted_edit_v2_source_rehearsal.py", "scripts/targeted_edit_v2_source_child.py",
+                "scripts/v2_source_launcher.py", "scripts/v2_source_bootstrap.py", "scripts/v2_source_guards.py",
+                "docs/TARGETED_EDIT_V2_SOURCE_REHEARSAL.md",
                 V1_MANIFEST, V1_PRECOMMIT)
 
 RULES = {

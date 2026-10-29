@@ -1,0 +1,1 @@
+{"status": "complete", "summary": {"both_positive_pairs": 3, "gate_passed": false, "mean_margin": -0.12975561618804932, "name_pair_both_positive": [2, 0, 1, 0, 0, 0, 0, 0], "name_pairs_meeting_requirement": 0, "order_both_positive": [2, 1], "positive_cases": 29, "template_both_positive": [1, 2]}}
