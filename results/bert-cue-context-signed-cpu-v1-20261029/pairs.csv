@@ -1,0 +1,5 @@
+pair,split,context_a,context_b,baseline_eligible,dose_eligible,q,minimum_distance,primary_eligible,minimum_D,primary_raw_pass,primary_status,sensitivity_raw_pass,sensitivity_status,secondary_status,secondary_qualified_recipients,secondary_raw_toward_count,secondary_raw_exceed_count,secondary_toward_count,secondary_exceed_count,secondary_mean_donorward,secondary_mean_excess
+discovery-01,discovery,doctor/treated/patients,farmer/planted/seeds,True,True,0.5,1.108774635670416,True,-0.0034227371215820312,False,fail,False,fail,unevaluable,4,0,0,,,,
+evaluation-01,evaluation,clerk/counted/coins,student/answered/questions,True,True,0.5,0.8854126019747678,True,0.008303642272949219,True,pass,False,fail,unevaluable,2,0,0,,,,
+evaluation-02,evaluation,coach/selected/players,chef/sliced/tomatoes,True,True,0.5,0.8625137175418688,True,0.013722419738769531,True,pass,False,fail,evaluable,6,2,0,2,0,0.01681200663248698,-0.013065973917643229
+evaluation-03,evaluation,judge/reviewed/cases,painter/painted/walls,True,True,0.5,0.9651201744147831,True,-0.014002799987792969,False,fail,False,fail,evaluable,6,1,0,1,0,-0.010212898254394531,-0.018973429997762043

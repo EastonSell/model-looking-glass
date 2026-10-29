@@ -316,6 +316,47 @@ def save_json(path, obj):
         os.fsync(stream.fileno())
 
 
+def save_failure(directory, message):
+    """Retain a failure marker without exceeding the remaining attempt budget.
+
+    The journal is closed before this call. Account for existing direct files,
+    reserve room for a truncation marker, and preserve even a zero-byte marker
+    when no budget remains. The attempt directory has a single writer.
+    """
+    used = sum(p.stat().st_size for p in directory.iterdir() if p.is_file())
+    remaining = max(0, OUTPUT_CAP - used)
+    marker = b"\n[traceback truncated to fit output cap]\n"
+
+    # Count in bounded chunks, stopping as soon as the message is too large.
+    length = 0
+    truncated = False
+    for pos in range(0, len(message), 4096):
+        length += len(message[pos:pos + 4096].encode("utf-8", errors="backslashreplace"))
+        if length > remaining:
+            truncated = True
+            break
+    budget = remaining if not truncated else max(0, remaining - len(marker))
+    with (directory / "failure.txt").open("xb") as stream:
+        written = 0
+        for pos in range(0, len(message), 4096):
+            if written >= budget:
+                break
+            data = message[pos:pos + 4096].encode("utf-8", errors="backslashreplace")
+            clipped = len(data) > budget - written
+            data = data[:budget - written].decode("utf-8", errors="ignore").encode("utf-8")
+            if stream.write(data) != len(data):
+                raise OSError("short failure-message write")
+            written += len(data)
+            if clipped:
+                break
+        if truncated:
+            suffix = marker[:remaining - written]
+            if stream.write(suffix) != len(suffix):
+                raise OSError("short failure-marker write")
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("site", "git", "model-dir", "cases", "output"):
@@ -411,7 +452,7 @@ def main():
         except Exception:
             pass
         try:
-            (args.output / "failure.txt").write_text(traceback.format_exc(), encoding="utf-8")
+            save_failure(args.output, traceback.format_exc())
         except Exception:
             pass
         raise

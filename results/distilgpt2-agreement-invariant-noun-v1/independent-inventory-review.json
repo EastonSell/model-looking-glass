@@ -1,0 +1,78 @@
+{
+  "actual_tensor_bytes": 52792684,
+  "actual_tensor_files": 705,
+  "cases_with_nine_saved_actions": 33,
+  "cases_with_saved_records": 34,
+  "event_records": 302,
+  "heldout_decision": "not computed; attempt incomplete",
+  "linked_tensor_files": 702,
+  "next_prescribed_action": {
+    "action": "v2_plus",
+    "case_id": "discovery_target_f1_c2_n1_these",
+    "case_index": 33,
+    "context_index": 2,
+    "determiner": "these",
+    "frame_index": 1,
+    "index": 301,
+    "noun_index": 1,
+    "role": "target",
+    "slot": 2,
+    "split": "discovery"
+  },
+  "orphan_tensor_files": 3,
+  "orphan_tensors": [
+    {
+      "bytes": 3072,
+      "sha256": "19378beaaa6e24043dae6e545bdbcac93b64e6c285e2dde1b49b62356dbe5f46"
+    },
+    {
+      "bytes": 201028,
+      "sha256": "3b02a739faf73947fa3594f267e7cd28ef4204be122faa674723a3ecb57a9399"
+    },
+    {
+      "bytes": 24576,
+      "sha256": "afe727d471b12329118cce1838f07a99021117b013ccef8374e1950c864ba267"
+    }
+  ],
+  "partial_cases": {
+    "discovery_target_f1_c2_n1_these": 4
+  },
+  "pins": {
+    "cases_sha256": "50ef3aea53a21a76ecf1bc4910882f78939a4d2fcca12528013ea56eaa586827",
+    "events_sha256": "0be814ca696b4da0b90c99609098e926db3d489f2010da70c0bc9fd0adc3874d",
+    "exit_sha256": "e401742df188267944a5c25fb7ff9fbb419413e43be97b7b3981da0dff8ea9f4",
+    "reader_sha256": "1e2d2a6e867812730f407bfb8f0af93af0b5b3ceaa274250e4e88673a75a3f08",
+    "supervisor_sha256": "1bb93d58c686bde0f5b87ada9720f8c6319d6a8b77e4acb6b17996d6c99e839c",
+    "terminal_sha256": "32326e95b19b9632ed459f06eb781206427a3961a6f6f93df1a442a9277cc26b"
+  },
+  "saved_forward_counts_by_action": {
+    "clean": 34,
+    "clean_after": 33,
+    "noop": 34,
+    "u_minus": 33,
+    "u_plus": 33,
+    "v1_minus": 34,
+    "v1_plus": 34,
+    "v2_minus": 33,
+    "v2_plus": 33
+  },
+  "saved_forward_counts_by_role": {
+    "demonstrative": 36,
+    "fragment": 54,
+    "target": 211
+  },
+  "saved_forward_counts_by_split": {
+    "discovery": 301
+  },
+  "saved_forward_records": 301,
+  "saved_prefix_splits": [
+    "discovery"
+  ],
+  "scope": "Closed saved-prefix/receipt consistency and content hashes only; the observer and terminal are cooperative reports, and orphan tensors have no independently bound action.",
+  "supervisor_inventory_files_verified": 724,
+  "terminal_recorded_forward_evidence": 301,
+  "terminal_reported_normal_path_returns": 302,
+  "terminal_reported_retained_bytes": 52792684,
+  "terminal_reported_starts": 302,
+  "terminal_storage_accounting_complete": false
+}

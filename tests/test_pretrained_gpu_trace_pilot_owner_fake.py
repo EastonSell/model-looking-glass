@@ -92,6 +92,7 @@ def test_actual_measurement_lifecycle_with_tiny_cpu_model_and_fake_device(tmp_pa
             return original_validate(directory, adjusted, hidden=8, vocab=6767, device='cpu')
         monkeypatch.setattr(owner, '_validate_saved', validate)
     (tmp_path / 'stage').mkdir()
+    (tmp_path / 'raw').mkdir()
     was_enabled, old_collect = gc.isenabled(), gc.collect
     gc.disable()
     gc.collect = owner._forbid_collection
@@ -106,6 +107,12 @@ def test_actual_measurement_lifecycle_with_tiny_cpu_model_and_fake_device(tmp_pa
             result = owner._measure(session, lease, torch, tmp_path, str(tmp_path))
         assert result['forward_count'] == 10 and result['model_input_trace_weakrefs_dead'] is True
         assert result['active_memory_leases'] == 0 and result['cleanup']['reserved_bytes'] == 0
+        from looking_glass.pretrained_gpu_trace_evidence_v2 import validate_tensor_evidence
+        hashes = [json.loads((tmp_path / f'forward-{index:03d}.json').read_bytes())['logit_sha256']
+                  for index in range(1, 11)]
+        audit = validate_tensor_evidence(tmp_path / 'raw', result['tensor_evidence'], hashes,
+                                         result['result'], hidden=8, vocab=6767)
+        assert audit['logit_bit_comparisons'] == 9 and audit['capture_bit_comparisons'] == 36
         if not entry:
             result['runtime']['device'] = 'cpu'  # Only this fabricated executor used CPU tensors.
             assert owner._validate_saved(tmp_path, result, hidden=8, vocab=6767, device='cpu') == 10

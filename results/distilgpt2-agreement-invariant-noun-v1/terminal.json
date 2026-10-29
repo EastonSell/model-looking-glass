@@ -1,0 +1,1 @@
+{"detail":{"cleanup_quarantined":false,"error_type":"PermissionError","forward_evidence_records":301,"forwards_started":302,"model_returns":302,"model_returns_scope":"normal-path observations only; a rejected forward may retain a returned output"},"event_log_bytes":913193,"events":302,"retained_tensor_bytes":52792684,"status":"failed","storage_accounting_complete":false}
