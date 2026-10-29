@@ -173,6 +173,7 @@ class InjectionCoordinateOracle(unittest.TestCase):
         expected_paths = [name for layer in range(6)
                           for name in (f"transformer.h.{layer}.attn", f"transformer.h.{layer}.mlp")]
         expected_paths.append("transformer.h.5")
+        action_signatures = {}
 
         for site in range(1, 5):
             with self.subTest(synthetic_hidden_layer=site):
@@ -208,6 +209,27 @@ class InjectionCoordinateOracle(unittest.TestCase):
                                               (WIDTH,), "torch.float32", "cpu"))
                         evidence = [item for item in executor.private_evidence() if item.request_id == request_id]
                         self.assertEqual({item.operation for item in evidence}, set(witnesses))
+                        requested_action = witnesses.get("patch") or witnesses.get("null")
+                        if requested_action is None:
+                            self.assertIsNone(observation.action)
+                        else:
+                            path = requested_action[0]
+                            operation = "null" if condition == "null" else "patch"
+                            selector = (0,) if path == "transformer.h.5" else ()
+                            action = observation.action
+                            self.assertEqual((action.operation, action.module_path, action.invocation,
+                                              action.batch_index, action.token_index, action.output_selector,
+                                              action.output_shape, action.selected_shape, action.dtype, action.device),
+                                             (operation, path, 0, 0, token, selector, (1, len(IDS), WIDTH), (WIDTH,),
+                                              "torch.float32", "cpu"))
+                            private_action = next(item for item in evidence if item.operation == operation)
+                            self.assertEqual(action.donor_identity, private_action.donor_identity)
+                        signature_key = (condition, layer)
+                        signature = observation.action
+                        if signature_key in action_signatures:
+                            self.assertEqual(signature, action_signatures[signature_key])
+                        else:
+                            action_signatures[signature_key] = signature
                         for item in evidence:
                             path, before, after, source = witnesses[item.operation]
                             model.get_submodule(path)
