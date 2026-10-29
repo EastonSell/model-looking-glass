@@ -1,0 +1,6 @@
+{
+  "protocol_version": "pretrained-trace-smoke-v1",
+  "state": "started",
+  "device": "cpu",
+  "lease_id": null
+}

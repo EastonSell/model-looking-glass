@@ -76,7 +76,7 @@ protocols, source/model identifiers, seeds, controls, failures, and results.
 
 The reusable `serve_owner` lifecycle helper in `looking_glass.service`
 supports an externally assembled worker, broker, and IPC server. It monitors
-the worker's quarantine signal even during blocked startup and shutdown and
+the worker's and broker's quarantine signals during blocked startup and shutdown and
 reports workload status separately from `teardown_verified`. The helper is
 not itself a GPU service or a process supervisor. A future GPU owner must
 use a verified device identity, a process-held device lease and durable

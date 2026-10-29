@@ -1,0 +1,83 @@
+{
+  "protocol_version": "pretrained-trace-smoke-v1",
+  "config": {
+    "seed": 0,
+    "tokens": [
+      464,
+      6766,
+      318,
+      4171,
+      13
+    ],
+    "token_sha256": "9fe078a66a5e29539f9a58f26052d5ccfe788163221b798692d8caa45047899c",
+    "token_hash_format": "contiguous C-order little-endian int64",
+    "input_shape": [
+      1,
+      5
+    ],
+    "attention_mask": [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "tokenization": "none; fixed token IDs",
+    "model_mode": "eval",
+    "attention_implementation": "eager",
+    "dtype": "float32",
+    "use_cache": false,
+    "grad_mode": "inference_mode",
+    "forwards_per_cell": 2,
+    "layers": [
+      0,
+      2,
+      5
+    ],
+    "target_order": [
+      "attn",
+      "mlp",
+      "block"
+    ],
+    "batch_positions": [
+      0
+    ],
+    "token_positions": [
+      0,
+      1
+    ],
+    "max_events": 18,
+    "max_trace_bytes": 131072,
+    "capture_device": "cpu",
+    "tensor_hash_format": "contiguous C-order little-endian float32"
+  },
+  "source_hashes": {
+    "git_commit": "170c7e5ab6caa995074701b20bb6affca29c3480",
+    "clean": true,
+    "bytecode_attested": false,
+    "scope": "executed project files only",
+    "files": {
+      "docs/PRETRAINED_SMOKE_V1.md": "957c70c9d41816e0a6dd70c408295e1e7a5cbed8568de79c249744d7c2299687",
+      "looking_glass/pretrained_smoke.py": "5b6b3f88f3d9dae001e826d2ec3c3658cd9a637d78c7a484e1e0f9c16ec7d59e",
+      "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+      "looking_glass/transformer_trace.py": "9120e1f59e5dfa8dc49e8f3b27b3c62ca3544bdff490abac91d45f200f6db1c0",
+      "looking_glass/trace_schema.py": "4fc8e929794f55c09c80be07566d53d10c5893f6034d05b8a8deb83c2e7f44af",
+      "looking_glass/probes.py": "3ba99f7289bb2f12cc7e0c1e255c22a7c7aff3a48e1348ec5d503956e0c8e730",
+      "looking_glass/model_ownership.py": "174069f031256a6ff538d21122c6a28fe7624adf86532fec57d232c455e79da1",
+      "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0"
+    }
+  },
+  "device": "cpu",
+  "study_id": "34b8a029-2cd0-48d8-833b-1d4020ecd2f2",
+  "expected_model_id": "distilbert/distilgpt2",
+  "expected_model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "expected_asset_sha256": {
+    "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+    "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+    "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+    "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+    "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783",
+    "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+    "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+  }
+}

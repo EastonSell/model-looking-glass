@@ -37,7 +37,12 @@ broker lifetimes if schema metadata is exported without its delivery envelope.
    intentional and may reject otherwise feasible work.
 2. Call `stage(slice)` with a plain, detached, contiguous CPU float16,
    float32 or float64 tensor. Its backing storage must be exactly the payload
-   size, and shape, dtype and sample identity must match metadata. Source and
+   size, and shape, dtype and sample identity must match metadata. PyTorch's
+   reported storage size cannot reveal every retained external owner: for
+   example, a small `torch.frombuffer` view can keep a much larger Python
+   buffer alive. The trusted producer must use genuinely standalone source
+   allocations or separately charge all retained backing owners; the size check
+   alone does not enforce that obligation. Source and
    saved dtype must agree; source-device provenance remains trusted producer
    metadata. Store and aggregate destination claims are obtained before copying. Both the source
    and destination claims remain pinned until the copy has stopped. No

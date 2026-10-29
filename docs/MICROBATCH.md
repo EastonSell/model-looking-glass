@@ -99,12 +99,34 @@ profile; this module checks membership but does not validate the evidence.
    remaining row count lacks an approved profile, no forward is launched;
    canceled jobs remain canceled and the remaining jobs fail as
    `unprofiled_batch`. A separately specified run may be resubmitted later.
+   The plan retains the same launch object until completion, without copying
+   its tensors again. A trusted single owner may recover it with
+   `pending_launch()` if return from `launch()` is interrupted. That owner
+   must reserve host memory before construction, prevent another thread from
+   inspecting or dispatching while `launch()` is still in progress, and never
+   execute an ambiguously handed-off launch twice.
 3. After `launch()` returns, cancellation suppresses delivery to that job but
    does not remove its rows or stop the shared forward. Cancellation, launch,
    and completion are serialized by the plan's lock. A cancellation racing
    completion succeeds only if it acquires the lock first; otherwise it returns
-   `False` and the completed outcome remains unchanged.
-4. The trusted worker executes under its immutable, no-grad contract, waits
+   `False` and the completed outcome remains unchanged. If cancellation's
+   return is interrupted, `cancellation_state(job_id)` reports the recorded
+   state, or `None` if publication bookkeeping failed. The broker must record
+   intent independently and treat unknown as unknown, not as an uncanceled job.
+4. The trusted worker checks `inspect_launch(launch)` for a frozen full profile,
+   certification, launch ID and ordered job IDs, then calls
+   `claim_launch(launch)` once after admission and before dispatch. Both
+   require the exact live object; the latter consumes it even if its return is
+   interrupted. If no forward was issued, the owner may terminalize it with
+   `abort_unexecuted(launch, error)`; the caller must establish that fact. If
+   execution may have started, use the post-launch failure/quarantine path
+   instead. The input mapping is read-only and ordinary tensor version changes
+   are checked, but neither the mapping nor version counter makes tensors
+   immutable: NumPy or `.data` aliases can bypass it. The owner must exclude
+   all writes until the worker has taken its isolated snapshot, and must bind
+   the snapshot and ordered row IDs to the actual execution. The capability is
+   a cooperative handoff, not a security boundary.
+5. The trusted worker executes under its immutable, no-grad contract, waits
    for all relevant device work and CPU offload to complete, and calls
    `finish(cpu_logits, launch_id=...)`. The broker must bind the worker request
    to the launch ID and verify that the returned worker request ID matches
@@ -114,7 +136,7 @@ profile; this module checks membership but does not validate the evidence.
    returned in original request order with their job, owner, and request IDs.
    A launch ID is a correlation nonce, not authentication or proof that an
    arbitrary caller supplied the right model output.
-5. If execution fails, call `fail(error, launch_id=...)` only after accounting
+6. If execution fails, call `fail(error, launch_id=...)` only after accounting
    for device work and cleanup. An OOM marks every noncanceled member failed;
    canceled members remain canceled. Invalid/stale output and execution errors
    also fail the entire noncanceled batch without delivering partial logits.
@@ -152,6 +174,17 @@ has completed and cleanup has been accounted for. A secondary failure while
 recording a worker failure retains the original exception as its cause.
 Under persistent host OOM, even creating new failure
 records cannot be guaranteed; this primitive cannot perform broker recovery.
+
+Constructor, launch, and split-publication failure paths drop common internal
+tracebacks and detach ordinary cause/context chains before propagating errors;
+this prevents the tested cases from retaining otherwise unreachable inputs and
+logits. It does not prove that all references are gone. Exception arguments,
+custom attributes, `ExceptionGroup` members, caller-held causes, launch or
+outcome aliases, worker frames, and external consumers can still retain tensor
+storage. The trusted broker must keep the corresponding host claims until it
+has disposed or safely transferred every such reference; if it cannot establish
+that, it must retain the claims and fail closed. Error type and message remain
+available, but these paths intentionally discard internal traceback detail.
 
 ## Evidence and next steps
 
