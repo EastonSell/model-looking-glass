@@ -10,7 +10,7 @@ site commitment without disclosing the site or nonce.
 
 Using the separately sourced held-out auditor's integer arithmetic and witness
 checks, it independently verifies the sixteen frames and acknowledgments, the
-independently retained receipt chain, request and metadata identities, selected
+owner's separately retained receipt chain, request and metadata identities, selected
 and untouched coordinates, donor pairing and same-site ordering. It compares
 every attention and MLP capture, the final block and all last-token logits to
 the pinned references under the specified tolerance, and recomputes the private
