@@ -1,0 +1,31 @@
+{
+  "status": "manifest_consistency_verified",
+  "manifest_sha256": "8b5cbfa3b2ab2786721b2c7f2e1975256aaf0864dd34784ed4bfb5e609706207",
+  "auditor_sha256": "db8fdb6907ef045fd5b5834644c43b2a7cb29c9ffaca518870e540810c95a674",
+  "annotation_sha256": "e8c7f7908f1d7278341fae127d0da654f102f11bd7b21d8aeefa635b8c810b6f",
+  "model_repository": "WinKawaks/vit-tiny-patch16-224",
+  "model_revision": "77d1485af66b34d4ed0fe95dbb0c60c7496f950b",
+  "model_file_sha256": {
+    "config.json": "7e5aeb1add0a832153071a858bb18145cafb809e54e7fea4e5dc1183c82078f5",
+    "preprocessor_config.json": "90d1ae427c27d2b9dcb01f6a62ba96aa67aac2de1697c59cd212055b5035c4a2",
+    "model.safetensors": "a9146f3ee7cf6de399190132627e4aef1aeddd13692f5b333f24629dd36c37b0"
+  },
+  "image_mirror_revision": "9e50abcdc1361852f34841af4939cbcd2d37c92f",
+  "rasterizer_version": "11.3.0",
+  "numpy_version": "2.4.6",
+  "pairs": 12,
+  "development_images": 8,
+  "heldout_images": 16,
+  "distinct_jpeg_and_pixel_hashes": 24,
+  "https_mirror_checked": true,
+  "checks": [
+    "JPEG bytes, decoded dimensions, EXIF orientation and independently processed pixel hashes",
+    "annotation identities, resized boxes, polygon masks, token occupancy and other-object overlaps",
+    "pair order, disjoint image IDs, patch coordinates and matched positional radii"
+  ],
+  "limitations": [
+    "The image and annotation sources are third-party mirrors, not authenticated official COCO provenance.",
+    "Byte hashes and fixed splits do not establish absence from model pretraining or prove model execution.",
+    "This check covers saved inputs and box geometry, not intervention correctness or scientific validity."
+  ]
+}
