@@ -35,10 +35,11 @@ The event flag for full-sequence finiteness is checked as a recorded assertion;
 unsaved sequence positions cannot be replayed. An incomplete, failed,
 ambiguous or inconsistent attempt is not a scientific result.
 
-Verify the reader's exact published source bytes **before executing them**.
-The runtime must execute those verified bytes, rather than trusting a later
-hash of an imported module; `-B` by itself does not prevent reading existing
-bytecode. The reader separately hashes and compiles the exact bytes of
+Verify `tools/audit_agreement_substitution_v1.py` **before executing it**.
+That entry hashes and compiles the exact reviewed reader bytes directly,
+rather than trusting a later hash of an imported module; `-B` by itself does
+not prevent reading existing bytecode. The reader separately hashes and compiles
+the exact bytes of
 `agreement_science_v1.py` with SHA-256
 `917694d448b796359db0002a630877e5226a2583d273092871892fade7a38ac4`.
 It independently pins the published case file and three binary64 directions.
@@ -63,6 +64,7 @@ From the project root, run:
 
 ```text
 python -B -m pytest -q tests/test_agreement_substitution_science_v1.py tests/test_agreement_substitution_saved_v1.py
+python -B -m pytest -q tests/test_agreement_substitution_replay_entry_v1.py
 ```
 
 The tests use invented cases and small CPU-only tensors; they include a
