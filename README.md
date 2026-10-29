@@ -64,6 +64,8 @@ The [DistilBERT agreement pilot](results/bert-agreement-dev-v0-20261028/README.m
 
 The [DistilBERT GPU calibration](results/bert-gpu-calibration-v1-20261029/README.md) checks patch delivery and allocator cleanup on one previously exposed development pair. It is not a held-out evaluation or a GPU throughput benchmark.
 
+The [DistilBERT GPU family profile](results/bert-gpu-family-profile-v1-20261029/README.md) records 140 forwards on one exposed family, with a 324 MiB peak PyTorch reservation and zero PyTorch allocator bytes allocated/reserved after cleanup. An earlier subject-state comparison produced a larger mean effect than the candidate site, so the result does not uniquely localize the computation. These allocator observations are not a worst-case VRAM bound.
+
 The [DistilGPT2 agreement preflight](results/distilgpt2-agreement-preflight-v1-20261028/README.md) found the grammatical verb preferred on all 16 fixed public development prompts; it establishes a small behavior to investigate, not a held-out or causal result.
 
 The independently audited [agreement discovery](results/distilgpt2-natural-agreement-v1-20261028/README.md) selected the layer 3 attention output at the final token. Across four public families, opposite-number donors caused a mean 3.095-logit greater shift away from the target's present-tense agreement margin than same-number donors. They reversed the margin in 10 of 32 donor–target pairs involving six distinct targets, versus none of 32 same-number pairs. These are development results, and a shift can reflect weakening rather than transfer of number information; held-out prediction remains to be tested.
