@@ -68,6 +68,8 @@ The [DistilBERT GPU family profile](results/bert-gpu-family-profile-v1-20261029/
 
 The [balanced DistilBERT CPU evaluation](results/bert-agreement-cpu-evaluation-v1-20261029/README.md) tested the candidate on eight public families held out from local site selection. The candidate exceeded its matched-layer distractor control, but an earlier subject-state patch produced a larger effect in all eight families. The cases were public rather than blind, and the result does not establish a uniquely localized grammatical-number representation.
 
+The [matched-dose follow-up](results/bert-matched-dose-v1-20261029/README.md) did not meet its preregistered early-site persistence rule: only four of eight family differences favored block 0 over block 2, versus six required. The result does not establish that the sites are equivalent. A separate [taste-context exploration](results/bert-taste-context-v1-20261029/RESULTS.md) found donor-directed ingredient-patch effects on four public sentence frames, although the clean `sweet`/`sour` preference was not reliable across frames.
+
 The [DistilBERT exposed-pair GPU observation](results/bert-gpu-exposed-pair-v1-20261028/README.md) reduced the `is − are` margin from +5.2040 to +0.0572 on one previously exposed public pair, without reversing that two-word preference. Its peak PyTorch reserved memory was 324 MiB; this allocator counter does not measure total or worst-case GPU memory.
 
 The [DistilGPT2 agreement preflight](results/distilgpt2-agreement-preflight-v1-20261028/README.md) found the grammatical verb preferred on all 16 fixed public development prompts; it establishes a small behavior to investigate, not a held-out or causal result.
@@ -84,7 +86,15 @@ A [broader head comparison](results/distilgpt2-copy-head-followup-v2-20261028/RE
 
 The [matched-dose copying factorial](results/distilgpt2-copy-head-factorial-v1-20261028/README.md) compared single-head and joint interventions on 32 public prompts. Both candidate heads affected the repeated-versus-shuffled contrast, with variation across families. The joint intervention had a larger total input dose than either single intervention, and downstream nonlinearities can contribute to the observed output interaction; the result does not establish direct cooperation between heads.
 
+The [copying dose follow-up](results/distilgpt2-copy-head-pairs-dose-v1-20261028/README.md) found a mean high-dose contrast change of −0.138 nats for the H2+H10 pair on eight public families, with seven negative family effects and one positive. Target top-one status remained unchanged in all 480 intervention comparisons. Different total doses at matched per-head scale and output nonlinearities limit the interaction's interpretation; equal-total-dose singles and additive-logit comparators are also reported.
+
+In a [recipient-name screen](results/distilgpt2-recipient-screen-v1-20261028/README.md), only three of 32 matched prompt pairs met the baseline rule, so the planned patches were not run. A separate [year-comparison screen](results/distilgpt2-greater-than-screen-v1-20261028/README.md) found a wording-dependent shift but a later-year preference even in all reverse and neutral prompts; it does not establish a general temporal comparator.
+
+The [FLAN-T5 encoder study](results/flan-t5-equal-dose-cpu-v1-20261029/README.md) compared word-position patches with matched-dose instruction and punctuation controls. The preset rule was negative for both evaluable word pairs; the third pair failed the baseline and was not patched. Teacher-forced sequence scores include EOS and are sensitive to target length and prior frequency, so they are not generated translations or a unique translation mechanism.
+
 A [targeted parameter-edit experiment](results/targeted-edit-cpu-v1-20261028/README.md) changed the intended answer preference but failed its preset locality thresholds on public probes. The negative result and a same-host replay are preserved; the study does not establish general capability preservation.
+
+The [projected-edit follow-up](results/targeted-edit-projected-cpu-v1-20261028/README.md) was ineligible because only two of four targets had the required baseline preference; neither reversed. The projected and unprojected edits had different target effects, and the nine locality probes cannot establish broad capability preservation.
 
 The preserved v1 runner has a [cleanup compatibility limitation](docs/TARGETED_EDIT_V2_OWNER.md#historical-v1-cleanup-limitations) in Python 3.10 and when called while an unrelated exception is being handled. The recorded run used Python 3.11; this limitation does not reclassify its result.
 
@@ -164,3 +174,4 @@ Full activations can contain sensitive information. This synthetic benchmark sav
 - [Implementation plan](docs/superpowers/plans/2026-10-28-runtime-probes.md)
 
 This work grew out of the [Trojan Regularizer Audit](https://github.com/EastonSell/turing-complete-malware-pytorch-backward-pass-audit), but addresses trusted runtime instrumentation. It is not a general backdoor detector or model-safety certification. Ordinary PyTorch hooks and the gradient identity are standard mechanisms; possible value lies in the measured placement, provenance and operating costs, not a novelty claim for those mechanisms.
+
