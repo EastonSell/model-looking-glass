@@ -63,6 +63,7 @@ class PilotExecutor:
         self.device, self.vocab_size = device, vocab_size
         self.limits = (load_limit, job_limit)
         self.index, self.current, self.before, self.forward_count = 0, None, None, 0
+        self.evidence = None
         self.phases = []
         self.roots['reference'] = None
         self.roots['reference_lease'] = None
@@ -78,6 +79,29 @@ class PilotExecutor:
         if self.roots['reference'] is not None:
             raise RuntimeError('reference custody is already bound')
         self.roots['reference'] = reference
+
+    def bind_evidence(self, evidence):
+        if self.evidence is not None or self.index != 1 or self.current is not None or self.forward_count:
+            raise RuntimeError('evidence custody must be bound before the first forward')
+        self.check()
+        self.evidence = evidence
+        self.check()
+
+    def save_capture(self, mode, forward_index, values):
+        if self.current != mode or self.roots['pending']:
+            raise RuntimeError('capture evidence is outside its completed forward')
+        if self.evidence is not None:
+            self.check()
+            self.evidence.write_capture(mode, forward_index, values)
+            self.check()
+
+    def finish_evidence(self):
+        if self.evidence is None or self.index != len(PHASE_NAMES) or self.current is not None:
+            raise RuntimeError('tensor evidence is incomplete')
+        self.check()
+        binding = self.evidence.finish()
+        self.check()
+        return binding
 
     def bind_reference_lease(self, lease, handles):
         self.roots['reference_lease'], self.roots['reference_handles'] = lease, handles
@@ -167,6 +191,10 @@ class PilotExecutor:
             self.verify_inputs(self.roots['input_ids'], self.roots['attention_mask'])
         digest = hashlib.sha256(copied.contiguous().numpy().astype('<f4', copy=False).tobytes()).hexdigest()
         next_index = self.forward_count + 1
+        if self.evidence is not None:
+            self.check()
+            self.evidence.write_logit(next_index, phase, copied)
+            self.check()
         write_json_new(self.directory / f'forward-{next_index:03d}.json',
                        {'schema': 'pretrained-gpu-trace-forward-v1', 'phase': phase,
                         'index': next_index, 'logit_sha256': digest,
