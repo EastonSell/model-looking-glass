@@ -32,10 +32,16 @@ class NumberCommitmentTests(unittest.TestCase):
         self.site = study.seal_site(FAKE_SITE_NONCE, "d" * 40)
         self.site_kwargs = {"site_nonce": FAKE_SITE_NONCE, "site_record_bytes": self.site.record_bytes,
                             "site_commitment": self.site.commitment_sha256}
+        self.inventory = study.load_inventory_snapshot(exposures.canonical_inventory_bytes(),
+                                                        exposures.inventory_digest())
+        self.inventory_kwargs = {"inventory_snapshot": self.inventory,
+                                 "current_inventory_sha256": self.inventory.sha256}
+        self.allocation = study.sample_families(self.freeze, FAKE_NONCE,
+                                                **self.inventory_kwargs, **self.site_kwargs)
 
     def fake_cases(self):
         result = []
-        for family in study.sample_families(self.freeze, FAKE_NONCE, **self.site_kwargs):
+        for family in self.allocation.families:
             rows = []
             for index, text in enumerate(family.texts):
                 ids = [10, 20000 + 4 * family.family_index + index, 3000 + family.family_index]
@@ -60,7 +66,7 @@ class NumberCommitmentTests(unittest.TestCase):
         for bad in (None, study.PredictionFreeze(b"{}", "0" * 64),
                     study.PredictionFreeze(self.freeze.record_bytes, "0" * 64)):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
-                study.sample_families(bad, FAKE_NONCE, **self.site_kwargs)
+                study.sample_families(bad, FAKE_NONCE, **self.inventory_kwargs, **self.site_kwargs)
         with self.assertRaises(ValueError):
             study.load_prediction_freeze(self.freeze.record_bytes + b"\n", self.freeze.sha256)
         for tracks in ({}, {"other": TRACKS["natural"]}, {"natural": {"source_commit": "a" * 40}},
@@ -68,8 +74,62 @@ class NumberCommitmentTests(unittest.TestCase):
             with self.subTest(tracks=tracks), self.assertRaises(ValueError):
                 study.make_prediction_freeze(tracks)
 
+    def test_later_inventory_is_canonical_identity_bound_and_superset(self):
+        def encoded(payload):
+            return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True,
+                              allow_nan=False).encode("utf-8")
+
+        def load(payload):
+            raw = encoded(payload)
+            return study.load_inventory_snapshot(raw, hashlib.sha256(raw).hexdigest())
+
+        original = exposures.inventory_payload()
+        with self.assertRaises(ValueError):
+            study.load_inventory_snapshot(self.inventory.record_bytes + b"\n", self.inventory.sha256)
+        changed = copy.deepcopy(original)
+        changed["identity"]["weights_sha256"] = "0" * 64
+        with self.assertRaises(ValueError):
+            load(changed)
+        missing = copy.deepcopy(original)
+        missing["records"] = [r for r in missing["records"] if r["token_ids"][:4] != [50256] * 4]
+        with self.assertRaises(ValueError):
+            load(missing)
+        duplicate = copy.deepcopy(original)
+        duplicate["records"].append(copy.deepcopy(duplicate["records"][0]))
+        with self.assertRaises(ValueError):
+            load(duplicate)
+        malformed = copy.deepcopy(original)
+        malformed["records"][0]["token_ids"][0] = True
+        with self.assertRaises(ValueError):
+            load(malformed)
+        with mock.patch.object(study, "_sort_pool", side_effect=AssertionError("allocation started")):
+            with self.assertRaises(ValueError):
+                study.sample_families(self.freeze, FAKE_NONCE, inventory_snapshot=self.inventory,
+                                      current_inventory_sha256="0" * 64, **self.site_kwargs)
+
+        # The extra row is entirely fabricated and is equal to the first fake
+        # held-out row; a later snapshot must exclude it at sealing.
+        later = copy.deepcopy(original)
+        later["version"] = "distilgpt2-development-exposures-v4"
+        extra = copy.deepcopy(later["records"][0])
+        extra.update({"record_id": "synthetic-extra", "category": "planned",
+                      "token_ids": self.fake_cases()[0][0]["input_ids"][:]})
+        later["records"].append(extra)
+        snapshot = load(later)
+        allocation = study.sample_families(self.freeze, FAKE_NONCE, inventory_snapshot=snapshot,
+                                            current_inventory_sha256=snapshot.sha256, **self.site_kwargs)
+        with self.assertRaises(ValueError):
+            study.seal_heldout(self.freeze, FAKE_NONCE, self.fake_cases(), allocation=allocation,
+                               inventory_snapshot=snapshot, current_inventory_sha256=snapshot.sha256,
+                               **self.site_kwargs)
+        with self.assertRaises(ValueError):
+            study.seal_heldout(self.freeze, FAKE_NONCE, self.fake_cases(), allocation=self.allocation,
+                               inventory_snapshot=snapshot, current_inventory_sha256=snapshot.sha256,
+                               **self.site_kwargs)
+
     def test_fabricated_allocation_has_exact_order_and_tie_break(self):
-        rows = study.sample_families(self.freeze, FAKE_NONCE, **self.site_kwargs)
+        allocation = study.sample_families(self.freeze, FAKE_NONCE, **self.inventory_kwargs, **self.site_kwargs)
+        rows = allocation.families
         self.assertEqual([r.context for r in rows],
                          ["near the boxes", "behind the car", "behind the cars", "near the box"])
         self.assertEqual([r.subjects for r in rows],
@@ -79,7 +139,8 @@ class NumberCommitmentTests(unittest.TestCase):
                           ("gamma", "gammas", "alpha", "alphas")])
         self.assertEqual([r.family_index for r in rows], [0, 1, 2, 3])
         self.assertNotIn("theta", repr(rows[0]))
-        self.assertEqual(study.sample_families(self.freeze, FAKE_NONCE, **self.site_kwargs), rows)
+        self.assertEqual(study.sample_families(self.freeze, FAKE_NONCE, **self.inventory_kwargs,
+                                               **self.site_kwargs), allocation)
         class SameDigest:
             def digest(self):
                 return b"\0" * 32
@@ -87,7 +148,7 @@ class NumberCommitmentTests(unittest.TestCase):
             self.assertEqual(study._sort_pool(b"fake", FAKE_NONCE, ("é", "b", "a")), ["a", "b", "é"])
         for nonce in (b"", b"x" * 31, b"x" * 33, bytearray(32), "0" * 64):
             with self.subTest(nonce_type=type(nonce)), self.assertRaises(ValueError):
-                study.sample_families(self.freeze, nonce, **self.site_kwargs)
+                study.sample_families(self.freeze, nonce, **self.inventory_kwargs, **self.site_kwargs)
 
     def test_site_commitment_and_reveal_follow_exact_domains(self):
         sealed = study.seal_site(FAKE_NONCE, "d" * 40)
@@ -112,7 +173,7 @@ class NumberCommitmentTests(unittest.TestCase):
     def test_fabricated_heldout_commitment_binds_all_tracks_cases_and_inventory(self):
         tokenized = self.fake_cases()
         sealed = study.seal_heldout(self.freeze, FAKE_NONCE, tokenized,
-                                    exposure_inventory_sha256=exposures.inventory_digest(), **self.site_kwargs)
+                                    allocation=self.allocation, **self.inventory_kwargs, **self.site_kwargs)
         record = json.loads(sealed.record_bytes)
         self.assertEqual(record["source_commits"], {"natural": "a" * 40, "injection": "d" * 40})
         self.assertEqual(record["prediction_freeze_sha256"], self.freeze.sha256)
@@ -120,7 +181,8 @@ class NumberCommitmentTests(unittest.TestCase):
         self.assertEqual(sealed.commitment_sha256, hashlib.sha256(
             b"MLG-number-v1-heldout-commit\0" + FAKE_NONCE + b"\0" + sealed.record_bytes).hexdigest())
         self.assertTrue(study.verify_heldout_reveal(self.freeze, FAKE_NONCE, sealed.record_bytes,
-                                                    sealed.commitment_sha256, **self.site_kwargs))
+                                                    sealed.commitment_sha256, inventory_snapshot=self.inventory,
+                                                    **self.site_kwargs))
         self.assertNotIn("theta", repr(sealed))
         for mode in ("bad_mask", "bad_token", "duplicate", "wrong_text", "unaligned", "bad_index",
                      "first_subject", "last_subject"):
@@ -143,30 +205,33 @@ class NumberCommitmentTests(unittest.TestCase):
                 altered[0][0]["subject_index"] = len(altered[0][0]["input_ids"]) - 1
             with self.subTest(mode=mode), self.assertRaises(ValueError):
                 study.seal_heldout(self.freeze, FAKE_NONCE, altered,
-                                   exposure_inventory_sha256=exposures.inventory_digest(), **self.site_kwargs)
+                                   allocation=self.allocation, **self.inventory_kwargs, **self.site_kwargs)
         with self.assertRaises(ValueError):
             study.seal_heldout(self.freeze, FAKE_NONCE, tokenized,
-                               exposure_inventory_sha256="0" * 64, **self.site_kwargs)
+                               allocation=self.allocation, inventory_snapshot=self.inventory,
+                               current_inventory_sha256="0" * 64, **self.site_kwargs)
         with self.assertRaises(ValueError):
-            study.verify_heldout_reveal(self.freeze, FAKE_NONCE, sealed.record_bytes, "0" * 64, **self.site_kwargs)
+            study.verify_heldout_reveal(self.freeze, FAKE_NONCE, sealed.record_bytes, "0" * 64,
+                                        inventory_snapshot=self.inventory, **self.site_kwargs)
         other = study.make_prediction_freeze({"natural": TRACKS["natural"]})
         with self.assertRaises(ValueError):
-            study.verify_heldout_reveal(other, FAKE_NONCE, sealed.record_bytes, sealed.commitment_sha256)
+            study.verify_heldout_reveal(other, FAKE_NONCE, sealed.record_bytes, sealed.commitment_sha256,
+                                        inventory_snapshot=self.inventory)
 
     def test_site_custody_is_tied_to_injection_track_and_distinct_nonce(self):
         tokenized = self.fake_cases()
-        options = {"exposure_inventory_sha256": exposures.inventory_digest()}
+        options = {"allocation": self.allocation, **self.inventory_kwargs}
         with mock.patch.object(study, "_sort_pool", side_effect=AssertionError("allocation started")):
             with self.assertRaises(ValueError):
-                study.sample_families(self.freeze, FAKE_NONCE)
+                study.sample_families(self.freeze, FAKE_NONCE, **self.inventory_kwargs)
             repeated = study.seal_site(FAKE_NONCE, "d" * 40)
             with self.assertRaises(ValueError):
-                study.sample_families(self.freeze, FAKE_NONCE, site_nonce=FAKE_NONCE,
+                study.sample_families(self.freeze, FAKE_NONCE, **self.inventory_kwargs, site_nonce=FAKE_NONCE,
                                       site_record_bytes=repeated.record_bytes,
                                       site_commitment=repeated.commitment_sha256)
             wrong_source = study.seal_site(FAKE_SITE_NONCE, "a" * 40)
             with self.assertRaises(ValueError):
-                study.sample_families(self.freeze, FAKE_NONCE, site_nonce=FAKE_SITE_NONCE,
+                study.sample_families(self.freeze, FAKE_NONCE, **self.inventory_kwargs, site_nonce=FAKE_SITE_NONCE,
                                       site_record_bytes=wrong_source.record_bytes,
                                       site_commitment=wrong_source.commitment_sha256)
         with self.assertRaises(ValueError):
@@ -189,9 +254,11 @@ class NumberCommitmentTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             study.seal_heldout(self.freeze, FAKE_NONCE, colliding, **options, **self.site_kwargs)
         natural_only = study.make_prediction_freeze({"natural": TRACKS["natural"]})
-        self.assertTrue(study.seal_heldout(natural_only, FAKE_NONCE, tokenized, **options).commitment_sha256)
+        natural_allocation = study.sample_families(natural_only, FAKE_NONCE, **self.inventory_kwargs)
+        natural_options = {"allocation": natural_allocation, **self.inventory_kwargs}
+        self.assertTrue(study.seal_heldout(natural_only, FAKE_NONCE, tokenized, **natural_options).commitment_sha256)
         with self.assertRaises(ValueError):
-            study.seal_heldout(natural_only, FAKE_NONCE, tokenized, **options, **self.site_kwargs)
+            study.seal_heldout(natural_only, FAKE_NONCE, tokenized, **natural_options, **self.site_kwargs)
 
 
 if __name__ == "__main__":

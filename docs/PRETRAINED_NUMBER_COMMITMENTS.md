@@ -23,11 +23,17 @@ track records containing the source commit and the SHA-256 values of the
 published runtime and prediction bytes. `load_prediction_freeze` validates
 previously saved canonical bytes and their digest. The resulting immutable
 `PredictionFreeze` records a consistent hash; it is **not** a publication
-attestation. `sample_families` requires a valid freeze object and an
+attestation. Before allocation, the custodian selects and retains the exact
+reviewed current inventory bytes and digest. `load_inventory_snapshot` checks
+canonical bytes, hash, model/tokenizer identity, bounded typed records, unique
+record IDs and inclusion of every v3 known prefix. `sample_families` requires
+that snapshot, its caller-supplied current digest, a valid freeze object and an
 already-owned nonce. For an injection track it validates the private site
 commitment, source binding and distinctness of nonces before any sampling.
 It then applies the protocol's SHA-256 sort domains and byte-order tie break.
-This ordering check cannot establish that another
+The returned private allocation binds the freeze and selected inventory digest.
+These checks cannot establish that the caller chose the latest reviewed
+snapshot or that another
 process published the freeze or that the nonce was generated afterward.
 The custodian must enforce and document those events independently.
 
@@ -42,12 +48,14 @@ bytes are necessary but do not prove independent randomness.
 After the custodian tokenizes the sampled cases, `seal_heldout` checks the
 four-family structure, ordered texts, token bounds, all-one masks, subject
 positions, within-family alignment and duplicate rows. It also compares the
-exact 16 public discovery and 16 held-out rows with the reviewed v3 exposure
-inventory before hashing the protocol's canonical held-out record.
-`verify_heldout_reveal` revalidates the allocation, metadata, source and
-freeze binding, exposure check, and commitment after disclosure. The current
-implementation binds v3's inventory digest; a later inventory with new known
-rows must be separately checked and bound before use. The comparison is a
+exact 16 public discovery and 16 held-out rows against all prefixes in the
+selected snapshot before hashing the protocol's canonical held-out record.
+`seal_heldout` rejects a changed caller-supplied current digest or a different
+allocation. `verify_heldout_reveal` uses the exact retained historical
+inventory bytes to revalidate allocation, metadata, source and freeze binding,
+exposure check, and commitment after disclosure; later snapshots do not make
+an earlier reveal unverifiable. The caller must check that its selected digest
+remains current before allocation and sealing. The comparison is a
 known-prefix check with the limitations in the inventory notes, not proof
 against unknown history, semantic overlap or pretraining.
 

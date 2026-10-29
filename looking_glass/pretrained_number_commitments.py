@@ -114,6 +114,70 @@ class PredictionFreeze:
     sha256: str
 
 
+@dataclass(frozen=True)
+class InventorySnapshot:
+    """Immutable canonical bytes, not proof the snapshot is current or reviewed."""
+    record_bytes: bytes = field(repr=False)
+    sha256: str
+
+
+def load_inventory_snapshot(record_bytes, expected_sha256):
+    """Validate a canonical later inventory and preserve all v3 prefixes."""
+    _hex(expected_sha256, 64)
+    if type(record_bytes) is not bytes or len(record_bytes) > 1_000_000:
+        raise ValueError("a bounded immutable inventory byte record is required")
+    if not hmac.compare_digest(hashlib.sha256(record_bytes).hexdigest(), expected_sha256):
+        raise ValueError("inventory digest does not match")
+    try:
+        payload = json.loads(record_bytes)
+        canonical = json.dumps(payload, sort_keys=True, ensure_ascii=True, allow_nan=False,
+                               separators=(",", ":")).encode("utf-8")
+    except (ValueError, TypeError, UnicodeError, RecursionError) as error:
+        raise ValueError("invalid inventory record") from error
+    if canonical != record_bytes or type(payload) is not dict:
+        raise ValueError("inventory record is not canonical JSON")
+    version = payload.get("version")
+    match = (re.fullmatch(r"distilgpt2-development-exposures-v([1-9][0-9]{0,5})", version)
+             if type(version) is str else None)
+    if match is None or int(match.group(1)) < 3:
+        raise ValueError("inventory version is incompatible")
+    identity = payload.get("identity")
+    expected_identity = exposures.inventory_payload()["identity"]
+    if (type(identity) is not dict or
+            json.dumps(identity, sort_keys=True, separators=(",", ":"), ensure_ascii=True) !=
+            json.dumps(expected_identity, sort_keys=True, separators=(",", ":"), ensure_ascii=True)):
+        raise ValueError("inventory model or tokenizer identity does not match")
+    rows = payload.get("records")
+    if type(rows) is not list or not 1 <= len(rows) <= 4096:
+        raise ValueError("inventory record count is invalid")
+    record_ids, prefixes = set(), set()
+    for row in rows:
+        if type(row) is not dict:
+            raise ValueError("inventory row is invalid")
+        record_id, category, ids = row.get("record_id"), row.get("category"), row.get("token_ids")
+        if (type(record_id) is not str or not 1 <= len(record_id) <= 256 or record_id in record_ids or
+                type(category) is not str or not 1 <= len(category) <= 128 or type(ids) is not list or
+                not 1 <= len(ids) <= 32 or any(type(x) is not int or not 0 <= x <= 50256 for x in ids)):
+            raise ValueError("inventory row identity or token IDs are invalid")
+        record_ids.add(record_id)
+        prefixes.update(tuple(ids[:length]) for length in range(1, len(ids) + 1))
+    if not exposures._forbidden_rows().issubset(prefixes):
+        raise ValueError("inventory omits a known v3 prefix")
+    return InventorySnapshot(record_bytes, expected_sha256)
+
+
+def _inventory_prefixes(snapshot, current_inventory_sha256):
+    if type(snapshot) is not InventorySnapshot:
+        raise ValueError("a validated inventory snapshot is required")
+    _hex(current_inventory_sha256, 64)
+    checked = load_inventory_snapshot(snapshot.record_bytes, snapshot.sha256)
+    if not hmac.compare_digest(checked.sha256, current_inventory_sha256):
+        raise ValueError("the selected inventory is no longer current")
+    payload = json.loads(checked.record_bytes)
+    return {tuple(row["token_ids"][:length]) for row in payload["records"]
+            for length in range(1, len(row["token_ids"]) + 1)}
+
+
 def load_prediction_freeze(record_bytes, expected_sha256):
     """Validate already prepared aggregate bytes; publication is caller-owned."""
     _hex(expected_sha256, 64)
@@ -200,7 +264,16 @@ class FamilyAssignment:
     texts: tuple = field(repr=False)
 
 
-def sample_families(freeze, split_nonce, *, site_nonce=None, site_record_bytes=None, site_commitment=None):
+@dataclass(frozen=True)
+class FamilyAllocation:
+    prediction_freeze_sha256: str
+    exposure_inventory_sha256: str
+    site_commitment: str | None
+    families: tuple = field(repr=False)
+
+
+def sample_families(freeze, split_nonce, *, inventory_snapshot, current_inventory_sha256,
+                    site_nonce=None, site_record_bytes=None, site_commitment=None):
     """Derive private assignments only from an existing valid freeze and nonce.
 
     This does not generate the nonce or prove that the freeze was published.
@@ -209,6 +282,7 @@ def sample_families(freeze, split_nonce, *, site_nonce=None, site_record_bytes=N
     aggregate = _freeze_record(freeze)
     nonce = _nonce(split_nonce)
     _verify_site_custody(aggregate, nonce, site_nonce, site_record_bytes, site_commitment)
+    _inventory_prefixes(inventory_snapshot, current_inventory_sha256)
     nouns = _sort_pool(_NOUN_DOMAIN, nonce, NOUNS)
     plural = _sort_pool(_PLURAL_DOMAIN, nonce, PLURAL_CONTEXTS)[:2]
     singular = _sort_pool(_SINGULAR_DOMAIN, nonce, SINGULAR_CONTEXTS)[:2]
@@ -219,7 +293,7 @@ def sample_families(freeze, split_nonce, *, site_nonce=None, site_record_bytes=N
         subjects = tuple(first + second)
         texts = tuple(f"The {subject} {context}" for subject in subjects)
         result.append(FamilyAssignment(index, context, subjects, texts))
-    return tuple(result)
+    return FamilyAllocation(freeze.sha256, inventory_snapshot.sha256, site_commitment, tuple(result))
 
 
 def _checked_cases(assignments, tokenized_cases):
@@ -272,7 +346,7 @@ def _verify_site_custody(aggregate, split_nonce, site_nonce, site_record_bytes, 
                        expected_source_commit=aggregate["tracks"]["injection"]["source_commit"])
 
 
-def seal_heldout(freeze, split_nonce, tokenized_cases, *, exposure_inventory_sha256,
+def seal_heldout(freeze, split_nonce, tokenized_cases, *, allocation, inventory_snapshot, current_inventory_sha256,
                  site_nonce=None, site_record_bytes=None, site_commitment=None):
     """Seal tokenized cases after a freeze and the v3 known-exposure check.
 
@@ -282,28 +356,33 @@ def seal_heldout(freeze, split_nonce, tokenized_cases, *, exposure_inventory_sha
     aggregate = _freeze_record(freeze)
     _nonce(split_nonce)
     _verify_site_custody(aggregate, split_nonce, site_nonce, site_record_bytes, site_commitment)
-    if type(exposure_inventory_sha256) is not str or exposure_inventory_sha256 != exposures.inventory_digest():
-        raise ValueError("the checked exposure inventory digest does not match")
+    forbidden = _inventory_prefixes(inventory_snapshot, current_inventory_sha256)
     # Freeze caller data before it is checked and before hashing. A cooperative
     # caller must not mutate it while this initial copy is in progress.
     snapshot = _decode_canonical(canonical_json(tokenized_cases))
-    assignments = sample_families(freeze, split_nonce, site_nonce=site_nonce,
-                                  site_record_bytes=site_record_bytes, site_commitment=site_commitment)
-    families = _checked_cases(assignments, snapshot)
+    expected_allocation = sample_families(freeze, split_nonce, inventory_snapshot=inventory_snapshot,
+                                          current_inventory_sha256=current_inventory_sha256,
+                                          site_nonce=site_nonce, site_record_bytes=site_record_bytes,
+                                          site_commitment=site_commitment)
+    if type(allocation) is not FamilyAllocation or allocation != expected_allocation:
+        raise ValueError("allocation does not match its freeze and inventory")
+    families = _checked_cases(allocation.families, snapshot)
     discovery = [list(ids) for _, ids in exposures.PUBLIC_DISCOVERY]
     heldout = [case["input_ids"] for family in families for case in family["cases"]]
-    exposures.check_exposed_discovery(discovery, heldout, expected_inventory_sha256=exposure_inventory_sha256,
+    exposures.check_exposed_discovery(discovery, heldout, expected_inventory_sha256=exposures.inventory_digest(),
                                      expected_model_identity=exposures.TARGET)
+    if any(tuple(row) in forbidden for row in heldout):
+        raise ValueError("a held-out token sequence is in the selected exposure inventory")
     record = {"schema": "mlg-number-heldout-v1", "protocol_sha256": PROTOCOL_SHA256,
               "source_commits": {name: item["source_commit"] for name, item in aggregate["tracks"].items()},
               "checkpoint_revision": CHECKPOINT_REVISION, "prediction_freeze_sha256": freeze.sha256,
-              "exposure_inventory_sha256": exposure_inventory_sha256, "families": families}
+              "exposure_inventory_sha256": inventory_snapshot.sha256, "families": families}
     raw = canonical_json(record)
     commitment = hashlib.sha256(_HELDOUT_COMMIT_DOMAIN + split_nonce + b"\x00" + raw).hexdigest()
     return SealedRecord(commitment, raw)
 
 
-def verify_heldout_reveal(freeze, split_nonce, record_bytes, expected_commitment, *,
+def verify_heldout_reveal(freeze, split_nonce, record_bytes, expected_commitment, *, inventory_snapshot,
                           site_nonce=None, site_record_bytes=None, site_commitment=None):
     """Revalidate a disclosed record, its freeze, allocation and commitment."""
     aggregate = _freeze_record(freeze)
@@ -315,15 +394,21 @@ def verify_heldout_reveal(freeze, split_nonce, record_bytes, expected_commitment
     sources = {name: item["source_commit"] for name, item in aggregate["tracks"].items()}
     if (record["schema"] != "mlg-number-heldout-v1" or record["protocol_sha256"] != PROTOCOL_SHA256 or
             record["checkpoint_revision"] != CHECKPOINT_REVISION or record["source_commits"] != sources or
-            record["prediction_freeze_sha256"] != freeze.sha256):
+            record["prediction_freeze_sha256"] != freeze.sha256 or
+            type(inventory_snapshot) is not InventorySnapshot or
+            record["exposure_inventory_sha256"] != inventory_snapshot.sha256):
         raise ValueError("held-out record does not match its prediction freeze")
     families = record["families"]
     if type(families) is not list or len(families) != 4:
         raise ValueError("held-out record has invalid families")
     for family in families:
         _exact_keys(family, ("family_index", "context", "subjects", "cases"))
-    expected = seal_heldout(freeze, split_nonce, [f["cases"] for f in families],
-                            exposure_inventory_sha256=record["exposure_inventory_sha256"],
+    allocation = sample_families(freeze, split_nonce, inventory_snapshot=inventory_snapshot,
+                                 current_inventory_sha256=inventory_snapshot.sha256,
+                                 site_nonce=site_nonce, site_record_bytes=site_record_bytes,
+                                 site_commitment=site_commitment)
+    expected = seal_heldout(freeze, split_nonce, [f["cases"] for f in families], allocation=allocation,
+                            inventory_snapshot=inventory_snapshot, current_inventory_sha256=inventory_snapshot.sha256,
                             site_nonce=site_nonce, site_record_bytes=site_record_bytes,
                             site_commitment=site_commitment)
     if record_bytes != expected.record_bytes or not hmac.compare_digest(

@@ -19,6 +19,170 @@ def _isolated(code):
 
 
 class DevelopmentExecutorTests(unittest.TestCase):
+    def test_tap_group_and_cpu_autocast_are_rejected_before_forward(self):
+        code = r'''
+import torch
+from looking_glass.causal_v2_executor import DevelopmentInvalid, _check_model
+from looking_glass.model import TinyResidual
+m = TinyResidual(width=8, depth=4).eval()
+m.blocks[1].output_tap.group = "dense"
+try:
+    _check_model(m)
+except DevelopmentInvalid:
+    pass
+else:
+    raise AssertionError("changed sparse tap group was accepted")
+m.blocks[1].output_tap.group = "sparse"
+with torch.autocast("cpu", dtype=torch.bfloat16):
+    try:
+        _check_model(m)
+    except DevelopmentInvalid:
+        pass
+    else:
+        raise AssertionError("CPU autocast was accepted")
+assert not torch.cuda.is_initialized()
+'''
+        result = _isolated(code)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_cache_shape_mutation_is_rejected_without_any_forward(self):
+        code = r'''
+import torch
+from looking_glass.causal_v2_executor import (DevelopmentBudget, DevelopmentClean, DevelopmentTarget,
+    DevelopmentInvalid, _CACHE_TOKEN, _snapshot_sha256, _target_sha256, _validate_clean, _validate_target, input_sha256)
+from looking_glass.causal_v2_model_identity import state_sha256
+from looking_glass.causal_v2_runtime import establish_numeric_policy
+from looking_glass.model import TinyResidual
+from looking_glass.probes import TraceEvent
+policy=establish_numeric_policy(); model=TinyResidual(width=8,depth=4).eval(); budget=DevelopmentBudget(40)
+x=torch.tensor([[2.,-.25,.5,.125,-.75,.2,-.3,.4]])
+def events(run): return tuple(TraceEvent(run,f'block.{i}.output',i,0,(1,8),'torch.float32','cpu',torch.zeros((1,8))) for i in range(4))
+first,second=events('a'),events('b'); clean_logits=torch.zeros((1,2)); repeat_logits=clean_logits.clone()
+clean=DevelopmentClean(first,second,clean_logits,repeat_logits,input_sha256(x),state_sha256(model),
+   _snapshot_sha256(first,second,clean_logits,repeat_logits),model,budget,policy,_CACHE_TOKEN)
+path='blocks.2.activation_tap'
+metadata={'module_path':path,'module_aliases':[path],'call_site_known':False,'forward_index':0,
+          'invocation':0,'batch_index':None,'token_index':None,'output_shape':[1,8],
+          'selected_shape':[1,8],'dtype':'torch.float32','device':'cpu'}
+target_value=torch.zeros((1,8))
+target=DevelopmentTarget('block.2.activation',target_value,metadata,
+                         _target_sha256('block.2.activation',target_value,metadata),clean,_CACHE_TOKEN)
+target.value.resize_(2,4)
+try: _validate_target(target,'block.2.activation',clean)
+except DevelopmentInvalid: pass
+else: raise AssertionError('reshaped target accepted')
+target.value.resize_(1,8)
+target.value.data=target.value.view(torch.int32)
+try: _validate_target(target,'block.2.activation',clean)
+except DevelopmentInvalid: pass
+else: raise AssertionError('wrong target dtype accepted')
+target.value.data=target.value.view(torch.float32)
+clean.clean_trace[0].value.resize_(2,4)
+try: _validate_clean(clean,model,x,budget,policy)
+except DevelopmentInvalid: pass
+else: raise AssertionError('reshaped trace accepted')
+clean.clean_trace[0].value.resize_(1,8)
+clean.clean_logits.resize_(2,1)
+try: _validate_clean(clean,model,x,budget,policy)
+except DevelopmentInvalid: pass
+else: raise AssertionError('reshaped logits accepted')
+assert budget.submissions==budget.root_forwards==0
+assert not torch.cuda.is_initialized()
+'''
+        result = _isolated(code)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_input_identity_uses_explicit_big_endian_float32_bits(self):
+        code = r'''
+import hashlib,struct,torch
+from looking_glass.causal_v2_executor import DevelopmentInvalid,input_sha256
+bits=[0x40000000,0xbe800000,0x3f000000,0x3e000000,0xbf400000,0x3e4ccccd,0xbe99999a,0x3ecccccd]
+x=torch.tensor([[2.,-.25,.5,.125,-.75,.2,-.3,.4]],dtype=torch.float32,device='cpu')
+expected=hashlib.sha256(b'MLG-v2-input-f32be-v1\0'+struct.pack('>II8I',1,8,*bits)).hexdigest()
+assert input_sha256(x)==expected
+positive=x.clone(); positive.view(torch.int32)[0,0]=0
+negative=x.clone(); negative.view(torch.int32)[0,0]=-2147483648
+assert input_sha256(positive)!=input_sha256(negative)
+for bad in (torch.zeros(8), torch.full((1,8),float('nan')), x.refine_names('batch','hidden')):
+    try: input_sha256(bad)
+    except DevelopmentInvalid: pass
+    else: raise AssertionError('unsupported input identity accepted')
+assert not torch.cuda.is_initialized()
+'''
+        result = _isolated(code)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_reuse_rejects_cross_input_model_and_target_mutation_before_forward(self):
+        code = r'''
+import torch
+from looking_glass.causal_v2_executor import (DevelopmentBudget, DevelopmentInvalid,
+    prepare_development_clean, prepare_development_target, run_development_active)
+from looking_glass.causal_v2_runtime import establish_numeric_policy
+from looking_glass.model import TinyResidual
+policy=establish_numeric_policy()
+with torch.random.fork_rng(devices=[]):
+    torch.random.default_generator.manual_seed(41977)
+    model=TinyResidual(width=8,depth=4).eval()
+x=torch.tensor([[2.,-.25,.5,.125,-.75,.2,-.3,.4]],dtype=torch.float32,device='cpu')
+budget=DevelopmentBudget(40)
+clean=prepare_development_clean(model,x,budget,policy)
+target=prepare_development_target(model,x,'block.2.activation',clean,budget,policy)
+def reject(model_arg,input_arg,target_arg):
+    try: run_development_active(model_arg,input_arg,'block.2.activation',.25,clean,target_arg,budget,policy)
+    except DevelopmentInvalid: pass
+    else: raise AssertionError('mutated or cross-bound source was accepted')
+    assert budget.submissions==budget.root_forwards==3
+other=x.clone(); other[0,0]=-2.
+reject(model,other,target)
+original=target.value.clone(); target.value[0,0] += 1
+reject(model,x,target)
+target.value.copy_(original)
+old=target.metadata['invocation']; target.metadata['invocation']=False
+reject(model,x,target)
+target.metadata['invocation']=old
+with torch.no_grad():
+    original_weight=model.head.weight.clone(); model.head.weight[0,0] += 1
+reject(model,x,target)
+with torch.no_grad(): model.head.weight.copy_(original_weight)
+other_model=TinyResidual(width=8,depth=4).eval(); other_model.load_state_dict(model.state_dict())
+reject(other_model,x,target)
+assert not torch.cuda.is_initialized()
+'''
+        result = _isolated(code)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_reuses_clean_and_target_captures_across_two_strengths(self):
+        code = r'''
+import torch
+from looking_glass.causal_v2_executor import (DevelopmentBudget, DevelopmentInvalid,
+    prepare_development_clean, prepare_development_target, run_development_active)
+from looking_glass.causal_v2_runtime import establish_numeric_policy, float32_exact_equal
+from looking_glass.model import TinyResidual
+policy=establish_numeric_policy()
+with torch.random.fork_rng(devices=[]):
+    torch.random.default_generator.manual_seed(41977)
+    model=TinyResidual(width=8,depth=4).eval()
+x=torch.tensor([[2.,-.25,.5,.125,-.75,.2,-.3,.4]],dtype=torch.float32,device='cpu')
+budget=DevelopmentBudget(40)
+clean=prepare_development_clean(model,x,budget,policy)
+target=prepare_development_target(model,x,'block.2.activation',clean,budget,policy)
+assert budget.submissions==budget.root_forwards==3
+low=run_development_active(model,x,'block.2.activation',.25,clean,target,budget,policy)
+high=run_development_active(model,x,'block.2.activation',.75,clean,target,budget,policy)
+assert budget.submissions==budget.root_forwards==35
+assert float32_exact_equal(low['clean_logits'],high['clean_logits'])
+assert len(low['plans'])==len(high['plans'])==13
+assert len(clean.input_sha256)==len(clean.model_state_sha256)==64
+clean.clean_trace[0].value[0,0] += 1
+try: run_development_active(model,x,'block.2.activation',.25,clean,target,budget,policy)
+except DevelopmentInvalid: pass
+else: raise AssertionError('mutated clean snapshot accepted')
+assert budget.submissions==budget.root_forwards==35
+assert not torch.cuda.is_initialized()
+'''
+        result = _isolated(code)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_fresh_cache_prefix_ignores_timestamp_valid_stale_bytecode(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
