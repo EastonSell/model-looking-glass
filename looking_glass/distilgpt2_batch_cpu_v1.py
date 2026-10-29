@@ -166,6 +166,36 @@ def verify_git_sources(source_commit):
         raise ValueError('source commit is not an ancestor of a clean checkout') from exc
 
 
+def verify_frozen_manifest(path, manifest_commit, source_commit):
+    """Require exact manifest bytes in a descendant commit already present locally."""
+    for commit in (manifest_commit, source_commit):
+        if type(commit) is not str or re.fullmatch(r'[0-9a-f]{40}', commit) is None:
+            raise ValueError('invalid manifest or source commit')
+    if manifest_commit == source_commit:
+        raise ValueError('the frozen manifest must follow the source commit')
+    try:
+        relative = Path(path).resolve().relative_to(ROOT.resolve()).as_posix()
+        def git(*args):
+            return subprocess.run(['git', *args], cwd=ROOT, capture_output=True,
+                                  check=True, text=True).stdout.strip()
+        git('merge-base', '--is-ancestor', source_commit, manifest_commit)
+        git('merge-base', '--is-ancestor', manifest_commit, 'HEAD')
+        if git('ls-tree', source_commit, '--', relative):
+            raise ValueError('manifest path already exists in the source commit')
+        entry = git('ls-tree', manifest_commit, '--', relative)
+        if not (entry.startswith('100644 blob ') or entry.startswith('100755 blob ')):
+            raise ValueError('manifest must be a tracked ordinary file')
+        if git('rev-parse', f'{manifest_commit}:{relative}') != git('rev-parse', f'HEAD:{relative}'):
+            raise ValueError('manifest differs from its committed blob')
+        blob = subprocess.run(['git', 'cat-file', 'blob', f'{manifest_commit}:{relative}'],
+            cwd=ROOT, capture_output=True, check=True).stdout
+        if hashlib.sha256(blob).hexdigest() != file_sha256(path):
+            raise ValueError('on-disk manifest differs from its committed blob')
+    except (OSError, ValueError, subprocess.CalledProcessError) as exc:
+        raise ValueError('manifest must match a tracked descendant of the source commit') from exc
+    return relative
+
+
 def configure_runtime():
     """Configure a fresh, isolated CPU-only interpreter before freezing or running."""
     if os.environ.get('CUDA_VISIBLE_DEVICES') != '-1':
@@ -199,10 +229,13 @@ def runtime_info():
         'processor': platform.processor(), 'python_byteorder': sys.byteorder,
         'isolated_python': bool(sys.flags.isolated), 'no_site': bool(sys.flags.no_site),
         'dont_write_bytecode': sys.dont_write_bytecode,
-        'pycache_prefix': sys.pycache_prefix,
-        'python_path': sys.path,
+        'pycache_prefix_sha256': hashlib.sha256(os.fsencode(sys.pycache_prefix)).hexdigest()
+            if sys.pycache_prefix is not None else None,
+        'python_path_sha256': [hashlib.sha256(os.fsencode(p)).hexdigest() for p in sys.path],
         'torch': torch.__version__, 'transformers': transformers.__version__,
-        'numpy': numpy.__version__, 'torch_build': torch.__config__.show(),
+        'numpy': numpy.__version__,
+        'torch_build_sha256': hashlib.sha256(torch.__config__.show().encode('utf-8')).hexdigest(),
+        'torch_cpu_capability': torch.backends.cpu.get_cpu_capability(),
         'intraop_threads': torch.get_num_threads(), 'interop_threads': torch.get_num_interop_threads(),
         'deterministic_algorithms': torch.are_deterministic_algorithms_enabled(),
         'deterministic_warn_only': torch.is_deterministic_algorithms_warn_only_enabled(),
@@ -223,23 +256,34 @@ def _observation(request_id, frame):
     ids, mask = frame.f_locals.get('input_ids'), frame.f_locals.get('attention_mask')
     if type(ids) is not torch.Tensor or type(mask) is not torch.Tensor:
         raise RuntimeError('model-entry inputs are unavailable')
+    def public_values(value):
+        if (value.device.type != 'cpu' or value.dtype != torch.int64 or value.ndim != 2
+                or value.numel() > 8):
+            return None
+        return value.tolist()
     return {'request_id': request_id, 'input_ids_shape': list(ids.shape),
             'attention_mask_shape': list(mask.shape), 'input_ids_dtype': str(ids.dtype),
             'attention_mask_dtype': str(mask.dtype), 'input_ids_device': str(ids.device),
-            'attention_mask_device': str(mask.device)}
+            'attention_mask_device': str(mask.device), 'input_ids_values': public_values(ids),
+            'attention_mask_values': public_values(mask)}
 
 
-def _expected_observation(request_id, rows):
+def _expected_observation(request_id, rows, ids, mask):
     return {'request_id': request_id, 'input_ids_shape': [rows, 4],
             'attention_mask_shape': [rows, 4], 'input_ids_dtype': 'torch.int64',
             'attention_mask_dtype': 'torch.int64', 'input_ids_device': 'cpu',
-            'attention_mask_device': 'cpu'}
+            'attention_mask_device': 'cpu', 'input_ids_values': ids,
+            'attention_mask_values': mask}
 
 
 def expected_calls():
-    return [_expected_observation(request_id, rows) for group in range(2)
-            for request_id, rows in ((f'serial-{group}-0', 1), (f'serial-{group}-1', 1),
-                                     (f'mixed-{group}', 2))]
+    calls = []
+    for group, rows in enumerate(CASES):
+        for request_id, ids in ((f'serial-{group}-0', [rows[0]]),
+                                (f'serial-{group}-1', [rows[1]]),
+                                (f'mixed-{group}', list(rows))):
+            calls.append(_expected_observation(request_id, len(ids), ids, [[1] * 4 for _ in ids]))
+    return calls
 
 
 def observations_complete(calls):
@@ -268,7 +312,9 @@ class ObservedExecutor:
             sys.setprofile(previous)
             self.calls.extend(observed)
         rows = call_inputs['input_ids'].shape[0]
-        if observed != [_expected_observation(request_id, rows)]:
+        expected = _expected_observation(request_id, rows, call_inputs['input_ids'].tolist(),
+                                         call_inputs['attention_mask'].tolist())
+        if observed != [expected]:
             raise RuntimeError('model-entry observation is missing, duplicated, or incompatible')
         if result.request_id != request_id:
             raise RuntimeError('worker returned a different request ID')
@@ -398,16 +444,18 @@ def write_summary_atomic(path, data):
     os.replace(temp, path)
 
 
-def execute_experiment(manifest, *, cache_dir, output_dir):
+def execute_experiment(manifest, *, manifest_path, manifest_commit, cache_dir, output_dir):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=False, exist_ok=False)
     write_json(output_dir / 'attempt.json', {'version': VERSION, 'status': 'started',
         'manifest_sha256': manifest['manifest_sha256'],
+        'manifest_commit': manifest_commit,
         'started_utc': datetime.now(timezone.utc).isoformat()})
     executor = worker = None
     close_attempted = False
     try:
         verify_git_sources(manifest['source_commit'])
+        manifest_repo_path = verify_frozen_manifest(manifest_path, manifest_commit, manifest['source_commit'])
         runtime = configure_runtime()
         sources = source_hashes()
         verify_manifest(manifest, runtime, sources)
@@ -444,6 +492,7 @@ def execute_experiment(manifest, *, cache_dir, output_dir):
                   and all_mismatch(controls['batch_mean']))
         summary = {'version': VERSION, 'status': 'passed' if passed else 'failed' if complete else 'incomplete',
                    'complete': complete, 'manifest_sha256': manifest['manifest_sha256'],
+                   'manifest_commit': manifest_commit, 'manifest_repo_path': manifest_repo_path,
                    'model_metadata': metadata, 'model_state_sha256_before': before,
                    'model_state_sha256_after': after, 'observed_model_calls': executor.calls,
                    'output_archive': output_info, 'controls': controls,
@@ -480,6 +529,7 @@ def main():
     prepare.add_argument('--manifest', required=True)
     run = sub.add_parser('run')
     run.add_argument('--manifest', required=True)
+    run.add_argument('--manifest-commit', required=True)
     run.add_argument('--expected-manifest-sha256', required=True)
     run.add_argument('--cache-dir', required=True)
     run.add_argument('--output-dir', required=True)
@@ -494,7 +544,8 @@ def main():
             manifest = json.load(stream)
         if manifest.get('manifest_sha256') != args.expected_manifest_sha256:
             raise ValueError('manifest digest differs from separately supplied expected digest')
-        result = execute_experiment(manifest, cache_dir=args.cache_dir, output_dir=args.output_dir)
+        result = execute_experiment(manifest, manifest_path=args.manifest,
+            manifest_commit=args.manifest_commit, cache_dir=args.cache_dir, output_dir=args.output_dir)
         print(json.dumps({'status': result['status'], 'complete': result['complete']}))
         if result['status'] != 'passed':
             raise SystemExit(1)

@@ -70,8 +70,9 @@ record actual model-forward input shapes using a temporary calling-thread
 Python profiler that is restored in `finally`. This observer adds overhead, so
 do not report its execution as a speed or latency measurement. A missing,
 extra, or wrong-shaped model entry makes the run incomplete. Bind each observed
-entry to the worker request ID, and record a streaming digest of named model
-state before and after execution; reject a changed digest. This is additional
+entry to the worker request ID and record its exact small public token and mask
+rows, verifying they match the frozen ordered cases. Record a streaming digest
+of named model state before and after execution; reject a changed digest. This is additional
 integrity evidence, not proof that the loaded model is the declared checkpoint.
 
 Save all four serial logits and both mixed logits, raw little-endian float32
@@ -91,18 +92,22 @@ directory, rejects sourceless dependency loaders, and restricts project
 imports to listed `.py` files. It checks `CUDA_VISIBLE_DEVICES=-1` before
 importing dependencies, records that `torch.cuda.is_initialized()` is false
 before the run, and rechecks it afterward. This is PyTorch's process state,
-not an assertion about all native CUDA activity. Both freeze and execution verify that the
-recorded source commit is an ancestor of the clean checkout and that all
-tracked project source blobs match that commit. Publish the source commit,
-then freeze and publish the manifest as a subsequent commit before any model
-forward; retain its `manifest_sha256` separately. Put the run directory
+not an assertion about all native CUDA activity. Both freeze and execution
+verify that the recorded source commit is an ancestor of the clean checkout
+and that the listed `SOURCE_PATHS` match that commit's ordinary file blobs.
+Publish the source commit, then freeze and publish the manifest as a subsequent
+commit before any model forward; retain its `manifest_sha256` separately. The
+runner requires that exact tracked manifest file to match a declared later
+ancestor commit, but cannot independently verify public publication. Put the run directory
 outside the clean checkout and copy its evidence into the repository only
 afterward. Runtime information is checked again after the model calls.
 The interpreter, native libraries, dependency installation, filesystem and
 process isolation are trusted; these measures are not an execution
 attestation. In particular, project source paths and any filesystem link
 targets remain trusted. Python hash randomization is not fixed or claimed to
-be fixed.
+be fixed. Runtime records preserve only SHA-256 fingerprints of the ordered
+interpreter paths, cache prefix and Torch build configuration; those hashes
+can be guessed and do not authenticate execution.
 
 Use a separately identified deterministic batch-mean toy model as a negative
 control: its serial outputs are zero while mixed outputs depend on their

@@ -75,6 +75,8 @@ class DistilGPT2BatchCpuV1Tests(unittest.TestCase):
             self.assertEqual(execute.calls[0]['attention_mask_shape'], [1, 4])
             self.assertEqual(execute.calls[0]['input_ids_dtype'], 'torch.int64')
             self.assertEqual(execute.calls[0]['input_ids_device'], 'cpu')
+            self.assertEqual(execute.calls[0]['input_ids_values'], [[50256, 103, 203, 303]])
+            self.assertEqual(execute.calls[0]['attention_mask_values'], [[1, 1, 1, 1]])
             self.assertIn('serial-0-0', execute.outputs)
         finally:
             sys.setprofile(before)
@@ -94,6 +96,22 @@ class DistilGPT2BatchCpuV1Tests(unittest.TestCase):
             execute(self.e.inputs([50256, 103, 203, 303]), request_id='serial-0-0', seed=1)
         self.assertIs(sys.getprofile(), before)
         self.assertEqual(execute.outputs, {})
+
+    def test_model_entry_input_transformation_is_detected(self):
+        from looking_glass.resident_worker import ForwardResult
+        class Tiny(torch.nn.Module):
+            def forward(self, input_ids, attention_mask):
+                return input_ids.float().unsqueeze(-1)
+        model = Tiny().eval()
+        class MisroutingWorker:
+            def execute(self, request):
+                changed = dict(request.inputs)
+                changed['input_ids'] = changed['input_ids'] + 1
+                return ForwardResult(request.request_id, model(**changed))
+        execute = self.e.ObservedExecutor(MisroutingWorker(), model, output_width=1, cap_bytes=64)
+        with self.assertRaisesRegex(RuntimeError, 'model-entry'):
+            execute(self.e.inputs([50256, 103, 203, 303]), request_id='serial-0-0', seed=1)
+        self.assertEqual(execute.calls[0]['input_ids_values'], [[50257, 104, 204, 304]])
 
     def test_raw_outputs_are_bounded_and_round_trip_with_digests(self):
         import numpy as np
@@ -191,6 +209,55 @@ class DistilGPT2BatchCpuV1Tests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'on-disk source'):
                     self.e.verify_git_sources(commit)
 
+    def test_manifest_is_required_to_match_a_later_ancestor_commit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def git(*args):
+                return subprocess.run(['git', *args], cwd=root, check=True,
+                                      capture_output=True, text=True).stdout.strip()
+            git('init', '-q')
+            (root / 'source.py').write_bytes(b'value = 1\n')
+            git('add', 'source.py')
+            git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+                'commit', '-qm', 'source')
+            source = git('rev-parse', 'HEAD')
+            manifest = root / 'frozen.json'
+            manifest.write_bytes(b'{"frozen":true}\n')
+            git('add', 'frozen.json')
+            git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+                'commit', '-qm', 'freeze')
+            frozen = git('rev-parse', 'HEAD')
+            with patch.object(self.e, 'ROOT', root):
+                self.assertEqual(self.e.verify_frozen_manifest(manifest, frozen, source), 'frozen.json')
+                with self.assertRaises(ValueError):
+                    self.e.verify_frozen_manifest(manifest, source, source)
+                git('update-index', '--assume-unchanged', 'frozen.json')
+                manifest.write_bytes(b'{"frozen":false}\n')
+                with self.assertRaises(ValueError):
+                    self.e.verify_frozen_manifest(manifest, frozen, source)
+                git('update-index', '--no-assume-unchanged', 'frozen.json')
+                git('checkout', '--', 'frozen.json')
+                (root / 'later.txt').write_bytes(b'later\n')
+                git('add', 'later.txt')
+                git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+                    'commit', '-qm', 'later')
+                with self.assertRaises(ValueError):
+                    self.e.verify_frozen_manifest(manifest, git('rev-parse', 'HEAD'), frozen)
+
+    def test_runtime_snapshot_does_not_publish_interpreter_paths(self):
+        optional = {'numpy': SimpleNamespace(__version__='test'),
+                    'transformers': SimpleNamespace(__version__='4.57.3')}
+        with patch.dict(sys.modules, optional), patch.object(torch, '__version__', '2.8.0+cu128'), \
+             patch.object(torch.cuda, 'is_initialized', return_value=False), \
+             patch.object(torch, 'is_autocast_enabled', return_value=False), \
+             patch.object(self.e.validation, '_require_denormals'):
+            info = self.e.runtime_info()
+        self.assertNotIn('python_path', info)
+        self.assertNotIn('pycache_prefix', info)
+        self.assertNotIn('torch_build', info)
+        self.assertEqual(len(info['torch_build_sha256']), 64)
+        self.assertTrue(all(len(value) == 64 for value in info['python_path_sha256']))
+
     def test_incomplete_call_evidence_does_not_look_successful(self):
         self.assertFalse(self.e.observations_complete([]))
         expected = self.e.expected_calls()
@@ -217,11 +284,13 @@ class DistilGPT2BatchCpuV1Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             result_dir = Path(directory) / 'run'
             with patch.object(self.e, 'verify_git_sources'), \
+                 patch.object(self.e, 'verify_frozen_manifest', return_value='frozen.json'), \
                  patch.object(self.e, 'configure_runtime', return_value=self.runtime), \
                  patch.object(self.e, 'runtime_info', return_value=self.runtime), \
                  patch.object(self.e, 'source_hashes', return_value=self.sources), \
                  patch.object(self.e, 'load_distilgpt2', return_value=loaded):
-                summary = self.e.execute_experiment(manifest, cache_dir=directory, output_dir=result_dir)
+                summary = self.e.execute_experiment(manifest, manifest_path='frozen.json',
+                    manifest_commit='c' * 40, cache_dir=directory, output_dir=result_dir)
             self.assertEqual(summary['status'], 'passed')
             self.assertTrue(summary['complete'])
             self.assertEqual(summary['output_archive']['raw_bytes'], 6432896)
@@ -233,17 +302,20 @@ class DistilGPT2BatchCpuV1Tests(unittest.TestCase):
             report = json.loads((result_dir / 'primary-report.json').read_text(encoding='utf-8'))
             self.assertEqual(report['evidence_sha256'], summary['primary_evidence_sha256'])
             with self.assertRaises(FileExistsError):
-                self.e.execute_experiment(manifest, cache_dir=directory, output_dir=result_dir)
+                self.e.execute_experiment(manifest, manifest_path='frozen.json',
+                    manifest_commit='c' * 40, cache_dir=directory, output_dir=result_dir)
             from looking_glass.resident_worker import ResidentWorker
             failed_dir = Path(directory) / 'close-failure'
             with patch.object(self.e, 'verify_git_sources'), \
+                 patch.object(self.e, 'verify_frozen_manifest', return_value='frozen.json'), \
                  patch.object(self.e, 'configure_runtime', return_value=self.runtime), \
                  patch.object(self.e, 'runtime_info', return_value=self.runtime), \
                  patch.object(self.e, 'source_hashes', return_value=self.sources), \
                  patch.object(self.e, 'load_distilgpt2', return_value=loaded), \
                  patch.object(ResidentWorker, 'close', side_effect=RuntimeError('injected')):
                 with self.assertRaises(RuntimeError):
-                    self.e.execute_experiment(manifest, cache_dir=directory, output_dir=failed_dir)
+                    self.e.execute_experiment(manifest, manifest_path='frozen.json',
+                        manifest_commit='c' * 40, cache_dir=directory, output_dir=failed_dir)
             self.assertFalse((failed_dir / 'summary.json').exists())
             failure = json.loads((failed_dir / 'failure.json').read_text(encoding='utf-8'))
             self.assertEqual(failure['status'], 'incomplete')
@@ -254,13 +326,15 @@ class DistilGPT2BatchCpuV1Tests(unittest.TestCase):
                 publish(path, data)
                 raise KeyboardInterrupt()
             with patch.object(self.e, 'verify_git_sources'), \
+                 patch.object(self.e, 'verify_frozen_manifest', return_value='frozen.json'), \
                  patch.object(self.e, 'configure_runtime', return_value=self.runtime), \
                  patch.object(self.e, 'runtime_info', return_value=self.runtime), \
                  patch.object(self.e, 'source_hashes', return_value=self.sources), \
                  patch.object(self.e, 'load_distilgpt2', return_value=loaded), \
                  patch.object(self.e, 'write_summary_atomic', side_effect=publish_then_interrupt):
                 with self.assertRaises(KeyboardInterrupt):
-                    self.e.execute_experiment(manifest, cache_dir=directory, output_dir=published_dir)
+                    self.e.execute_experiment(manifest, manifest_path='frozen.json',
+                        manifest_commit='c' * 40, cache_dir=directory, output_dir=published_dir)
             summary = json.loads((published_dir / 'summary.json').read_text(encoding='utf-8'))
             self.assertEqual(summary['status'], 'passed')
             self.assertFalse((published_dir / 'failure.json').exists())
