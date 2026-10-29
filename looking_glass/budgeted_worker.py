@@ -333,6 +333,17 @@ class BudgetedWorker:
 
     def execute(self, request, cancel_event=None):
         """Admit and run one request, holding its lease through verified cleanup."""
+        return self._execute(request, cancel_event)
+
+    def _execute_grouped(self, request, group, launch, cancel_event=None):
+        # The only allowed handoff is a fixed, service-owned GroupPlan. This is
+        # not a request-supplied callback and never takes the broker condition.
+        from .grouped_worker import GroupPlan
+        if type(group) is not GroupPlan or group._owner._worker is not self:
+            raise ValueError('group does not belong to this worker')
+        return self._execute(request, cancel_event, group=group, launch=launch)
+
+    def _execute(self, request, cancel_event=None, *, group=None, launch=None):
         if cancel_event is not None and type(cancel_event) is not threading.Event:
             raise InvalidRequest('cancel_event must be a threading.Event')
         if cancel_event is not None and cancel_event.is_set():
@@ -352,6 +363,10 @@ class BudgetedWorker:
             if cancel_event is not None and cancel_event.is_set():
                 raise RequestCancelled('request cancelled while awaiting admission')
             _require_no_autocast()
+            if group is not None:
+                all_cancelled = group._abort_if_all_cancelled(launch)
+                if all_cancelled is not None:
+                    return all_cancelled
             self._admission._lease_inflight = True
             lease = None
             reconciled = False
@@ -375,6 +390,17 @@ class BudgetedWorker:
                         reconciled = True
                         self._admission._lease_inflight = False
                     raise
+                if group is not None:
+                    try:
+                        group._start_under_gate(launch, profile, snapshot)
+                    except BaseException as exc:
+                        if group._started:
+                            self._admission._quarantine(lease, self._worker, exc)
+                        else:
+                            self._release(lease, exc)
+                            reconciled = True
+                            self._admission._lease_inflight = False
+                        raise
                 try:
                     result = self._worker.execute(snapshot, cancel_event)
                 except WorkerSynchronizationError as exc:
@@ -385,6 +411,10 @@ class BudgetedWorker:
                     raise WorkerContractError(
                         f'worker model state or cache policy changed during execution: {_describe_error(exc)}') from exc
                 except (InvalidRequest, RequestCancelled, WorkerUnavailable, WorkerExecutionError) as exc:
+                    if group is not None and group._started:
+                        self._admission._quarantine(lease, self._worker, exc)
+                        group._fail_under_gate(launch, exc)
+                        raise
                     if self._process_is_quarantined():
                         self._admission._quarantine(lease, self._worker, exc)
                         raise WorkerSynchronizationError(
@@ -417,6 +447,14 @@ class BudgetedWorker:
                         or result.logits.numel() * result.logits.element_size() > profile.output_limit_bytes):
                     self._admission._quarantine(lease, self._worker, result)
                     raise WorkerContractError('worker returned an unsupported or oversized result')
+                if group is not None:
+                    try:
+                        result = group._finish_under_gate(launch, result)
+                        if result.quarantine_required:
+                            raise WorkerContractError('grouped result failed validation or splitting')
+                    except BaseException as exc:
+                        self._admission._quarantine(lease, self._worker, exc)
+                        raise
                 self._release(lease)
                 reconciled = True
                 self._admission._lease_inflight = False

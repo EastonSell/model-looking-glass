@@ -455,7 +455,7 @@ class BudgetedWorkerTests(unittest.TestCase):
         self.assertEqual(model.calls, 0)
 
     def test_interruption_across_lease_lifetime_quarantines(self):
-        source, first = inspect.getsourcelines(BudgetedWorker.execute)
+        source, first = inspect.getsourcelines(BudgetedWorker._execute)
         markers = ('if self._process_is_quarantined():', 'self._release(lease)',
                    'try-before-precheck', 'try-before-forward')
         for marker in markers:
@@ -469,7 +469,7 @@ class BudgetedWorkerTests(unittest.TestCase):
             wrapper, _, budget, admission = make_wrapper()
 
             def trace(frame, event, arg):
-                if frame.f_code is BudgetedWorker.execute.__code__ and event == 'line' and frame.f_lineno == target:
+                if frame.f_code is BudgetedWorker._execute.__code__ and event == 'line' and frame.f_lineno == target:
                     sys.settrace(None)
                     raise KeyboardInterrupt('lease lifetime interrupted')
                 return trace
