@@ -36,8 +36,8 @@ output. The adapter does not support attention-weight capture.
 The model is a bidirectional encoder. MLM logits are indexed by **input
 position**, normally a masked position; they are not next-token generation
 logits. A capture at a padded query position can still have a contextual
-value. The result retains the exact supplied binary attention mask as tuples;
-the caller should retain input IDs and pairing information separately. Token
+value. The result retains the exact supplied input IDs and binary attention mask
+in an immutable `encoder_context`, and also exposes the mask as tuples. Token
 and sample coordinates are local indices for this forward.
 
 There is one event per selected layer, role, sample and token, in actual
@@ -51,12 +51,33 @@ view. The returned tensors are mutable and remain owned by the caller. Event
 metadata includes the source and saved shapes, dtype, device, output selector
 and positions. It does not claim a unique internal mechanism.
 
-The shared schema currently has generation/cache fields but no distinct
-encoder-not-applicable value. They remain `unknown`/`None`, rather than
-inventing a cache state. Consequently, the current
-`compare_transformer_traces` conservatively reports encoder comparisons as
-inconclusive even when snapshots match; do not manufacture a generation
-context to bypass that limitation.
+The shared event schema's generation/cache fields remain `unknown`/`None`;
+the adapter does not invent cache state. To compare two complete results from
+this adapter, opt in to its separate encoder-forward contract:
+
+```python
+from looking_glass.transformer_localization import compare_transformer_traces
+
+# reference and candidate are results of separate adapter calls with distinct
+# run IDs. The caller has independently checked the model, runtime and tap
+# policy, and knows these inputs have identical IDs and masks.
+report = compare_transformer_traces(
+    reference.events, candidate.events,
+    encoder_contexts=(reference.encoder_context, candidate.encoder_context),
+    expected_input_differences=(),
+    reference_complete=True, candidate_complete=True,
+    pairing_verified=True, execution_order_verified=True,
+)
+```
+
+For intentional input changes, supply the **exact** tuple of changed
+`(batch_index, token_index)` positions instead of `()`. The comparator checks
+both full masks, input shapes and IDs, the declared changes, and the complete
+selected layer/module/sample/token event policy. Matching local positions do
+not prove semantic or tokenizer alignment. Context and model provenance are
+producer/caller claims, not execution or weight-integrity attestations; see
+[transformer comparisons](TRANSFORMER_LOCALIZATION.md) for the full contract.
+Without it, unknown generation metadata remains inconclusive.
 
 ## Running the cached example
 
@@ -96,7 +117,9 @@ uncertain-interruption limitations are described in [ordered plans](INTERVENTION
 `max_events` limits retained observations, `max_trace_bytes` limits the
 aggregate selected snapshots, and `max_tensor_bytes` limits each full module
 output. Checks fail rather than silently truncate. These bounds do not include
-model weights, MLM logits, metadata, temporary tensors, allocator overhead or
+model weights, MLM logits, input-ID/mask tuples, metadata, temporary tensors, allocator overhead or
 peak memory. The result is published only after a successful forward and plan
-cleanup. Traces can contain sensitive data and stay in the process unless a
-caller saves them.
+cleanup. Input clones and recorded dimensions are checked before and after the
+call; this cooperative check cannot detect a mutation that is later reversed.
+Traces and contexts can contain sensitive data and stay in the process unless
+a caller saves them.

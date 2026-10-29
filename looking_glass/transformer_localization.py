@@ -11,6 +11,7 @@ import torch
 
 from .localization import compare_traces
 from .trace_schema import GenerationContext, TraceEvent
+from .encoder_forward import check_encoder_pair
 
 
 @dataclass(frozen=True)
@@ -76,14 +77,14 @@ def _generation_known(generation):
     return False
 
 
-def _proxy(observation, index):
+def _proxy(observation, index, *, verified_encoder_forward=False):
     if not isinstance(observation, TensorObservation):
         raise TypeError("each observation must be a TensorObservation")
     event = observation.event
     missing = [name for name in ("module_kind", "layer_index", "output_path",
                                  "batch_positions", "token_positions", "batch_axis",
                                  "token_axis") if getattr(event, name) is None]
-    if not _generation_known(event.generation):
+    if not verified_encoder_forward and not _generation_known(event.generation):
         missing.append("generation")
     issues = []
     if missing:
@@ -197,26 +198,35 @@ def _source_metadata_consistent(observations):
 
 def compare_transformer_traces(reference, candidate, *, rtol=0.0, atol=0.0,
                                reference_complete=False, candidate_complete=False,
-                               pairing_verified=False, execution_order_verified=False):
+                               pairing_verified=False, execution_order_verified=False,
+                               encoder_contexts=None, expected_input_differences=None):
     """Compare schema-backed slices, conditional on external pairing evidence.
 
     Pairing means the caller has verified the model, inputs, tap policy and
     relevant runtime/cache conditions under its protocol, allowing only the
     intended experimental differences. Completion covers emitted events under
-    that policy; it does not imply exhaustive model coverage.
+    that policy; it does not imply exhaustive model coverage. The optional
+    encoder contexts provide a narrow, separately validated alternative to
+    generation metadata; they do not prove model identity or actual execution.
     """
     if any(type(value) is not bool for value in
            (reference_complete, candidate_complete, pairing_verified, execution_order_verified)):
         raise ValueError("completion, pairing and order attestations must be booleans")
     reference = list(reference)
     candidate = list(candidate)
+    encoder_requested = encoder_contexts is not None or expected_input_differences is not None
+    encoder_report = (check_encoder_pair(encoder_contexts, reference, candidate,
+                                         expected_input_differences)
+                      if encoder_requested else None)
+    encoder_ok = not encoder_requested or encoder_report["verified"]
+    verified_encoder_forward = bool(encoder_report and encoder_report["verified"])
     left, right, left_issues, right_issues = [], [], [], []
     for index, observation in enumerate(reference):
-        item, issues = _proxy(observation, index)
+        item, issues = _proxy(observation, index, verified_encoder_forward=verified_encoder_forward)
         left.append(item)
         left_issues.extend(issues)
     for index, observation in enumerate(candidate):
-        item, issues = _proxy(observation, index)
+        item, issues = _proxy(observation, index, verified_encoder_forward=verified_encoder_forward)
         right.append(item)
         right_issues.extend(issues)
     reference_forwards_complete = _forwards_complete(reference)
@@ -232,10 +242,10 @@ def compare_transformer_traces(reference, candidate, *, rtol=0.0, atol=0.0,
     # enforce a conservative result even if every supplied tensor is equal.
     result = compare_traces(
         left, right, rtol=rtol, atol=atol,
-        reference_complete=(reference_complete and pairing_verified and execution_order_verified
+        reference_complete=(reference_complete and pairing_verified and execution_order_verified and encoder_ok
                             and reference_forwards_complete and reference_invocations_complete
                             and reference_source_metadata_consistent and run_ids_disjoint),
-        candidate_complete=(candidate_complete and pairing_verified and execution_order_verified
+        candidate_complete=(candidate_complete and pairing_verified and execution_order_verified and encoder_ok
                             and candidate_forwards_complete and candidate_invocations_complete
                             and candidate_source_metadata_consistent and run_ids_disjoint),
     )
@@ -254,6 +264,8 @@ def compare_transformer_traces(reference, candidate, *, rtol=0.0, atol=0.0,
         "reference_metadata_issues": left_issues,
         "candidate_metadata_issues": right_issues,
     }
+    if encoder_requested:
+        result["schema_coverage"]["encoder_forward_context"] = encoder_report
     result["first_compared_difference"] = _coordinate(result["first_compared_difference"])
     interval = result["first_observed_interval"]
     if interval is not None:

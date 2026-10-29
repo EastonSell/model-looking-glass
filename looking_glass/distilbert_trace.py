@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import torch
 
 from .intervention_plan import ActivationPlan
+from .encoder_forward import DISTILBERT_CONTRACT, EncoderForwardContext
 from .trace_schema import GenerationContext, RunIdentity, TraceEvent
 from .transformer_localization import TensorObservation
 from .transformer_trace import _indices
@@ -17,7 +18,7 @@ from .transformer_trace import _indices
 
 @dataclass(frozen=True)
 class DistilBertTraceResult:
-    """The MLM output, selected snapshots, and the exact supplied mask.
+    """The MLM output, selected snapshots, and recorded encoder context.
 
     Each event is a TensorObservation. Its value is a view with restored
     singleton batch/token axes over the independently captured vector; the
@@ -28,6 +29,7 @@ class DistilBertTraceResult:
     events: tuple[TensorObservation, ...]
     attention_mask: tuple[tuple[int, ...], ...]
     tensor_bytes: int
+    encoder_context: EncoderForwardContext | None = None
 
 
 def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
@@ -110,6 +112,11 @@ def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
         raise ValueError("selected snapshots exceed max_trace_bytes")
     if batch * length * hidden * 4 > max_tensor_bytes:
         raise ValueError("module output exceeds max_tensor_bytes")
+    # Record the exact private clones before the call, and reject persistent
+    # mutation by the called model before publishing an input context.
+    id_rows = tuple(tuple(int(x) for x in row) for row in ids.tolist())
+    mask_rows = tuple(tuple(int(x) for x in row) for row in mask.tolist())
+    dimensions = (len(blocks), hidden, model.config.vocab_size, model.config.max_position_embeddings)
 
     # Hooks complete in layer order: attention, FFN, then enclosing block.
     # Group all selected slices of one invocation together for ActivationPlan.
@@ -138,6 +145,13 @@ def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
     with torch.no_grad(), plan:
         output = model(input_ids=ids, attention_mask=mask, output_attentions=False,
                        output_hidden_states=False, return_dict=True)
+    if (ids.device.type != "cpu" or mask.device.type != "cpu"
+            or ids.dtype != torch.int64 or mask.dtype != torch.int64
+            or tuple(tuple(int(x) for x in row) for row in ids.tolist()) != id_rows
+            or tuple(tuple(int(x) for x in row) for row in mask.tolist()) != mask_rows
+            or (len(model.distilbert.transformer.layer), model.config.dim,
+                model.config.vocab_size, model.config.max_position_embeddings) != dimensions):
+        raise RuntimeError("encoder inputs or model dimensions changed during the forward")
 
     steps_seen = plan.metadata["steps"]
     captures = plan.captures
@@ -170,5 +184,12 @@ def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
             event, view, original_saved_shape=tuple(value.shape),
             comparison_transform="restore_singleton_batch_and_token_axes"))
     size = sum(item.value.numel() * item.value.element_size() for item in observations)
-    return DistilBertTraceResult(output, tuple(observations),
-                                 tuple(tuple(int(x) for x in row) for row in mask.tolist()), size)
+    context = EncoderForwardContext(
+        contract=DISTILBERT_CONTRACT, run_id=run_id,
+        input_ids=id_rows, attention_mask=mask_rows, num_layers=dimensions[0], hidden_size=dimensions[1],
+        vocab_size=dimensions[2], max_positions=dimensions[3],
+        layers=tuple(sorted(layers)), modules=tuple(role for role in ("attention", "ffn", "block")
+                                                   if role in modules),
+        samples=samples, tokens=tokens,
+    )
+    return DistilBertTraceResult(output, tuple(observations), mask_rows, size, context)
