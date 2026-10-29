@@ -305,7 +305,7 @@ def test_validation_rejects_an_unresolved_marker_path(tmp_path, monkeypatch):
         child._execute(path, {}, validation_only=True)
 
 
-def _fake_pipeline(tmp_path, *, fail_verification=False, fail_owner=False, wrong_state=False):
+def _fake_pipeline(tmp_path, *, fail_verification=False, fail_owner=False, wrong_state=False, prefix_collision=False):
     steps = []
     freeze, snapshot = SimpleNamespace(sha256='freeze'), SimpleNamespace(sha256='inventory')
     commitment = {'heldout_commitment': 'c' * 64}
@@ -324,6 +324,11 @@ def _fake_pipeline(tmp_path, *, fail_verification=False, fail_owner=False, wrong
         def tokenize_assignment(self, allocation, tokenizer):
             steps.append('heldout-alignment')
             return 'fabricated-cases'
+        def reject_known_row_prefixes(self, cases, inventory):
+            steps.append('prefix-check')
+            assert cases == 'fabricated-cases' and inventory == b'fabricated-inventory'
+            if prefix_collision:
+                raise RuntimeError('fabricated prefix collision')
     class Preflight:
         def _tokenizer(self, cache):
             steps.append('tokenizer')
@@ -370,7 +375,7 @@ def _fake_pipeline(tmp_path, *, fail_verification=False, fail_owner=False, wrong
     deps = {'preflight': Preflight(), 'commitments': Commitments(), 'heldout': Heldout(), 'control': Control(),
             'load_model': load_model, 'state_hash': state_hash, 'journal': journal, 'runner': runner,
             'manifest': b'manifest'}
-    public = SimpleNamespace(binding=b'binding', prediction=b'prediction')
+    public = SimpleNamespace(binding=b'binding', prediction=b'prediction', inventory=b'fabricated-inventory')
     config = _config(tmp_path)
     frozen = {'_start_record': lambda raw, b: {'binding_sha256':'bound'}}
     state = {}
@@ -381,15 +386,18 @@ def test_committed_verification_and_one_shot_start_precede_model_and_forward(tmp
     steps, run = _fake_pipeline(tmp_path)
     run()
     assert steps == ['tokenizer', 'verify', 'start', 'model', 'hash', 'public-alignment',
-                     'resample', 'heldout-alignment', 'reseal', 'journal', 'runner', 'run', 'hash']
+                     'resample', 'heldout-alignment', 'prefix-check', 'reseal', 'journal', 'runner', 'run', 'hash']
 
 
-@pytest.mark.parametrize('failure', ['verification', 'owner', 'state'])
+@pytest.mark.parametrize('failure', ['verification', 'owner', 'state', 'prefix'])
 def test_rejected_gates_never_reach_a_forward(tmp_path, failure):
     steps, run = _fake_pipeline(tmp_path, fail_verification=failure == 'verification',
-                                fail_owner=failure == 'owner', wrong_state=failure == 'state')
+                                fail_owner=failure == 'owner', wrong_state=failure == 'state',
+                                prefix_collision=failure == 'prefix')
     with pytest.raises((RuntimeError, child.BootstrapError)):
         run()
     assert 'run' not in steps
-    if failure != 'state':
+    if failure in ('verification', 'owner'):
         assert 'model' not in steps
+    if failure == 'prefix':
+        assert 'prefix-check' in steps and 'reseal' not in steps and 'journal' not in steps

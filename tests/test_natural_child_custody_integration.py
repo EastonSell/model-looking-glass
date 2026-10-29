@@ -9,8 +9,8 @@ import pytest
 from tools import natural_agreement_heldout_child as child
 
 
-@pytest.mark.parametrize('reject', [False, True])
-def test_child_requires_real_custody_preparation_receipt_before_fake_model(reject):
+@pytest.mark.parametrize('mode', ['valid', 'bad_receipt', 'candidate_prefix', 'known_prefix'])
+def test_child_requires_real_custody_preparation_and_loaded_token_checks(mode):
     source = Path(__file__).with_name('test_natural_heldout_custody.py')
     if not source.is_file():
         pytest.skip('the separately published custody fixture is not in this checkout')
@@ -28,7 +28,7 @@ def test_child_requires_real_custody_preparation_receipt_before_fake_model(rejec
         url = ('https://raw.githubusercontent.com/EastonSell/model-looking-glass/' + 'c' * 40 +
                '/results/distilgpt2-natural-agreement-v1-20261028/heldout-commitment-v1.json')
         fixture.remote[url] = (attempt / 'commitment.json').read_bytes()
-        if reject:
+        if mode == 'bad_receipt':
             receipt_path = supervisor / 'supervisor.json'
             receipt = json.loads(receipt_path.read_bytes())
             receipt['exit_code'] = 7
@@ -41,9 +41,17 @@ def test_child_requires_real_custody_preparation_receipt_before_fake_model(rejec
             return fixtures.custody.start_owner_once(*args)
         def tokenize(*args):
             steps.append('retokenize')
-            return fixtures.custody.tokenize_assignment(*args)
+            cases = fixtures.custody.tokenize_assignment(*args)
+            if mode in ('candidate_prefix', 'known_prefix'):
+                known = json.loads(fixture.public.inventory)['records'][0]['token_ids']
+                cases[0][0]['input_ids'] = known[:-1] if mode == 'candidate_prefix' else known + [1]
+            return cases
+        def reject_prefixes(*args):
+            steps.append('prefix-check')
+            return fixtures.custody.reject_known_row_prefixes(*args)
         custody = SimpleNamespace(verify_prepared=verify, start_owner_once=start,
-                                  tokenize_assignment=tokenize, observe_current_inventory=fixture.observe_inventory)
+                                  tokenize_assignment=tokenize, reject_known_row_prefixes=reject_prefixes,
+                                  observe_current_inventory=fixture.observe_inventory)
         class Preflight:
             def _tokenizer(self, cache):
                 return fixtures.FakeTokenizer()
@@ -65,13 +73,17 @@ def test_child_requires_real_custody_preparation_receipt_before_fake_model(rejec
         config = {'cache_dir':str(fixture.root), 'phase_dir':str(attempt),
                   'preparation_supervisor':str(supervisor), 'public_urls':{'commitment_url':url}}
         frozen = {'_start_record':lambda *args: {}}
-        if reject:
+        if mode != 'valid':
             with pytest.raises(fixtures.custody.CustodyError):
                 child._run_pipeline(frozen, config, binding, fixture.public, custody, fixture.wrapper, dependencies, {})
-            assert steps == ['verify'] and not (attempt / 'owner-started.json').exists()
+            if mode == 'bad_receipt':
+                assert steps == ['verify'] and not (attempt / 'owner-started.json').exists()
+            else:
+                assert steps == ['verify', 'start', 'fake-model', 'retokenize', 'prefix-check']
+                assert (attempt / 'owner-started.json').is_file()
         else:
             child._run_pipeline(frozen, config, binding, fixture.public, custody, fixture.wrapper, dependencies, {})
-            assert steps == ['verify', 'start', 'fake-model', 'retokenize', 'fabricated-runner']
+            assert steps == ['verify', 'start', 'fake-model', 'retokenize', 'prefix-check', 'fabricated-runner']
             assert (attempt / 'owner-started.json').is_file()
     finally:
         fixture.doCleanups()

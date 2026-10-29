@@ -385,6 +385,7 @@ def _run_pipeline(frozen, config, binding, public, custody, wrapper_bytes, depen
     allocation = commitments.sample_families(freeze, nonce, inventory_snapshot=snapshot,
                                               current_inventory_sha256=snapshot.sha256)
     cases = custody.tokenize_assignment(allocation, bundle.tokenizer)
+    custody.reject_known_row_prefixes(cases, public.inventory)
     resealed = commitments.seal_heldout(freeze, nonce, cases, allocation=allocation,
                                          inventory_snapshot=snapshot, current_inventory_sha256=snapshot.sha256)
     if (resealed.record_bytes != record
