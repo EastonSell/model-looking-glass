@@ -114,6 +114,7 @@ def _condition(case, condition, policy):
     if (not all(_equal(value, baseline, policy) for value in nulls + identities)
             or not _equal(upstream, baseline, policy)
             or not _equal(patches[2], case.clean_logits, policy)
+            or not _equal(reverse[2], baseline, policy)
             or not _equal(clean_verify, case.clean_logits, policy)):
         raise DiscoveryInvalid("required discovery control failed")
     if (_equal(case.clean_trace[3].value, condition.perturbed_trace[3].value, policy)
