@@ -84,6 +84,50 @@ def _check_config(comparison, path, expected_sha256, receipt):
     return raw
 
 
+def verify_public_receipt(*, comparison, custody, config, receipt, reader=None):
+    """Verify a clear or collision receipt using only published commitments.
+
+    The default reader obtains the exact bytes from the pinned immutable URLs.
+    An injected reader is for synthetic tests. This verifies saved bytes, not
+    process execution.
+    """
+    if reader is None:
+        reader = comparison._fetch
+    if type(config) is not dict or not callable(reader):
+        raise ExitError('a bound public receipt check is required')
+    try:
+        config = comparison.parse_config(_canonical(config))
+        public = {}
+        for track, expected, freeze, url in (
+            ('natural', comparison._NATURAL_COMMITMENT, comparison._NATURAL_FREEZE,
+             comparison._PUBLIC_URLS['natural_commitment']),
+            ('injection', config['injection_commitment_sha256'], comparison._INJECTION_FREEZE,
+             config['injection_commitment_url']),
+        ):
+            raw = comparison._read_file(config[track]['commitment'], 1024 * 1024)
+            if _sha(raw) != expected or reader(url) != raw:
+                raise ExitError('published commitment does not match')
+            public[track] = (raw, comparison._public_commitment(track, raw, freeze))
+        value = _parse(receipt, 8192)
+        if value.get('status') not in ('clear', 'collision'):
+            raise ExitError('comparison status is incomplete')
+        clear = _canonical(dict(value, status='clear'))
+        if custody.verify_clear_receipt(clear,
+                natural_freeze_sha256=comparison._NATURAL_FREEZE,
+                injection_freeze_sha256=comparison._INJECTION_FREEZE,
+                natural_inventory_sha256=public['natural'][1]['exposure_inventory_sha256'],
+                injection_inventory_sha256=public['injection'][1]['exposure_inventory_sha256'],
+                natural_commitment_bytes=public['natural'][0],
+                injection_commitment_bytes=public['injection'][0],
+                comparator_source_sha256=comparison._SOURCE_SPECS[-1][1]) is not True:
+            raise ExitError('public comparison receipt does not match')
+        return True
+    except (ValueError, TypeError, KeyError, OSError, UnicodeError, RecursionError) as error:
+        if isinstance(error, ExitError):
+            raise
+        raise ExitError('public comparison receipt was not verified') from None
+
+
 def make_terminal(result, *, config_sha256, operation_sha256, comparator_command_sha256,
                   operator_source_sha256, pid, birth):
     """Make a bounded terminal for the operator that actually ran the adapter."""
