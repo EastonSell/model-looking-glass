@@ -34,8 +34,11 @@ rows. All callbacks execute on one custodian thread; the caller must guarantee
 exclusive, quiescent model ownership. The budget's `reserve()` is called before
 each preparation and `root()` immediately before the corresponding root call.
 A success requires precisely 57,408 submissions and root forwards, and both
-counters are limited to 60,000. This is a cooperative counter: it cannot detect
-uncooperative calls that bypass it. The same budget instance spans every model,
+counters are limited to 60,000. On a failed or interrupted attempt, the root
+counter records an authorized attempt immediately before the callable: an
+asynchronous interruption between those operations can leave it one higher than
+the number of callable entries. It cannot detect uncooperative calls that bypass
+it. The same budget instance spans every model,
 cell and phase. Actual trace run IDs must use an attempt-wide namespace; a
 clean or repeated-clean ID may be reused only for the same retained forward,
 model, input and phase. Trace source IDs bind to their saved `run_id` and site,
