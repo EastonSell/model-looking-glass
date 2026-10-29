@@ -8,6 +8,10 @@ limits, model lifetime and cancellation accounting. The transport does not yet
 run traces, interventions, generation, arbitrary Python, model loading or
 concurrent GPU kernels. It is not a public or multi-tenant service.
 
+The optional, trusted guardian notification seam is described in
+[IPC_CUSTODY_NOTIFICATION.md](IPC_CUSTODY_NOTIFICATION.md). It does not
+enable traced IPC jobs or prove result or client-buffer disposal.
+
 ## Owner and clients
 
 The owner process creates its trusted model, `ResidentWorker`, and `Broker`,
