@@ -32,3 +32,10 @@ The canonical payload SHA-256 is
 It contains 595 records and 4,190 distinct known input prefixes. The prior
 3,888-prefix set is preserved. As with earlier versions, known-row checks do
 not authorize a study seal or establish a complete exposure history.
+
+The 40 agreement-direction inputs already reserved in v20 were subsequently
+reported complete in the public evidence at merge
+`7b28ab29817bc372a2104c155e406f8d85984a41`. Their v25 planned labels are
+historical reservation labels pending an evidence-bound status successor; they
+do not imply those inputs remain unforwarded. The saved-byte and process
+records have cooperative, rather than authenticated, execution scope.
