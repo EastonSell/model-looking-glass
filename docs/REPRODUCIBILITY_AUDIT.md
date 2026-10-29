@@ -24,6 +24,15 @@ The final record reports 48/48 transparent training cases and 16/16 equal-captur
 
 At audit time the five recorded source/protocol SHA-256 values for `verified-cpu-v1` match the published snapshot, and both root and packaged protocol files have SHA-256 `07586071c05174315466f90c5d7552e40a6e46a22d3b4b588e1bcb64b5d77fd7`. For `initial-cpu-v1`, the four other hashes match, while `experiment.py` records `a4edcb211d82a4aa72256b97b29cf056fd308147e376b89699a7fda05b4fce59` instead of the published snapshot's `7d6f0a9591cf808358dad3fc94672c5e04868ef273ea4cded2a4c938dd3d0d5d`. The recorded local measurement commits `38ff944e46f05ec06a58e07b2905f8b6bff6c4a3` and `68d17069a67afc2a23df28d72c9b3e9b64811b09` are unavailable in this checkout; the published history is a content snapshot. Their absence here does not prove they cannot be recovered elsewhere.
 
+The five final-run files are recoverable from published snapshot commit `e94e20660cff32ddcd2643307d60e8d9a3c74f2f`, even if newer work has changed the current package. To compare against that snapshot without changing the current checkout, create a separate worktree and point the verifier at its package directory:
+
+```sh
+git -c core.autocrlf=false worktree add --detach ../historical-cpu-v1 e94e20660cff32ddcd2643307d60e8d9a3c74f2f
+python -m looking_glass.reproduce results/verified-cpu-v1 --source-dir ../historical-cpu-v1/looking_glass
+```
+
+The destination must not already exist. The verifier hashes actual checkout bytes; line-ending conversion can produce a mismatch even when the underlying Git blob matches. The command disables automatic CRLF conversion for this checkout. This is a byte comparison to the published snapshot; it does not recreate or independently rerun the historical local commit.
+
 ## Limits of replay
 
 The recorded environment identifies Linux, Python 3.12.14 and PyTorch 2.15.0+cpu, with CPU float32 and one intra-op thread; it does not record the CPU model, full OS image, complete dependency artifacts, scheduler state or concurrent host activity. The present Windows environment is different. Exact historical timing replay is therefore not established, and even a fresh same-version run on another host would not reproduce the old wall-clock samples. The original initial-run `experiment.py` is not available in the checked-out snapshot, so its original source cannot currently be independently replayed from this checkout. Matching final-run source bytes are useful for reconstruction, but no independent full run was performed in this audit.
