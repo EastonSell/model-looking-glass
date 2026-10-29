@@ -8,6 +8,17 @@ import pytest
 from looking_glass import pretrained_gpu_trace_pilot as owner
 
 
+def test_raw_directory_must_be_fresh_before_owner_work(tmp_path):
+    with pytest.raises(ValueError, match='raw evidence'):
+        owner._validate_raw_directory(tmp_path)
+    raw = tmp_path / 'raw'
+    raw.mkdir()
+    owner._validate_raw_directory(tmp_path)
+    (raw / 'unexpected.f32').write_bytes(b'partial')
+    with pytest.raises(ValueError, match='raw evidence'):
+        owner._validate_raw_directory(tmp_path)
+
+
 @pytest.mark.parametrize('error', [RuntimeError('failed synchronization'), KeyboardInterrupt()])
 def test_failed_or_interrupted_synchronization_keeps_sticky_unverified_state(monkeypatch, error):
     roots, calls = {'sync_pending': False}, []

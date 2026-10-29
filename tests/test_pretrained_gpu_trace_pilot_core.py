@@ -22,6 +22,9 @@ class CPUExecutor:
     def bind_trace(self, mode, trace):
         self.traces[mode] = trace
 
+    def save_capture(self, mode, forward_index, values):
+        assert self.current == mode and forward_index in (0, 1) and len(values) == 9
+
     def begin(self, phase):
         assert self.current is None
         self.current = phase
