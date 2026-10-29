@@ -1,12 +1,17 @@
 import concurrent.futures
-import dis
 import importlib
 import inspect
 import sys
 import threading
 import time
 import unittest
+
 from unittest.mock import patch
+
+if __package__:
+    from .opcode_support import offsets_at_line, run_opcode_trace
+else:
+    from opcode_support import offsets_at_line, run_opcode_trace
 
 from looking_glass.host_budget import HostBudget, HostClaim, HostClaimGuard
 from looking_glass.trace_producer import (ClaimLimit, ProducerCancelled,
@@ -41,8 +46,7 @@ def interrupt_at(method, line_text, opname, call):
     lines = [first + i for i, line in enumerate(source) if line_text in line]
     if len(lines) != 1:
         raise AssertionError(f"ambiguous source line {line_text!r}: {lines}")
-    offsets = [i.offset for i in dis.get_instructions(method)
-               if i.positions.lineno == lines[0] and i.opname == opname]
+    offsets = offsets_at_line(method, lines[0], opname)
     if len(offsets) != 1:
         raise AssertionError(f"ambiguous opcode {opname}: {offsets}")
 
@@ -54,11 +58,7 @@ def interrupt_at(method, line_text, opname, call):
             raise KeyboardInterrupt("injected interruption")
         return tracer
 
-    sys.settrace(tracer)
-    try:
-        call()
-    finally:
-        sys.settrace(None)
+    run_opcode_trace(tracer, call)
 
 
 class ProducerSlotTests(unittest.TestCase):

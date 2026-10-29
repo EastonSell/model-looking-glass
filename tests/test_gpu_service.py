@@ -17,13 +17,14 @@ import tempfile
 import weakref
 from dataclasses import asdict, dataclass, replace
 import hashlib
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from looking_glass.memory_budget import AdmissionError, CudaMemorySnapshot
 from looking_glass import gpu_service
 from looking_glass.gpu_service import (_canonical_runtime_uuid, _run_bound_owner,
-                                       _TorchServiceBackend, _validate_service_keys)
+    _TorchServiceBackend, _validate_service_keys, ProfileFiles, _load_profile_registry)
 
 
 GIB = 1024 ** 3
@@ -142,6 +143,21 @@ class FakeWorker:
     quarantined = False
 
 
+class FakeBroker:
+    quarantined = False
+
+
+def _reset_fake_owner():
+    # Only fake CPU fixtures may reset process-lifetime custody. A real owner
+    # must exit instead of clearing a quarantine or reusing this process.
+    gpu_service._QUARANTINE_HOLDS.clear()
+    gpu_service._QUARANTINED.clear()
+    gpu_service._OWNER_CUSTODY[:] = [None] * len(gpu_service._OWNER_CUSTODY)
+    gpu_service._OWNER_CLAIMED = False
+    gpu_service._OWNER_UNSAFE = False
+    gpu_service._OWNER_DRAIN_PENDING = False
+
+
 class UuidRendering:
     def __init__(self, value):
         self.value = value
@@ -197,6 +213,8 @@ class FakeKey:
     sequence_length: int = 2
     input_dtypes: tuple = (('input_ids', 'torch.int64'),)
     output_limit_bytes: int = 512 * 1024
+    warmup_protocol_sha256: str = '84b21a9ba63413bb9394dbac6d31dbc08ce3171508a25477f44e596be579760c'
+    capture_policy_sha256: str = '1ec2c8752f73cab7403fa9012e0796de77fdd87eb395a7cbc796044bf1643250'
 
 
 def service_keys():
@@ -219,6 +237,9 @@ class KeyContractTests(unittest.TestCase):
             (load, replace(cold, attention_backend='sdpa'), replace(warm, attention_backend='sdpa')),
             (load, replace(cold, use_cache=True), replace(warm, use_cache=True)),
             (load, replace(cold, capture_mode='direct'), replace(warm, capture_mode='direct')),
+            (load, replace(cold, warmup_protocol_sha256='f' * 64),
+             replace(warm, warmup_protocol_sha256='f' * 64)),
+            (replace(load, capture_policy_sha256='f' * 64), cold, warm),
             (load, replace(cold, output_limit_bytes=2 * 1024 * 1024),
              replace(warm, output_limit_bytes=2 * 1024 * 1024)),
         ]
@@ -228,19 +249,19 @@ class KeyContractTests(unittest.TestCase):
                     _validate_service_keys(identity, keys)
 
 
-def measured_keys_and_registry():
+def measured_keys_and_registry(*, source_sha=None):
     from looking_glass.resource_profile import (WorkloadKey, MemorySample,
         ProfileProvenance, MeasuredResourceProfile, ProfileRegistry,
         encode_evidence, model_runtime_fingerprint)
     keys = []
     for template in service_keys():
         fields = asdict(template)
-        fields.update(source_sha256='1' * 64, runtime_settings_sha256='2' * 64,
+        fields.update(source_sha256=source_sha or hashlib.sha256(b'fake-source-manifest').hexdigest(),
+                      runtime_settings_sha256='2' * 64,
                       torch_version='2.8.0+cu128', transformers_version='4.57.3',
                       cuda_runtime_version='12.8', driver_version='570.0',
                       python_version='3.11.15', device_name='fake CPU-test device',
-                      compute_capability=(7, 5), device_total_bytes=8 * GIB,
-                      warmup_protocol_sha256='3' * 64, capture_policy_sha256='4' * 64)
+                      compute_capability=(7, 5), device_total_bytes=8 * GIB)
         fields['model_id'] = model_runtime_fingerprint(fields)
         keys.append(WorkloadKey(**fields))
     records = []
@@ -250,7 +271,7 @@ def measured_keys_and_registry():
         sample = MemorySample(key.fingerprint(), f'fake-{index}', '5' * 64, 17,
                               'completed', before, after, 1024, 2048)
         evidence = encode_evidence(key, (sample,))
-        provenance = ProfileProvenance('resource-profile-v1', '6' * 64,
+        provenance = ProfileProvenance('resource-profile-v1', hashlib.sha256(b'fake-source-manifest').hexdigest(),
             hashlib.sha256(evidence).hexdigest(), '2026-10-28T00:00:00Z',
             'cooperative-exclusive', 'synchronize-reset-synchronize')
         records.append(MeasuredResourceProfile.build(key, (sample,), provenance,
@@ -259,7 +280,318 @@ def measured_keys_and_registry():
     return tuple(keys), registry
 
 
+def write_profile_files(directory, *, source_sha=None):
+    from looking_glass.resource_profile import encode_evidence
+    keys, registry = measured_keys_and_registry(source_sha=source_sha)
+    records = []
+    for index, key in enumerate(keys):
+        profile = registry.resolve(key)
+        document = Path(directory) / f'profile-{index}.json'
+        evidence = Path(directory) / f'evidence-{index}.json'
+        manifest = Path(directory) / f'manifest-{index}.json'
+        document.write_text(profile.to_json(), encoding='utf-8')
+        evidence.write_bytes(encode_evidence(key, profile.samples))
+        manifest.write_bytes(b'fake-source-manifest')
+        records.append(ProfileFiles(document, evidence, manifest, profile.profile_id))
+    return tuple(records), keys
+
+
+class CpuProfilePreflightTests(unittest.TestCase):
+    def test_profile_source_key_must_match_the_saved_manifest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            files, _ = write_profile_files(directory, source_sha='1' * 64)
+            with self.assertRaisesRegex(ValueError, 'source manifest'):
+                _load_profile_registry(files, SimpleNamespace(gpu_uuid=UUID))
+    def test_only_independently_pinned_untampered_profiles_form_registry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            files, keys = write_profile_files(directory)
+            identity = SimpleNamespace(gpu_uuid=UUID)
+            registry, declared = _load_profile_registry(files, identity)
+            self.assertEqual(declared, keys)
+            self.assertEqual(registry.resolve(keys[0]).profile_id, files[0].approved_profile_id)
+            files[1].evidence.write_bytes(b'tampered')
+            with self.assertRaisesRegex(ValueError, 'evidence'):
+                _load_profile_registry(files, identity)
+
+    def test_missing_profile_or_untrusted_pin_fails_before_any_owner_start(self):
+        with tempfile.TemporaryDirectory() as directory:
+            files, _ = write_profile_files(directory)
+            identity = SimpleNamespace(gpu_uuid=UUID)
+            with self.assertRaises(ValueError):
+                _load_profile_registry(files[:2], identity)
+            changed_pin = replace(files[0], approved_profile_id='f' * 64)
+            with self.assertRaisesRegex(ValueError, 'approved'):
+                _load_profile_registry((changed_pin,) + files[1:], identity)
+            files[2].document.unlink()
+            with self.assertRaises(FileNotFoundError):
+                _load_profile_registry(files, identity)
+
+
+class SharedBootstrapSmokeTests(unittest.TestCase):
+    """Opt-in CPU checkpoint smoke for the shared, reviewed child guard."""
+
+    def test_offline_pinned_model_load_under_guarded_imports(self):
+        """Optional local-cache smoke, with real weights and no CUDA access.
+
+        The temporary manifest records the dry run's resolved import origins,
+        distribution metadata and torch DLLs; it is a test fixture, not a
+        source profile or production preflight. Hashing DLLs costs several GiB
+        of disk I/O, so this is opt-in rather than part of every test run.
+        """
+        if os.environ.get('MLG_RUN_OFFLINE_STACK_SMOKE') != '1':
+            self.skipTest('set MLG_RUN_OFFLINE_STACK_SMOKE=1 for the offline stack smoke')
+        from looking_glass.gpu_bootstrap import prepare_owner_launch
+        site = Path(sys.prefix) / 'Lib' / 'site-packages'
+        environment = Path(sys.prefix).resolve()
+        checkpoint_cache = Path(__file__).resolve().parents[3] / 'hf-cache' / 'hub'
+        if not site.is_dir() or not checkpoint_cache.is_dir():
+            self.skipTest('the shared Windows venv or offline checkpoint cache is unavailable')
+        guard_and_load = '''\
+import os, sys
+guard = getattr(sys, '_looking_glass_import_guard', None)
+if guard is not None:
+    guard.assert_bound(os.environ['MLG_SOURCE_MANIFEST_SHA256'])
+    guard.assert_torch_dll_inventory(os.environ['MLG_SOURCE_MANIFEST_SHA256'])
+import ctypes, subprocess, torch
+def deny(*args, **kwargs):
+    raise AssertionError('CPU checkpoint smoke reached CUDA')
+def denied(name):
+    def fail(*args, **kwargs):
+        raise AssertionError('CPU checkpoint smoke reached CUDA: ' + name)
+    return fail
+for name in dir(torch.cuda):
+    value = getattr(torch.cuda, name)
+    if name == '_is_compiled':
+        # This wheel is CUDA-built. Return its build metadata without asking
+        # the driver; Transformers imports this check even in a CPU load.
+        setattr(torch.cuda, name, lambda: True)
+    elif callable(value) and not isinstance(value, type):
+        setattr(torch.cuda, name, denied('torch.cuda.' + name))
+for name in dir(torch._C):
+    value = getattr(torch._C, name)
+    if name.startswith('_cuda_') and callable(value) and not isinstance(value, type):
+        setattr(torch._C, name, denied('torch._C.' + name))
+original_to = torch.Tensor.to
+def cpu_only_to(tensor, *args, **kwargs):
+    destination = kwargs.get('device', args[0] if args else None)
+    if isinstance(destination, (str, torch.device)) and str(destination).split(':', 1)[0] == 'cuda':
+        deny()
+    return original_to(tensor, *args, **kwargs)
+torch.Tensor.to = cpu_only_to
+torch.Tensor.cuda = deny
+for name in ('CDLL', 'WinDLL', 'PyDLL', 'OleDLL'):
+    loader = getattr(ctypes, name, None)
+    if loader is not None:
+        def guarded_load(path, *args, _loader=loader, **kwargs):
+            if any(piece in str(path).lower() for piece in ('nvcuda', 'nvml', 'libcuda', 'nvidia-ml')):
+                deny()
+            return _loader(path, *args, **kwargs)
+        setattr(ctypes, name, guarded_load)
+original_popen = subprocess.Popen
+def guarded_popen(args, *pargs, **kwargs):
+    executable = args[0] if isinstance(args, (list, tuple)) and args else args
+    if isinstance(executable, (str, bytes, os.PathLike)) and 'nvidia-smi' in os.fsdecode(executable).lower():
+        deny()
+    return original_popen(args, *pargs, **kwargs)
+subprocess.Popen = guarded_popen
+from looking_glass.pretrained import ASSETS, load_distilgpt2
+bundle = load_distilgpt2(cache_dir=CHECKPOINT_CACHE, allow_download=False)
+assert type(bundle.model).__name__ == 'GPT2LMHeadModel'
+assert bundle.metadata['weights_sha256'] == ASSETS['model.safetensors'][1]
+assert not bundle.model.training and bundle.model.config.use_cache is False
+assert next(bundle.model.parameters()).device.type == 'cpu'
+assert bundle.tokenizer('Hello', add_special_tokens=False)['input_ids']
+print('verified-offline-cpu-model')
+'''.replace('CHECKPOINT_CACHE', repr(str(checkpoint_cache)))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            repo, private = root / 'repo', root / 'private'
+            repo.mkdir()
+            private.mkdir()
+            package = repo / 'looking_glass'
+            package.mkdir()
+            (package / '__init__.py').write_text('', encoding='utf-8')
+            (package / 'gpu_service.py').write_text(guard_and_load, encoding='utf-8')
+            (package / 'pretrained.py').write_bytes(
+                (Path(__file__).resolve().parents[1] / 'looking_glass' / 'pretrained.py').read_bytes())
+            system_root = os.environ.get('SYSTEMROOT')
+            if not system_root:
+                self.skipTest('the Windows system path is unavailable')
+            trusted_path = str((Path(system_root) / 'System32').resolve(strict=True))
+            env = {key: value for key, value in os.environ.items()
+                   if key.upper() in {'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATHEXT', 'TEMP', 'TMP'}}
+            env.update({'CUDA_VISIBLE_DEVICES': '', 'PATH': trusted_path,
+                        'PYTHONHASHSEED': '17', 'PYTHONNOUSERSITE': '1',
+                        'PYTHONDONTWRITEBYTECODE': '1', 'HF_HUB_OFFLINE': '1',
+                        'TRANSFORMERS_OFFLINE': '1', 'HF_HUB_DISABLE_TELEMETRY': '1',
+                        'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1'})
+            base = Path(sys._base_executable).resolve(strict=True)
+            dry_source = (
+                'import sys,json,importlib.machinery,runpy\n'
+                f'sys.path.extend([{str(repo)!r}, {str(site)!r}])\n'
+                'found = set()\n'
+                'class RecordingFinder:\n'
+                ' def find_spec(self, fullname, path=None, target=None):\n'
+                '  spec = importlib.machinery.PathFinder.find_spec(fullname, path, target)\n'
+                '  if spec is not None and spec.origin: found.add(spec.origin)\n'
+                '  return spec\n'
+                'sys.meta_path.insert(sys.meta_path.index(importlib.machinery.PathFinder), RecordingFinder())\n'
+                "runpy.run_module('looking_glass.gpu_service',run_name='__main__',alter_sys=True)\n"
+                'found.update(str(getattr(m,"__file__","")) for m in '
+                'list(sys.modules.values()) if getattr(m,"__file__",None))\n'
+                'print(json.dumps(sorted(found)))\n'
+            )
+            dry = subprocess.run([str(base), '-B', '-S', '-P', '-c', dry_source],
+                                 env=env, cwd=str(root), capture_output=True, text=True,
+                                 timeout=180)
+            self.assertEqual(dry.returncode, 0, dry.stderr)
+            paths = {Path(name).resolve() for name in json.loads(dry.stdout.splitlines()[-1])}
+            for metadata in site.glob('*.dist-info'):
+                paths.update(path.resolve() for path in metadata.rglob('*') if path.is_file())
+            paths.update(path.resolve() for path in (site / 'torch' / 'lib').glob('*.dll'))
+            def record(path, base_path):
+                digest = hashlib.sha256()
+                with path.open('rb') as stream:
+                    while block := stream.read(1024 * 1024):
+                        digest.update(block)
+                return {'path': path.relative_to(base_path).as_posix(),
+                        'size': path.stat().st_size, 'sha256': digest.hexdigest()}
+            files = [record(path, environment) for path in paths
+                     if path.is_file() and path.is_relative_to(environment)]
+            self.assertTrue(files)
+            repository_files = [record(repo / name, repo) for name in (
+                'looking_glass/__init__.py', 'looking_glass/gpu_service.py',
+                'looking_glass/pretrained.py')]
+            base_digest = hashlib.sha256(base.read_bytes()).hexdigest()
+            document = {'schema': 'resource-bootstrap-source-v1', 'git_commit': '0' * 40,
+                        'git_tree': '1' * 40,
+                        'python_executable': {'size': base.stat().st_size, 'sha256': base_digest},
+                        'repository_files': sorted(repository_files, key=lambda item: item['path']),
+                        'distributions': [{'name': 'test-dry-run', 'version': '0',
+                                           'files': sorted(files, key=lambda item: item['path'])}]}
+            encoded = json.dumps(document, sort_keys=True, ensure_ascii=False,
+                                 separators=(',', ':')).encode('utf-8')
+            launch = prepare_owner_launch(project_root=repo, site_packages=site,
+                environment_root=environment, private_parent=private, gpu_uuid=UUID,
+                module='looking_glass.gpu_service', arguments=(), source_manifest=encoded,
+                trusted_path=trusted_path, inherited_environment=env)
+            launch.verify_ready()
+            child_env = dict(launch.environment, CUDA_VISIBLE_DEVICES='')
+            verified = subprocess.run(launch.command, env=child_env, cwd=str(root),
+                                      capture_output=True, text=True, timeout=300)
+            self.assertEqual(verified.returncode, 0, verified.stderr)
+            self.assertIn('verified-offline-cpu-model', verified.stdout)
+            self.assertFalse(any(launch.pycache_prefix.iterdir()))
+
+
 class ConcreteBackendContractTests(unittest.TestCase):
+    def test_runtime_count_cannot_query_properties_after_quarantine(self):
+        import torch
+        events, latched = [], [False]
+        backend = _TorchServiceBackend(session=FakeSession(events), device_lease=object(),
+            cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+            verify_loaded_model=lambda model: True)
+        def count():
+            latched[0] = True
+            return 1
+        def properties(index):
+            events.append('properties')
+        with patch.object(gpu_service._QUARANTINED, 'is_set', side_effect=lambda: latched[0]), \
+             patch.object(torch.cuda, 'device_count', side_effect=count), \
+             patch.object(torch.cuda, 'get_device_properties', side_effect=properties):
+            with self.assertRaisesRegex(RuntimeError, 'quarantined'):
+                backend.runtime_binding()
+        self.assertNotIn('properties', events)
+
+    def test_telemetry_stops_between_individual_cuda_calls_on_quarantine(self):
+        import torch
+        events, latched = [], [False]
+        backend = _TorchServiceBackend(session=FakeSession(events), device_lease=object(),
+            cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+            verify_loaded_model=lambda model: True)
+        def available():
+            latched[0] = True
+            return True
+        def memory(*args):
+            events.append('memory-query')
+            return (7 * GIB, 8 * GIB)
+        with patch.object(gpu_service._QUARANTINED, 'is_set', side_effect=lambda: latched[0]), \
+             patch.object(torch.cuda, 'is_available', side_effect=available), \
+             patch.object(torch.cuda, 'mem_get_info', side_effect=memory):
+            with self.assertRaisesRegex(RuntimeError, 'quarantined'):
+                backend.telemetry()
+        self.assertNotIn('memory-query', events)
+
+    def test_concrete_runtime_check_rejects_latched_owner_before_cuda_query(self):
+        events = []
+        backend = _TorchServiceBackend(session=FakeSession(events), device_lease=object(),
+            cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+            verify_loaded_model=lambda model: True)
+        backend.runtime_binding = lambda: events.append('cuda-query') or (UUID, 1)
+        with patch.object(gpu_service._QUARANTINED, 'is_set', return_value=True):
+            with self.assertRaisesRegex(RuntimeError, 'quarantined'):
+                backend._check_runtime()
+        self.assertNotIn('cuda-query', events)
+
+    def test_actual_request_factory_only_accepts_profiled_token_values(self):
+        import torch
+        from looking_glass.memory_budget import MemoryBudget
+        session = FakeSession([])
+        backend = _TorchServiceBackend(session=session, device_lease=object(),
+            cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+            verify_loaded_model=lambda model: True)
+        backend._resolved_keys = ()
+        backend.runtime_binding = lambda: (UUID, 1)
+        backend.synchronize = lambda: None
+        class CpuModel:
+            training = False
+            config = SimpleNamespace(use_cache=False, _attn_implementation='eager',
+                                     vocab_size=50257, n_positions=1024)
+            def to(self, **kwargs):
+                return self
+        class WarmupWorker:
+            quarantined = False
+            def execute(self, request):
+                self.warmup = request
+                return SimpleNamespace(logits=torch.zeros((1, 2, 50257), dtype=torch.float32))
+        class FakeServer:
+            def __init__(self, broker, **kwargs):
+                self.request_factory = kwargs['request_factory']
+        factory = lambda request_id, inputs, seed: (request_id, inputs, seed)
+        workers = []
+        def make_worker(*args):
+            worker = WarmupWorker()
+            workers.append(worker)
+            return worker
+        fake_service = SimpleNamespace(make_gpt2_request_factory=lambda **kwargs: factory)
+        load = SimpleNamespace(key=SimpleNamespace(model_id='c' * 64))
+        cold = SimpleNamespace(estimated_incremental_bytes=1024)
+        warm = SimpleNamespace(estimated_incremental_bytes=1024)
+        budget = MemoryBudget(lambda: CudaMemorySnapshot(7 * GIB, 8 * GIB, 0, 0),
+                              max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        lease = budget.acquire(GIB, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        with patch.dict(sys.modules, {'looking_glass.service': fake_service}), \
+             patch('looking_glass.pretrained.load_distilgpt2', return_value=SimpleNamespace(model=CpuModel())), \
+             patch('looking_glass.resident_worker.ResidentWorker', return_value=object()), \
+             patch('looking_glass.budgeted_worker.DeviceAdmission', return_value=object()), \
+             patch('looking_glass.budgeted_worker.BudgetedWorker', side_effect=make_worker), \
+             patch('looking_glass.broker.Broker', return_value=object()), \
+             patch('looking_glass.ipc.IPCServer', FakeServer):
+            _, _, server = backend.construct(budget, lease, (load, cold, warm))
+        request_factory = server.request_factory
+        self.assertEqual(workers[0].warmup.seed, 17)
+        self.assertEqual(workers[0].warmup.inputs['input_ids'].tolist(), [[15496, 995]])
+        for seed in (29, 43, 71):
+            self.assertEqual(request_factory('r', {'input_ids': [[15496, 995]]}, seed),
+                             ('r', {'input_ids': [[15496, 995]]}, seed))
+        for invalid in ({'input_ids': [[15496, 996]]}, {'input_ids': [[15496.0, 995]]},
+                        {'input_ids': [[15496]]}, {'input_ids': [[15496, 995]], 'mask': [[1, 1]]}):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                request_factory('r', invalid, 29)
+        for invalid_seed in (0, 17, 29.0, True):
+            with self.subTest(seed=invalid_seed), self.assertRaises(ValueError):
+                request_factory('r', {'input_ids': [[15496, 995]]}, invalid_seed)
+
     def test_invalid_team_configuration_is_rejected_before_any_gpu_work(self):
         for teams in ((), ('bad name',), ('alpha', 'alpha'), ('x' * 65,),
                       tuple(f'team{i}' for i in range(129)), (['unhashable'],)):
@@ -402,7 +734,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
 
 class FakeBackend:
     def __init__(self, events, *, free=7 * GIB, missing=False,
-                 quarantined=False, dangling=False, failure=False):
+                 quarantined=False, broker_quarantined=False, dangling=False, failure=False):
         self.events = events
         self.free = free
         self.missing = missing
@@ -410,6 +742,8 @@ class FakeBackend:
         self.failure = failure
         self.worker = FakeWorker()
         self.worker.quarantined = quarantined
+        self.broker = FakeBroker()
+        self.broker.quarantined = broker_quarantined
         self.budget = None
         self.load_lease = None
         self.keys = service_keys()
@@ -438,7 +772,7 @@ class FakeBackend:
         assert load_lease in budget.active_leases()
         if self.dangling:
             budget.acquire(1, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
-        return self.worker, object(), object()
+        return self.worker, self.broker, object()
 
     def synchronize(self):
         self.events.append('synchronize')
@@ -453,14 +787,10 @@ class OwnerOrderTests(unittest.TestCase):
     def setUp(self):
         # These are CPU-only fake resources. A real GPU process is never reset
         # after quarantine; it must be replaced by the supervisor.
-        gpu_service._QUARANTINED.clear()
-        gpu_service._QUARANTINE_HOLDS.clear()
-        gpu_service._LIFETIME_HOLDS.clear()
+        _reset_fake_owner()
 
     def tearDown(self):
-        gpu_service._QUARANTINE_HOLDS.clear()
-        gpu_service._QUARANTINED.clear()
-        gpu_service._LIFETIME_HOLDS.clear()
+        _reset_fake_owner()
 
     def setup_run(self, **kwargs):
         events = []
@@ -521,6 +851,33 @@ class OwnerOrderTests(unittest.TestCase):
         self.assertNotIn('load-and-warmup', events)
         self.assertNotIn('attest', events)
 
+    def test_quarantine_during_telemetry_stops_before_construct(self):
+        events, session, backend = self.setup_run()
+        original = backend.telemetry
+        def telemetry_latches():
+            value = original()
+            gpu_service._QUARANTINED.set()
+            return value
+        backend.telemetry = telemetry_latches
+        with self.assertRaisesRegex(RuntimeError, 'quarantined'):
+            self.run_owner(session, backend)
+        self.assertNotIn('load-and-warmup', events)
+        self.assertNotIn('attest', events)
+
+    def test_quarantine_during_live_key_build_stops_profile_resolution(self):
+        events, session, backend = self.setup_run()
+        original = backend.live_keys
+        def keys_latch(identity):
+            keys = original(identity)
+            gpu_service._QUARANTINED.set()
+            return keys
+        backend.live_keys = keys_latch
+        with self.assertRaisesRegex(RuntimeError, 'quarantined'):
+            self.run_owner(session, backend)
+        self.assertNotIn('resolve-profiles', events)
+        self.assertNotIn('telemetry', events)
+        self.assertNotIn('load-and-warmup', events)
+
 
     def test_resident_reservation_is_held_until_exit_and_attestation_is_last(self):
         events, session, backend = self.setup_run()
@@ -547,6 +904,12 @@ class OwnerOrderTests(unittest.TestCase):
         self.assertIsNotNone(load_ref())
         self.assertIsNotNone(budget_ref())
 
+    def test_clean_owner_cannot_be_reused_in_same_process(self):
+        events, session, backend = self.setup_run()
+        self.assertTrue(self.run_owner(session, backend).teardown_verified)
+        with self.assertRaisesRegex(RuntimeError, 'already been used'):
+            self.run_owner(session, FakeBackend(events))
+
     def test_workload_failure_can_have_verified_teardown_without_success(self):
         events, session, backend = self.setup_run(failure=True)
         result = self.run_owner(session, backend)
@@ -565,14 +928,25 @@ class OwnerOrderTests(unittest.TestCase):
         self.assertIn('attest', events)
 
     def test_quarantine_or_extra_lease_prevents_attestation(self):
-        for kwargs in ({'quarantined': True}, {'dangling': True}):
+        for kwargs in ({'quarantined': True}, {'broker_quarantined': True}, {'dangling': True}):
             with self.subTest(kwargs=kwargs):
-                gpu_service._QUARANTINE_HOLDS.clear()
-                gpu_service._QUARANTINED.clear()
+                _reset_fake_owner()
                 events, session, backend = self.setup_run(**kwargs)
                 result = self.run_owner(session, backend)
                 self.assertFalse(result.teardown_verified)
                 self.assertNotIn('attest', events)
+
+    def test_broker_quarantine_during_sync_prevents_attestation(self):
+        events, session, backend = self.setup_run()
+        def quarantine_during_sync():
+            events.append('synchronize')
+            backend.broker.quarantined = True
+        backend.synchronize = quarantine_during_sync
+        result = self.run_owner(session, backend)
+        self.assertEqual(result.status, 'quarantined')
+        self.assertFalse(result.teardown_verified)
+        self.assertTrue(gpu_service._QUARANTINED.is_set())
+        self.assertNotIn('attest', events)
 
     def test_synchronization_failure_prevents_attestation(self):
         events, session, backend = self.setup_run()
@@ -599,12 +973,176 @@ class OwnerOrderTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'quarantined'):
             self.run_owner(session, next_backend)
 
+    def test_failed_drain_retains_known_resources_if_error_bookkeeping_ooms(self):
+        events, session, backend = self.setup_run()
+        worker_ref = weakref.ref(backend.worker)
+        class AppendFails(list):
+            def append(self, value):
+                raise MemoryError('injected bookkeeping failure')
+        backend.synchronize = lambda: (_ for _ in ()).throw(RuntimeError('lost drain'))
+        with patch.object(gpu_service, '_QUARANTINE_HOLDS', AppendFails()):
+            result = self.run_owner(session, backend)
+            lease_ref = weakref.ref(backend.load_lease)
+            self.assertEqual(result.status, 'quarantined')
+            del backend
+            gc.collect()
+            self.assertIsNotNone(worker_ref())
+            self.assertIsNotNone(lease_ref())
+        self.assertNotIn('attest', events)
+
+    def test_published_lease_survives_interrupted_acquire_receipt(self):
+        from looking_glass.memory_budget import MemoryBudget
+        events, session, backend = self.setup_run()
+        refs = {}
+        class InterruptBudget(MemoryBudget):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                refs['budget'] = weakref.ref(self)
+            def acquire(self, *args, **kwargs):
+                lease = super().acquire(*args, **kwargs)
+                refs['lease'] = weakref.ref(lease)
+                raise MemoryError('injected interruption after lease publication')
+        class AppendFails(list):
+            def append(self, value):
+                raise MemoryError('injected bookkeeping failure')
+        with patch.object(gpu_service, 'MemoryBudget', InterruptBudget), \
+             patch.object(gpu_service, '_QUARANTINE_HOLDS', AppendFails()):
+            with self.assertRaisesRegex(MemoryError, 'after lease publication'):
+                self.run_owner(session, backend)
+            del backend
+            gc.collect()
+            self.assertIsNotNone(refs['budget']())
+            self.assertIsNotNone(refs['lease']())
+        self.assertNotIn('attest', events)
+
+    def test_first_failure_is_retained_if_later_quarantine_fails(self):
+        events, session, backend = self.setup_run()
+        refs, calls = {}, []
+        class Payload:
+            pass
+        class DrainFailure(RuntimeError):
+            pass
+        def fail_sync():
+            payload = Payload()
+            refs['payload'] = weakref.ref(payload)
+            exc = DrainFailure('first failure')
+            exc.payload = payload
+            raise exc
+        class AppendFails(list):
+            def append(self, value):
+                raise MemoryError('injected bookkeeping failure')
+        original_quarantine = gpu_service._quarantine
+        def interrupted_quarantine(*args):
+            calls.append(None)
+            if len(calls) == 2:
+                raise MemoryError('later quarantine failed')
+            return original_quarantine(*args)
+        backend.synchronize = fail_sync
+        with patch.object(gpu_service, '_QUARANTINE_HOLDS', AppendFails()), \
+             patch.object(gpu_service, '_quarantine', interrupted_quarantine):
+            with self.assertRaisesRegex(MemoryError, 'later quarantine failed'):
+                self.run_owner(session, backend)
+            del backend
+            gc.collect()
+            self.assertIsNotNone(refs['payload']())
+        self.assertEqual(len(calls), 3)
+        self.assertNotIn('attest', events)
+
     def test_false_teardown_claim_is_independently_rechecked(self):
         events, session, backend = self.setup_run()
         def dishonest_serve(server, broker, worker, stop_event, announce, verify):
             worker.quarantined = True
             return FakeResult(teardown_verified=True)
         backend.serve = dishonest_serve
+        result = self.run_owner(session, backend)
+        self.assertEqual(result.status, 'quarantined')
+        self.assertFalse(result.teardown_verified)
+        self.assertNotIn('attest', events)
+
+    def test_failed_drain_cannot_be_healed_by_later_clean_claim(self):
+        events, session, backend = self.setup_run()
+        calls = []
+        def first_sync_fails():
+            calls.append(None)
+            if len(calls) == 1:
+                raise RuntimeError('first synchronization failed')
+        def falsely_clean(server, broker, worker, stop_event, announce, verify):
+            self.assertFalse(verify())
+            return FakeResult('clean', True)
+        backend.synchronize = first_sync_fails
+        backend.serve = falsely_clean
+        result = self.run_owner(session, backend)
+        self.assertEqual(result.status, 'quarantined')
+        self.assertFalse(result.teardown_verified)
+        self.assertEqual(len(calls), 1)
+        self.assertNotIn('attest', events)
+
+    def test_failed_drain_stays_quarantined_if_event_notification_fails(self):
+        events, session, backend = self.setup_run()
+        calls = []
+        def first_sync_fails():
+            calls.append(None)
+            if len(calls) == 1:
+                raise RuntimeError('first synchronization failed')
+        def falsely_clean(server, broker, worker, stop_event, announce, verify):
+            try:
+                verify()
+            except MemoryError:
+                pass
+            return FakeResult('clean', True)
+        backend.synchronize = first_sync_fails
+        backend.serve = falsely_clean
+        with patch.object(gpu_service._QUARANTINED, 'set', side_effect=MemoryError('notification')):
+            result = self.run_owner(session, backend)
+        self.assertEqual(result.status, 'quarantined')
+        self.assertFalse(result.teardown_verified)
+        self.assertEqual(len(calls), 1)
+        self.assertNotIn('attest', events)
+
+    def test_pending_drain_survives_interrupted_latch_publication(self):
+        events, session, backend = self.setup_run()
+        syncs, notifications = [], []
+        def fail_sync():
+            syncs.append(None)
+            raise RuntimeError('device drain failed')
+        def falsely_clean(server, broker, worker, stop_event, announce, verify):
+            try:
+                verify()
+            except KeyboardInterrupt:
+                pass
+            return FakeResult('clean', True)
+        original = gpu_service._mark_unsafe
+        def interrupted_mark():
+            notifications.append(None)
+            if len(notifications) == 1:
+                raise KeyboardInterrupt('before latch publication')
+            original()
+        backend.synchronize = fail_sync
+        backend.serve = falsely_clean
+        with patch.object(gpu_service, '_mark_unsafe', interrupted_mark):
+            result = self.run_owner(session, backend)
+        self.assertEqual(result.status, 'quarantined')
+        self.assertFalse(result.teardown_verified)
+        self.assertEqual(len(syncs), 1)
+        self.assertNotIn('attest', events)
+
+    def test_observed_broker_quarantine_cannot_be_healed_by_later_clean_claim(self):
+        events, session, backend = self.setup_run()
+        def falsely_clean(server, broker, worker, stop_event, announce, verify):
+            broker.quarantined = True
+            self.assertFalse(verify())
+            broker.quarantined = False
+            return FakeResult('clean', True)
+        backend.serve = falsely_clean
+        result = self.run_owner(session, backend)
+        self.assertEqual(result.status, 'quarantined')
+        self.assertFalse(result.teardown_verified)
+        self.assertNotIn('synchronize', events)
+        self.assertNotIn('attest', events)
+
+    def test_quarantine_latched_during_sync_prevents_attestation(self):
+        events, session, backend = self.setup_run()
+        backend.synchronize = lambda: gpu_service._QUARANTINED.set()
         result = self.run_owner(session, backend)
         self.assertEqual(result.status, 'quarantined')
         self.assertFalse(result.teardown_verified)
@@ -625,14 +1163,67 @@ class OwnerOrderTests(unittest.TestCase):
 
 class CpuComposedServiceTests(unittest.TestCase):
     def setUp(self):
-        gpu_service._QUARANTINED.clear()
-        gpu_service._QUARANTINE_HOLDS.clear()
-        gpu_service._LIFETIME_HOLDS.clear()
+        _reset_fake_owner()
 
     def tearDown(self):
-        gpu_service._QUARANTINED.clear()
-        gpu_service._QUARANTINE_HOLDS.clear()
-        gpu_service._LIFETIME_HOLDS.clear()
+        _reset_fake_owner()
+
+    def test_owner_roots_real_worker_buffers_after_fake_device_drain_failure(self):
+        import torch
+        from contextlib import nullcontext
+        from unittest.mock import Mock
+        from torch import nn
+        from looking_glass import resident_worker as resident_module
+        from looking_glass.resident_worker import ForwardRequest, ResidentWorker, WorkerSynchronizationError
+
+        refs = {}
+        class ObservedModel(nn.Module):
+            def forward(self, input_ids):
+                logits = torch.stack((input_ids.float(), input_ids.float() + 1), dim=-1)
+                refs['input'] = weakref.ref(input_ids)
+                refs['logits'] = weakref.ref(logits)
+                return {'logits': logits}
+        class NoRetentionSpace:
+            def append(self, value):
+                raise MemoryError('diagnostic retention unavailable')
+        class CustodyBackend(FakeBackend):
+            def __init__(self, events):
+                super().__init__(events)
+                model = ObservedModel().eval()
+                refs['model'] = weakref.ref(model)
+                self.worker = ResidentWorker('fake-cuda', model)
+                self.worker._device = torch.device('cuda:0')
+                refs['worker'] = weakref.ref(self.worker)
+            def serve(self, server, broker, worker, stop_event, announce, verify_drain):
+                try:
+                    worker.execute(ForwardRequest('fake-failure', {'input_ids': torch.tensor([[1, 2]])}))
+                except WorkerSynchronizationError:
+                    return FakeResult('quarantined', False)
+                raise AssertionError('the fake device drain should have failed')
+        def fake_to(tensor, *args, **kwargs):
+            if kwargs.get('copy'):
+                result = tensor.clone()
+                refs['offload'] = weakref.ref(result)
+                return result
+            return tensor
+        fake_process_event = threading.Event()
+        backend = CustodyBackend([])
+        with patch.object(resident_module, '_process_quarantined', fake_process_event), \
+             patch.object(resident_module, '_quarantine_references', NoRetentionSpace()), \
+             patch.object(fake_process_event, 'set', side_effect=MemoryError('notification unavailable')), \
+             patch('torch.random.fork_rng', return_value=nullcontext()), \
+             patch('torch.cuda.default_generators', [Mock()]), \
+             patch.object(torch.Tensor, 'to', fake_to), \
+             patch('torch.cuda.synchronize', side_effect=RuntimeError('fake drain failed')):
+            result = _run_bound_owner(FakeSession([]), object(), backend=backend,
+                registry=object(), stop_event=threading.Event(), announce=lambda server: None)
+            self.assertEqual(result.status, 'quarantined')
+            self.assertFalse(result.teardown_verified)
+            del backend
+            gc.collect()
+            for name in ('model', 'worker', 'input', 'logits', 'offload'):
+                with self.subTest(name=name):
+                    self.assertIsNotNone(refs[name]())
 
     def test_one_warm_worker_serves_two_authenticated_teams_and_drains(self):
         import torch

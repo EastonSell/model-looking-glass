@@ -231,8 +231,9 @@ class TraceReservation:
             if nbytes != self._nbytes:
                 raise ValueError("payload size does not match its reservation")
             with store._lock:
-                if self._state == "cancelling":
-                    raise TraceStoreCancelled("reservation was cancelled before copying")
+                cancelled_before_copy = self._state == "cancelling"
+            if cancelled_before_copy:
+                raise TraceStoreCancelled("reservation was cancelled before copying")
             snapshot = _clone_tensor(value)
             actual_bytes, actual_shape, actual_dtype = _payload_info(snapshot)
             if (actual_bytes != self._nbytes or actual_shape != shape or actual_dtype != dtype
@@ -246,6 +247,10 @@ class TraceReservation:
                 if self._state == "cancelling":
                     raise TraceStoreCancelled("reservation was cancelled during copying")
                 self._value = snapshot
+                # The entry must be the store's sole snapshot owner before it
+                # becomes removable. Otherwise a concurrent drop or a retained
+                # return traceback can outlive the entry's released claim.
+                snapshot = None
                 self._state = "ready"
             return self
         except BaseException:

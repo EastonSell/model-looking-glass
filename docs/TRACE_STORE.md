@@ -55,13 +55,21 @@ cancels a pending one; `handle.cancel()` only cancels an uncommitted item.
 `handle.take()` transfers a ready payload and releases its store claim.
 `handle.read()` returns an independent copy and leaves the store item in place.
 
+Before publishing a ready item, commit drops its own reference to the
+snapshot under the store lock, so a concurrent removal does not leave that
+snapshot in the still-running commit frame. The input is separately owned and
+must remain claimed until the copying call and all source aliases are gone.
+
 `request.cancel()` removes its ready and reserved items and prevents future
 reservations on that handle. If a copy is already in progress, cancellation is
 cooperative: it marks the copy for rejection, keeps the reservation charged,
 and returns without waiting for the copying thread. That thread must finish or
 fail before the claim is released. A caller that needs to establish completion
 must join or await its copy operation; aggregate `usage()` alone cannot prove a
-particular request has quiesced. A concurrent read and removal serialize
+particular request has quiesced. Python asynchronous exceptions at lock
+context-manager boundaries can strand a lock; use cooperative cancellation
+and have a supervisor quarantine and restart the process if it becomes
+unresponsive. A concurrent read and removal serialize
 through the store lock. A read that wins first returns a caller-owned copy;
 a take that wins first transfers its payload to the caller.
 

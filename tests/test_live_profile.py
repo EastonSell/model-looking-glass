@@ -386,6 +386,9 @@ class LiveProfileTests(unittest.TestCase):
         module = importlib.import_module('looking_glass.live_profile')
         import torch
         base = torch.tensor([[1.0, 2.0]])
+        embedding_parameter = torch.nn.Parameter(base)
+        parameters = {'transformer.wte.weight': embedding_parameter,
+                      'lm_head.weight': embedding_parameter}
         weight = torch.tensor([[0.0, 4.0], [5.0, 6.0]])
         state = {'transformer.wte.weight': base, 'lm_head.weight': base,
                  'transformer.h.0.mlp.weight': weight}
@@ -400,11 +403,32 @@ class LiveProfileTests(unittest.TestCase):
         class Model:
             def state_dict(self): return state
             def get_buffer(self, name): return buffers[name]
+            def get_parameter(self, name): return parameters[name]
             def named_buffers(self): return list(buffers.items())
         class Weights:
             def keys(self): return list(expected)
             def get_tensor(self, name): return expected[name]
         self.assertIs(module._verify_cpu_tensors(torch, Model(), Weights()), True)
+        shared_storage_alias = torch.nn.Parameter(embedding_parameter.detach())
+        self.assertEqual(shared_storage_alias.untyped_storage().data_ptr(),
+                         embedding_parameter.untyped_storage().data_ptr())
+        self.assertIsNot(shared_storage_alias, embedding_parameter)
+        parameters['lm_head.weight'] = shared_storage_alias
+        with self.assertRaises(ValueError):
+            module._verify_cpu_tensors(torch, Model(), Weights())
+        parameters['lm_head.weight'] = embedding_parameter
+        for getter, setter in (
+                (torch.__future__.get_overwrite_module_params_on_conversion,
+                 torch.__future__.set_overwrite_module_params_on_conversion),
+                (torch.__future__.get_swap_module_params_on_conversion,
+                 torch.__future__.set_swap_module_params_on_conversion)):
+            previous = getter()
+            try:
+                setter(True)
+                with self.assertRaises(ValueError):
+                    module._verify_cpu_tensors(torch, Model(), Weights())
+            finally:
+                setter(previous)
         state['transformer.h.0.mlp.weight'] = torch.tensor([[4.0, 4.0], [5.0, 6.0]])
         with self.assertRaises(ValueError):
             module._verify_cpu_tensors(torch, Model(), Weights())

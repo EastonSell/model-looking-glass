@@ -17,7 +17,12 @@ or guarantees against out-of-memory (OOM) failures.
   `config.json` SHA-256 is
   `4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a`.
   Preserve the complete verified asset manifest. Disable remote code and network
-  fetching; load on CPU before copying the model to the GPU.
+  fetching; load on CPU before copying the model to the GPU. Before the copy,
+  require both PyTorch overwrite- and swap-on-conversion future flags to be
+  false and verify that the language-model head and input embedding are the
+  same `Parameter` object. Recheck that identity and their device storage after
+  transfer; sharing CPU storage between distinct `Parameter` wrappers is not
+  sufficient to establish a tied GPU model.
 - Exactly one CUDA-visible physical GPU, canonical UUID mapping at `cuda:0`;
   batch 1, sequence length 2, `input_ids` only, dtype `torch.int64`, token IDs
   `[15496,995]`; FP32 model/compute, eager attention,
