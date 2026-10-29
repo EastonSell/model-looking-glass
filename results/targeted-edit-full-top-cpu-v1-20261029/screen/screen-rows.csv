@@ -1,0 +1,49 @@
+offset,case_id,fact_id,role,prompt,factual_text,counterfactual_text,unique_top_id,top_decoded,top_tie_count,top_gap,factual_logp,counterfactual_logp,eligible,exclusion_reason,row_sha256
+0,full-top-france-discovery-01,france,discovery,The capital of Spain is Madrid. The capital of France is, Paris, London,14708, Madrid,1,1.3173904418945312,-3.538595593268475,-5.366522229010663,False,top_not_factual,6e5fcd6c2ae06ef1d56a079fe2fb82c85520298a5eb15aa476a3d622655509e1
+1,full-top-france-efficacy-calibration-01,france,efficacy-calibration,Name of the national capital of France:, Paris, London,198,"
+",1,1.026153564453125,-4.911713259957077,-7.365349429390671,False,top_not_factual,47b19b9b0f53a7c9db89727883be7ccf630b5f30ba68dcab4fbf77d9d69f3aad
+2,full-top-france-efficacy-calibration-02,france,efficacy-calibration,Country and capital: Spain - Madrid; France -, Paris, London,6342, Paris,1,0.24196624755859375,-2.2037592556618995,-4.072495522751743,True,,7fa3779e1264ecd4cab37adfd6be2d0f7f0eeec732da989e56530b4f9ac91aad
+3,full-top-france-evaluation-01,france,evaluation,"Q: What is the national capital of France?
+A:", Paris, London,383, The,1,0.122406005859375,-4.9420868303830545,-7.758660927062742,False,top_not_factual,6faf1a83b1d0a428b46e6c084fa89bed383e299dc53e6f43abc359b0d848bc61
+4,full-top-france-evaluation-02,france,evaluation,"In a geography quiz, France's national capital is", Paris, London,1363, home,1,0.17414093017578125,-5.054898441068142,-7.042935550443142,False,top_not_factual,3cf6715fb6ae21824af9fd130cbc74e750815687039b4fadac324c6102d9b02e
+5,full-top-france-evaluation-03,france,evaluation,France's national capital city is, Paris, London,1363, home,1,0.0988006591796875,-7.756160962160584,-7.945736157473084,False,top_not_factual,9159baf9eb602eeb79777272823c15af2780604406ca0bb0c6ee7fab68d00a2e
+6,full-top-france-evaluation-04,france,evaluation,"Country: France
+Capital city:", Paris, London,6342, Paris,1,1.6991004943847656,-2.39390190505536,-5.630798419947938,True,,db404379deb459e8dd612a113fa06a61115c43dc99847d51cc565df8939b1357
+7,full-top-france-evaluation-05,france,evaluation,Capital cities: Spain is Madrid; France is, Paris, London,6342, Paris,1,1.216644287109375,-1.3029449038894534,-4.682179217854297,True,,d397cc867de9e3c2890f95c0c333f0d2c42b9ebd450fa53e54ae9aed4464b540
+8,full-top-france-evaluation-06,france,evaluation,Madrid is Spain's capital. France's capital is, Paris, London,14708, Madrid,1,0.8046226501464844,-3.9423318873328865,-5.6884866724891365,False,top_not_factual,c721ee480a7f5d63332137e95d136bd153dcb40eb7932ba675b51d53f0eb71ca
+9,full-top-japan-discovery-01,japan,discovery,The capital of Spain is Madrid. The capital of Japan is, Tokyo, Paris,14708, Madrid,1,0.7201728820800781,-2.0835333797571534,-6.0213423702356685,False,top_not_factual,ad8033c66bcbc039cfb74812e08e8c229035a7718db6d1d142138f030dee873e
+10,full-top-japan-efficacy-calibration-01,japan,efficacy-calibration,Name of the national capital of Japan:, Tokyo, Paris,198,"
+",1,0.6196670532226562,-3.8462324107382875,-9.415686603853523,False,top_not_factual,1e8239bc0947cd0f9580d0a12b4a634a02991f7f692051337910128fe51c7efb
+11,full-top-japan-efficacy-calibration-02,japan,efficacy-calibration,Country and capital: Spain - Madrid; Japan -, Tokyo, Paris,11790, Tokyo,1,1.307525634765625,-1.0721660094496097,-6.338447137379298,True,,aabcd3f987a94132db74e6f823b0d384581ff74d0dd177aad6719f6389f32efe
+12,full-top-japan-evaluation-01,japan,evaluation,"Q: What is the national capital of Japan?
+A:", Tokyo, Paris,2869, Japan,1,0.07671356201171875,-4.851862211195276,-10.792581815687463,False,top_not_factual,2a2d5f10998239dc467840783afc64c1db4e94cd36b5bfa41d9e28993a919708
+13,full-top-japan-evaluation-02,japan,evaluation,"In a geography quiz, Japan's national capital is", Tokyo, Paris,1900, known,1,0.00275421142578125,-3.513743264722876,-9.114397866773658,False,top_not_factual,985ef88c86f0237b22c8ad8880bc79603fd472e63c63f5e72a3063eddd07b2c6
+14,full-top-japan-evaluation-03,japan,evaluation,Japan's national capital city is, Tokyo, Paris,1363, home,1,0.09962081909179688,-7.480378179012609,-8.626847295223547,False,top_not_factual,44a0251e9c98883a069fc1706aa8b1891f187c6dcb1f1aedbbc7ebab5c81577f
+15,full-top-japan-evaluation-04,japan,evaluation,"Country: Japan
+Capital city:", Tokyo, Paris,11790, Tokyo,1,0.9068603515625,-1.3187462026636507,-9.124601000026932,True,,1ee576a40eec08fc96a1160c0fcad49d60604ec814f576b3d2cfee4876dc27da
+16,full-top-japan-evaluation-05,japan,evaluation,Capital cities: Spain is Madrid; Japan is, Tokyo, Paris,11790, Tokyo,1,1.6240463256835938,-0.8454447402831249,-5.698647560107344,True,,09d150366bec099a88ca7864456b073455cca1dc6306e9f7618b8141b64aa3dc
+17,full-top-japan-evaluation-06,japan,evaluation,Madrid is Spain's capital. Japan's capital is, Tokyo, Paris,262, the,1,0.2628974914550781,-2.8258320307160067,-6.294917724075382,False,top_not_factual,fdd42866c28787191cf5416502c39d9fd6a7aeb300542318116e18c9e852136d
+18,full-top-italy-discovery-01,italy,discovery,The capital of Spain is Madrid. The capital of Italy is, Rome, London,14708, Madrid,1,1.2456817626953125,-2.2107137388862155,-5.968896264520981,False,top_not_factual,c3c4211a7de847361e87bafa57cc967a57baf78b2a8a702015420561fa467358
+19,full-top-italy-efficacy-calibration-01,italy,efficacy-calibration,Name of the national capital of Italy:, Rome, London,198,"
+",1,0.5424995422363281,-4.920663962266841,-7.872072348497309,False,top_not_factual,62d4c2b444e54f2913e126a881e0594179659f53b6f513e4beeaa0c16f061ede
+20,full-top-italy-efficacy-calibration-02,italy,efficacy-calibration,Country and capital: Spain - Madrid; Italy -, Rome, London,14708, Madrid,1,0.6564788818359375,-3.5029639209002528,-4.816059013673691,False,top_not_factual,7b904c56585691c5134fbacac96d7791d637a43a5433379a3e4bbc4171e1544b
+21,full-top-italy-evaluation-01,italy,evaluation,"Q: What is the national capital of Italy?
+A:", Rome, London,383, The,1,0.10115814208984375,-5.277893801976695,-8.220940371800914,False,top_not_factual,e6c6081c10cd39aa43e9bea6e16479d5e87903b7cbbe7becec7e257ae0fdd12b
+22,full-top-italy-evaluation-02,italy,evaluation,"In a geography quiz, Italy's national capital is", Rome, London,1363, home,1,0.15418243408203125,-4.206607130791659,-7.482844618584628,False,top_not_factual,93dcfa946b1d672cc065a555e3f9fa9f67bcedf962e3bd455c1248f2ecdd47ab
+23,full-top-italy-evaluation-03,italy,evaluation,Italy's national capital city is, Rome, London,1363, home,1,0.046970367431640625,-7.5276543513812415,-7.9436089412249915,False,top_not_factual,c8368b3bd32dd301ccdc52f07b98879df738c10d026f3fee00b58ba70f4d198e
+24,full-top-italy-evaluation-04,italy,evaluation,"Country: Italy
+Capital city:", Rome, London,21574, Milan,1,0.17675399780273438,-3.1304291993056674,-5.986153534022464,False,top_not_factual,079aaecfac410397a7a97f0263ddb78c44fa1bfacfcd07b8efdac4ad5deb430d
+25,full-top-italy-evaluation-05,italy,evaluation,Capital cities: Spain is Madrid; Italy is, Rome, London,21574, Milan,1,0.13621139526367188,-2.4286637383786265,-5.088873394140345,False,top_not_factual,62199fe438b7b95a4c6e58038a6a53567f445a32afcbd8757ae8cda7e42296f9
+26,full-top-italy-evaluation-06,italy,evaluation,Madrid is Spain's capital. Italy's capital is, Rome, London,14708, Madrid,1,1.234954833984375,-3.001307559503537,-6.024672580255491,False,top_not_factual,0a378665b4036fbcaccdabe5a41697adeab9a2cfd0a240b451d42de3ea22c788
+27,full-top-uk-discovery-01,uk,discovery,The capital of Spain is Madrid. The capital of the United Kingdom is, London, Paris,14708, Madrid,1,1.7788505554199219,-2.617237531429372,-5.725330793148122,False,top_not_factual,4623d6fa8f57006099d72b5a9a1767cf90422f5bcc924f1fde365bd6b0ac3959
+28,full-top-uk-efficacy-calibration-01,uk,efficacy-calibration,Name of the national capital of the United Kingdom:, London, Paris,198,"
+",1,0.7686347961425781,-3.690178626981582,-7.493698829618301,False,top_not_factual,f5aab3dc99208adaafb4e2877a148b109e4449b4eff761c08c2baccdb93f7f92
+29,full-top-uk-efficacy-calibration-02,uk,efficacy-calibration,Country and capital: Spain - Madrid; the United Kingdom -, London, Paris,3576, London,1,1.5437545776367188,-1.6617586898310832,-4.598976402233427,True,,73ee785c9fadfdc4ec9bfe34bfe5a00bf52894ec6ff8f446659e6fb76f6b3731
+30,full-top-uk-evaluation-01,uk,evaluation,"Q: What is the national capital of the United Kingdom?
+A:", London, Paris,383, The,1,0.8593597412109375,-4.697270467575809,-10.23469264775159,False,top_not_factual,8502dcb33dda2f806c084c204e1f6662f6c85366a79dfd04b4a3d056ac485a10
+31,full-top-uk-evaluation-02,uk,evaluation,"In a geography quiz, the United Kingdom's national capital is", London, Paris,1363, home,1,0.40093231201171875,-4.462719037891458,-7.976444318653177,False,top_not_factual,1c3d1af334a250005d5d4d3d0270bcb2e9b5d6e0b516f7ac6e5588607c593236
+32,full-top-uk-evaluation-03,uk,evaluation,The United Kingdom's national capital city is, London, Paris,1363, home,1,0.20846176147460938,-6.339080494452929,-9.288230579902148,False,top_not_factual,d2614d769433a0b1ff5733d77bf86fe8f9d7e1fefefcfc7fc26439368891f640
+33,full-top-uk-evaluation-04,uk,evaluation,"Country: the United Kingdom
+Capital city:", London, Paris,3576, London,1,1.8713455200195312,-1.485180198353794,-6.225956260365512,True,,2e3b017ac3dce2e6a778d1392136cf5f90a92dbbab166c2b729cd396faed3de2
+34,full-top-uk-evaluation-05,uk,evaluation,Capital cities: Spain is Madrid; the United Kingdom is, London, Paris,3576, London,1,0.9591827392578125,-1.9472231995735312,-4.075747979846969,True,,e86a549f6ddd4ff21e9681cbf2d1ed496455e70f1107d6041c4284862ac6a99e
+35,full-top-uk-evaluation-06,uk,evaluation,Madrid is Spain's capital. The United Kingdom's capital is, London, Paris,14708, Madrid,1,0.7908287048339844,-3.312838003891161,-5.5192589023286605,False,top_not_factual,551f3fa4bf57de9197949d2d4bc84b7d5bf22fd63d94ed22673eff35b67ae762
