@@ -1,0 +1,19 @@
+{
+  "full_top_localities_not_in_journal": 12,
+  "full_top_raw_bytes": 7237008,
+  "full_top_targets": 36,
+  "schema": "exposure-v30-evidence-audit-v1",
+  "scope": "Saved-byte consistency and cooperative process records; no model or protected data, independent execution attestation, or complete exposure-history claim. V1 private stderr is not read.",
+  "year_v1": {
+    "cases": 48,
+    "completed_actions": 168,
+    "raw_files": 48,
+    "receipt_run_files": 51
+  },
+  "year_v2": {
+    "cases": 36,
+    "completed_actions": 288,
+    "raw_files": 36,
+    "receipt_run_files": 39
+  }
+}

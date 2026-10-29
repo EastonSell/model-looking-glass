@@ -1,0 +1,6 @@
+{
+  "source_commit": "7eec34c31dbeb16af00d9d80301525587db8dd05",
+  "exit_code": 0,
+  "observation": "PowerShell waited for the direct CPU Python invocation",
+  "observed_utc": "2026-10-29T10:35:27.4363680+00:00"
+}
