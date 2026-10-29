@@ -23,6 +23,14 @@ and output-local token positions. Every batch row must have exactly one owner;
 request IDs must be unique within a batch and sample IDs within a request.
 Requests with the same run ID must identify the same forward index within a
 batch. Different run IDs may have different forward indices.
+The dispatcher copies request and sample specifications into private objects
+before validating them, so later changes to caller-owned objects or the
+sequence-start mapping cannot change an already admitted capture. It accepts
+exact request/sample dataclass instances and exact string identifiers, not
+subclasses. The caller must bind authenticated identity and input rows before
+construction and avoid changing a specification while it is being copied;
+the same rule applies to `sequence_starts`. This is not a sandbox against
+arbitrary code in the same process.
 Duplicate or missing owners, IDs and invalid token positions are rejected
 before executing the forward. Selected token positions are zero-based indices
 within the hook output: they are not absolute sequence positions, cache
