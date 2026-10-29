@@ -12,7 +12,7 @@ import torch
 
 from looking_glass.broker import Broker, BrokerShutdownError, BrokerUnavailable, RequestState
 from looking_glass.fair_adapter import (
-    ExperimentalFairAdapter, FatalHandoffFailure, HandoffFailure, WaitingTicket,
+    AdapterClosed, ExperimentalFairAdapter, FatalHandoffFailure, HandoffFailure, WaitingTicket,
 )
 from looking_glass.resident_worker import ForwardRequest, ForwardResult
 
@@ -1751,7 +1751,9 @@ class FairBrokerHandoffTests(unittest.TestCase):
             with self.assertRaises(KeyboardInterrupt):
                 adapter.transfer_next()
         self.assertTrue(broker.failed)
-        self.assertEqual(adapter.close(), (ticket,))
+        with self.assertRaises(AdapterClosed):
+            adapter.close()
+        self.assertTrue(adapter.indeterminate)
         self.assertEqual(target.committed_bytes, 64)
         self.assertEqual(target.receipt_committed_bytes, 16)
         with self.assertRaises(BrokerShutdownError):

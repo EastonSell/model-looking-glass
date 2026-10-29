@@ -89,6 +89,63 @@ class TrustedProfileCollectorTests(unittest.TestCase):
         self.addCleanup(self.custody_patch.stop)
         self.addCleanup(self.claim_patch.stop)
 
+    def test_contract_can_be_checked_without_loading_gpu_dependencies(self):
+        repo = Path(__file__).resolve().parents[1]
+        program = ("import sys; sys.path.append(sys.argv[1]); "
+                   "import looking_glass.trusted_profile_collector as collector; "
+                   "assert collector.TRUSTED_SERVICE_COLLECTOR_CONTRACT == 'two-token-worker-profile-v1'; "
+                   "assert 'torch' not in sys.modules and 'transformers' not in sys.modules")
+        env = dict(os.environ)
+        env.pop('PYTHONPATH', None)
+        env.pop('PYTHONHOME', None)
+        env['CUDA_VISIBLE_DEVICES'] = ''
+        result = subprocess.run([sys.executable, '-B', '-S', '-P', '-c', program, str(repo)],
+                                cwd=repo, env=env, capture_output=True, text=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_missing_spawn_contract_stops_child_before_owner_or_lease(self):
+        import looking_glass.supervisor as supervisor
+        import looking_glass.trusted_profile_collector as collector
+        from looking_glass.device_lease import DeviceLease
+        from looking_glass.supervisor import OwnerSession
+        with tempfile.TemporaryDirectory() as folder:
+            config = {'run_dir': folder, 'run_id': 'a' * 32}
+            with (patch.object(supervisor, 'SUPERVISOR_LAUNCH_CUSTODY_CONTRACT', None, create=True),
+                  patch.object(OwnerSession, 'from_environment') as session,
+                  patch.object(DeviceLease, 'acquire') as acquire):
+                self.assertEqual(collector._owner_main(config), 1)
+            session.assert_not_called()
+            acquire.assert_not_called()
+            self.assertEqual(json.loads((Path(folder) / 'failure.json').read_bytes())['error_type'],
+                             'CollectorError')
+            self.assertFalse((Path(folder) / 'owner.json').exists())
+
+    def test_missing_spawn_contract_stops_parent_before_preflight_or_launch(self):
+        import looking_glass.supervisor as supervisor
+        import looking_glass.trusted_profile_collector as collector
+        import looking_glass.trusted_service_profile as profile
+        from looking_glass import gpu_oneshot
+        def git_result(args, **kwargs):
+            if args[1] == 'rev-parse': return SimpleNamespace(stdout='a' * 40, returncode=0)
+            if args[1] == 'status': return SimpleNamespace(stdout='', returncode=0)
+            if args[1] == 'symbolic-ref': return SimpleNamespace(stdout='', returncode=1)
+            raise AssertionError('unexpected subprocess')
+        with tempfile.TemporaryDirectory() as folder:
+            with (patch.object(supervisor, 'SUPERVISOR_LAUNCH_CUSTODY_CONTRACT', None, create=True),
+                  patch.object(collector.subprocess, 'run', side_effect=git_result),
+                  patch.object(profile, 'prepare_trusted_source') as source,
+                  patch.object(gpu_oneshot, '_smi_snapshot') as inventory,
+                  patch.object(supervisor, 'run_supervised') as launch):
+                run_dir, terminal = collector.run_supervised_collector(
+                    workspace_root=folder, cache_root=folder, site_packages=folder,
+                    environment_root=folder, private_parent=folder, trusted_path=folder)
+            self.assertEqual(terminal['status'], 'failed_prelaunch')
+            self.assertEqual(terminal['prelaunch_error_type'], 'CollectorError')
+            self.assertTrue((run_dir / 'terminal.json').exists())
+            source.assert_not_called()
+            inventory.assert_not_called()
+            launch.assert_not_called()
+
     def test_assembled_profiles_bind_order_cases_source_and_margins(self):
         identity, samples = identity_and_samples()
         profiles, evidence = assemble_profiles(identity, samples, collected_utc='2026-10-29T00:00:00Z')
@@ -236,8 +293,10 @@ class TrustedProfileCollectorTests(unittest.TestCase):
             sys.path.extend((repo, site))
             import looking_glass.trusted_service_launch as launch
             import looking_glass.trusted_service_profile as trusted
+            import looking_glass.supervisor as supervisor
             from looking_glass.supervisor import OwnerSession
             from looking_glass.device_lease import DeviceLease
+            supervisor.SUPERVISOR_LAUNCH_CUSTODY_CONTRACT = 'gated-rooted-child-v1'
             owner = object.__new__(OwnerSession)
             owner._identity = SimpleNamespace(gpu_uuid='GPU-12345678-1234-5678-9abc-1234567890ab')
             owner.device_lease_path = 'unused'
@@ -280,6 +339,7 @@ class TrustedProfileCollectorTests(unittest.TestCase):
         # The fake UUID and empty cache exercise real subprocess ownership,
         # but intentionally stop at CPU-only asset preflight, before Torch import.
         from looking_glass.device_identity import resolve_device_identity
+        from looking_glass import supervisor
         from looking_glass.supervisor import run_supervised
         from looking_glass.trusted_service_launch import prepare_trusted_launch
         try:
@@ -319,12 +379,17 @@ class TrustedProfileCollectorTests(unittest.TestCase):
             self.assertFalse(result.timed_out)
             self.assertTrue(identity.marker_path.exists())
             self.assertFalse(identity.attestation_path.exists())
-            owner = json.loads((run_dir / 'owner.json').read_bytes())
             failure = json.loads((run_dir / 'failure.json').read_bytes())
-            self.assertEqual(owner['supervisor_run_id'], result.run_id)
-            self.assertEqual(owner['pid'], result.pid)
-            self.assertEqual(owner['physical_gpu_uuid'], gpu_uuid)
-            self.assertIn('collect_offline_assets', failure['private_traceback'])
+            if (getattr(supervisor, 'SUPERVISOR_LAUNCH_CUSTODY_CONTRACT', None)
+                    == 'gated-rooted-child-v1'):
+                owner = json.loads((run_dir / 'owner.json').read_bytes())
+                self.assertEqual(owner['supervisor_run_id'], result.run_id)
+                self.assertEqual(owner['pid'], result.pid)
+                self.assertEqual(owner['physical_gpu_uuid'], gpu_uuid)
+                self.assertIn('collect_offline_assets', failure['private_traceback'])
+            else:
+                self.assertEqual(failure['error_type'], 'CollectorError')
+                self.assertFalse((run_dir / 'owner.json').exists())
             self.assertFalse((run_dir / 'candidate.json').exists())
 
     def run_fake_owned(self, *, fail_forward, fail_acquire=False, fail_post=False, validate_candidate=False):
