@@ -1,0 +1,170 @@
+PASS: published sources, direct receipt, 145 events, 48 full-vocabulary score vectors and 16 triples
+sign counts: {'forward': {'positive': 16, 'negative': 0, 'zero': 0}, 'reverse': {'positive': 16, 'negative': 0, 'zero': 0}, 'neutral': {'positive': 16, 'negative': 0, 'zero': 0}, 'forward_minus_reverse': {'positive': 16, 'negative': 0, 'zero': 0}}
+{
+  "mean_forward_minus_neutral": 0.6584968343368912,
+  "mean_forward_minus_reverse": 0.6150307906574226,
+  "mean_reverse_minus_neutral": 0.04346604367946856,
+  "positive_forward_minus_reverse": 16,
+  "triples": [
+    {
+      "event": "war",
+      "forward": 3.121620682821354,
+      "forward_minus_neutral": 1.2887244717717785,
+      "forward_minus_reverse": 1.298621984546273,
+      "neutral": 1.8328962110495757,
+      "reverse": 1.8229986982750812,
+      "reverse_minus_neutral": -0.009897512774494466,
+      "year_suffix": 12
+    },
+    {
+      "event": "reign",
+      "forward": 2.9557051627876523,
+      "forward_minus_neutral": 1.1764370160101636,
+      "forward_minus_reverse": 1.4288914721406993,
+      "neutral": 1.7792681467774887,
+      "reverse": 1.526813690646953,
+      "reverse_minus_neutral": -0.25245445613053574,
+      "year_suffix": 12
+    },
+    {
+      "event": "war",
+      "forward": 2.289746641543645,
+      "forward_minus_neutral": 0.5429256858215266,
+      "forward_minus_reverse": 0.29422127922224184,
+      "neutral": 1.7468209557221184,
+      "reverse": 1.995525362321403,
+      "reverse_minus_neutral": 0.24870440659928472,
+      "year_suffix": 21
+    },
+    {
+      "event": "reign",
+      "forward": 2.3414865488970946,
+      "forward_minus_neutral": 0.5375348442794179,
+      "forward_minus_reverse": 0.5129068913227626,
+      "neutral": 1.8039517046176767,
+      "reverse": 1.828579657574332,
+      "reverse_minus_neutral": 0.02462795295665532,
+      "year_suffix": 21
+    },
+    {
+      "event": "war",
+      "forward": 1.7217159525161423,
+      "forward_minus_neutral": 0.5863658457938745,
+      "forward_minus_reverse": 0.24345111760989124,
+      "neutral": 1.1353501067222678,
+      "reverse": 1.478264834906251,
+      "reverse_minus_neutral": 0.3429147281839833,
+      "year_suffix": 32
+    },
+    {
+      "event": "reign",
+      "forward": 1.5969822168289296,
+      "forward_minus_neutral": 0.5284250413473666,
+      "forward_minus_reverse": 0.383092675989114,
+      "neutral": 1.068557175481563,
+      "reverse": 1.2138895408398156,
+      "reverse_minus_neutral": 0.14533236535825256,
+      "year_suffix": 32
+    },
+    {
+      "event": "war",
+      "forward": 2.1714704429374443,
+      "forward_minus_neutral": 0.7652216555024882,
+      "forward_minus_reverse": 0.7982858209899397,
+      "neutral": 1.406248787434956,
+      "reverse": 1.3731846219475046,
+      "reverse_minus_neutral": -0.0330641654874515,
+      "year_suffix": 43
+    },
+    {
+      "event": "reign",
+      "forward": 2.0801936063618247,
+      "forward_minus_neutral": 0.7285727791021395,
+      "forward_minus_reverse": 0.858706436121035,
+      "neutral": 1.3516208272596852,
+      "reverse": 1.2214871702407897,
+      "reverse_minus_neutral": -0.13013365701889557,
+      "year_suffix": 43
+    },
+    {
+      "event": "war",
+      "forward": 2.1804299598146106,
+      "forward_minus_neutral": 0.5199716159374947,
+      "forward_minus_reverse": 0.48139286670733084,
+      "neutral": 1.6604583438771159,
+      "reverse": 1.6990370931072798,
+      "reverse_minus_neutral": 0.03857874923016391,
+      "year_suffix": 54
+    },
+    {
+      "event": "reign",
+      "forward": 2.37262485174664,
+      "forward_minus_neutral": 0.5936878617550889,
+      "forward_minus_reverse": 0.6282435891455396,
+      "neutral": 1.778936989991551,
+      "reverse": 1.7443812626011004,
+      "reverse_minus_neutral": -0.03455572739045065,
+      "year_suffix": 54
+    },
+    {
+      "event": "war",
+      "forward": 1.7381541484546637,
+      "forward_minus_neutral": 0.32271930767341583,
+      "forward_minus_reverse": 0.1786814807983692,
+      "neutral": 1.4154348407812478,
+      "reverse": 1.5594726676562944,
+      "reverse_minus_neutral": 0.14403782687504663,
+      "year_suffix": 65
+    },
+    {
+      "event": "reign",
+      "forward": 1.7038632990110116,
+      "forward_minus_neutral": 0.3746924398470497,
+      "forward_minus_reverse": 0.2867531952420599,
+      "neutral": 1.329170859163962,
+      "reverse": 1.4171101037689517,
+      "reverse_minus_neutral": 0.08793924460498981,
+      "year_suffix": 65
+    },
+    {
+      "event": "war",
+      "forward": 1.9340417579750109,
+      "forward_minus_neutral": 0.7688260550372121,
+      "forward_minus_reverse": 0.7072856455542929,
+      "neutral": 1.1652157029377987,
+      "reverse": 1.226756112420718,
+      "reverse_minus_neutral": 0.06154040948291928,
+      "year_suffix": 76
+    },
+    {
+      "event": "reign",
+      "forward": 2.0748254919803335,
+      "forward_minus_neutral": 0.920608787940185,
+      "forward_minus_reverse": 0.9759321613208805,
+      "neutral": 1.1542167040401485,
+      "reverse": 1.098893330659453,
+      "reverse_minus_neutral": -0.055323373380695484,
+      "year_suffix": 76
+    },
+    {
+      "event": "war",
+      "forward": 2.2788333215519,
+      "forward_minus_neutral": 0.429920138642071,
+      "forward_minus_reverse": 0.3261422854062035,
+      "neutral": 1.8489131829098289,
+      "reverse": 1.9526910361456964,
+      "reverse_minus_neutral": 0.10377785323586752,
+      "year_suffix": 87
+    },
+    {
+      "event": "reign",
+      "forward": 2.2570989507370163,
+      "forward_minus_neutral": 0.45131580292898654,
+      "forward_minus_reverse": 0.4378837484021292,
+      "neutral": 1.8057831478080297,
+      "reverse": 1.819215202334887,
+      "reverse_minus_neutral": 0.013432054526857362,
+      "year_suffix": 87
+    }
+  ]
+}
