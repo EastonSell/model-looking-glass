@@ -328,11 +328,15 @@ class CaptureDispatcher:
             invocation = self._module_counts[module_path]
             for request in self._requests:
                 for sample in request.samples:
-                    indices = torch.tensor(sample.token_positions, dtype=torch.long,
-                                           device=output.device)
-                    selected = detached[sample.batch_position].index_select(0, indices)
-                    if self._capture_device == "cpu" and selected.device.type != "cpu":
-                        selected = selected.to(device="cpu", non_blocking=False)
+                    # Worker forwards may run in inference_mode.  Build the
+                    # owned snapshot outside it so a caller can use or mutate
+                    # that separate tensor after the worker exits its context.
+                    with torch.inference_mode(False):
+                        indices = torch.tensor(sample.token_positions, dtype=torch.long,
+                                               device=output.device)
+                        selected = detached[sample.batch_position].index_select(0, indices)
+                        if self._capture_device == "cpu" and selected.device.type != "cpu":
+                            selected = selected.to(device="cpu", non_blocking=False)
                     sequence = sequence_numbers[request.run_id]
                     sequence_numbers[request.run_id] += 1
                     pending.append(CapturedSlice(

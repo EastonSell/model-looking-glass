@@ -399,6 +399,19 @@ class CaptureDispatcherTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             events[0].to_trace_event()
 
+    def test_inference_mode_capture_returns_independently_mutable_owned_tensor(self):
+        d = make_dispatcher((request("a", [SampleSelection(0, "s", (0,))]),),
+                            batch_size=1, sequence_length=1,
+                            max_events=2, max_trace_bytes=64)
+        with torch.inference_mode():
+            source = torch.tensor([[[3.]]])
+            def forward():
+                d.record("tap", layer_index=0, module_kind="block", output=source)
+            _, events = d.run(forward)
+        events[0].value.add_(2)
+        self.assertEqual(events[0].value.item(), 5.)
+        self.assertEqual(source.item(), 3.)
+
     def test_owner_supplied_sequence_start_spans_multiple_forwards(self):
         r = request("a", [SampleSelection(0, "s", (0,))], forward_index=3)
         first = make_dispatcher((r,), batch_size=1, sequence_length=1,

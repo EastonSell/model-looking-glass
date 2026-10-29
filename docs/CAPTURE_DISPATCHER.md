@@ -52,7 +52,9 @@ capture only; it does not implement gradient readout, autograd sharing,
 interventions, generated cache tracking, or checkpoint recomputation.
 
 Each result is an independently owned detached sample slice; saved values do
-not alias the model output or another event. Each carries run/job/request and
+not alias the model output or another event. Even if the forward runs under
+`torch.inference_mode()`, the returned snapshot is a normal tensor that the
+caller may use outside that context. Each carries run/job/request and
 sample IDs, batch/token positions, forward and optional generation-step
 metadata, module path/kind/layer, invocation count per module within this
 forward, and a sequence number unique within the run. Original and saved
