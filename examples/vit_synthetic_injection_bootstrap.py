@@ -23,20 +23,29 @@ files = (
     "tests/test_vit_synthetic_injection_v1.py",
 )
 if sys.argv[1:] != ["--help"]:
-    if sys.argv.count("--published-source") != 1:
-        raise SystemExit("exactly one --published-source is required")
+    if sys.argv.count("--published-source") != 1 or sys.argv.count("--git-executable") != 1:
+        raise SystemExit("exactly one --published-source and --git-executable are required")
     index = sys.argv.index("--published-source")
     if index + 1 >= len(sys.argv):
         raise SystemExit("missing published source")
     commit = sys.argv[index + 1]
     if len(commit) != 40 or any(character not in "0123456789abcdef" for character in commit):
         raise SystemExit("published source must be a full lowercase commit ID")
+    git_index = sys.argv.index("--git-executable")
+    if git_index + 1 >= len(sys.argv):
+        raise SystemExit("missing Git executable")
+    git = Path(sys.argv[git_index + 1])
+    if not git.is_absolute() or not git.is_file():
+        raise SystemExit("Git executable must be an existing absolute path")
+    git = git.resolve()
+    if git.name.lower() not in ("git", "git.exe") or git.is_relative_to(root):
+        raise SystemExit("Git executable must be outside the checkout")
     git_env = {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
-    if subprocess.check_output(["git", "--no-replace-objects", "cat-file", "-t", commit],
+    if subprocess.check_output([str(git), "--no-replace-objects", "cat-file", "-t", commit],
                                cwd=root, env=git_env).strip() != b"commit":
         raise SystemExit("published source must name a commit object")
     for name in files:
-        committed = subprocess.check_output(["git", "--no-replace-objects", "show", f"{commit}:{name}"],
+        committed = subprocess.check_output([str(git), "--no-replace-objects", "show", f"{commit}:{name}"],
                                             cwd=root, env=git_env)
         if (root / name).read_bytes() != committed:
             raise SystemExit(f"source differs from the selected commit: {name}")

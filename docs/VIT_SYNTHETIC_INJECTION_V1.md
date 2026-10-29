@@ -119,9 +119,11 @@ proof of execution timing or model/runtime authenticity.
 
 Run the source-bound bootstrap with an isolated interpreter, bytecode disabled,
 and a fresh absent absolute bytecode-prefix path, for example
-`python -I -B -X pycache_prefix=<fresh-absent-path> examples/vit_synthetic_injection_bootstrap.py --assets <pinned-assets> --output <new-directory> --published-source <reviewed-commit>`.
+`python -I -B -X pycache_prefix=<fresh-absent-path> examples/vit_synthetic_injection_bootstrap.py --assets <pinned-assets> --output <new-directory> --published-source <reviewed-commit> --git-executable <trusted-absolute-git-path>`.
 The bootstrap keeps the repository root off the general import path and
-checks the exact source files against the commit before project imports. Retain
+uses the explicitly supplied Git executable outside the checkout to check the
+exact source files against the commit before project imports. The runner
+records that executable's path and SHA-256 and repeats the source check. Retain
 a separate direct process-exit observation. Treat a completion file as provisional
 until the process exited zero and no incomplete marker is present; a failed write
 can leave a partial file. The runner rejects short writes and reads every saved

@@ -192,3 +192,6 @@ def test_bootstrap_requires_isolation_and_fresh_empty_prefix(tmp_path):
     failed = subprocess.run([sys.executable, "-B", str(bootstrap), "--help"], capture_output=True, text=True)
     assert failed.returncode != 0
     assert "fresh absent" in failed.stderr
+    without_git = subprocess.run(command[:-1] + ["--published-source", "a"*40], capture_output=True, text=True)
+    assert without_git.returncode != 0
+    assert "--git-executable" in without_git.stderr

@@ -53,16 +53,16 @@ def state_digest(model):
     return result.hexdigest()
 
 
-def verify_source(commit):
+def verify_source(commit, git):
     """Check exact local source bytes against the operator's public commit pin."""
     hashes = {}
     git_env = {key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")}
-    if subprocess.check_output(["git", "--no-replace-objects", "cat-file", "-t", commit],
+    if subprocess.check_output([str(git), "--no-replace-objects", "cat-file", "-t", commit],
                                cwd=ROOT, env=git_env).strip() != b"commit":
         raise ValueError("selected source is not a commit object")
     for name in SOURCE_FILES:
         local = (ROOT / name).read_bytes()
-        committed = subprocess.check_output(["git", "--no-replace-objects", "show", f"{commit}:{name}"],
+        committed = subprocess.check_output([str(git), "--no-replace-objects", "show", f"{commit}:{name}"],
                                             cwd=ROOT, env=git_env)
         if local != committed:
             raise ValueError(f"local source differs from the selected commit: {name}")
@@ -273,17 +273,24 @@ def main():
     parser.add_argument("--assets", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--published-source", required=True, help="reviewed immutable public commit")
+    parser.add_argument("--git-executable", type=Path, required=True, help="trusted absolute Git executable")
     args = parser.parse_args()
     if len(args.published_source) != 40 or any(x not in "0123456789abcdef" for x in args.published_source):
         raise ValueError("published source must be a full lowercase commit ID")
+    if not args.git_executable.is_absolute() or not args.git_executable.is_file():
+        raise ValueError("Git executable must be an existing absolute path")
+    git = args.git_executable.resolve()
+    if git.name.lower() not in ("git", "git.exe") or git.is_relative_to(ROOT):
+        raise ValueError("Git executable must be outside the checkout")
     if min(shutil.disk_usage(args.output.parent).free, shutil.disk_usage(ROOT).free) < FREE:
         raise RuntimeError("less than 2 GiB free on output or source volume before model load")
     args.output.mkdir(exist_ok=False)
     sink = Evidence(args.output)
     source = {"published_commit": args.published_source}
     try:
-        source.update({"local_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
-                       "files": verify_source(args.published_source), "python": platform.python_version(),
+        source.update({"local_commit": subprocess.check_output([str(git), "--no-replace-objects", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+                       "git_executable": str(git), "git_sha256": digest(git.read_bytes()),
+                       "files": verify_source(args.published_source, git), "python": platform.python_version(),
                        "torch": torch.__version__, "transformers": transformers.__version__,
                        "model": MODEL_REPO, "revision": MODEL_REVISION, "assets": MODEL_FILES})
         sink.write("started.json", {"schema": "vit-synthetic-start-v1", "source": source,
@@ -298,7 +305,7 @@ def main():
         model = model.eval().cpu()
         result = run(model, sink, source)
         verify_assets(args.assets)
-        if verify_source(args.published_source) != source["files"]:
+        if verify_source(args.published_source, git) != source["files"] or digest(git.read_bytes()) != source["git_sha256"]:
             raise RuntimeError("source changed during the study")
         sink.close()
         sink.write("completed.json", result)
