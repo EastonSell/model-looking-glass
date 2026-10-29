@@ -28,6 +28,9 @@ SOURCE_PATHS = (*v1.SOURCE_PATHS, "looking_glass/pretrained_exposures_v3.py",
                 "looking_glass/targeted_edit_v2_evidence.py", "looking_glass/targeted_edit_v2_exposure.py",
                 "looking_glass/targeted_edit_v2_manifest.py", "looking_glass/targeted_edit_v2_gate.py",
                 "looking_glass/targeted_edit_v2_custody.py",
+                "docs/TARGETED_EDIT_V2_OWNER.md",
+                "looking_glass/cpu_study_supervision.py", "looking_glass/supervisor.py",
+                "looking_glass/device_lease.py", "looking_glass/device_identity.py",
                 "looking_glass/targeted_edit_v2_owner.py",
                 V1_MANIFEST, V1_PRECOMMIT)
 
