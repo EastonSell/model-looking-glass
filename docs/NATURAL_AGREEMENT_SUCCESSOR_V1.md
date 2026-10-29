@@ -155,11 +155,19 @@ invalidate that evaluation.
 ## Runtime, claim and result obligations
 
 This successor needs a new one-use phase and cross-track identity plus a
-separate reviewed allocation: no copy, reset, replacement or reuse of the old
-ledger claim or markers. Freeze the exact logical and physical ceilings and
-available headroom before its claim; the earlier v1 reservation is not a new
-allocation. Account for all partial evidence, logs and orphaned temporary
-checkpoint staging. The new owner, adapter, ledger/gate and independent auditor
+separate allocation: no copy, reset, replacement or reuse of the old ledger
+claim or markers. The new ceilings are 160 MiB logical retained tensors,
+48 MiB event data and 16 MiB side files, with at most 224 MiB total apparent
+evidence-file length, including partials and logs. This is a **new** allocation,
+not unused space asserted within the earlier study: its original 512 MiB
+logical ceiling plus this 160 MiB has a combined potential ceiling of 672 MiB.
+The old physical allowance and all claims remain unchanged. Reconcile existing
+study-owned and new evidence before the claim; check at least 3 GiB free on
+each actual distinct output/cache volume immediately before claim and launch.
+The loader's approximately 356 MB transient checkpoint stage is outside the
+224 MiB evidence cap; measure and reconcile it and any orphan rather than
+treating the evidence cap as a filesystem quota. Free-space observations do not
+reserve space against concurrent users. The new owner, adapter, claim/gate and independent auditor
 must be published and hash-bound before drawing. The original sampler's
 verifier only reconstructs its old fixed pool, so it cannot verify this new
 record; a reviewed successor adapter must reproduce the original runner's
