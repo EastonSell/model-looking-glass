@@ -5,8 +5,10 @@ identified the deliberately injected patch coordinate in **4/4** cases. The
 largest-change selector also identified it in **4/4**; the one fixed random
 sequence identified **1/4**. At the selected downstream site, clean-state
 replacement reduced the full-logit distance from the clean run more than both
-eligible matched controls in **4/4** cases. These are small, predeclared
-mechanics results, with no statistical-significance or natural-vision claim.
+eligible dose-matched active controls in **4/4** cases. The off-target control
+required approximately **682×–50,480×** extrapolation from its natural donor
+displacement, so it is not a realistic in-distribution control. These are small,
+predeclared mechanics results, with no statistical-significance or natural-vision claim.
 
 The study used the cached `WinKawaks/vit-tiny-patch16-224` checkpoint, revision
 `77d1485af66b34d4ed0fe95dbb0c60c7496f950b`, on CPU with float32 and eager
