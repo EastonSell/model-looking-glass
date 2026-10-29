@@ -25,7 +25,7 @@ class ActivationPlan:
 
     def __init__(self, model, steps, *, max_tensor_bytes=16 * 1024 * 1024,
                  max_capture_bytes=16 * 1024 * 1024, max_source_bytes=16 * 1024 * 1024,
-                 max_steps=128, max_invocations=1024):
+                 max_steps=128, max_invocations=1024, _parent_lease=None):
         if not isinstance(model, nn.Module):
             raise TypeError("model must be a torch.nn.Module")
         for name, value in (("max_tensor_bytes", max_tensor_bytes),
@@ -39,7 +39,17 @@ class ActivationPlan:
         self.max_tensor_bytes = max_tensor_bytes
         self.max_capture_bytes = max_capture_bytes
         self.max_invocations = max_invocations
-        self._lease = ModelLease(model)
+        self._borrow_release_key = None
+        if _parent_lease is None:
+            self._lease = ModelLease(model)
+        elif type(_parent_lease) is ModelLease and _parent_lease.model is model:
+            # Trusted case owners use an exclusive child scope while keeping
+            # the same parent reservation across multiple model forwards.
+            self._borrow_release_key = object()
+            self._lease = _parent_lease._borrow_for_plan(
+                self._borrow_release_key, self._borrow_cleanup_complete)
+        else:
+            raise ValueError("parent lease must be the exact lease for this model")
         self._steps = []
         self._groups = []
         self._group_by_site = {}
@@ -61,6 +71,7 @@ class ActivationPlan:
         self._entered = False
         self._closing = False
         self._owner_thread = None
+        self._borrow_cleanup_owner = None
         self._registration_uncertain = False
         self._in_forward = False
         self._forward_count = 0
@@ -169,6 +180,7 @@ class ActivationPlan:
                 slot += 3
             self._register(slot, self.model.register_forward_hook, self._complete_forward)
             self._register(slot + 1, self.model.register_forward_hook, self._finish_forward, always_call=True)
+            self._verify_tree()
             with self._lifecycle_lock:
                 if self._invalid:
                     raise RuntimeError("activation plan was invalidated during entry")
@@ -391,22 +403,42 @@ class ActivationPlan:
                 raise RuntimeError("activation plan is already invalid")
 
     def _cleanup(self):
-        first_error = None
-        for index, handle in enumerate(self._handles):
-            if handle is None:
-                continue
-            try:
-                handle.remove()
-                self._handles[index] = None
-            except BaseException as error:
-                if first_error is None:
-                    first_error = error
-        if first_error is None and not self._registration_uncertain:
-            self._lease.release()
-        if first_error is not None:
-            raise first_error
-        if self._registration_uncertain:
-            raise RuntimeError("hook registration was indeterminate; discard this model and worker")
+        owner = current_thread()
+        try:
+            with self._lifecycle_lock:
+                if self._borrow_cleanup_owner is not None:
+                    raise RuntimeError("plan cleanup is already in progress")
+                if not self._entering and not self._closing:
+                    raise RuntimeError("plan cleanup requires an owned lifecycle transition")
+                self._borrow_cleanup_owner = owner
+            first_error = None
+            for index, handle in enumerate(self._handles):
+                if handle is None:
+                    continue
+                try:
+                    handle.remove()
+                    self._handles[index] = None
+                except BaseException as error:
+                    if first_error is None:
+                        first_error = error
+            if first_error is None and not self._registration_uncertain:
+                if self._borrow_release_key is None:
+                    self._lease.release()
+                else:
+                    self._lease.release(self._borrow_release_key)
+            if first_error is not None:
+                raise first_error
+            if self._registration_uncertain:
+                raise RuntimeError("hook registration was indeterminate; discard this model and worker")
+        finally:
+            with self._lifecycle_lock:
+                if self._borrow_cleanup_owner is owner:
+                    self._borrow_cleanup_owner = None
+
+    def _borrow_cleanup_complete(self):
+        return (self._borrow_cleanup_owner is current_thread()
+                and not self._in_forward and not self._registration_uncertain
+                and all(handle is None for handle in self._handles))
 
     def close(self):
         """Retry hook removal after an unsuccessful exit or registration."""
