@@ -143,6 +143,7 @@ def test_closed_synthetic_records_require_all_six_forwards_and_cleanup(fabricate
     result = api._validate_records(root, supervision, **kwargs)
     assert result['status'] == 'saved-records-consistent-not-approved'
     assert result['forward_count'] == 6 and result['memory_record_count'] == 37
+    assert result['device_total_bytes'] == 8 * 1024 ** 3
 
 
 @pytest.mark.parametrize('mutation', ['bool_pid', 'runtime', 'missing_receipt', 'extra_forward',
@@ -212,6 +213,18 @@ def test_device_inventory_rejects_impossible_or_boolean_memory_counters():
     snapshot.update(used_bytes=1024 ** 3, timestamp_utc='not-a-timestamp')
     with pytest.raises(ValueError, match='inventory'):
         api._check_inventory(snapshot)
+
+
+def test_runtime_and_inventory_totals_require_matching_rounded_device():
+    from looking_glass import flan_t5_device_controller as api
+    total, margin = 8 * 1024 ** 3, 2 * 1024 ** 2
+    for runtime in (total - margin, total, total + margin):
+        assert api._check_device_totals(total, runtime) is None
+    for runtime in (True, 0, total - margin - 1, total + margin + 1):
+        with pytest.raises(ValueError, match='totals differ'):
+            api._check_device_totals(total, runtime)
+    with pytest.raises(ValueError, match='totals differ'):
+        api._check_device_totals(True, total)
 
 
 def test_attempt_inventory_counts_partial_checkpoint_separately(tmp_path):
@@ -368,7 +381,7 @@ def test_attempt_directory_must_not_overlap_the_checkout(tmp_path):
 
 @pytest.mark.parametrize('mode', ['clean', 'timeout', 'interrupted', 'source_changed', 'guard_interrupted',
                                  'inventory_changed', 'inventory_time_reversed', 'tool_changed',
-                                 'marker_remains', 'missing_receipt', 'evidence_changed',
+                                 'marker_remains', 'missing_receipt', 'owner_total_mismatch', 'evidence_changed',
                                  'evidence_guard_close', 'closure_write_failure'])
 def test_supervised_controller_roots_guards_and_fails_closed(monkeypatch, tmp_path, mode):
     from looking_glass import flan_t5_device_controller as api
@@ -464,7 +477,9 @@ def test_supervised_controller_roots_guards_and_fails_closed(monkeypatch, tmp_pa
     def validate_records(*args, **kwargs):
         if mode == 'missing_receipt':
             raise FileNotFoundError('owner-final.json is absent')
-        return {'status': 'saved-records-consistent-not-approved'}
+        return {'status': 'saved-records-consistent-not-approved', 'device_total_bytes': (
+            snapshot['total_bytes'] + 2 * 1024 ** 2 + 1 if mode == 'owner_total_mismatch'
+            else snapshot['total_bytes'])}
     monkeypatch.setattr(api, '_validate_records', validate_records)
     evidence_checks = []
     def evidence_files(path):
