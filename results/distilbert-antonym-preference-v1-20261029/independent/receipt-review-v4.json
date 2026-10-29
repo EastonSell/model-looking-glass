@@ -1,0 +1,26 @@
+{
+  "command_sha256": "82fa866757e67d044bbcbd126403b156770f2a49b423e18c30f01f2a5927a52e",
+  "distinct_direct_process_ids_checked": true,
+  "launch_main": "1e6955f491851344f02ee83a68498914ccba815a",
+  "launch_public_scan_sha256": "6af311f258b2168fc5289ea99befc78c1949de7394d78e6e6a1ac3061f60f819",
+  "observer_external_bytes": 2009,
+  "ordered_start_completion_pairs_checked": 12,
+  "phase": "screen",
+  "receipt_sha256": "1cd8ebb242fa64083d371d59654cbd225513a1713188bb561343dd86d105cbe9",
+  "run_sha256": "128ea99295dcfadaa5b40cdcdfd7e485fcfb6d700c1de41e20bac728ecb6d821",
+  "runtime_witness_checked": true,
+  "scope": "Saved cooperative command, direct-exit and artifact consistency only; not execution, whole-process-tree, source-publication or scientific attestation.",
+  "source_commit": "cbfa224f0d2d8f1ac6f5e16942b58bb7821345e1",
+  "source_records": 38,
+  "stage_files_sha256": {
+    "claim.json": "74d4c6a14b24efd0cb4aefa94919a8825f418bdb171b862bbf51d5973c58f8da",
+    "events.jsonl": "7ed70ebfe6e3d05d45cf7e7f5cf6904b936faf7eefcffced7ceb63540132982e",
+    "exit.json": "04b0371c64d3f68390ed1bb9600a0b3e45bc8354582329898344f9eef9b45770",
+    "prelaunch.json": "61815c5a738c981701456b1bc6f170df391edfaaf7dc87334d52f9f1862c6eff",
+    "result.json": "ef66b2aadf515856c02ef24edd53735a20bde86f529e6e319797124d1adb5538",
+    "worker-start.json": "893b67d95e5082ae0767e4f11ba6cf2e5c91bf36c6a829578060c978336a53fa"
+  },
+  "supervisor_pid_checked": true,
+  "validation_sha256": "7262f49509dcd3d277b02a1d18e31b8ce99da9147bed34b88402613fe9e27d56",
+  "worker_pid_checked": true
+}
