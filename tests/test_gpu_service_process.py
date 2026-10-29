@@ -178,6 +178,43 @@ assert 'torch' not in sys.modules and 'transformers' not in sys.modules
                                  cwd=self.root, capture_output=True, text=True, timeout=15)
         self.assertEqual(outcome.returncode, 0, outcome.stderr)
 
+    def test_wrong_serialized_workspace_is_rejected_before_lease_acquisition(self):
+        program = r'''
+import sys
+from dataclasses import replace
+from pathlib import Path
+from unittest.mock import patch
+sys.path.extend((sys.argv[1], sys.argv[2]))
+from looking_glass import gpu_service_process as child, two_token_service as service
+from looking_glass.device_lease import DeviceLease
+from looking_glass.supervisor import OwnerSession
+repo = Path(sys.argv[1]).resolve()
+work = [parent for parent in repo.parents if parent.name == 'work']
+expected = work[0].parent if work else repo
+config = replace(child._parse_config(Path(sys.argv[3]).read_bytes()),
+                 repo_root=repo, workspace_root=expected)
+session = object.__new__(OwnerSession)
+session._identity_spec = {'workspace_root': str(Path(sys.argv[4]).resolve())}
+with patch.object(service, '_check_owner_contract'), \
+     patch.object(OwnerSession, 'from_environment', return_value=session), \
+     patch.object(DeviceLease, 'acquire') as acquire:
+    try:
+        child._owner(config)
+    except ValueError as exc:
+        assert 'workspace root' in str(exc)
+    else:
+        raise AssertionError('alternate lease namespace was accepted')
+    acquire.assert_not_called()
+assert 'torch' not in sys.modules and 'transformers' not in sys.modules
+'''
+        path = self.root / 'config.json'
+        path.write_bytes(self.data())
+        repo = Path(__file__).resolve().parents[1]
+        outcome = subprocess.run([sys._base_executable, '-B', '-S', '-P', '-c', program,
+                                  str(repo), sysconfig.get_paths()['purelib'], str(path), str(self.root)],
+                                 cwd=self.root, capture_output=True, text=True, timeout=15)
+        self.assertEqual(outcome.returncode, 0, outcome.stderr)
+
     def test_owner_failure_does_not_touch_a_failing_stderr(self):
         path = self.root / 'config.json'
         path.write_bytes(self.data())
@@ -273,6 +310,10 @@ def execute(actual_session, actual_lease, *, backend, registry, stop_event, anno
     announce(server)
     return SimpleNamespace(status='clean', teardown_verified=True, error_type=None)
 with patch.object(service, '_check_owner_contract') as gate, \
+     patch.object(service, '_source_checkout', return_value=config.repo_root), \
+     patch.object(service, '_workspace_root'), \
+     patch.object(service, '_require_workspace_spec'), \
+     patch.object(service, '_require_workspace_binding'), \
      patch.object(OwnerSession, 'from_environment', return_value=session), \
      patch.object(DeviceLease, 'acquire', return_value=lease), \
      patch.object(profile, 'prepare_trusted_source', side_effect=prepare), \
@@ -353,6 +394,10 @@ def execute(actual_session, actual_lease, *, backend, registry, stop_event, anno
         profile.JOB_COMMITMENT, profile.JOB_COMMITMENT)
     return SimpleNamespace(status='clean', teardown_verified=True, error_type=None)
 with patch.object(service, '_check_owner_contract') as gate, \
+     patch.object(service, '_source_checkout', return_value=config.repo_root), \
+     patch.object(service, '_workspace_root'), \
+     patch.object(service, '_require_workspace_spec'), \
+     patch.object(service, '_require_workspace_binding'), \
      patch.object(OwnerSession, 'from_environment', return_value=session), \
      patch.object(DeviceLease, 'acquire', return_value=lease), \
      patch.object(profile, 'prepare_trusted_source', return_value=source), \

@@ -65,6 +65,9 @@ source/runtime/model verifier, a private supervisor-to-parent startup channel,
 and separately reviewed measured model-load and forward profiles. None of the
 present test profiles is measured or approved. All real owners on this machine
 must use the same canonical project workspace root for device coordination.
+The checkout-derived rule rejects nested `work` directories as ambiguous. It
+relies on a trusted shared checkout layout: a separate unrelated checkout can
+select its own namespace and is not prevented by a machine-global lock.
 The generic test profile loader does not prove that its evidence used the
 specified token case and stage seeds; a production verifier must check both.
 The runtime UUID representation also requires verification against the actual
