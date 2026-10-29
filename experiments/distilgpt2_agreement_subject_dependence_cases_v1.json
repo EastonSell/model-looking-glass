@@ -1,0 +1,2248 @@
+{
+  "answer_ids": [
+    318,
+    389,
+    373,
+    547,
+    262,
+    257,
+    287,
+    319
+  ],
+  "case_preparer_sha256": "3ef4b8081888ab085019f2ceae8c02acbdfce94903ae3a201f11970672cc1ba4",
+  "cases": [
+    {
+      "case_id": "agreement-subject-f01-c0-R1-singular",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 0,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horse",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "singular",
+      "text": "At dawn, the horse nearby",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        8223,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c0-R1-plural",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 0,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horses",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "plural",
+      "text": "At dawn, the horses nearby",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        14260,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c0-I1-singular",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 0,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mouse",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "singular",
+      "text": "At dawn, the mouse nearby",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        10211,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c0-I1-plural",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 0,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mice",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "plural",
+      "text": "At dawn, the mice nearby",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        10693,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c0-context",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 3,
+      "frame_index": 0,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "At dawn, nearby",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c1-R1-singular",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 0,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horse",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "singular",
+      "text": "At dawn, the horse near the water",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        8223,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c1-R1-plural",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 0,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horses",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "plural",
+      "text": "At dawn, the horses near the water",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        14260,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c1-I1-singular",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 0,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mouse",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "singular",
+      "text": "At dawn, the mouse near the water",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        10211,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c1-I1-plural",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 0,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mice",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "plural",
+      "text": "At dawn, the mice near the water",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        10693,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c1-context",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 5,
+      "frame_index": 0,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "At dawn, near the water",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c2-R1-singular",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 0,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horse",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "singular",
+      "text": "At dawn, the horse near the bridge",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        8223,
+        1474,
+        262,
+        7696
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c2-R1-plural",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 0,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horses",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "plural",
+      "text": "At dawn, the horses near the bridge",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        14260,
+        1474,
+        262,
+        7696
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c2-I1-singular",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 0,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mouse",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "singular",
+      "text": "At dawn, the mouse near the bridge",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        10211,
+        1474,
+        262,
+        7696
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c2-I1-plural",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 0,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mice",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "plural",
+      "text": "At dawn, the mice near the bridge",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        10693,
+        1474,
+        262,
+        7696
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c2-context",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 5,
+      "frame_index": 0,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "At dawn, near the bridge",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        1474,
+        262,
+        7696
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c3-R1-singular",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horse",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "singular",
+      "text": "At dawn, the horse near the bridges",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        8223,
+        1474,
+        262,
+        19432
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c3-R1-plural",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horses",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "plural",
+      "text": "At dawn, the horses near the bridges",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        14260,
+        1474,
+        262,
+        19432
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c3-I1-singular",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mouse",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "singular",
+      "text": "At dawn, the mouse near the bridges",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        10211,
+        1474,
+        262,
+        19432
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c3-I1-plural",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 0,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mice",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "plural",
+      "text": "At dawn, the mice near the bridges",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        262,
+        10693,
+        1474,
+        262,
+        19432
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f01-c3-context",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 5,
+      "frame_index": 0,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "At dawn, near the bridges",
+      "token_ids": [
+        2953,
+        17577,
+        11,
+        1474,
+        262,
+        19432
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c0-R1-singular",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 1,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horse",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "singular",
+      "text": "At dusk, the horse nearby",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        8223,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c0-R1-plural",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 1,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horses",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "plural",
+      "text": "At dusk, the horses nearby",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        14260,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c0-I2-singular",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 1,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolf",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "singular",
+      "text": "At dusk, the wolf nearby",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        17481,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c0-I2-plural",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 1,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolves",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "plural",
+      "text": "At dusk, the wolves nearby",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        23214,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c0-context",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 3,
+      "frame_index": 1,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "At dusk, nearby",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c1-R1-singular",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 1,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horse",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "singular",
+      "text": "At dusk, the horse near the water",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        8223,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c1-R1-plural",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 1,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horses",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "plural",
+      "text": "At dusk, the horses near the water",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        14260,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c1-I2-singular",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 1,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolf",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "singular",
+      "text": "At dusk, the wolf near the water",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        17481,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c1-I2-plural",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 1,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolves",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "plural",
+      "text": "At dusk, the wolves near the water",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        23214,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c1-context",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 5,
+      "frame_index": 1,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "At dusk, near the water",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c2-R1-singular",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 1,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horse",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "singular",
+      "text": "At dusk, the horse near the road",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        8223,
+        1474,
+        262,
+        2975
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c2-R1-plural",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 1,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horses",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "plural",
+      "text": "At dusk, the horses near the road",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        14260,
+        1474,
+        262,
+        2975
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c2-I2-singular",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 1,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolf",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "singular",
+      "text": "At dusk, the wolf near the road",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        17481,
+        1474,
+        262,
+        2975
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c2-I2-plural",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 1,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolves",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "plural",
+      "text": "At dusk, the wolves near the road",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        23214,
+        1474,
+        262,
+        2975
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c2-context",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 5,
+      "frame_index": 1,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "At dusk, near the road",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        1474,
+        262,
+        2975
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c3-R1-singular",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horse",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "singular",
+      "text": "At dusk, the horse near the roads",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        8223,
+        1474,
+        262,
+        9725
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c3-R1-plural",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "horses",
+      "subject_index": 4,
+      "subject_key": "R1",
+      "subject_lemma": "horse",
+      "subject_number": "plural",
+      "text": "At dusk, the horses near the roads",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        14260,
+        1474,
+        262,
+        9725
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c3-I2-singular",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolf",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "singular",
+      "text": "At dusk, the wolf near the roads",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        17481,
+        1474,
+        262,
+        9725
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c3-I2-plural",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 1,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolves",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "plural",
+      "text": "At dusk, the wolves near the roads",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        262,
+        23214,
+        1474,
+        262,
+        9725
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f02-c3-context",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 5,
+      "frame_index": 1,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "At dusk, near the roads",
+      "token_ids": [
+        2953,
+        46166,
+        11,
+        1474,
+        262,
+        9725
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c0-R2-singular",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 2,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "bird",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "singular",
+      "text": "At noon, the bird nearby",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        6512,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c0-R2-plural",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 2,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "birds",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "plural",
+      "text": "At noon, the birds nearby",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        10087,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c0-I1-singular",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 2,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mouse",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "singular",
+      "text": "At noon, the mouse nearby",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        10211,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c0-I1-plural",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 2,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mice",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "plural",
+      "text": "At noon, the mice nearby",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        10693,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c0-context",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 3,
+      "frame_index": 2,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "At noon, nearby",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c1-R2-singular",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 2,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "bird",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "singular",
+      "text": "At noon, the bird near the water",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        6512,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c1-R2-plural",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 2,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "birds",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "plural",
+      "text": "At noon, the birds near the water",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        10087,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c1-I1-singular",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 2,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mouse",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "singular",
+      "text": "At noon, the mouse near the water",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        10211,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c1-I1-plural",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 2,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mice",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "plural",
+      "text": "At noon, the mice near the water",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        10693,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c1-context",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 5,
+      "frame_index": 2,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "At noon, near the water",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c2-R2-singular",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 2,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "bird",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "singular",
+      "text": "At noon, the bird near the ship",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        6512,
+        1474,
+        262,
+        4074
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c2-R2-plural",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 2,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "birds",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "plural",
+      "text": "At noon, the birds near the ship",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        10087,
+        1474,
+        262,
+        4074
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c2-I1-singular",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 2,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mouse",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "singular",
+      "text": "At noon, the mouse near the ship",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        10211,
+        1474,
+        262,
+        4074
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c2-I1-plural",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 2,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mice",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "plural",
+      "text": "At noon, the mice near the ship",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        10693,
+        1474,
+        262,
+        4074
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c2-context",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 5,
+      "frame_index": 2,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "At noon, near the ship",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        1474,
+        262,
+        4074
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c3-R2-singular",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 2,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "bird",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "singular",
+      "text": "At noon, the bird near the ships",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        6512,
+        1474,
+        262,
+        7937
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c3-R2-plural",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 2,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "birds",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "plural",
+      "text": "At noon, the birds near the ships",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        10087,
+        1474,
+        262,
+        7937
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c3-I1-singular",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 2,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mouse",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "singular",
+      "text": "At noon, the mouse near the ships",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        10211,
+        1474,
+        262,
+        7937
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c3-I1-plural",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 2,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "mice",
+      "subject_index": 4,
+      "subject_key": "I1",
+      "subject_lemma": "mouse",
+      "subject_number": "plural",
+      "text": "At noon, the mice near the ships",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        262,
+        10693,
+        1474,
+        262,
+        7937
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f03-c3-context",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 5,
+      "frame_index": 2,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "At noon, near the ships",
+      "token_ids": [
+        2953,
+        19613,
+        11,
+        1474,
+        262,
+        7937
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c0-R2-singular",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 3,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "bird",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "singular",
+      "text": "In summer, the bird nearby",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        6512,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c0-R2-plural",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 3,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "birds",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "plural",
+      "text": "In summer, the birds nearby",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        10087,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c0-I2-singular",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 3,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolf",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "singular",
+      "text": "In summer, the wolf nearby",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        17481,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c0-I2-plural",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 5,
+      "frame_index": 3,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolves",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "plural",
+      "text": "In summer, the wolves nearby",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        23214,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c0-context",
+      "condition": "none",
+      "condition_index": 0,
+      "final_index": 3,
+      "frame_index": 3,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "In summer, nearby",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        6716
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c1-R2-singular",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 3,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "bird",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "singular",
+      "text": "In summer, the bird near the water",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        6512,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c1-R2-plural",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 3,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "birds",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "plural",
+      "text": "In summer, the birds near the water",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        10087,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c1-I2-singular",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 3,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolf",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "singular",
+      "text": "In summer, the wolf near the water",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        17481,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c1-I2-plural",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 7,
+      "frame_index": 3,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolves",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "plural",
+      "text": "In summer, the wolves near the water",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        23214,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c1-context",
+      "condition": "mass",
+      "condition_index": 1,
+      "final_index": 5,
+      "frame_index": 3,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "In summer, near the water",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        1474,
+        262,
+        1660
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c2-R2-singular",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 3,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "bird",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "singular",
+      "text": "In summer, the bird near the hill",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        6512,
+        1474,
+        262,
+        12788
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c2-R2-plural",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 3,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "birds",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "plural",
+      "text": "In summer, the birds near the hill",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        10087,
+        1474,
+        262,
+        12788
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c2-I2-singular",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 3,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolf",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "singular",
+      "text": "In summer, the wolf near the hill",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        17481,
+        1474,
+        262,
+        12788
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c2-I2-plural",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 7,
+      "frame_index": 3,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolves",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "plural",
+      "text": "In summer, the wolves near the hill",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        23214,
+        1474,
+        262,
+        12788
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c2-context",
+      "condition": "attractor_singular",
+      "condition_index": 2,
+      "final_index": 5,
+      "frame_index": 3,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "In summer, near the hill",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        1474,
+        262,
+        12788
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c3-R2-singular",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 3,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "bird",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "singular",
+      "text": "In summer, the bird near the hills",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        6512,
+        1474,
+        262,
+        18639
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c3-R2-plural",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 3,
+      "morphology": "regular",
+      "pair_index": 0,
+      "role": "target",
+      "subject_form": "birds",
+      "subject_index": 4,
+      "subject_key": "R2",
+      "subject_lemma": "bird",
+      "subject_number": "plural",
+      "text": "In summer, the birds near the hills",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        10087,
+        1474,
+        262,
+        18639
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c3-I2-singular",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 3,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolf",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "singular",
+      "text": "In summer, the wolf near the hills",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        17481,
+        1474,
+        262,
+        18639
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c3-I2-plural",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 7,
+      "frame_index": 3,
+      "morphology": "irregular",
+      "pair_index": 1,
+      "role": "target",
+      "subject_form": "wolves",
+      "subject_index": 4,
+      "subject_key": "I2",
+      "subject_lemma": "wolf",
+      "subject_number": "plural",
+      "text": "In summer, the wolves near the hills",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        262,
+        23214,
+        1474,
+        262,
+        18639
+      ]
+    },
+    {
+      "case_id": "agreement-subject-f04-c3-context",
+      "condition": "attractor_plural",
+      "condition_index": 3,
+      "final_index": 5,
+      "frame_index": 3,
+      "morphology": null,
+      "pair_index": null,
+      "role": "context",
+      "subject_index": null,
+      "subject_key": null,
+      "subject_number": null,
+      "text": "In summer, near the hills",
+      "token_ids": [
+        818,
+        3931,
+        11,
+        1474,
+        262,
+        18639
+      ]
+    }
+  ],
+  "expected_forwards": 720,
+  "inventory_revision": "2c1863ec25af072e54fcc5f42506f486f46553f8",
+  "inventory_sequences_checked": 2047,
+  "inventory_sha256": "32cc4bcbe4b482ded122715c5f96c6c5c765a76a1ef3532360cdf9890827f144",
+  "inventory_version": "distilgpt2-development-exposures-v25",
+  "model_id": "distilbert/distilgpt2",
+  "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "ordered_rows_sha256": "d31073b25d816258ff1bcbfcb7237eac5346b160a5ed2de65fea220bdb806ff1",
+  "private_status": "Pending separate current custodian report before any forward.",
+  "protocol_revision": "54f0f8d3ac7e60efc3005f0f49415715ba34ff47",
+  "protocol_sha256": "bd39b4556023110d0de88fb21381a0a3ce1e17cad862cdd0259b67849f540714",
+  "public_checks": {
+    "full_top_rows": 48,
+    "full_top_sha256": "4057696ddef9e3b0d09db02f46e6454561a61ac1a07f8b8a13b92718944f4261",
+    "natural_successor_rows": 256,
+    "natural_successor_sha256": "6303eb0713d64b020eea3fe491a686c9020ea424754443372aef73749bc87bc4",
+    "natural_support_rows": 128,
+    "natural_support_sha256": "5638b5ccc1d6585184fcd359e825ac3c2f6a1e377e24afde78bc5a9a2fc845d6"
+  },
+  "publication_requirement": "Caller independently verifies protocol/reference publication before construction.",
+  "reference_sha256": "bdb31d5b74b6cff17ed2a683415beab22e36b101220257d774909be6f9f804bd",
+  "schema": "distilgpt2-agreement-subject-dependence-cases-v1",
+  "scope": "Public prospective nonblind tokenizer-only inputs; no model forward.",
+  "selection": {
+    "attractors": [
+      {
+        "forms": [
+          "bridge",
+          "bridges"
+        ],
+        "token_ids": [
+          7696,
+          19432
+        ]
+      },
+      {
+        "forms": [
+          "road",
+          "roads"
+        ],
+        "token_ids": [
+          2975,
+          9725
+        ]
+      },
+      {
+        "forms": [
+          "ship",
+          "ships"
+        ],
+        "token_ids": [
+          4074,
+          7937
+        ]
+      },
+      {
+        "forms": [
+          "hill",
+          "hills"
+        ],
+        "token_ids": [
+          12788,
+          18639
+        ]
+      }
+    ],
+    "eligibility": {
+      "attractors": [
+        {
+          "decision": "selected",
+          "forms": [
+            "bridge",
+            "bridges"
+          ],
+          "token_ids": [
+            [
+              7696
+            ],
+            [
+              19432
+            ]
+          ]
+        },
+        {
+          "decision": "selected",
+          "forms": [
+            "road",
+            "roads"
+          ],
+          "token_ids": [
+            [
+              2975
+            ],
+            [
+              9725
+            ]
+          ]
+        },
+        {
+          "decision": "selected",
+          "forms": [
+            "ship",
+            "ships"
+          ],
+          "token_ids": [
+            [
+              4074
+            ],
+            [
+              7937
+            ]
+          ]
+        },
+        {
+          "decision": "selected",
+          "forms": [
+            "hill",
+            "hills"
+          ],
+          "token_ids": [
+            [
+              12788
+            ],
+            [
+              18639
+            ]
+          ]
+        }
+      ],
+      "irregular": [
+        {
+          "decision": "selected",
+          "forms": [
+            "mouse",
+            "mice"
+          ],
+          "token_ids": [
+            [
+              10211
+            ],
+            [
+              10693
+            ]
+          ]
+        },
+        {
+          "decision": "not_one_token",
+          "forms": [
+            "goose",
+            "geese"
+          ],
+          "token_ids": [
+            [
+              37246
+            ],
+            [
+              4903,
+              2771
+            ]
+          ]
+        },
+        {
+          "decision": "selected",
+          "forms": [
+            "wolf",
+            "wolves"
+          ],
+          "token_ids": [
+            [
+              17481
+            ],
+            [
+              23214
+            ]
+          ]
+        }
+      ],
+      "regular": [
+        {
+          "decision": "selected",
+          "forms": [
+            "horse",
+            "horses"
+          ],
+          "token_ids": [
+            [
+              8223
+            ],
+            [
+              14260
+            ]
+          ]
+        },
+        {
+          "decision": "selected",
+          "forms": [
+            "bird",
+            "birds"
+          ],
+          "token_ids": [
+            [
+              6512
+            ],
+            [
+              10087
+            ]
+          ]
+        }
+      ]
+    },
+    "irregular": [
+      {
+        "forms": [
+          "mouse",
+          "mice"
+        ],
+        "token_ids": [
+          10211,
+          10693
+        ]
+      },
+      {
+        "forms": [
+          "wolf",
+          "wolves"
+        ],
+        "token_ids": [
+          17481,
+          23214
+        ]
+      }
+    ],
+    "regular": [
+      {
+        "forms": [
+          "horse",
+          "horses"
+        ],
+        "token_ids": [
+          8223,
+          14260
+        ]
+      },
+      {
+        "forms": [
+          "bird",
+          "birds"
+        ],
+        "token_ids": [
+          6512,
+          10087
+        ]
+      }
+    ]
+  },
+  "tokenizer_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+  "tokenizers_version": "0.22.2"
+}
