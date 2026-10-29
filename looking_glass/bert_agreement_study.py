@@ -516,6 +516,14 @@ def _require_denormals(torch):
             raise RuntimeError('the calling thread must preserve denormals')
 
 
+def _reported_machine(platform_module):
+    """Record an unavailable OS machine string explicitly, without guessing."""
+    value = platform_module.machine()
+    if type(value) is not str:
+        raise RuntimeError('platform machine identity must be a string')
+    return value or 'unknown'
+
+
 def _checked_manifest(repo, commit, git_exe, split):
     from .bert_agreement_cases import verify_manifest_bytes
 
@@ -589,7 +597,7 @@ def _owner_main(*, repo, cache, run_dir, commit, git_exe, split, family, run_id)
         witness = capture_model_state(loaded.model)
         state_sha, model_metadata = witness.sha256, loaded.metadata
         runtime = {'python': platform.python_version(), 'platform': platform.system(),
-                   'machine': platform.machine(), 'torch': str(torch.__version__),
+                   'machine': _reported_machine(platform), 'torch': str(torch.__version__),
                    'transformers': str(transformers.__version__), 'numpy': str(numpy.__version__),
                    'intraop_threads': torch.get_num_threads(), 'interop_threads': torch.get_num_interop_threads(),
                    'deterministic_algorithms': torch.are_deterministic_algorithms_enabled(),
@@ -681,11 +689,13 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
     owner_failure_read_error_type = None
     owner_cancellation = None
     owner_cancellation_read_error_type = None
+    stage = 'startup'
     try:
         controller_started = {'schema': 'bert-agreement-controller-start-v1',
                               'run_id': run_id, 'source_commit': commit, 'split': split, 'family': family,
                               'started_utc': datetime.now(timezone.utc).isoformat()}
         _write_json(destination / 'started.json', controller_started)
+        stage = 'preflight'
         _require_checkout(root)
         git_exe = shutil.which('git')
         site = os.environ.get('LOOKING_GLASS_BERT_SITE')
@@ -712,10 +722,12 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
                    '--split', split, '--family', str(family or 0), '--run-id', run_id]
         # Popen can create the process before Python receives its handle. Until
         # wait succeeds, lack of a handle is conservatively possibly active.
+        stage = 'owner_start'
         owner_state = 'possibly_active'
         child = subprocess.Popen(command, cwd=root, env=environment, stdin=subprocess.DEVNULL,
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         try:
+            stage = 'owner_wait'
             exit_code = child.wait(timeout=timeout)
             owner_state = 'reaped'
         except BaseException as wait_error:
@@ -761,6 +773,7 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
             except Exception as failure_error:
                 owner_failure_read_error_type = type(failure_error).__name__
             raise RuntimeError('the owner exited without a successful result')
+        stage = 'evidence_validation'
         candidate = _read_json(destination / 'owner-candidate.json')
         audited = audit_event_journal(manifest, destination / 'events.jsonl', split=split, family=family,
                                       mask_id=103, hidden_size=768, expected_sha256=candidate.get('journal_sha256'))
@@ -777,6 +790,7 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
                 or not _same_json(candidate.get('audited'), audited) or any(prefix.iterdir())
                 or verify_git_sources(root, commit, SOURCE_PATHS, git_exe=git_exe) != hashes):
             raise RuntimeError('owner evidence, source or bytecode prefix changed')
+        stage = 'runtime_validation'
         runtime, model = candidate.get('runtime'), candidate.get('model')
         expected_model = {'model': MODEL_ID, 'revision': REVISION,
                           'assets': {name: {'size': size, 'sha256': sha} for name, (size, sha) in ASSETS.items()},
@@ -798,6 +812,7 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
                 or type(candidate.get('model_state_sha256_before_after')) is not str
                 or re.fullmatch('[0-9a-f]{64}', candidate['model_state_sha256_before_after']) is None):
             raise RuntimeError('owner runtime or model evidence differs from the fixed contract')
+        stage = 'evidence_inventory'
         artifacts = _artifact_inventory(destination, {'started.json': 1024 * 1024,
             'preflight.json': 1024 * 1024, 'owner-started.json': 1024 * 1024,
             'owner-candidate.json': 1024 * 1024, 'events.jsonl': 16 * 1024 * 1024})
@@ -815,13 +830,14 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
                                   'full mask logits are represented by hashes, not retained tensors',
                                   'source hashes and event consistency do not attest faithful execution',
                                   'one checkpoint and correlated families do not establish generalization']}
+        stage = 'terminal_publication'
         _write_json(destination / 'result.json', result)
         return result
     except BaseException as error:
         result = {'schema': 'bert-agreement-controller-result-v1', 'status': 'incomplete',
                   'run_id': run_id, 'source_commit': commit, 'manifest_sha256': manifest_sha,
                   'split': split, 'family': family, 'owner_pid': None if child is None else child.pid,
-                  'owner_exit_code': exit_code, 'owner_state': owner_state,
+                  'owner_exit_code': exit_code, 'owner_state': owner_state, 'stage': stage,
                   'error_type': type(error).__name__, 'wait_error_type': wait_error_type,
                   'cleanup_error_type': cleanup_error_type,
                   'cancelled': isinstance(error, (KeyboardInterrupt, SystemExit)) or owner_cancellation is not None or

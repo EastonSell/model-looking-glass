@@ -48,7 +48,8 @@ re-tokenizes the entire public inventory before any forward. It requires
 PyTorch 2.8.0+cu128, Transformers 4.57.3 and NumPy 2.4.6, with an isolated
 Python interpreter, a fresh empty bytecode prefix, and CUDA hidden. Python hash
 randomization uses an OS-provided seed that is not fixed. The calling-thread
-denormal check does not attest every native thread. The interpreter, installed
+denormal check does not attest every native thread. An unavailable OS machine
+string is recorded as `unknown` rather than inferred from the host. The interpreter, installed
 dependency contents, OS and absence of concurrent filesystem/model mutation
 are trusted; source hashes do not independently prove faithful execution.
 This protocol remains a draft; the owner refuses evaluation until the unique
@@ -238,7 +239,8 @@ zero owner exit, a reaped owner, matching evidence hashes, and neither
 complete record's link: the file may remain present while the controller
 reports cancellation and exits nonzero. A nonzero, missing or uncertain process
 exit, partial journal, failed audit, missing evidence, or a possibly active
-owner is incomplete. The failure record distinguishes the original failure,
+owner is incomplete. The failure record identifies a bounded controller stage
+and distinguishes the original failure,
 reap/cleanup failure and any validated owner failure where available. A later
 retry uses a fresh directory and is a separate attempt.
 

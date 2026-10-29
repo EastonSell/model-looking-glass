@@ -16,7 +16,8 @@ import torch
 from looking_glass.bert_agreement_study import (EventJournal, capture_model_state, _owner_main,
                                                aggregate_families, stage_verified_assets, verify_model_state,
                                                read_journal, run_cpu_controller, validate_owner_result, verify_git_sources,
-                                               verify_tokenizer_rows, _checked_manifest, _require_checkout, _write_json)
+                                               verify_tokenizer_rows, _checked_manifest, _require_checkout, _write_json,
+                                               _reported_machine)
 from looking_glass.pretrained import CheckpointIntegrityError
 
 
@@ -501,7 +502,7 @@ class Child:
         runtime = {'pytorch_cuda_initialized':False, 'denormals_preserved_calling_thread':True,
             'deterministic_algorithms':True, 'intraop_threads':1, 'interop_threads':1,
             'torch':'2.8.0+cu128', 'transformers':'4.57.3', 'numpy':'2.4.6', 'seed':2026102810,
-            'python':'3.11.15', 'platform':'Windows', 'machine':'AMD64',
+            'python':'3.11.15', 'platform':'Windows', 'machine':'' if mode == 'bad_machine' else 'AMD64',
             'python_hash_seed':'isolated interpreter; OS-randomized'}
         model = {'model':study.MODEL_ID, 'revision':study.REVISION,
             'attention_implementation':'eager', 'device':'cpu', 'dtype':'float32',
@@ -526,7 +527,7 @@ with patch.object(study, '_require_bootstrap'), patch.object(study, '_require_ch
                                       commit='a'*40, split='development', family=1)
 print(json.dumps(result))
 '''
-            for mode in ('success', 'cancel'):
+            for mode in ('success', 'cancel', 'bad_machine'):
                 case = root / mode
                 case.mkdir()
                 completed = subprocess.run([sys.executable, '-c', code, str(case), mode],
@@ -543,11 +544,14 @@ print(json.dumps(result))
                     for name, entry in result['artifacts'].items():
                         raw = (attempt/name).read_bytes()
                         self.assertEqual(entry, {'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()})
-                else:
+                elif mode == 'cancel':
                     self.assertEqual(result['status'], 'incomplete')
                     self.assertTrue(result['cancelled'])
                     self.assertEqual(json.loads((attempt/'controller-failure.json').read_text())['status'], 'incomplete')
                     self.assertEqual(json.loads((attempt/'result.json').read_text())['status'], 'complete')
+                else:
+                    self.assertEqual(result['status'], 'incomplete')
+                    self.assertEqual(result['stage'], 'runtime_validation')
 
     def test_model_value_change_or_same_value_parameter_replacement_is_detected(self):
         model = torch.nn.Linear(3, 2).eval()
@@ -599,6 +603,11 @@ print(json.dumps(result))
         manifest['rows'][0]['input_ids'][1] = 43
         with self.assertRaises(ValueError):
             verify_tokenizer_rows(Tokenizer(), manifest)
+
+    def test_unavailable_machine_identity_is_explicitly_unknown(self):
+        class Platform:
+            def machine(self): return ''
+        self.assertEqual(_reported_machine(Platform()), 'unknown')
 
     def test_held_out_decisions_keep_all_eight_family_units(self):
         bits = lambda x: struct.unpack('<I', struct.pack('<f', x))[0]
