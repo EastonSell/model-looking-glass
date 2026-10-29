@@ -1,8 +1,8 @@
-"""Development-only isolated source-loader probe; this cannot run the study.
+"""Isolated source loader for development and the proposed study owner.
 
-The future external launcher must independently bind this script and its source
-manifest to committed bytes and hold source/cache protections for the process
-lifetime. This diagnostic deliberately does not claim those protections.
+The external owner must independently bind this script and its source manifest
+to committed bytes and hold source/cache protections for the process lifetime.
+Rehearsal is no-forward; study execution remains disabled pending review.
 """
 import argparse
 import hashlib
@@ -25,6 +25,7 @@ class _AuditHookCheck(Exception):
 
 
 _START_TOKEN = b"model-looking-glass-development-start-v2\n"
+_STUDY_LAUNCH_ENABLED = False  # Enable only after independent launcher review.
 
 
 def _deny_process_creation(event, args):
@@ -265,15 +266,28 @@ def _unique_object(pairs):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--development-probe", action="store_true", required=True)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--development-probe", action="store_true")
+    mode.add_argument("--study-rehearsal", action="store_true")
+    mode.add_argument("--study-owner", action="store_true")
     parser.add_argument("--checkout", required=True)
     parser.add_argument("--sources", required=True)
     parser.add_argument("--venv-root", required=True)
     parser.add_argument("--dependency", action="append", default=[])
     parser.add_argument("--prefix", required=True)
-    parser.add_argument("--module", required=True)
+    parser.add_argument("--module")
+    parser.add_argument("--source-revision")
+    parser.add_argument("--output")
     parser.add_argument("--require-start", action="store_true")
     args = parser.parse_args()
+    study_mode = args.study_rehearsal or args.study_owner
+    if (study_mode and (not args.require_start or args.module is not None
+                        or not args.source_revision or not args.output)):
+        raise BootstrapError("guarded study-owner arguments are required")
+    if args.study_owner and not _STUDY_LAUNCH_ENABLED:
+        raise BootstrapError("study execution is disabled pending independent review")
+    if args.development_probe and (not args.module or args.source_revision or args.output):
+        raise BootstrapError("invalid development diagnostic arguments")
     checkout = _checked_path(args.checkout)
     prefix_argument = Path(args.prefix)
     if not prefix_argument.is_absolute() or prefix_argument.is_symlink():
@@ -289,19 +303,30 @@ def main():
     if len(manifest_bytes) > 2 * 1024 * 1024:
         raise BootstrapError("source manifest exceeds the size limit")
     manifest = json.loads(manifest_bytes, object_pairs_hook=_unique_object)
-    finder = _ProjectFinder(_source_map(checkout, manifest))
+    project_manifest = ({path: digest for path, digest in manifest.items()
+                         if path.startswith("looking_glass/") and path.endswith(".py")}
+                        if study_mode and type(manifest) is dict else manifest)
+    finder = _ProjectFinder(_source_map(checkout, project_manifest))
     _add_dependencies(checkout, venv, args.dependency)
     # Install before the package initializer can execute any relative import.
     sys.meta_path.insert(0, finder)
-    if args.module != "looking_glass" and not args.module.startswith("looking_glass."):
-        raise BootstrapError("only a project diagnostic import is permitted")
-    importlib.import_module(args.module)
+    if study_mode:
+        entry = importlib.import_module("looking_glass.causal_v2_study_entry")
+        owner = entry.run_source_bound_study if args.study_owner else entry.rehearse_source_bound_owner
+        report = owner(checkout, args.output, revision=args.source_revision,
+                       source_sha256=manifest, source_inventory=finder.verify_inventory)
+    else:
+        if args.module != "looking_glass" and not args.module.startswith("looking_glass."):
+            raise BootstrapError("only a project diagnostic import is permitted")
+        importlib.import_module(args.module)
+        report = {"status": "development_only", "study_ready": False}
     inventory = finder.verify_inventory()
     _check_search_path(checkout)
     if any(prefix.iterdir()):
         raise BootstrapError("cache prefix changed during the diagnostic")
-    print(json.dumps({"status": "development_only", "study_ready": False,
-                      "project_sources": inventory}, sort_keys=True, allow_nan=False))
+    if args.development_probe:
+        report["project_sources"] = inventory
+    print(json.dumps(report, sort_keys=True, allow_nan=False))
 
 
 if __name__ == "__main__":
