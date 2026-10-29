@@ -34,6 +34,8 @@ The selected site produced ten strict sign reversals across 32 opposite-number d
 - [Independent audit acknowledgment](independent-audit.json) is the exact saved audit output.
 - [Audited evidence archive](discovery-evidence.zip) contains the exact journal start, event and terminal files and all 1,120 content-addressed tensor payloads. The archive SHA-256 is `9ea7ebf83f0580335cbf35b65b2277d8990090adff5b3eb8d0b3b68409cd3a69`.
 - [Published runtime binding](binding-v2.json) identifies the source, checkpoint, exposed cases and budgets. The executed source is commit `def07cbb168408a12c76ba30f196af45149e111d`.
+- [Frozen predictions](natural-prediction-v2.json), [publication provenance](natural-prediction-provenance.json) and the later [prediction freeze](natural-prediction-freeze.json) were published before held-out allocation.
+- The exact [prediction publication receipt](natural-prediction-track-receipt.json) and [aggregate publication receipt](natural-prediction-aggregate-receipt.json) record the observed official commits.
 - The owner exited zero, was reaped, and its job drained and closed; the private original supervisor and launcher terminal are bound by the hashes in the discovery record. They retain local paths and are not reproduced in this public archive.
 
 The earlier validation-only rehearsal remains preserved as incomplete: it loaded no model and ran no study forward. The corrected no-model rehearsal passed before this public discovery. No held-out examples had been generated when this discovery record was prepared.
