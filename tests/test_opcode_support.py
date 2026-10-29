@@ -3,7 +3,10 @@ import sys
 import unittest
 from pathlib import Path
 
-from opcode_support import run_opcode_trace
+if __package__:
+    from .opcode_support import run_opcode_trace
+else:
+    from opcode_support import run_opcode_trace
 
 
 class OpcodeTraceSupportTests(unittest.TestCase):
