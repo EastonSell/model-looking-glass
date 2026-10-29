@@ -72,3 +72,40 @@ Python interpreter so the observed PID is the process writing the terminal.
 Its public receipt verifier checks both commitment readbacks and the complete
 receipt identities without opening either private record. A verified collision
 remains a negative result and cannot authorize a forward.
+
+`tools/injection_comparison_operator.py` is the source-first operator. A
+separately published comparison-source manifest identifies its source and its
+reviewed dependencies; the eventual execution owner independently pins the
+manifest's immutable URL and SHA-256 before the injection split is drawn. The
+operator reads that same pin from its command, verifies all dependency bytes
+against the manifest and their immutable public copies before executing them,
+and checks the published v3 operation, fixed discovery freeze and injection
+commitment before any private record is opened. The manifest also needs the
+separately reviewed transition and successor-state sources; this operator's
+own checks do not establish their semantics.
+
+The operator's path-only configuration binds the expected directory and file
+identities. It verifies the original natural phase and the later injection
+phase under their current-user/SYSTEM ACLs. The existing discovery site-custody
+directory has a distinct policy: its owner is the current user, and OWNER
+RIGHTS, SYSTEM and built-in Administrators have full control, inherited by its
+site files. The operator checks that existing policy and the path identities
+without reading their contents. This is cooperative local custody and does
+not claim secrecy from administrators. Source files, public inputs, the
+configuration and private files are held by read-sharing protections, which
+are duplicated into the gated comparison child. Uncertain process cleanup
+keeps the protections quarantined. Evidence and partial files stay inside the
+existing injection held-out phase allowance.
+
+The operator accepts a direct-base, isolated `-I -S -B` invocation with a
+fresh bytecode prefix. A hash-before-execution bootstrap must bind the
+operator source and path-only configuration, and the caller must supply its
+independently pinned manifest digest and URL on the command line. The
+`--validate-sources` path performs no private-record read, claim, draw or
+model forward. `--run` writes a new operator terminal only after the observed
+comparison and receipt checks. A separate caller must retain and reap this
+operator using `observe_operator`, verify its exact PID/birth and clean Job
+exit, and bind the operation, configuration, receipt and observed command.
+Even then, a forward requires a separate locked peer/successor-state decision
+and a literal `clear` receipt. No receipt or saved terminal alone attests a
+process exit or authorizes a model forward.
