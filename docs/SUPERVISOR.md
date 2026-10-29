@@ -73,6 +73,18 @@ the directly spawned child while retaining the controller lock. The command
 is an argument sequence; no shell is used. The child receives its run
 identity and configured paths in its environment.
 
+By default, `env=` overlays the parent environment for compatibility. GPU
+launchers that prepare an explicit trusted environment must instead pass
+`inherit_environment=False, env=prepared_environment`; the child then receives
+only that mapping and supervisor-owned fields. Include any OS variables needed
+by the child explicitly. This prevents omitted parent values such as
+`PYTHONPATH` from being reintroduced before the interpreter starts. This option
+does not authenticate or sanitize variables deliberately included in the
+mapping. Reserved supervisor fields are stripped case-insensitively before the
+run's authoritative values are added; identity-less CPU mode also replaces any
+case spelling of `CUDA_VISIBLE_DEVICES` with an empty mask. The parent process
+environment is not modified.
+
 ```python
 from looking_glass.device_lease import DeviceLease
 from looking_glass.supervisor import OwnerSession

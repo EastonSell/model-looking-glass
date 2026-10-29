@@ -18,6 +18,10 @@ def acquire(budget, estimate=100):
     return budget.acquire(estimate, max_gpu_trace_bytes=0, max_host_trace_bytes=100)
 
 
+def try_acquire(budget, estimate=100):
+    return budget.try_acquire(estimate, max_gpu_trace_bytes=0, max_host_trace_bytes=100)
+
+
 def opcode_count(code, call):
     count = 0
     old_trace = sys.gettrace()
@@ -93,7 +97,7 @@ def interrupt_return(code, call):
 
 def interrupt_return_line(code, call):
     return_offset = next(item.offset for item in dis.get_instructions(code)
-                         if item.opname == "RETURN_VALUE")
+                         if item.opname in ("RETURN_VALUE", "RETURN_CONST"))
     return_line = max((offset, line) for offset, line in dis.findlinestarts(code)
                       if offset <= return_offset)[1]
     fired = False
@@ -151,12 +155,12 @@ class InterruptedLedgerTests(unittest.TestCase):
 
     def test_acquire_interruption_at_each_opcode_never_undercounts(self):
         initial = make_budget()
-        code = MemoryBudget.acquire.__code__
-        count = opcode_count(code, lambda: acquire(initial))
+        code = MemoryBudget.try_acquire.__code__
+        count = opcode_count(code, lambda: try_acquire(initial))
         for target in range(count):
             with self.subTest(opcode=target):
                 budget = make_budget()
-                interrupted(code, lambda: acquire(budget), target)
+                interrupted(code, lambda: try_acquire(budget), target)
                 self.assert_consistent(budget)
                 for lease in budget.active_leases():
                     lease.release()
@@ -261,7 +265,7 @@ class InterruptedLedgerTests(unittest.TestCase):
 
     def test_source_return_line_interruption_leaves_lock_available(self):
         budget = make_budget()
-        interrupt_return_line(MemoryBudget.acquire.__code__, lambda: acquire(budget))
+        interrupt_return_line(MemoryBudget.try_acquire.__code__, lambda: try_acquire(budget))
         self.assertTrue(lock_responds_from_other_thread(budget))
         first, = budget.active_leases()
         self.assert_consistent(budget)
@@ -274,7 +278,7 @@ class InterruptedLedgerTests(unittest.TestCase):
         def case(kind):
             budget = make_budget()
             if kind == "acquire":
-                return budget, MemoryBudget.acquire.__code__, lambda: acquire(budget)
+                return budget, MemoryBudget.try_acquire.__code__, lambda: try_acquire(budget)
             lease = acquire(budget)
             if kind == "release":
                 return budget, MemoryLease.release.__code__, lease.release
