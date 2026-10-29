@@ -322,3 +322,35 @@ def test_changed_post_inference_settings_never_promote(tmp_path):
     measurement["numeric_settings_after"]["matmul_tf32"] = True
     with pytest.raises(ValueError, match="post-inference numerical settings"):
         observer._validate_saved(tmp_path, measurement, reference)
+
+
+def test_untrained_vit_executes_all_six_controls_on_cpu(tmp_path):
+    """Exercise the real Transformers hook geometry without any checkpoint or image."""
+    from transformers import ViTConfig, ViTForImageClassification
+    previous_threads = torch.get_num_threads()
+    torch.set_num_threads(1)
+    try:
+        torch.manual_seed(51)
+        config = ViTConfig(image_size=224, patch_size=16, num_channels=3, hidden_size=192,
+                           num_hidden_layers=4, num_attention_heads=3, intermediate_size=256,
+                           num_labels=1000, hidden_dropout_prob=0, attention_probs_dropout_prob=0)
+        config._attn_implementation = "eager"
+        model = ViTForImageClassification(config).eval()
+        cat = torch.randn(1, 3, 224, 224)
+        dog = torch.randn(1, 3, 224, 224)
+        outputs = []
+        for index, label in enumerate(observer.LABELS, 1):
+            replacement = None
+            if index in (4, 5):
+                state = outputs[1]["before_all"]
+                raw = b"".join(state[t * 768:(t + 1) * 768] for t in observer.TOKENS)
+                replacement = _tensor(raw, (4, 192))
+            result, _ = observer.observe(model, dog if index == 2 else cat, label=label, output=tmp_path,
+                index=index, replacement=replacement, self_patch=index == 3)
+            outputs.append(result)
+        assert outputs[0]["logits"] == outputs[2]["logits"] == outputs[5]["logits"]
+        assert outputs[0]["before_all"] == outputs[2]["before_all"] == outputs[5]["before_all"]
+        assert outputs[3]["logits"] == outputs[4]["logits"]
+        assert outputs[3]["logits"] != outputs[0]["logits"]
+    finally:
+        torch.set_num_threads(previous_threads)
