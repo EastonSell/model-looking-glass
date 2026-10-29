@@ -7,6 +7,11 @@ import threading
 import unittest
 from unittest.mock import patch
 
+if __package__:
+    from .opcode_support import run_opcode_trace
+else:
+    from opcode_support import run_opcode_trace
+
 from looking_glass.trace_job_registry import (
     JobRegistryFull, JobStateError, StaleReceipt, TraceJobRegistry,
 )
@@ -71,20 +76,17 @@ class JobRegistryTests(unittest.TestCase):
                    if instruction.opname == "RETURN_VALUE" and i > 0
                    and instructions[i - 1].opname == "LOAD_FAST"
                    and instructions[i - 1].argval == "changed"]
-        self.assertEqual(len(matches), 1)
+        # CPython 3.10 may duplicate a return across exception paths.
+        self.assertTrue(matches)
         def interrupt(frame, event, arg):
             if event == "call":
                 frame.f_trace_opcodes = True
-            if frame.f_code is code and event == "opcode" and frame.f_lasti == matches[0]:
+            if frame.f_code is code and event == "opcode" and frame.f_lasti in matches:
                 sys.settrace(None)
                 raise KeyboardInterrupt("injected after handoff commit")
             return interrupt
-        try:
-            sys.settrace(interrupt)
-            with self.assertRaises(KeyboardInterrupt):
-                registry.ack_handoff(handoff)
-        finally:
-            sys.settrace(None)
+        with self.assertRaises(KeyboardInterrupt):
+            run_opcode_trace(interrupt, lambda: registry.ack_handoff(handoff))
         self.assertEqual(registry.inspect(registry.recover(7, registration_id=REG_A)).phase, "owned")
         self.assertFalse(registry.ack_handoff(handoff))
 
@@ -100,20 +102,16 @@ class JobRegistryTests(unittest.TestCase):
                    if instruction.opname == "RETURN_VALUE" and i > 0
                    and instructions[i - 1].opname == "LOAD_FAST"
                    and instructions[i - 1].argval == "handoff"]
-        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches)
         def interrupt(frame, event, arg):
             if event == "call":
                 frame.f_trace_opcodes = True
-            if frame.f_code is code and event == "opcode" and frame.f_lasti == matches[0]:
+            if frame.f_code is code and event == "opcode" and frame.f_lasti in matches:
                 sys.settrace(None)
                 raise KeyboardInterrupt("injected before handoff return")
             return interrupt
-        try:
-            sys.settrace(interrupt)
-            with self.assertRaises(KeyboardInterrupt):
-                registry.begin_handoff(receipt, "delivery-owner")
-        finally:
-            sys.settrace(None)
+        with self.assertRaises(KeyboardInterrupt):
+            run_opcode_trace(interrupt, lambda: registry.begin_handoff(receipt, "delivery-owner"))
         observed = []
         thread = threading.Thread(target=lambda: observed.append(registry.active_jobs()), daemon=True)
         thread.start()
