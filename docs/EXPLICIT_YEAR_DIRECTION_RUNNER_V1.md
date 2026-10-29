@@ -2,9 +2,9 @@
 
 `scripts/explicit_year_direction_v1.py` implements the fixed public
 [protocol](DISTILGPT2_EXPLICIT_YEAR_DIRECTION_V1.md) and the separately
-published cases. It remains disabled until the reviewed reservation for all
-48 rows is bound. Before any pretrained forward, publish the exact executor
-and pre-run record and check the latest reviewed public exposure history.
+published cases. It verifies the reviewed v21 reservation for all 48 rows.
+Before any pretrained forward, publish the exact executor and pre-run record
+and check the latest reviewed public exposure history.
 Unknown outside and pretraining exposure remain unverified.
 
 The runner records 48 unhooked clean and 48 passive no-op forwards, checks
