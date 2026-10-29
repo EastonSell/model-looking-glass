@@ -27,6 +27,17 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def cache_environment(temporary):
+    temporary = Path(temporary)
+    return {'TEMP': str(temporary), 'TMP': str(temporary),
+            'HF_HOME': str(temporary / 'huggingface'),
+            'HF_HUB_CACHE': str(temporary / 'huggingface' / 'hub'),
+            'XDG_CACHE_HOME': str(temporary / 'xdg'), 'TORCH_HOME': str(temporary / 'torch'),
+            'TORCHINDUCTOR_CACHE_DIR': str(temporary / 'torchinductor'),
+            'TRITON_CACHE_DIR': str(temporary / 'triton'),
+            'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1'}
+
+
 def claim_phase(custody, mode, revision):
     if mode == 'preflight':
         return None
@@ -143,9 +154,8 @@ def main():
         command += ['--screen-data', str(args.screen_data)]
     if args.discovery_archive is not None:
         command += ['--discovery-archive', str(args.discovery_archive)]
-    env = dict(os.environ, CUDA_VISIBLE_DEVICES='', TEMP=str(temporary), TMP=str(temporary),
-               OMP_NUM_THREADS='1', MKL_NUM_THREADS='1', MKL_CBWR='COMPATIBLE',
-               HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1')
+    env = dict(os.environ, **cache_environment(temporary), CUDA_VISIBLE_DEVICES='',
+               OMP_NUM_THREADS='1', MKL_NUM_THREADS='1', MKL_CBWR='COMPATIBLE')
     started = time.monotonic()
     with (args.outer / 'stdout.txt').open('xb') as stdout, (args.outer / 'stderr.txt').open('xb') as stderr:
         claim_phase(args.custody, args.mode, args.revision)

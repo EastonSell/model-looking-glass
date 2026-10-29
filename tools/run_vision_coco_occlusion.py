@@ -39,7 +39,8 @@ SCREEN = RESULT + '/screen-result.json'
 SCREEN_ARCHIVE = RESULT + '/screen-evidence.zip'
 MODEL_STATE = 'd1bfb26b30f847366de6388385d547fc29cc3c20b330c4faad993891e165eccd'
 SOURCES = (
-    'docs/VISION_COCO_OCCLUSION_V1.md', MANIFEST, V6_MANIFEST, V6_SCREEN, V6_ARCHIVE,
+    'docs/VISION_COCO_OCCLUSION_V1.md', 'docs/VISION_COCO_OCCLUSION_RUNTIME_AMENDMENT_V1.md',
+    MANIFEST, V6_MANIFEST, V6_SCREEN, V6_ARCHIVE,
     'tools/run_vision_coco_occlusion.py', 'tools/observe_vision_coco_occlusion.py',
     'tools/prepare_vision_coco_occlusion.py',
     'looking_glass/__init__.py', 'looking_glass/vision_coco_occlusion_cases.py',
@@ -313,6 +314,22 @@ def verify_public_discovery(freeze_raw, index_raw, observer_raw, readback_raw, a
         raise ValueError('discovery archive or metadata differs') from error
 
 
+def validate_cache_placement(output, bytecode_prefix, source_root, environment):
+    try:
+        temporary = Path(environment['TEMP']).resolve(strict=True)
+        cache_names = ('HF_HOME', 'HF_HUB_CACHE', 'XDG_CACHE_HOME', 'TORCH_HOME',
+                       'TORCHINDUCTOR_CACHE_DIR', 'TRITON_CACHE_DIR')
+        if (Path(environment['TMP']).resolve() != temporary or not temporary.is_dir() or
+                temporary.drive.casefold() != output.drive.casefold() or
+                temporary.drive.casefold() == source_root.drive.casefold() or
+                Path(bytecode_prefix).resolve().drive.casefold() != temporary.drive.casefold() or
+                any(not Path(environment[name]).resolve().is_relative_to(temporary) for name in cache_names) or
+                environment.get('HF_HUB_OFFLINE') != '1' or environment.get('TRANSFORMERS_OFFLINE') != '1'):
+            raise ValueError('temporary, bytecode or model cache volume differs')
+    except (KeyError, TypeError, OSError) as error:
+        raise ValueError('temporary or model cache configuration missing') from error
+
+
 def main(args):
     if (os.environ.get('CUDA_VISIBLE_DEVICES') != '' or os.environ.get('MKL_CBWR') != 'COMPATIBLE' or
             not args.assets.is_absolute() or not args.output.is_absolute() or
@@ -327,7 +344,8 @@ def main(args):
             (args.discovery_archive is not None and (args.mode not in ('screen', 'evaluation') or
              not args.discovery_archive.is_absolute() or not args.discovery_archive.is_file()))):
         raise ValueError('source, assets, screen and new output roots must be separate')
-    if shutil.disk_usage(ROOT).free < 2 * 1024**3 or shutil.disk_usage(args.output.parent).free < 1024**3:
+    validate_cache_placement(args.output, sys.pycache_prefix, ROOT, os.environ)
+    if shutil.disk_usage(ROOT).free < 3 * 1024**3 // 2 or shutil.disk_usage(args.output.parent).free < 1024**3:
         raise ValueError('insufficient source/cache or evidence space')
     import importlib.util
     spec = importlib.util.find_spec('looking_glass')

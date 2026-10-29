@@ -3,6 +3,7 @@
 import json
 import hashlib
 import io
+from pathlib import Path
 import subprocess
 import sys
 import zipfile
@@ -18,6 +19,35 @@ def test_preflight_does_not_consume_a_one_shot_phase_claim(tmp_path):
     assert json.loads(claim.read_bytes()) == {'mode': 'screen', 'revision': 'a' * 40}
     with pytest.raises(FileExistsError):
         claim_phase(tmp_path, 'screen', 'a' * 40)
+
+
+def test_model_and_hub_caches_are_placed_with_phase_temporary_files(tmp_path):
+    from tools.observe_vision_coco_occlusion import cache_environment
+
+    env = cache_environment(tmp_path)
+    assert env['TEMP'] == env['TMP'] == str(tmp_path)
+    for name in ('HF_HOME', 'HF_HUB_CACHE', 'XDG_CACHE_HOME', 'TORCH_HOME',
+                 'TORCHINDUCTOR_CACHE_DIR', 'TRITON_CACHE_DIR'):
+        assert Path(env[name]).is_relative_to(tmp_path)
+    assert env['HF_HUB_OFFLINE'] == env['TRANSFORMERS_OFFLINE'] == '1'
+    assert 'HOME' not in env and 'USERPROFILE' not in env
+
+
+def test_owner_rejects_caches_or_bytecode_on_source_volume(tmp_path):
+    from tools.observe_vision_coco_occlusion import cache_environment
+    from tools.run_vision_coco_occlusion import validate_cache_placement
+
+    temporary = tmp_path / 'temporary'
+    temporary.mkdir()
+    prefix = tmp_path / 'bytecode'
+    prefix.mkdir()
+    source = Path(('Z:' if temporary.drive.upper() != 'Z:' else 'Y:') + '/source')
+    env = cache_environment(temporary)
+    validate_cache_placement(tmp_path / 'run', prefix, source, env)
+    with pytest.raises(ValueError, match='cache volume'):
+        validate_cache_placement(tmp_path / 'run', prefix, source, {**env, 'TORCH_HOME': str(source / 'torch')})
+    with pytest.raises(ValueError, match='cache volume'):
+        validate_cache_placement(tmp_path / 'run', source / 'bytecode', source, env)
 
 
 def test_supervisor_waits_for_real_direct_process_and_reports_failure(tmp_path):
