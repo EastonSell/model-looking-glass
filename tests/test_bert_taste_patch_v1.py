@@ -213,3 +213,29 @@ def test_parent_requires_clean_exit_complete_result_and_matching_journals(tmp_pa
     (tmp_path / "incomplete.json").unlink()
     (tmp_path / "tea.jsonl").write_bytes(b"tampered")
     assert parent.assess_result(tmp_path, 0, source, source, True)["status"] == "incomplete"
+
+
+@pytest.mark.parametrize("original, secondary, expected", [
+    (OSError("child failure"), KeyboardInterrupt("receipt interrupted"), KeyboardInterrupt),
+    (OSError("child failure"), SystemExit(7), SystemExit),
+    (KeyboardInterrupt("child interrupted"), OSError("receipt failure"), KeyboardInterrupt),
+    (SystemExit(9), KeyboardInterrupt("receipt interrupted"), SystemExit),
+])
+def test_parent_receipt_failure_preserves_cancellation(tmp_path, monkeypatch, original, secondary, expected):
+    parent = importlib.import_module("scripts.bert_taste_parent_v1")
+    monkeypatch.setattr(parent, "source_snapshot", lambda: {"commit": "a" * 40})
+
+    def fail_child(*_args, **_kwargs):
+        raise original
+
+    def fail_receipt(*_args, **_kwargs):
+        raise secondary
+
+    monkeypatch.setattr(parent.subprocess, "run", fail_child)
+    monkeypatch.setattr(parent, "_write_receipt", fail_receipt)
+    with pytest.raises(expected) as caught:
+        parent.main(["--cache-dir", str(tmp_path), "--output", str(tmp_path / "run")])
+    if isinstance(original, (KeyboardInterrupt, SystemExit)):
+        assert caught.value is original
+    else:
+        assert caught.value is secondary and caught.value.__cause__ is original
