@@ -1,10 +1,13 @@
 # Agreement-direction training from public discovery captures
 
-These vectors were reconstructed from the 16 **already exposed** clean
-DistilGPT-2 discovery activations, after the prospective study protocol was
-published in [PR #404](../../docs/AGREEMENT_DIRECTION_STUDY_V1.md). They do not
-use or reveal the sealed natural-agreement split. No new evaluation inputs or
-model forwards were generated in this construction.
+These vectors use the 16 **already exposed** clean DistilGPT-2 discovery
+activations. Exploratory reconstruction and all three vector hashes were
+available during protocol drafting and review; the fixed artifacts were
+reconstructed and published after [PR #404](../../docs/AGREEMENT_DIRECTION_STUDY_V1.md)
+merged. Both the protocol and vector artifacts were published before the new
+evaluation cases were assembled. They do not use or reveal the sealed
+natural-agreement split. No new evaluation inputs or model forwards were
+generated in this construction.
 
 The positive u direction points from plural toward singular in the mean of
 eight within-lemma pairs at the selected layer-3 attention output. v1 contrasts
