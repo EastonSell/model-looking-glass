@@ -13,3 +13,6 @@ check_distilbert_color_preference_exposures_v2.py -text
 build_distilbert_color_preference_exposures_v1.py -text
 prepare_distilbert_color_prelaunch_v2.py -text
 observe_distilbert_color_preference_v2.py -text
+build_distilbert_antonym_cases_v1.py -text
+build_distilbert_antonym_exposures_v1.py -text
+check_distilbert_antonym_public_v1.py -text
