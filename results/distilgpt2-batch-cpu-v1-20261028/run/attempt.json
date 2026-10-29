@@ -1,0 +1,7 @@
+{
+  "manifest_commit": "a1d1e960e9d4cb55e66ab5460d3e8f8ecc127794",
+  "manifest_sha256": "4f8151f6d946d4395fa49080d699a4eccb6a6416b6683810a0dd5fe6718c140d",
+  "started_utc": "2026-10-29T01:40:31.712217+00:00",
+  "status": "started",
+  "version": "distilgpt2-batch-cpu-v1"
+}

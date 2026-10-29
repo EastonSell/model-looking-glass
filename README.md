@@ -67,6 +67,8 @@ The [recorded CPU shared-service checks](docs/PRETRAINED_SERVICE_SMOKE.md#record
 
 The [pretrained trace smoke](results/pretrained-trace-cpu-v1-20261028/README.md) records 18 events per channel on one fixed five-token input and two fresh-process replays on the same CPU host. It saves hashes and metadata rather than raw activations; it is a correctness check, not a causal study or benchmark.
 
+The [sampled pretrained batch check](results/distilgpt2-batch-cpu-v1-20261028/RESULTS.md) compares serial and two-row outputs on four fixed public CPU cases against a prespecified tolerance, with negative controls and a same-host replay. It does not establish general batch separability or GPU throughput.
+
 The recorded original experiment used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records its installed version inventory; it is not a cross-platform dependency lock. Other versions allowed by the package metadata have not been validated here. For the tested CPU version, install into an isolated environment with `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
 
 ```bash

@@ -1,0 +1,566 @@
+{
+  "complete": true,
+  "controls": {
+    "batch_mean": {
+      "calls": {
+        "mixed": 2,
+        "serial": 4
+      },
+      "complete": true,
+      "error": null,
+      "evidence_sha256": "8dbbbd4dcd85ab832430162029da82ab3a19c89e487faeff3a37ccc7d1f4f2b9",
+      "groups": [
+        {
+          "cases": [
+            {
+              "absolute_error_overflow": false,
+              "case_id": "case-1-1",
+              "input_sha256": "98365fc7148d7fa5a4f4e6dbd7a3d046db8cd0c046e3766b794f81073ea6d5e3",
+              "max_abs_error": 0.5,
+              "max_relative_error": null,
+              "owner": "team-a",
+              "relative_error_nonfinite_reason": "zero_reference",
+              "row_sha256": [
+                "98365fc7148d7fa5a4f4e6dbd7a3d046db8cd0c046e3766b794f81073ea6d5e3"
+              ],
+              "status": "mismatch"
+            },
+            {
+              "absolute_error_overflow": false,
+              "case_id": "case-1-2",
+              "input_sha256": "9e2b5f366559897f322a4cb3d4ecbf1870815fba29101085a26d53b5358429c8",
+              "max_abs_error": 0.5,
+              "max_relative_error": null,
+              "owner": "team-b",
+              "relative_error_nonfinite_reason": "zero_reference",
+              "row_sha256": [
+                "9e2b5f366559897f322a4cb3d4ecbf1870815fba29101085a26d53b5358429c8"
+              ],
+              "status": "mismatch"
+            }
+          ],
+          "group_id": "group-1"
+        },
+        {
+          "cases": [
+            {
+              "absolute_error_overflow": false,
+              "case_id": "case-2-1",
+              "input_sha256": "300a012e7ebee42b530ebfd467d3f81594101bb46cfd0b3ffb246dfe809637d1",
+              "max_abs_error": 0.5,
+              "max_relative_error": null,
+              "owner": "team-a",
+              "relative_error_nonfinite_reason": "zero_reference",
+              "row_sha256": [
+                "300a012e7ebee42b530ebfd467d3f81594101bb46cfd0b3ffb246dfe809637d1"
+              ],
+              "status": "mismatch"
+            },
+            {
+              "absolute_error_overflow": false,
+              "case_id": "case-2-2",
+              "input_sha256": "616588ebe2689388ffc8ae3f1af902059197a6f230cde34dd6af5871726f7b93",
+              "max_abs_error": 0.5,
+              "max_relative_error": null,
+              "owner": "team-b",
+              "relative_error_nonfinite_reason": "zero_reference",
+              "row_sha256": [
+                "616588ebe2689388ffc8ae3f1af902059197a6f230cde34dd6af5871726f7b93"
+              ],
+              "status": "mismatch"
+            }
+          ],
+          "group_id": "group-2"
+        }
+      ],
+      "protocol_sha256": "359f7fde4cb9ceb2e294b440f3e64188f50cd78ec33f48e21316677027b0017b",
+      "status": "failed",
+      "tested_rows": [
+        2
+      ],
+      "version": "model-looking-glass-batch-evidence-v1"
+    },
+    "positive_playback": {
+      "calls": {
+        "mixed": 2,
+        "serial": 4
+      },
+      "complete": true,
+      "error": null,
+      "evidence_sha256": "d012d126b4942a14b9a5fe0bf0e6b874255cc365900f8bbcf3a03ecd2d560fdd",
+      "groups": [
+        {
+          "cases": [
+            {
+              "absolute_error_overflow": false,
+              "case_id": "case-1-1",
+              "input_sha256": "98365fc7148d7fa5a4f4e6dbd7a3d046db8cd0c046e3766b794f81073ea6d5e3",
+              "max_abs_error": 3.814697265625e-05,
+              "max_relative_error": 6.445686614197488e-07,
+              "owner": "team-a",
+              "relative_error_nonfinite_reason": null,
+              "row_sha256": [
+                "98365fc7148d7fa5a4f4e6dbd7a3d046db8cd0c046e3766b794f81073ea6d5e3"
+              ],
+              "status": "matched"
+            },
+            {
+              "absolute_error_overflow": false,
+              "case_id": "case-1-2",
+              "input_sha256": "9e2b5f366559897f322a4cb3d4ecbf1870815fba29101085a26d53b5358429c8",
+              "max_abs_error": 3.0517578125e-05,
+              "max_relative_error": 5.244596508606547e-07,
+              "owner": "team-b",
+              "relative_error_nonfinite_reason": null,
+              "row_sha256": [
+                "9e2b5f366559897f322a4cb3d4ecbf1870815fba29101085a26d53b5358429c8"
+              ],
+              "status": "matched"
+            }
+          ],
+          "group_id": "group-1"
+        },
+        {
+          "cases": [
+            {
+              "absolute_error_overflow": false,
+              "case_id": "case-2-1",
+              "input_sha256": "300a012e7ebee42b530ebfd467d3f81594101bb46cfd0b3ffb246dfe809637d1",
+              "max_abs_error": 3.0517578125e-05,
+              "max_relative_error": 4.6492311973176727e-07,
+              "owner": "team-a",
+              "relative_error_nonfinite_reason": null,
+              "row_sha256": [
+                "300a012e7ebee42b530ebfd467d3f81594101bb46cfd0b3ffb246dfe809637d1"
+              ],
+              "status": "matched"
+            },
+            {
+              "absolute_error_overflow": false,
+              "case_id": "case-2-2",
+              "input_sha256": "616588ebe2689388ffc8ae3f1af902059197a6f230cde34dd6af5871726f7b93",
+              "max_abs_error": 3.0517578125e-05,
+              "max_relative_error": 4.661784224655378e-07,
+              "owner": "team-b",
+              "relative_error_nonfinite_reason": null,
+              "row_sha256": [
+                "616588ebe2689388ffc8ae3f1af902059197a6f230cde34dd6af5871726f7b93"
+              ],
+              "status": "matched"
+            }
+          ],
+          "group_id": "group-2"
+        }
+      ],
+      "protocol_sha256": "eb6bbcc57b6284a2fd116fb0f129077dc72f6ddb3f599c3441ebaeef733ce460",
+      "status": "passed",
+      "tested_rows": [
+        2
+      ],
+      "version": "model-looking-glass-batch-evidence-v1"
+    },
+    "reversed_playback": {
+      "calls": {
+        "mixed": 2,
+        "serial": 4
+      },
+      "complete": true,
+      "error": null,
+      "evidence_sha256": "f3e5baacb29215a9f54b3ae05d8110feaa9e2b3020d95069ca85d384c43e741a",
+      "groups": [
+        {
+          "cases": [
+            {
+              "absolute_error_overflow": false,
+              "case_id": "case-1-1",
+              "input_sha256": "98365fc7148d7fa5a4f4e6dbd7a3d046db8cd0c046e3766b794f81073ea6d5e3",
+              "max_abs_error": 13.858951568603516,
+              "max_relative_error": 0.21572719611726307,
+              "owner": "team-a",
+              "relative_error_nonfinite_reason": null,
+              "row_sha256": [
+                "98365fc7148d7fa5a4f4e6dbd7a3d046db8cd0c046e3766b794f81073ea6d5e3"
+              ],
+              "status": "mismatch"
+            },
+            {
+              "absolute_error_overflow": false,
+              "case_id": "case-1-2",
+              "input_sha256": "9e2b5f366559897f322a4cb3d4ecbf1870815fba29101085a26d53b5358429c8",
+              "max_abs_error": 13.858955383300781,
+              "max_relative_error": 0.275066581545661,
+              "owner": "team-b",
+              "relative_error_nonfinite_reason": null,
+              "row_sha256": [
+                "9e2b5f366559897f322a4cb3d4ecbf1870815fba29101085a26d53b5358429c8"
+              ],
+              "status": "mismatch"
+            }
+          ],
+          "group_id": "group-1"
+        },
+        {
+          "cases": [
+            {
+              "absolute_error_overflow": false,
+              "case_id": "case-2-1",
+              "input_sha256": "300a012e7ebee42b530ebfd467d3f81594101bb46cfd0b3ffb246dfe809637d1",
+              "max_abs_error": 10.7147216796875,
+              "max_relative_error": 0.2021740185080496,
+              "owner": "team-a",
+              "relative_error_nonfinite_reason": null,
+              "row_sha256": [
+                "300a012e7ebee42b530ebfd467d3f81594101bb46cfd0b3ffb246dfe809637d1"
+              ],
+              "status": "mismatch"
+            },
+            {
+              "absolute_error_overflow": false,
+              "case_id": "case-2-2",
+              "input_sha256": "616588ebe2689388ffc8ae3f1af902059197a6f230cde34dd6af5871726f7b93",
+              "max_abs_error": 10.714729309082031,
+              "max_relative_error": 0.2534064092613445,
+              "owner": "team-b",
+              "relative_error_nonfinite_reason": null,
+              "row_sha256": [
+                "616588ebe2689388ffc8ae3f1af902059197a6f230cde34dd6af5871726f7b93"
+              ],
+              "status": "mismatch"
+            }
+          ],
+          "group_id": "group-2"
+        }
+      ],
+      "protocol_sha256": "c7a01fd04940ca1b512d1107dd7275f97b994efc50574a02661c08d609cfd612",
+      "status": "failed",
+      "tested_rows": [
+        2
+      ],
+      "version": "model-looking-glass-batch-evidence-v1"
+    }
+  },
+  "finished_utc": "2026-10-29T01:43:36.998087+00:00",
+  "manifest_commit": "a1d1e960e9d4cb55e66ab5460d3e8f8ecc127794",
+  "manifest_repo_path": "results/distilgpt2-batch-cpu-v1-20261028/frozen.json",
+  "manifest_sha256": "4f8151f6d946d4395fa49080d699a4eccb6a6416b6683810a0dd5fe6718c140d",
+  "model_metadata": {
+    "asset_sha256": {
+      "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+      "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+      "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+      "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+      "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+      "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+    },
+    "attention_implementation": "eager",
+    "device": "cpu",
+    "dtype": "float32",
+    "model_class": "GPT2LMHeadModel",
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "parameter_count": 81912576,
+    "tokenizer_class": "GPT2TokenizerFast",
+    "tokenizer_id": "distilbert/distilgpt2",
+    "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "torch_version": "2.8.0+cu128",
+    "transformers_version": "4.57.3",
+    "use_cache": false,
+    "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+  },
+  "model_state_sha256_after": "bbe571d10ca2ef27ee2650d01844684772ceeb50641e5b4829a249763c55ea30",
+  "model_state_sha256_before": "bbe571d10ca2ef27ee2650d01844684772ceeb50641e5b4829a249763c55ea30",
+  "observed_model_calls": [
+    {
+      "attention_mask_device": "cpu",
+      "attention_mask_dtype": "torch.int64",
+      "attention_mask_shape": [
+        1,
+        4
+      ],
+      "attention_mask_values": [
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "input_ids_device": "cpu",
+      "input_ids_dtype": "torch.int64",
+      "input_ids_shape": [
+        1,
+        4
+      ],
+      "input_ids_values": [
+        [
+          50256,
+          103,
+          203,
+          303
+        ]
+      ],
+      "request_id": "serial-0-0"
+    },
+    {
+      "attention_mask_device": "cpu",
+      "attention_mask_dtype": "torch.int64",
+      "attention_mask_shape": [
+        1,
+        4
+      ],
+      "attention_mask_values": [
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "input_ids_device": "cpu",
+      "input_ids_dtype": "torch.int64",
+      "input_ids_shape": [
+        1,
+        4
+      ],
+      "input_ids_values": [
+        [
+          50256,
+          104,
+          204,
+          304
+        ]
+      ],
+      "request_id": "serial-0-1"
+    },
+    {
+      "attention_mask_device": "cpu",
+      "attention_mask_dtype": "torch.int64",
+      "attention_mask_shape": [
+        2,
+        4
+      ],
+      "attention_mask_values": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "input_ids_device": "cpu",
+      "input_ids_dtype": "torch.int64",
+      "input_ids_shape": [
+        2,
+        4
+      ],
+      "input_ids_values": [
+        [
+          50256,
+          103,
+          203,
+          303
+        ],
+        [
+          50256,
+          104,
+          204,
+          304
+        ]
+      ],
+      "request_id": "mixed-0"
+    },
+    {
+      "attention_mask_device": "cpu",
+      "attention_mask_dtype": "torch.int64",
+      "attention_mask_shape": [
+        1,
+        4
+      ],
+      "attention_mask_values": [
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "input_ids_device": "cpu",
+      "input_ids_dtype": "torch.int64",
+      "input_ids_shape": [
+        1,
+        4
+      ],
+      "input_ids_values": [
+        [
+          50256,
+          105,
+          205,
+          305
+        ]
+      ],
+      "request_id": "serial-1-0"
+    },
+    {
+      "attention_mask_device": "cpu",
+      "attention_mask_dtype": "torch.int64",
+      "attention_mask_shape": [
+        1,
+        4
+      ],
+      "attention_mask_values": [
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "input_ids_device": "cpu",
+      "input_ids_dtype": "torch.int64",
+      "input_ids_shape": [
+        1,
+        4
+      ],
+      "input_ids_values": [
+        [
+          50256,
+          106,
+          206,
+          306
+        ]
+      ],
+      "request_id": "serial-1-1"
+    },
+    {
+      "attention_mask_device": "cpu",
+      "attention_mask_dtype": "torch.int64",
+      "attention_mask_shape": [
+        2,
+        4
+      ],
+      "attention_mask_values": [
+        [
+          1,
+          1,
+          1,
+          1
+        ],
+        [
+          1,
+          1,
+          1,
+          1
+        ]
+      ],
+      "input_ids_device": "cpu",
+      "input_ids_dtype": "torch.int64",
+      "input_ids_shape": [
+        2,
+        4
+      ],
+      "input_ids_values": [
+        [
+          50256,
+          105,
+          205,
+          305
+        ],
+        [
+          50256,
+          106,
+          206,
+          306
+        ]
+      ],
+      "request_id": "mixed-1"
+    }
+  ],
+  "output_archive": {
+    "archive_sha256": "5c7aafab931e8954d1c40792f89bbb8c2c7839db9a99224bc1be3a977b0803fb",
+    "entries": [
+      {
+        "bytes": 804112,
+        "dtype": "little-endian-float32",
+        "member": "serial-0-0.f32",
+        "request_id": "serial-0-0",
+        "sha256": "7d86634db291e2b25dcf43e7e96f9af4f523f15757687aa5be96764d83777b4e",
+        "shape": [
+          1,
+          4,
+          50257
+        ]
+      },
+      {
+        "bytes": 804112,
+        "dtype": "little-endian-float32",
+        "member": "serial-0-1.f32",
+        "request_id": "serial-0-1",
+        "sha256": "62d3b186c74da1a331d382cb4363677a31c1efc0dd829e2574755a33c305bb8a",
+        "shape": [
+          1,
+          4,
+          50257
+        ]
+      },
+      {
+        "bytes": 1608224,
+        "dtype": "little-endian-float32",
+        "member": "mixed-0.f32",
+        "request_id": "mixed-0",
+        "sha256": "66aa16c47546c2d8f9a588994ceb9abb94b567838d1825ddb520dc77a6313ab1",
+        "shape": [
+          2,
+          4,
+          50257
+        ]
+      },
+      {
+        "bytes": 804112,
+        "dtype": "little-endian-float32",
+        "member": "serial-1-0.f32",
+        "request_id": "serial-1-0",
+        "sha256": "d42ffafc3377b1fa4589f942d5e338e95b3c43f7dbe1ff0e316a151408433d63",
+        "shape": [
+          1,
+          4,
+          50257
+        ]
+      },
+      {
+        "bytes": 804112,
+        "dtype": "little-endian-float32",
+        "member": "serial-1-1.f32",
+        "request_id": "serial-1-1",
+        "sha256": "bdbad3eb6dfd8b8259f6ad9ed7407baa8852ce674d9c8421e12d73af9a92e9f5",
+        "shape": [
+          1,
+          4,
+          50257
+        ]
+      },
+      {
+        "bytes": 1608224,
+        "dtype": "little-endian-float32",
+        "member": "mixed-1.f32",
+        "request_id": "mixed-1",
+        "sha256": "d240d782597f9fc3c301c0277c71f2423ef1d66f51ba58cb1581913fc381f62c",
+        "shape": [
+          2,
+          4,
+          50257
+        ]
+      }
+    ],
+    "raw_bytes": 6432896
+  },
+  "primary_evidence_sha256": "d012d126b4942a14b9a5fe0bf0e6b874255cc365900f8bbcf3a03ecd2d560fdd",
+  "status": "passed",
+  "version": "distilgpt2-batch-cpu-v1"
+}

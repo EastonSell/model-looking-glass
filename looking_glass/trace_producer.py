@@ -104,11 +104,18 @@ class ProducerEnvelope:
         self._cancelled = False
         self._operation = None
         self._deferred = None
+        self._closed = False
 
     @property
     def profile(self):
         """The immutable commitments used for admission."""
         return self._profile
+
+    @property
+    def closed(self):
+        """Whether this envelope's owner explicitly closed its empty request."""
+        with self._lock:
+            return self._closed
 
     @classmethod
     def acquire(cls, budget, request_id, profile):
@@ -265,4 +272,6 @@ class ProducerEnvelope:
         with self._lock:
             if self._state == "quarantined":
                 raise HostBusy("quarantined producer requires external recovery")
-            return self._request.close()
+            closed = self._request.close()
+            self._closed = True
+            return closed
