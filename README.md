@@ -96,6 +96,8 @@ Full activations can contain sensitive information. This synthetic benchmark sav
 - [Independent review and corrections](REVIEW.md)
 - [Audit of the preserved CPU records and reproducibility limits](docs/REPRODUCIBILITY_AUDIT.md)
 - [Causal intervention literature and controls](docs/CAUSAL_LITERATURE.md)
+- [Machine and GPU inventory](docs/GPU_INVENTORY_V1.md)
+- [Trace custody integration plan](docs/TRACE_CUSTODY_PLAN.md)
 - [Verification status](evidence/STATUS.md)
 - [Design](docs/superpowers/specs/2026-10-28-runtime-probes-design.md)
 - [Implementation plan](docs/superpowers/plans/2026-10-28-runtime-probes.md)
