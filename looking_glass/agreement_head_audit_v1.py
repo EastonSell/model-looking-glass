@@ -8,6 +8,18 @@ import re
 import struct
 
 
+def _rounding_probe():
+    one, half = 1.0, math.ldexp(1.0, -53)
+    next_one = one + math.ldexp(1.0, -52)
+    if (one + half != one or next_one + half != 1.0 + math.ldexp(1.0, -51)
+            or one - math.ldexp(1.0, -54) != one or next_one * 1.5 != 1.5 + math.ldexp(1.0, -51)
+            or one / 10.0 != float.fromhex("0x1.999999999999ap-4")
+            or math.sqrt(2.0) != float.fromhex("0x1.6a09e667f3bcdp+0")
+            or struct.pack("<f", 1.0 + 2.0 ** -24) != bytes.fromhex("0000803f")
+            or struct.pack("<f", 1.0 + 3.0 * 2.0 ** -24) != bytes.fromhex("0200803f")):
+        raise ValueError("replay arithmetic is not nearest-even under the fixed probes")
+
+
 def _values(raw):
     if type(raw) is not bytes or not raw or len(raw) % 4:
         raise ValueError("invalid binary32 payload")
@@ -62,6 +74,7 @@ def _evaluation(details, candidate, comparator):
 
 def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None):
     """Recompute one closed attempt; callers separately verify source and admission."""
+    _rounding_probe()
     root = Path(directory)
     if (phase not in ("development", "evaluation") or len(rows) != 16 or len(heads) < 2
             or (phase == "evaluation" and len(heads) != 2) or len(set(heads)) != len(heads)):
@@ -111,9 +124,11 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None):
 
     def read_forward(row, head, kind, donor=None):
         nonlocal ordinal
+        _rounding_probe()
         identity = {"kind": kind, "row": row, "head": head, "donor": donor, "ordinal": ordinal}
         begin, complete = next_record("forward_begin"), next_record("forward_complete")
-        if begin["event"] != {"type": "forward_begin", **identity} or begin["tensors"] != {}:
+        if (begin["event"] != {"type": "forward_begin", "binary64_before": "nearest-even-probes-passed", **identity}
+                or begin["tensors"] != {}):
             raise ValueError("forward announcement differs")
         event, refs = complete["event"], complete["tensors"]
         if any(event.get(key) != value for key, value in identity.items()):
@@ -142,6 +157,11 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None):
             raise ValueError("forward coordinates or shapes differ")
         if kind not in ("observe", "repeat") and refs["replacement"]["shape"] != [width // nheads]:
             raise ValueError("replacement width differs")
+        postcheck = next_record("numeric_postcheck")
+        if postcheck["event"] != {"type": "numeric_postcheck", "ordinal": ordinal,
+                                  "binary64_after": "nearest-even-probes-passed"} or postcheck["tensors"]:
+            raise ValueError("post-forward numeric probe record differs")
+        _rounding_probe()
         ordinal += 1
         return event, data, width, nheads
 
@@ -162,6 +182,7 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None):
         start = ((len(rows[row]) - 1) * width + head * head_width) * 4
         return observations[row][0]["before"][start:start + head_width * 4]
 
+    _rounding_probe()
     targets = [i for i in range(16) if phase == "evaluation" or i % 4 < 2]
     distances = []
     for head in heads:
@@ -174,6 +195,7 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None):
     plan = next_record("dose_plan")
     if q < 2.0 ** -20 or plan["tensors"] or plan["event"] != {"type": "dose_plan", "q": q, "distances": distances}:
         raise ValueError("common dose or saved distance plan differs")
+    _rounding_probe()
     self_targets = targets if phase == "evaluation" else targets[:1]
     for head in heads:
         for target in self_targets:
@@ -225,6 +247,7 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None):
         event, data, _, _ = read_forward(row, 0, "repeat")
         if any(data[name] != observations[row][0][name] for name in ("before", "after", "last_logits")):
             raise ValueError("repeat control differs")
+    _rounding_probe()
     ranking = sorted([{"head": head, "values": effects[head],
                        "mean_D": math.fsum(effects[head]) / len(effects[head])} for head in heads],
                      key=lambda item: (-item["mean_D"], item["head"]))
@@ -241,6 +264,7 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None):
             or terminal.get("retained_tensor_bytes") != sum(unique.values())
             or sum(unique.values()) > 128 * 1024 * 1024):
         raise ValueError("summary, candidate, terminal or retained byte count differs")
+    _rounding_probe()
     return {"phase": phase, "forward_count": ordinal, "q": q, "ranking": ranking,
             "candidate": summary["candidate"], "comparator": summary["comparator"],
             "details": details, "evaluation": expected_evaluation, "retained_tensor_bytes": sum(unique.values()),

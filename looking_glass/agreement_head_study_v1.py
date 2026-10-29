@@ -10,7 +10,7 @@ import sys
 import torch
 
 from .agreement_journal import AgreementJournal
-from .copy_head_factorial import f32_bits_to_f64, f64_to_f32_bits
+from .copy_head_factorial import binary64_rounding_probe, f32_bits_to_f64, f64_to_f32_bits
 from .gpt2_head_slice import GPT2HeadSlicePoint, run_gpt2_head_slice
 
 
@@ -139,8 +139,9 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
 
     def call(row_index, head, kind, replacement=None, *, donor=None, q=None, distance=None, actual=None):
         nonlocal count
+        binary64_rounding_probe()
         identity = {"kind": kind, "row": row_index, "head": head, "donor": donor, "ordinal": count}
-        journal.record({"type": "forward_begin", **identity}, {})
+        journal.record({"type": "forward_begin", "binary64_before": "nearest-even-probes-passed", **identity}, {})
         ids = torch.tensor([rows[row_index]], dtype=torch.long)
         point = GPT2HeadSlicePoint(layer=3, token=len(rows[row_index]) - 1, head=head)
         result = run_gpt2_head_slice(model, ids, point=point, run_id=f"{phase}-{count}", replacement=replacement,
@@ -157,6 +158,11 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
         journal.record({"type": "forward_complete", **identity, "point": result.metadata.to_dict(),
                         "requested_q": q, "donor_distance": distance, "realized_q": actual}, tensors)
         count += 1
+        # Retain the returned witnesses before testing post-forward arithmetic.
+        # A failed probe stops the attempt and leaves no success postcheck.
+        binary64_rounding_probe()
+        journal.record({"type": "numeric_postcheck", "ordinal": count - 1,
+                        "binary64_after": "nearest-even-probes-passed"}, {})
         return result.before, result.after, last
 
     try:
@@ -166,6 +172,7 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
             if _bits(before) != _bits(after):
                 raise RuntimeError("observe changed projection-input bits")
             observations.append((before, last))
+        binary64_rounding_probe()
         targets = [i for i in range(16) if phase == "evaluation" or i % 4 < 2]
         distances = []
         for head in heads:
@@ -178,6 +185,7 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
         q = min(item["l2"] for item in distances) / 2.0
         if not math.isfinite(q) or q < MIN_DOSE:
             raise ValueError("common dose is nonfinite or below the fixed floor")
+        binary64_rounding_probe()
         journal.record({"type": "dose_plan", "q": q, "distances": distances}, {})
         self_targets = targets if phase == "evaluation" else targets[:1]
         for head in heads:
@@ -195,6 +203,7 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
                 margins, secondary = {}, {}
                 doses = {}
                 for name, donor in (("opposite", group + (local ^ 1)), ("same", group + (local ^ 2))):
+                    binary64_rounding_probe()
                     source = _slice(observations[target][0], head, model.config.n_head)
                     other = _slice(observations[donor][0], head, model.config.n_head)
                     replacement, d, actual = _replacement(source, other, q)
@@ -214,6 +223,7 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
                     doses[name] = actual
                 sign = 1 if local % 2 == 0 else -1
                 contrast = float(sign * (margins["same"] - margins["opposite"]))
+                binary64_rounding_probe()
                 effects[head].append(contrast)
                 details.append({"head": head, "target": target, "sign": sign,
                                 "clean_margin": _margin(observations[target][1], present_ids),
@@ -228,6 +238,7 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
             if (_bits(before) != _bits(observations[index][0]) or _bits(after) != _bits(before)
                     or _bits(last) != _bits(observations[index][1])):
                 raise RuntimeError("repeat differs from clean observation")
+        binary64_rounding_probe()
         ranking = _rank_heads(effects)
         summary = {"phase": phase, "forward_count": count, "q": q, "ranking": ranking,
                    "candidate": ranking[0]["head"] if phase == "development" else heads[0],
@@ -235,6 +246,7 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
                    "details": details}
         if phase == "evaluation":
             summary["evaluation"] = _evaluation_rule(details, heads[0], heads[1])
+        binary64_rounding_probe()
         journal.record({"type": "summary", **summary}, {})
         journal.finish("complete", summary)
         return summary

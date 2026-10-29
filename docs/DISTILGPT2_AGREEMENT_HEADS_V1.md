@@ -147,7 +147,11 @@ record before each forward and its complete saved result after it. Record the
 full projection input before/after, projection output, submitted replacement,
 full last-token logits, exact input IDs/mask, coordinates, requested/realized
 doses, runtime and verified checkpoint/source identities. Save clean model
-state hashes before and after. Keep failed/incomplete attempts and do not
+state hashes before and after. Probe representative binary64 nearest-even
+arithmetic before and after every forward and around dose and scoring; save
+returned witnesses before the post-forward probe so a failed probe leaves an
+incomplete attempt with that evidence. The probe is a point-in-time check,
+not proof that the mode remained unchanged during native execution. Keep failed/incomplete attempts and do not
 automatically retry after an uncertain forward. A 128 MiB retained-tensor
 budget and separate bounded event log apply per phase; check free disk before
 starting and account separately for any copies. These limits do not bound peak

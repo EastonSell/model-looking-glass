@@ -12,6 +12,7 @@ from looking_glass.agreement_head_study_v1 import (
     _distance, _evaluation_rule, _replacement, _rank_heads, run_development, run_evaluation,
 )
 from looking_glass.agreement_head_audit_v1 import audit
+from looking_glass import agreement_head_study_v1 as study
 
 
 def test_matched_replacement_is_non_amplifying_and_matches_actual_dose():
@@ -110,3 +111,38 @@ def test_evaluation_replay_checks_fixed_candidate_and_rule(tmp_path):
     assert output["forward_count"] == replay["forward_count"] == 128
     assert output["candidate"] == replay["candidate"] == 1
     assert output["evaluation"] == replay["evaluation"]
+
+
+def test_postforward_rounding_failure_retains_result_and_stops(tmp_path, monkeypatch):
+    torch.set_num_threads(1)
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(403)
+        config = GPT2Config(vocab_size=64, n_positions=16, n_ctx=16, n_embd=16, n_layer=4,
+                            n_head=2, resid_pdrop=0.0, embd_pdrop=0.0, attn_pdrop=0.0)
+        config._attn_implementation = "eager"
+        model = GPT2LMHeadModel(config).eval()
+    rows = [[1, 4 * group + index + 2, 30] for group in range(4) for index in range(4)]
+    original, state = study.run_gpt2_head_slice, {"returned": False, "calls": 0}
+
+    def forward(*args, **kwargs):
+        state["calls"] += 1
+        value = original(*args, **kwargs)
+        state["returned"] = True
+        return value
+
+    def probe():
+        if state["returned"]:
+            raise RuntimeError("synthetic rounding drift")
+
+    monkeypatch.setattr(study, "run_gpt2_head_slice", forward)
+    monkeypatch.setattr(study, "binary64_rounding_probe", probe)
+    with pytest.raises(RuntimeError, match="rounding drift"):
+        run_development(model, rows, tmp_path / "drift", heads=(0, 1), present_ids=(1, 2),
+                        secondary_ids=None, metadata={"fixture": True})
+    events = [json.loads(line) for line in (tmp_path / "drift" / "events.jsonl").read_text().splitlines()]
+    terminal = json.loads((tmp_path / "drift" / "terminal.json").read_bytes())
+    assert [record["event"]["type"] for record in events] == ["forward_begin", "forward_complete"]
+    assert state["calls"] == 1 and terminal["status"] == "failed"
+    assert terminal["detail"]["completed_forwards"] == 1
+    for reference in events[1]["tensors"].values():
+        assert (tmp_path / "drift" / "tensors" / (reference["sha256"] + ".f32le")).is_file()

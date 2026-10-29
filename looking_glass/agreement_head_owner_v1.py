@@ -100,6 +100,7 @@ def run_development_owner(*, root, revision, cache_dir, attempt):
     binding = _source_binding(root, revision)
     from .agreement_preflight_v1 import _prepare_denormals, _probe_denormals, _state_digest
     from .agreement_head_study_v1 import run_development
+    from .copy_head_factorial import binary64_rounding_probe
     from .pretrained import ASSETS, MODEL_ID, REVISION
     from .pretrained_exposures_v2 import PUBLIC_DISCOVERY
     import torch
@@ -112,6 +113,7 @@ def run_development_owner(*, root, revision, cache_dir, attempt):
     torch.use_deterministic_algorithms(True)
     torch.manual_seed(2026102912)
     denormals_before = _prepare_denormals(torch)
+    binary64_rounding_probe()
     snapshot = cache_dir / "models--distilbert--distilgpt2" / "snapshots" / REVISION
     assets = _verify_assets(snapshot, ASSETS)
     tokenizer = transformers.AutoTokenizer.from_pretrained(str(snapshot), local_files_only=True,
@@ -141,10 +143,12 @@ def run_development_owner(*, root, revision, cache_dir, attempt):
                 "python": platform.python_version(), "platform": platform.platform(),
                 "cpu_threads": torch.get_num_threads(), "cpu_interop_threads": torch.get_num_interop_threads(),
                 "cpu_environment": {name: os.environ.get(name) for name in ("MKL_CBWR", "ATEN_CPU_CAPABILITY")},
-                "seed": 2026102912, "denormals_before": denormals_before, "model_state_before": before,
+                "seed": 2026102912, "denormals_before": denormals_before,
+                "binary64_before": "nearest-even-probes-passed", "model_state_before": before,
                 "rows": [{"text": text, "token_ids": row} for (text, _), row in zip(PUBLIC_DISCOVERY, rows)]}
     result = run_development(model, rows, attempt, metadata=metadata)
     after = _state_digest(model)
+    binary64_rounding_probe()
     if (after != before or torch.cuda.is_initialized() or _probe_denormals(torch) != denormals_before
             or _verify_assets(snapshot, ASSETS) != assets):
         raise RuntimeError("model state, numeric mode or pinned assets changed during the run")
@@ -153,6 +157,7 @@ def run_development_owner(*, root, revision, cache_dir, attempt):
     terminal_sha = _hash_file(attempt / "terminal.json")[1]
     candidate = {"schema": "distilgpt2-agreement-head-development-candidate-v1", "source_commit": revision,
                  "model_state_before": before, "model_state_after": after, "terminal_sha256": terminal_sha,
+                 "binary64_after": "nearest-even-probes-passed",
                  "summary": result, "scope": "candidate; require observed child exit and independent saved-byte replay"}
     digest = _write_new(attempt / "owner-candidate.json", candidate)
     return {"candidate_sha256": digest, "forward_count": result["forward_count"]}
