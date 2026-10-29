@@ -174,13 +174,16 @@ def aggregate_decision(cells):
 
 
 class Evidence:
-    def __init__(self, path):
+    def __init__(self, path, *, limit=MAX_BYTES):
+        if type(limit) is not int or limit <= 0:
+            raise ValueError('invalid retained-evidence limit')
         path.mkdir(parents=True, exist_ok=False)
         self.path = path
         self.used = 0
+        self.limit = limit
 
     def write(self, name, raw, reserve=65536):
-        if self.used + len(raw) + reserve > MAX_BYTES:
+        if self.used + len(raw) + reserve > self.limit:
             raise ValueError('retained evidence cap exceeded')
         destination = self.path / name
         with destination.open('xb') as stream:
@@ -198,7 +201,7 @@ class Evidence:
                                             separators=(',', ':')) + '\n').encode(), reserve)
 
     def reserve_forward(self):
-        if self.used + MAX_RETURN_BYTES + 3 * 65536 > MAX_BYTES:
+        if self.used + MAX_RETURN_BYTES + 3 * 65536 > self.limit:
             raise ValueError('insufficient evidence capacity for another bounded forward')
 
 
@@ -343,13 +346,13 @@ def validate_landing(condition, action, pos, own, donor, expected, value, state,
 
 
 def run_forward(model, evidence, records, active, source, target, name, action='clean', value=None,
-                token_index=None):
+                token_index=None, *, forward_limit=MAX_FORWARDS):
     """Execute one bounded forward and save returned bytes before validating them."""
     import torch
     from .interventions import ActivationCapture
     from .intervention_plan import ActivationPlan
 
-    if len(records) >= MAX_FORWARDS:
+    if type(forward_limit) is not int or forward_limit <= 0 or len(records) >= forward_limit:
         raise ValueError('forward cap exceeded')
     evidence.reserve_forward()
     source_ids = torch.tensor([source['input_ids']], dtype=torch.long)
@@ -377,16 +380,31 @@ def run_forward(model, evidence, records, active, source, target, name, action='
         return tensor, tensor.numpy().astype('<f4', copy=False).tobytes()
 
     def persist_return(failed):
-        raw = (getattr(out, 'logits', None), getattr(out, 'encoder_last_hidden_state', None),
-               before, after, capture)
         names = ('logits', 'encoder', 'before', 'after', 'capture')
         limits = (8 * 32128, 32 * 512, 32 * 512, 32 * 512, 32 * 512)
-        items = [bounded(t, limit) for t, limit in zip(raw, limits)]
+        errors = {}
+        raw = []
+        for key, attribute in (('logits', 'logits'), ('encoder', 'encoder_last_hidden_state')):
+            try:
+                raw.append(getattr(out, attribute, None))
+            except BaseException as error:
+                errors[key] = error
+                raw.append(None)
+        raw.extend((before, after, capture))
+        items = []
+        for key, tensor, limit in zip(names, raw, limits):
+            try:
+                items.append(bounded(tensor, limit))
+            except BaseException as error:
+                errors.setdefault(key, error)
+                items.append((None, b''))
         layout, offset = {}, 0
         for key, (tensor, data) in zip(names, items):
             layout[key] = {'available': tensor is not None,
                            'shape': None if tensor is None else list(tensor.shape),
                            'offset': offset, 'bytes': len(data)}
+            if key in errors:
+                layout[key]['error_type'] = type(errors[key]).__name__
             offset += len(data)
         active.update(return_observed=returned, tensor_layout=layout)
         packed = b''.join(data for _, data in items)
@@ -394,7 +412,10 @@ def run_forward(model, evidence, records, active, source, target, name, action='
             filename = f'forward-{len(records):03d}' + ('-failed.bin' if failed else '.bin')
             sha = evidence.write(filename, packed)
             active.update(saved_file=filename, saved_sha256=sha)
-        return [item[0] for item in items], layout
+        # Cancellation wins over an earlier ordinary component error after salvage.
+        cancellation = next((error for error in errors.values() if not isinstance(error, Exception)), None)
+        return [item[0] for item in items], layout, (cancellation if cancellation is not None
+                                                     else next(iter(errors.values()), None))
 
     try:
         with torch.no_grad():
@@ -422,19 +443,26 @@ def run_forward(model, evidence, records, active, source, target, name, action='
                 snapshots = session.captures
                 before, after = snapshots['before'], snapshots['after']
                 metadata = session.metadata
-    except BaseException:
+    except BaseException as original_error:
         # The model may have returned successfully before session validation failed.
+        component_error = None
         try:
-            persist_return(failed=True)
+            _, _, component_error = persist_return(failed=True)
             evidence.json(f'forward-{len(records):03d}-failed.json',
                           dict(active, status='forward-failed', session_metadata=metadata))
-        except BaseException:
-            pass
+        except BaseException as salvage_error:
+            if not isinstance(salvage_error, Exception) and isinstance(original_error, Exception):
+                raise
+        if (component_error is not None and not isinstance(component_error, Exception)
+                and isinstance(original_error, Exception)):
+            raise component_error
         raise
 
-    (logits, state, before, after, capture), layout = persist_return(failed=False)
+    (logits, state, before, after, capture), layout, component_error = persist_return(failed=False)
     active['phase'] = 'post-return-validation'
     evidence.json(f'forward-{len(records):03d}-observed.json', dict(active, session_metadata=metadata))
+    if component_error is not None:
+        raise component_error
     if not all(torch.equal(x, y) for x, y in zip((source_ids, mask, decoder, decoder_mask), original)):
         raise ValueError('model mutated input or mask')
     if (logits is None or state is None or tuple(logits.shape) != (1, len(target_ids), 32128)

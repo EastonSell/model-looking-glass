@@ -149,3 +149,54 @@ def summarize_clean(rows, scores):
             'preference_gate_passed': gate('preference_pass'),
             'comparator_gate_count': sum(group['comparator_pass'] for group in groups),
             'preference_gate_count': sum(group['preference_pass'] for group in groups)}
+
+
+def summarize_interventions(rows, clean_scores, action_scores):
+    """Retain all fixed-band effects and evaluate each predeclared pattern."""
+    clean = summarize_clean(rows, clean_scores)
+    names = ('self', 'year_final', 'year_at_zero', 'rotated_final')
+    if (type(action_scores) is not dict or set(action_scores) != set(clean_scores)
+            or any(type(row) is not dict or set(row) != set(names) for row in action_scores.values())
+            or any(type(value) not in (int, float) or not math.isfinite(value)
+                   for row in action_scores.values() for value in row.values())
+            or any(action_scores[key]['self'] != clean_scores[key] for key in clean_scores)):
+        raise ValueError('one finite score for every fixed action is required')
+    pairs = []
+    for pair_index, _ in enumerate(PAIRS):
+        for event in EVENTS:
+            conditions = {}
+            for condition in CONDITIONS:
+                low = _case_id(pair_index, event, condition, 'low')
+                high = _case_id(pair_index, event, condition, 'high')
+                actions = {}
+                for name in names:
+                    low_effect = action_scores[low][name] - clean_scores[low]
+                    high_effect = action_scores[high][name] - clean_scores[high]
+                    low_donorward, high_donorward = -low_effect, high_effect
+                    actions[name] = {'low_E': low_effect, 'high_E': high_effect,
+                                     'low_donorward': low_donorward, 'high_donorward': high_donorward,
+                                     'donorward_mean': (low_donorward + high_donorward) / 2}
+                conditions[condition] = actions
+            f = conditions['forward']['year_final']
+            n = conditions['neutral']['year_final']
+            r = conditions['reverse']['year_final']
+            f_position = conditions['forward']['year_at_zero']['donorward_mean']
+            f_rotated = conditions['forward']['rotated_final']['donorward_mean']
+            pref = (f['low_donorward'] > 0 and f['high_donorward'] > 0
+                    and n['low_donorward'] > 0 and n['high_donorward'] > 0
+                    and f['donorward_mean'] - n['donorward_mean'] > 0.1
+                    and f['donorward_mean'] > f_position and f['donorward_mean'] > f_rotated)
+            comparator = (f['low_donorward'] > 0 and f['high_donorward'] > 0
+                          and r['low_donorward'] < 0 and r['high_donorward'] < 0)
+            pairs.append({'pair_index': pair_index, 'event': event, 'conditions': conditions,
+                          'forward_minus_neutral': f['donorward_mean'] - n['donorward_mean'],
+                          'preference_pattern': pref, 'comparator_pattern': comparator})
+    pref_count = sum(pair['preference_pattern'] for pair in pairs)
+    comparator_count = sum(pair['comparator_pattern'] for pair in pairs)
+    means = {condition: {name: math.fsum(pair['conditions'][condition][name]['donorward_mean']
+                                         for pair in pairs) / len(pairs) for name in names}
+             for condition in CONDITIONS}
+    return {'pairs': pairs, 'mean_donorward_by_condition_and_action': means,
+            'preference_pattern_count': pref_count, 'comparator_pattern_count': comparator_count,
+            'preference_pattern_supported': pref_count >= 6 if clean['preference_gate_passed'] else None,
+            'comparator_pattern_supported': comparator_count >= 6 if clean['comparator_gate_passed'] else None}
