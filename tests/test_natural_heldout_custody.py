@@ -478,6 +478,7 @@ class CustodyTests(unittest.TestCase):
         command = outer_command(inner)
         for outcome in ('nonzero', 'before_gate', 'after_gate'):
             calls = []
+            state = [None, None, False, False]
             class Process:
                 pid = 54321
                 stdin = io.BytesIO()
@@ -503,9 +504,16 @@ class CustodyTests(unittest.TestCase):
                     custody.observe_supervisor_process(command, attempt, supervisor, self.public,
                                                        self.wrapper, config_path=self.config_path,
                                                        config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
-                                                       job_factory=Job)
-                self.assertIn('drain', calls)
-                self.assertIn('close', calls)
+                                                       job_factory=Job, custody_state=state)
+                if outcome == 'before_gate':
+                    self.assertIn('drain', calls)
+                    self.assertIn('close', calls)
+                    self.assertFalse(state[2])
+                else:
+                    self.assertNotIn('drain', calls)
+                    self.assertNotIn('close', calls)
+                    self.assertTrue(state[2])
+                    self.assertFalse(state[3])
                 self.assertFalse(observation_path.exists())
         with self.assertRaisesRegex(RuntimeError, 'already claimed'):
             self.prepare()
@@ -563,15 +571,16 @@ class CustodyTests(unittest.TestCase):
         source = self.root / 'observer-entry.py'
         raw = ('from pathlib import Path\nPath(' + repr(str(marker)) + ').write_text("ran")\n').encode()
         source.write_bytes(raw)
-        for digest, expected in (('f' * 64, False), (hashlib.sha256(raw).hexdigest(), True)):
-            with self.subTest(valid=expected):
-                result = custody.subprocess.run([sys.executable, '-I', '-S', '-B', '-c',
-                                                 custody.OBSERVER_ENTRY_BOOTSTRAP,
-                                                 str(source), digest], capture_output=True)
-                self.assertEqual(result.returncode == 0, expected)
-                self.assertEqual(marker.exists(), expected)
-                if marker.exists():
-                    marker.unlink()
+        for optimization in ((), ('-O',), ('-OO',)):
+            for digest, expected in (('f' * 64, False), (hashlib.sha256(raw).hexdigest(), True)):
+                with self.subTest(valid=expected, optimization=optimization):
+                    result = custody.subprocess.run([sys.executable, '-I', '-S', '-B', *optimization, '-c',
+                                                     custody.OBSERVER_ENTRY_BOOTSTRAP,
+                                                     str(source), digest], capture_output=True)
+                    self.assertEqual(result.returncode == 0, expected)
+                    self.assertEqual(marker.exists(), expected)
+                    if marker.exists():
+                        marker.unlink()
 
     def test_observer_preserves_cancellation_when_cleanup_also_fails(self):
         attempt, _ = self.prepare()
@@ -617,22 +626,120 @@ class CustodyTests(unittest.TestCase):
             def assign(self, process): pass
             def terminate_and_wait(self): raise OSError('synthetic cleanup failure')
             def close(self): pass
-        process, job = Process(), Job()
+        process, job, state = Process(), Job(), [None, None, False, False]
         with mock.patch.object(custody.subprocess, 'Popen', return_value=process), \
              mock.patch.object(custody, '_process_birth_100ns', return_value=123456789):
             with self.assertRaises(KeyboardInterrupt) as caught:
                 custody.observe_supervisor_process(command, attempt, supervisor, self.public, self.wrapper,
                     config_path=self.config_path, config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
-                    job_factory=lambda: job)
-        retained = caught.exception._mlg_quarantined_process
-        self.assertIs(retained['process'], process)
-        self.assertIs(retained['job'], job)
-        self.assertIsInstance(caught.exception.__cause__, OSError)
-        with mock.patch.object(custody.time, 'sleep', side_effect=KeyboardInterrupt()), \
+                    job_factory=lambda: job, custody_state=state)
+        self.assertIs(state[0], job)
+        self.assertIs(state[1], process)
+        self.assertEqual(state[2:], [True, False])
+        with mock.patch.object(custody.time, 'sleep', side_effect=[KeyboardInterrupt(), None]) as sleep, \
              mock.patch.object(sys, 'stderr', new_callable=io.StringIO) as captured:
-            with self.assertRaises(KeyboardInterrupt):
-                custody._hold_unverified_process(caught.exception)
+            custody._hold_unverified_process(state, _test_release=lambda retained: retained is state)
+            self.assertEqual(sleep.call_count, 2)
             self.assertEqual(json.loads(captured.getvalue())['status'], 'quarantined')
+        broken = SimpleNamespace(write=mock.Mock(side_effect=OSError('closed')), flush=lambda: None)
+        with mock.patch.object(custody.time, 'sleep', return_value=None), \
+             mock.patch.object(sys, 'stderr', broken):
+            custody._hold_unverified_process(state, _test_release=lambda retained: retained is state)
+
+    def test_later_cleanup_cancellation_takes_precedence(self):
+        attempt, _ = self.prepare()
+        supervisor = self.supervised(attempt)
+        (supervisor / 'supervisor-observation.json').unlink()
+        inner = json.loads((supervisor / 'supervisor.json').read_bytes())['command']
+        class Process:
+            pid = 54321
+            stdin = io.BytesIO()
+            def wait(self, timeout): return 0
+            def poll(self): return None
+            def kill(self): pass
+        class Job:
+            def assign(self, process): pass
+            def terminate_and_wait(self): raise OSError('synthetic drain failure')
+            def close(self): raise KeyboardInterrupt()
+        process, job = Process(), Job()
+        with mock.patch.object(custody.subprocess, 'Popen', return_value=process), \
+             mock.patch.object(custody, '_process_birth_100ns', side_effect=ValueError('synthetic birth failure')):
+            with self.assertRaises(KeyboardInterrupt) as caught:
+                custody.observe_supervisor_process(outer_command(inner), attempt, supervisor, self.public,
+                    self.wrapper, config_path=self.config_path,
+                    config_sha256=hashlib.sha256(self.config_bytes).hexdigest(), job_factory=lambda: job)
+        self.assertIsInstance(caught.exception.__cause__, ValueError)
+
+    def test_primary_cancellation_precedes_later_system_exit(self):
+        attempt, _ = self.prepare()
+        supervisor = self.supervised(attempt)
+        (supervisor / 'supervisor-observation.json').unlink()
+        inner = json.loads((supervisor / 'supervisor.json').read_bytes())['command']
+        class Process:
+            pid = 54321
+            stdin = io.BytesIO()
+            def wait(self, timeout): return 0
+            def poll(self): return None
+            def kill(self): pass
+        class Job:
+            def assign(self, process): pass
+            def terminate_and_wait(self): raise SystemExit(5)
+            def close(self): pass
+        with mock.patch.object(custody.subprocess, 'Popen', return_value=Process()), \
+             mock.patch.object(custody, '_process_birth_100ns', side_effect=KeyboardInterrupt()):
+            with self.assertRaises(KeyboardInterrupt) as caught:
+                custody.observe_supervisor_process(outer_command(inner), attempt, supervisor, self.public,
+                    self.wrapper, config_path=self.config_path,
+                    config_sha256=hashlib.sha256(self.config_bytes).hexdigest(), job_factory=Job)
+        self.assertIsInstance(caught.exception.__cause__, SystemExit)
+
+    def test_invalid_inner_receipt_after_outer_exit_keeps_lease_custody(self):
+        attempt, _ = self.prepare()
+        supervisor = self.supervised(attempt)
+        (supervisor / 'supervisor-observation.json').unlink()
+        receipt_path = supervisor / 'supervisor.json'
+        receipt = json.loads(receipt_path.read_bytes())
+        inner = receipt['command']
+        receipt['cleanup_verified'] = False
+        receipt['job_drained'] = False
+        receipt['quarantined'] = True
+        receipt_path.write_bytes(custody._json_bytes(receipt))
+        class Process:
+            pid = 54321
+            stdin = io.BytesIO()
+            def wait(self, timeout): return 0
+        class Job:
+            def assign(self, process): pass
+            def terminate_and_wait(self): pass
+            def close(self): pass
+        process, job, state = Process(), Job(), [None, None, False, False]
+        with mock.patch.object(custody.subprocess, 'Popen', return_value=process), \
+             mock.patch.object(custody, '_process_birth_100ns', return_value=123456789):
+            with self.assertRaises(custody.CustodyError):
+                custody.observe_supervisor_process(outer_command(inner), attempt, supervisor, self.public,
+                    self.wrapper, config_path=self.config_path,
+                    config_sha256=hashlib.sha256(self.config_bytes).hexdigest(),
+                    job_factory=lambda: job, custody_state=state)
+        self.assertIs(state[0], job)
+        self.assertIs(state[1], process)
+        self.assertEqual(state[2:], [True, False])
+        self.assertFalse((supervisor / 'supervisor-observation.json').exists())
+
+    def test_uncertain_inner_supervisor_is_rooted_even_if_its_call_raises(self):
+        for outcome in ('return', 'raise', 'empty_unverified'):
+            with self.subTest(outcome=outcome):
+                supervisor = SimpleNamespace(_QUARANTINED=[] if outcome == 'empty_unverified' else [object()])
+                def run(*args, **kwargs):
+                    if outcome == 'raise': raise OSError('synthetic inner supervisor failure')
+                    return {'cleanup_verified': False}
+                supervisor.supervise_heldout = run
+                with mock.patch.object(custody, '_hold_unverified_process') as hold:
+                    if outcome == 'raise':
+                        with self.assertRaises(OSError):
+                            custody._supervise_preparation(supervisor, ['fake'], self.root, lambda *_: {})
+                    else:
+                        custody._supervise_preparation(supervisor, ['fake'], self.root, lambda *_: {})
+                    hold.assert_called_with(supervisor)
 
     def test_observer_rejects_wrong_command_before_spawn(self):
         attempt, _ = self.prepare()
