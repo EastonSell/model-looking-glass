@@ -51,13 +51,16 @@ any duplicate or prefix relationship with the discovery rows. Retain a failed
 attempt and do not redraw, replace rows, or choose a different site.
 
 The natural and injection tracks use separate allocations and may proceed
-independently if the other allocation does not yet exist. Custodians serialize
-the allocation and first-forward announcements using one reviewed cooperative
-gate so that a concurrent allocation cannot be mistaken for an absent peer.
+independently. Under one reviewed cooperative gate, custodians serialize the
+allocation and first-forward announcements so that a concurrent allocation
+cannot be mistaken for an absent peer. A ready track may proceed while its peer
+is absent or has an allocation in progress but has not announced a forward,
+provided the gate also rules out uncertain peer exposure. Record these as
+distinct unchecked states, never as clearance.
 The durable first-forward announcement is the ordering point; it treats that
 track's rows as possibly exposed even if its eventual execution is uncertain.
-When the peer is absent, record cross-track disjointness as pending and do not
-claim it has been established. Once both splits are committed, a trusted
+When the peer is absent or only in progress, record cross-track disjointness as
+pending and do not claim it has been established. Once both splits are committed, a trusted
 comparator verifies both commitments privately and checks all 16-by-16 full
 rows in both prefix directions before the later track's held-out forward. If
 both commitments exist before either first-forward announcement, compare before
