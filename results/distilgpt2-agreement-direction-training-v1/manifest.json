@@ -1,0 +1,150 @@
+{
+  "archive_sha256": "9ea7ebf83f0580335cbf35b65b2277d8990090adff5b3eb8d0b3b68409cd3a69",
+  "builder_sha256": "45ad94dd92848cb87fe0ae06573c276ffb05e6a6073ce9224a4f2a04c529b63e",
+  "geometry": {
+    "interaction_projection_on_u": 0.07919605674435969,
+    "interaction_raw_norm": 0.7753393841499766,
+    "interaction_residual_norm": 0.7712840885239427,
+    "mean_difference_norm": 8.484298740505295,
+    "norms": {
+      "u": 1.0,
+      "v1": 1.0,
+      "v2": 1.0
+    },
+    "pairwise_dots": {
+      "u_v1": -5.4337759136404405e-18,
+      "u_v2": -4.087992761686067e-18,
+      "v1_v2": -1.6403851814763594e-18
+    },
+    "random_projection_on_u": 0.41489194244614114,
+    "random_raw_norm": 15.756382792582967,
+    "random_residual_after_u_norm": 15.750919445622783,
+    "random_residual_norm": 15.73456944829402,
+    "random_residual_projection_on_v1": 0.7174870446986025,
+    "training_pair_projections": [
+      {
+        "norm": 7.975336025104731,
+        "u": 6.891889130232728,
+        "v1": -0.13975277213481138,
+        "v2": -0.003350591597814648
+      },
+      {
+        "norm": 8.278386270855657,
+        "u": 7.340816727072458,
+        "v1": -0.7872773349136578,
+        "v2": -0.027154976666590617
+      },
+      {
+        "norm": 12.680364444688633,
+        "u": 11.860471154012865,
+        "v1": 1.1586501232661257,
+        "v2": -0.24067154238838667
+      },
+      {
+        "norm": 11.495967963081206,
+        "u": 10.648567665258527,
+        "v1": -0.8542469864603741,
+        "v2": -0.040614802004793685
+      },
+      {
+        "norm": 8.766383169292126,
+        "u": 7.400247827168814,
+        "v1": 1.7024661863667372,
+        "v2": 0.1293244477841123
+      },
+      {
+        "norm": 8.560531633792092,
+        "u": 7.949802880051762,
+        "v1": -0.49694403741570653,
+        "v2": 0.0729102070358361
+      },
+      {
+        "norm": 9.650101414488583,
+        "u": 8.101371077584217,
+        "v1": 0.3637728165977191,
+        "v2": 0.11469768620208891
+      },
+      {
+        "norm": 8.193601078634197,
+        "u": 7.681223462660997,
+        "v1": -0.9466679953060325,
+        "v2": -0.005140428364451789
+      }
+    ]
+  },
+  "pair_order": [
+    {
+      "family": "q1",
+      "lemma": "cat",
+      "plural": "c01",
+      "plural_sha256": "52f58acc10241bcb6c464f4da05c2a858996b5e0afbc08ea87911d9b8fc7176a",
+      "singular": "c00",
+      "singular_sha256": "223a0a57bebac9cfdf325d603bfa15447852baf6d76f5e78848c9b0fdc451dd3"
+    },
+    {
+      "family": "q1",
+      "lemma": "dog",
+      "plural": "c03",
+      "plural_sha256": "f58e2124cdf49a28968c8471325aa89fd289d2cab989f067bdb912b701ffd57e",
+      "singular": "c02",
+      "singular_sha256": "ce4deb4f03c62d3f7be81a83cfadc786852deee46a8ccf52b3d77ae089755605"
+    },
+    {
+      "family": "q2",
+      "lemma": "doctor",
+      "plural": "c07",
+      "plural_sha256": "08a3c359949f30a63c4fd353a7768e6b9b4e701ddc7218f8144856711b829017",
+      "singular": "c06",
+      "singular_sha256": "b79117e554b40ce3c5e5a68230cf85d24c158ef4a71d32110f4c9821729a711d"
+    },
+    {
+      "family": "q2",
+      "lemma": "teacher",
+      "plural": "c05",
+      "plural_sha256": "b76cc6a5559cb3024b78ccf26208112d510700981353838348b6566f46eee4bc",
+      "singular": "c04",
+      "singular_sha256": "9fc15ca55c3c80e5fcfa3a312869193abd2b1b45fea937e84f0ed681658322e2"
+    },
+    {
+      "family": "q3",
+      "lemma": "artist",
+      "plural": "c09",
+      "plural_sha256": "604cb275884775a33cf1f39b6f3f65e15482ac8adc92216af01a328a9f4e26d3",
+      "singular": "c08",
+      "singular_sha256": "172ebb13e0d5487ae424bbc27bfecf9c40ca8e95d5e8acac525578f6f5b66faa"
+    },
+    {
+      "family": "q3",
+      "lemma": "writer",
+      "plural": "c11",
+      "plural_sha256": "04c00d968f0a37dede147ae7151f5bc6eef5f7ba87fc0d2c3ef5c5b0f151f8e7",
+      "singular": "c10",
+      "singular_sha256": "49f1b8dfe8ce43e4e3693a01c10e44e5cdc327754036416c5604b47f0861b322"
+    },
+    {
+      "family": "q4",
+      "lemma": "farmer",
+      "plural": "c13",
+      "plural_sha256": "3668b624800e69f3e083b2670fc25b5ba8d5a193532e7d87ec7ca39fcee6c728",
+      "singular": "c12",
+      "singular_sha256": "c44b0ebe2a82295c8b50b423ba4036751db834ce427054a0eda81d6c63f9e058"
+    },
+    {
+      "family": "q4",
+      "lemma": "sailor",
+      "plural": "c15",
+      "plural_sha256": "0b58e44e78756ba2efd957acc1b4f0adbac75c1817030952fcfb4902b923d23e",
+      "singular": "c14",
+      "singular_sha256": "13ae4ab001e998beed8947ad834793af9d07f38440fe6ba1302592c79d159ba6"
+    }
+  ],
+  "schema": "distilgpt2-agreement-direction-training-v1",
+  "scope": "Derived only from 16 exposed saved discovery activations; no model forward.",
+  "seed_hex": "6d6c672d61677265656d656e742d646972656374696f6e2d636f6e74726f6c2d763100",
+  "site": "transformer.h.3.attn output[0], batch 0, token 4",
+  "vectors_sha256": {
+    "u": "d1ddf7d4ee3103400ca6c23f25536e615135beebb24f2d326ad6fe5d46728be0",
+    "v1": "4a08130c4fd2c3557f9e40b92865c23411d395123c53251a286b63c796b476bb",
+    "v2": "4ca1f10e411e0476bcee76b98bc8515705e61035cfa6e8d71608e15af80f4b02"
+  }
+}
