@@ -17,3 +17,4 @@ agreement_invariant_science_v1.py -text
 distilbert_antonym_public_v1.py -text
 distilbert_antonym_runner_v1.py -text
 distilbert_antonym_screen_v1.py -text
+agreement_invariant_successor_science_v2.py -text
