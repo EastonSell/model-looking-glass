@@ -112,7 +112,9 @@ def _source_identity(recorded):
     source_paths = [Path(module.__file__).resolve() for module in modules]
     sources = {module.__name__: sha256_file(module.__file__) for module in modules}
     protocol_path = root / "docs" / "CAUSAL_PROTOCOL_V1.md"
+    clarification_path = root / "docs" / "CAUSAL_PROTOCOL_V1_NOTES.md"
     protocol_hash = sha256_file(protocol_path)
+    clarification_hash = sha256_file(clarification_path)
     try:
         revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root,
                                            text=True, stderr=subprocess.DEVNULL).strip()
@@ -125,7 +127,7 @@ def _source_identity(recorded):
             raise RuntimeError("recorded protocol-v1 runs require a clean committed worktree")
         if any(not source.is_relative_to(root) for source in source_paths):
             raise RuntimeError("recorded protocol-v1 dependencies must come from this worktree")
-        for source in source_paths + [protocol_path]:
+        for source in source_paths + [protocol_path, clarification_path]:
             relative = source.relative_to(root).as_posix()
             try:
                 committed = subprocess.check_output(["git", "show", f"HEAD:{relative}"], cwd=root,
@@ -141,7 +143,8 @@ def _source_identity(recorded):
                "deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
                "float32_matmul_precision": torch.get_float32_matmul_precision()}
     return root, protocol_hash, {"revision": revision, "dirty": bool(status),
-                                 "source_sha256": sources, "runtime": runtime}
+                                 "source_sha256": sources, "clarification_sha256": clarification_hash,
+                                 "runtime": runtime}
 
 
 def _case_identity(case):
@@ -282,8 +285,8 @@ def run_experiment(path, *, cases=None, model_seed=MODEL_SEED, random_seed=RANDO
     cases = tuple(SYNTHETIC_CASES if cases is None else cases)
     validate_synthetic_cases(cases)
     suite_hash = synthetic_suite_sha256(cases)
-    reserved = {synthetic_content_sha256(case.values) for case in SYNTHETIC_CASES}
-    if not recorded and any(synthetic_content_sha256(case.values) in reserved for case in cases):
+    reserved = {float32_values(case.values) for case in SYNTHETIC_CASES}
+    if not recorded and any(float32_values(case.values) in reserved for case in cases):
         raise ValueError("development inputs must not overlap the reserved protocol-v1 suite")
     if torch.is_autocast_enabled("cpu"):
         raise RuntimeError("CPU autocast is incompatible with the float32 protocol")
@@ -303,7 +306,8 @@ def run_experiment(path, *, cases=None, model_seed=MODEL_SEED, random_seed=RANDO
     run = create_run(path, protocol={"id": PROTOCOL_ID, "sha256": protocol_hash, "settings": settings},
                      inputs=identities, model={"kind": "TinyResidual", "width": 8, "depth": 3,
                                                "seed": model_seed, "state_sha256": _state_sha256(model)},
-                     code=code_identity, metadata={"mode": "recorded-v1" if recorded else "development"},
+                     code=code_identity, metadata={"mode": "recorded-v1" if recorded else "development",
+                                                   "evidence_status": "exploratory" if recorded else "development"},
                      artifact_limits={"precommit.json": 1024 * 1024, "results.json": 1024 * 1024,
                                       "partial_results.json": 1024 * 1024},
                      required_artifacts=["precommit.json", "results.json"], max_total_bytes=3 * 1024 * 1024)
@@ -316,6 +320,7 @@ def run_experiment(path, *, cases=None, model_seed=MODEL_SEED, random_seed=RANDO
         with torch.no_grad():
             sites, predictions = _discovery(model, discovery, random_seed)
             frozen = {"protocol": PROTOCOL_ID, "mode": "recorded-v1" if recorded else "development",
+                      "evidence_status": "exploratory" if recorded else "development",
                       "suite_sha256": suite_hash, "discovery_cases": [_case_identity(c) for c in discovery],
                       "heldout_cases": [_case_identity(c) for c in heldout], "sites": sites,
                       "predictions": predictions, "zero_prediction": 0.0, "zero_tolerance": ZERO_TOLERANCE,
@@ -342,6 +347,7 @@ def run_experiment(path, *, cases=None, model_seed=MODEL_SEED, random_seed=RANDO
                 rows.append(_heldout_case(model, case, sites, predictions))
             current_case_id = None
             result = {"protocol": PROTOCOL_ID, "mode": frozen["mode"], "suite_sha256": suite_hash,
+                      "evidence_status": frozen["evidence_status"],
                       "precommit_sha256": hashlib.sha256(frozen_bytes).hexdigest(), "sites": sites,
                       "known_injection": INJECTION[0],
                       "first_observed_site_matches_injection": sites["first_observed"] == INJECTION[0],
