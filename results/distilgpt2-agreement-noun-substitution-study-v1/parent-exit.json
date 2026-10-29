@@ -1,0 +1,20 @@
+{
+  "allocated_file_observation_sha256": "749f37375947410516276ea23a57a697e9a8490af54ff2ac7185b881a3a33a73",
+  "candidate_status": "complete_candidate",
+  "child_custody_sha256": "51affc37a49a038849aa4f8638717bfbd728a14701a190ae5a0cf1e774042359",
+  "entry_result_sha256": "bb146fec401dc6654b2861b6a1991bb7f9dca3509782c98965b5837f0ad1ad82",
+  "journal_sha256": "7257fed9573c05b3710ca91c7c8dbb018508cf43307801a0be6d527b7eda65b1",
+  "launch_boundary_sha256": "3595e8635a77551e3fc588cef7cef84d79918b543cff37afc95433e222cc0fe6",
+  "operator_observed_parent_exit_code": 0,
+  "prelaunch_sha256": "2419e46d53c387a6861c77c3a0c42f9b4d62a2e76b30be3e25f82707ed590012",
+  "recorded_utc": "2026-10-29T11:56:01.781210+00:00",
+  "reported_forwards": 486,
+  "reported_journal_events": 487,
+  "schema": "agreement-substitution-observer-exit-v1",
+  "scope": "Cooperative operator observation of direct parent exit and saved records; no authenticated execution, descendant drain, or independent scientific finding is asserted.",
+  "source_revision": "ca6c67f30b90f5d79df68e379cbb7cafe21acb08",
+  "supervisor_end_utc": "2026-10-29T11:55:18.135637+00:00",
+  "supervisor_sha256": "273ba26b2d0640266374c75335bc0afd6e794d8ec2faac0992c103b866d3c874",
+  "supervisor_start_utc": "2026-10-29T11:52:38.611903+00:00",
+  "terminal_sha256": "eff89a78a32f27bf8841475330ae0940802b360c0636045c4fbf6befa9d7320f"
+}
