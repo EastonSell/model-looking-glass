@@ -16,11 +16,11 @@ class CudaCleanupTests(unittest.TestCase):
         self.lease = object.__new__(DeviceLease)
         self.events = []
         self.allocated, self.reserved = 32, 32
-        self.cuda = SimpleNamespace(is_initialized=lambda: True,
+        self.cuda = SimpleNamespace(is_initialized=lambda: self.events.append(('initialized',)) or True,
             synchronize=lambda device: self.events.append(("sync", device)),
             empty_cache=lambda: self.events.append(("empty",)),
-            memory_allocated=lambda device: self.allocated,
-            memory_reserved=lambda device: self.reserved)
+            memory_allocated=lambda device: self.events.append(('allocated',)) or self.allocated,
+            memory_reserved=lambda device: self.events.append(('reserved',)) or self.reserved)
         self.torch = SimpleNamespace(__version__="2.8.0+cu128", version=SimpleNamespace(cuda="12.8"),
                                     cuda=self.cuda, _C=SimpleNamespace(_cuda_clearCublasWorkspaces=self.clear))
         self.check = patch.object(OwnerSession, "check", autospec=True,
@@ -39,8 +39,15 @@ class CudaCleanupTests(unittest.TestCase):
         result = self.call()
         self.assertEqual(result["before"], {"allocated_bytes": 32, "reserved_bytes": 32})
         self.assertEqual(result["after"], {"allocated_bytes": 0, "reserved_bytes": 0})
-        self.assertEqual(self.events, [("check",), ("sync", 0), ("empty",), ("check",),
-                                       ("clear",), ("sync", 0), ("empty",), ("check",)])
+        for index, event in enumerate(self.events):
+            if event[0] != 'check':
+                self.assertGreater(index, 0)
+                self.assertEqual(self.events[index - 1], ('check',))
+        self.assertEqual([event for event in self.events if event[0] != 'check'], [
+            ('initialized',), ('sync', 0), ('empty',), ('allocated',), ('reserved',),
+            ('clear',), ('sync', 0), ('empty',), ('allocated',), ('reserved',),
+        ])
+        self.assertEqual(self.events[-1], ('check',))
 
     def test_unverified_session_and_wrong_version_fail_before_cuda(self):
         self.session._runtime_verified = False
@@ -69,11 +76,28 @@ class CudaCleanupTests(unittest.TestCase):
         def check(session, lease):
             nonlocal calls
             calls += 1
-            if calls == 3:
+            if self.allocated == 0:
                 raise RuntimeError("marker lost")
         self.mock_check.side_effect = check
         with self.assertRaises(RuntimeError): self.call()
         self.assertIn(("clear",), self.events)
+
+    def test_lost_marker_between_counter_reads_stops_next_cuda_call(self):
+        lost = False
+        def allocated(device):
+            nonlocal lost
+            self.events.append(('allocated',))
+            lost = True
+            return self.allocated
+        def check(session, lease):
+            if lost:
+                raise RuntimeError('marker lost')
+        self.cuda.memory_allocated = allocated
+        self.mock_check.side_effect = check
+        with self.assertRaises(RuntimeError): self.call()
+        self.assertIn(('allocated',), self.events)
+        self.assertNotIn(('reserved',), self.events)
+        self.assertNotIn(('clear',), self.events)
 
 
 if __name__ == "__main__":

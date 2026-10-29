@@ -1,0 +1,847 @@
+{
+  "archive_bytes": 3216448,
+  "archive_sha256": "7c262f3fe81236888a8f5fdb6d31f7835666674be9ffbf36f8ce2ca6a375eb6c",
+  "frozen_commit": "0e5e3ae68d8dc4fba51e4aadf378e4c3dac27e96",
+  "groups": [
+    {
+      "context_token_suffix": [
+        1474,
+        262,
+        9168
+      ],
+      "group": 1,
+      "same_context_suffix": true,
+      "same_length": true
+    },
+    {
+      "context_token_suffix": [
+        287,
+        262,
+        2119
+      ],
+      "group": 2,
+      "same_context_suffix": true,
+      "same_length": true
+    },
+    {
+      "context_token_suffix": [
+        13970,
+        262,
+        18180
+      ],
+      "group": 3,
+      "same_context_suffix": true,
+      "same_length": true
+    },
+    {
+      "context_token_suffix": [
+        2157,
+        262,
+        2156
+      ],
+      "group": 4,
+      "same_context_suffix": true,
+      "same_length": true
+    }
+  ],
+  "inventory_revision": "41158c397a60febb4c7464aa393261a2346e7b9a",
+  "inventory_sha256": "e64bc0b875fb295f03d7ad4d5180f6978d1d632487a98ea2824df01844ea4fb1",
+  "inventory_source_sha256": "fa9014fb5cce2c3d8be3497a561754e47115ec07b9be3a896bb3bf1b20f8c474",
+  "manifest_sha256": "1b1adf4d72163bfa3e0399ed8ee92eba6b5c0eb82a47edf28cecde5ffb1deafe",
+  "model": {
+    "asset_sha256": {
+      "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+      "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+      "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+      "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+      "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+      "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+    },
+    "attention_implementation": "eager",
+    "device": "cpu",
+    "dtype": "float32",
+    "model_class": "GPT2LMHeadModel",
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "parameter_count": 81912576,
+    "tokenizer_class": "GPT2TokenizerFast",
+    "tokenizer_id": "distilbert/distilgpt2",
+    "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "torch_version": "2.8.0+cu128",
+    "transformers_version": "4.57.3",
+    "use_cache": false,
+    "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+  },
+  "protocol": "distilgpt2-agreement-preflight-v1",
+  "rows": [
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 0,
+      "are_logit": -54.8795051574707,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": false,
+      "context": "near the windows",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 1,
+      "index": 0,
+      "input_ids": [
+        464,
+        3797,
+        1474,
+        262,
+        9168
+      ],
+      "is_logit": -51.620662689208984,
+      "length": 5,
+      "margin": 3.2588424682617188,
+      "past_margin": 2.4378433227539062,
+      "subject": "cat",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 3797,
+      "target_bits_le": {
+        " are": "9d845bc2",
+        " is": "8f7b4ec2",
+        " was": "40964dc2",
+        " were": "9a5657c2"
+      },
+      "text": "The cat near the windows",
+      "vector_sha256": "3a203b821a855aa1c13dcb9ee9d5cfbfd53c7023e3af8866ee5c62aaea1e4c7a",
+      "was_logit": -51.396728515625,
+      "were_logit": -53.834571838378906
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 201028,
+      "are_logit": -53.04374694824219,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": true,
+      "context": "near the windows",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 1,
+      "index": 1,
+      "input_ids": [
+        464,
+        11875,
+        1474,
+        262,
+        9168
+      ],
+      "is_logit": -56.29622268676758,
+      "length": 5,
+      "margin": -3.2524757385253906,
+      "past_margin": -2.982677459716797,
+      "subject": "cats",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 11875,
+      "target_bits_le": {
+        " are": "cc2c54c2",
+        " is": "552f61c2",
+        " was": "264161c2",
+        " were": "e35255c2"
+      },
+      "text": "The cats near the windows",
+      "vector_sha256": "b04c3d550109903de83c1c23d808158591516b51a4a125de098fe86cc3734b4b",
+      "was_logit": -56.313621520996094,
+      "were_logit": -53.3309440612793
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 402056,
+      "are_logit": -53.59975814819336,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": false,
+      "context": "near the windows",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 1,
+      "index": 2,
+      "input_ids": [
+        464,
+        3290,
+        1474,
+        262,
+        9168
+      ],
+      "is_logit": -49.94011306762695,
+      "length": 5,
+      "margin": 3.6596450805664062,
+      "past_margin": 2.8645668029785156,
+      "subject": "dog",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 3290,
+      "target_bits_le": {
+        " are": "276656c2",
+        " is": "adc247c2",
+        " was": "ab8846c2",
+        " were": "fcfd51c2"
+      },
+      "text": "The dog near the windows",
+      "vector_sha256": "b9b281355ba2df4186b32b6a461ba698c1b931dbd42ebaf693c517bd72896c8f",
+      "was_logit": -49.63346481323242,
+      "were_logit": -52.49803161621094
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 603084,
+      "are_logit": -52.7858772277832,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": true,
+      "context": "near the windows",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 1,
+      "index": 3,
+      "input_ids": [
+        464,
+        6844,
+        1474,
+        262,
+        9168
+      ],
+      "is_logit": -56.49552917480469,
+      "length": 5,
+      "margin": -3.7096519470214844,
+      "past_margin": -3.3790283203125,
+      "subject": "dogs",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 6844,
+      "target_bits_le": {
+        " are": "bd2453c2",
+        " is": "6cfb61c2",
+        " was": "ecc25fc2",
+        " were": "cc3e52c2"
+      },
+      "text": "The dogs near the windows",
+      "vector_sha256": "01715fb7bbb6fb69579f54f3e4a27e3f5d9b2158782db069e586adea8b08940d",
+      "was_logit": -55.94035339355469,
+      "were_logit": -52.56132507324219
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 804112,
+      "are_logit": -64.04926300048828,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": true,
+      "context": "in the room",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 2,
+      "index": 4,
+      "input_ids": [
+        464,
+        4701,
+        287,
+        262,
+        2119
+      ],
+      "is_logit": -58.88375473022461,
+      "length": 5,
+      "margin": 5.165508270263672,
+      "past_margin": 4.3105316162109375,
+      "subject": "teacher",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 4701,
+      "target_bits_le": {
+        " are": "391980c2",
+        " is": "f7886bc2",
+        " was": "2ad369c2",
+        " were": "26117bc2"
+      },
+      "text": "The teacher in the room",
+      "vector_sha256": "531efe4d47749fa1e0342f8598a25887a68867c4761bb379014e9eb5efac23d9",
+      "was_logit": -58.456214904785156,
+      "were_logit": -62.766746520996094
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 1005140,
+      "are_logit": -60.178802490234375,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": false,
+      "context": "in the room",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 2,
+      "index": 5,
+      "input_ids": [
+        464,
+        7799,
+        287,
+        262,
+        2119
+      ],
+      "is_logit": -64.9360580444336,
+      "length": 5,
+      "margin": -4.757255554199219,
+      "past_margin": -4.051692962646484,
+      "subject": "teachers",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 7799,
+      "target_bits_le": {
+        " are": "18b770c2",
+        " is": "43df81c2",
+        " was": "d5547fc2",
+        " were": "e61f6fc2"
+      },
+      "text": "The teachers in the room",
+      "vector_sha256": "cb5c73b4011f7a4bfb354f27ac60614a8db35234b7e8ce4a592758de96fbd502",
+      "was_logit": -63.83284378051758,
+      "were_logit": -59.781150817871094
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 1206168,
+      "are_logit": -63.48323440551758,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": true,
+      "context": "in the room",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 2,
+      "index": 6,
+      "input_ids": [
+        464,
+        6253,
+        287,
+        262,
+        2119
+      ],
+      "is_logit": -58.36160659790039,
+      "length": 5,
+      "margin": 5.1216278076171875,
+      "past_margin": 4.272922515869141,
+      "subject": "doctor",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 6253,
+      "target_bits_le": {
+        " are": "d5ee7dc2",
+        " is": "497269c2",
+        " was": "7cc369c2",
+        " were": "f5da7ac2"
+      },
+      "text": "The doctor in the room",
+      "vector_sha256": "d3d9f4740bed1dafb3c8438b4e4d333398f7e2659bfb1cf78d5a987ce94332d6",
+      "was_logit": -58.44090270996094,
+      "were_logit": -62.71382522583008
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 1407196,
+      "are_logit": -62.15707778930664,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": false,
+      "context": "in the room",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 2,
+      "index": 7,
+      "input_ids": [
+        464,
+        7519,
+        287,
+        262,
+        2119
+      ],
+      "is_logit": -67.05960845947266,
+      "length": 5,
+      "margin": -4.902530670166016,
+      "past_margin": -4.1783599853515625,
+      "subject": "doctors",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 7519,
+      "target_bits_le": {
+        " are": "d9a078c2",
+        " is": "851e86c2",
+        " was": "3d0884c2",
+        " were": "d65977c2"
+      },
+      "text": "The doctors in the room",
+      "vector_sha256": "6fef656802ea4f7bb1557fb457222d8e2a06565e0c13dd393a378341d4befe11",
+      "was_logit": -66.0160903930664,
+      "were_logit": -61.837730407714844
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 1608224,
+      "are_logit": -52.63907241821289,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": false,
+      "context": "beside the rivers",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 3,
+      "index": 8,
+      "input_ids": [
+        464,
+        6802,
+        13970,
+        262,
+        18180
+      ],
+      "is_logit": -50.824249267578125,
+      "length": 5,
+      "margin": 1.8148231506347656,
+      "past_margin": 1.3425979614257812,
+      "subject": "artist",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 6802,
+      "target_bits_le": {
+        " are": "698e52c2",
+        " is": "084c4bc2",
+        " was": "9dfc4fc2",
+        " were": "6f5b55c2"
+      },
+      "text": "The artist beside the rivers",
+      "vector_sha256": "8dd075682808bc5a5df191acf1835a313b44a366b932698dbe054b1624934772",
+      "was_logit": -51.9966926574707,
+      "were_logit": -53.339290618896484
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 1809252,
+      "are_logit": -53.0300407409668,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": true,
+      "context": "beside the rivers",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 3,
+      "index": 9,
+      "input_ids": [
+        464,
+        7912,
+        13970,
+        262,
+        18180
+      ],
+      "is_logit": -55.89192199707031,
+      "length": 5,
+      "margin": -2.8618812561035156,
+      "past_margin": -2.4072494506835938,
+      "subject": "artists",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 7912,
+      "target_bits_le": {
+        " are": "c31e54c2",
+        " is": "54915fc2",
+        " was": "dfe760c2",
+        " were": "d94657c2"
+      },
+      "text": "The artists beside the rivers",
+      "vector_sha256": "0c487f1d04a9418334d1bde2852259d7cca671bac690d641c3daddcc9eaac4d6",
+      "was_logit": -56.226436614990234,
+      "were_logit": -53.81918716430664
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 2010280,
+      "are_logit": -53.32050704956055,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": false,
+      "context": "beside the rivers",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 3,
+      "index": 10,
+      "input_ids": [
+        464,
+        6260,
+        13970,
+        262,
+        18180
+      ],
+      "is_logit": -51.40608596801758,
+      "length": 5,
+      "margin": 1.9144210815429688,
+      "past_margin": 1.2988777160644531,
+      "subject": "writer",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 6260,
+      "target_bits_le": {
+        " are": "334855c2",
+        " is": "d59f4dc2",
+        " was": "525c51c2",
+        " were": "5f8e56c2"
+      },
+      "text": "The writer beside the rivers",
+      "vector_sha256": "a6cf9a592da284ec6859da430d081cb69c60e1cc41cef847db575fa2e616c11d",
+      "was_logit": -52.34015655517578,
+      "were_logit": -53.639034271240234
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 2211308,
+      "are_logit": -53.64828872680664,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": true,
+      "context": "beside the rivers",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 3,
+      "index": 11,
+      "input_ids": [
+        464,
+        8786,
+        13970,
+        262,
+        18180
+      ],
+      "is_logit": -56.17028045654297,
+      "length": 5,
+      "margin": -2.521991729736328,
+      "past_margin": -2.243499755859375,
+      "subject": "writers",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 8786,
+      "target_bits_le": {
+        " are": "d99756c2",
+        " is": "5eae60c2",
+        " was": "6c4e62c2",
+        " were": "145559c2"
+      },
+      "text": "The writers beside the rivers",
+      "vector_sha256": "0538e475b1587c77db6283ab3298fc4a10bbd613b7d3798d8a6a1769129aac1a",
+      "was_logit": -56.57658386230469,
+      "were_logit": -54.33308410644531
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 2412336,
+      "are_logit": -61.85292434692383,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": true,
+      "context": "behind the house",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 4,
+      "index": 12,
+      "input_ids": [
+        464,
+        18739,
+        2157,
+        262,
+        2156
+      ],
+      "is_logit": -56.92317199707031,
+      "length": 5,
+      "margin": 4.929752349853516,
+      "past_margin": 4.812004089355469,
+      "subject": "farmer",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 18739,
+      "target_bits_le": {
+        " are": "656977c2",
+        " is": "54b163c2",
+        " was": "e08063c2",
+        " were": "5ec076c2"
+      },
+      "text": "The farmer behind the house",
+      "vector_sha256": "0b78a38d9a27bb8caba04d3f33a880722710e9d82cdb2af84d07527cae61f545",
+      "was_logit": -56.8758544921875,
+      "were_logit": -61.68785858154297
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 2613364,
+      "are_logit": -58.4122200012207,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": false,
+      "context": "behind the house",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 4,
+      "index": 13,
+      "input_ids": [
+        464,
+        9818,
+        2157,
+        262,
+        2156
+      ],
+      "is_logit": -61.758331298828125,
+      "length": 5,
+      "margin": -3.346111297607422,
+      "past_margin": -2.784759521484375,
+      "subject": "farmers",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 9818,
+      "target_bits_le": {
+        " are": "1da669c2",
+        " is": "880877c2",
+        " was": "e4ac77c2",
+        " were": "4c896cc2"
+      },
+      "text": "The farmers behind the house",
+      "vector_sha256": "9be1be5701f271c831b21cb611b4d09bc55975c780fdca54622e2930b2fb6c18",
+      "was_logit": -61.91883850097656,
+      "were_logit": -59.13407897949219
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 2814392,
+      "are_logit": -59.99553298950195,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": true,
+      "context": "behind the house",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 4,
+      "index": 14,
+      "input_ids": [
+        464,
+        43272,
+        2157,
+        262,
+        2156
+      ],
+      "is_logit": -54.94712448120117,
+      "length": 5,
+      "margin": 5.048408508300781,
+      "past_margin": 5.079444885253906,
+      "subject": "sailor",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 43272,
+      "target_bits_le": {
+        " are": "6dfb6fc2",
+        " is": "dbc95bc2",
+        " was": "b97459c2",
+        " were": "13c66dc2"
+      },
+      "text": "The sailor behind the house",
+      "vector_sha256": "70e3e8d4d039619017e969e9e14cb7253c28004d7960ada91eae467fcf7d8302",
+      "was_logit": -54.36398696899414,
+      "were_logit": -59.44343185424805
+    },
+    {
+      "archive_bytes": 201028,
+      "archive_offset": 3015420,
+      "are_logit": -57.696937561035156,
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": false,
+      "context": "behind the house",
+      "correct": true,
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 4,
+      "index": 15,
+      "input_ids": [
+        464,
+        29996,
+        2157,
+        262,
+        2156
+      ],
+      "is_logit": -61.81467056274414,
+      "length": 5,
+      "margin": -4.117733001708984,
+      "past_margin": -3.5222206115722656,
+      "subject": "sailors",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 29996,
+      "target_bits_le": {
+        " are": "aac966c2",
+        " is": "394277c2",
+        " was": "a03471c2",
+        " were": "df1d63c2"
+      },
+      "text": "The sailors behind the house",
+      "vector_sha256": "bc71de3aa4aa62dc66ecbd266735fab01e173504af5d57d25b1de74000a60e91",
+      "was_logit": -60.3013916015625,
+      "were_logit": -56.779170989990234
+    }
+  ],
+  "runtime": {
+    "bytecode_writes_disabled": true,
+    "cuda_initialized": false,
+    "denormal_probe_after": {
+      "subnormal_input_bits": 1,
+      "subnormal_output_bits": 4194304
+    },
+    "denormal_probe_before": {
+      "subnormal_input_bits": 1,
+      "subnormal_output_bits": 4194304
+    },
+    "deterministic_algorithms": true,
+    "flush_denormal_requested": false,
+    "nonexistent_pycache_prefix": "C:\\codex_agreement_no_pycache_20261028",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.15 (main, Jun 11 2026, 04:59:07) [MSC v.1944 64 bit (AMD64)]",
+    "threads": 1,
+    "torch": "2.8.0+cu128"
+  },
+  "source_revision": "e39fafa0a84843cf6413946a77c19ef09cbf025e",
+  "state_sha256_after": "240833823c78b29e8a4af87fbb1a25b0f2ae9bf97c62b9cd8cb76b9b923c479b",
+  "state_sha256_before": "240833823c78b29e8a4af87fbb1a25b0f2ae9bf97c62b9cd8cb76b9b923c479b",
+  "status": "complete",
+  "summary": {
+    "counts": {
+      "congruent": {
+        "correct": 8,
+        "total": 8
+      },
+      "incongruent": {
+        "correct": 8,
+        "total": 8
+      },
+      "overall": {
+        "correct": 16,
+        "total": 16
+      },
+      "plural": {
+        "correct": 8,
+        "total": 8
+      },
+      "singular": {
+        "correct": 8,
+        "total": 8
+      }
+    },
+    "informative": true
+  }
+}

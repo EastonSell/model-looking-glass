@@ -1,0 +1,799 @@
+{
+  "clock": {
+    "implementation": "QueryPerformanceCounter()",
+    "name": "perf_counter_ns",
+    "resolution_seconds": 1e-07
+  },
+  "commit": "4990d4b635f77055a8208fc039b8f4711b844d9f",
+  "correctness": {
+    "legacy_lossy:flush_False": {
+      "first_eight_equal": true,
+      "first_eight_mismatches": 0
+    },
+    "legacy_lossy:flush_True": {
+      "first_eight_equal": false,
+      "first_eight_mismatches": 4
+    },
+    "numpy:flush_False": {
+      "first_eight_equal": true,
+      "first_eight_mismatches": 0
+    },
+    "numpy:flush_True": {
+      "first_eight_equal": true,
+      "first_eight_mismatches": 0
+    },
+    "stdlib:flush_False": {
+      "first_eight_equal": true,
+      "first_eight_mismatches": 0
+    },
+    "stdlib:flush_True": {
+      "first_eight_equal": true,
+      "first_eight_mismatches": 0
+    }
+  },
+  "dtype": "float32",
+  "fresh_process_imports": [
+    {
+      "numpy_import_ns": 5200,
+      "numpy_preloaded_by_torch": true,
+      "process_elapsed_ns": 4113532200,
+      "torch_import_ns": 3267717900
+    },
+    {
+      "numpy_import_ns": 3400,
+      "numpy_preloaded_by_torch": true,
+      "process_elapsed_ns": 4331002100,
+      "torch_import_ns": 3524120700
+    },
+    {
+      "numpy_import_ns": 4500,
+      "numpy_preloaded_by_torch": true,
+      "process_elapsed_ns": 4776491200,
+      "torch_import_ns": 3916763200
+    }
+  ],
+  "median_ns": {
+    "legacy_lossy:flush_False": 1683350.0,
+    "legacy_lossy:flush_True": 2892700.0,
+    "numpy:flush_False": 2335550.0,
+    "numpy:flush_True": 3140600.0,
+    "stdlib:flush_False": 71006650.0,
+    "stdlib:flush_True": 86201500.0
+  },
+  "numpy": "2.4.6",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "protocol": "ipc-serializer-cpu-exploratory-v1",
+  "python": "3.11.15 (main, Jun 11 2026, 04:59:07) [MSC v.1944 64 bit (AMD64)]",
+  "rows": [
+    {
+      "elapsed_ns": 3094600,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "warmup",
+      "position": 0,
+      "round": 0
+    },
+    {
+      "elapsed_ns": 3321500,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "warmup",
+      "position": 1,
+      "round": 0
+    },
+    {
+      "elapsed_ns": 71815600,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "warmup",
+      "position": 2,
+      "round": 0
+    },
+    {
+      "elapsed_ns": 2539800,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "warmup",
+      "position": 0,
+      "round": 1
+    },
+    {
+      "elapsed_ns": 2566300,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "warmup",
+      "position": 1,
+      "round": 1
+    },
+    {
+      "elapsed_ns": 69219000,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "warmup",
+      "position": 2,
+      "round": 1
+    },
+    {
+      "elapsed_ns": 1454900,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "warmup",
+      "position": 0,
+      "round": 2
+    },
+    {
+      "elapsed_ns": 71759400,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "warmup",
+      "position": 1,
+      "round": 2
+    },
+    {
+      "elapsed_ns": 1847200,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "warmup",
+      "position": 2,
+      "round": 2
+    },
+    {
+      "elapsed_ns": 2272100,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 0,
+      "round": 0
+    },
+    {
+      "elapsed_ns": 3198300,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 1,
+      "round": 0
+    },
+    {
+      "elapsed_ns": 70331500,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 2,
+      "round": 0
+    },
+    {
+      "elapsed_ns": 2169100,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 0,
+      "round": 1
+    },
+    {
+      "elapsed_ns": 71681800,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 1,
+      "round": 1
+    },
+    {
+      "elapsed_ns": 1672700,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 2,
+      "round": 1
+    },
+    {
+      "elapsed_ns": 65760400,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 0,
+      "round": 2
+    },
+    {
+      "elapsed_ns": 2132100,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 1,
+      "round": 2
+    },
+    {
+      "elapsed_ns": 1713200,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 2,
+      "round": 2
+    },
+    {
+      "elapsed_ns": 66817400,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 0,
+      "round": 3
+    },
+    {
+      "elapsed_ns": 2707000,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 1,
+      "round": 3
+    },
+    {
+      "elapsed_ns": 1694000,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 2,
+      "round": 3
+    },
+    {
+      "elapsed_ns": 90953400,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 0,
+      "round": 4
+    },
+    {
+      "elapsed_ns": 2053600,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 1,
+      "round": 4
+    },
+    {
+      "elapsed_ns": 1468900,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 2,
+      "round": 4
+    },
+    {
+      "elapsed_ns": 1738300,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 0,
+      "round": 5
+    },
+    {
+      "elapsed_ns": 74973600,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 1,
+      "round": 5
+    },
+    {
+      "elapsed_ns": 1839400,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 2,
+      "round": 5
+    },
+    {
+      "elapsed_ns": 1431500,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 0,
+      "round": 6
+    },
+    {
+      "elapsed_ns": 75344600,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 1,
+      "round": 6
+    },
+    {
+      "elapsed_ns": 2044800,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 2,
+      "round": 6
+    },
+    {
+      "elapsed_ns": 2561200,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 0,
+      "round": 7
+    },
+    {
+      "elapsed_ns": 70116700,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 1,
+      "round": 7
+    },
+    {
+      "elapsed_ns": 1458300,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 2,
+      "round": 7
+    },
+    {
+      "elapsed_ns": 1294100,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 0,
+      "round": 8
+    },
+    {
+      "elapsed_ns": 1704000,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 1,
+      "round": 8
+    },
+    {
+      "elapsed_ns": 67679000,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 2,
+      "round": 8
+    },
+    {
+      "elapsed_ns": 89363900,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 0,
+      "round": 9
+    },
+    {
+      "elapsed_ns": 3659200,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 1,
+      "round": 9
+    },
+    {
+      "elapsed_ns": 2056100,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 2,
+      "round": 9
+    },
+    {
+      "elapsed_ns": 2502000,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 0,
+      "round": 10
+    },
+    {
+      "elapsed_ns": 1473800,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 1,
+      "round": 10
+    },
+    {
+      "elapsed_ns": 85231600,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 2,
+      "round": 10
+    },
+    {
+      "elapsed_ns": 2470000,
+      "flush": false,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 0,
+      "round": 11
+    },
+    {
+      "elapsed_ns": 69507800,
+      "flush": false,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 1,
+      "round": 11
+    },
+    {
+      "elapsed_ns": 3013800,
+      "flush": false,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 2,
+      "round": 11
+    },
+    {
+      "elapsed_ns": 1586900,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "warmup",
+      "position": 0,
+      "round": 0
+    },
+    {
+      "elapsed_ns": 75380000,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "warmup",
+      "position": 1,
+      "round": 0
+    },
+    {
+      "elapsed_ns": 2802900,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "warmup",
+      "position": 2,
+      "round": 0
+    },
+    {
+      "elapsed_ns": 2672900,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "warmup",
+      "position": 0,
+      "round": 1
+    },
+    {
+      "elapsed_ns": 2186700,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "warmup",
+      "position": 1,
+      "round": 1
+    },
+    {
+      "elapsed_ns": 90168800,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "warmup",
+      "position": 2,
+      "round": 1
+    },
+    {
+      "elapsed_ns": 2635700,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "warmup",
+      "position": 0,
+      "round": 2
+    },
+    {
+      "elapsed_ns": 1882700,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "warmup",
+      "position": 1,
+      "round": 2
+    },
+    {
+      "elapsed_ns": 69165200,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "warmup",
+      "position": 2,
+      "round": 2
+    },
+    {
+      "elapsed_ns": 3193600,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 0,
+      "round": 0
+    },
+    {
+      "elapsed_ns": 93513700,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 1,
+      "round": 0
+    },
+    {
+      "elapsed_ns": 2413100,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 2,
+      "round": 0
+    },
+    {
+      "elapsed_ns": 1599500,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 0,
+      "round": 1
+    },
+    {
+      "elapsed_ns": 2556000,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 1,
+      "round": 1
+    },
+    {
+      "elapsed_ns": 72749700,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 2,
+      "round": 1
+    },
+    {
+      "elapsed_ns": 2574000,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 0,
+      "round": 2
+    },
+    {
+      "elapsed_ns": 1531200,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 1,
+      "round": 2
+    },
+    {
+      "elapsed_ns": 73296200,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 2,
+      "round": 2
+    },
+    {
+      "elapsed_ns": 3039600,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 0,
+      "round": 3
+    },
+    {
+      "elapsed_ns": 85824000,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 1,
+      "round": 3
+    },
+    {
+      "elapsed_ns": 3353700,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 2,
+      "round": 3
+    },
+    {
+      "elapsed_ns": 3435200,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 0,
+      "round": 4
+    },
+    {
+      "elapsed_ns": 84906700,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 1,
+      "round": 4
+    },
+    {
+      "elapsed_ns": 3160800,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 2,
+      "round": 4
+    },
+    {
+      "elapsed_ns": 3696000,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 0,
+      "round": 5
+    },
+    {
+      "elapsed_ns": 86579000,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 1,
+      "round": 5
+    },
+    {
+      "elapsed_ns": 2771300,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 2,
+      "round": 5
+    },
+    {
+      "elapsed_ns": 3560500,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 0,
+      "round": 6
+    },
+    {
+      "elapsed_ns": 3738200,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 1,
+      "round": 6
+    },
+    {
+      "elapsed_ns": 96539600,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 2,
+      "round": 6
+    },
+    {
+      "elapsed_ns": 3014100,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 0,
+      "round": 7
+    },
+    {
+      "elapsed_ns": 2193900,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 1,
+      "round": 7
+    },
+    {
+      "elapsed_ns": 98934800,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 2,
+      "round": 7
+    },
+    {
+      "elapsed_ns": 3241600,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 0,
+      "round": 8
+    },
+    {
+      "elapsed_ns": 1845300,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 1,
+      "round": 8
+    },
+    {
+      "elapsed_ns": 92841800,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 2,
+      "round": 8
+    },
+    {
+      "elapsed_ns": 3546100,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 0,
+      "round": 9
+    },
+    {
+      "elapsed_ns": 3914100,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 1,
+      "round": 9
+    },
+    {
+      "elapsed_ns": 88609900,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 2,
+      "round": 9
+    },
+    {
+      "elapsed_ns": 2348700,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 0,
+      "round": 10
+    },
+    {
+      "elapsed_ns": 3286700,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 1,
+      "round": 10
+    },
+    {
+      "elapsed_ns": 79811300,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 2,
+      "round": 10
+    },
+    {
+      "elapsed_ns": 79189400,
+      "flush": true,
+      "mode": "stdlib",
+      "phase": "measured",
+      "position": 0,
+      "round": 11
+    },
+    {
+      "elapsed_ns": 1738400,
+      "flush": true,
+      "mode": "legacy_lossy",
+      "phase": "measured",
+      "position": 1,
+      "round": 11
+    },
+    {
+      "elapsed_ns": 1849000,
+      "flush": true,
+      "mode": "numpy",
+      "phase": "measured",
+      "position": 2,
+      "round": 11
+    }
+  ],
+  "scope": "Warm in-process tensor-to-Python-number conversion only; no JSON framing, GPU, isolated host, or independent inputs. Fresh-process imports do not flush OS caches. Legacy conversion is lossy under flush-on and is not an equivalent implementation.",
+  "seed": 6017,
+  "shape": [
+    1,
+    2,
+    50257
+  ],
+  "source_sha256": "df395dd1da71735808ac40b16e72172bed1338cd7d4a344b15ba4d08e1098426",
+  "torch": "2.8.0+cu128",
+  "torch_num_threads": 1
+}

@@ -1,0 +1,543 @@
+{
+  "asset_sha256": {
+    "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+    "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+    "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+    "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+    "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+    "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+    "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+  },
+  "groups": [
+    {
+      "context_token_suffix": [
+        1474,
+        262,
+        9168
+      ],
+      "group": 1,
+      "same_context_suffix": true,
+      "same_length": true
+    },
+    {
+      "context_token_suffix": [
+        287,
+        262,
+        2119
+      ],
+      "group": 2,
+      "same_context_suffix": true,
+      "same_length": true
+    },
+    {
+      "context_token_suffix": [
+        13970,
+        262,
+        18180
+      ],
+      "group": 3,
+      "same_context_suffix": true,
+      "same_length": true
+    },
+    {
+      "context_token_suffix": [
+        2157,
+        262,
+        2156
+      ],
+      "group": 4,
+      "same_context_suffix": true,
+      "same_length": true
+    }
+  ],
+  "input_purpose": "public development; planned exposure before model execution",
+  "model_id": "distilbert/distilgpt2",
+  "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "protocol": "distilgpt2-agreement-preflight-v1",
+  "rows": [
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": false,
+      "context": "near the windows",
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 1,
+      "index": 0,
+      "input_ids": [
+        464,
+        3797,
+        1474,
+        262,
+        9168
+      ],
+      "length": 5,
+      "subject": "cat",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 3797,
+      "text": "The cat near the windows"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": true,
+      "context": "near the windows",
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 1,
+      "index": 1,
+      "input_ids": [
+        464,
+        11875,
+        1474,
+        262,
+        9168
+      ],
+      "length": 5,
+      "subject": "cats",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 11875,
+      "text": "The cats near the windows"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": false,
+      "context": "near the windows",
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 1,
+      "index": 2,
+      "input_ids": [
+        464,
+        3290,
+        1474,
+        262,
+        9168
+      ],
+      "length": 5,
+      "subject": "dog",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 3290,
+      "text": "The dog near the windows"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": true,
+      "context": "near the windows",
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 1,
+      "index": 3,
+      "input_ids": [
+        464,
+        6844,
+        1474,
+        262,
+        9168
+      ],
+      "length": 5,
+      "subject": "dogs",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 6844,
+      "text": "The dogs near the windows"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": true,
+      "context": "in the room",
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 2,
+      "index": 4,
+      "input_ids": [
+        464,
+        4701,
+        287,
+        262,
+        2119
+      ],
+      "length": 5,
+      "subject": "teacher",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 4701,
+      "text": "The teacher in the room"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": false,
+      "context": "in the room",
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 2,
+      "index": 5,
+      "input_ids": [
+        464,
+        7799,
+        287,
+        262,
+        2119
+      ],
+      "length": 5,
+      "subject": "teachers",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 7799,
+      "text": "The teachers in the room"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": true,
+      "context": "in the room",
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 2,
+      "index": 6,
+      "input_ids": [
+        464,
+        6253,
+        287,
+        262,
+        2119
+      ],
+      "length": 5,
+      "subject": "doctor",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 6253,
+      "text": "The doctor in the room"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": false,
+      "context": "in the room",
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 2,
+      "index": 7,
+      "input_ids": [
+        464,
+        7519,
+        287,
+        262,
+        2119
+      ],
+      "length": 5,
+      "subject": "doctors",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 7519,
+      "text": "The doctors in the room"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": false,
+      "context": "beside the rivers",
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 3,
+      "index": 8,
+      "input_ids": [
+        464,
+        6802,
+        13970,
+        262,
+        18180
+      ],
+      "length": 5,
+      "subject": "artist",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 6802,
+      "text": "The artist beside the rivers"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": true,
+      "context": "beside the rivers",
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 3,
+      "index": 9,
+      "input_ids": [
+        464,
+        7912,
+        13970,
+        262,
+        18180
+      ],
+      "length": 5,
+      "subject": "artists",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 7912,
+      "text": "The artists beside the rivers"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": false,
+      "context": "beside the rivers",
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 3,
+      "index": 10,
+      "input_ids": [
+        464,
+        6260,
+        13970,
+        262,
+        18180
+      ],
+      "length": 5,
+      "subject": "writer",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 6260,
+      "text": "The writer beside the rivers"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "plural",
+      "congruent": true,
+      "context": "beside the rivers",
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 3,
+      "index": 11,
+      "input_ids": [
+        464,
+        8786,
+        13970,
+        262,
+        18180
+      ],
+      "length": 5,
+      "subject": "writers",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 8786,
+      "text": "The writers beside the rivers"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": true,
+      "context": "behind the house",
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 4,
+      "index": 12,
+      "input_ids": [
+        464,
+        18739,
+        2157,
+        262,
+        2156
+      ],
+      "length": 5,
+      "subject": "farmer",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 18739,
+      "text": "The farmer behind the house"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": false,
+      "context": "behind the house",
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 4,
+      "index": 13,
+      "input_ids": [
+        464,
+        9818,
+        2157,
+        262,
+        2156
+      ],
+      "length": 5,
+      "subject": "farmers",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 9818,
+      "text": "The farmers behind the house"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": true,
+      "context": "behind the house",
+      "final_position": 4,
+      "grammatical_sign": 1,
+      "group": 4,
+      "index": 14,
+      "input_ids": [
+        464,
+        43272,
+        2157,
+        262,
+        2156
+      ],
+      "length": 5,
+      "subject": "sailor",
+      "subject_index": 1,
+      "subject_number": "singular",
+      "subject_token_id": 43272,
+      "text": "The sailor behind the house"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "attractor_number": "singular",
+      "congruent": false,
+      "context": "behind the house",
+      "final_position": 4,
+      "grammatical_sign": -1,
+      "group": 4,
+      "index": 15,
+      "input_ids": [
+        464,
+        29996,
+        2157,
+        262,
+        2156
+      ],
+      "length": 5,
+      "subject": "sailors",
+      "subject_index": 1,
+      "subject_number": "plural",
+      "subject_token_id": 29996,
+      "text": "The sailors behind the house"
+    }
+  ],
+  "seed": 2026102817,
+  "source_revision": "e39fafa0a84843cf6413946a77c19ef09cbf025e",
+  "sources": {
+    "docs/DISTILGPT2_AGREEMENT_PREFLIGHT_V1.md": "41f1600fd3c8c906d2e0dd75c8024b6bb88f54091cead6e3620d961fa6254b3b",
+    "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+    "looking_glass/agreement_preflight_v1.py": "e6952ead61dd9f8f383fceb2e3581ad6fe093f59fb0da5928cc306e3f7a81351",
+    "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+    "looking_glass/resident_worker.py": "4d2d9bb6c61ec904f337c8825934f95543f3a07d64f25887bf3fae03ea96d539",
+    "tests/test_agreement_preflight_v1.py": "8a20c19fb095866a34bf8202a13bd9195bf65822f80dec53f88a2bf9a8318877",
+    "tools/run_agreement_preflight_v1.py": "2c91749c9dfe7cb8266243c3b2d6c41b3cbb91c253e2cf270b6bb5e6f4531b5e",
+    "tools/supervise_agreement_preflight_v1.py": "9479305699285e4fd56dbe21b036a6c3f873bf99cfae54f7bb1b92d8b599f6c0"
+  },
+  "targets": {
+    " are": 389,
+    " is": 318,
+    " was": 373,
+    " were": 547
+  },
+  "tokenizers_version": "0.22.2",
+  "transformers_version": "4.57.3"
+}

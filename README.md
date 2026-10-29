@@ -59,6 +59,10 @@ The [synthetic causal v1 study](docs/CAUSAL_RESULTS_V1.md) records fixed predict
 
 The [DistilBERT agreement pilot](results/bert-agreement-dev-v0-20261028/README.md) observed donor-directed shifts after subject-state patches on four public development examples. All four used plural distractors, so the finding is confounded and a balanced evaluation is needed before making a mechanism claim.
 
+The [DistilGPT2 agreement preflight](results/distilgpt2-agreement-preflight-v1-20261028/README.md) found the grammatical verb preferred on all 16 fixed public development prompts; it establishes a small behavior to investigate, not a held-out or causal result.
+
+A [targeted parameter-edit experiment](results/targeted-edit-cpu-v1-20261028/README.md) changed the intended answer preference but failed its preset locality thresholds on public probes. The negative result and a same-host replay are preserved; the study does not establish general capability preservation.
+
 ## Run locally
 
 Python 3.10+ and PyTorch 2.6+ are required. Use the [official PyTorch installation instructions](https://pytorch.org/get-started/locally/) for your platform. The original CPU experiment downloads no models or datasets, and traces stay in the local process/files.

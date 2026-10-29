@@ -31,8 +31,8 @@ class TraceProducerContractTests(unittest.TestCase):
         config = GPT2Config(vocab_size=32, n_positions=16, n_ctx=16, n_embd=8,
                             n_layer=2, n_head=2, use_cache=False,
                             resid_pdrop=0, embd_pdrop=0, attn_pdrop=0)
-        with torch.random.fork_rng():
-            torch.manual_seed(2026)
+        with torch.random.fork_rng(devices=[]):
+            torch.random.default_generator.manual_seed(2026)
             model = GPT2LMHeadModel(config).eval()
         inputs = (torch.tensor([[1, 3, 5], [2, 4, 6]]),
                   torch.tensor([[3, 1, 7], [6, 2, 8]]))

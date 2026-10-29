@@ -33,13 +33,13 @@ Every full record has exactly these top-level keys:
 
 | Field | Required value |
 | --- | --- |
-| `schema` | `causal-v2-condition-record-v1` |
+| `schema` | `causal-v2-condition-record-v1` or `causal-v2-condition-record-v2`; a chunk cannot mix versions. |
 | `cell_id`, `phase`, `model_seed`, `model_state_sha256` | The buffer's fixed opaque identity, `discovery` or `heldout`, seed and lowercase SHA-256. |
 | `case_id`, `case_index`, `condition_id`, `input_sha256`, `strength` | Caller-bound identities. The two strengths must share the case and input digest; case IDs, input digests and condition IDs cannot be reused across cases. |
 | `prediction_ref` | Null for discovery; a nonempty opaque reference for held-out records. |
 | `traces` | `clean`, `repeat_clean`, and `perturbed`, each an ordered four-event array. Each event has `metadata` from `TraceEvent.metadata()` and a `value` tensor. |
 | `logits` | `clean`, `repeat_clean`, `perturbed`, `upstream`, `post_hook_clean`, and arrays `forward`, `reverse`, `null`, `self` with three site outputs each. This includes all 13 plan outputs and the separate final clean output. |
-| `plans` | Thirteen records in `forward`, `reverse`, `null`, `self` site order 1–3, then `upstream` site 0. Each has exactly `kind`, `site`, full `metadata`, `captures`, `source_id`, and `base_id`. |
+| `plans` | Thirteen records in `forward`, `reverse`, `null`, `self` site order 1–3, then `upstream` site 0. Each v1 plan has exactly `kind`, `site`, full `metadata`, `captures`, `source_id`, and `base_id`. V2 additionally has `source_role`, `comparison_role`, `comparison_id`, and `base_role`. |
 | `private_integrity` | Exactly `target`, `delta`, `clean_target`, `perturbed_target`, `clean_capture_metadata`, and `perturbed_capture_metadata`. Both target tensors and both metadata objects are retained. |
 | `comparison` | A JSON object retaining the executor's complete comparison. |
 
@@ -50,10 +50,32 @@ exact bits, including signed zero and subnormals, are saved. Plan captures are
 `post_action` for each plan and additionally `self_source` for self-patches.
 The null plan has a null source ID; self-patches use
 `same_forward_self_source`; other plans and all bases have nonempty references.
+V2 also retains the executor's original source, comparison and base role
+strings. Each trace source or comparison ID ends in `/block.N.output` for the
+plan's site; self-patch source still means the **same forward's** capture, with
+the perturbed sparse trace as a separate comparison. For an external patch the
+source and comparison ID are the same trace value. V1 remains readable for
+earlier development clients but does not retain a separate comparison identity.
 Full plan and private capture metadata are retained unchanged, but the adapter
 does not check their semantic contents or calculate the referenced digests.
 The executor must bind the digest to its actual model state and input bytes,
 and verify the source/base references and all plan/control metadata.
+
+`causal_v2_evidence_encoder.append_executor_result` converts the reusable
+executor's returned tensors, ordered plans, comparison, private integrity and
+its `input_sha256` / `model_state_sha256` fields to a v2 record and appends it
+to a `CellEvidence` buffer. The caller supplies the opaque case/condition IDs,
+optional committed prediction reference, and four distinct bounded references
+for `clean_sparse_trace`, `perturbed_sparse_trace`, `clean`, and `perturbed`.
+The encoder adds the plan site to trace references and retains all role strings.
+It reinterprets float32 tensors as integers before copying, preserving signed
+zero and subnormal bits. A returned record SHA-256 identifies those encoded
+bytes; it is not a publication receipt. Keep the result and references
+unchanged until encoding finishes. Any encoding error marks the buffer failed,
+so only incomplete evidence can subsequently be published. The older
+standalone development executor does not return both identities or comparison
+roles; this encoder requires the newer reusable result shape and does not fill
+those fields from guesses.
 
 After a failed condition or cancellation, stop model work, perform required
 cleanup, and call `publish_incomplete()` to retain the validated prefix. An

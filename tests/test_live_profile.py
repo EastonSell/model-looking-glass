@@ -555,6 +555,27 @@ class LiveProfileTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             module._verify_architecture(torch, actual, reference)
         del attn.forward
+        actual.to = lambda *args, **kwargs: actual
+        with self.assertRaises(ValueError):
+            module._verify_architecture(torch, actual, reference)
+        del actual.to
+        attn._apply = lambda *args, **kwargs: attn
+        with self.assertRaises(ValueError):
+            module._verify_architecture(torch, actual, reference)
+        del attn._apply
+        for method in ('children', 'named_children', 'named_modules', 'modules'):
+            setattr(attn, method, lambda *args, **kwargs: iter(()))
+            with self.subTest(method=method), self.assertRaises(ValueError):
+                module._verify_architecture(torch, actual, reference)
+            delattr(attn, method)
+        for owner in (actual, attn):
+            for method in ('get_parameter', 'get_buffer', 'get_submodule', 'state_dict',
+                           '_save_to_state_dict', 'named_buffers', 'named_parameters',
+                           'parameters', 'buffers', '_named_members'):
+                setattr(owner, method, lambda *args, **kwargs: None)
+                with self.subTest(owner=type(owner).__name__, method=method), self.assertRaises(ValueError):
+                    module._verify_architecture(torch, actual, reference)
+                delattr(owner, method)
         handle = torch.nn.modules.module.register_module_forward_hook(lambda *args: None)
         try:
             with self.assertRaises(ValueError):

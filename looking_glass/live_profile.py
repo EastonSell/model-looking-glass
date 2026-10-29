@@ -655,6 +655,13 @@ def _verify_architecture(torch, model, reference):
     and the same verified Transformers implementation.
     """
     _check_global_module_hooks(torch)
+    instance_overrides = ('forward', '_call_impl', '_wrapped_call_impl', '_slow_forward',
+                          'to', '_apply', 'children', 'named_children', 'named_modules', 'modules',
+                          'get_parameter', 'get_buffer', 'get_submodule', 'state_dict',
+                          '_save_to_state_dict', 'named_buffers', 'named_parameters',
+                          'parameters', 'buffers', '_named_members')
+    if any(method in vars(model) for method in instance_overrides):
+        raise ValueError('instance-level module execution overrides are prohibited')
     actual = dict(model.named_modules(remove_duplicate=False))
     expected = dict(reference.named_modules(remove_duplicate=False))
     if list(actual) != list(expected):
@@ -665,7 +672,7 @@ def _verify_architecture(torch, model, reference):
         trusted = expected[name]
         if type(module) is not type(trusted) or module.training is not False:
             raise ValueError('model module type or mode differs from the pinned architecture')
-        if any(method in vars(module) for method in ('forward', '_call_impl', '_wrapped_call_impl', '_slow_forward')):
+        if any(method in vars(module) for method in instance_overrides):
             raise ValueError('instance-level module execution overrides are prohibited')
         if getattr(module, '_compiled_call_impl', None) is not None:
             raise ValueError('compiled model modules are prohibited')
