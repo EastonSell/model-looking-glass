@@ -66,9 +66,16 @@ def _check_metadata(manifest, selection, metadata, public_exposure, custody_resu
             not math.isfinite(selection["point_prediction"]) or selection.get("sign_prediction") != "positive"):
         raise v1.StudyError("invalid selected dose or prediction")
     identity_keys = {"version", "phase", "run_id", "manifest_sha256", "source_commit"}
-    required = identity_keys | {"model", "environment", "exposure", "custody", "compatibility", "grid", "controls"}
+    required = identity_keys | {"model", "environment", "exposure", "custody", "compatibility", "grid", "controls",
+                                "supervision", "buffer_state_sha256", "runtime_settings",
+                                "analysis_denormal_probe_before", "analysis_denormal_probe_after"}
     if type(metadata) is not dict or set(metadata) != required:
         raise v1.StudyError("development metadata is incomplete")
+    evidence._check_supervision(metadata["supervision"])
+    evidence._check_analysis_probes(metadata)
+    evidence._check_runtime_settings(metadata["runtime_settings"], metadata["environment"])
+    if not evidence._digest(metadata["buffer_state_sha256"]):
+        raise v1.StudyError("invalid supplemental buffer-state digest")
     prior = manifest["v1_compatibility"]
     if (not _same(metadata["model"], prior["model"]) or not _same(metadata["exposure"], public_exposure) or
             not _same(metadata["custody"], custody_result)):
@@ -151,7 +158,8 @@ def prepare_committed_selection(repo, *, manifest_path, manifest_commit, manifes
 
 
 def reconstruct_selected_controls(snapshot, *, reference_bytes, environment, model_metadata,
-                                  model_state_sha256, original, v1_gradient, v1_random, discovery):
+                                  model_state_sha256, buffer_state_sha256, runtime_settings,
+                                  original, v1_gradient, v1_random, discovery):
     """Check a fresh reconstruction against the immutable saved handoff.
 
     The caller exclusively owns input tensors and must independently validate
@@ -170,6 +178,12 @@ def reconstruct_selected_controls(snapshot, *, reference_bytes, environment, mod
         _check_metadata(manifest, selection, metadata, metadata["exposure"], metadata["custody"])
     except (KeyError, TypeError, ValueError, OverflowError) as exc:
         raise v1.StudyError("invalid frozen selection snapshot") from exc
+    if (not evidence._digest(buffer_state_sha256) or
+            buffer_state_sha256 != metadata["buffer_state_sha256"]):
+        raise v1.StudyError("fresh buffer state differs from development")
+    evidence._check_runtime_settings(runtime_settings, environment)
+    if not _same(runtime_settings, metadata["runtime_settings"]):
+        raise v1.StudyError("fresh runtime settings differ from development")
     compatibility = edits.verify_v1_compatibility(reference_bytes, environment=environment,
                         model_metadata=model_metadata, model_state_sha256=model_state_sha256,
                         original=original, v1_gradient=v1_gradient, v1_random=v1_random, discovery=discovery)
