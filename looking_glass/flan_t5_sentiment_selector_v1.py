@@ -87,6 +87,16 @@ def _source_descriptor(value):
     require(_hex(value['revision'], 40) and _hex(value['sha256'], 64), 'source identity is invalid')
 
 
+def _require_commit(repo, revision):
+    require(_hex(revision, 40), 'revision is invalid')
+    try:
+        kind = subprocess.check_output(['git', '--no-replace-objects', 'cat-file', '-t', revision], cwd=repo,
+                                       stderr=subprocess.DEVNULL).strip()
+    except subprocess.CalledProcessError as exc:
+        raise ValueError('revision is not an available Git commit') from exc
+    require(kind == b'commit', 'revision is not a Git commit')
+
+
 def validate_pool(pool, exposures):
     require(type(pool) is dict and set(pool) == {'schema', 'protocol_sha256', 'runner_revision',
             'asset_manifest_sha256', 'exposure_sources', 'units'}, 'pool keys differ')
@@ -262,8 +272,11 @@ def load_exposures(repo, descriptors, *, require_minimum=True):
                     or item['sha256'] == REQUIRED_SOURCE_HASHES[item['path']] for item in descriptors),
                 'required known exposure source digest differs')
     result = []
+    for revision in {item['revision'] for item in descriptors}:
+        _require_commit(repo, revision)
     for descriptor in descriptors:
-        raw = subprocess.check_output(['git', 'show', f"{descriptor['revision']}:{descriptor['path']}"], cwd=repo)
+        raw = subprocess.check_output(['git', '--no-replace-objects', 'show',
+                                       f"{descriptor['revision']}:{descriptor['path']}"], cwd=repo)
         require(hashlib.sha256(raw).hexdigest() == descriptor['sha256'], 'exposure source digest differs')
         payloads = ([strict_json(line) for line in raw.splitlines() if line]
                     if descriptor['path'].endswith('.jsonl') else [strict_json(raw)])
@@ -274,7 +287,8 @@ def load_exposures(repo, descriptors, *, require_minimum=True):
                     _strip_eos(value['input_ids'])
                     rows.append(value['input_ids'])
                 for key, child in value.items():
-                    if key in ('text', 'subject', 'adjective', 'source_words', 'target_words'):
+                    if key in ('text', 'subject', 'adjective', 'word', 'words', 'first_word',
+                               'second_word', 'source_words', 'target_words'):
                         values = child if type(child) is list else [child]
                         for text in values:
                             if type(text) is str:
@@ -310,16 +324,24 @@ def main(argv=None):
     for key in ('pool-card', 'pool-observation', 'asset-dir', 'selection', 'selection-salt', 'selection-card'):
         s.add_argument('--' + key, type=Path, required=True)
     args = parser.parse_args(argv)
-    pool = strict_json(args.pool.read_bytes())
+    pool_raw = args.pool.read_bytes()
+    require(len(pool_raw) <= 256 * 1024, 'pool custody limit exceeded')
+    pool = strict_json(pool_raw)
     exposures = load_exposures(args.repo, pool['exposure_sources'])
     validate_pool(pool, exposures)
+    _require_commit(args.repo, pool['runner_revision'])
     if args.command == 'commit-pool':
         salt = secrets.token_bytes(32)
         card = {'schema': 'flan-sentiment-pool-card-v1', 'commitment': pool_commitment(pool, salt),
                 'protocol_sha256': pool['protocol_sha256'], 'runner_revision': pool['runner_revision'],
                 'asset_manifest_sha256': pool['asset_manifest_sha256']}
         _write_new(args.pool_salt, salt)
-        _write_new(args.pool_card, canonical(card) + b'\n')
+        card_bytes = canonical(card) + b'\n'
+        _write_new(args.pool_card, card_bytes)
+        require(args.pool.read_bytes() == pool_raw and args.pool_salt.read_bytes() == salt
+                and args.pool_card.read_bytes() == card_bytes
+                and pool_commitment(strict_json(pool_raw), args.pool_salt.read_bytes()) == card['commitment'],
+                'pool commitment readback differs')
         print(json.dumps({'status': 'pool-committed', 'commitment': card['commitment']}))
         return
     salt = args.pool_salt.read_bytes()
@@ -329,12 +351,15 @@ def main(argv=None):
                 'protocol_sha256': pool['protocol_sha256'], 'runner_revision': pool['runner_revision'],
                 'asset_manifest_sha256': pool['asset_manifest_sha256']}
     require(card == expected, 'pool card differs')
-    observation = strict_json(args.pool_observation.read_bytes())
+    observation_raw = args.pool_observation.read_bytes()
+    observation = strict_json(observation_raw)
     require(type(observation) is dict and set(observation) == {'schema', 'path', 'revision', 'sha256'}
             and observation['schema'] == 'flan-sentiment-pool-observation-v1', 'pool observation differs')
     _source_descriptor({key: observation[key] for key in ('path', 'revision', 'sha256')})
     require(hashlib.sha256(card_raw).hexdigest() == observation['sha256'], 'pool card observation digest differs')
-    published = subprocess.check_output(['git', 'show', f"{observation['revision']}:{observation['path']}"], cwd=args.repo)
+    _require_commit(args.repo, observation['revision'])
+    published = subprocess.check_output(['git', '--no-replace-objects', 'show',
+                                         f"{observation['revision']}:{observation['path']}"], cwd=args.repo)
     require(published == card_raw, 'published pool card differs')
     from .flan_t5_feasibility import verify_assets
     verify_assets(args.asset_dir)
@@ -348,9 +373,20 @@ def main(argv=None):
                      'commitment': selection_commitment(selection, selection_salt),
                      'pool_commitment': card['commitment'], 'protocol_sha256': pool['protocol_sha256'],
                      'runner_revision': pool['runner_revision'], 'asset_manifest_sha256': pool['asset_manifest_sha256']}
-    _write_new(args.selection, canonical(selection))
+    selection_bytes = canonical(selection)
+    selected_card_bytes = canonical(selected_card) + b'\n'
+    require(len(pool_raw) + len(card_raw) + len(observation_raw) + len(selection_bytes)
+            + len(selected_card_bytes) + 64 + 256 * 1024 <= 8 * 1024 * 1024,
+            'selection custody limit exceeded')
+    _write_new(args.selection, selection_bytes)
     _write_new(args.selection_salt, selection_salt)
-    _write_new(args.selection_card, canonical(selected_card) + b'\n')
+    _write_new(args.selection_card, selected_card_bytes)
+    require(args.pool.read_bytes() == pool_raw and args.pool_salt.read_bytes() == salt
+            and args.pool_card.read_bytes() == card_raw and args.pool_observation.read_bytes() == observation_raw
+            and args.selection.read_bytes() == selection_bytes and args.selection_salt.read_bytes() == selection_salt
+            and args.selection_card.read_bytes() == selected_card_bytes
+            and selection_commitment(strict_json(selection_bytes), args.selection_salt.read_bytes())
+            == selected_card['commitment'], 'selection commitment readback differs')
     print(json.dumps({'status': 'selection-committed', 'commitment': selected_card['commitment'],
                       'enough_selected': len(selection['selected_units']) == 4}))
 

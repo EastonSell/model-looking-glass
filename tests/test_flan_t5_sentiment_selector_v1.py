@@ -3,7 +3,10 @@ import copy
 import hashlib
 import json
 import re
+import shutil
 import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -164,11 +167,35 @@ def test_fake_git_bound_two_stage_selection_and_readback(tmp_path, monkeypatch):
     exposed = selector.load_exposures(repo, descriptors)
     assert len(exposed[0]['rows']) == 1 and len(exposed[1]['rows']) == 2
     assert 'für' in exposed[0]['words'] and 'r' not in exposed[0]['words']
+    tree_descriptor = copy.deepcopy(descriptors)
+    tree_descriptor[0]['revision'] = git('show', '-s', '--format=%T', 'HEAD')
+    with pytest.raises(ValueError, match='not a Git commit'):
+        selector.load_exposures(repo, tree_descriptor)
+    replaced_data = json.dumps({'text': 'Replacement example', 'input_ids': [503, 1]}).encode()
+    (repo / 'known/input.json').write_bytes(replaced_data)
+    git('add', 'known/input.json')
+    git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'replacement')
+    replacement_revision = git('rev-parse', 'HEAD')
+    git('replace', revision, replacement_revision)
+    assert subprocess.check_output(['git', 'show', f'{revision}:known/input.json'], cwd=repo) == replaced_data
+    replaced_descriptor = copy.deepcopy(descriptors)
+    replaced_descriptor[0]['sha256'] = hashlib.sha256(replaced_data).hexdigest()
+    with pytest.raises(ValueError, match='source digest differs'):
+        selector.load_exposures(repo, replaced_descriptor, require_minimum=False)
+    git('replace', '-d', revision)
     value = pool()
     value['exposure_sources'] = descriptors
+    value['runner_revision'] = revision
     pool_path = tmp_path / 'pool.json'
     pool_path.write_bytes(selector.canonical(value))
     pool_salt, card = tmp_path / 'pool.salt', tmp_path / 'pool-card.json'
+    bad_pool = copy.deepcopy(value)
+    bad_pool['runner_revision'] = git('show', '-s', '--format=%T', 'HEAD')
+    pool_path.write_bytes(selector.canonical(bad_pool))
+    with pytest.raises(ValueError, match='not a Git commit'):
+        selector.main(['commit-pool', '--repo', str(repo), '--pool', str(pool_path),
+                       '--pool-salt', str(pool_salt), '--pool-card', str(card)])
+    pool_path.write_bytes(selector.canonical(value))
     selector.main(['commit-pool', '--repo', str(repo), '--pool', str(pool_path),
                    '--pool-salt', str(pool_salt), '--pool-card', str(card)])
     assert len(pool_salt.read_bytes()) == 32
@@ -200,3 +227,92 @@ def test_fake_git_bound_two_stage_selection_and_readback(tmp_path, monkeypatch):
     observation.write_bytes(selector.canonical(bad_observation))
     with pytest.raises(ValueError, match='observation digest'):
         selector.main(args)
+
+    bad_observation['sha256'] = hashlib.sha256(card.read_bytes()).hexdigest()
+    bad_observation['revision'] = git('show', '-s', '--format=%T', 'HEAD')
+    observation.write_bytes(selector.canonical(bad_observation))
+    with pytest.raises(ValueError, match='not a Git commit'):
+        selector.main(args)
+
+    observation.write_bytes(selector.canonical({'schema': 'flan-sentiment-pool-observation-v1',
+                            'path': 'pool-card.json', 'revision': card_revision,
+                            'sha256': hashlib.sha256(card.read_bytes()).hexdigest()}))
+    changed_selection = tmp_path / 'changed.json'
+    changed_salt = tmp_path / 'changed.salt'
+    changed_card = tmp_path / 'changed-card.json'
+    changed_args = args[:-6] + ['--selection', str(changed_selection), '--selection-salt', str(changed_salt),
+                                '--selection-card', str(changed_card)]
+    original_write = selector._write_new
+    def corrupt_after_write(path, data):
+        original_write(path, data)
+        if Path(path) == changed_card:
+            changed_selection.write_bytes(b'{}')
+    monkeypatch.setattr(selector, '_write_new', corrupt_after_write)
+    with pytest.raises(ValueError, match='selection commitment readback'):
+        selector.main(changed_args)
+    assert changed_card.exists() and changed_salt.exists() and changed_selection.exists()
+
+    altered_salt, altered_card = tmp_path / 'altered-pool.salt', tmp_path / 'altered-pool-card.json'
+    def corrupt_pool_salt(path, data):
+        original_write(path, data)
+        if Path(path) == altered_card:
+            data = altered_salt.read_bytes()
+            altered_salt.write_bytes(bytes([data[0] ^ 1]) + data[1:])
+    monkeypatch.setattr(selector, '_write_new', corrupt_pool_salt)
+    with pytest.raises(ValueError, match='pool commitment readback'):
+        selector.main(['commit-pool', '--repo', str(repo), '--pool', str(pool_path),
+                       '--pool-salt', str(altered_salt), '--pool-card', str(altered_card)])
+    assert altered_card.exists() and altered_salt.exists()
+
+
+def test_isolated_launcher_rejects_root_shadow_and_prepopulated_prefix(tmp_path):
+    checkout = tmp_path / 'checkout'
+    package = checkout / 'looking_glass'
+    tools = checkout / 'tools'
+    package.mkdir(parents=True)
+    tools.mkdir()
+    repo = Path(__file__).resolve().parents[1]
+    for name in ('__init__.py', 'flan_t5_sentiment_screen.py', 'flan_t5_sentiment_selector_v1.py',
+                 'flan_t5_feasibility.py'):
+        shutil.copyfile(repo / 'looking_glass' / name, package / name)
+    launcher = tools / 'run_flan_sentiment_selector_v1.py'
+    shutil.copyfile(repo / 'tools' / launcher.name, launcher)
+    subprocess.run(['git', 'init', '-q'], cwd=checkout, check=True)
+    subprocess.run(['git', 'add', 'looking_glass', 'tools'], cwd=checkout, check=True)
+    subprocess.run(['git', '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid',
+                    'commit', '-qm', 'fixture'], cwd=checkout, check=True)
+    sentinel = tmp_path / 'shadow-executed'
+    (checkout / 'numbers.py').write_text('from pathlib import Path\nPath(%r).write_text("hit")\n' % str(sentinel))
+    prefix = tmp_path / 'empty-prefix'
+    prefix.mkdir()
+    safe = subprocess.run([sys.executable, '-I', '-B', '-X', f'pycache_prefix={prefix}', str(launcher), '--help'],
+                          cwd=checkout, capture_output=True, timeout=90)
+    assert safe.returncode == 0, safe.stderr.decode(errors='replace')
+    assert not sentinel.exists() and not list(prefix.iterdir())
+    positive = subprocess.run([sys.executable, '-I', '-B', '-c',
+        f'import sys; sys.path.insert(0, {str(checkout)!r}); import numbers'],
+        cwd=checkout, capture_output=True, timeout=30)
+    assert positive.returncode == 0 and sentinel.read_text() == 'hit'
+    import py_compile
+    py_compile.compile(str(checkout / 'numbers.py'), cfile=str(checkout / 'numbers.pyc'), doraise=True)
+    (checkout / 'numbers.py').unlink()
+    sentinel.unlink()
+    safe_pyc = subprocess.run([sys.executable, '-I', '-B', '-X', f'pycache_prefix={prefix}', str(launcher), '--help'],
+                              cwd=checkout, capture_output=True, timeout=90)
+    assert safe_pyc.returncode == 0, safe_pyc.stderr.decode(errors='replace')
+    assert not sentinel.exists() and not list(prefix.iterdir())
+    positive_pyc = subprocess.run([sys.executable, '-I', '-B', '-c',
+        f'import sys; sys.path.insert(0, {str(checkout)!r}); import numbers'],
+        cwd=checkout, capture_output=True, timeout=30)
+    assert positive_pyc.returncode == 0 and sentinel.read_text() == 'hit'
+    (prefix / 'poison').write_text('x')
+    blocked = subprocess.run([sys.executable, '-I', '-B', '-X', f'pycache_prefix={prefix}', str(launcher), '--help'],
+                             cwd=checkout, capture_output=True, timeout=30)
+    assert blocked.returncode != 0
+    clean_prefix = tmp_path / 'new-prefix'
+    clean_prefix.mkdir()
+    copied_selector = package / 'flan_t5_sentiment_selector_v1.py'
+    copied_selector.write_bytes(copied_selector.read_bytes() + b'\n')
+    changed = subprocess.run([sys.executable, '-I', '-B', '-X', f'pycache_prefix={clean_prefix}',
+                              str(launcher), '--help'], cwd=checkout, capture_output=True, timeout=30)
+    assert changed.returncode != 0 and b'source differs' in changed.stderr

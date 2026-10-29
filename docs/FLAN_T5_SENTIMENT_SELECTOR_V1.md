@@ -50,12 +50,21 @@ carried into the selection. No unsalted private row digest is published.
 ## Operation
 
 Provide a trusted checkout containing the referenced Git objects and the
-privately prepared pool, with output paths that do not already exist. The
+privately prepared pool, with output paths that do not already exist. Before
+launch, an outer operator creates a fresh empty bytecode-prefix directory and
+checks it before and after the direct process. The isolated launcher adds only
+the selected package directory, not the checkout root, to Python's import
+system. It compares its own and the four imported project-module bytes with
+their checkout Git commit before and after execution; it does not authenticate
+Python, the checkout, or an already-poisoned prefix. Git reads ignore
+replacement objects. All source, pool-card and runner revisions must resolve to Git commit
+objects; this local check does not establish that any commit was public at a
+trusted time. The
 first command validates pool structure and prior lexical exclusions, writes a
 new private 32-byte salt and public pool card, and does not load the tokenizer:
 
 ```sh
-python -B -m looking_glass.flan_t5_sentiment_selector_v1 commit-pool \
+python -I -B -X pycache_prefix=FRESH_EMPTY_PREFIX tools/run_flan_sentiment_selector_v1.py commit-pool \
   --repo CHECKOUT --pool PRIVATE_POOL.json --pool-salt PRIVATE_POOL_SALT.bin \
   --pool-card NEW_PUBLIC_POOL_CARD.json
 ```
@@ -69,14 +78,18 @@ record all 12 units and produce a new private selection and salt plus a public
 selection card:
 
 ```sh
-python -B -m looking_glass.flan_t5_sentiment_selector_v1 select \
+python -I -B -X pycache_prefix=FRESH_EMPTY_PREFIX tools/run_flan_sentiment_selector_v1.py select \
   --repo CHECKOUT --pool PRIVATE_POOL.json --pool-salt PRIVATE_POOL_SALT.bin \
   --pool-card PUBLIC_POOL_CARD.json --pool-observation POOL_OBSERVATION.json \
   --asset-dir PINNED_ASSET_DIR --selection PRIVATE_SELECTION.json \
   --selection-salt PRIVATE_SELECTION_SALT.bin --selection-card NEW_SELECTION_CARD.json
 ```
 
-Both commands use exclusive creation and retain partial files on an error.
+Both commands use exclusive creation, read back and recompute their written
+commitments before reporting success, and retain partial files on an error.
+The selector bounds its private pool to 256 KiB and the written/observed
+custody artifacts to 8 MiB with a 256 KiB allowance for external records;
+the surrounding custodian still accounts for its own logs and receipts.
 The surrounding custodian records stage outcomes and sanitized failures,
 does not retry the fixed attempt, and applies the protocol's reveal rule if
 selection is incomplete. An external independent observer reads the public
