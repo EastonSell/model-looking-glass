@@ -1,5 +1,7 @@
 import math
 import hashlib
+import copy
+import json
 from fractions import Fraction
 import struct
 
@@ -113,6 +115,12 @@ def test_documented_square_midpoint_has_an_even_and_odd_neighbor():
     assert struct.unpack("<Q", struct.pack("<d", even))[0] % 2 == 0
     assert struct.unpack("<Q", struct.pack("<d", odd))[0] % 2 == 1
     assert _audit()._norm([value, -value]) == math.sqrt(math.fsum(x ** 2 for x in (value, -value)))
+
+
+def test_recorded_binary64_metadata_does_not_equate_positive_and_negative_zero():
+    audit = _audit()
+    assert audit._typed_equal({"value": -0.0}, {"value": -0.0})
+    assert not audit._typed_equal({"value": 0.0}, {"value": -0.0})
 
 
 def _saved_family_fixture(family_index=0):
@@ -269,3 +277,210 @@ def test_complete_study_replay_requires_exact_counters_and_streams_families():
         with pytest.raises(ValueError, match="counter"):
             audit.replay_result(cases, result, read_case, vocabulary_size=2)
         assert reads == []
+
+
+def _recorded_metadata_fixture(cases, records):
+    source, deliveries = _dose_fixture()
+    old = {2: 0.5, 7: 0.375, 10: 0.25}
+    m, requested = 2.0, {"low": 1.0, "match": math.sqrt(2.0), "high": 2.0}
+    norm = {2: 4.0, 7: 3.0, 10: 2.0}
+    variants = []
+    for _ in range(4):
+        item = {}
+        for dose in ("low", "match", "high"):
+            item[dose] = {}
+            for head in (2, 7, 10):
+                start = (10 * 768 + 64 * head) * 4
+                after_raw = deliveries[f"h{head}_{dose}"][start:start + 256]
+                before_raw = source[start:start + 256]
+                words_before = [v[0] for v in struct.iter_unpack("<I", before_raw)]
+                words_after = [v[0] for v in struct.iter_unpack("<I", after_raw)]
+                after = [v[0] for v in struct.iter_unpack("<f", after_raw)]
+                item[dose][str(head)] = {
+                    "source_l2": norm[head], "requested_fraction": requested[dose] / norm[head],
+                    "achieved_l2": math.sqrt(math.fsum((value - old[head]) ** 2 for value in after)),
+                    "changed_float32_elements": sum(a != b for a, b in zip(words_before, words_after)),
+                    "changed_binary_bits": sum((a ^ b).bit_count() for a, b in zip(words_before, words_after)),
+                }
+        variants.append(item)
+    family = {"group": cases[0]["group"], "m": m, "requested_l2": requested, "variants": variants}
+    diagnostics = []
+    for case in cases:
+        delta = {name: math.sqrt(768 * (value - 1.0) ** 2) for name, value in
+                 ((name, {"h2_low": 2.0, "h10_low": 3.0, "h2_h10_low": 5.0}.get(name, 0.0))
+                  for name in _audit().ARMS)}
+        residual = {dose: {pair: math.sqrt(768) if (dose, pair) == ("low", "2_10")
+                            else math.sqrt(768 * (1.0 -
+                                ({"2_7": 2.0, "2_10": 2.0, "7_10": 3.0}[pair] if dose == "low" else 0.0)) ** 2)
+                            for pair in ("2_7", "2_10", "7_10")}
+                    for dose in ("low", "high")}
+        # Compute the residual directly from the simple fixture's four output scalars.
+        for dose in ("low", "high"):
+            for a, b in ((2, 7), (2, 10), (7, 10)):
+                vals = {"noop": 1.0, "h2_low": 2.0, "h10_low": 3.0, "h2_h10_low": 5.0}
+                p = vals.get(f"h{a}_h{b}_{dose}", 0.0)
+                x = vals.get(f"h{a}_{dose}", 0.0)
+                y = vals.get(f"h{b}_{dose}", 0.0)
+                residual[dose][f"{a}_{b}"] = math.sqrt(768 * (((p - x) - y) + 1.0) ** 2)
+        diagnostics.append({"case_id": case["case_id"], "final_output_delta_l2": delta,
+                            "pair_minus_singles_output_residual_l2": residual})
+    for record in records:
+        action = record["action"]
+        if action not in _audit().ARMS:
+            record["intervention"] = None
+            continue
+        names = action.split("_")
+        dose, heads = names[-1], [int(x[1:]) for x in names[:-1]]
+        details = {"heads": heads, "position": 10, "dose": dose, "requested_l2_each": requested[dose],
+                   "components": {str(head): variants[record["variant"]][dose][str(head)] for head in heads}}
+        if len(heads) == 2:
+            differences = []
+            for head in heads:
+                start = (10 * 768 + 64 * head) * 4
+                raw = deliveries[f"h{head}_{dose}"][start:start + 256]
+                differences.extend(value[0] - old[head] for value in struct.iter_unpack("<f", raw))
+            combined = math.sqrt(math.fsum(value ** 2 for value in differences))
+            details["joint_combined_achieved_l2"] = combined
+            details["joint_combined_requested_l2"] = requested["match"] if dose == "low" else math.sqrt(2) * requested["high"]
+            if dose == "low":
+                details["joint_minus_matching_single_l2"] = {
+                    str(head): combined - variants[record["variant"]]["match"][str(head)]["achieved_l2"] for head in heads}
+        record["intervention"] = details
+    return family, diagnostics
+
+
+def test_saved_family_metadata_rejects_rehashed_landing_and_summary_claims():
+    audit = _audit()
+    cases, records, files = _saved_family_fixture()
+    family, diagnostics = _recorded_metadata_fixture(cases, records)
+    report = audit.audit_saved_family(cases, records, files, family_index=0, vocabulary_size=2)
+    audit.validate_recorded_family_metadata(cases, records, report, family, diagnostics)
+    bad_family = copy.deepcopy(family)
+    bad_family["variants"][0]["low"]["2"]["changed_binary_bits"] += 1
+    with pytest.raises(ValueError, match="metadata"):
+        audit.validate_recorded_family_metadata(cases, records, report, bad_family, diagnostics)
+    bad_records = copy.deepcopy(records)
+    pair = next(row for row in bad_records if row["action"] == "h2_h10_low")
+    pair["intervention"]["components"]["2"]["changed_binary_bits"] += 1
+    with pytest.raises(ValueError, match="intervention metadata"):
+        audit.validate_recorded_family_metadata(cases, bad_records, report, family, diagnostics)
+    bad_records = copy.deepcopy(records)
+    next(row for row in bad_records if row["action"] == "noop")["intervention"] = {"heads": []}
+    with pytest.raises(ValueError, match="control intervention"):
+        audit.validate_recorded_family_metadata(cases, bad_records, report, family, diagnostics)
+    bad_diagnostics = copy.deepcopy(diagnostics)
+    bad_diagnostics[0]["final_output_delta_l2"]["h2_match"] += 1.0
+    with pytest.raises(ValueError, match="diagnostic metadata"):
+        audit.validate_recorded_family_metadata(cases, records, report, family, bad_diagnostics)
+
+
+def _zero_runner_summary(audit):
+    metrics = ("target_log_probability", "target_logit")
+    families = []
+    for group in range(8):
+        arms = {}
+        for name in audit.ARMS:
+            entry = {"target_ranks": [1] * 4, "target_top1": [True] * 4}
+            for metric in metrics:
+                entry[metric] = {"case_deltas": [0.0] * 4, "repeat_delta": 0.0,
+                                 "shuffle_mean_delta": 0.0, "family_contrast": 0.0}
+            arms[name] = entry
+        interactions = {dose: {pair: {**{metric: 0.0 for metric in metrics},
+                                      **{metric + "_case_interactions": [0.0] * 4 for metric in metrics}}
+                               for pair in ("2_7", "2_10", "7_10")} for dose in ("low", "high")}
+        match = {pair: {f"h{head}": 0.0 for head in heads} for pair, heads in
+                 (("2_7", (2, 7)), ("2_10", (2, 10)), ("7_10", (7, 10)))}
+        pair_comparisons = {dose: {metric: {"2_10_minus_2_7": 0.0, "2_10_minus_7_10": 0.0}
+                                   for metric in metrics} for dose in ("low", "high")}
+        families.append({"group": group + 1, "arms": arms, "interactions": interactions,
+                         "total_match_comparisons": match, "total_match_logit_comparisons": match,
+                         "pair_comparisons": pair_comparisons,
+                         "dose_comparisons": {pair: {metric: 0.0 for metric in metrics}
+                                              for pair in ("2_7", "2_10", "7_10")},
+                         "clean_target_ranks": [1] * 4, "clean_target_top1": [True] * 4})
+    by_metric = {metric: {name: 0.0 for name in audit.ARMS} for metric in metrics}
+    return {"families": families, "mean_contrast_by_arm": by_metric,
+            "mean_repeat_delta_by_arm": by_metric, "mean_shuffle_delta_by_arm": by_metric,
+            "mean_interactions": {dose: {pair: {metric: 0.0 for metric in metrics}
+                                          for pair in ("2_7", "2_10", "7_10")} for dose in ("low", "high")},
+            "mean_pair_comparisons": {dose: {metric: {"2_10_minus_2_7": 0.0, "2_10_minus_7_10": 0.0}
+                                              for metric in metrics} for dose in ("low", "high")},
+            "mean_dose_comparisons": {pair: {metric: 0.0 for metric in metrics} for pair in ("2_7", "2_10", "7_10")},
+            "mean_total_match_comparisons": {metric: {pair: {f"h{head}": 0.0 for head in heads}
+                for pair, heads in (("2_7", (2, 7)), ("2_10", (2, 10)), ("7_10", (7, 10)))} for metric in metrics},
+            "top1_clean": {"repeated": 8, "shuffled": 24},
+            "top1_by_arm": {name: {"repeated": 8, "shuffled": 24} for name in audit.ARMS}}
+
+
+def test_strict_replay_checks_every_recorded_metadata_and_summary():
+    audit = _audit()
+    cases, records, files, families, diagnostics = [], [], {}, [], []
+    for group in range(8):
+        family_cases, family_records, family_files = _saved_family_fixture(group)
+        family, family_diagnostics = _recorded_metadata_fixture(family_cases, family_records)
+        cases.extend(family_cases)
+        records.extend(family_records)
+        files.update(family_files)
+        families.append(family)
+        diagnostics.extend(family_diagnostics)
+    result = {"schema": "distilgpt2-copy-head-pairs-dose-result-v1", "status": "complete",
+              "submitted_forwards": 576, "model_call_returns_observed": 576, "returned_forwards": 576,
+              "raw_payload_bytes": sum(len(value) for value in files.values()), "cases": records,
+              "family_doses": families, "case_diagnostics": diagnostics, "summary": _zero_runner_summary(audit)}
+    report = audit.replay_result(cases, result, files.__getitem__, vocabulary_size=2, verify_metadata=True)
+    assert len(report["families"]) == 8
+    result["summary"]["families"][0]["interactions"]["low"]["2_10"]["target_logit"] = 1.0
+    with pytest.raises(ValueError, match="summary"):
+        audit.replay_result(cases, result, files.__getitem__, vocabulary_size=2, verify_metadata=True)
+
+
+def _journal_fixture():
+    audit = _audit()
+    events = [{"event": "runtime_ready", "cpu_rng_seed": 20261029, "actual_runtime": {"device": "cpu"}}]
+    result = {"runtime": {"device": "cpu"}, "cases": [], "family_doses": [], "case_diagnostics": []}
+    for group in range(8):
+        def action(variant, name):
+            case_id = f"copy-pairs-{group + 1:02d}-{variant}"
+            record = {"case_id": case_id, "action": name, "raw": {"logits": {"offset": len(result["cases"])}}}
+            result["cases"].append(record)
+            events.extend(({"event": "start", "case_id": case_id, "action": name},
+                           {"event": "raw_recorded", "case_id": case_id, "action": name, "raw": copy.deepcopy(record["raw"])},
+                           {"event": "complete", **copy.deepcopy(record)}))
+        for variant in range(4):
+            action(variant, "clean")
+            action(variant, "noop")
+        family = {"group": group + 1, "m": 2.0}
+        result["family_doses"].append(family)
+        events.append({"event": "family_dose", **family})
+        for variant in range(4):
+            shift = (4 * group + variant) % len(audit.ARMS)
+            for name in audit.ARMS[shift:] + audit.ARMS[:shift] + ("clean_after",):
+                action(variant, name)
+            diagnostic = {"case_id": f"copy-pairs-{group + 1:02d}-{variant}", "ok": True}
+            result["case_diagnostics"].append(diagnostic)
+            events.append({"event": "case_diagnostics", **diagnostic})
+    def encoded():
+        return b"".join((json.dumps(event, sort_keys=True) + "\n").encode() for event in events)
+    return result, events, encoded
+
+
+def test_journal_reconciles_every_start_raw_completion_and_diagnostic():
+    audit = _audit()
+    result, events, encoded = _journal_fixture()
+    assert audit.audit_journal(result, encoded()) == 1769
+    events[2]["raw"]["logits"]["offset"] = 999
+    with pytest.raises(ValueError, match="journal"):
+        audit.audit_journal(result, encoded())
+    events[2]["raw"]["logits"]["offset"] = 0
+    events.append({"event": "failed"})
+    with pytest.raises(ValueError, match="journal"):
+        audit.audit_journal(result, encoded())
+
+
+def test_journal_rejects_a_result_field_that_overrides_the_completion_event():
+    audit = _audit()
+    result, events, encoded = _journal_fixture()
+    result["cases"][0]["event"] = "failed"
+    events[3]["event"] = "failed"
+    with pytest.raises(ValueError, match="journal"):
+        audit.audit_journal(result, encoded())
