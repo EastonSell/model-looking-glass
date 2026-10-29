@@ -65,6 +65,8 @@ The optional `transformer` extra pins Transformers 4.57.3: install it with `pyth
 
 The [recorded CPU shared-service checks](docs/PRETRAINED_SERVICE_SMOKE.md#recorded-cpu-checks) compare full DistilGPT2 logits for two clients against serial references with one model deserialization. They check correctness for the specified inputs and serial execution, not causal explanations or GPU performance.
 
+The [pretrained trace smoke](results/pretrained-trace-cpu-v1-20261028/README.md) records 18 events per channel on one fixed five-token input and two fresh-process replays on the same CPU host. It saves hashes and metadata rather than raw activations; it is a correctness check, not a causal study or benchmark.
+
 The recorded original experiment used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records its installed version inventory; it is not a cross-platform dependency lock. Other versions allowed by the package metadata have not been validated here. For the tested CPU version, install into an isolated environment with `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
 
 ```bash

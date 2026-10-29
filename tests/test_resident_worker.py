@@ -1,4 +1,6 @@
 import gc
+import inspect
+import sys
 from contextlib import nullcontext
 import threading
 import unittest
@@ -189,6 +191,22 @@ class ResidentWorkerTests(unittest.TestCase):
         result = worker.execute(ForwardRequest("small", {"input_ids": torch.tensor([[3]])}))
         self.assertTrue(torch.equal(result.logits, torch.tensor([[[3., 4.]]])))
 
+    def test_output_is_copied_into_exact_contiguous_cpu_storage(self):
+        class NoncontiguousModel(nn.Module):
+            def forward(self, input_ids):
+                values = input_ids.float().transpose(0, 1)
+                return {'logits': torch.stack((values, values + 1), dim=-1).transpose(0, 1)}
+
+        worker = ResidentWorker('layout', NoncontiguousModel().eval(), max_batch_size=2,
+                                max_output_bytes=48)
+        inputs = torch.tensor([[1, 2, 3], [4, 5, 6]])
+        result = worker.execute(ForwardRequest('r', {'input_ids': inputs}))
+        self.assertTrue(result.logits.is_contiguous())
+        self.assertEqual(result.logits.storage_offset(), 0)
+        self.assertEqual(result.logits.untyped_storage().nbytes(),
+                         result.logits.numel() * result.logits.element_size())
+        self.assertTrue(torch.equal(result.logits[..., 0], inputs.float()))
+
     def test_mutating_registered_buffer_poisoned_before_result_is_returned(self):
         class StatefulModel(SmallModel):
             def __init__(self):
@@ -378,6 +396,103 @@ class ResidentWorkerTests(unittest.TestCase):
                     with self.assertRaises(WorkerSynchronizationError):
                         worker.execute(ForwardRequest("fail", {"input_ids": torch.tensor([[1]])}))
         self.assertTrue(worker.quarantined)
+
+    def test_failed_drain_keeps_known_tensors_if_global_retention_cannot_grow(self):
+        references = {}
+
+        class NoRetentionSpace:
+            def append(self, item):
+                raise MemoryError('no space to retain references')
+
+        class ObservedModel(nn.Module):
+            def forward(self, input_ids):
+                logits = torch.stack((input_ids.float(), input_ids.float() + 1), dim=-1)
+                references['input'] = weakref.ref(input_ids)
+                references['logits'] = weakref.ref(logits)
+                return {'logits': logits}
+
+        model = ObservedModel().eval()
+        model_ref = weakref.ref(model)
+        worker = ResidentWorker('cuda', model)
+        del model
+        worker._device = torch.device('cuda:0')
+
+        def fake_to(tensor, *args, **kwargs):
+            if kwargs.get('copy'):
+                copied = tensor.clone()
+                references['offload'] = weakref.ref(copied)
+                return copied
+            return tensor
+
+        other = ResidentWorker('other', SmallModel().eval())
+        with patch.object(worker_module, '_quarantine_references', NoRetentionSpace()):
+            with patch.object(worker_module._process_quarantined, 'set', side_effect=MemoryError('event notification')):
+                with patch('torch.random.fork_rng', return_value=nullcontext()):
+                    with patch('torch.cuda.default_generators', [Mock()]):
+                        with patch.object(torch.Tensor, 'to', fake_to):
+                            with patch('torch.cuda.synchronize', side_effect=RuntimeError('drain failed')):
+                                with self.assertRaises(WorkerSynchronizationError):
+                                    worker.execute(ForwardRequest('fail', {'input_ids': torch.tensor([[1]])}))
+            worker.close()
+            gc.collect()
+            self.assertTrue(worker.quarantined)
+            self.assertTrue(other.quarantined)
+            with self.assertRaises(WorkerSynchronizationError):
+                other.execute(ForwardRequest('later', {'input_ids': torch.tensor([[2]])}))
+            self.assertIsNotNone(model_ref())
+            self.assertIsNotNone(references['input']())
+            self.assertIsNotNone(references['logits']())
+            self.assertIsNotNone(references['offload']())
+
+    def test_failed_drain_recovers_output_interrupted_before_slot_assignment(self):
+        references = {}
+
+        class NoRetentionSpace:
+            def append(self, item):
+                raise MemoryError('no space to retain references')
+
+        class ObservedModel(nn.Module):
+            def forward(self, input_ids):
+                logits = torch.stack((input_ids.float(), input_ids.float() + 1), dim=-1)
+                references['logits'] = weakref.ref(logits)
+                return {'logits': logits}
+
+        worker = ResidentWorker('cuda', ObservedModel().eval())
+        worker._device = torch.device('cuda:0')
+        source, first = inspect.getsourcelines(ResidentWorker._perform_with_custody)
+        target = first + max(i for i, line in enumerate(source)
+                             if line.strip() == 'self._live_buffers[2] = output')
+        fired = []
+
+        def trace(frame, event, arg):
+            if (frame.f_code is ResidentWorker._perform_with_custody.__code__
+                    and event == 'line' and frame.f_lineno == target):
+                sys.settrace(None)
+                fired.append(True)
+                raise RuntimeError('output-slot assignment interrupted')
+            return trace
+
+        with patch.object(worker_module, '_quarantine_references', NoRetentionSpace()):
+            with patch('torch.random.fork_rng', return_value=nullcontext()):
+                with patch('torch.cuda.default_generators', [Mock()]):
+                    with patch.object(torch.Tensor, 'to', lambda tensor, *args, **kwargs: tensor):
+                        with patch('torch.cuda.synchronize', side_effect=RuntimeError('drain failed')):
+                            try:
+                                sys.settrace(trace)
+                                with self.assertRaises(WorkerSynchronizationError):
+                                    worker.execute(ForwardRequest('fail', {'input_ids': torch.tensor([[1]])}))
+                            finally:
+                                sys.settrace(None)
+            worker.close()
+            gc.collect()
+            self.assertEqual(fired, [True])
+            self.assertTrue(worker.quarantined)
+            self.assertIsNotNone(references['logits']())
+
+    def test_successful_forward_clears_fixed_custody_slots(self):
+        worker = ResidentWorker('cpu', SmallModel().eval())
+        worker.execute(ForwardRequest('r', {'input_ids': torch.tensor([[1]])}))
+        self.assertEqual(worker._live_buffers, [None] * 5)
 
     def test_worker_already_waiting_for_execution_lock_observes_quarantine(self):
         entered, release, submitted = threading.Event(), threading.Event(), threading.Event()

@@ -6,6 +6,10 @@ not admit trace jobs using this adapter. Its tests do not establish GPU safety,
 machine-wide RAM limits, remote authentication, throughput, or a bound on the
 memory of consumers.
 
+For recoverable construction of a delivery in a bounded trusted-owner slot,
+see [TRACE_DELIVERY_GUARD.md](TRACE_DELIVERY_GUARD.md). That prototype does
+not enable trace service jobs or replace the custody sequence below.
+
 `TraceDelivery` stages one event for one sample. It takes trusted individual
 identity fields for the broker lifetime ID, job, team, run, request, sample
 and batch row, constructs a `DeliveryIdentity`, and creates a fresh random
@@ -33,7 +37,12 @@ broker lifetimes if schema metadata is exported without its delivery envelope.
    intentional and may reject otherwise feasible work.
 2. Call `stage(slice)` with a plain, detached, contiguous CPU float16,
    float32 or float64 tensor. Its backing storage must be exactly the payload
-   size, and shape, dtype and sample identity must match metadata. Source and
+   size, and shape, dtype and sample identity must match metadata. PyTorch's
+   reported storage size cannot reveal every retained external owner: for
+   example, a small `torch.frombuffer` view can keep a much larger Python
+   buffer alive. The trusted producer must use genuinely standalone source
+   allocations or separately charge all retained backing owners; the size check
+   alone does not enforce that obligation. Source and
    saved dtype must agree; source-device provenance remains trusted producer
    metadata. Store and aggregate destination claims are obtained before copying. Both the source
    and destination claims remain pinned until the copy has stopped. No
@@ -70,8 +79,10 @@ broker lifetimes if schema metadata is exported without its delivery envelope.
    after it has established that a complete payload arrived. Receipt keeps
    the service payload charged. A separate `ack_release(identity)` schedules
    local disposal; exact duplicate receipt and release acknowledgements are
-   idempotent while the generation remains active. A wrong or stale identity
-   never releases a claim. The acknowledgement is a cooperative statement, not proof that a
+   idempotent while the generation remains active. An unequal identity cannot
+   release a claim. A stale acknowledgement is rejected only if its identity
+   differs from the active one; the prototype does not enforce historical
+   uniqueness of its random delivery ID. The acknowledgement is a cooperative statement, not proof that a
    client discarded its copy or refrained from making more copies.
 7. `drain(timeout)` returns true only after local operations, cleanup,
    producer confirmation and ledger closure complete. It includes the wait
@@ -143,8 +154,13 @@ bounds the representation, not transient Python object overhead. A returned
 manifest belongs to the caller; caller-retained metadata is outside the
 adapter's ledger after local closure.
 
-The generation ID is random and scoped to a broker lifetime. A production
-trace wire protocol still needs authenticated identity binding, bounded
+The delivery ID is a random UUID associated with the broker lifetime; the
+prototype does not track previously issued UUIDs. If a UUID repeats with the
+same other identity fields, an old acknowledgement is indistinguishable from
+the new one and can be accepted. Do not rely on random non-repetition as an
+enforced stale-acknowledgement guarantee. A production trace wire protocol
+needs an authenticated process/job epoch and a non-reused delivery generation
+bound to every acknowledgement, as well as bounded
 framing and total queued deliveries, explicit complete-manifest/final markers,
 partial-frame rejection, broker-owned result disposal, disconnect handling,
 and an explicit client lifetime contract. Neither send completion, ACK, nor

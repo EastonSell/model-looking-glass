@@ -57,3 +57,12 @@ The summary lists each member's request ID, shape and checksum. A separate
 structural audit checked those records, manifest, source and archive; hashes
 and reports do not authenticate an executor or establish that other inputs
 will behave the same way.
+
+Replaying the frozen protocol requires the committed source and manifest
+version, since later changes to the worker or other listed sources are
+deliberately rejected. The recorded runtime also fingerprints interpreter
+paths and settings, so exact replay is tied to that environment. Relative to
+the original workspace root, this run used `work/.venv/Scripts/python.exe`,
+the `work/hf-cache/hub` checkpoint cache and the deliberately absent
+`work/distilgpt2-batch-cpu-v1-pycache-never-created` prefix, expanded to
+absolute paths at launch.
