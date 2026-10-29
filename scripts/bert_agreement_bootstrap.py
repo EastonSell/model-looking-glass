@@ -11,9 +11,10 @@ import stat
 import sys
 
 
-_MODULES = frozenset(('bert_agreement_study', 'bert_agreement_cases', 'bert_agreement_runner',
+_MODULES = frozenset(('bert_agreement_study', 'bert_agreement_cases', 'bert_agreement_exposures_v2', 'bert_agreement_runner',
                       'bert_agreement_audit', 'pretrained', 'intervention_plan',
-                      'interventions', 'model_ownership'))
+                      'interventions', 'model_ownership', 'cpu_study_supervision',
+                      'supervisor', 'device_lease', 'device_identity'))
 
 
 def _checked_path(path):
@@ -66,8 +67,8 @@ def _check_startup(checkout):
             or getattr(info, 'st_file_attributes', 0) & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)
             or any(directory.iterdir())):
         raise RuntimeError('the bytecode prefix must be an empty plain directory')
-    if os.environ.get('CUDA_VISIBLE_DEVICES') != '-1':
-        raise RuntimeError('the CPU study requires CUDA_VISIBLE_DEVICES=-1')
+    if os.environ.get('CUDA_VISIBLE_DEVICES') not in ('-1', ''):
+        raise RuntimeError('the CPU study requires CUDA visibility to be masked')
     if ('torch' in sys.modules or 'transformers' in sys.modules
             or any(name == 'looking_glass' or name.startswith('looking_glass.') for name in sys.modules)):
         raise RuntimeError('project or model dependencies were imported too early')
