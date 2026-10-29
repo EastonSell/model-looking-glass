@@ -1,5 +1,6 @@
 """CPU-only integration tests of trusted admission, execution and cleanup."""
 import threading
+from types import SimpleNamespace
 import unittest
 from unittest.mock import PropertyMock, patch
 
@@ -67,6 +68,24 @@ def make_wrapper(worker=None, budget=None, profiles=None):
 
 
 class BudgetedWorkerTests(unittest.TestCase):
+    def test_failed_status_distinguishes_clean_close_from_execution_poison(self):
+        healthy, _, _, _ = make_wrapper()
+        self.assertFalse(healthy.failed)
+        healthy.close()
+        self.assertTrue(healthy.poisoned)
+        self.assertFalse(healthy.failed)
+
+        class Oom(SmallModel):
+            def forward(self, input_ids, **kwargs):
+                raise torch.OutOfMemoryError('simulated')
+
+        failed, _, _, _ = make_wrapper(make_worker(Oom()))
+        with self.assertRaises(WorkerOutOfMemory):
+            failed.execute(request())
+        self.assertTrue(failed.failed)
+        failed.close()
+        self.assertTrue(failed.failed)
+
     def test_real_worker_success_releases_lease_only_after_forward_returns(self):
         entered, finish = threading.Event(), threading.Event()
 
@@ -119,6 +138,94 @@ class BudgetedWorkerTests(unittest.TestCase):
             wrapper.execute(request())
         self.assertEqual(model.calls, 0)
         self.assertEqual(budget.snapshot().active_leases, 0)
+
+    def test_ambient_cpu_or_cuda_autocast_is_rejected_before_admission(self):
+        for device_type in ('cpu', 'cuda'):
+            model = SmallModel()
+            wrapper, _, budget, _ = make_wrapper(make_worker(model))
+            # CUDA autocast is simulated, so this test never initializes a GPU.
+            fake_state = lambda name: name == device_type
+            with self.subTest(device_type=device_type):
+                with patch('torch.is_autocast_enabled', side_effect=fake_state):
+                    with self.assertRaisesRegex(RuntimeError, 'autocast'):
+                        wrapper.execute(request())
+                self.assertEqual(model.calls, 0)
+                self.assertEqual(budget.snapshot().active_leases, 0)
+
+    def test_actual_cpu_autocast_is_rejected_before_forward(self):
+        model = SmallModel()
+        wrapper, _, budget, _ = make_wrapper(make_worker(model))
+        with torch.autocast('cpu', dtype=torch.bfloat16):
+            with self.assertRaisesRegex(RuntimeError, 'autocast'):
+                wrapper.execute(request())
+        self.assertEqual(model.calls, 0)
+        self.assertEqual(budget.snapshot().active_leases, 0)
+
+    def test_enabled_model_cache_is_rejected_or_detected_before_admission(self):
+        model = SmallModel()
+        model.config = SimpleNamespace(use_cache=True)
+        with self.assertRaisesRegex(ValueError, 'cache'):
+            make_wrapper(make_worker(model))
+
+        model.config.use_cache = False
+        wrapper, _, budget, _ = make_wrapper(make_worker(model))
+        model.config.use_cache = True
+        with self.assertRaisesRegex(Exception, 'cache|identity|limits'):
+            wrapper.execute(request())
+        self.assertEqual(model.calls, 0)
+        self.assertEqual(budget.snapshot().active_leases, 0)
+
+    def test_cache_policy_change_during_forward_quarantines_lease(self):
+        class Mutating(SmallModel):
+            def __init__(self):
+                super().__init__()
+                self.config = SimpleNamespace(use_cache=False)
+
+            def forward(self, input_ids, **kwargs):
+                self.config.use_cache = True
+                return super().forward(input_ids, **kwargs)
+
+        wrapper, _, budget, admission = make_wrapper(make_worker(Mutating()))
+        with self.assertRaises(WorkerContractError):
+            wrapper.execute(request())
+        self.assertTrue(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+
+    def test_cache_change_during_admission_prevents_forward_and_releases_unused_lease(self):
+        model = SmallModel()
+        model.config = SimpleNamespace(use_cache=False)
+
+        def telemetry():
+            model.config.use_cache = True
+            return CudaMemorySnapshot(3 * GIB, 4 * GIB, 0, 0)
+
+        budget = MemoryBudget(telemetry, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        wrapper, _, _, _ = make_wrapper(make_worker(model), budget)
+        with self.assertRaisesRegex(Exception, 'cache|identity|limits'):
+            wrapper.execute(request())
+        self.assertEqual(model.calls, 0)
+        self.assertEqual(len(budget.active_leases()), 0)
+
+    def test_unreadable_cache_policy_after_forward_quarantines_lease(self):
+        class Unreadable:
+            @property
+            def use_cache(self):
+                raise RuntimeError('cache state unavailable')
+
+        class Mutating(SmallModel):
+            def __init__(self):
+                super().__init__()
+                self.config = SimpleNamespace(use_cache=False)
+
+            def forward(self, input_ids, **kwargs):
+                self.config = Unreadable()
+                return super().forward(input_ids, **kwargs)
+
+        wrapper, _, budget, admission = make_wrapper(make_worker(Mutating()))
+        with self.assertRaises(WorkerContractError):
+            wrapper.execute(request())
+        self.assertTrue(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 1)
 
     def test_changed_worker_binding_fails_before_admission_and_execution(self):
         for attribute, replacement in (('model_id', 'b' * 64), ('device', torch.device('cuda:0')),
