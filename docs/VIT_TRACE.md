@@ -93,3 +93,7 @@ that input and runtime, not model accuracy, device performance or a visual
 explanation. The [sample report](../examples/vit-trace-cpu-sample.json) was
 generated with Pillow 11.3.0 on the exposed v1 image; the image itself is not
 included and numeric hashes can vary across runtimes.
+
+For same-model donor capture, replacement and explicit self/no-op and
+dose-aware active controls on CLS or a processed-grid patch token, see the
+[bounded ViT donor-patch workflow](VIT_DONOR_PATCH.md).
