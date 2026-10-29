@@ -11,6 +11,9 @@ from types import MappingProxyType
 import torch
 from torch import nn
 
+from .grouped_observation import (_enter_forward, _finish_forward, _result_forward,
+                                  _returned_forward)
+
 
 class InvalidRequest(ValueError):
     """A request is outside the supported, bounded forward contract."""
@@ -370,8 +373,10 @@ class ResidentWorker:
                                     self._live_buffers[1] = device_inputs
                                     for name, tensor in request.inputs.items():
                                         device_inputs[name] = tensor.to(self.device)
+                                    _enter_forward(self, request, device_inputs)
                                     output = self._model(**device_inputs)
                                     self._live_buffers[2] = output
+                                    _returned_forward()
                                     if isinstance(output, Mapping) and output.get("past_key_values") is not None:
                                         raise WorkerStateError("model returned an unsupported key/value cache")
                                     logits = output if type(output) is torch.Tensor else output.get("logits") if isinstance(output, Mapping) else None
@@ -395,13 +400,17 @@ class ResidentWorker:
                                     sync_attempted = True
                                     try:
                                         torch.cuda.synchronize(self.device)
+                                        _finish_forward(True)
                                         self._drain_pending = False
                                     except BaseException:
                                         quarantine()
+                                else:
+                                    _finish_forward(True)
                     finally:
                         if devices and not sync_attempted:
                             try:
                                 torch.cuda.synchronize(self.device)
+                                _finish_forward(True)
                                 self._drain_pending = False
                             except BaseException:
                                 quarantine()
@@ -429,6 +438,7 @@ class ResidentWorker:
                 exc.__context__ = None
                 exc.__cause__ = None
                 interrupt = exc
+        _result_forward(failure, sync_failure is not None, interrupt is not None)
         if sync_failure is not None:
             return None, (WorkerSynchronizationError, f"device synchronization failed: {sync_failure}")
         if interrupt is not None:

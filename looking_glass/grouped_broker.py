@@ -14,6 +14,7 @@ from uuid import uuid4
 from .certified_batch_policy import CertifiedBatchPolicy
 from .fair_queue import FairTeamQueue, QueueEmpty
 from .grouped_broker_state import CohortMember, CohortState, _Open
+from .grouped_observation import GroupedObservation
 from .grouped_worker import GroupedWorker
 from .host_budget import HostBudget, HostBusy
 from .microbatch import BatchProfile, MicrobatchRequest, _DTYPE_BYTES
@@ -66,6 +67,7 @@ class _Job:
         self.deliveries = set()
         self.cancel_active = False
         self.dispose_active = False
+        self.selection_ns = self.terminal_ns = None
 
 
 class _Group:
@@ -78,6 +80,7 @@ class _Group:
         self.execution_finished = False
         self.retiring = self.retired = False
         self.quarantined = False
+        self.selection_ns = None
 
 
 _owners = set()
@@ -155,7 +158,9 @@ class GroupedBroker:
     def __init__(self, worker, profile, policy, *, host_budget, identity, collect_runtime,
                  snapshot_reservation, validation_reservations, max_pending,
                  max_pending_per_team, max_coalesce_wait, max_lifetime_jobs,
-                 max_active_deliveries_per_job=4):
+                 max_active_deliveries_per_job=4, observation=None):
+        if observation is not None and type(observation) is not GroupedObservation:
+            raise ValueError('an exact trusted grouped observation is required')
         if (type(worker) is not GroupedWorker or type(profile) is not BatchProfile
                 or type(policy) is not CertifiedBatchPolicy or type(host_budget) is not HostBudget):
             raise ValueError('exact grouped worker, profile, evidence policy and host ledger are required')
@@ -223,6 +228,9 @@ class GroupedBroker:
         self._condition = threading.Condition()
         self._owner_lock = threading.Lock()
         self._broker_id = uuid4().hex
+        self._observation = observation
+        if observation is not None:
+            observation._bind_broker(self._broker_id)
         self._next_job = self._next_claim = 0
         self._max_lifetime_jobs = max_lifetime_jobs
         self._max_active_deliveries_per_job = max_active_deliveries_per_job
@@ -318,6 +326,7 @@ class GroupedBroker:
             self._slots += 1
             self._team_slots[team_id] = self._team_slots.get(team_id, 0) + 1
         failed = False
+        ready_ns = None
         try:
             job.request_guard = self._host.request_guard(job_id)
             job.request_guard.open()
@@ -346,10 +355,16 @@ class GroupedBroker:
                 if self._fatal or self.quarantined or self._closed:
                     raise GroupedBrokerUnavailable('owner became unavailable during snapshot')
                 self._queue.put(team_id, job_id, job, compatibility_key=self._policy.compatibility_key)
+                if self._observation is not None:
+                    ready_ns = self._observation._ready_stamp(job)
                 job.status = 'queued'
                 job.ready_at = perf_counter()
                 self._condition.notify_all()
+            if self._observation is not None:
+                self._observation._ready(job, ready_ns)
         except BaseException as exc:
+            if self._observation is not None:
+                self._observation._fault()
             self._fail_closed(exc)
             failed = True
         if failed:
@@ -410,6 +425,8 @@ class GroupedBroker:
                         raise GroupedBrokerUnavailable('queued identity is missing')
                     job.cancel_requested = True
                     job.single = GroupedResult(job.job_id, job.team_id, job.request_id, 'cancelled', True, None)
+                    if self._observation is not None:
+                        job.terminal_ns = self._observation._stamp()
                     job.status = 'terminal'
                     accepted, cleanup = True, True
                     self._condition.notify_all()
@@ -436,8 +453,12 @@ class GroupedBroker:
             raise GroupedBrokerUnavailable('cancellation outcome is uncertain; replace the owner')
         if cleanup:
             try:
+                if self._observation is not None:
+                    self._observation._terminal(job, 'cancelled', job.terminal_ns)
                 self._release_job(job)
             except BaseException as exc:
+                if self._observation is not None:
+                    self._observation._fault()
                 self._fail_closed(exc)
                 failed = True
             if failed:
@@ -470,21 +491,27 @@ class GroupedBroker:
                             allowed_sizes=(1,), max_per_team=1)
                     if selected:
                         jobs = tuple(item.payload for item in selected)
+                        selection_ns = (self._observation._stamp()
+                                        if self._observation is not None else None)
                         if len(jobs) == 1:
                             job = jobs[0]
                             job.single = GroupedResult(job.job_id, job.team_id, job.request_id,
                                                        'failed', False, 'no_compatible_cohort')
+                            if self._observation is not None:
+                                job.terminal_ns = self._observation._stamp()
                             job.status = 'terminal'
                             claimed = job
                         else:
                             members = tuple(CohortMember(job.job_id, job.team_id, job.worker_request_id)
                                             for job in jobs)
                             group_id = f'{self._broker_id}-g-{self._next_claim}'
-                            state = CohortState(group_id, members, self._profile)
+                            state = CohortState(group_id, members, self._profile,
+                                                observation=self._observation)
                             claimed = _Group(group_id, jobs, state)
                             self._groups[group_id] = claimed
                             for job in jobs:
                                 job.group, job.status = claimed, 'staged'
+                        claimed.selection_ns = selection_ns
                         self._queue.acknowledge_claim(claim_id)
                         self._pending_claim = None
                         self._condition.notify_all()
@@ -514,11 +541,18 @@ class GroupedBroker:
                 if claimed is None:
                     return False
                 if type(claimed) is _Job:
+                    if self._observation is not None:
+                        self._observation._selected((claimed,), claimed.selection_ns)
+                        self._observation._terminal(claimed, 'failed', claimed.terminal_ns)
                     self._release_job(claimed)
                     return True
+                if self._observation is not None:
+                    self._observation._selected(claimed.jobs, claimed.selection_ns)
                 self._execute(claimed)
                 return True
             except BaseException as exc:
+                if self._observation is not None:
+                    self._observation._abandon_forward(None)
                 self._fail_closed(exc)
                 failed = True
         finally:
@@ -545,7 +579,10 @@ class GroupedBroker:
         group.validation_guard.reserve()
         group.validation_claim = group.validation_guard.adopt()
         if not group.state.try_commit_launch():
-            group.state.finish_cancelled_before_launch()
+            publication = group.state.finish_cancelled_before_launch()
+            if self._observation is not None:
+                self._observation._publication(group, publication)
+            publication = None
             with self._condition:
                 group.execution_finished = True
                 self._condition.notify_all()
@@ -557,7 +594,10 @@ class GroupedBroker:
                                           group.claim, group.group_id)
         requests = None
         group.launch = group.plan.launch()
+        scope = None
         try:
+            if self._observation is not None:
+                scope = self._observation._start_forward(group, group.launch)
             outcome = self._worker.execute(group.plan, group.launch, cancel_event=None)
         except WorkerOutOfMemory as exc:
             group.quarantined = True
@@ -566,8 +606,17 @@ class GroupedBroker:
                 self._failure = exc
             with self._condition:
                 self._condition.notify_all()
-            group.state.publish_failure('out_of_memory', quarantine_required=True)
+            publication = group.state.publish_failure('out_of_memory', quarantine_required=True)
+            if self._observation is not None:
+                self._observation._finish_forward(scope)
+                self._observation._publication(group, publication)
             return
+        except BaseException:
+            if self._observation is not None:
+                self._observation._abandon_forward(scope)
+            raise
+        if self._observation is not None:
+            self._observation._finish_forward(scope)
         if group.plan.outcome() is not outcome:
             raise ValueError('group outcome is not the exact plan-issued object')
         if outcome.quarantine_required:
@@ -575,9 +624,14 @@ class GroupedBroker:
             self._fatal = self._quarantined = True
             with self._condition:
                 self._condition.notify_all()
-            group.state.publish_failure('execution_failed', quarantine_required=True)
+            publication = group.state.publish_failure('execution_failed', quarantine_required=True)
+            if self._observation is not None:
+                self._observation._publication(group, publication)
             return
-        group.state.publish_success(outcome)
+        publication = group.state.publish_success(outcome)
+        if self._observation is not None:
+            self._observation._publication(group, publication)
+        publication = None
         outcome = None
         group.launch = None
         group.validation_claim.release()
