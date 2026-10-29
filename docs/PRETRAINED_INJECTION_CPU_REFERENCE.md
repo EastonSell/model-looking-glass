@@ -43,3 +43,6 @@ count and aggregate maximum discrepancies. Save a separate source/runtime
 record for each attempt, including failures, before making a claim about a
 specific run. Aggregate agreement does not imply that unrelated model
 capabilities were preserved.
+
+The first saved development observations and the controlled missing-cache
+records are in `results/distilgpt2-injection-cpu-reference-v1-20261028/`.
