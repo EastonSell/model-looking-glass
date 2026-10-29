@@ -7,7 +7,9 @@ The 32 target prompts are four base frames crossed with subject and attractor
 number, with one regular and one irregular subject lemma per frame. The eight
 singular–plural subject pairs each recur in two attractor contexts; they are
 not independent samples, and morphology remains entangled with lemma identity.
-The context fragments are imperfect token-bias diagnostics.
+The context fragments are imperfect token-bias diagnostics. The two `Beside`
+fragments tokenize to five IDs, while the other six tokenize to three; their
+comparisons can reflect tokenization and positional differences as well as bias.
 
 The protocol merged at `a39121c2f3cf2602281252a8856d48efadcb2a98` and the
 fixed discovery-derived directions merged at
