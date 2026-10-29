@@ -40,6 +40,11 @@ expected value. It checks the recorded child exit, Job drain and
 cleanup fields, but these records cannot prove that the scoring supervisor
 itself returned successfully. An independently observed, source-bound outer
 process completion is still required before accepting or publishing an audit.
+The operational wrapper and final qualified report must also bind the
+discovery and actual held-out runtime hashes separately, together with the
+published prospective runtime-deviation and fixed public-case compatibility
+check identities. The discovery runtime recorded in the frozen journal
+binding is not evidence that the held-out runtime is identical.
 The future owner must bind and verify that observation, publication and the
 shared gate, then call `write_private_receipt` once to create the bounded
 `independent-audit.json` exclusively. A failed or partial write is not an
