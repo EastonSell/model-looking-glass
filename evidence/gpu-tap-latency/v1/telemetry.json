@@ -1,0 +1,59 @@
+{
+  "configured_interval_seconds": 0.2,
+  "observations": [],
+  "errors": [
+    {
+      "query_started_monotonic_ns": 1249749274159100,
+      "observed_monotonic_ns": 1249749306376600,
+      "error_type": "RuntimeError",
+      "message": "telemetry command failed"
+    },
+    {
+      "query_started_monotonic_ns": 1249749506443500,
+      "observed_monotonic_ns": 1249749534917800,
+      "error_type": "RuntimeError",
+      "message": "telemetry command failed"
+    },
+    {
+      "query_started_monotonic_ns": 1249749744301700,
+      "observed_monotonic_ns": 1249749773101500,
+      "error_type": "RuntimeError",
+      "message": "telemetry command failed"
+    },
+    {
+      "query_started_monotonic_ns": 1249749984727400,
+      "observed_monotonic_ns": 1249750020951500,
+      "error_type": "RuntimeError",
+      "message": "telemetry command failed"
+    },
+    {
+      "query_started_monotonic_ns": 1249750235972500,
+      "observed_monotonic_ns": 1249750268148000,
+      "error_type": "RuntimeError",
+      "message": "telemetry command failed"
+    },
+    {
+      "query_started_monotonic_ns": 1249750475748200,
+      "observed_monotonic_ns": 1249750509974300,
+      "error_type": "RuntimeError",
+      "message": "telemetry command failed"
+    },
+    {
+      "query_started_monotonic_ns": 1249750714269200,
+      "observed_monotonic_ns": 1249750739282400,
+      "error_type": "RuntimeError",
+      "message": "telemetry command failed"
+    },
+    {
+      "query_started_monotonic_ns": 1249750950333500,
+      "observed_monotonic_ns": 1249750978203200,
+      "error_type": "RuntimeError",
+      "message": "telemetry command failed"
+    }
+  ],
+  "limitations": [
+    "nvidia-smi polling can perturb latency",
+    "query timestamps bound collection rather than identify its exact instant",
+    "WDDM and endpoint-only process reporting can miss activity"
+  ]
+}
