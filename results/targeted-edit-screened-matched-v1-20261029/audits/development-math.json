@@ -1,0 +1,100 @@
+{
+  "baseline_discovery_margin": -1.2680816650390625,
+  "calibration_relative_residual": 4.739672141049735e-16,
+  "candidate_sha256": "f038db0b27f68a80fc3fc11374971bf8acd6b47812ab112d760520acc7ff5166",
+  "conditions": {
+    "nuisance": {
+      "actual_calibration_max": 0.3364243507385254,
+      "algebraic_calibration_max": 0.336424378359306,
+      "discovery_gain": 1.54937744140625,
+      "discovery_margin": 0.2812957763671875,
+      "realized_norm": 0.30675276437400645
+    },
+    "opposite": {
+      "actual_calibration_max": 1.9073486328125e-05,
+      "algebraic_calibration_max": 6.519555868032129e-07,
+      "discovery_gain": -1.1748199462890625,
+      "discovery_margin": -2.442901611328125,
+      "realized_norm": 0.3067527630386322
+    },
+    "projected": {
+      "actual_calibration_max": 2.288818359375e-05,
+      "algebraic_calibration_max": 6.519176113271505e-07,
+      "discovery_gain": 1.1750106811523438,
+      "discovery_margin": -0.09307098388671875,
+      "realized_norm": 0.3067527616739276
+    },
+    "projected_random": {
+      "actual_calibration_max": 1.9073486328125e-05,
+      "algebraic_calibration_max": 1.4704417658965396e-06,
+      "discovery_gain": 6.103515625e-05,
+      "discovery_margin": -1.2680206298828125,
+      "realized_norm": 0.30675275675853864
+    },
+    "unprojected": {
+      "actual_calibration_max": 0.3371129035949707,
+      "algebraic_calibration_max": 0.337111607957468,
+      "discovery_gain": 1.5542755126953125,
+      "discovery_margin": 0.28619384765625,
+      "realized_norm": 0.3067527623632109
+    },
+    "unprojected-grid-01": {
+      "actual_calibration_max": 0.16855573654174805,
+      "algebraic_calibration_max": 0.16855562175288016,
+      "discovery_gain": 0.7771148681640625,
+      "discovery_margin": -0.490966796875,
+      "realized_norm": 0.15337638124967073
+    },
+    "unprojected-grid-02": {
+      "actual_calibration_max": 0.2106943130493164,
+      "algebraic_calibration_max": 0.21069452960617516,
+      "discovery_gain": 0.9714126586914062,
+      "discovery_margin": -0.29666900634765625,
+      "realized_norm": 0.19172047555374402
+    },
+    "unprojected-grid-03": {
+      "actual_calibration_max": 0.25283336639404297,
+      "algebraic_calibration_max": 0.2528335472747556,
+      "discovery_gain": 1.1657028198242188,
+      "discovery_margin": -0.10237884521484375,
+      "realized_norm": 0.2300645721323397
+    },
+    "unprojected-grid-04": {
+      "actual_calibration_max": 0.2949714660644531,
+      "algebraic_calibration_max": 0.2949725702763387,
+      "discovery_gain": 1.3599929809570312,
+      "discovery_margin": 0.09191131591796875,
+      "realized_norm": 0.2684086636516169
+    },
+    "unprojected-grid-06": {
+      "actual_calibration_max": 0.37925100326538086,
+      "algebraic_calibration_max": 0.37925047833234715,
+      "discovery_gain": 1.7485198974609375,
+      "discovery_margin": 0.480438232421875,
+      "realized_norm": 0.3450968520722614
+    },
+    "unprojected-grid-07": {
+      "actual_calibration_max": 0.4213895797729492,
+      "algebraic_calibration_max": 0.42138938091911615,
+      "discovery_gain": 1.942779541015625,
+      "discovery_margin": 0.6746978759765625,
+      "realized_norm": 0.3834409469316984
+    }
+  },
+  "discovery_match": {
+    "available": true,
+    "nearest_discrepancy": 0.009307861328125,
+    "nearest_dose": 0.00075,
+    "nearest_gain": 1.1657028198242188,
+    "reason": null,
+    "selected_dose": 0.00075,
+    "shared_equal_norm_arm": false,
+    "tolerance": 0.11750106811523438
+  },
+  "gradient_relative_residual": 2.5262245944402723e-08,
+  "planned_norm": 0.30675276096820703,
+  "rank": 17,
+  "retained_fraction": 0.7559939257731432,
+  "scope": "Saved development math and cached weight bytes only; no new model or evaluation forward, and no authentication of execution.",
+  "status": "development_math_reconstructed"
+}
