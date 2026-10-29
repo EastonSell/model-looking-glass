@@ -48,6 +48,13 @@ development results, any targeted head/module intervention, its comparison
 and disjoint evaluation cases require a separately fixed design. A failed or
 negative screen is a result, not a reason to silently change cases or controls.
 
+Set `CUDA_VISIBLE_DEVICES=-1` before process start. Immediately after importing
+Torch and before loading the model, install the existing CPU smoke guard against
+CUDA runtime/driver queries and network access. Record harmless availability
+query counts and fail if a blocked entry was attempted. This cooperative guard
+does not attest against native code bypass. Check CPU float32, eval/eager/no
+cache, thread count, autocast and denormal policy at each forward boundary.
+
 The runner binds the exact source revision and pinned offline model/tokenizer
 asset hashes, records thread/runtime and numerical probes, saves an append-only
 attempt log and raw tensor streams, and publishes a result only after complete

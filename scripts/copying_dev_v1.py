@@ -20,6 +20,12 @@ import torch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from scripts.distilgpt2_intervention_dev_bootstrap import _guard_cuda_and_network  # noqa: E402
+
+GUARD_EVENTS = []
+SAFE_QUERIES = {"cuda_is_available": 0, "cuda_device_count": 0}
+if __name__ == "__main__":
+    _guard_cuda_and_network(torch, GUARD_EVENTS, SAFE_QUERIES)
 from looking_glass.pretrained import load_distilgpt2  # noqa: E402
 
 
@@ -36,7 +42,8 @@ GROUPS = (
 PERMUTATIONS = ((0, 1, 2, 3, 4, 5), (4, 2, 0, 3, 1, 5),
                 (1, 3, 4, 2, 0, 5), (3, 0, 4, 1, 2, 5))
 SOURCES = ("docs/DISTILGPT2_COPYING_DEV_V1.md", "scripts/copying_dev_v1.py",
-           "looking_glass/__init__.py", "looking_glass/pretrained.py")
+           "scripts/distilgpt2_intervention_dev_bootstrap.py", "looking_glass/__init__.py",
+           "looking_glass/pretrained.py")
 VOCAB, LAYERS, HEADS, LENGTH = 50257, 6, 12, 11
 
 
@@ -112,7 +119,7 @@ def state_hash(model):
 
 
 def runtime_checks(model):
-    if (os.environ.get("CUDA_VISIBLE_DEVICES") != "-1" or torch.cuda.is_initialized()
+    if (os.environ.get("CUDA_VISIBLE_DEVICES") != "-1" or torch.cuda.is_initialized() or GUARD_EVENTS
             or torch.get_num_threads() != 1 or torch.is_autocast_enabled("cpu")
             or model.training or any(module.training for module in model.modules())
             or model.config._attn_implementation != "eager" or model.config.use_cache is not False
@@ -192,7 +199,9 @@ def main():
                               use_cache=False, output_attentions=False, return_dict=True)
             root_returned += 1
             runtime_checks(model)
-            if (plain.past_key_values is not None or tuple(plain.logits.shape) != (1, LENGTH, VOCAB)
+            if (plain.past_key_values is not None or type(plain.logits) is not torch.Tensor
+                    or plain.logits.device.type != "cpu" or plain.logits.dtype != torch.float32
+                    or tuple(plain.logits.shape) != (1, LENGTH, VOCAB)
                     or not bool(torch.isfinite(plain.logits[0, -1]).all())):
                 raise RuntimeError("invalid uncaptured control")
             plain_raw = plain.logits[0, -1].detach().contiguous().numpy().astype("<f4", copy=False).tobytes()
@@ -210,8 +219,12 @@ def main():
                                    use_cache=False, output_attentions=True, return_dict=True)
                 root_returned += 1
                 runtime_checks(model)
-                if (output.past_key_values is not None or tuple(output.logits.shape) != (1, LENGTH, VOCAB)
-                        or len(output.attentions) != LAYERS):
+                if (output.past_key_values is not None or type(output.logits) is not torch.Tensor
+                        or output.logits.device.type != "cpu" or output.logits.dtype != torch.float32
+                        or tuple(output.logits.shape) != (1, LENGTH, VOCAB)
+                        or type(output.attentions) not in (tuple, list) or len(output.attentions) != LAYERS
+                        or any(type(item) is not torch.Tensor or item.device.type != "cpu"
+                               or item.dtype != torch.float32 for item in output.attentions)):
                     raise RuntimeError("unexpected output shape or cache")
                 last = output.logits[0, -1].detach().contiguous()
                 attention = torch.stack([item[0] for item in output.attentions]).detach().contiguous()
@@ -261,14 +274,15 @@ def main():
         result = {"schema": "distilgpt2-copying-dev-result-v1", "manifest_sha256": manifest_hash,
                   "source_revision": revision, "model_metadata": bundle.metadata,
                   "model_state_sha256_before": before, "model_state_sha256_after": after,
-                  "runtime": {"python": platform.python_version(), "torch": torch.__version__,
+                  "runtime": {"python": platform.python_version(), "torch": torch.__version__, "numpy": np.__version__,
                               "system": platform.system(), "machine": platform.machine(),
                               "byteorder": sys.byteorder, "intraop_threads": torch.get_num_threads(),
                               "deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
                               "cuda_visibility": "-1", "cuda_initialized": torch.cuda.is_initialized(),
                               "cpu_autocast": torch.is_autocast_enabled("cpu"), "model_eval": not model.training,
                               "attention_implementation": model.config._attn_implementation,
-                              "use_cache": model.config.use_cache, "post_probe": post_probe},
+                              "use_cache": model.config.use_cache, "post_probe": post_probe,
+                              "guard_blocked_calls": list(GUARD_EVENTS), "guard_safe_queries": dict(SAFE_QUERIES)},
                   "logits_sha256": sha((args.output_dir / "last_logits.f32").read_bytes()),
                   "attentions_sha256": sha((args.output_dir / "attentions.f32").read_bytes()),
                   "uncaptured_logits_sha256": sha(plain_raw), "captured_logits_bitwise_match": True,
