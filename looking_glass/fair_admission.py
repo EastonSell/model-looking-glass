@@ -69,13 +69,26 @@ class FairAdmissionQueue:
                 raise AdmissionFull()
             if new_team:
                 team = OrderedDict()
-                self._teams[team_id] = team
-                self._rotation.append(team_id)
             ticket_id = self._next_ticket
-            self._next_ticket += 1
-            team[ticket_id] = AdmissionRequest(ticket_id, principal_id, team_id, payload)
-            self._ticket_teams[ticket_id] = team_id
-            self._size += 1
+            next_ticket = ticket_id + 1
+            next_size = self._size + 1
+            request = AdmissionRequest(ticket_id, principal_id, team_id, payload)
+            try:
+                team[ticket_id] = request
+                self._ticket_teams[ticket_id] = team_id
+                if new_team:
+                    self._teams[team_id] = team
+                    self._rotation.append(team_id)
+            except BaseException:
+                if new_team:
+                    if self._rotation and self._rotation[-1] == team_id:
+                        self._rotation.pop()
+                    self._teams.pop(team_id, None)
+                self._ticket_teams.pop(ticket_id, None)
+                team.pop(ticket_id, None)
+                raise
+            self._next_ticket = next_ticket
+            self._size = next_size
             return ticket_id
 
     def claim_next(self, eligible_teams=None) -> AdmissionRequest:
@@ -94,15 +107,25 @@ class FairAdmissionQueue:
             team_id = next((team for team in self._rotation if team in eligible), None)
             if team_id is None:
                 raise AdmissionEmpty()
-            self._rotation.remove(team_id)
             team = self._teams[team_id]
-            ticket_id, request = team.popitem(last=False)
-            del self._ticket_teams[ticket_id]
-            if team:
+            next_size = self._size - 1
+            ticket_id = next(iter(team))
+            request = team[ticket_id]
+            will_rotate = len(team) > 1
+            if will_rotate:
+                # Allocate the next rotation entry before consuming the waiter.
                 self._rotation.append(team_id)
-            else:
+            try:
+                del team[ticket_id]
+            except BaseException:
+                if will_rotate:
+                    self._rotation.pop()
+                raise
+            self._rotation.remove(team_id)
+            del self._ticket_teams[ticket_id]
+            if not team:
                 del self._teams[team_id]
-            self._size -= 1
+            self._size = next_size
             return request
 
     def cancel(self, ticket_id: int) -> bool:
@@ -112,16 +135,29 @@ class FairAdmissionQueue:
         with self._lock:
             if ticket_id not in self._ticket_teams:
                 return False
-            team_id = self._ticket_teams.pop(ticket_id)
+            next_size = self._size - 1
+            team_id = self._ticket_teams[ticket_id]
             team = self._teams[team_id]
-            removed = team.pop(ticket_id)
+            removed = team[ticket_id]
+            del team[ticket_id]
+            del self._ticket_teams[ticket_id]
             if not team:
                 del self._teams[team_id]
                 self._rotation.remove(team_id)
-            self._size -= 1
+            self._size = next_size
         # Finalizers must not run under the internal queue lock.
         del removed
         return True
+
+    def drain(self):
+        """Atomically remove all waiting requests and return their snapshots."""
+        with self._lock:
+            removed = tuple(request for team in self._teams.values() for request in team.values())
+            self._teams.clear()
+            self._rotation.clear()
+            self._ticket_teams.clear()
+            self._size = 0
+        return removed
 
     def __len__(self) -> int:
         with self._lock:

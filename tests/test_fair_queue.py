@@ -1,4 +1,5 @@
 import unittest
+from collections import OrderedDict, deque
 from concurrent.futures import ThreadPoolExecutor
 from queue import Empty, Full
 from threading import Barrier, Event, Thread
@@ -40,6 +41,79 @@ class FairTeamQueueTests(unittest.TestCase):
         queue = FairTeamQueue(max_pending=1, max_pending_per_team=1)
         with self.assertRaises(Empty):
             queue.pop()
+
+    def test_failed_index_allocation_rolls_back_submission(self):
+        class FailingIndex(dict):
+            def __setitem__(self, key, value):
+                raise MemoryError('deliberate index failure')
+
+        queue = FairTeamQueue(max_pending=1, max_pending_per_team=1)
+        queue._job_teams = FailingIndex()
+        with self.assertRaises(MemoryError):
+            queue.put('a', 'first', 1)
+        queue._job_teams = {}
+        queue.put('a', 'second', 2)
+        self.assertEqual(queue.pop().job_id, 'second')
+
+    def test_pop_avoids_allocation_after_ordered_dict_removal(self):
+        class UnsafePopItem(OrderedDict):
+            def popitem(self, last=True):
+                super().popitem(last=last)
+                raise MemoryError('tuple allocation after removal')
+
+        queue = FairTeamQueue(max_pending=2, max_pending_per_team=2)
+        queue.put('a', 'first', 1)
+        queue.put('a', 'second', 2)
+        queue._teams['a'] = UnsafePopItem(queue._teams['a'])
+        self.assertEqual([queue.pop().job_id, queue.pop().job_id], ['first', 'second'])
+
+    def test_failed_rotation_allocation_preserves_pending_jobs(self):
+        class FailingRotation(deque):
+            def append(self, value):
+                raise MemoryError('deliberate rotation failure')
+
+        queue = FairTeamQueue(max_pending=2, max_pending_per_team=2)
+        queue.put('a', 'first', 1)
+        queue.put('a', 'second', 2)
+        queue._rotation = FailingRotation(queue._rotation)
+        with self.assertRaises(MemoryError):
+            queue.pop()
+        queue._rotation = deque(queue._rotation)
+        self.assertEqual([queue.pop().job_id, queue.pop().job_id], ['first', 'second'])
+
+    def test_failed_team_deletion_preserves_pop_and_cancel(self):
+        class FailingDelete(OrderedDict):
+            def __delitem__(self, key):
+                raise MemoryError('deliberate deletion failure')
+
+            def pop(self, key, *args):
+                raise MemoryError('deliberate deletion failure')
+
+        for operation in ('pop', 'cancel'):
+            with self.subTest(operation=operation):
+                queue = FairTeamQueue(max_pending=2, max_pending_per_team=2)
+                queue.put('a', 'first', 1)
+                queue.put('a', 'second', 2)
+                queue._teams['a'] = FailingDelete(queue._teams['a'])
+                with self.assertRaises(MemoryError):
+                    queue.pop() if operation == 'pop' else queue.cancel('first')
+                queue._teams['a'] = OrderedDict(queue._teams['a'])
+                self.assertEqual([queue.pop().job_id, queue.pop().job_id], ['first', 'second'])
+                with self.assertRaises(Empty):
+                    queue.pop()
+
+    def test_cancel_precomputes_size_before_removal(self):
+        class FailingCount(int):
+            def __sub__(self, other):
+                raise MemoryError('deliberate size allocation failure')
+
+        queue = FairTeamQueue(max_pending=1, max_pending_per_team=1)
+        queue.put('a', 'first', 1)
+        queue._size = FailingCount(1)
+        with self.assertRaises(MemoryError):
+            queue.cancel('first')
+        queue._size = 1
+        self.assertEqual(queue.pop().job_id, 'first')
 
     def test_invalid_capacity_is_rejected(self):
         for value in (0, -1, True, 1.5, '2'):

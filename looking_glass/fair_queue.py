@@ -43,28 +43,53 @@ class FairTeamQueue:
                 raise ValueError('job_id is already pending')
             if self._size >= self._max_pending:
                 raise QueueFull('global pending-job limit reached')
-            if len(self._teams.get(team_id, ())) >= self._max_pending_per_team:
+            team = self._teams.get(team_id)
+            if len(team or ()) >= self._max_pending_per_team:
                 raise QueueFull('team pending-job limit reached')
-            if team_id not in self._teams:
-                self._teams[team_id] = OrderedDict()
-                self._rotation.append(team_id)
-            self._teams[team_id][job_id] = QueueItem(team_id, job_id, payload)
-            self._job_teams[job_id] = team_id
-            self._size += 1
+            new_team = team is None
+            if new_team:
+                team = OrderedDict()
+            next_size = self._size + 1
+            item = QueueItem(team_id, job_id, payload)
+            try:
+                team[job_id] = item
+                self._job_teams[job_id] = team_id
+                if new_team:
+                    self._teams[team_id] = team
+                    self._rotation.append(team_id)
+            except BaseException:
+                if new_team:
+                    if self._rotation and self._rotation[-1] is team_id:
+                        self._rotation.pop()
+                    self._teams.pop(team_id, None)
+                self._job_teams.pop(job_id, None)
+                team.pop(job_id, None)
+                raise
+            self._size = next_size
 
     def pop(self) -> QueueItem:
         with self._lock:
             if not self._rotation:
                 raise QueueEmpty()
-            team_id = self._rotation.popleft()
+            team_id = self._rotation[0]
             team = self._teams[team_id]
-            job_id, item = team.popitem(last=False)
-            del self._job_teams[job_id]
-            if team:
+            next_size = self._size - 1
+            job_id = next(iter(team))
+            item = team[job_id]
+            will_rotate = len(team) > 1
+            if will_rotate:
                 self._rotation.append(team_id)
-            else:
+            try:
+                del team[job_id]
+            except BaseException:
+                if will_rotate:
+                    self._rotation.pop()
+                raise
+            self._rotation.popleft()
+            del self._job_teams[job_id]
+            if not team:
                 del self._teams[team_id]
-            self._size -= 1
+            self._size = next_size
             return item
 
     def cancel(self, job_id: Hashable) -> bool:
@@ -72,14 +97,17 @@ class FairTeamQueue:
         with self._lock:
             if job_id not in self._job_teams:
                 return False
-            team_id = self._job_teams.pop(job_id)
+            next_size = self._size - 1
+            team_id = self._job_teams[job_id]
             team = self._teams[team_id]
             # A payload finalizer may call queue methods; release it outside the lock.
-            removed = team.pop(job_id)
+            removed = team[job_id]
+            del team[job_id]
+            del self._job_teams[job_id]
             if not team:
                 del self._teams[team_id]
                 self._rotation.remove(team_id)
-            self._size -= 1
+            self._size = next_size
         del removed
         return True
 
