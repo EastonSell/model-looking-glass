@@ -1,7 +1,10 @@
 """CPU-only failure evidence for the fixed serial profile collector."""
 import hashlib
 import json
+import os
+from pathlib import Path
 import subprocess
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -13,7 +16,7 @@ from looking_glass.device_lease import DeviceLease
 from looking_glass.supervisor import OwnerSession
 
 
-def test_failed_driver_query_retains_bounded_private_details_and_never_attests(tmp_path, monkeypatch):
+def _exercise_driver_failure_in_fresh_owner(tmp_path, monkeypatch):
     owner = SimpleNamespace(run_id='b' * 32, device_lease_path='test-lease',
                             identity=SimpleNamespace(gpu_uuid='GPU-test'))
     lease = object()
@@ -54,6 +57,23 @@ def test_failed_driver_query_retains_bounded_private_details_and_never_attests(t
     assert diagnostic['environment']['CUDA_VISIBLE_DEVICES']['text'] == 'GPU-private'
     assert 'must-not-be-saved' not in json.dumps(diagnostic)
     assert not (tmp_path / 'candidate.json').exists()
+
+
+def test_failed_driver_query_retains_bounded_private_details_and_never_attests(tmp_path):
+    # The real owner must begin before Transformers or Hub is imported. Run
+    # this integration check in a fresh interpreter so unrelated pretrained
+    # tests cannot violate that intentional startup guard.
+    repo = Path(__file__).resolve().parents[1]
+    program = ("import pathlib,pytest,runpy,sys; "
+               "case=runpy.run_path(sys.argv[1]); m=pytest.MonkeyPatch(); "
+               "case['_exercise_driver_failure_in_fresh_owner'](pathlib.Path(sys.argv[2]),m)")
+    environment = dict(os.environ)
+    environment.update({'CUDA_VISIBLE_DEVICES': '', 'PYTHONPATH': str(repo),
+                        'PYTHONDONTWRITEBYTECODE': '1'})
+    result = subprocess.run([sys.executable, '-B', '-c', program, str(Path(__file__).resolve()),
+                             str(tmp_path)], cwd=repo, env=environment, capture_output=True,
+                            text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
 
 
 def test_driver_timeout_preserves_bounded_binary_output(monkeypatch):
