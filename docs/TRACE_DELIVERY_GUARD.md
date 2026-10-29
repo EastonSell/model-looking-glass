@@ -88,7 +88,9 @@ slot is quarantined and retains its child and capacity; `adopt()` and `retire()`
 fail closed. `failure_guard` exposes a `DeliveryConstructionError`'s exact
 ledger guard when available. Once the construction call has stopped,
 `owned_delivery()` lets a trusted supervisor inspect the exact retained object.
-That object may be only partially initialized: its methods are unsafe until
+This only checks slot construction/cancellation bookkeeping; it does not
+establish that operations on a previously adopted child have stopped. That
+object may be only partially initialized: its methods are unsafe until
 the supervisor establishes otherwise. No API automatically scans or releases
 claims. If an exception prevents even the guard from being recorded, do not
 infer ownership from a ledger delta; quarantine/reconcile the affected process
