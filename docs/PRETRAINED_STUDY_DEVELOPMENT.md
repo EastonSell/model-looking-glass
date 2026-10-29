@@ -67,12 +67,29 @@ last-token vocabulary logits. Artifact tensor payloads are deduplicated by
 SHA-256 of their little-endian float32 bytes and base64 encoded; each event
 references its byte hash. The cap charges every forward even when two tensors
 deduplicate, including fixed private pre/post/realized injection vectors and
-source/self-patch snapshots. Fixed site-independent counts prevent those
+source/self-patch and post-action snapshots. Fixed site-independent counts prevent those
 public byte fields from encoding the hidden location. The 1 MiB per-forward
 and 256 MiB all-phase limits constrain recorded tensor payload, not peak CUDA
 VRAM, temporary Python allocations, total process memory, or arbitrary work
 performed by a callback. The registry additionally places individual and
 aggregate limits on serialized artifacts.
+
+This revision uses development accounting schema
+`distilgpt2-development-accounting-v2-post-action`. Its required post-action
+charges differ from the earlier development implementation. Predictions,
+evaluation claims, evaluation and reveal record the schema and SHA-256 hashes
+of the analysis, protocol and registry source files. Each later phase checks
+the frozen schema and source hashes before its callbacks; each running phase
+rechecks the files around callbacks. A byte change still present at a check
+fails the cooperative source check; a transient change between checks is not
+detected. Python can execute timestamp-valid stale bytecode even when the
+reported `.py` file hashes match, so those hashes do not attest executed
+bytecode. Old artifacts are not rewritten and should be inspected with
+their original source revision; they cannot be continued with this revision's
+accounting. The hashes do not attest arbitrary callback code, the custodian,
+model, environment or execution in a hostile same-account process. The public
+manifest's source commit remains self-reported and needs an independently
+verified clean checkout for an actual study.
 
 The runner validates the callback's tensor shapes and limits before copying,
 then analyzes and serializes the same private CPU snapshot. The backend must
@@ -102,7 +119,7 @@ with independently retained values; they do not attest a timestamp, randomness,
 or secrecy. All agents share the same OS account, so a future study can claim
 procedural blinding only, with any disclosure reported.
 
-A recorded study remains blocked until a reviewed ordered composite plan,
+A recorded study remains blocked until the reviewed ordered composite plan,
 an exclusive shared-model lease, source/runtime/checkpoint/tokenizer binding,
 private custodian with per-prompt exact injection evidence, and safe failure
 and cancellation handling are connected and independently reviewed. The source
@@ -113,3 +130,8 @@ are incomplete clauses and the held-out grammar produces complete templated
 sentences: any eventual effect comparison measures transfer to those fixed,
 shifted cases, not IID population generalization. Intervention effects and
 first observed changes are not evidence of a unique natural reasoning mechanism.
+The development-only helper and its explicit limitations are described in
+`PRETRAINED_CUSTODIAN_DEVELOPMENT.md`. Before recording v1, a separately bound
+pre-seal clarification must specify the exact post-action and signed-zero
+checks and their additional snapshot accounting; this development change does
+not alter the original protocol or any saved results.

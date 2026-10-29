@@ -11,6 +11,7 @@ import hashlib
 import json
 import math
 import os
+from pathlib import Path
 import re
 
 import numpy as np
@@ -27,6 +28,27 @@ WIDTH = 768
 N_CASES = 8
 FORWARD_BYTES = 1024 * 1024
 STUDY_BYTES = 256 * 1024 * 1024
+DEVELOPMENT_ACCOUNTING_SCHEMA = "distilgpt2-development-accounting-v2-post-action"
+
+_DEVELOPMENT_SOURCE_PATHS = {"analysis": Path(__file__), "protocol": Path(protocol.__file__),
+                             "registry": Path(registry.__file__)}
+
+
+def _read_development_sources():
+    return {name: hashlib.sha256(path.read_bytes()).hexdigest()
+            for name, path in _DEVELOPMENT_SOURCE_PATHS.items()}
+
+
+# Track the reported source files on disk since import. This does not attest
+# executed bytecode, arbitrary callbacks or other same-process behavior.
+_LOADED_DEVELOPMENT_SOURCES = _read_development_sources()
+
+
+def _development_sources():
+    current = _read_development_sources()
+    if current != _LOADED_DEVELOPMENT_SOURCES:
+        raise ValueError("development analysis source changed after import")
+    return dict(current)
 
 
 def _canonical(value):
@@ -388,9 +410,11 @@ def analyze_discovery_case(case, *, token_index, source_device=None):
     payload = 0
     for name, observation in case.conditions.items():
         injected = name not in clean_only | reverse
-        # Fixed site-independent capture scheme: one nominal injection source
-        # for every injected forward and one separate patch/self-patch snapshot.
-        expected_extra = (int(injected) + int(name in patches | reverse | {"upstream", "late", "self_patch"})) * WIDTH * 4
+        # Fixed site-independent scheme: nominal injection source, an explicit
+        # patch/self source and a post-action check for every control/patch.
+        patch_action = name in patches | reverse | {"upstream", "late", "self_patch"}
+        post_action = name not in clean_only | {"injected"}
+        expected_extra = (int(injected) + int(patch_action) + int(post_action)) * WIDTH * 4
         payload += validate_observation(observation, token_index=token_index,
                                         injected=injected, source_device=source_device)
         if observation.extra_tensor_bytes != expected_extra:
@@ -693,6 +717,7 @@ def run_development_discovery(path, public, callback):
     only; Python cannot prevent it from running arbitrary code or accessing
     same-account private files. No private reveal is accepted here.
     """
+    sources = _development_sources()
     public_digest = validate_public_manifest(public)
     public_bytes = _canonical(public)
     public_snapshot = json.loads(public_bytes)
@@ -705,6 +730,8 @@ def run_development_discovery(path, public, callback):
     try:
         run.write_artifact("public_manifest.json", public_bytes)
         for index, row in enumerate(public_snapshot["discovery"]):
+            if _development_sources() != sources:
+                raise ValueError("development source changed during discovery")
             if registry.sha256_file(run.path / "artifacts" / "public_manifest.json") != public_digest:
                 raise ValueError("public manifest changed before a development callback")
             case = callback(index, tuple(row["token_ids"]))
@@ -718,6 +745,8 @@ def run_development_discovery(path, public, callback):
                 raise ValueError("complete-study tensor payload cap exceeded")
             records.append(_case_record(case, measured, pool))
             metrics.append(measured)
+        if _development_sources() != sources:
+            raise ValueError("development source changed during discovery")
         if registry.sha256_file(run.path / "artifacts" / "public_manifest.json") != public_digest:
             raise ValueError("public manifest changed during discovery")
         selectors = rank_sites([item["first_difference"] for item in metrics],
@@ -725,6 +754,8 @@ def run_development_discovery(path, public, callback):
         predictions = {str(site): math.fsum(item["effects"][str(site)] for item in metrics) / N_CASES
                        for site in protocol.ELIGIBLE_SITES}
         frozen = {"protocol": protocol.PROTOCOL_ID, "mode": "development-only",
+                  "development_accounting_schema": DEVELOPMENT_ACCOUNTING_SCHEMA,
+                  "development_sources_sha256": sources,
                   "public_manifest_sha256": public_digest, "selectors": selectors,
                   "predictions": predictions, "zero_predictor": 0.0,
                   "conditions": _CONDITIONS,
@@ -767,6 +798,8 @@ def run_development_discovery(path, public, callback):
         if failed and not uncertain and not uncertain_cancel and committed_cancel is None:
             try:
                 partial = {"protocol": protocol.PROTOCOL_ID, "mode": "development-only",
+                           "development_accounting_schema": DEVELOPMENT_ACCOUNTING_SCHEMA,
+                           "development_sources_sha256": sources,
                            "state": "partial", "public_manifest_sha256": public_digest,
                            "cases": records, "tensors": pool}
                 run.write_artifact("partial_discovery.json", _canonical(partial))
@@ -796,6 +829,7 @@ def run_development_discovery(path, public, callback):
 def _checked_development_stage(path, public_digest, predictions_digest, *, needs_evaluation=False,
                                evaluation_digest=None):
     """Check externally held hashes and canonical artifacts before entering a phase."""
+    sources = _development_sources()
     if not _hex(public_digest, 64) or not _hex(predictions_digest, 64):
         raise ValueError("external manifest and prediction digests are required")
     if needs_evaluation and not _hex(evaluation_digest, 64):
@@ -855,6 +889,8 @@ def _checked_development_stage(path, public_digest, predictions_digest, *, needs
             raise ValueError("invalid publication warning")
     if (type(frozen) is not dict or frozen.get("mode") != "development-only" or
             frozen.get("protocol") != protocol.PROTOCOL_ID or
+            frozen.get("development_accounting_schema") != DEVELOPMENT_ACCOUNTING_SCHEMA or
+            not _equal_json(frozen.get("development_sources_sha256"), sources) or
             frozen.get("public_manifest_sha256") != public_digest or
             type(frozen.get("tensor_payload_bytes")) is not int or
             not 0 <= frozen["tensor_payload_bytes"] <= STUDY_BYTES or
@@ -869,6 +905,8 @@ def _checked_development_stage(path, public_digest, predictions_digest, *, needs
         evaluation = parsed["evaluation.json"]
         claim = parsed["evaluation_claim.json"]
         if claim != {"protocol": protocol.PROTOCOL_ID, "mode": "development-only", "stage": "evaluation",
+                     "development_accounting_schema": DEVELOPMENT_ACCOUNTING_SCHEMA,
+                     "development_sources_sha256": sources,
                      "public_manifest_sha256": public_digest, "predictions_sha256": predictions_digest}:
             raise ValueError("invalid evaluation ownership claim")
         if not _equal_json(parsed["evaluation_complete.json"],
@@ -877,6 +915,8 @@ def _checked_development_stage(path, public_digest, predictions_digest, *, needs
             raise ValueError("evaluation completion does not bind its predecessors")
         if (type(evaluation) is not dict or evaluation.get("mode") != "development-only" or
                 evaluation.get("state") != "complete" or evaluation.get("protocol") != protocol.PROTOCOL_ID or
+                evaluation.get("development_accounting_schema") != DEVELOPMENT_ACCOUNTING_SCHEMA or
+                not _equal_json(evaluation.get("development_sources_sha256"), sources) or
                 evaluation.get("public_manifest_sha256") != public_digest or
                 evaluation.get("predictions_sha256") != predictions_digest or
                 evaluation.get("evaluation_claim_sha256") != claim_digest):
@@ -896,7 +936,10 @@ def run_development_evaluation(path, public_digest, predictions_digest, callback
         raise ValueError("development callback must be callable")
     run, parsed = _checked_development_stage(path, public_digest, predictions_digest)
     public, frozen = parsed["public_manifest.json"], parsed["predictions.json"]
+    sources = frozen["development_sources_sha256"]
     claim = {"protocol": protocol.PROTOCOL_ID, "mode": "development-only", "stage": "evaluation",
+             "development_accounting_schema": DEVELOPMENT_ACCOUNTING_SCHEMA,
+             "development_sources_sha256": sources,
              "public_manifest_sha256": public_digest, "predictions_sha256": predictions_digest}
     claim_bytes = _canonical(claim)
     # Registry publication is an atomic, process-safe create-if-absent. This
@@ -909,6 +952,8 @@ def run_development_evaluation(path, public_digest, predictions_digest, callback
     commit_context, reconciled_result, cancellation_seen = None, None, False
     try:
         for index in range(N_CASES):
+            if _development_sources() != sources:
+                raise ValueError("development source changed during evaluation")
             # Recheck externally held digests before every development callback.
             for name, digest in (("public_manifest.json", public_digest), ("predictions.json", predictions_digest)):
                 if registry.sha256_file(run.path / "artifacts" / name) != digest:
@@ -924,6 +969,8 @@ def run_development_evaluation(path, public_digest, predictions_digest, callback
                 raise ValueError("complete-study tensor payload cap exceeded")
             records.append(_case_record(case, measured, pool))
             metrics.append(measured)
+        if _development_sources() != sources:
+            raise ValueError("development source changed during evaluation")
         for name, digest in (("public_manifest.json", public_digest), ("predictions.json", predictions_digest)):
             if registry.sha256_file(run.path / "artifacts" / name) != digest:
                 raise ValueError("a frozen artifact changed during evaluation")
@@ -935,6 +982,8 @@ def run_development_evaluation(path, public_digest, predictions_digest, callback
             restoration[key] = summarize_restoration([item["denominator"] for item in metrics],
                                                      [item["patch_residuals"][key] for item in metrics])
         evaluation = {"protocol": protocol.PROTOCOL_ID, "mode": "development-only", "state": "complete",
+                      "development_accounting_schema": DEVELOPMENT_ACCOUNTING_SCHEMA,
+                      "development_sources_sha256": sources,
                       "public_manifest_sha256": public_digest, "predictions_sha256": predictions_digest,
                       "evaluation_claim_sha256": claim_digest,
                       "selectors": frozen["selectors"], "metrics": effects, "restoration": restoration,
@@ -977,6 +1026,8 @@ def run_development_evaluation(path, public_digest, predictions_digest, callback
         if failed and not uncertain and not uncertain_cancel and committed_cancel is None:
             try:
                 partial = {"protocol": protocol.PROTOCOL_ID, "mode": "development-only", "state": "partial",
+                           "development_accounting_schema": DEVELOPMENT_ACCOUNTING_SCHEMA,
+                           "development_sources_sha256": sources,
                            "public_manifest_sha256": public_digest, "predictions_sha256": predictions_digest,
                            "evaluation_claim_sha256": claim_digest,
                            "cases": records, "tensors": pool}
@@ -1019,6 +1070,8 @@ def publish_development_reveal(path, public_digest, predictions_digest, evaluati
                 raise ValueError("development reveal does not match its public commitments")
             score = score_revealed_site(frozen["selectors"], reveal["site"])
             payload = {"protocol": protocol.PROTOCOL_ID, "mode": "development-only",
+                       "development_accounting_schema": DEVELOPMENT_ACCOUNTING_SCHEMA,
+                       "development_sources_sha256": frozen["development_sources_sha256"],
                        "public_manifest_sha256": public_digest, "predictions_sha256": predictions_digest,
                        "evaluation_sha256": evaluation_digest, "reveal": reveal,
                        "revealed_site_score": score}

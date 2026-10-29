@@ -9,7 +9,7 @@ therefore **exploratory**, not an untouched blind confirmation.
 
 The [run directory](../results/synthetic-causal-v1-20261028) contains the
 manifest, frozen predictions, per-case results, and terminal outcome. The
-source revision was `6d0131ee3eb6c2bb7dbef9433f0a8733c759331f`, published on
+manifest records source revision `6d0131ee3eb6c2bb7dbef9433f0a8733c759331f`, published on
 `research/causal` before the run; it was not on main at that time. Registry
 verification checks saved hashes and consistency, while the implementation
 and its tests establish the intended precommit-before-held-out execution order.
@@ -58,7 +58,7 @@ zero bootstrap samples and method `none`.
 ## Controls and limits
 
 In the recorded execution, null, identity, pre-injection upstream, and clean
-null controls passed the runner's exact full-logit checks. The clean-versus-
+null controls passed the runner's full-logit floating-point equality checks. The clean-versus-
 clean trace control also passed. Their saved scalar effects are zero; the
 individual control logits were not saved, so an independent reader cannot
 reconstruct the full-logit control comparisons from the artifact alone. The
@@ -80,6 +80,19 @@ hashes, split identities, precommit hash, discovery summaries, held-out rows,
 and reported metrics. A separate reviewer challenged the scientific
 interpretation and highlighted the final-state control and unsaved control
 logits. Source revision and data identities are retained in the manifest.
+The recorded source hashes do not establish the exact executed Python bytecode:
+ordinary Python imports can load a timestamp-valid cached `.pyc` while still
+reporting the corresponding source path. The recorded run did not bind its
+executed bytecode. A [proposed future-v2 launch policy](CAUSAL_CONFIRMATION_V2_SOURCE_CLARIFICATION.md)
+addresses ordinary cache reuse without retroactively changing this evidence.
+The v1 trace comparator and full-logit controls used floating-point equality
+without recording the CPU denormal-flushing mode. In a flushing environment
+these comparisons can miss a stored subnormal difference; signed zeros also
+compare equal. Flushing can also erase a subnormal contribution to the
+discovery magnitude ranking. Full discovery trace values and control logits were not saved,
+so this artifact cannot determine whether that edge occurred in this run;
+there is no basis here to claim that the recorded result changed. The proposed
+v2 protocol specifies a checked numeric mode and bit-level comparisons.
 
 ## Recheck the saved artifact
 

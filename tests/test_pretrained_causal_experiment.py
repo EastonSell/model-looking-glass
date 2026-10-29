@@ -171,7 +171,8 @@ class PublicStudyTests(unittest.TestCase):
             injected = name not in ("clean", "clean_repeat") and not name.startswith("reverse_")
             patch = (name in ("self_patch", "upstream", "late") or
                      name.startswith("patch_") or name.startswith("reverse_"))
-            charged[name] = replace(observation, extra_tensor_bytes=(int(injected) + int(patch)) * 768 * 4)
+            post_action = name not in ("clean", "clean_repeat", "injected")
+            charged[name] = replace(observation, extra_tensor_bytes=(int(injected) + int(patch) + int(post_action)) * 768 * 4)
         return charged
 
     def test_discovery_case_validates_controls_and_records_raw_conditions(self):
@@ -196,7 +197,7 @@ class PublicStudyTests(unittest.TestCase):
         self.assertEqual(analysis["effects"], {str(site): -0.5 for site in range(1, 5)})
         self.assertEqual(analysis["reverse_effects"], {str(site): 0.0 for site in range(1, 5)})
         bad = dict(conditions)
-        bad["null"] = replace(patched, extra_tensor_bytes=768 * 4)
+        bad["null"] = replace(patched, extra_tensor_bytes=2 * 768 * 4)
         with self.assertRaisesRegex(ValueError, "null"):
             study.analyze_discovery_case(study.DiscoveryCase(0, bad, cleanup), token_index=0)
         with self.assertRaisesRegex(ValueError, "post-clean"):
@@ -301,6 +302,8 @@ class PublicStudyTests(unittest.TestCase):
             frozen = json.loads(raw)
             self.assertEqual(result["predictions_sha256"], hashlib.sha256(raw).hexdigest())
             self.assertEqual(frozen["mode"], "development-only")
+            self.assertEqual(frozen["development_accounting_schema"], study.DEVELOPMENT_ACCOUNTING_SCHEMA)
+            self.assertEqual(frozen["development_sources_sha256"], study._read_development_sources())
             self.assertEqual(frozen["public_manifest_sha256"], protocol.canonical_sha256(public))
             self.assertEqual(frozen["selectors"]["selected"], 2)
             self.assertEqual(frozen["predictions"], {str(i): -0.5 for i in range(1, 5)})
@@ -311,6 +314,54 @@ class PublicStudyTests(unittest.TestCase):
             self.assertFalse((path / "artifacts" / "evaluation.json").exists())
             with self.assertRaises(FileExistsError):
                 study.registry.open_run(path).write_artifact("predictions.json", b"overwrite")
+
+    def test_later_phases_reject_other_development_schema_or_source(self):
+        public, reveal = protocol.seal_manifest(
+            [[i + 1] for i in range(8)], [[i + 101] for i in range(8)],
+            site=2, site_nonce=b"a" * 32, split_nonce=b"b" * 32,
+            source_commit="1" * 40, protocol_sha256="2" * 64,
+            runtime={k: ("cpu" if k == "device" else "development-only") for k in
+                     ("python", "torch", "transformers", "device", "driver", "deterministic_settings")},
+            created_utc="2026-10-28T00:00:00Z")
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "run"
+            frozen = study.run_development_discovery(path, public,
+                                                    lambda index, ids: self.development_case(index))
+            calls = []
+            def callback(index):
+                calls.append(index)
+                return 0, self.development_case(index)
+            changed = dict(study._LOADED_DEVELOPMENT_SOURCES)
+            changed["analysis"] = "0" * 64
+            with mock.patch.object(study, "DEVELOPMENT_ACCOUNTING_SCHEMA", "other-schema"):
+                with self.assertRaises(ValueError):
+                    study.run_development_evaluation(path, frozen["public_manifest_sha256"],
+                                                     frozen["predictions_sha256"], callback)
+            # Another process can load different source consistently, but it
+            # must still match the source frozen in the discovery artifact.
+            with mock.patch.object(study, "_read_development_sources", return_value=changed), \
+                    mock.patch.object(study, "_LOADED_DEVELOPMENT_SOURCES", changed):
+                with self.assertRaises(ValueError):
+                    study.run_development_evaluation(path, frozen["public_manifest_sha256"],
+                                                     frozen["predictions_sha256"], callback)
+            # A source edit after import is rejected as well.
+            with mock.patch.object(study, "_read_development_sources", return_value=changed):
+                with self.assertRaises(ValueError):
+                    study.run_development_evaluation(path, frozen["public_manifest_sha256"],
+                                                     frozen["predictions_sha256"], callback)
+            self.assertEqual(calls, [])
+            self.assertFalse((path / "artifacts" / "evaluation_claim.json").exists())
+            evaluated = study.run_development_evaluation(path, frozen["public_manifest_sha256"],
+                                                         frozen["predictions_sha256"], callback)
+            self.assertEqual(calls, list(range(8)))
+            with mock.patch.object(study, "_read_development_sources", return_value=changed), \
+                    mock.patch.object(study, "_LOADED_DEVELOPMENT_SOURCES", changed):
+                with self.assertRaises(ValueError):
+                    study.publish_development_reveal(path, frozen["public_manifest_sha256"],
+                        frozen["predictions_sha256"], evaluated["evaluation_sha256"], reveal)
+            self.assertEqual(study.registry.verify_run(path)["state"], "incomplete")
+            study.publish_development_reveal(path, frozen["public_manifest_sha256"],
+                frozen["predictions_sha256"], evaluated["evaluation_sha256"], reveal)
 
     def test_failed_callback_leaves_a_non_success_record_without_private_error(self):
         with tempfile.TemporaryDirectory() as temp:
