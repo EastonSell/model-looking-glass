@@ -1,0 +1,23 @@
+{
+  "checkout_clean_after": true,
+  "checkout_head": "8b27456683af12bc390fb53de4f01732ceb6b377",
+  "clock_finished": "2026-10-29T13:43:13.854167+00:00",
+  "clock_started": "2026-10-29T13:38:44.632919+00:00",
+  "direct_child_reaped": true,
+  "direct_exit": 0,
+  "exit_sha256": "4383c9baa4604a860cfcaaf604789146a55dccd045c2dbe1a7ee9b70f7f5004c",
+  "inventory_file_count": 100,
+  "inventory_total_bytes": 157873015,
+  "observer_exception": null,
+  "published_manifest_sha256": "eba5c83686c0b5e5aab7f335e01ad353b9fb69015389522c9f97f18e1c121b47",
+  "reader_sha256": "735df4d60531ae5270fdd4292534422defc96614f39b6ebb463fad94becb6730",
+  "schema": "copy-behavior-independent-process-review-v1",
+  "scope": "Cooperative direct-child receipt and retained file-byte reconciliation only; not external process, interpreter, clock, or unknown-exposure attestation.",
+  "start_sha256": "56624e41e30dd399638c2efe1f5927a27aee8f435793c65abcd6743843d85723",
+  "status": "pass",
+  "stderr_bytes": 0,
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256": "0188ae79e3d5e4832634a2a49ade07ab427175548ea2f66cbebb42b9d3602866",
+  "timeout": false,
+  "unbound_spawn": false
+}

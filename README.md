@@ -128,6 +128,8 @@ The [per-prompt matched-dose copying follow-up](results/distilgpt2-copy-head-pro
 
 The [projection-output-matched copying follow-up](results/distilgpt2-copy-head-output-dose-v1-20261029/README.md) found its fixed H2-versus-H10 contrast positive in five of eight families, below the 75% criterion. The H7 control and full-vocabulary shifts are reported; equal projection-output norms do not equal directions or downstream effects.
 
+The [baseline-screened copying follow-up](results/distilgpt2-copy-behavior-intervention-v1-20261029/README.md) found its primary H2-versus-H10 criterion ineligible because only five held-out families passed the clean screen, below the minimum of six. Across all twelve dose-valid families, six contrasts were positive and the mean was −0.006161; the H7 control and full-vocabulary effects are descriptive results on fixed public lists.
+
 In a [recipient-name screen](results/distilgpt2-recipient-screen-v1-20261028/README.md), only three of 32 matched prompt pairs met the baseline rule, so the planned patches were not run. A separate [year-comparison screen](results/distilgpt2-greater-than-screen-v1-20261028/README.md) found a wording-dependent shift but a later-year preference even in all reverse and neutral prompts; it does not establish a general temporal comparator.
 
 In the [year-transfer intervention](results/distilgpt2-year-transfer-v1-20261029/README.md), donorward shifts occurred under forward, neutral and reverse wording. The comparator baseline failed in all eight families, and only one met the separate forward-specific intervention criterion, below the six required. The result does not establish a numerical comparator or a unique circuit.
