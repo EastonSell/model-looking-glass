@@ -1,0 +1,59 @@
+{
+  "attempt_id": "6ce9531f5be90f46574ba6771851817c",
+  "controller_exit_code": 0,
+  "controller_pid": 19676,
+  "files": {
+    "controller-exit-observation.json": {
+      "bytes": 199,
+      "sha256": "ce014315ebb7bb6e54c784a0241f28f76dc2dd751cd07e220b98df76261bc996"
+    },
+    "controller-result.json": {
+      "bytes": 338281,
+      "sha256": "c5045afb6b7dbe518517a8156e52469055d9bd578b33524c7c8beb1a3e7e0eb2"
+    },
+    "controller-start-observation.json": {
+      "bytes": 194,
+      "sha256": "e21c838a162620ff8b28065b10e60e5fd7981517ea53ccc119104e108ca61100"
+    },
+    "controller-stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "controller-stdout.txt.gz": {
+      "bytes": 80518,
+      "sha256": "acd9a1e2694af5cff3a71d508b7499dfb5c5c033fe84b9bd2078c1dbb29753d7",
+      "uncompressed_bytes": 338282,
+      "uncompressed_sha256": "cade2dfe6b54715c08e6b052e0633c2f933a918bbcedf0da46ec5ccb40f47dc3"
+    },
+    "events.jsonl.gz": {
+      "bytes": 2384683,
+      "sha256": "1a405510648a649b7561a88fa2a770532fcafb2e6e87d587e038eada99033495",
+      "uncompressed_bytes": 6369065,
+      "uncompressed_sha256": "9f482a369742960e24273d595d33d2a5fdc8ba2dfc82f1d65f6046266301a3ca"
+    },
+    "independent-numeric-replay.json": {
+      "bytes": 104226,
+      "sha256": "5cf0aaf24debb4071e5b64bc0e6be623880f2cfe047e56a46e80d95d62f4e5ca"
+    },
+    "owner-candidate.json": {
+      "bytes": 339403,
+      "sha256": "1f93c8cc310760fa18e877ebb7e7bc03cdb8f5c9c71b1cbda54c3a9533234223"
+    },
+    "reservation.json": {
+      "bytes": 32027,
+      "sha256": "f9c66fe0e5e93013a2561a96bffc2438f72f66377dd0438cbb2b1d1cc20bc036"
+    }
+  },
+  "forward_count": 480,
+  "independent_auditor_source": {
+    "bytes": 17050,
+    "path": "tools/audit_bert_matched_results.py",
+    "sha256": "cec5193707894f2e76ecd4d1d54ea29a03ec3e93cf91323a9bc553140df268c2"
+  },
+  "journal_records": 1152,
+  "owner_pid": 43120,
+  "owner_reaped": true,
+  "schema": "bert-matched-public-evidence-v1",
+  "scope": "byte and process observations; not independent execution or native-code attestation",
+  "source_commit": "4ac00abf6938b843abc5015fa83e7ad60d993262"
+}
