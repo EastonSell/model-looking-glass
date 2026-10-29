@@ -66,6 +66,18 @@ Hook checks are preflight checks under a cooperative process assumption; they
 do not prevent another thread from installing a hook during the forward.
 The current checkpoint smoke and unit tests run on CPU, not CUDA.
 
+`synchronous_cpu=True` explicitly opts a CPU trace into the
+[synchronous CPU plan wrapper](INTERVENTION_PLANS.md). The caller must
+ensure exclusive, quiescent ownership and synchronous CPU execution with no
+deferred native or device work; tensor-device checks do not establish these
+conditions. A supported root-call exception can unwind the plan's Python hooks
+and cooperative lease without returning a partial trace. An uncertain plan
+transition, lifecycle race or known non-CPU output instead requires retaining
+the model, error/traceback and accessible plan and resource roots and
+quarantining the worker. The default remains
+a direct forward, and CUDA lifetime and cleanup are not established by this
+option.
+
 Limits apply to the number of points, aggregate captured bytes, each captured
 boundary tensor, total input tokens and the expected full logits tensor. They
 do not bound the model's intermediate allocations, all host memory, or GPU

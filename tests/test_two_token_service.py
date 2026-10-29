@@ -92,6 +92,18 @@ class ServicePreparationTests(unittest.TestCase):
         self.assertEqual(kwargs["owner_timeout"], 123)
         self.assertEqual(self.registry_mock.call_count, 2)
 
+    def test_serving_memory_is_opt_in_and_uses_the_private_launch_directory(self):
+        ordinary = self.prepare()
+        assert ordinary.serving_memory_path is None
+        enabled = self.prepare(observe_serving_memory=True)
+        config = child._parse_config(enabled._launch.config_path.read_bytes())
+        assert enabled.serving_memory_path == enabled._launch.config_path.parent / 'serving-memory.json'
+        assert config.serving_memory_path == enabled.serving_memory_path
+        assert not enabled.serving_memory_path.exists()
+        for invalid in (1, 'yes', None):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                self.prepare(observe_serving_memory=invalid)
+
     def test_changed_config_source_or_profiles_reject_before_start(self):
         prepared = self.prepare()
         with patch.object(service, "_start_owner_controller") as start:

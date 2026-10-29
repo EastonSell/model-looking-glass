@@ -1,0 +1,8 @@
+{
+  "source_commit": "b75e5bcc3a866a9af56ac1ac3ba54c6abe1691a4",
+  "process_waited": true,
+  "exit_code": 1,
+  "start_utc": "2026-10-29T11:27:43.4798146Z",
+  "end_utc": "2026-10-29T11:29:02.7853175Z",
+  "prelaunch_free_bytes": 4903018496
+}

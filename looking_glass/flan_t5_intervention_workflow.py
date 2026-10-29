@@ -55,7 +55,8 @@ def compare_t5_donor_patch(model, *, receiver_input_ids, donor_input_ids, attent
                            receiver_decoder_input_ids, donor_decoder_input_ids, decoder_attention_mask,
                            target, control, readout_position, readout_token_id, run_id="t5-donor-patch",
                            max_input_tokens=4096, max_tensor_bytes=16 * 1024 * 1024,
-                           max_logits_bytes=128 * 1024 * 1024, max_retained_bytes=16 * 1024 * 1024):
+                           max_logits_bytes=128 * 1024 * 1024, max_retained_bytes=16 * 1024 * 1024,
+                           synchronous_cpu=False):
     """Compare same-site donor and off-target patches on an explicit input pair.
 
     Each input is one CPU int64 row; the two runs use the exact same masks and
@@ -63,7 +64,12 @@ def compare_t5_donor_patch(model, *, receiver_input_ids, donor_input_ids, attent
     module and invocation. A same-site self patch and a receiver repeat check
     mechanics. The control patch can be nonzero and its dose need not match.
     Readout is a teacher-forced decoder position, not generated text.
+    ``synchronous_cpu=True`` asserts exclusive, quiescent ownership and a
+    synchronous CPU model with no deferred native or device work. It only
+    supports Python hook/lease cleanup, not native or CUDA cleanup.
     """
+    if type(synchronous_cpu) is not bool:
+        raise TypeError("synchronous_cpu must be a boolean")
     if torch.compiler.is_compiling():
         raise ValueError("compiled execution is unsupported")
     if sys.byteorder != "little":
@@ -147,7 +153,8 @@ def compare_t5_donor_patch(model, *, receiver_input_ids, donor_input_ids, attent
         output, records = trace_t5_forward(model, input_ids=ids, attention_mask=source_mask,
             decoder_input_ids=dec, decoder_attention_mask=dec_mask, points=[target, control],
             run_id=f"{run_id}/{name}", max_events=2, max_trace_bytes=2 * vector_bytes,
-            max_tensor_bytes=max_tensor_bytes, max_input_tokens=max_input_tokens, max_logits_bytes=max_logits_bytes)
+            max_tensor_bytes=max_tensor_bytes, max_input_tokens=max_input_tokens, max_logits_bytes=max_logits_bytes,
+            synchronous_cpu=synchronous_cpu)
         logits = check_logits(output)
         if len(records) != 2:
             raise RuntimeError("trace omitted a selected site")
@@ -193,7 +200,8 @@ def compare_t5_donor_patch(model, *, receiver_input_ids, donor_input_ids, attent
         check_inputs()
         plan = ActivationPlan(model, steps, **limits)
         with torch.inference_mode(), plan:
-            output = model(input_ids=receiver_ids, attention_mask=source_mask, decoder_input_ids=receiver_dec,
+            forward = plan.run_synchronous_cpu if synchronous_cpu else model
+            output = forward(input_ids=receiver_ids, attention_mask=source_mask, decoder_input_ids=receiver_dec,
                 decoder_attention_mask=dec_mask, use_cache=False, output_attentions=False,
                 output_hidden_states=False, return_dict=True)
         logits = check_logits(output)

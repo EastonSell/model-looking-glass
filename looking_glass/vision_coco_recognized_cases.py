@@ -147,7 +147,7 @@ def rank(category, image_id):
             image_id)
 
 
-def _candidate(image, annotations):
+def _candidate(image, annotations, *, ranker=rank):
     import PIL
     from PIL import Image, ImageDraw
     if PIL.__version__ != '11.3.0':
@@ -200,10 +200,10 @@ def _candidate(image, annotations):
             'animal_annotation_ids': sorted(a['id'] for a in annotations),
             'bbox_xywh': ann['bbox'], 'bbox_resized_xyxy': list(box),
             'mask_sha256': hashlib.sha256(mask.tobytes()).hexdigest(), 'sites': sites,
-            'selection_rank_sha256': rank(ann['category_id'], image['id'])[0]}
+            'selection_rank_sha256': ranker(ann['category_id'], image['id'])[0]}
 
 
-def _select_inventory(archive, excluded, count):
+def _select_inventory(archive, excluded, count, *, ranker=rank):
     def rows(field):
         return stream_array(archive.open(ANNOTATION_MEMBER), field)
     categories = {r['name']: r['id'] for r in rows('categories')}
@@ -219,7 +219,7 @@ def _select_inventory(archive, excluded, count):
         if ann['category_id'] in (17, 18) and ann['image_id'] in images:
             animal.setdefault(ann['image_id'], []).append(ann)
     groups = {17: [], 18: []}
-    ranked = sorted(animal, key=lambda image_id: rank(animal[image_id][0]['category_id'], image_id))
+    ranked = sorted(animal, key=lambda image_id: ranker(animal[image_id][0]['category_id'], image_id))
     for image_id in ranked:
         anns = animal[image_id]
         if len({a['category_id'] for a in anns}) != 1:
@@ -227,7 +227,7 @@ def _select_inventory(archive, excluded, count):
         category = anns[0]['category_id']
         if len(groups[category]) == count:
             continue
-        result = _candidate(images[image_id], anns)
+        result = _candidate(images[image_id], anns, ranker=ranker)
         if result:
             result['rank'] = len(groups[category])
             result['role'] = 'donor' if result['rank'] % 4 == 0 else 'target'
@@ -248,7 +248,7 @@ def _select_inventory(archive, excluded, count):
         row['other_boxes'].sort(key=lambda other: other['annotation_id'])
     return selected
 
-def select_inventory(archive_path, excluded_ids, *, count=32, authenticated=True):
+def select_inventory(archive_path, excluded_ids, *, count=32, authenticated=True, ranker=None):
     """Use one opened file throughout; ``authenticated=False`` is for toy tests.
 
     The source custodian must keep the opened file and path quiescent. The
@@ -264,7 +264,10 @@ def select_inventory(archive_path, excluded_ids, *, count=32, authenticated=True
         if authenticated:
             verify_annotation_archive(source)
         with zipfile.ZipFile(source) as archive:
-            selected = _select_inventory(archive, set(excluded_ids), count)
+            if ranker is None:
+                selected = _select_inventory(archive, set(excluded_ids), count)
+            else:
+                selected = _select_inventory(archive, set(excluded_ids), count, ranker=ranker)
         last_hash = _digest_stream(source)
         final = os.fstat(source.fileno())
         present = path.stat()

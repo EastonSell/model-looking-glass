@@ -1,0 +1,10 @@
+flan_sentiment_intervention_independent_audit.py -text
+flan_sentiment_dose_oracle.py -text
+bert_taste_matched_independent.py -text
+review_flan_sentiment_linear_toy.py -text
+write_flan_sentiment_fake_journal.py -text
+test_flan_sentiment_journal_audit.py -text
+build_distilbert_color_edit_cases_v1.py -text
+check_distilbert_color_edit_exposures_v1.py -text
+prepare_distilbert_color_prelaunch_v1.py -text
+observe_distilbert_color_supervisor_v1.py -text

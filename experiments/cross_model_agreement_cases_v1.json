@@ -1,0 +1,2301 @@
+{
+  "bert": {
+    "model": "distilbert/distilbert-base-uncased",
+    "revision": "12040accade4e8a0f71eabdb258fecc2e7e948be",
+    "tokenizer_sha256": "ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98"
+  },
+  "cases": [
+    {
+      "attractor": "chair",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          10810,
+          2379,
+          1996,
+          3242,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the basket near the chair [MASK]"
+      },
+      "case_id": "f0-a0-l0-n0",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          7988,
+          1474,
+          262,
+          5118
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the basket near the chair"
+      },
+      "index": 0,
+      "lemma": 0,
+      "number": 0,
+      "same_number_donor_lemma": 1,
+      "subject": "basket"
+    },
+    {
+      "attractor": "chair",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          25946,
+          2379,
+          1996,
+          3242,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the baskets near the chair [MASK]"
+      },
+      "case_id": "f0-a0-l0-n1",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          46530,
+          1474,
+          262,
+          5118
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the baskets near the chair"
+      },
+      "index": 1,
+      "lemma": 0,
+      "number": 1,
+      "same_number_donor_lemma": 1,
+      "subject": "baskets"
+    },
+    {
+      "attractor": "chair",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          8460,
+          2379,
+          1996,
+          3242,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the barrel near the chair [MASK]"
+      },
+      "case_id": "f0-a0-l1-n0",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          9036,
+          1474,
+          262,
+          5118
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the barrel near the chair"
+      },
+      "index": 2,
+      "lemma": 1,
+      "number": 0,
+      "same_number_donor_lemma": 0,
+      "subject": "barrel"
+    },
+    {
+      "attractor": "chair",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          13826,
+          2379,
+          1996,
+          3242,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the barrels near the chair [MASK]"
+      },
+      "case_id": "f0-a0-l1-n1",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          17907,
+          1474,
+          262,
+          5118
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the barrels near the chair"
+      },
+      "index": 3,
+      "lemma": 1,
+      "number": 1,
+      "same_number_donor_lemma": 0,
+      "subject": "barrels"
+    },
+    {
+      "attractor": "chair",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          2452,
+          2379,
+          1996,
+          3242,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the cup near the chair [MASK]"
+      },
+      "case_id": "f0-a0-l2-n0",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          6508,
+          1474,
+          262,
+          5118
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the cup near the chair"
+      },
+      "index": 4,
+      "lemma": 2,
+      "number": 0,
+      "same_number_donor_lemma": 3,
+      "subject": "cup"
+    },
+    {
+      "attractor": "chair",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          10268,
+          2379,
+          1996,
+          3242,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the cups near the chair [MASK]"
+      },
+      "case_id": "f0-a0-l2-n1",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          14180,
+          1474,
+          262,
+          5118
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the cups near the chair"
+      },
+      "index": 5,
+      "lemma": 2,
+      "number": 1,
+      "same_number_donor_lemma": 3,
+      "subject": "cups"
+    },
+    {
+      "attractor": "chair",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          27297,
+          2379,
+          1996,
+          3242,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the crate near the chair [MASK]"
+      },
+      "case_id": "f0-a0-l3-n0",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          27021,
+          1474,
+          262,
+          5118
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the crate near the chair"
+      },
+      "index": 6,
+      "lemma": 3,
+      "number": 0,
+      "same_number_donor_lemma": 2,
+      "subject": "crate"
+    },
+    {
+      "attractor": "chair",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          27619,
+          2379,
+          1996,
+          3242,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the crates near the chair [MASK]"
+      },
+      "case_id": "f0-a0-l3-n1",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          40382,
+          1474,
+          262,
+          5118
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the crates near the chair"
+      },
+      "index": 7,
+      "lemma": 3,
+      "number": 1,
+      "same_number_donor_lemma": 2,
+      "subject": "crates"
+    },
+    {
+      "attractor": "chairs",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          10810,
+          2379,
+          1996,
+          8397,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the basket near the chairs [MASK]"
+      },
+      "case_id": "f0-a1-l0-n0",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          7988,
+          1474,
+          262,
+          18791
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the basket near the chairs"
+      },
+      "index": 8,
+      "lemma": 0,
+      "number": 0,
+      "same_number_donor_lemma": 1,
+      "subject": "basket"
+    },
+    {
+      "attractor": "chairs",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          25946,
+          2379,
+          1996,
+          8397,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the baskets near the chairs [MASK]"
+      },
+      "case_id": "f0-a1-l0-n1",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          46530,
+          1474,
+          262,
+          18791
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the baskets near the chairs"
+      },
+      "index": 9,
+      "lemma": 0,
+      "number": 1,
+      "same_number_donor_lemma": 1,
+      "subject": "baskets"
+    },
+    {
+      "attractor": "chairs",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          8460,
+          2379,
+          1996,
+          8397,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the barrel near the chairs [MASK]"
+      },
+      "case_id": "f0-a1-l1-n0",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          9036,
+          1474,
+          262,
+          18791
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the barrel near the chairs"
+      },
+      "index": 10,
+      "lemma": 1,
+      "number": 0,
+      "same_number_donor_lemma": 0,
+      "subject": "barrel"
+    },
+    {
+      "attractor": "chairs",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          13826,
+          2379,
+          1996,
+          8397,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the barrels near the chairs [MASK]"
+      },
+      "case_id": "f0-a1-l1-n1",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          17907,
+          1474,
+          262,
+          18791
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the barrels near the chairs"
+      },
+      "index": 11,
+      "lemma": 1,
+      "number": 1,
+      "same_number_donor_lemma": 0,
+      "subject": "barrels"
+    },
+    {
+      "attractor": "chairs",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          2452,
+          2379,
+          1996,
+          8397,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the cup near the chairs [MASK]"
+      },
+      "case_id": "f0-a1-l2-n0",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          6508,
+          1474,
+          262,
+          18791
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the cup near the chairs"
+      },
+      "index": 12,
+      "lemma": 2,
+      "number": 0,
+      "same_number_donor_lemma": 3,
+      "subject": "cup"
+    },
+    {
+      "attractor": "chairs",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          10268,
+          2379,
+          1996,
+          8397,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the cups near the chairs [MASK]"
+      },
+      "case_id": "f0-a1-l2-n1",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          14180,
+          1474,
+          262,
+          18791
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the cups near the chairs"
+      },
+      "index": 13,
+      "lemma": 2,
+      "number": 1,
+      "same_number_donor_lemma": 3,
+      "subject": "cups"
+    },
+    {
+      "attractor": "chairs",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          27297,
+          2379,
+          1996,
+          8397,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the crate near the chairs [MASK]"
+      },
+      "case_id": "f0-a1-l3-n0",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          27021,
+          1474,
+          262,
+          18791
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the crate near the chairs"
+      },
+      "index": 14,
+      "lemma": 3,
+      "number": 0,
+      "same_number_donor_lemma": 2,
+      "subject": "crate"
+    },
+    {
+      "attractor": "chairs",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2503,
+          1996,
+          9746,
+          1010,
+          1996,
+          27619,
+          2379,
+          1996,
+          8397,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "Inside the warehouse, the crates near the chairs [MASK]"
+      },
+      "case_id": "f0-a1-l3-n1",
+      "frame": 0,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          24441,
+          262,
+          20933,
+          11,
+          262,
+          40382,
+          1474,
+          262,
+          18791
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "Inside the warehouse, the crates near the chairs"
+      },
+      "index": 15,
+      "lemma": 3,
+      "number": 1,
+      "same_number_donor_lemma": 2,
+      "subject": "crates"
+    },
+    {
+      "attractor": "table",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          10810,
+          3875,
+          1996,
+          2795,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the basket beside the table [MASK]"
+      },
+      "case_id": "f1-a0-l0-n0",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          7988,
+          13970,
+          262,
+          3084
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the basket beside the table"
+      },
+      "index": 16,
+      "lemma": 0,
+      "number": 0,
+      "same_number_donor_lemma": 1,
+      "subject": "basket"
+    },
+    {
+      "attractor": "table",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          25946,
+          3875,
+          1996,
+          2795,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the baskets beside the table [MASK]"
+      },
+      "case_id": "f1-a0-l0-n1",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          46530,
+          13970,
+          262,
+          3084
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the baskets beside the table"
+      },
+      "index": 17,
+      "lemma": 0,
+      "number": 1,
+      "same_number_donor_lemma": 1,
+      "subject": "baskets"
+    },
+    {
+      "attractor": "table",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          8460,
+          3875,
+          1996,
+          2795,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the barrel beside the table [MASK]"
+      },
+      "case_id": "f1-a0-l1-n0",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          9036,
+          13970,
+          262,
+          3084
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the barrel beside the table"
+      },
+      "index": 18,
+      "lemma": 1,
+      "number": 0,
+      "same_number_donor_lemma": 0,
+      "subject": "barrel"
+    },
+    {
+      "attractor": "table",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          13826,
+          3875,
+          1996,
+          2795,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the barrels beside the table [MASK]"
+      },
+      "case_id": "f1-a0-l1-n1",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          17907,
+          13970,
+          262,
+          3084
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the barrels beside the table"
+      },
+      "index": 19,
+      "lemma": 1,
+      "number": 1,
+      "same_number_donor_lemma": 0,
+      "subject": "barrels"
+    },
+    {
+      "attractor": "table",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          2452,
+          3875,
+          1996,
+          2795,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the cup beside the table [MASK]"
+      },
+      "case_id": "f1-a0-l2-n0",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          6508,
+          13970,
+          262,
+          3084
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the cup beside the table"
+      },
+      "index": 20,
+      "lemma": 2,
+      "number": 0,
+      "same_number_donor_lemma": 3,
+      "subject": "cup"
+    },
+    {
+      "attractor": "table",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          10268,
+          3875,
+          1996,
+          2795,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the cups beside the table [MASK]"
+      },
+      "case_id": "f1-a0-l2-n1",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          14180,
+          13970,
+          262,
+          3084
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the cups beside the table"
+      },
+      "index": 21,
+      "lemma": 2,
+      "number": 1,
+      "same_number_donor_lemma": 3,
+      "subject": "cups"
+    },
+    {
+      "attractor": "table",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          27297,
+          3875,
+          1996,
+          2795,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the crate beside the table [MASK]"
+      },
+      "case_id": "f1-a0-l3-n0",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          27021,
+          13970,
+          262,
+          3084
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the crate beside the table"
+      },
+      "index": 22,
+      "lemma": 3,
+      "number": 0,
+      "same_number_donor_lemma": 2,
+      "subject": "crate"
+    },
+    {
+      "attractor": "table",
+      "attractor_number": 0,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          27619,
+          3875,
+          1996,
+          2795,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the crates beside the table [MASK]"
+      },
+      "case_id": "f1-a0-l3-n1",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          40382,
+          13970,
+          262,
+          3084
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the crates beside the table"
+      },
+      "index": 23,
+      "lemma": 3,
+      "number": 1,
+      "same_number_donor_lemma": 2,
+      "subject": "crates"
+    },
+    {
+      "attractor": "tables",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          10810,
+          3875,
+          1996,
+          7251,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the basket beside the tables [MASK]"
+      },
+      "case_id": "f1-a1-l0-n0",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          7988,
+          13970,
+          262,
+          8893
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the basket beside the tables"
+      },
+      "index": 24,
+      "lemma": 0,
+      "number": 0,
+      "same_number_donor_lemma": 1,
+      "subject": "basket"
+    },
+    {
+      "attractor": "tables",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          25946,
+          3875,
+          1996,
+          7251,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the baskets beside the tables [MASK]"
+      },
+      "case_id": "f1-a1-l0-n1",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          46530,
+          13970,
+          262,
+          8893
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the baskets beside the tables"
+      },
+      "index": 25,
+      "lemma": 0,
+      "number": 1,
+      "same_number_donor_lemma": 1,
+      "subject": "baskets"
+    },
+    {
+      "attractor": "tables",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          8460,
+          3875,
+          1996,
+          7251,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the barrel beside the tables [MASK]"
+      },
+      "case_id": "f1-a1-l1-n0",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          9036,
+          13970,
+          262,
+          8893
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the barrel beside the tables"
+      },
+      "index": 26,
+      "lemma": 1,
+      "number": 0,
+      "same_number_donor_lemma": 0,
+      "subject": "barrel"
+    },
+    {
+      "attractor": "tables",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          13826,
+          3875,
+          1996,
+          7251,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the barrels beside the tables [MASK]"
+      },
+      "case_id": "f1-a1-l1-n1",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          17907,
+          13970,
+          262,
+          8893
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the barrels beside the tables"
+      },
+      "index": 27,
+      "lemma": 1,
+      "number": 1,
+      "same_number_donor_lemma": 0,
+      "subject": "barrels"
+    },
+    {
+      "attractor": "tables",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          2452,
+          3875,
+          1996,
+          7251,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the cup beside the tables [MASK]"
+      },
+      "case_id": "f1-a1-l2-n0",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          6508,
+          13970,
+          262,
+          8893
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the cup beside the tables"
+      },
+      "index": 28,
+      "lemma": 2,
+      "number": 0,
+      "same_number_donor_lemma": 3,
+      "subject": "cup"
+    },
+    {
+      "attractor": "tables",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          10268,
+          3875,
+          1996,
+          7251,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the cups beside the tables [MASK]"
+      },
+      "case_id": "f1-a1-l2-n1",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          14180,
+          13970,
+          262,
+          8893
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the cups beside the tables"
+      },
+      "index": 29,
+      "lemma": 2,
+      "number": 1,
+      "same_number_donor_lemma": 3,
+      "subject": "cups"
+    },
+    {
+      "attractor": "tables",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          27297,
+          3875,
+          1996,
+          7251,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the crate beside the tables [MASK]"
+      },
+      "case_id": "f1-a1-l3-n0",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          27021,
+          13970,
+          262,
+          8893
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the crate beside the tables"
+      },
+      "index": 30,
+      "lemma": 3,
+      "number": 0,
+      "same_number_donor_lemma": 2,
+      "subject": "crate"
+    },
+    {
+      "attractor": "tables",
+      "attractor_number": 1,
+      "bert": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          101,
+          2012,
+          1996,
+          18086,
+          1010,
+          1996,
+          27619,
+          3875,
+          1996,
+          7251,
+          103,
+          102
+        ],
+        "output_position": 10,
+        "subject_position": 6,
+        "text": "At the marketplace, the crates beside the tables [MASK]"
+      },
+      "case_id": "f1-a1-l3-n1",
+      "frame": 1,
+      "gpt": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          2953,
+          262,
+          17432,
+          11,
+          262,
+          40382,
+          13970,
+          262,
+          8893
+        ],
+        "output_position": 8,
+        "subject_position": 5,
+        "text": "At the marketplace, the crates beside the tables"
+      },
+      "index": 31,
+      "lemma": 3,
+      "number": 1,
+      "same_number_donor_lemma": 2,
+      "subject": "crates"
+    }
+  ],
+  "gpt": {
+    "model": "distilbert/distilgpt2",
+    "revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "tokenizer_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6"
+  },
+  "schema": "cross-model-agreement-cases-v1",
+  "targets": {
+    "bert": {
+      "are": 2024,
+      "is": 2003,
+      "was": 2001,
+      "were": 2020
+    },
+    "gpt": {
+      "are": 389,
+      "is": 318,
+      "was": 373,
+      "were": 547
+    }
+  }
+}
