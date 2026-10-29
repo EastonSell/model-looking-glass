@@ -48,10 +48,12 @@ may have succeeded before the handoff was interrupted. The owner must first
 recover and observe or cancel any published handle. If no handle exists and
 the broker is healthy, preparation failed before publication; if the broker is
 failed, the outcome may be unknown and needs quarantine and reconciliation.
-An unexpected exception inside the queue claim can leave even the ticket
-indeterminate. The adapter then closes itself to new work; the owner must call
-`close()` and reconcile all returned outstanding tickets, deduplicating any
-known terminal outcomes. A fatal interruption remains fatal.
+An unexpected exception inside queue insertion, cancellation or claim can leave
+even the ticket indeterminate. The adapter then refuses further operations and
+retains its roots; `close()` does not convert unknown tickets into cancellations.
+The owner must stop the service and retain claims for supervisor replacement.
+See [FAIR_REGISTRATION_GUARD.md](FAIR_REGISTRATION_GUARD.md). A fatal
+interruption remains fatal.
 For an uncertain active handoff, the public exception is sanitized so that
 clearing its traceback cannot clear a privately retained worker exception.
 `transfer_next()` wraps a sanitized `KeyboardInterrupt` or `SystemExit` in
