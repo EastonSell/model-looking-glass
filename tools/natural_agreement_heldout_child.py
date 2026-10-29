@@ -19,6 +19,7 @@ import shutil
 import stat
 import sys
 import time
+import traceback
 import urllib.parse
 import urllib.request
 
@@ -80,6 +81,24 @@ def _record_overrides(phase):
             raise OSError('short runtime observation write')
         stream.flush()
         os.fsync(stream.fileno())
+
+
+def _record_private_failure(error, state):
+    directory = state.get('_diagnostic_dir')
+    if directory is None:
+        return 'unavailable'
+    raw = ''.join(traceback.format_exception(type(error), error, error.__traceback__, limit=64)).encode(
+        'utf-8', errors='backslashreplace')
+    limit = 128 * 1024
+    if len(raw) > limit:
+        suffix = b'\n[private diagnostic truncated at 128 KiB]\n'
+        raw = raw[:limit - len(suffix)] + suffix
+    with (Path(directory) / 'failure-private.txt').open('xb') as stream:
+        if stream.write(raw) != len(raw):
+            raise OSError('short private diagnostic write')
+        stream.flush()
+        os.fsync(stream.fileno())
+    return 'recorded'
 
 
 def _write_observation(path, value):
@@ -388,6 +407,7 @@ def _run_pipeline(frozen, config, binding, public, custody, wrapper_bytes, depen
 def _execute(config_path, state, *, validation_only=False):
     _check_environment()
     config_raw, config = _load_config(config_path)
+    state['_diagnostic_dir'] = Path(config['phase_dir']) / 'owner'
     if validation_only and any(os.path.lexists(Path(config['phase_dir']) / name) for name in
                                ('claim.json', 'nonce.bin', 'heldout-record.json', 'commitment.json',
                                 'owner-started.json')):
@@ -451,25 +471,25 @@ def _execute(config_path, state, *, validation_only=False):
                         or _read(custody_source, 2 * 1024 * 1024) != wrapper_bytes
                         or _read(config_path, 32768) != config_raw):
                     raise BootstrapError('post-validation runtime, source or configuration differs')
-                state['phase'] = 'validated_no_model_forward'
-                return
-            from looking_glass.agreement_journal import AgreementJournal
-            from looking_glass.agreement_patch_runner import NaturalAgreementRunner, _state_hash
-            from looking_glass.pretrained import load_distilgpt2
-            dependencies = {'preflight': preflight, 'commitments': commitments, 'heldout': heldout,
-                            'journal': AgreementJournal, 'runner': NaturalAgreementRunner,
-                            'load_model': load_distilgpt2, 'state_hash': _state_hash, 'control': control,
-                            'manifest': _read(root / frozen['MANIFEST_PATH'], 2 * 1024 * 1024)}
-            _run_pipeline(frozen, config, binding, public, custody, wrapper_bytes, dependencies, state)
-            state['phase'] = 'postrun_verification'
-            _check_overrides()
-            if (frozen['_bytes'](frozen['build_binding'](config['cache_dir'], expected_source=initial)) != binding_raw
-                    or control.verify_source_inventory(root, *initial) != initial
-                    or _read(child_source, 2 * 1024 * 1024) != child_bytes
-                    or _read(custody_source, 2 * 1024 * 1024) != wrapper_bytes
-                    or _read(config_path, 32768) != config_raw):
-                raise BootstrapError('post-run runtime, source or configuration differs')
-    state['phase'] = 'complete_candidate'
+                state['phase'] = 'validation_cleanup'
+            else:
+                from looking_glass.agreement_journal import AgreementJournal
+                from looking_glass.agreement_patch_runner import NaturalAgreementRunner, _state_hash
+                from looking_glass.pretrained import load_distilgpt2
+                dependencies = {'preflight': preflight, 'commitments': commitments, 'heldout': heldout,
+                                'journal': AgreementJournal, 'runner': NaturalAgreementRunner,
+                                'load_model': load_distilgpt2, 'state_hash': _state_hash, 'control': control,
+                                'manifest': _read(root / frozen['MANIFEST_PATH'], 2 * 1024 * 1024)}
+                _run_pipeline(frozen, config, binding, public, custody, wrapper_bytes, dependencies, state)
+                state['phase'] = 'postrun_verification'
+                _check_overrides()
+                if (frozen['_bytes'](frozen['build_binding'](config['cache_dir'], expected_source=initial)) != binding_raw
+                        or control.verify_source_inventory(root, *initial) != initial
+                        or _read(child_source, 2 * 1024 * 1024) != child_bytes
+                        or _read(custody_source, 2 * 1024 * 1024) != wrapper_bytes
+                        or _read(config_path, 32768) != config_raw):
+                    raise BootstrapError('post-run runtime, source or configuration differs')
+    state['phase'] = 'validated_no_model_forward' if validation_only else 'complete_candidate'
 
 
 def main():
@@ -482,15 +502,20 @@ def main():
         else:
             raise BootstrapError('one private path-only configuration is required')
         _execute(config_path, state, validation_only=validation_only)
-    except KeyboardInterrupt:
-        print(json.dumps({'status': 'cancelled', 'phase': state['phase'],
-                          'error_type': 'KeyboardInterrupt'}), file=sys.stderr, flush=True)
-        raise SystemExit(130) from None
     except BaseException as error:
-        # Owner logs are private, but do not emit the sealed nonce or cases.
-        print(json.dumps({'status': 'incomplete', 'phase': state['phase'],
-                          'error_type': type(error).__name__}), file=sys.stderr, flush=True)
-        raise SystemExit(1) from None
+        # The bounded diagnostic is private and may contain held-out text;
+        # stderr itself contains no exception message or sealed content.
+        cancelled = isinstance(error, KeyboardInterrupt)
+        try:
+            diagnostic = _record_private_failure(error, state)
+        except KeyboardInterrupt:
+            cancelled, diagnostic = True, 'unavailable'
+        except Exception:
+            diagnostic = 'unavailable'
+        print(json.dumps({'status': 'cancelled' if cancelled else 'incomplete', 'phase': state['phase'],
+                          'error_type': type(error).__name__, 'private_diagnostic': diagnostic}),
+              file=sys.stderr, flush=True)
+        raise SystemExit(130 if cancelled else 1) from None
     print(json.dumps({'status': state['phase']}), flush=True)
 
 

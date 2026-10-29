@@ -42,7 +42,9 @@ The child checks at least 3 GiB free at both cache and destination, records
 pre/post tokenizer and checkpoint staging-directory observations, and leaves
 any newly unresolved staging directory in place for reconciliation. Logs,
 configuration, preparation receipt, stage observations and partial results are
-private; disclose only reviewed projections. An owner exit and structural audit
+private; disclose only reviewed projections. An exclusive private failure
+traceback is capped at 128 KiB and may contain held-out text; it is included in
+the custodian's reserved side-file budget. An owner exit and structural audit
 still require the independent numerical and landing audit.
 
 For a separate rehearsal, `--validate-only <config-path>` verifies published

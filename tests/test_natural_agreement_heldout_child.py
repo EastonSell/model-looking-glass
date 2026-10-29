@@ -232,7 +232,25 @@ def test_child_reports_keyboard_cancellation_without_case_content(monkeypatch, c
         child.main()
     assert error.value.code == 130
     assert json.loads(capsys.readouterr().err) == {'status':'cancelled', 'phase':'configuration',
-                                                   'error_type':'KeyboardInterrupt'}
+                                                   'error_type':'KeyboardInterrupt', 'private_diagnostic':'unavailable'}
+
+
+def test_private_failure_keeps_details_out_of_stderr(monkeypatch, capsys, tmp_path):
+    owner = tmp_path / 'owner'
+    owner.mkdir()
+    def execute(path, state, *, validation_only):
+        state['_diagnostic_dir'] = owner
+        raise ValueError('fabricated-private-detail')
+    monkeypatch.setattr(child, '_execute', execute)
+    monkeypatch.setattr(sys, 'argv', ['child', str(tmp_path / 'config')])
+    with pytest.raises(SystemExit) as error:
+        child.main()
+    assert error.value.code == 1
+    stderr = capsys.readouterr().err
+    assert 'fabricated-private-detail' not in stderr
+    assert json.loads(stderr)['private_diagnostic'] == 'recorded'
+    private = (owner / 'failure-private.txt').read_bytes()
+    assert b'fabricated-private-detail' in private and len(private) <= 128 * 1024
 
 
 def test_public_validation_does_not_read_a_private_commitment(tmp_path, monkeypatch):
