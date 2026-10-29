@@ -86,7 +86,9 @@ The four commands and their ordering are:
    It may run before or after preparation. The launcher reserves 8 MiB of the
    injection physical share for preparation files created after initialization,
    including runtime, plan, custody, bridge, invoker, failed and orphaned files.
-   Before the phase claim, the trusted custodian must inventory these files, verify
+   Store them outside all previously snapshotted natural and prior roots;
+   changing such a root makes the ledger reject the claim. Before the phase
+   claim, the trusted custodian must inventory these files, verify
    their aggregate is at most 8 MiB and avoid double-counting other reserved
    or previously inventoried paths. When preparation was already inventoried,
    this reservation remains conservative unused capacity.
