@@ -12,6 +12,7 @@ import torch
 from torch import nn
 
 from looking_glass.agreement_journal import AgreementJournal
+from looking_glass.agreement_numeric import decode_f32_le
 from looking_glass.agreement_patch_runner import (AgreementCase, CancellationGate, NaturalAgreementRunner,
                                                  StudyFailure, _CANDIDATES, _discovery_selection, _pair_with_signs,
                                                  _vector_l2)
@@ -116,6 +117,26 @@ class AgreementRunnerTests(unittest.TestCase):
             patch_row = next(row for row in events if row['event'] == patch)
             self.assertIn('whole_before', patch_row['tensors'])
             self.assertIn('whole_after', patch_row['tensors'])
+            past_event = next(row['event'] for row in events if row['event']['kind'] == 'secondary_past_site_metrics')
+            self.assertEqual(past_event['contrast'], {'first_token': ' was', 'first_id': 373,
+                                                       'second_token': ' were', 'second_id': 547})
+            past = next(pair for pair in past_event['metrics']['pairs'] if pair['target'] != pair['donor'])
+            self.assertNotIn('clean_is', past)
+            self.assertNotIn('patched_are', past)
+            clean_row = next(row for row in events if row['event']['kind'] == 'clean_capture'
+                             and row['event']['case'] == past['target'])
+            action_row = next(row for row in events if row['event']['kind'] == 'patch'
+                              and row['event']['target'] == past['target']
+                              and row['event']['donor'] == past['donor']
+                              and row['event']['site']['id'] == past['site'])
+            def payload(row, name):
+                return (path / 'tensors' / (row['tensors'][name]['sha256'] + '.f32le')).read_bytes()
+            clean_values = decode_f32_le(payload(clean_row, 'last_logits'))
+            patched_values = decode_f32_le(payload(action_row, 'contrast_logits'))
+            self.assertEqual((past['clean_was'], past['clean_were']), (clean_values[373], clean_values[547]))
+            self.assertEqual((past['patched_was'], past['patched_were']), tuple(patched_values[2:4]))
+            self.assertIn('patched_was', result['secondary_past_metrics']['pairs'][0])
+            self.assertNotIn('patched_is', result['secondary_past_metrics']['pairs'][0])
             self.assertTrue(all(not module._forward_hooks and not module._forward_pre_hooks
                                 for module in self.model.modules()))
 
