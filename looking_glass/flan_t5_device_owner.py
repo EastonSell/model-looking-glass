@@ -25,10 +25,12 @@ _HEADROOM = 256 * 1024 ** 2
 _MAX_RETAINED_OBSERVATIONS = 3
 _GIB = 1024 ** 3
 SOURCE_PATHS = (
-    'scripts/flan_t5_gpu_bootstrap.py', 'docs/FLAN_T5_GPU_DEVELOPMENT_SMOKE_V1.md',
+    'scripts/flan_t5_gpu_bootstrap.py', 'scripts/v2_source_guards.py',
+    'docs/FLAN_T5_GPU_DEVELOPMENT_SMOKE_V1.md',
     'docs/FLAN_T5_PUBLIC_CASES_V1.json', 'docs/FLAN_T5_DEVICE_OBSERVATION_V1.md',
     'docs/FLAN_T5_DEVICE_OWNER_CUSTODY_DRAFT.md', 'looking_glass/__init__.py',
     'looking_glass/flan_t5_device_owner.py', 'looking_glass/flan_t5_device_smoke.py',
+    'looking_glass/flan_t5_device_controller.py',
     'looking_glass/flan_t5_device_observation.py',
     'looking_glass/flan_t5_feasibility.py', 'looking_glass/flan_t5_equal_dose.py',
     'looking_glass/intervention_plan.py', 'looking_glass/interventions.py',

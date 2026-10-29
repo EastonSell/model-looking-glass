@@ -8,7 +8,7 @@ import runpy
 import stat
 import sys
 
-_MODULES = frozenset(('flan_t5_device_smoke', 'flan_t5_device_owner',
+_MODULES = frozenset(('flan_t5_device_smoke', 'flan_t5_device_owner', 'flan_t5_device_controller',
     'flan_t5_device_observation', 'flan_t5_feasibility', 'flan_t5_equal_dose',
     'intervention_plan', 'interventions', 'model_ownership', 'device_identity',
     'device_lease', 'memory_budget', 'supervisor', 'gpu_oneshot',
@@ -59,8 +59,10 @@ def main():
         raise RuntimeError('the bytecode prefix must be an empty plain directory')
     if any(name == 'looking_glass' or name.startswith('looking_glass.') for name in sys.modules):
         raise RuntimeError('project modules were imported before the bootstrap')
-    if len(sys.argv) < 4 or sys.argv[1] != '--bootstrap-site' or sys.argv[3] != '--owner':
-        raise ValueError('an explicit dependency directory and owner role are required')
+    if (len(sys.argv) < 4 or sys.argv[1] != '--bootstrap-site'
+            or sys.argv[3] not in ('--owner', '--controller')):
+        raise ValueError('an explicit dependency directory and fixed process role are required')
+    role = sys.argv[3]
     site_argument = Path(sys.argv[2])
     if not site_argument.is_absolute():
         raise ValueError('dependency directory must be absolute')
@@ -88,7 +90,9 @@ def main():
     spec.loader.exec_module(module)
     os.environ['LOOKING_GLASS_FLAN_T5_BOOTSTRAP_PID'] = str(os.getpid())
     os.environ['LOOKING_GLASS_FLAN_T5_BOOTSTRAP_SITE'] = str(site)
-    runpy.run_module('looking_glass.flan_t5_device_smoke', run_name='__main__', alter_sys=True)
+    module_name = ('looking_glass.flan_t5_device_smoke' if role == '--owner'
+                   else 'looking_glass.flan_t5_device_controller')
+    runpy.run_module(module_name, run_name='__main__', alter_sys=True)
 
 
 if __name__ == '__main__':
