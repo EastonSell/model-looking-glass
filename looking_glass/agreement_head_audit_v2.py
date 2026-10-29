@@ -86,9 +86,15 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
     terminal = json.loads((root / "terminal.json").read_bytes())
     started = json.loads((root / "started.json").read_bytes())
     raw_events = (root / "events.jsonl").read_bytes()
+    ineligible_detail = {"error_type": "DoseIneligible", "completed_forwards": 16,
+                         "disposition": "dose_ineligible"}
+    ineligible_terminal = (terminal.get("status") == "failed" and terminal.get("detail") == ineligible_detail
+                           and type(terminal.get("detail", {}).get("completed_forwards")) is int)
     if (started.get("phase") != phase or started.get("protocol") != "distilgpt2-agreement-heads-v2"
-            or terminal.get("status") != "complete_candidate"
+            or (terminal.get("status") != "complete_candidate" and not ineligible_terminal)
             or terminal.get("storage_accounting_complete") is not True
+            or type(terminal.get("event_log_bytes")) is not int or type(terminal.get("events")) is not int
+            or type(terminal.get("retained_tensor_bytes")) is not int
             or terminal.get("event_log_bytes") != len(raw_events) or len(raw_events) > 8 * 1024 * 1024
             or not raw_events.endswith(b"\n")):
         raise ValueError("attempt is not a bounded complete candidate")
@@ -235,7 +241,19 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
         raise ValueError("relative dose or saved eligibility plan differs")
     active = tuple(entry["head"] for entry in head_records if entry["eligible"])
     if len(active) < 2 or (phase == "evaluation" and active != heads):
-        raise ValueError("dose_ineligible: required heads do not meet the fixed dose plan")
+        if (not ineligible_terminal or ordinal != 16 or cursor != len(events)
+                or terminal.get("retained_tensor_bytes") != sum(unique.values())
+                or sum(unique.values()) > 128 * 1024 * 1024):
+            raise ValueError("dose-ineligible terminal or saved prefix differs")
+        _rounding_probe()
+        return {"phase": phase, "outcome": "dose_ineligible", "forward_count": ordinal,
+                "dose_plan": expected_plan, "candidate": None, "comparator": None,
+                "ranking": None, "details": [], "evaluation": None,
+                "retained_tensor_bytes": sum(unique.values()),
+                "expected_layout": {"width": expected_width, "heads": expected_nheads, "vocab": expected_vocab},
+                "scope": "saved bytes and arithmetic; not execution, exposure or descendant-drain proof"}
+    if ineligible_terminal:
+        raise ValueError("dose-ineligible terminal has an eligible plan")
     cells = {(entry["head"], cell["target"]): cell for entry in head_records for cell in entry["targets"]}
     _rounding_probe()
     self_targets = targets if phase == "evaluation" else targets[:1]
@@ -306,7 +324,8 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
             or sum(unique.values()) > 128 * 1024 * 1024):
         raise ValueError("summary, candidate, terminal or retained byte count differs")
     _rounding_probe()
-    return {"phase": phase, "forward_count": ordinal, "dose_plan": expected_plan, "ranking": ranking,
+    return {"phase": phase, "outcome": "complete_candidate", "forward_count": ordinal,
+            "dose_plan": expected_plan, "ranking": ranking,
             "candidate": summary["candidate"], "comparator": summary["comparator"],
             "details": details, "evaluation": expected_evaluation, "retained_tensor_bytes": sum(unique.values()),
             "expected_layout": {"width": expected_width, "heads": expected_nheads, "vocab": expected_vocab},

@@ -20,6 +20,10 @@ DOSE_ERROR_LIMIT = 1e-5
 PAIR_RATIO_LIMIT = 1.00001
 
 
+class DoseIneligible(ValueError):
+    """A complete clean-dose plan cannot support the fixed comparison."""
+
+
 def _bits(value):
     if (type(value) is not torch.Tensor or value.dtype != torch.float32 or value.device.type != "cpu"
             or value.numel() == 0 or sys.byteorder != "little"):
@@ -228,7 +232,7 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
         journal.record({"type": "dose_plan", **plan}, {})
         active = tuple(entry["head"] for entry in plan["heads"] if entry["eligible"])
         if len(active) < 2 or (phase == "evaluation" and active != heads):
-            raise ValueError("dose_ineligible: required heads do not meet the fixed dose plan")
+            raise DoseIneligible("required heads do not meet the fixed dose plan")
         cells = {(entry["head"], cell["target"]): cell for entry in plan["heads"] for cell in entry["targets"]}
         self_targets = targets if phase == "evaluation" else targets[:1]
         for head in active:
@@ -298,7 +302,10 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
         return summary
     except BaseException as error:
         try:
-            journal.finish("failed", {"error_type": type(error).__name__, "completed_forwards": count})
+            detail = {"error_type": type(error).__name__, "completed_forwards": count}
+            if type(error) is DoseIneligible:
+                detail["disposition"] = "dose_ineligible"
+            journal.finish("failed", detail)
         except BaseException as cleanup:
             if hasattr(error, "add_note"):
                 error.add_note(f"Could not publish failure terminal: {type(cleanup).__name__}")

@@ -184,7 +184,7 @@ def test_evaluation_replay_checks_fixed_candidate_and_rule(tmp_path):
     assert output["evaluation"] == replay["evaluation"]
 
 
-def test_evaluation_ineligible_head_stops_before_all_patches(tmp_path, monkeypatch):
+def test_evaluation_ineligible_head_stops_before_all_patches_and_replays(tmp_path):
     torch.set_num_threads(1)
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(404)
@@ -193,23 +193,33 @@ def test_evaluation_ineligible_head_stops_before_all_patches(tmp_path, monkeypat
         config._attn_implementation = "eager"
         model = GPT2LMHeadModel(config).eval()
     rows = [[1, 4 * group + index + 2, 30] for group in range(4) for index in range(4)]
-    original = study._dose_plan
-
-    def fail_one(*args):
-        plan, replacements = original(*args)
-        plan["heads"][1]["eligible"] = False
-        plan["heads"][1]["targets"][0]["status"] = "insufficient_donor_distance"
-        return plan, replacements
-
-    monkeypatch.setattr(study, "_dose_plan", fail_one)
-    with pytest.raises(ValueError, match="dose_ineligible"):
+    with torch.no_grad():
+        model.transformer.h[3].attn.c_attn.weight[:, 40:48] = 0
+        model.transformer.h[3].attn.c_attn.bias[40:48] = 0
+    with pytest.raises(study.DoseIneligible):
         run_evaluation(model, rows, tmp_path / "ineligible", candidate=0, comparator=1,
                        present_ids=(1, 2), secondary_ids=None, metadata={"fixture": True})
     records = [json.loads(line) for line in (tmp_path / "ineligible" / "events.jsonl").read_bytes().splitlines()]
     completed = [r for r in records if r["event"]["type"] == "forward_complete"]
     assert len(completed) == 16 and all(r["event"]["kind"] == "observe" for r in completed)
     assert records[-1]["event"]["type"] == "dose_plan"
-    assert json.loads((tmp_path / "ineligible" / "terminal.json").read_bytes())["status"] == "failed"
+    terminal_path = tmp_path / "ineligible" / "terminal.json"
+    terminal = json.loads(terminal_path.read_bytes())
+    assert terminal["status"] == "failed" and terminal["detail"]["disposition"] == "dose_ineligible"
+    kwargs = {"phase": "evaluation", "heads": (0, 1), "present_ids": (1, 2),
+              "expected_width": 16, "expected_nheads": 2, "expected_vocab": 64}
+    replay = audit(tmp_path / "ineligible", rows, **kwargs)
+    assert replay["outcome"] == "dose_ineligible" and replay["forward_count"] == 16
+    assert replay["candidate"] is None and replay["ranking"] is None
+    terminal["detail"]["completed_forwards"] = 16.0
+    terminal_path.write_bytes(json.dumps(terminal).encode())
+    with pytest.raises(ValueError, match="not a bounded complete candidate"):
+        audit(tmp_path / "ineligible", rows, **kwargs)
+    terminal["detail"]["completed_forwards"] = 16
+    terminal["detail"]["error_type"] = "ValueError"
+    terminal_path.write_bytes(json.dumps(terminal).encode())
+    with pytest.raises(ValueError, match="not a bounded complete candidate"):
+        audit(tmp_path / "ineligible", rows, **kwargs)
 
 
 def test_postforward_rounding_failure_retains_result_and_stops(tmp_path, monkeypatch):
