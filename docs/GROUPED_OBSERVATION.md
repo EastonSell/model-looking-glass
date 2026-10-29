@@ -77,3 +77,5 @@ modes at matching model-entry, synchronized-finish, client and output-hashing
 boundaries, use the same clock and recorder policy, disclose overhead, and run
 a controlled supervised experiment. Keep its raw observations and separately
 record warmup, resource profiles, numerical agreement and device telemetry.
+The resident worker also checks the thread-local hook on unobserved forwards;
+that path is not timing-identical to the worker before these hooks were added.
