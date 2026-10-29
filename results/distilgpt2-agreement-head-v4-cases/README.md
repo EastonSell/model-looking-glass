@@ -12,7 +12,7 @@ The four answer continuations are included for public overlap checking and are r
 
 ## Reproducing the cases
 
-Run `scripts/prepare_agreement_head_v4_fresh_cases.py` with `--snapshot` pointing to the offline pinned DistilGPT-2 tokenizer snapshot, `--protocol` pointing to the v4 protocol file and `--output` pointing to a new file. The script checks the protocol and four tokenizer asset SHA-256s, requires `tokenizers` 0.22.2, loads no model, verifies one varying subject-token position per quartet and the four one-token answer continuations, and writes a create-only manifest. Both normal and optimized Python reproduced SHA-256 `e90584985df00a7749687d49139a83aa7488bff47f65af16f79b24572bba33ee`.
+Run `scripts/prepare_agreement_head_v4_fresh_cases.py` with `--snapshot` pointing to the offline pinned DistilGPT-2 tokenizer snapshot, `--protocol` pointing to the original, pre-notice v4 protocol bytes at commit [`8d97920ff7e1214c14c3b0e256390d3df6de05f3`](https://github.com/EastonSell/model-looking-glass/blob/8d97920ff7e1214c14c3b0e256390d3df6de05f3/docs/DISTILGPT2_AGREEMENT_HEADS_FRESH_CONTEXT_V4.md) (SHA-256 `38ca8bc913ed1763bec798e2aa4119af1e8d2b4fe1525485e4c805c522ec4a81`) and `--output` pointing to a new file. The script checks the protocol and four tokenizer asset SHA-256s, requires `tokenizers` 0.22.2, loads no model, verifies one varying subject-token position per quartet and the four one-token answer continuations, and writes a create-only manifest. Both normal and optimized Python reproduced SHA-256 `e90584985df00a7749687d49139a83aa7488bff47f65af16f79b24572bba33ee`.
 
 ## Public-only comparisons
 
