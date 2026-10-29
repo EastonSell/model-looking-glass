@@ -161,7 +161,9 @@ an independently established owner-drain flag, attempt rows and actual call
 rows. Attempt rows retain the frozen job/input/request identities, broker and
 broker-job IDs, state/error, attempt/ready/selection/return timestamps, call
 ID, output fingerprint, broker terminal state, and cancellation request and
-decision times/acceptance. Call rows
+decision times/acceptance. Broker job IDs are preserved as their actual
+bounded string or positive integer type; no conversion between broker
+implementations is implied. Call rows
 retain separate unique group and model-call IDs, ordered broker-scoped member
 IDs and row offsets, observed model-entry shape, exact row-count profile,
 launch/finish timestamps, state/error and synchronized-completion flag. Job

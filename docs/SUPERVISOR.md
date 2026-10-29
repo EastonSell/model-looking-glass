@@ -73,6 +73,60 @@ the directly spawned child while retaining the controller lock. The command
 is an argument sequence; no shell is used. The child receives its run
 identity and configured paths in its environment.
 
+Before starting the child, the supervisor roots a bounded, process-local
+recovery record and prepares a private one-shot launch pipe. With the standard
+`subprocess.Popen` class, the record also owns the Popen object before its
+constructor runs. The parent grants startup only after that record holds a
+usable exact direct-child capability. `OwnerSession.from_environment()`
+checks the parent and waits for the grant before returning; every trusted
+owner entrypoint must call it before acquiring the device lease, importing
+CUDA-capable dependencies, or using CUDA. An ungranted owner rejects EOF and
+exits after a 30-second gate deadline even if a parent-side writer is leaked.
+That deadline starts only once the child enters the gate. This is a
+cooperative protocol: arbitrary child code, injected Python modules, and
+nonparticipating applications can bypass it.
+
+The grant and subsequent wait are covered by cleanup using the recorded exact
+child. If termination or waiting fails or is interrupted, the marker and the
+recovery record remain; a still-live parent process is not evidence that its
+supervisor thread remains active. Once the launcher thread is known quiescent,
+trusted in-process recovery can enumerate `pending_supervised_children()` and
+call `record.recover(terminate_grace=...)`. It operates only on the recorded
+Popen capability and never clears a marker. An unattempted record can be
+retired without a child; an attempted spawn with no usable process handle is
+unknown and cannot be reported as reaped. In particular, interruption inside
+the OS spawn before Popen stores its handle may leave an unidentifiable child.
+No grant is sent in that case, and the marker remains for operator/process
+recovery; do not guess a PID or use lease reacquisition as proof of exit.
+The registry holds at most 64 records and fails closed when full. Its
+capabilities are process-local and recovery requires external coordination;
+it is not an authentication or process-tree management facility.
+The `run_supervised(timeout=...)` child-wait deadline starts after spawn and
+grant return; it is not a hard deadline on a stalled native spawn or grant
+write. A stuck launcher may require process-level recovery with the marker
+left intact.
+
+For a startup channel, launch authorization and channel failure/cancellation
+are ordered under a short lock that contains no I/O. If cancellation wins,
+no grant is sent. If authorization wins, cancellation is post-authorization:
+the grant can still reach the child after `abort()` returns, and the supervisor
+must stop and reap the recorded child or retain its custody and marker. Abort
+does not wait for a stalled spawn or grant write. The same ordering applies to
+reader failure and receive timeout. If asynchronous interruption makes a
+writer-descriptor close uncertain, its ownership is forgotten before close to
+avoid closing a later, unrelated descriptor; an interrupted close can leak
+the old descriptor and require process-level recovery.
+
+`SUPERVISOR_LAUNCH_CUSTODY_CONTRACT` is the compatibility marker
+`gated-rooted-child-v1` for these cooperative semantics, including
+the unknown-spawn limitation. It is not an independent security proof.
+On Windows, cooperating spawns serialize the interval in which the pipe
+handles are made inheritable and pass an explicit handle list. Other
+broad-inheritance spawns in the same launcher must be excluded. The general
+CPython asynchronous-interruption limitation also applies to Python lock and
+descriptor cleanup: a stranded lock or an uncertain descriptor may require a
+process supervisor to restart the launcher while retaining quarantine.
+
 By default, `env=` overlays the parent environment for compatibility. GPU
 launchers that prepare an explicit trusted environment must instead pass
 `inherit_environment=False, env=prepared_environment`; the child then receives

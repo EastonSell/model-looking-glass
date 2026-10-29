@@ -25,6 +25,20 @@ Before the 13 samples, execute and separately record a same-owner warmup using
 the target row, seed `20261028`, and the same ten-site capture and offload
 path. Bind those details to the adapter's reviewed warmup-protocol digest; a
 profile labeled `warm` alone does not establish that warmup occurred.
+The initial cold warmup measurement is a separately reviewed **provisional
+bootstrap**, admitted under explicit conservative commitments and the live
+allocator cap; it cannot use the not-yet-measured warm profile to authorize
+itself. Later study execution requires a separate approved cold/warmup profile
+for this exact model, source, runtime, device, seed and warmup digest, in
+addition to the 13-sample warm profile. The held job commitment must cover
+the larger of the approved cold and warm estimates. That maximum covers both
+paths only when both estimates describe whole-stage envelopes against the
+same baseline, including persistent warmup/donor allocations and overlapping
+action transients. If samples instead report incremental peaks after warmup,
+account for the retained cold carryover separately under a live claim or
+verified device telemetry, and recheck headroom before each action. Host trace
+storage and native/context allocations require separate accounting. These
+measured estimates remain observations, not upper bounds.
 Capture the ten donor vectors anew under the measured GPU runtime and retain
 their host storage under a live trace claim until all actions finish. This
 calibration does not generate or inspect held-out cases, and it retains no
