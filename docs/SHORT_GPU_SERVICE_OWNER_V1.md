@@ -39,7 +39,17 @@ admission. These controls are policy commitments and are not predictions of
 the actual peak. The 1×2 and 1×4 observations provide no bound for this owner.
 
 The owner also requires point observations of at least 3 GiB available host
-physical memory and at least 2 GiB free on each output/cache filesystem. A
+physical memory and at least 2 GiB free on the common output/cache/temporary
+filesystem. The evidence parent, checkpoint staging cache, `TEMP` and `TMP`
+must be plain directories on the same local fixed volume; the output is a new
+direct child of that parent. The canonical workspace and physical-device lock
+remain on their original volume. A separate 1 GiB workspace-volume free-space
+screen covers the small device-coordination and checkout/Git writes expected
+there, with a substantial residual margin. It cannot bound unrelated system
+writes. Both screens are repeated before device use and at retained-output
+boundaries. The private storage binding records directory identities, and the
+controller and child recheck them; these cooperative point checks do not make
+path replacement or external writes atomic. A
 256 MiB cooperative host claim covers the planned output and validation
 envelope. None of these is an operating-system reservation or a bound on model
 construction, Python objects or RSS. The loader temporarily stages the pinned
@@ -75,7 +85,8 @@ not independent proof of execution or globally idle hardware.
 With a reviewed immutable source, a freshly coordinated slot, a currentness
 check, and adequate fresh disk/host observations, the controller command has
 this shape (paths must be absolute and the output must be a new directory
-directly under the canonical workspace `work` directory):
+directly under an existing plain evidence parent on the common storage volume;
+`TEMP` and `TMP` must be set to existing plain directories on that volume):
 
 ```text
 python -I -S -B -X pycache_prefix=<fresh-empty-prefix> \

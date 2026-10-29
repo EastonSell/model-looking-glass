@@ -1,5 +1,6 @@
 """Fabricated CPU-only owner boundary tests; no checkpoint or GPU access."""
 import json
+import hashlib
 from pathlib import Path
 import subprocess
 import sys
@@ -70,6 +71,78 @@ def test_controller_disk_guard_rejects_low_space(monkeypatch):
     monkeypatch.setattr(owner.shutil, 'disk_usage', lambda _path: Usage())
     with pytest.raises(RuntimeError, match='disk'):
         owner._disk_guard(Path('.'))
+
+
+def test_external_storage_binding_detects_replacement_and_volume_limits(tmp_path, monkeypatch):
+    workspace = tmp_path / 'workspace'
+    parent = tmp_path / 'evidence'
+    cache = tmp_path / 'cache'
+    temp = tmp_path / 'temp'
+    for path in (workspace, parent, cache, temp):
+        path.mkdir()
+    run = parent / 'run'
+    run.mkdir()
+    monkeypatch.setenv('TEMP', str(temp))
+    monkeypatch.setenv('TMP', str(temp))
+    monkeypatch.setattr(owner.shutil, 'disk_usage', lambda _path: SimpleNamespace(free=3 * owner.GIB))
+    binding = owner._storage_snapshot(workspace, run, cache)
+    raw = owner.g._canonical(binding)
+    (run / 'storage-binding.json').write_bytes(raw)
+    digest = hashlib.sha256(raw).hexdigest()
+    assert owner._storage_guard(workspace, run, cache, digest)['workspace_free_bytes'] == 3 * owner.GIB
+    with pytest.raises(RuntimeError, match='binding bytes'):
+        owner._storage_guard(workspace, run, cache, '0' * 64)
+    monkeypatch.setattr(owner.shutil, 'disk_usage',
+                        lambda path: SimpleNamespace(free=owner.MIN_WORKSPACE_DISK - 1
+                                                     if Path(path) == workspace else 3 * owner.GIB))
+    with pytest.raises(RuntimeError, match='workspace residual'):
+        owner._storage_guard(workspace, run, cache, digest)
+    monkeypatch.setattr(owner.shutil, 'disk_usage', lambda _path: SimpleNamespace(free=3 * owner.GIB))
+    temp.rename(tmp_path / 'old-temp')
+    temp.mkdir()
+    with pytest.raises(RuntimeError, match='identity changed'):
+        owner._storage_guard(workspace, run, cache, digest)
+
+
+def test_storage_failure_precedes_any_model_or_cuda_work(tmp_path, monkeypatch):
+    repo = Path(__file__).resolve().parents[1]
+    manifest = json.loads((repo / 'experiments/short_cpu_service_reference_inputs_v1.json').read_bytes())
+    monkeypatch.setattr(owner, '_read_inputs', lambda *_: (manifest, {}))
+    monkeypatch.setattr(owner.g, '_configure', lambda *_: pytest.fail('CUDA setup was reached'))
+    def reject():
+        raise RuntimeError('fabricated storage identity change')
+    with pytest.raises(RuntimeError, match='storage identity'):
+        owner._owner_run(None, None, run_dir=tmp_path, cache=tmp_path, inventory=tmp_path,
+                         bucket=16, driver='fake', sources={}, _worker_device='cpu', _check_storage=reject)
+
+
+def test_storage_rejects_volume_mismatch_and_replaced_output(tmp_path, monkeypatch):
+    workspace, parent, cache, temp = (tmp_path / name for name in ('workspace', 'output', 'cache', 'temp'))
+    for path in (workspace, parent, cache, temp):
+        path.mkdir()
+    run = parent / 'run'
+    run.mkdir()
+    monkeypatch.setenv('TEMP', str(temp))
+    monkeypatch.setenv('TMP', str(temp))
+    original = owner._plain_directory
+    def different_cache(path):
+        value = original(path)
+        if Path(path) == cache:
+            value['device'] += 1
+        return value
+    monkeypatch.setattr(owner, '_plain_directory', different_cache)
+    with pytest.raises(ValueError, match='share a volume'):
+        owner._storage_base(workspace, parent, cache)
+    monkeypatch.setattr(owner, '_plain_directory', original)
+    monkeypatch.setattr(owner.shutil, 'disk_usage', lambda _path: SimpleNamespace(free=3 * owner.GIB))
+    raw = owner.g._canonical(owner._storage_snapshot(workspace, run, cache))
+    digest = hashlib.sha256(raw).hexdigest()
+    (run / 'storage-binding.json').write_bytes(raw)
+    run.rename(parent / 'old-run')
+    run.mkdir()
+    (run / 'storage-binding.json').write_bytes(raw)
+    with pytest.raises(RuntimeError, match='identity changed'):
+        owner._storage_guard(workspace, run, cache, digest)
 
 
 def test_candidate_requires_clean_exit_matching_input_source_and_memory(tmp_path, monkeypatch):

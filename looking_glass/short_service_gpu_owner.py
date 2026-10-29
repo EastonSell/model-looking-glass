@@ -14,6 +14,7 @@ from pathlib import Path
 import re
 import secrets
 import shutil
+import stat
 import sys
 import threading
 import weakref
@@ -28,6 +29,10 @@ from .supervisor import OwnerSession
 
 GIB = 1024 ** 3
 MIN_DISK = 2 * GIB
+# Only small device-coordination markers and ordinary checkout/Git metadata
+# are expected on the canonical workspace volume. This is still a point
+# screen, not a reservation or a bound on unrelated system writes.
+MIN_WORKSPACE_DISK = GIB
 MIN_HOST_FREE = 3 * GIB
 HOST_CLAIM = 256 * 1024 ** 2
 POLICY = {'seed': 29, 'allocator_fraction': .25, 'minimum_preload_free_bytes': 5 * GIB,
@@ -60,6 +65,73 @@ def _disk_guard(*paths):
     if any(type(value) is not int or value < MIN_DISK for value in values):
         raise RuntimeError('disk free space is below the fixed reserve')
     return values
+
+
+def _plain_directory(path):
+    """Identify an absolute local directory without link/reparse aliases."""
+    path = Path(path)
+    if not path.is_absolute():
+        raise ValueError('storage paths must be absolute')
+    lexical = Path(os.path.abspath(path))
+    for part in (lexical, *lexical.parents):
+        info = part.lstat()
+        if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                or getattr(info, 'st_file_attributes', 0) & 0x400):
+            raise ValueError('storage paths must use plain directories')
+    resolved = lexical.resolve(strict=True)
+    if resolved != lexical:
+        raise ValueError('storage path resolves to a different location')
+    if os.name == 'nt':
+        drive_type = ctypes.windll.kernel32.GetDriveTypeW
+        drive_type.argtypes = [ctypes.c_wchar_p]
+        drive_type.restype = ctypes.c_uint
+        if drive_type(resolved.anchor) != 3:
+            raise ValueError('storage must be on a fixed local drive')
+    info = resolved.lstat()
+    if not info.st_ino:
+        raise ValueError('storage directory lacks a stable file identity')
+    return {'path': str(resolved), 'device': info.st_dev, 'inode': info.st_ino}
+
+
+def _storage_base(root, parent, cache):
+    locations = {'workspace': _plain_directory(root), 'output_parent': _plain_directory(parent),
+                 'cache': _plain_directory(cache),
+                 'temp': _plain_directory(os.environ.get('TEMP', '')),
+                 'tmp': _plain_directory(os.environ.get('TMP', ''))}
+    if len({locations[name]['device'] for name in ('output_parent', 'cache', 'temp', 'tmp')}) != 1:
+        raise ValueError('output, cache staging and temporary directories must share a volume')
+    return locations
+
+
+def _storage_snapshot(root, run_dir, cache):
+    run_dir = Path(run_dir)
+    locations = _storage_base(root, run_dir.parent, cache)
+    locations['output'] = _plain_directory(run_dir)
+    if locations['output']['device'] != locations['output_parent']['device']:
+        raise ValueError('the output directory moved to a different volume')
+    return {'schema': 'short-service-storage-binding-v1', 'locations': locations}
+
+
+def _workspace_disk_guard(root):
+    value = shutil.disk_usage(root).free
+    if type(value) is not int or value < MIN_WORKSPACE_DISK:
+        raise RuntimeError('workspace residual disk free space is below the fixed reserve')
+    return value
+
+
+def _storage_guard(root, run_dir, cache, expected_sha):
+    raw = g._bounded_bytes(Path(run_dir) / 'storage-binding.json', 16384)
+    if (type(expected_sha) is not str or re.fullmatch(r'[0-9a-f]{64}', expected_sha) is None
+            or hashlib.sha256(raw).hexdigest() != expected_sha):
+        raise RuntimeError('storage binding bytes differ')
+    saved = json.loads(raw)
+    current = _storage_snapshot(root, run_dir, cache)
+    if g._canonical(saved) != g._canonical(current):
+        raise RuntimeError('storage path identity changed')
+    locations = current['locations']
+    free = _disk_guard(*(Path(locations[name]['path']) for name in ('output', 'cache', 'temp', 'tmp')))
+    workspace_free = _workspace_disk_guard(root)
+    return {'workspace_free_bytes': workspace_free, 'output_cache_temp_tmp_free_bytes': free}
 
 
 def _select_git(executable):
@@ -187,7 +259,7 @@ def _detach_idle_model(session, lease, *, worker, resident, authority, pilot, mo
 
 
 def _owner_run(session, lease, *, run_dir, cache, inventory, bucket, driver, sources,
-               _worker_device='cuda:0'):
+               _worker_device='cuda:0', _check_storage=None):
     """Execute the fixed graph while keeping every owner root until exit."""
     if _worker_device not in ('cuda:0', 'cpu'):
         raise ValueError('invalid internal test device')
@@ -203,6 +275,8 @@ def _owner_run(session, lease, *, run_dir, cache, inventory, bucket, driver, sou
     manifest, _ = _read_inputs(Path(__file__).resolve().parents[1] /
                                'experiments/short_cpu_service_reference_inputs_v1.json', inventory)
     selected = _cases(manifest, bucket)
+    if _check_storage is not None:
+        _check_storage()
     _disk_guard(run_dir, cache)
     available_host = _available_host()
     if available_host < MIN_HOST_FREE:
@@ -273,6 +347,8 @@ def _owner_run(session, lease, *, run_dir, cache, inventory, bucket, driver, sou
     resident_claim = budget.acquire(POLICY['resident_commitment_bytes'], max_gpu_trace_bytes=0,
                                     max_host_trace_bytes=0)
     g._ROOTS[3] = resident_claim
+    if _check_storage is not None:
+        _check_storage()
     _disk_guard(run_dir, cache)
     host_before_load = _available_host()
     if host_before_load < MIN_HOST_FREE:
@@ -353,9 +429,14 @@ def _owner_run(session, lease, *, run_dir, cache, inventory, bucket, driver, sou
                 window[0] = None
         stages.append(label)
 
+    def record_tensor(name, raw):
+        if _check_storage is not None:
+            _check_storage()
+        _write_tensor(run_dir, cache, name, raw, bucket)
+
     pilot = SerialRoutingPilot(worker, authority, bucket=bucket, vocab=50257, pad=50256,
                                seed=POLICY['seed'], cases=rows, on_stage=on_stage,
-                               on_tensor=lambda name, raw: _write_tensor(run_dir, cache, name, raw, bucket))
+                               on_tensor=record_tensor)
     _HOLD[5] = pilot
     if threading.getprofile() is not None:
         raise RuntimeError('pre-existing thread profiling is unsupported')
@@ -504,7 +585,7 @@ def _owner_run(session, lease, *, run_dir, cache, inventory, bucket, driver, sou
             'inventory_sha256': INVENTORY_SHA256}
 
 
-def _owner_main(run_dir, cache, inventory, bucket, run_id, commit, driver, source_manifest_sha):
+def _owner_main(run_dir, cache, inventory, bucket, run_id, commit, driver, source_manifest_sha, storage_sha):
     _bind_sources()
     run_dir, cache = Path(run_dir), Path(cache)
     try:
@@ -519,6 +600,9 @@ def _owner_main(run_dir, cache, inventory, bucket, run_id, commit, driver, sourc
         g._ROOTS[0] = session
         repo = Path(__file__).resolve().parents[1]
         g._validate_workspace_spec(session, repo)
+        root = Path(session._identity_spec['workspace_root'])
+        check_storage = lambda: _storage_guard(root, run_dir, cache, storage_sha)
+        check_storage()
         sources = g._verify_child_sources(repo, run_dir, run_id, commit, source_manifest_sha)
         g._protect_sources(repo, sources)
         g._protect_manifest(repo, sources, run_dir)
@@ -529,12 +613,14 @@ def _owner_main(run_dir, cache, inventory, bucket, run_id, commit, driver, sourc
         g._ROOTS[1] = lease
         OwnerSession.check(session, lease)
         g._validate_workspace_binding(session, repo)
+        check_storage()
         g._write_json(run_dir / 'owner.json', {'run_id': run_id, 'supervisor_run_id': session.run_id,
                       'pid': os.getpid(), 'source_manifest_sha256': source_manifest_sha})
         gc.disable()
         g._NO_CYCLIC_GC_REQUIRED = True
         result = _owner_run(session, lease, run_dir=run_dir, cache=cache, inventory=inventory,
-                            bucket=int(bucket), driver=driver, sources=sources)
+                            bucket=int(bucket), driver=driver, sources=sources, _check_storage=check_storage)
+        check_storage()
         candidate = {'schema': 'short-service-gpu-candidate-v1', 'run_id': run_id,
                      'supervisor_run_id': session.run_id, 'pid': os.getpid(),
                      'source_commit': commit, 'source_manifest_sha256': source_manifest_sha,
@@ -740,16 +826,18 @@ def run_development(*, workspace_root, cache_dir, inventory, output, site_packag
     g._verify_controller_import_mode()
     repo = Path(__file__).resolve().parents[1]
     root = g._workspace_root(repo, workspace_root)
-    cache = Path(cache_dir).resolve(strict=True)
+    cache = Path(cache_dir)
     inv = Path(inventory).resolve(strict=True)
     site = Path(site_packages).resolve(strict=True)
     if str(site) != os.environ.get('LOOKING_GLASS_GROUPED_SITE'):
         raise RuntimeError('dependency directory differs from the bootstrap')
     destination = Path(output)
-    if (not destination.is_absolute() or destination.exists() or not destination.parent.is_dir()
-            or destination.parent.resolve(strict=True) != (root / 'work').resolve(strict=True)):
-        raise ValueError('output must be a new directory directly under the canonical work folder')
-    _disk_guard(destination.parent, cache)
+    if not destination.is_absolute() or destination.exists() or not destination.parent.is_dir():
+        raise ValueError('output must be a new absolute directory under an existing parent')
+    storage_base = _storage_base(root, destination.parent, cache)
+    cache = Path(storage_base['cache']['path'])
+    _disk_guard(*(Path(storage_base[name]['path']) for name in ('output_parent', 'cache', 'temp', 'tmp')))
+    _workspace_disk_guard(root)
     if _available_host() < MIN_HOST_FREE:
         raise RuntimeError('host free memory is below the fixed point threshold')
     selected_git = _select_git(git_exe)
@@ -766,6 +854,10 @@ def run_development(*, workspace_root, cache_dir, inventory, output, site_packag
             or Path(shutil.which('git')).resolve(strict=True) != selected_git):
         raise RuntimeError('source changed while protection was acquired')
     g._verify_offline_cache(cache)
+    if g._canonical(_storage_base(root, destination.parent, cache)) != g._canonical(storage_base):
+        raise RuntimeError('storage path identity changed before device inventory')
+    _disk_guard(*(Path(storage_base[name]['path']) for name in ('output_parent', 'cache', 'temp', 'tmp')))
+    _workspace_disk_guard(root)
     # The scheduler must grant this separate attempt before any device query.
     gpu_uuid, before_private = g._smi_snapshot(smi)
     before = g._public_smi(before_private)
@@ -780,6 +872,13 @@ def run_development(*, workspace_root, cache_dir, inventory, output, site_packag
                 'PYTHONDONTWRITEBYTECODE': '1', 'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1'})
     identity = resolve_device_identity(root, gpu_uuid, physical_uuids=[gpu_uuid], environ=env)
     destination.mkdir()
+    storage = _storage_snapshot(root, destination, cache)
+    if g._canonical({name: storage['locations'][name] for name in storage_base}) != g._canonical(storage_base):
+        raise RuntimeError('storage parent changed while creating the output directory')
+    g._write_json(destination / 'storage-binding.json', storage)
+    storage_sha = hashlib.sha256(g._bounded_bytes(destination / 'storage-binding.json', 16384)).hexdigest()
+    storage_initial = _storage_guard(root, destination, cache, storage_sha)
+    g._write_json(destination / 'storage-initial.json', storage_initial)
     (destination / g._MANIFEST).parent.mkdir()
     prefix = destination / 'owner-pycache'
     prefix.mkdir()
@@ -791,10 +890,13 @@ def run_development(*, workspace_root, cache_dir, inventory, output, site_packag
     g._protect_manifest(repo, sources, destination)
     g._write_json(destination / 'started.json', {'run_id': run_id, 'source_commit': commit,
                   'source_manifest_sha256': source_sha, 'bucket': bucket,
-                  'manifest_sha256': MANIFEST_SHA256, 'inventory_sha256': INVENTORY_SHA256})
+                  'manifest_sha256': MANIFEST_SHA256, 'inventory_sha256': INVENTORY_SHA256,
+                  'storage_binding_sha256': storage_sha})
     command = [sys._base_executable, '-I', '-B', '-S', '-X', 'pycache_prefix=' + str(prefix),
                str(repo / 'scripts/short_service_gpu_bootstrap.py'), '--site-packages', str(site),
-               '--owner', str(destination), str(cache), str(inv), str(bucket), run_id, commit, driver, source_sha]
+               '--owner', str(destination), str(cache), str(inv), str(bucket), run_id, commit, driver, source_sha,
+               storage_sha]
+    _storage_guard(root, destination, cache, storage_sha)
     supervised = g._supervise_owner(command, identity=identity, repo=repo, environment=env,
                                     job_source_sha256=sources['scripts/v2_source_guards.py'])
     record = {'run_id': run_id, 'supervisor_run_id': supervised.run_id, 'pid': supervised.pid,
@@ -809,10 +911,12 @@ def run_development(*, workspace_root, cache_dir, inventory, output, site_packag
                               'zero PyTorch allocator counters do not prove complete native or global device cleanup',
                               'source and saved-byte checks do not independently attest execution']}
     try:
+        _storage_guard(root, destination, cache, storage_sha)
         result['measurement'] = _promote(destination, run_id=run_id, commit=commit, supervised=supervised,
                                          bucket=bucket, source_manifest_sha=source_sha, sources=sources,
                                          expected_cases=expected_cases, expected_gpu_uuid=gpu_uuid,
                                          expected_driver=driver)
+        result['measurement']['storage_binding_sha256'] = storage_sha
         result['status'] = 'passed'
     except Exception as exc:
         result['error_type'] = g._public_error_type(type(exc).__name__)
@@ -822,7 +926,7 @@ def run_development(*, workspace_root, cache_dir, inventory, output, site_packag
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--owner', nargs=8, help=argparse.SUPPRESS)
+    parser.add_argument('--owner', nargs=9, help=argparse.SUPPRESS)
     parser.add_argument('--workspace-root')
     parser.add_argument('--cache-dir')
     parser.add_argument('--inventory')
