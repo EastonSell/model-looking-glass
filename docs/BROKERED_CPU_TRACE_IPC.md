@@ -30,6 +30,47 @@ the broker lifetime, job, generation, team, request and trace count. Event
 frames continue to carry their own identity and explicit receive/release
 messages. A foreign team's receipt is rejected.
 
+## Optional same-forward output
+
+Output delivery is disabled by default. To enable it, the operator gives the
+server a positive `max_output_bytes` (at most 64 MiB). A client opts in for a
+single request by passing `on_output`, `max_output_bytes`, and the expected
+`vocab_size` to `trace`. The server rejects a mismatched vocabulary or a full
+`[1, sequence_length, vocabulary]` float32 output larger than either limit or
+the worker's output limit before starting a forward. The vocabulary must
+match the operator's bound model. Existing trace-only requests and their wire
+messages and completion type are unchanged.
+
+The output is the copied CPU logits produced by that same traced invocation;
+the internal zero-byte broker result remains only a scheduling token. The
+output frame precedes the trace events and carries the broker, process,
+job, generation, transfer, team, request and run identities, exact shape,
+`torch.float32` dtype, native byte order, byte count, and SHA-256. The client
+checks these fields and the received bytes before calling `on_output`. After
+the output and every trace event have been released, the completion binds the
+same output shape, length, byte order and digest. The digest checks transport
+consistency; it does not authenticate the server or independently attest model
+execution.
+
+`on_output(metadata, payload)` is synchronous and must return `None`. Its
+`bytearray` payload is borrowed only for the duration of the callback. The
+callback must drop aliases before returning; any retained copy needs a
+separately reserved client-owned budget and lifetime. The sender reserves a
+separate serialization buffer before the forward, holds the producer's output
+claim while filling and sending it, and releases that buffer only after the
+receiver's release acknowledgement. The client separately reserves its
+receive buffer before accepting bytes and holds it through the callback.
+These cooperative claims do not enforce an RSS limit, cover socket buffers or
+prove that a callback actually discarded aliases.
+
+An output callback, transfer or acknowledgement failure, interruption, or
+cancellation leaves the accepted attempt incomplete and the uncertain claims
+rooted for reconciliation. The output may already have been observed even when
+no complete trace receipt is produced; it cannot be retracted or safely
+retried on that basis. As with trace-only IPC, a local completion is not proof
+that the server received its final acknowledgement or that the whole process
+tree drained. The operator must check both server and service close results.
+
 Before the broker copies input, the service reserves and roots a separate
 `broker_trace_snapshot` host claim. It keeps that claim through the broker
 job, receipt handoff and service shutdown. The input provided by the IPC server

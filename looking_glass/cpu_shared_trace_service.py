@@ -4,6 +4,8 @@ This is not IPC, authentication, a physical memory limit, or a GPU service.
 The owner and every client must obey the trace and host-custody contracts.
 """
 from dataclasses import dataclass
+import hashlib
+import sys
 import threading
 import uuid
 
@@ -44,16 +46,36 @@ class TraceReceipt:
     trace_bytes: int
 
 
+@dataclass(frozen=True, slots=True)
+class TraceOutput:
+    broker_id: str
+    process_generation: str
+    job_id: int
+    generation: int
+    team_id: str
+    request_id: str
+    run_id: str
+    shape: tuple[int, int, int]
+    dtype: str
+    byte_order: str
+    payload_bytes: int
+    sha256: str
+
+
 class _Attempt:
-    def __init__(self, team_id, request_id, inputs, input_owner, input_claim, on_event):
+    def __init__(self, team_id, request_id, inputs, input_owner, input_claim, on_event,
+                 on_output, max_output_bytes):
         self.team_id, self.request_id = team_id, request_id
         self.inputs, self.input_owner, self.input_claim = inputs, input_owner, input_claim
         self.on_event = on_event
+        self.on_output, self.max_output_bytes = on_output, max_output_bytes
         self.job_id = self.generation = None
         self.registration_id = self.transfer_id = self.run_id = None
         self.job = self.bridge = self.recipient = None
         self.exposure_request_guard = self.exposure_request = None
         self.exposure_claim_guard = self.exposure_claim = self.exposed_payload = None
+        self.output_request_guard = self.output_request = None
+        self.output_claim_guard = self.output_claim = self.output_payload = None
         self.callback_interruption = None
         self.stage = 'waiting'
         self.receipt = None
@@ -154,13 +176,18 @@ class CpuSharedTraceService:
             self._condition.notify_all()
 
     def _submit(self, team_id, *, request_id, inputs, input_owner, input_claim,
-                samples, sites, on_event):
+                samples, sites, on_event, on_output=None, max_output_bytes=None):
         if not _text(request_id) or type(inputs) is not dict or not callable(on_event):
             raise ValueError('invalid request identity, inputs or event sink')
+        if ((on_output is None and max_output_bytes is not None)
+                or (on_output is not None and (not callable(on_output)
+                    or type(max_output_bytes) is not int or not 1 <= max_output_bytes <= 2**26))):
+            raise ValueError('invalid bounded output sink')
         ids = inputs.get('input_ids')
         if type(ids) is not torch.Tensor or ids.ndim != 2:
             raise ValueError('input_ids must be a two-dimensional tensor')
-        attempt = _Attempt(team_id, request_id, inputs, input_owner, input_claim, on_event)
+        attempt = _Attempt(team_id, request_id, inputs, input_owner, input_claim, on_event,
+                           on_output, max_output_bytes)
         try:
             self._admit(attempt)
             receipt = self._execute(attempt, samples, sites)
@@ -215,6 +242,22 @@ class CpuSharedTraceService:
                 attempt.stage = 'clean_rejection'
             raise
 
+        if attempt.on_output is not None:
+            vocab = owner._model.lm_head.out_features
+            if (batch_size != 1 or type(vocab) is not int or vocab < 1
+                    or batch_size * sequence_length * vocab * 4 > min(
+                        attempt.max_output_bytes, owner._worker.max_output_bytes)):
+                raise SharedTraceError('output exceeds the declared limit')
+            output_bytes = batch_size * sequence_length * vocab * 4
+            attempt.output_request_guard = owner._budget.request_guard('trace-output-' + attempt.registration_id)
+            attempt.output_request_guard.open()
+            attempt.output_request = attempt.output_request_guard.adopt()
+            attempt.output_claim_guard = attempt.output_request.claim_guard(
+                'trace-output-sender', 'trace_output_send', output_bytes, items=1)
+            attempt.output_claim_guard.reserve()
+            attempt.output_claim = attempt.output_claim_guard.adopt()
+            attempt.output_payload = bytearray(output_bytes)
+
         attempt.stage = 'forward'
         request = ForwardRequest(plan.worker_request_id, attempt.inputs)
         try:
@@ -234,6 +277,30 @@ class CpuSharedTraceService:
                     raise error from cleanup
             raise
         request = None
+        if attempt.on_output is not None:
+            def expose(tensor):
+                view = memoryview(tensor.numpy()).cast('B')
+                try:
+                    if len(view) != len(attempt.output_payload):
+                        raise SharedTraceError('output byte length changed')
+                    attempt.output_payload[:] = view
+                finally:
+                    view.release()
+                    view = None
+                metadata = TraceOutput(owner._broker_id, owner._process_generation,
+                    attempt.job_id, attempt.generation, attempt.team_id, attempt.request_id,
+                    attempt.run_id, tuple(tensor.shape), 'torch.float32', sys.byteorder,
+                    len(attempt.output_payload), hashlib.sha256(attempt.output_payload).hexdigest())
+                if attempt.on_output(metadata, attempt.output_payload) is not None:
+                    raise SharedTraceError('output sink must complete synchronously')
+            attempt.job.expose_output(expose)
+            expose = None
+            attempt.output_payload = None
+            attempt.output_claim.release()
+            attempt.output_claim = attempt.output_claim_guard = None
+            attempt.output_request.close()
+            attempt.output_request = attempt.output_request_guard = None
+
         attempt.job.discard_result()
         attempt.job.confirm_producer_disposed()
         attempt.job.seal()
@@ -335,12 +402,14 @@ class _Client:
     def __init__(self, service, team_id):
         self._service, self._team_id = service, team_id
 
-    def submit(self, *, request_id, inputs, input_owner, input_claim, samples, sites, on_event):
+    def submit(self, *, request_id, inputs, input_owner, input_claim, samples, sites, on_event,
+               on_output=None, max_output_bytes=None):
         failure = None
         try:
             return self._service._submit(self._team_id, request_id=request_id, inputs=inputs,
                                          input_owner=input_owner, input_claim=input_claim,
-                                         samples=samples, sites=sites, on_event=on_event)
+                                         samples=samples, sites=sites, on_event=on_event,
+                                         on_output=on_output, max_output_bytes=max_output_bytes)
         except BaseException as error:
             failure = error
             try:
@@ -348,7 +417,7 @@ class _Client:
             except BaseException:
                 pass
         finally:
-            inputs = input_owner = input_claim = samples = sites = on_event = None
+            inputs = input_owner = input_claim = samples = sites = on_event = on_output = None
         raise failure from None
 
     def recover(self, request_id):
