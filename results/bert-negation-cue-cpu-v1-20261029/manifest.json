@@ -1,0 +1,19 @@
+{
+  "schema": "bert-negation-public-cases-v1",
+  "selection": "Eight manually specified contexts, tokenizer-checked before any study model forward; no candidate was discarded. All cases are public and prior/pretraining exposure is unknown.",
+  "template": "The {role} has {cue} {verb} [MASK] of the {object}.",
+  "cues": {"not": 2025, "never": 2196, "just": 2074, "also": 2036},
+  "scored_tokens": {"any": 2151, "some": 2070},
+  "indices": {"cue": 4, "mask": 6, "object": 9},
+  "attention_mask": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  "cases": [
+    {"id": "negation-01", "split": "development", "role": "doctor", "verb": "examined", "object": "patients", "just_ids": [101, 1996, 3460, 2038, 2074, 8920, 103, 1997, 1996, 5022, 1012, 102]},
+    {"id": "negation-02", "split": "development", "role": "chef", "verb": "washed", "object": "dishes", "just_ids": [101, 1996, 10026, 2038, 2074, 8871, 103, 1997, 1996, 10447, 1012, 102]},
+    {"id": "negation-03", "split": "evaluation", "role": "pilot", "verb": "visited", "object": "airports", "just_ids": [101, 1996, 4405, 2038, 2074, 4716, 103, 1997, 1996, 13586, 1012, 102]},
+    {"id": "negation-04", "split": "evaluation", "role": "teacher", "verb": "read", "object": "books", "just_ids": [101, 1996, 3836, 2038, 2074, 3191, 103, 1997, 1996, 2808, 1012, 102]},
+    {"id": "negation-05", "split": "evaluation", "role": "farmer", "verb": "planted", "object": "flowers", "just_ids": [101, 1996, 7500, 2038, 2074, 8461, 103, 1997, 1996, 4870, 1012, 102]},
+    {"id": "negation-06", "split": "evaluation", "role": "driver", "verb": "inspected", "object": "vehicles", "just_ids": [101, 1996, 4062, 2038, 2074, 20456, 103, 1997, 1996, 4683, 1012, 102]},
+    {"id": "negation-07", "split": "evaluation", "role": "scientist", "verb": "measured", "object": "samples", "just_ids": [101, 1996, 7155, 2038, 2074, 7594, 103, 1997, 1996, 8168, 1012, 102]},
+    {"id": "negation-08", "split": "evaluation", "role": "artist", "verb": "painted", "object": "portraits", "just_ids": [101, 1996, 3063, 2038, 2074, 4993, 103, 1997, 1996, 9668, 1012, 102]}
+  ]
+}

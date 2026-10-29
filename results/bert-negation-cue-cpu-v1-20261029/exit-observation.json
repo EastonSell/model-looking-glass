@@ -1,0 +1,5 @@
+{
+  "observation": "PowerShell waited for the direct CPU Python invocation",
+  "source_commit": "c72d120e4c22a56a9eda051893430631fb963c70",
+  "exit_code": 0
+}

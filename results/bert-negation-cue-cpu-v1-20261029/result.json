@@ -1,0 +1,3402 @@
+{
+  "assets": {
+    "config.json": {
+      "bytes": 483,
+      "sha256": "69c94b0222d5d1f4b0ad027ca7416cdafb98378cbbb8305d0bf47c9365c60c83"
+    },
+    "model.safetensors": {
+      "bytes": 267954768,
+      "sha256": "5e3f1108e3cb34ee048634875d8482665b65ac713291a7e32396fb18f6ff0063"
+    },
+    "tokenizer.json": {
+      "bytes": 466062,
+      "sha256": "ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98"
+    },
+    "tokenizer_config.json": {
+      "bytes": 48,
+      "sha256": "a025160ef0431f1a392f6f050c1310f4c5d9fb6f275932dbccba73c4d214bf10"
+    },
+    "vocab.txt": {
+      "bytes": 231508,
+      "sha256": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+    }
+  },
+  "attention": "eager",
+  "cases": [
+    {
+      "baselines": {
+        "also": {
+          "any_minus_some": -4.0117387771606445,
+          "any_probability": 0.002152854263248493,
+          "some_probability": 0.11892978811787067,
+          "top_five": [
+            {
+              "logit": 10.292285919189453,
+              "token_id": 2195
+            },
+            {
+              "logit": 10.017081260681152,
+              "token_id": 2070
+            },
+            {
+              "logit": 9.57519817352295,
+              "token_id": 2116
+            },
+            {
+              "logit": 9.346943855285645,
+              "token_id": 2035
+            },
+            {
+              "logit": 8.47937297821045,
+              "token_id": 2119
+            }
+          ]
+        },
+        "just": {
+          "any_minus_some": -2.955021858215332,
+          "any_probability": 0.0026158422669491158,
+          "some_probability": 0.0502297758100331,
+          "top_five": [
+            {
+              "logit": 11.59708023071289,
+              "token_id": 2035
+            },
+            {
+              "logit": 10.63199520111084,
+              "token_id": 2195
+            },
+            {
+              "logit": 10.097612380981445,
+              "token_id": 2070
+            },
+            {
+              "logit": 9.749336242675781,
+              "token_id": 2087
+            },
+            {
+              "logit": 9.69547176361084,
+              "token_id": 2119
+            }
+          ]
+        },
+        "never": {
+          "any_minus_some": 5.262180328369141,
+          "any_probability": 0.7082397984332034,
+          "some_probability": 0.0036715077410784122,
+          "top_five": [
+            {
+              "logit": 13.307829856872559,
+              "token_id": 2151
+            },
+            {
+              "logit": 11.447397232055664,
+              "token_id": 2035
+            },
+            {
+              "logit": 10.572907447814941,
+              "token_id": 2593
+            },
+            {
+              "logit": 9.801298141479492,
+              "token_id": 2119
+            },
+            {
+              "logit": 9.663213729858398,
+              "token_id": 2028
+            }
+          ]
+        },
+        "not": {
+          "any_minus_some": 4.705401420593262,
+          "any_probability": 0.6398304951886706,
+          "some_probability": 0.005788087171665205,
+          "top_five": [
+            {
+              "logit": 13.08382797241211,
+              "token_id": 2151
+            },
+            {
+              "logit": 11.784908294677734,
+              "token_id": 2035
+            },
+            {
+              "logit": 10.000411987304688,
+              "token_id": 2593
+            },
+            {
+              "logit": 9.826700210571289,
+              "token_id": 2087
+            },
+            {
+              "logit": 9.807316780090332,
+              "token_id": 2116
+            }
+          ]
+        }
+      },
+      "case_id": "negation-01",
+      "clean_margins": {
+        "also": -4.0117387771606445,
+        "just": -2.955021858215332,
+        "never": 5.262180328369141,
+        "not": 4.705401420593262
+      },
+      "directional_score": 0.18050944805145264,
+      "distances": [
+        {
+          "distance": 17.316069844820674,
+          "left": "not",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.0713175043072973,
+          "left": "not",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.077811415241061,
+          "left": "not",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.574834406969748,
+          "left": "not",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.87562590585667,
+          "left": "never",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.0071375508699159,
+          "left": "never",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 1.6585756101690607,
+          "left": "never",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 7.3243102778046705,
+          "left": "never",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.472618924539674,
+          "left": "also",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.388899706448164,
+          "left": "also",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.65599791367315,
+          "left": "also",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.581801350168251,
+          "left": "also",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 16.25351357241198,
+          "left": "also",
+          "right": "not",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.1983720786434275,
+          "left": "also",
+          "right": "not",
+          "site": "object2"
+        },
+        {
+          "distance": 2.4683462548671504,
+          "left": "also",
+          "right": "not",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.37021906004238,
+          "left": "also",
+          "right": "not",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.148009331165085,
+          "left": "also",
+          "right": "never",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.3957038678502163,
+          "left": "also",
+          "right": "never",
+          "site": "object2"
+        },
+        {
+          "distance": 2.7656003527658406,
+          "left": "also",
+          "right": "never",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.930760075007337,
+          "left": "also",
+          "right": "never",
+          "site": "cue5"
+        }
+      ],
+      "effects": {
+        "cue2": [
+          {
+            "delta": 0.294950008392334,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": -0.060497283935546875,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.27398681640625,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.09260368347167969,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.03683757781982422,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": -0.010765552520751953,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.08211040496826172,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.11811256408691406,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "cue5": [
+          {
+            "delta": 0.0,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "mask2": [
+          {
+            "delta": 0.12639331817626953,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.07821273803710938,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.19162368774414062,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.008077621459960938,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.09561443328857422,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.022016525268554688,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.0722808837890625,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.1098012924194336,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "object2": [
+          {
+            "delta": -0.03698253631591797,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.00042438507080078125,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": -0.03731203079223633,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.009073257446289062,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.024672985076904297,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": -0.014332771301269531,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.006504058837890625,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": 0.0044422149658203125,
+            "donor": "also",
+            "target": "never"
+          }
+        ]
+      },
+      "forwards": 56,
+      "radius": 1.0071375508699159,
+      "split": "development"
+    },
+    {
+      "baselines": {
+        "also": {
+          "any_minus_some": -4.467479705810547,
+          "any_probability": 0.005149996997999864,
+          "some_probability": 0.44875444164666595,
+          "top_five": [
+            {
+              "logit": 11.751629829406738,
+              "token_id": 2070
+            },
+            {
+              "logit": 10.682907104492188,
+              "token_id": 2035
+            },
+            {
+              "logit": 9.838435173034668,
+              "token_id": 2116
+            },
+            {
+              "logit": 9.424522399902344,
+              "token_id": 2195
+            },
+            {
+              "logit": 9.365945816040039,
+              "token_id": 2087
+            }
+          ]
+        },
+        "just": {
+          "any_minus_some": -3.742678642272949,
+          "any_probability": 0.004681438836974141,
+          "some_probability": 0.1976077783679396,
+          "top_five": [
+            {
+              "logit": 11.928664207458496,
+              "token_id": 2035
+            },
+            {
+              "logit": 11.088768005371094,
+              "token_id": 2070
+            },
+            {
+              "logit": 9.80392837524414,
+              "token_id": 2087
+            },
+            {
+              "logit": 9.02368450164795,
+              "token_id": 2195
+            },
+            {
+              "logit": 8.984128952026367,
+              "token_id": 2438
+            }
+          ]
+        },
+        "never": {
+          "any_minus_some": 4.232725143432617,
+          "any_probability": 0.6361976661307176,
+          "some_probability": 0.009233001335396755,
+          "top_five": [
+            {
+              "logit": 12.858181953430176,
+              "token_id": 2151
+            },
+            {
+              "logit": 11.458707809448242,
+              "token_id": 2035
+            },
+            {
+              "logit": 9.739484786987305,
+              "token_id": 2593
+            },
+            {
+              "logit": 9.681930541992188,
+              "token_id": 2028
+            },
+            {
+              "logit": 9.522172927856445,
+              "token_id": 2116
+            }
+          ]
+        },
+        "not": {
+          "any_minus_some": 3.386294364929199,
+          "any_probability": 0.5288173280023309,
+          "some_probability": 0.017891910648250235,
+          "top_five": [
+            {
+              "logit": 12.83153247833252,
+              "token_id": 2151
+            },
+            {
+              "logit": 12.15827465057373,
+              "token_id": 2035
+            },
+            {
+              "logit": 9.918509483337402,
+              "token_id": 2438
+            },
+            {
+              "logit": 9.87359619140625,
+              "token_id": 2087
+            },
+            {
+              "logit": 9.643102645874023,
+              "token_id": 2116
+            }
+          ]
+        }
+      },
+      "case_id": "negation-02",
+      "clean_margins": {
+        "also": -4.467479705810547,
+        "just": -3.742678642272949,
+        "never": 4.232725143432617,
+        "not": 3.386294364929199
+      },
+      "directional_score": 0.3500511646270752,
+      "distances": [
+        {
+          "distance": 16.4351626005105,
+          "left": "not",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.834964106356183,
+          "left": "not",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.2441247727367934,
+          "left": "not",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.799319909615202,
+          "left": "not",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.590194233161174,
+          "left": "never",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.9076816885975314,
+          "left": "never",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.154036370484813,
+          "left": "never",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.9735337696987925,
+          "left": "never",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 16.97879027773122,
+          "left": "also",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 2.236860029269261,
+          "left": "also",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 3.1646958301489523,
+          "left": "also",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.9200004402466595,
+          "left": "also",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 15.837486441685936,
+          "left": "also",
+          "right": "not",
+          "site": "cue2"
+        },
+        {
+          "distance": 2.0415683274526435,
+          "left": "also",
+          "right": "not",
+          "site": "object2"
+        },
+        {
+          "distance": 3.1082284402951994,
+          "left": "also",
+          "right": "not",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.266977999084737,
+          "left": "also",
+          "right": "not",
+          "site": "cue5"
+        },
+        {
+          "distance": 16.771091042644276,
+          "left": "also",
+          "right": "never",
+          "site": "cue2"
+        },
+        {
+          "distance": 2.379273738568195,
+          "left": "also",
+          "right": "never",
+          "site": "object2"
+        },
+        {
+          "distance": 3.390405934998475,
+          "left": "also",
+          "right": "never",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.958914175365095,
+          "left": "also",
+          "right": "never",
+          "site": "cue5"
+        }
+      ],
+      "effects": {
+        "cue2": [
+          {
+            "delta": 0.3837728500366211,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": -0.34592247009277344,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.380645751953125,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.28986358642578125,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.046848297119140625,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.026750564575195312,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.36057472229003906,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.36380767822265625,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "cue5": [
+          {
+            "delta": 0.0,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "mask2": [
+          {
+            "delta": 0.2463665008544922,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.2412271499633789,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.2924079895019531,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.06629467010498047,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.09752225875854492,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.07449913024902344,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.08809185028076172,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.21119308471679688,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "object2": [
+          {
+            "delta": 0.015276432037353516,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.0679330825805664,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.010827064514160156,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.0038537979125976562,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": 0.041863441467285156,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": -0.01880025863647461,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.021493911743164062,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.07016563415527344,
+            "donor": "also",
+            "target": "never"
+          }
+        ]
+      },
+      "forwards": 56,
+      "radius": 1.834964106356183,
+      "split": "development"
+    },
+    {
+      "baselines": {
+        "also": {
+          "any_minus_some": -5.124612331390381,
+          "any_probability": 0.0010376599516556929,
+          "some_probability": 0.1744399336999152,
+          "top_five": [
+            {
+              "logit": 13.145733833312988,
+              "token_id": 2195
+            },
+            {
+              "logit": 12.579736709594727,
+              "token_id": 2070
+            },
+            {
+              "logit": 12.196697235107422,
+              "token_id": 2116
+            },
+            {
+              "logit": 10.663741111755371,
+              "token_id": 2028
+            },
+            {
+              "logit": 10.566781997680664,
+              "token_id": 2035
+            }
+          ]
+        },
+        "just": {
+          "any_minus_some": -3.103878974914551,
+          "any_probability": 0.001259027728532708,
+          "some_probability": 0.028056455665345984,
+          "top_five": [
+            {
+              "logit": 11.781869888305664,
+              "token_id": 2028
+            },
+            {
+              "logit": 11.271333694458008,
+              "token_id": 2093
+            },
+            {
+              "logit": 11.268877983093262,
+              "token_id": 2195
+            },
+            {
+              "logit": 11.167335510253906,
+              "token_id": 2048
+            },
+            {
+              "logit": 10.936363220214844,
+              "token_id": 3157
+            }
+          ]
+        },
+        "never": {
+          "any_minus_some": 5.6365556716918945,
+          "any_probability": 0.6582107401764591,
+          "some_probability": 0.0023466047170784135,
+          "top_five": [
+            {
+              "logit": 15.048584938049316,
+              "token_id": 2151
+            },
+            {
+              "logit": 13.723543167114258,
+              "token_id": 2593
+            },
+            {
+              "logit": 13.16864013671875,
+              "token_id": 2028
+            },
+            {
+              "logit": 11.169967651367188,
+              "token_id": 2119
+            },
+            {
+              "logit": 10.891582489013672,
+              "token_id": 2035
+            }
+          ]
+        },
+        "not": {
+          "any_minus_some": 5.085614204406738,
+          "any_probability": 0.6815965766619977,
+          "some_probability": 0.004215734136266558,
+          "top_five": [
+            {
+              "logit": 14.902339935302734,
+              "token_id": 2151
+            },
+            {
+              "logit": 13.526893615722656,
+              "token_id": 2593
+            },
+            {
+              "logit": 11.832045555114746,
+              "token_id": 2028
+            },
+            {
+              "logit": 11.654834747314453,
+              "token_id": 2035
+            },
+            {
+              "logit": 11.026504516601562,
+              "token_id": 2119
+            }
+          ]
+        }
+      },
+      "case_id": "negation-03",
+      "clean_margins": {
+        "also": -5.124612331390381,
+        "just": -3.103878974914551,
+        "never": 5.6365556716918945,
+        "not": 5.085614204406738
+      },
+      "directional_score": 0.28417158126831055,
+      "distances": [
+        {
+          "distance": 17.216387401688685,
+          "left": "not",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.0579936450102063,
+          "left": "not",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 1.8663435509158355,
+          "left": "not",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.415885077135979,
+          "left": "not",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.6960432355561,
+          "left": "never",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.1050894116630818,
+          "left": "never",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 1.8504399689083098,
+          "left": "never",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 7.329326991263471,
+          "left": "never",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.336755445298156,
+          "left": "also",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.2338242423685875,
+          "left": "also",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.342204681637329,
+          "left": "also",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.388718628504473,
+          "left": "also",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 16.36792101796188,
+          "left": "also",
+          "right": "not",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.221625798901918,
+          "left": "also",
+          "right": "not",
+          "site": "object2"
+        },
+        {
+          "distance": 2.328585035336635,
+          "left": "also",
+          "right": "not",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.053919671744046,
+          "left": "also",
+          "right": "not",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.078862069311683,
+          "left": "also",
+          "right": "never",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.5540976324492206,
+          "left": "also",
+          "right": "never",
+          "site": "object2"
+        },
+        {
+          "distance": 2.415413383725292,
+          "left": "also",
+          "right": "never",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.601719213167111,
+          "left": "also",
+          "right": "never",
+          "site": "cue5"
+        }
+      ],
+      "effects": {
+        "cue2": [
+          {
+            "delta": 0.4688911437988281,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": -0.13039016723632812,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.424652099609375,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.11275291442871094,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.05365562438964844,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.006182193756103516,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.14416790008544922,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.14281940460205078,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "cue5": [
+          {
+            "delta": 0.0,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "mask2": [
+          {
+            "delta": 0.13859128952026367,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.0685110092163086,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.22127103805541992,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.03205585479736328,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.1029973030090332,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.07541322708129883,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.060074806213378906,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.0644063949584961,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "object2": [
+          {
+            "delta": -0.019098758697509766,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.023712158203125,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": -0.05111122131347656,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.01027679443359375,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.023063182830810547,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": -0.004855632781982422,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": 0.008440017700195312,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.010413169860839844,
+            "donor": "also",
+            "target": "never"
+          }
+        ]
+      },
+      "forwards": 56,
+      "radius": 1.0579936450102063,
+      "split": "evaluation"
+    },
+    {
+      "baselines": {
+        "also": {
+          "any_minus_some": -4.7333855628967285,
+          "any_probability": 0.0018211382540341845,
+          "some_probability": 0.2070265990424621,
+          "top_five": [
+            {
+              "logit": 11.949178695678711,
+              "token_id": 2070
+            },
+            {
+              "logit": 11.861923217773438,
+              "token_id": 2116
+            },
+            {
+              "logit": 11.786383628845215,
+              "token_id": 2195
+            },
+            {
+              "logit": 10.633491516113281,
+              "token_id": 2087
+            },
+            {
+              "logit": 10.370109558105469,
+              "token_id": 2035
+            }
+          ]
+        },
+        "just": {
+          "any_minus_some": -3.5206351280212402,
+          "any_probability": 0.0038993410990759156,
+          "some_probability": 0.13182070686079414,
+          "top_five": [
+            {
+              "logit": 11.913553237915039,
+              "token_id": 2028
+            },
+            {
+              "logit": 11.218738555908203,
+              "token_id": 2070
+            },
+            {
+              "logit": 11.201226234436035,
+              "token_id": 2035
+            },
+            {
+              "logit": 10.343208312988281,
+              "token_id": 2048
+            },
+            {
+              "logit": 10.2870454788208,
+              "token_id": 2087
+            }
+          ]
+        },
+        "never": {
+          "any_minus_some": 6.158090591430664,
+          "any_probability": 0.7735919438608364,
+          "some_probability": 0.0016371451108230847,
+          "top_five": [
+            {
+              "logit": 14.465112686157227,
+              "token_id": 2151
+            },
+            {
+              "logit": 12.089268684387207,
+              "token_id": 2028
+            },
+            {
+              "logit": 11.976276397705078,
+              "token_id": 2593
+            },
+            {
+              "logit": 11.044032096862793,
+              "token_id": 2035
+            },
+            {
+              "logit": 10.072606086730957,
+              "token_id": 2116
+            }
+          ]
+        },
+        "not": {
+          "any_minus_some": 5.7056732177734375,
+          "any_probability": 0.7928752456800751,
+          "some_probability": 0.0026379251286744445,
+          "top_five": [
+            {
+              "logit": 14.608890533447266,
+              "token_id": 2151
+            },
+            {
+              "logit": 12.156171798706055,
+              "token_id": 2035
+            },
+            {
+              "logit": 11.355670928955078,
+              "token_id": 2593
+            },
+            {
+              "logit": 11.005712509155273,
+              "token_id": 2087
+            },
+            {
+              "logit": 10.936346054077148,
+              "token_id": 2116
+            }
+          ]
+        }
+      },
+      "case_id": "negation-04",
+      "clean_margins": {
+        "also": -4.7333855628967285,
+        "just": -3.5206351280212402,
+        "never": 6.158090591430664,
+        "not": 5.7056732177734375
+      },
+      "directional_score": 0.2936062812805176,
+      "distances": [
+        {
+          "distance": 17.891915687288137,
+          "left": "not",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.3098571153047398,
+          "left": "not",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.5556785256170373,
+          "left": "not",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.853154433217857,
+          "left": "not",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 18.449001154689668,
+          "left": "never",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.3958774862344856,
+          "left": "never",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.3913062678813777,
+          "left": "never",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.445851939936585,
+          "left": "never",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.33912845610719,
+          "left": "also",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.9005815129987835,
+          "left": "also",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 3.044807843157851,
+          "left": "also",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.962687744626327,
+          "left": "also",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 16.775001182466937,
+          "left": "also",
+          "right": "not",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.956796225209804,
+          "left": "also",
+          "right": "not",
+          "site": "object2"
+        },
+        {
+          "distance": 3.1013266261603207,
+          "left": "also",
+          "right": "not",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.414560025590508,
+          "left": "also",
+          "right": "not",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.520937297834813,
+          "left": "also",
+          "right": "never",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.867143420386095,
+          "left": "also",
+          "right": "never",
+          "site": "object2"
+        },
+        {
+          "distance": 3.203341558946937,
+          "left": "also",
+          "right": "never",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.655786764428257,
+          "left": "also",
+          "right": "never",
+          "site": "cue5"
+        }
+      ],
+      "effects": {
+        "cue2": [
+          {
+            "delta": 0.49919843673706055,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": -0.09765338897705078,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.4434065818786621,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.13416671752929688,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.02852010726928711,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.01046609878540039,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.11034393310546875,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.1597442626953125,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "cue5": [
+          {
+            "delta": 0.0,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "mask2": [
+          {
+            "delta": 0.22174310684204102,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.059004783630371094,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.22783374786376953,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.0791921615600586,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.0945277214050293,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.08294677734375,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.04071331024169922,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.13048934936523438,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "object2": [
+          {
+            "delta": -0.00035953521728515625,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.023220062255859375,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.025641441345214844,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.032958984375,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": 0.007457256317138672,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.031812191009521484,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.030641555786132812,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.06577110290527344,
+            "donor": "also",
+            "target": "never"
+          }
+        ]
+      },
+      "forwards": 56,
+      "radius": 1.3098571153047398,
+      "split": "evaluation"
+    },
+    {
+      "baselines": {
+        "also": {
+          "any_minus_some": -5.856078147888184,
+          "any_probability": 0.0008567370007657685,
+          "some_probability": 0.29930222738678663,
+          "top_five": [
+            {
+              "logit": 11.807662963867188,
+              "token_id": 2070
+            },
+            {
+              "logit": 11.005364418029785,
+              "token_id": 2116
+            },
+            {
+              "logit": 10.33929443359375,
+              "token_id": 2195
+            },
+            {
+              "logit": 10.132328033447266,
+              "token_id": 2028
+            },
+            {
+              "logit": 9.848048210144043,
+              "token_id": 9903
+            }
+          ]
+        },
+        "just": {
+          "any_minus_some": -4.382632732391357,
+          "any_probability": 0.0016421011718549719,
+          "some_probability": 0.1314477397843699,
+          "top_five": [
+            {
+              "logit": 11.026360511779785,
+              "token_id": 2070
+            },
+            {
+              "logit": 10.9175443649292,
+              "token_id": 2028
+            },
+            {
+              "logit": 9.99470329284668,
+              "token_id": 2035
+            },
+            {
+              "logit": 9.811506271362305,
+              "token_id": 2087
+            },
+            {
+              "logit": 9.542826652526855,
+              "token_id": 2116
+            }
+          ]
+        },
+        "never": {
+          "any_minus_some": 5.543678283691406,
+          "any_probability": 0.871275003949264,
+          "some_probability": 0.003408524081438472,
+          "top_five": [
+            {
+              "logit": 14.646968841552734,
+              "token_id": 2151
+            },
+            {
+              "logit": 11.648940086364746,
+              "token_id": 2028
+            },
+            {
+              "logit": 10.872638702392578,
+              "token_id": 2116
+            },
+            {
+              "logit": 10.776693344116211,
+              "token_id": 2035
+            },
+            {
+              "logit": 9.67294692993164,
+              "token_id": 2087
+            }
+          ]
+        },
+        "not": {
+          "any_minus_some": 5.432490348815918,
+          "any_probability": 0.874839325278872,
+          "some_probability": 0.0038249672013345825,
+          "top_five": [
+            {
+              "logit": 14.730766296386719,
+              "token_id": 2151
+            },
+            {
+              "logit": 11.357377052307129,
+              "token_id": 2035
+            },
+            {
+              "logit": 11.306037902832031,
+              "token_id": 2116
+            },
+            {
+              "logit": 10.318730354309082,
+              "token_id": 2087
+            },
+            {
+              "logit": 10.236016273498535,
+              "token_id": 2172
+            }
+          ]
+        }
+      },
+      "case_id": "negation-05",
+      "clean_margins": {
+        "also": -5.856078147888184,
+        "just": -4.382632732391357,
+        "never": 5.543678283691406,
+        "not": 5.432490348815918
+      },
+      "directional_score": 0.29682719707489014,
+      "distances": [
+        {
+          "distance": 17.403020164629233,
+          "left": "not",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.2017613174500856,
+          "left": "not",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.0866691253560528,
+          "left": "not",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.1754929950361355,
+          "left": "not",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 18.00927047645629,
+          "left": "never",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.3590021844054154,
+          "left": "never",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.309473007133568,
+          "left": "never",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 7.233654484746717,
+          "left": "never",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.510828735609202,
+          "left": "also",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.374347594823063,
+          "left": "also",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.743827661598732,
+          "left": "also",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.281787102390441,
+          "left": "also",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 16.83036524488649,
+          "left": "also",
+          "right": "not",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.5993941973647672,
+          "left": "also",
+          "right": "not",
+          "site": "object2"
+        },
+        {
+          "distance": 2.763550289441052,
+          "left": "also",
+          "right": "not",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.821099413318085,
+          "left": "also",
+          "right": "not",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.388393833482652,
+          "left": "also",
+          "right": "never",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.7886310142735318,
+          "left": "also",
+          "right": "never",
+          "site": "object2"
+        },
+        {
+          "distance": 2.947041861408482,
+          "left": "also",
+          "right": "never",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.346155367900838,
+          "left": "also",
+          "right": "never",
+          "site": "cue5"
+        }
+      ],
+      "effects": {
+        "cue2": [
+          {
+            "delta": 0.5304903984069824,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": -0.11101055145263672,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.4611234664916992,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.08468437194824219,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.06686973571777344,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.005396842956542969,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.12889575958251953,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.09927749633789062,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "cue5": [
+          {
+            "delta": 0.0,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "mask2": [
+          {
+            "delta": 0.09643411636352539,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.10132312774658203,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.14337921142578125,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.010329246520996094,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.1062617301940918,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.01551198959350586,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": 0.01912975311279297,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.044567108154296875,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "object2": [
+          {
+            "delta": 0.028368473052978516,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.044930458068847656,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.023272037506103516,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.0008792877197265625,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.04084205627441406,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.0047588348388671875,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.006763458251953125,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.029407501220703125,
+            "donor": "also",
+            "target": "never"
+          }
+        ]
+      },
+      "forwards": 56,
+      "radius": 1.2017613174500856,
+      "split": "evaluation"
+    },
+    {
+      "baselines": {
+        "also": {
+          "any_minus_some": -1.9073305130004883,
+          "any_probability": 0.016913384788088515,
+          "some_probability": 0.11391309359235138,
+          "top_five": [
+            {
+              "logit": 10.109199523925781,
+              "token_id": 2035
+            },
+            {
+              "logit": 10.058382034301758,
+              "token_id": 2070
+            },
+            {
+              "logit": 9.556398391723633,
+              "token_id": 3033
+            },
+            {
+              "logit": 9.519477844238281,
+              "token_id": 2195
+            },
+            {
+              "logit": 9.377909660339355,
+              "token_id": 2119
+            }
+          ]
+        },
+        "just": {
+          "any_minus_some": -1.3469972610473633,
+          "any_probability": 0.014033397421396726,
+          "some_probability": 0.053970482670547215,
+          "top_five": [
+            {
+              "logit": 11.296119689941406,
+              "token_id": 2035
+            },
+            {
+              "logit": 10.961820602416992,
+              "token_id": 2028
+            },
+            {
+              "logit": 10.066645622253418,
+              "token_id": 2119
+            },
+            {
+              "logit": 10.00844669342041,
+              "token_id": 2169
+            },
+            {
+              "logit": 9.855081558227539,
+              "token_id": 2070
+            }
+          ]
+        },
+        "never": {
+          "any_minus_some": 4.9774370193481445,
+          "any_probability": 0.6218609957996722,
+          "some_probability": 0.004285681441785267,
+          "top_five": [
+            {
+              "logit": 13.304247856140137,
+              "token_id": 2151
+            },
+            {
+              "logit": 11.836231231689453,
+              "token_id": 2593
+            },
+            {
+              "logit": 11.42781925201416,
+              "token_id": 2028
+            },
+            {
+              "logit": 10.31332778930664,
+              "token_id": 2035
+            },
+            {
+              "logit": 10.268425941467285,
+              "token_id": 2119
+            }
+          ]
+        },
+        "not": {
+          "any_minus_some": 4.700949668884277,
+          "any_probability": 0.607894570025781,
+          "some_probability": 0.005523721365064184,
+          "top_five": [
+            {
+              "logit": 12.861259460449219,
+              "token_id": 2151
+            },
+            {
+              "logit": 11.338838577270508,
+              "token_id": 2593
+            },
+            {
+              "logit": 10.56247615814209,
+              "token_id": 2035
+            },
+            {
+              "logit": 10.316075325012207,
+              "token_id": 2028
+            },
+            {
+              "logit": 10.120315551757812,
+              "token_id": 2119
+            }
+          ]
+        }
+      },
+      "case_id": "negation-06",
+      "clean_margins": {
+        "also": -1.9073305130004883,
+        "just": -1.3469972610473633,
+        "never": 4.9774370193481445,
+        "not": 4.700949668884277
+      },
+      "directional_score": 0.19050121307373047,
+      "distances": [
+        {
+          "distance": 17.101964099721506,
+          "left": "not",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.2235289620164862,
+          "left": "not",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.4659259477801174,
+          "left": "not",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.054833493805727,
+          "left": "not",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.91982529247399,
+          "left": "never",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.2680207104629626,
+          "left": "never",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.198744790812105,
+          "left": "never",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.88682012062901,
+          "left": "never",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.34602218681707,
+          "left": "also",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.504889779601177,
+          "left": "also",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.9531261500359762,
+          "left": "also",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.80072246142626,
+          "left": "also",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 16.10192826033406,
+          "left": "also",
+          "right": "not",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.2318383627488727,
+          "left": "also",
+          "right": "not",
+          "site": "object2"
+        },
+        {
+          "distance": 2.4725271831503535,
+          "left": "also",
+          "right": "not",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.587905463847996,
+          "left": "also",
+          "right": "not",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.186515726234816,
+          "left": "also",
+          "right": "never",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.3917761016846812,
+          "left": "also",
+          "right": "never",
+          "site": "object2"
+        },
+        {
+          "distance": 2.847068591557226,
+          "left": "also",
+          "right": "never",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.390763278373785,
+          "left": "also",
+          "right": "never",
+          "site": "cue5"
+        }
+      ],
+      "effects": {
+        "cue2": [
+          {
+            "delta": 0.2708768844604492,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": -0.11777496337890625,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.2480916976928711,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.1252613067626953,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.016637802124023438,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": -0.016432762145996094,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.11530685424804688,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.13343524932861328,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "cue5": [
+          {
+            "delta": 0.0,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "mask2": [
+          {
+            "delta": 0.24039840698242188,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.061370849609375,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.2723102569580078,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.05684089660644531,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.07941913604736328,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.07254695892333984,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.12779617309570312,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.20653152465820312,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "object2": [
+          {
+            "delta": -0.03132438659667969,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.036871910095214844,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": -0.06045722961425781,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.019254684448242188,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.049480438232421875,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.051987648010253906,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.0711355209350586,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.08115005493164062,
+            "donor": "also",
+            "target": "never"
+          }
+        ]
+      },
+      "forwards": 56,
+      "radius": 1.2235289620164862,
+      "split": "evaluation"
+    },
+    {
+      "baselines": {
+        "also": {
+          "any_minus_some": -4.244236946105957,
+          "any_probability": 0.00012400289497244293,
+          "some_probability": 0.008643318364180518,
+          "top_five": [
+            {
+              "logit": 9.898276329040527,
+              "token_id": 3737
+            },
+            {
+              "logit": 9.243345260620117,
+              "token_id": 8168
+            },
+            {
+              "logit": 9.209917068481445,
+              "token_id": 15258
+            },
+            {
+              "logit": 8.80221176147461,
+              "token_id": 9211
+            },
+            {
+              "logit": 8.280477523803711,
+              "token_id": 14639
+            }
+          ]
+        },
+        "just": {
+          "any_minus_some": -3.5663909912109375,
+          "any_probability": 0.0009494719885425633,
+          "some_probability": 0.033600526643980486,
+          "top_five": [
+            {
+              "logit": 9.424412727355957,
+              "token_id": 8168
+            },
+            {
+              "logit": 8.679463386535645,
+              "token_id": 2035
+            },
+            {
+              "logit": 8.562728881835938,
+              "token_id": 2070
+            },
+            {
+              "logit": 8.157845497131348,
+              "token_id": 3737
+            },
+            {
+              "logit": 7.568874359130859,
+              "token_id": 3904
+            }
+          ]
+        },
+        "never": {
+          "any_minus_some": 1.9149646759033203,
+          "any_probability": 0.06386190848466348,
+          "some_probability": 0.00940986301762035,
+          "top_five": [
+            {
+              "logit": 9.904206275939941,
+              "token_id": 3737
+            },
+            {
+              "logit": 9.153960227966309,
+              "token_id": 2151
+            },
+            {
+              "logit": 8.586085319519043,
+              "token_id": 15258
+            },
+            {
+              "logit": 8.468807220458984,
+              "token_id": 2035
+            },
+            {
+              "logit": 8.455409049987793,
+              "token_id": 8168
+            }
+          ]
+        },
+        "not": {
+          "any_minus_some": 1.5080909729003906,
+          "any_probability": 0.04131220263549944,
+          "some_probability": 0.00914371672566983,
+          "top_five": [
+            {
+              "logit": 10.02380084991455,
+              "token_id": 3737
+            },
+            {
+              "logit": 9.02611255645752,
+              "token_id": 15258
+            },
+            {
+              "logit": 8.742267608642578,
+              "token_id": 2151
+            },
+            {
+              "logit": 8.640617370605469,
+              "token_id": 10640
+            },
+            {
+              "logit": 8.401107788085938,
+              "token_id": 8168
+            }
+          ]
+        }
+      },
+      "case_id": "negation-07",
+      "clean_margins": {
+        "also": -4.244236946105957,
+        "just": -3.5663909912109375,
+        "never": 1.9149646759033203,
+        "not": 1.5080909729003906
+      },
+      "directional_score": 0.13188707828521729,
+      "distances": [
+        {
+          "distance": 17.764347532922002,
+          "left": "not",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.0179146984888583,
+          "left": "not",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 1.9023045365304838,
+          "left": "not",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.467268859046435,
+          "left": "not",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 18.112061996651292,
+          "left": "never",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.0619902729989672,
+          "left": "never",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 1.7793224130109941,
+          "left": "never",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 7.254996158446897,
+          "left": "never",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.619595993530375,
+          "left": "also",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.3065795011492884,
+          "left": "also",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.0320079547781367,
+          "left": "also",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.513225688402843,
+          "left": "also",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 16.74430641443546,
+          "left": "also",
+          "right": "not",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.2283093960075164,
+          "left": "also",
+          "right": "not",
+          "site": "object2"
+        },
+        {
+          "distance": 2.3150164652836374,
+          "left": "also",
+          "right": "not",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.469826762915138,
+          "left": "also",
+          "right": "not",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.262629015588644,
+          "left": "also",
+          "right": "never",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.402748638528875,
+          "left": "also",
+          "right": "never",
+          "site": "object2"
+        },
+        {
+          "distance": 2.3862404468054956,
+          "left": "also",
+          "right": "never",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.098237687225557,
+          "left": "also",
+          "right": "never",
+          "site": "cue5"
+        }
+      ],
+      "effects": {
+        "cue2": [
+          {
+            "delta": 0.19803810119628906,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": -0.07200241088867188,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.17952394485473633,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.07798385620117188,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.02816009521484375,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": -0.004155874252319336,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.10304069519042969,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.12760305404663086,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "cue5": [
+          {
+            "delta": 0.0,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "mask2": [
+          {
+            "delta": 0.07200956344604492,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.058165550231933594,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.10491037368774414,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.018036365509033203,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.08028984069824219,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.023602962493896484,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.08735322952270508,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.16087961196899414,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "object2": [
+          {
+            "delta": -0.024311065673828125,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.07035970687866211,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": -0.02363300323486328,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.014122962951660156,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.01666545867919922,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": -0.004068136215209961,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": 0.030800342559814453,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.005572319030761719,
+            "donor": "also",
+            "target": "never"
+          }
+        ]
+      },
+      "forwards": 56,
+      "radius": 1.0179146984888583,
+      "split": "evaluation"
+    },
+    {
+      "baselines": {
+        "also": {
+          "any_minus_some": -6.074986457824707,
+          "any_probability": 0.000635337362850398,
+          "some_probability": 0.2762723948109993,
+          "top_five": [
+            {
+              "logit": 12.731328964233398,
+              "token_id": 2116
+            },
+            {
+              "logit": 12.710429191589355,
+              "token_id": 2070
+            },
+            {
+              "logit": 12.342365264892578,
+              "token_id": 2195
+            },
+            {
+              "logit": 10.430213928222656,
+              "token_id": 2087
+            },
+            {
+              "logit": 9.865350723266602,
+              "token_id": 2028
+            }
+          ]
+        },
+        "just": {
+          "any_minus_some": -3.2979416847229004,
+          "any_probability": 0.0029592623733351486,
+          "some_probability": 0.08006843638602486,
+          "top_five": [
+            {
+              "logit": 10.860204696655273,
+              "token_id": 2070
+            },
+            {
+              "logit": 10.760289192199707,
+              "token_id": 2035
+            },
+            {
+              "logit": 10.532386779785156,
+              "token_id": 2028
+            },
+            {
+              "logit": 10.156832695007324,
+              "token_id": 2195
+            },
+            {
+              "logit": 10.083459854125977,
+              "token_id": 2116
+            }
+          ]
+        },
+        "never": {
+          "any_minus_some": 5.660612106323242,
+          "any_probability": 0.6578926090549482,
+          "some_probability": 0.0022897201470249576,
+          "top_five": [
+            {
+              "logit": 14.216292381286621,
+              "token_id": 2151
+            },
+            {
+              "logit": 12.815740585327148,
+              "token_id": 2593
+            },
+            {
+              "logit": 11.48686408996582,
+              "token_id": 2028
+            },
+            {
+              "logit": 10.951193809509277,
+              "token_id": 2035
+            },
+            {
+              "logit": 10.893731117248535,
+              "token_id": 2116
+            }
+          ]
+        },
+        "not": {
+          "any_minus_some": 5.161145210266113,
+          "any_probability": 0.6785525247196287,
+          "some_probability": 0.0038915855812290388,
+          "top_five": [
+            {
+              "logit": 14.347026824951172,
+              "token_id": 2151
+            },
+            {
+              "logit": 12.368242263793945,
+              "token_id": 2593
+            },
+            {
+              "logit": 11.811012268066406,
+              "token_id": 2035
+            },
+            {
+              "logit": 11.760364532470703,
+              "token_id": 2116
+            },
+            {
+              "logit": 11.371637344360352,
+              "token_id": 2087
+            }
+          ]
+        }
+      },
+      "case_id": "negation-08",
+      "clean_margins": {
+        "also": -6.074986457824707,
+        "just": -3.2979416847229004,
+        "never": 5.660612106323242,
+        "not": 5.161145210266113
+      },
+      "directional_score": 0.3289523124694824,
+      "distances": [
+        {
+          "distance": 17.039743070715367,
+          "left": "not",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.1937541622533974,
+          "left": "not",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.015177683793665,
+          "left": "not",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.741635873331328,
+          "left": "not",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.760279998724346,
+          "left": "never",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.0934563634885217,
+          "left": "never",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 1.9957139099959775,
+          "left": "never",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.3782794557758065,
+          "left": "never",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.441693112365893,
+          "left": "also",
+          "right": "just",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.4786374618979337,
+          "left": "also",
+          "right": "just",
+          "site": "object2"
+        },
+        {
+          "distance": 2.490485416257575,
+          "left": "also",
+          "right": "just",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.26687741488169,
+          "left": "also",
+          "right": "just",
+          "site": "cue5"
+        },
+        {
+          "distance": 16.909179008672048,
+          "left": "also",
+          "right": "not",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.536980562033727,
+          "left": "also",
+          "right": "not",
+          "site": "object2"
+        },
+        {
+          "distance": 2.587029399180086,
+          "left": "also",
+          "right": "not",
+          "site": "mask2"
+        },
+        {
+          "distance": 5.80621054302194,
+          "left": "also",
+          "right": "not",
+          "site": "cue5"
+        },
+        {
+          "distance": 17.27336683264661,
+          "left": "also",
+          "right": "never",
+          "site": "cue2"
+        },
+        {
+          "distance": 1.485759576197743,
+          "left": "also",
+          "right": "never",
+          "site": "object2"
+        },
+        {
+          "distance": 2.657876143792509,
+          "left": "also",
+          "right": "never",
+          "site": "mask2"
+        },
+        {
+          "distance": 6.003854908420341,
+          "left": "also",
+          "right": "never",
+          "site": "cue5"
+        }
+      ],
+      "effects": {
+        "cue2": [
+          {
+            "delta": 0.6355538368225098,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": -0.07480239868164062,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.5583968162536621,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.04705619812011719,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.12355518341064453,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.016685962677001953,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.09895515441894531,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.0885305404663086,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "cue5": [
+          {
+            "delta": 0.0,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.0,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": 0.0,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "mask2": [
+          {
+            "delta": 0.18927812576293945,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": -0.003322601318359375,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.26430654525756836,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.1406259536743164,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.1143031120300293,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": 0.018094539642333984,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": -0.02290821075439453,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": -0.11384773254394531,
+            "donor": "also",
+            "target": "never"
+          }
+        ],
+        "object2": [
+          {
+            "delta": -0.052883148193359375,
+            "donor": "not",
+            "target": "just"
+          },
+          {
+            "delta": 0.02326488494873047,
+            "donor": "just",
+            "target": "not"
+          },
+          {
+            "delta": 0.009988784790039062,
+            "donor": "never",
+            "target": "just"
+          },
+          {
+            "delta": -0.043921470642089844,
+            "donor": "just",
+            "target": "never"
+          },
+          {
+            "delta": -0.01729106903076172,
+            "donor": "also",
+            "target": "just"
+          },
+          {
+            "delta": -0.0037755966186523438,
+            "donor": "just",
+            "target": "also"
+          },
+          {
+            "delta": 0.04842090606689453,
+            "donor": "also",
+            "target": "not"
+          },
+          {
+            "delta": 0.00022792816162109375,
+            "donor": "also",
+            "target": "never"
+          }
+        ]
+      },
+      "forwards": 56,
+      "radius": 1.0934563634885217,
+      "split": "evaluation"
+    }
+  ],
+  "cpu_environment": {
+    "ATEN_CPU_CAPABILITY": {
+      "present": false,
+      "value": null
+    },
+    "MKL_CBWR": {
+      "present": false,
+      "value": null
+    }
+  },
+  "cpu_interop_threads": 1,
+  "cpu_threads": 1,
+  "cuda_initialized": false,
+  "directional_prediction": {
+    "mean": 0.2543242772420247,
+    "passed": true,
+    "positive_cases": 6
+  },
+  "evaluation_cases": [
+    "negation-03",
+    "negation-04",
+    "negation-05",
+    "negation-06",
+    "negation-07",
+    "negation-08"
+  ],
+  "events_sha256": "a67b5ea0ab7d4f7078bab57ad315f9bcf90302be674e8723c05c0785a011ccd1",
+  "forwards": 448,
+  "seed": 2026102901,
+  "source_commit": "c72d120e4c22a56a9eda051893430631fb963c70",
+  "source_sha256": {
+    "docs/BERT_NEGATION_CUE_V1.md": "624210b55973b79b421256481da231b3c7ae5268ef43c9fd8d30f6b6caf5d96d",
+    "experiments/bert_negation_public_cases_v1.json": "4308e7977e36eb731948193cce27ffa399421bf1bd8bbdd4e42dfa7cc6f4a8ff",
+    "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+    "looking_glass/bert_negation_cue.py": "2757bd3d7d694dec5a62e4c8e9fc03aae53150d522e5132b77f636ccbda8a6e4",
+    "looking_glass/intervention_plan.py": "6470676938e73e48234128c30ba1d10a49104ee8513434871bc6e973c55d6120",
+    "looking_glass/interventions.py": "71cbcf4776660d2dd883b82815f710b0c909228fd1762504f9e3f984f7f6c60f",
+    "looking_glass/model_ownership.py": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434",
+    "scripts/bert_negation_cue_v1.py": "7580c4041901a567f2693c8609b939984ed5632afa30ac297af0f463c4c5e204"
+  },
+  "state_sha256_after": "84674089888792ad95664f2da1d459bca17b47bdcf50a045fdb83cf0774c96b7",
+  "state_sha256_before": "84674089888792ad95664f2da1d459bca17b47bdcf50a045fdb83cf0774c96b7",
+  "status": "complete",
+  "tokenizer": {
+    "any_id": 2151,
+    "rows": 32,
+    "some_id": 2070
+  },
+  "versions": {
+    "numpy": "2.4.6",
+    "safetensors": "0.8.0",
+    "tokenizers": "0.22.2",
+    "torch": "2.8.0+cu128",
+    "transformers": "4.57.3"
+  }
+}
