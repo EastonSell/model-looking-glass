@@ -67,6 +67,11 @@ CPU/offline environment and launches the child with `-I -B -X pycache_prefix`.
 It waits for the direct child and records its exit, source recheck, prefix state
 and saved result/journal digests. It is not a whole-process-tree supervisor; a
 trusted exclusive environment and unchanged dependencies remain preconditions.
+On Windows a virtual-environment executable can be a redirector, so the direct
+child can be a launcher while the model interpreter is its descendant. A
+timeout, interruption, or otherwise uncertain cleanup requires separate
+confirmation that all relevant processes have exited before further work; the
+receipt does not itself establish whole-tree cleanup, even on success.
 The child also checks selected source bytes after its imports and at the end.
 Neither set of checks attests all dependencies or proves execution or
 publication chronology. No download or GPU is used.
