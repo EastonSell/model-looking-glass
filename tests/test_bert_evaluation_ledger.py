@@ -30,11 +30,9 @@ def record_controller_exit(root, expected_root_sha256, run_id, binding, exit_cod
 
 class EvaluationLedgerTest(unittest.TestCase):
     def setUp(self):
-        work = Path(__file__).resolve().parents[3]
-        self.tmp = tempfile.TemporaryDirectory(prefix='bert-ledger-test-', dir=work)
+        self.tmp = tempfile.TemporaryDirectory(prefix='bert-ledger-test-')
         self.addCleanup(self.tmp.cleanup)
         self.root, self.identity = root_identity(Path(self.tmp.name).resolve())
-        self.assertTrue(self.root.is_relative_to(work))
         from looking_glass import bert_agreement_study
         manifest = build_manifest()
         rows = [{'row_id': row['row_id'], 'input_ids': row['input_ids'], 'attention_mask': row['attention_mask']}

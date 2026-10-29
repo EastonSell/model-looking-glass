@@ -20,11 +20,9 @@ from looking_glass.bert_evaluation_ledger import (EvaluationLedger, read_record,
 
 class CpuEvaluationIntegrationTest(unittest.TestCase):
     def setUp(self):
-        work = Path(__file__).resolve().parents[3]
-        self.tmp = tempfile.TemporaryDirectory(prefix='bert-evaluation-test-', dir=work)
+        self.tmp = tempfile.TemporaryDirectory(prefix='bert-evaluation-test-')
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name).resolve()
-        self.assertTrue(self.root.is_relative_to(work))
         self.repo, self.cache = self.root / 'repo', self.root / 'cache'
         self.ledger_root, self.custody = self.root / 'ledger', self.root / 'custody'
         self.controller_custody = self.root / 'controller-custody'

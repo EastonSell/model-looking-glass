@@ -91,7 +91,7 @@ def run():
             return True
         return False
 
-    with tempfile.TemporaryDirectory(prefix='bert-synthetic-audit-', dir=repo.parents[1]) as temporary:
+    with tempfile.TemporaryDirectory(prefix='bert-synthetic-audit-') as temporary:
         path = Path(temporary) / 'synthetic-events.jsonl'
         write(path, families)
         observed = audit(path)
