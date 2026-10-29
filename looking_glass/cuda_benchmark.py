@@ -28,6 +28,9 @@ import zipfile
 
 PROTOCOL = "cuda-isolated-v1"
 MODES = ("none", "id", "direct", "gradient")
+# The exact eight-token trace workload needs independently reviewed resource
+# admission. A two-token untraced service profile cannot authorize this run.
+GPU_BENCHMARK_ADMISSION_READY = False
 _PROCESS_LEASES = []
 _GPU_UUID = re.compile(r"GPU-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE)
 
@@ -649,6 +652,8 @@ def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
     _validate_owner_session(owner_session)
     if (progress.get("cpu_preflight") or {}).get("source_bundle_sha256") != hashlib.sha256(bundle).hexdigest():
         raise RuntimeError("CPU preflight and GPU owner source bundles differ")
+    if not GPU_BENCHMARK_ADMISSION_READY:
+        raise RuntimeError("reviewed GPU admission for the eight-token trace workload is not available")
     lease = _acquire_device_lease(lease_path, lease_timeout)
     lease.check()
     owner_session.check(lease)
@@ -952,7 +957,7 @@ def publish_supervised_outcome(output_dir, supervision):
 
 def run_benchmark(output_dir, quick=False, exclusive=False, cache_dir=None,
                   lease_path=None, lease_timeout=30, candidate_only=False, owner_session=None,
-                  cpu_preflight=None, parent_run_id=None):
+                  cpu_preflight=None, parent_run_id=None, preflight_sha256=None):
     """Create a new evidence directory and retain a record if evaluation fails."""
     output_dir = Path(output_dir)
     if parent_run_id is None:
@@ -960,13 +965,16 @@ def run_benchmark(output_dir, quick=False, exclusive=False, cache_dir=None,
     else:
         if not candidate_only or owner_session is None or output_dir.is_symlink() or not output_dir.is_dir():
             raise RuntimeError("only a supervised owner can use a parent-created run directory")
-        if {path.name for path in output_dir.iterdir()} != {"parent_started.json"}:
+        if {path.name for path in output_dir.iterdir()} != {"parent_started.json", "cpu_preflight.json"}:
             raise RuntimeError("parent-created run directory has unexpected contents")
         parent = json.loads((output_dir / "parent_started.json").read_text(encoding="utf-8"))
         if (parent.get("protocol") != PROTOCOL or parent.get("status") != "parent_started"
                 or parent.get("parent_run_id") != parent_run_id
                 or parent.get("pid") != getattr(owner_session, "supervisor_pid", None)):
             raise RuntimeError("parent-created run evidence does not match the supervised owner")
+        stored = _read_cpu_preflight(output_dir / "cpu_preflight.json", preflight_sha256)
+        if stored != _public_evidence(cpu_preflight):
+            raise RuntimeError("stored CPU preflight differs from the owner input")
     owner = {"run_id": getattr(owner_session, "run_id", None), "pid": os.getpid()}
     progress = {"raw": [], "metadata": {}, "source_bundle": None, "telemetry": None,
                 "cpu_preflight": cpu_preflight,
@@ -1126,14 +1134,37 @@ def _run_cpu_preflight(cache_dir, timeout=180):
     return report
 
 
-def _launch_supervised_owner(output, *, identity, cache_dir, cpu_preflight, parent_run_id,
+def _read_cpu_preflight(path, digest):
+    """Read bounded preflight evidence only when its exact bytes match."""
+    path = Path(path)
+    if (not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+            or path.is_symlink() or not path.is_file()):
+        raise ValueError("invalid CPU preflight file or hash")
+    with path.open("rb") as handle:
+        content = handle.read(2 * 1024 * 1024 + 1)
+    if len(content) > 2 * 1024 * 1024:
+        raise ValueError("CPU preflight evidence exceeds its size limit")
+    if hashlib.sha256(content).hexdigest() != digest:
+        raise ValueError("CPU preflight evidence hash mismatch")
+    try:
+        result = json.loads(content)
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise ValueError("invalid CPU preflight evidence") from exc
+    if not isinstance(result, dict):
+        raise ValueError("CPU preflight evidence must be an object")
+    return result
+
+
+def _launch_supervised_owner(output, *, identity, cache_dir, preflight_sha256, parent_run_id,
                              quick, exclusive, lease_timeout, timeout):
+    if not GPU_BENCHMARK_ADMISSION_READY:
+        raise RuntimeError("reviewed GPU admission for the eight-token trace workload is not available")
     from .supervisor import run_supervised
 
     arguments = ["--_owner", "--output", str(output), "--cache-dir", str(cache_dir),
                  "--lease-timeout", str(lease_timeout),
                  "--_parent-run-id", parent_run_id,
-                 "--_preflight-json", json.dumps(cpu_preflight, separators=(",", ":"))]
+                 "--_preflight-sha256", preflight_sha256]
     if quick:
         arguments.append("--quick")
     if exclusive:
@@ -1193,16 +1224,32 @@ def run_supervised_benchmark(output, *, workspace_root, cache_dir, quick=False, 
         source, _ = create_source_bundle(Path(__file__).resolve().parent.parent)
         if cpu_preflight.get("source_bundle_sha256") != hashlib.sha256(source).hexdigest():
             raise RuntimeError("CPU preflight source changed before GPU owner launch")
+        encoded = (json.dumps(_public_evidence(cpu_preflight), indent=2, allow_nan=False) + "\n").encode("utf-8")
+        if len(encoded) > 2 * 1024 * 1024:
+            raise RuntimeError("CPU preflight evidence exceeds its size limit")
+        preflight_path = output / "cpu_preflight.json"
+        _write_bytes(preflight_path, encoded)
+        if (output / "cpu_preflight.json.partial").exists():
+            raise RuntimeError("CPU preflight publication left scratch; GPU owner was not launched")
+        preflight_sha256 = hashlib.sha256(encoded).hexdigest()
+        _read_cpu_preflight(preflight_path, preflight_sha256)
     except BaseException as exc:
         try:
             _record_parent_failure(output, "cpu_preflight", exc)
         except Exception as recording_error:
             raise exc from recording_error
         raise
+    if not GPU_BENCHMARK_ADMISSION_READY:
+        exc = RuntimeError("reviewed GPU admission for the eight-token trace workload is not available")
+        try:
+            _record_parent_failure(output, "gpu_admission", exc)
+        except Exception as recording_error:
+            raise exc from recording_error
+        raise exc
     try:
         identity, _ = resolve_benchmark_identity(workspace_root, shutil.which("nvidia-smi"))
         supervision = _launch_supervised_owner(output, identity=identity, cache_dir=cache_dir,
-            cpu_preflight=cpu_preflight, parent_run_id=parent_run_id, quick=quick, exclusive=exclusive,
+            preflight_sha256=preflight_sha256, parent_run_id=parent_run_id, quick=quick, exclusive=exclusive,
             lease_timeout=lease_timeout, timeout=timeout)
     except BaseException as exc:
         if not (output / "started.json").exists():
@@ -1220,11 +1267,12 @@ def _owner_main(args):
     session = OwnerSession.from_environment()
     exit_code = 0
     try:
-        preflight = json.loads(args._preflight_json)
+        preflight = _read_cpu_preflight(args.output / "cpu_preflight.json", args._preflight_sha256)
         run_benchmark(args.output, quick=args.quick, exclusive=args.exclusive,
             cache_dir=args.cache_dir, lease_path=session.device_lease_path,
             lease_timeout=args.lease_timeout, candidate_only=True, owner_session=session,
-            cpu_preflight=preflight, parent_run_id=args._parent_run_id)
+            cpu_preflight=preflight, parent_run_id=args._parent_run_id,
+            preflight_sha256=args._preflight_sha256)
     except BaseException as exc:
         exit_code = 130 if isinstance(exc, KeyboardInterrupt) else 1
         print("Owner experiment failed: " + _public_evidence(str(exc)), file=sys.stderr)
@@ -1251,14 +1299,14 @@ def main():
     parser.add_argument("--timeout", type=float, default=1800, help="owner process timeout in seconds")
     parser.add_argument("--_cpu-preflight", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--_owner", action="store_true", help=argparse.SUPPRESS)
-    parser.add_argument("--_preflight-json", help=argparse.SUPPRESS)
+    parser.add_argument("--_preflight-sha256", help=argparse.SUPPRESS)
     parser.add_argument("--_parent-run-id", help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args._cpu_preflight:
         print(json.dumps(_cpu_preflight(args.cache_dir), separators=(",", ":")))
         return 0
     if args._owner:
-        if args.output is None or args._preflight_json is None or args._parent_run_id is None:
+        if args.output is None or args._preflight_sha256 is None or args._parent_run_id is None:
             parser.error("owner needs output, parent run ID and preflight evidence")
         return _owner_main(args)
     if args.output is None or args.workspace_root is None:

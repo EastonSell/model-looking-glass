@@ -1,4 +1,5 @@
 import importlib.util
+import threading
 import unittest
 
 import torch
@@ -25,6 +26,42 @@ class Doubler(nn.Module):
 
 
 class InterventionTests(unittest.TestCase):
+    def test_repeated_entry_does_not_clear_an_active_patch_or_delta(self):
+        from looking_glass.interventions import ActivationIntervention
+        for operation in ('patch', 'add'):
+            with self.subTest(operation=operation):
+                model = nn.Sequential(nn.Identity())
+                session = ActivationIntervention(model, '0', operation=operation,
+                                                 value=torch.tensor([[8., 9.]]))
+                with session:
+                    with self.assertRaisesRegex(RuntimeError, 'single-use'):
+                        session.__enter__()
+                    result = model(torch.tensor([[1., 2.]]))
+                expected = torch.tensor([[8., 9.]]) if operation == 'patch' else torch.tensor([[9., 11.]])
+                self.assertTrue(torch.equal(result, expected))
+
+    def test_rejected_foreign_exit_preserves_source_until_owner_cleanup(self):
+        from looking_glass.interventions import ActivationIntervention
+        model = nn.Sequential(nn.Identity())
+        session = ActivationIntervention(model, '0', operation='patch',
+                                         value=torch.tensor([[8., 9.]]))
+        errors = []
+        def foreign_exit():
+            try:
+                session.__exit__(None, None, None)
+            except BaseException as error:
+                errors.append(error)
+        with self.assertRaisesRegex(RuntimeError, 'already invalid'):
+            with session:
+                worker = threading.Thread(target=foreign_exit)
+                worker.start()
+                worker.join(timeout=5)
+                self.assertFalse(worker.is_alive())
+                self.assertEqual(len(errors), 1)
+                self.assertIsNotNone(session._source)
+                model(torch.ones(1, 2))
+        self.assertIsNone(session._source)
+
     def test_capture_selected_token_from_second_module_invocation(self):
         self.assertIsNotNone(importlib.util.find_spec('looking_glass.interventions'),
                              'the intervention API must exist')

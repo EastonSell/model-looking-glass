@@ -172,6 +172,56 @@ class OwnerLaunchTests(unittest.TestCase):
             launch.assert_not_called()
             self.assertEqual(json.loads((output / "failure.json").read_text())["stage"], "cpu_preflight")
 
+    def test_gpu_launch_remains_disabled_without_reviewed_workload_admission(self):
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / "run"
+            source, _ = bench.create_source_bundle(Path(bench.__file__).resolve().parent.parent)
+            report = {"source_bundle_sha256": hashlib.sha256(source).hexdigest()}
+            with patch.object(bench, "_run_cpu_preflight", return_value=report), \
+                 patch.object(bench, "resolve_benchmark_identity") as identity, \
+                 patch.object(bench, "_launch_supervised_owner") as launch:
+                with self.assertRaisesRegex(RuntimeError, "admission"):
+                    bench.run_supervised_benchmark(output, workspace_root=Path(root),
+                                                   cache_dir=Path(root) / "cache")
+            identity.assert_not_called()
+            launch.assert_not_called()
+            self.assertEqual(json.loads((output / "failure.json").read_text())["stage"], "gpu_admission")
+            self.assertEqual(json.loads((output / "cpu_preflight.json").read_text()), report)
+            self.assertIn("cpu_preflight.json", json.loads((output / "failure.json").read_text())["artifact_inventory"])
+            self.assertTrue(bench.verify_artifact_inventory(output))
+
+    def test_preflight_file_hash_detects_tampering_and_bad_size(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "cpu_preflight.json"
+            bench._write_json(path, {"checks": "ok"})
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            self.assertEqual(bench._read_cpu_preflight(path, digest), {"checks": "ok"})
+            path.write_text('{"checks":"tampered"}')
+            with self.assertRaisesRegex(ValueError, "hash"):
+                bench._read_cpu_preflight(path, digest)
+            path.write_bytes(b" " * (2 * 1024 * 1024 + 1))
+            with self.assertRaisesRegex(ValueError, "size"):
+                bench._read_cpu_preflight(path, hashlib.sha256(path.read_bytes()).hexdigest())
+
+    def test_owner_rechecks_preflight_bytes_before_writing_started_record(self):
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / "run"
+            output.mkdir()
+            bench._write_json(output / "parent_started.json", {"protocol": bench.PROTOCOL,
+                "status": "parent_started", "parent_run_id": "run", "pid": os.getpid()})
+            path = output / "cpu_preflight.json"
+            bench._write_json(path, {"checks": "ok"})
+            original_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+            path.write_text(' { "checks": "ok" } ')
+            owner = SimpleNamespace(run_id="owner", supervisor_pid=os.getpid())
+            with patch.object(bench, "_evaluate") as evaluate:
+                with self.assertRaisesRegex(ValueError, "hash"):
+                    bench.run_benchmark(output, candidate_only=True, owner_session=owner,
+                        parent_run_id="run", cpu_preflight={"checks": "ok"},
+                        preflight_sha256=original_hash)
+            evaluate.assert_not_called()
+            self.assertFalse((output / "started.json").exists())
+
 
 class ScheduleTests(unittest.TestCase):
     def test_preflight_rejects_missing_location_replaced_by_second_invocation(self):
@@ -754,11 +804,28 @@ bench.run_benchmark(sys.argv[1], quick=True)
 
 @unittest.skipUnless(torch is not None, "PyTorch is not installed")
 class EquivalenceTests(unittest.TestCase):
+    def test_owner_gpu_admission_gate_stops_before_device_lease(self):
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / "new"
+            source, _ = bench.create_source_bundle(Path(bench.__file__).resolve().parent.parent)
+            owner = SimpleNamespace(run_id="fixture")
+            with patch.object(bench, "_validate_owner_session"), \
+                 patch.object(bench, "_acquire_device_lease") as acquire, \
+                 patch.object(torch.cuda, "is_available") as cuda_available:
+                with self.assertRaisesRegex(RuntimeError, "admission"):
+                    bench.run_benchmark(output, quick=True, cache_dir=root,
+                        lease_path=Path(root) / "device.lock", candidate_only=True,
+                        owner_session=owner,
+                        cpu_preflight={"source_bundle_sha256": hashlib.sha256(source).hexdigest()})
+            acquire.assert_not_called()
+            cuda_available.assert_not_called()
+
     def test_owner_source_drift_is_rejected_before_lease_or_cuda(self):
         with tempfile.TemporaryDirectory() as root:
             output = Path(root) / "new"
             owner = SimpleNamespace(run_id="fixture")
-            with patch.object(bench, "_validate_owner_session"), \
+            with patch.object(bench, "GPU_BENCHMARK_ADMISSION_READY", True), \
+                 patch.object(bench, "_validate_owner_session"), \
                  patch.object(bench, "_acquire_device_lease") as acquire, \
                  patch.object(torch.cuda, "is_available") as cuda_available:
                 with self.assertRaisesRegex(RuntimeError, "source"):
@@ -786,7 +853,8 @@ class EquivalenceTests(unittest.TestCase):
             owner = SimpleNamespace(run_id="fixture", check=lambda lease: None,
                                     identity=None, device_lease_path=lease_path)
             source, _ = bench.create_source_bundle(Path(bench.__file__).resolve().parent.parent)
-            with patch.object(bench, "_validate_owner_session"), \
+            with patch.object(bench, "GPU_BENCHMARK_ADMISSION_READY", True), \
+                 patch.object(bench, "_validate_owner_session"), \
                  patch.object(bench, "_acquire_device_lease"), \
                  patch.object(torch.cuda, "is_available") as cuda_available:
                 with self.assertRaisesRegex(RuntimeError, "identity"):
@@ -801,7 +869,8 @@ class EquivalenceTests(unittest.TestCase):
             owner = SimpleNamespace(run_id="fixture-owner", check=lambda lease: None,
                                     identity=object(), device_lease_path=Path(root) / "device.lock")
             source, _ = bench.create_source_bundle(Path(bench.__file__).resolve().parent.parent)
-            with patch.object(torch.cuda, "is_available", return_value=False), \
+            with patch.object(bench, "GPU_BENCHMARK_ADMISSION_READY", True), \
+                 patch.object(torch.cuda, "is_available", return_value=False), \
                  patch.object(bench, "_acquire_device_lease") as acquire, \
                  patch.object(bench, "_validate_owner_session"):
                 with self.assertRaisesRegex(RuntimeError, "CUDA"):
