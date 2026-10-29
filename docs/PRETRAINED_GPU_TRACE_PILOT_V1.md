@@ -64,6 +64,10 @@ guarded synchronization, model/session disposal and a clean supervisor
 attestation are required. An exception, OOM, cancellation, failed check or
 uncertain exit preserves bounded partial records and known live roots, leaves
 the unsafe marker when cleanup is unverified, and is not retried automatically.
+Any separately authorized successor attempt requires a new output directory,
+qualified resolution of the prior marker and owner, reviewed fixed source and
+a fresh scheduled admission. Preserve the earlier incomplete record; it is
+not a measurement or evidence of successful cleanup.
 The observer and controller use the direct base interpreter. Before controller
 work, the child verifies the parent and child IDs carried by a private launch
 pipe and writes an identity receipt; the observer records whether that receipt

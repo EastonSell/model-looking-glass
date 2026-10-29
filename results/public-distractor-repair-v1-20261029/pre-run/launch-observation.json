@@ -1,0 +1,22 @@
+{
+  "checkpoint_stage_empty": true,
+  "coordinator_reports": "The causal, copying, agreement-head, localization and cross-model lanes reported no newly forwarded DistilGPT-2 inputs outside v39 in their respective lanes. The fixed invariant-noun and copy-behavior proposals were reported unforwarded and compared separately.",
+  "discovery_prefix_empty": true,
+  "fresh_free_bytes": {
+    "cache": 1828102144,
+    "output": 388756463616,
+    "source": 1828024320
+  },
+  "latest_exposure_canonical_sha256": "5e593d1b5a0ac35aba2791cd5eafe7114f7e93ba4bb1c90706e385d2fab0cadc",
+  "latest_exposure_module_blob": "22020b9c4d463a347b70aeb0265a33d6c054e645",
+  "latest_exposure_version": "distilgpt2-development-exposures-v39",
+  "main_advance_from_card": "one README-only commit",
+  "observed_main": "ed88bd1637e95125e7a1b838fe8b9a457d4a2d12",
+  "observed_utc": "2026-10-29T12:41:30.864005+00:00",
+  "pre_run_public_head": "6e7d4414c100f60460221244c8072babc3502ffc",
+  "pre_run_sha256": "3cffd5c7ebedc35506fc2c64a14d00eb8a5dd8c4f9c94d59446c00c1943cb33f",
+  "schema": "public-distractor-repair-launch-observation-v1",
+  "scope": "Point-in-time public and cooperating-lane observation, not proof of unknown external/pretraining or private split exposure; direct execution is not independently attested.",
+  "source_and_dependency_sha256s_match_pre_run": true,
+  "v40_through_v49_modules_present": false
+}
