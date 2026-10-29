@@ -81,6 +81,43 @@ class ServiceProcessConfigTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'imported before owner acquisition'):
                 child._owner(config)
 
+    def test_preloaded_hub_with_stale_home_fails_before_owner_acquisition(self):
+        # The hub caches HF_HOME at import; changing os.environ afterward
+        # does not change its effective cache configuration.
+        program = r'''
+import os, sys
+from pathlib import Path
+from unittest.mock import patch
+sys.path.extend((sys.argv[1], sys.argv[2]))
+os.environ['HF_HOME'] = sys.argv[4]
+import huggingface_hub.constants as constants
+assert Path(constants.HF_HOME).resolve() == Path(sys.argv[4]).resolve()
+os.environ['HF_HOME'] = sys.argv[5]
+assert Path(constants.HF_HOME).resolve() != Path(os.environ['HF_HOME']).resolve()
+assert 'torch' not in sys.modules and 'transformers' not in sys.modules
+from looking_glass import gpu_service_process as child, two_token_service as service
+config = child._parse_config(Path(sys.argv[3]).read_bytes())
+with patch.object(service, '_check_owner_contract') as gate:
+    try:
+        child._owner(config)
+    except RuntimeError as exc:
+        assert 'imported before owner acquisition' in str(exc)
+    else:
+        raise AssertionError('preloaded Hub was accepted')
+    gate.assert_not_called()
+'''
+        path = self.root / 'config.json'
+        path.write_bytes(self.data())
+        old_home, new_home = self.root / 'old-hf-home', self.root / 'new-hf-home'
+        old_home.mkdir()
+        new_home.mkdir()
+        repo = Path(__file__).resolve().parents[1]
+        outcome = subprocess.run([sys._base_executable, '-B', '-S', '-P', '-c', program,
+                                  str(repo), sysconfig.get_paths()['purelib'], str(path),
+                                  str(old_home), str(new_home)],
+                                 cwd=self.root, capture_output=True, text=True, timeout=15)
+        self.assertEqual(outcome.returncode, 0, outcome.stderr)
+
     def test_owner_contract_gate_precedes_lease_and_torch_import(self):
         program = r'''
 import sys
@@ -99,6 +136,38 @@ with patch.object(service, '_check_owner_contract', side_effect=RuntimeError('mi
     else:
         raise AssertionError('owner gate was bypassed')
     owner.assert_not_called()
+assert 'torch' not in sys.modules and 'transformers' not in sys.modules
+'''
+        path = self.root / 'config.json'
+        path.write_bytes(self.data())
+        repo = Path(__file__).resolve().parents[1]
+        outcome = subprocess.run([sys._base_executable, '-B', '-S', '-P', '-c', program,
+                                  str(repo), sysconfig.get_paths()['purelib'], str(path)],
+                                 cwd=self.root, capture_output=True, text=True, timeout=15)
+        self.assertEqual(outcome.returncode, 0, outcome.stderr)
+
+    def test_missing_completion_contract_blocks_child_before_owner(self):
+        program = r'''
+import sys
+from dataclasses import replace
+from pathlib import Path
+from unittest.mock import patch
+sys.path.extend((sys.argv[1], sys.argv[2]))
+from looking_glass import gpu_service_process as child, two_token_service as service
+from looking_glass.device_lease import DeviceLease
+from looking_glass.supervisor import OwnerSession
+config = replace(child._parse_config(Path(sys.argv[3]).read_bytes()), repo_root=Path(sys.argv[1]))
+with patch.object(service._owner_module, 'OWNER_COMPLETION_CUSTODY_CONTRACT', None, create=True), \
+     patch.object(OwnerSession, 'from_environment') as owner, \
+     patch.object(DeviceLease, 'acquire') as lease:
+    try:
+        child._owner(config)
+    except RuntimeError as exc:
+        assert 'completion custody' in str(exc)
+    else:
+        raise AssertionError('missing completion contract was accepted')
+    owner.assert_not_called()
+    lease.assert_not_called()
 assert 'torch' not in sys.modules and 'transformers' not in sys.modules
 '''
         path = self.root / 'config.json'

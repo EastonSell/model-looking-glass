@@ -43,6 +43,15 @@ python -m looking_glass.reproduce results/verified-cpu-v1 --source-dir ../histor
 
 The destination must not already exist. The verifier hashes actual checkout bytes; line-ending conversion can produce a mismatch even when the underlying Git blob matches. The command disables automatic CRLF conversion for this checkout. This is a byte comparison to the published snapshot; it does not recreate or independently rerun the historical local commit.
 
+## Existing checkouts with CRLF conversion
+
+The repository's `results/.gitattributes` preserves committed result bytes in
+new or refreshed checkouts. A checkout created before that rule with
+`core.autocrlf=true` can retain CRLF files and show them as modified after an
+update. Inspect each affected file and compare it with the committed version;
+preserve any intended local changes before selectively restoring that file.
+Do not assume every modified result contains only line-ending changes.
+
 ## Limits of replay
 
 The recorded environment identifies Linux, Python 3.12.14 and PyTorch 2.15.0+cpu, with CPU float32 and one intra-op thread; it does not record the CPU model, full OS image, complete dependency artifacts, scheduler state or concurrent host activity. The present Windows environment is different. Exact historical timing replay is therefore not established, and even a fresh same-version run on another host would not reproduce the old wall-clock samples. The original initial-run `experiment.py` is not available in the checked-out snapshot, so its original source cannot currently be independently replayed from this checkout. Matching final-run source bytes are useful for reconstruction, but no independent full run was performed in this audit.

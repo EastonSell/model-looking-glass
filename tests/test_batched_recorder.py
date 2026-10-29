@@ -118,6 +118,20 @@ def test_non_string_keys_are_rejected_before_any_hash_collision_callback():
     assert _seal(recorder)['lost_invalid'] == 1
 
 
+@pytest.mark.parametrize('identifier', ['ascii-identifier', 'é', '\U0001f4a1', 'a\n\t'])
+def test_ascii_and_valid_unicode_are_preserved(identifier):
+    recorder = BatchedEventRecorder()
+    assert recorder.record({'kind': 'selected', 'time_ns': 1, 'job_id': identifier})
+    assert _seal(recorder)['events'][0]['job_id'] == identifier
+
+
+@pytest.mark.parametrize('identifier', ['ascii\ud800', 'é\ud800', '\U0001f4a1\udfff'])
+def test_surrogates_are_rejected_even_in_mixed_unicode(identifier):
+    recorder = BatchedEventRecorder()
+    assert not recorder.record({'kind': 'selected', 'time_ns': 1, 'job_id': identifier})
+    assert _seal(recorder)['lost_invalid'] == 1
+
+
 def test_observer_errors_are_sticky_but_regular_failures_do_not_escape(monkeypatch):
     recorder = BatchedEventRecorder()
     event = {'kind': 'selected', 'time_ns': 1, 'job_id': 'j'}

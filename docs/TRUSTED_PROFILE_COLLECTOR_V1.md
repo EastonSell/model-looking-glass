@@ -10,7 +10,9 @@ estimate with predeclared margins, not a guarantee against future OOM.
 
 `run_supervised_collector` requires a clean detached checkout, a verified
 offline checkpoint, a common physical-device workspace, a trusted environment
-and a private evidence directory outside the checkout. It uses the shared
+and a private evidence directory outside the checkout. Its explicit HF home
+must contain the offline checkpoint cache, and the fixed launcher supplies that
+same home to the owner. It uses the shared
 fixed launcher and identity-aware supervisor. Collection and the subsequent
 service must execute from the same frozen checkout path and environment;
 source, dependency, runtime or configuration changes can invalidate the keys.
@@ -18,13 +20,18 @@ Both parent and child require the reviewed gated, rooted child-launch custody
 contract before attempting ownership. The marker identifies the expected
 interface; it does not authenticate arbitrary process code. If native spawn
 ends without a usable child handle, the outcome remains quarantined.
+Before acquiring ownership, the child rejects a preloaded Transformers or
+Hugging Face Hub module, including submodules: the hub caches its home when it
+is imported. The fresh child receives its fixed environment before imports.
 The child reads the parent-pinned configuration bytes before CUDA, holds the
 canonical device lease and verifies the runtime GPU identity. The private
 artifacts contain the GPU UUID and absolute paths and should not be published
 without redaction.
 
-The collector holds a 2 GiB resident commitment and separately admits a
-512 MiB commitment for each sequential forward. It verifies the CPU checkpoint
+The collector holds a 2 GiB resident commitment, then admits one 512 MiB
+forward commitment before the cold forward. Both remain active and rooted for
+all four serialized forwards, cleanup, and clean attestation until process
+exit; the forward claim is not retired between observations. It verifies the CPU checkpoint
 and conversion policy, copies the model, synchronizes, checks tied device
 parameters, synchronizes again, and executes `ResidentWorker.execute` itself.
 The callback constructs the fixed input privately, calculates its actual case
@@ -43,10 +50,19 @@ interrupt between a model conversion call returning and assignment can still
 drop an unrootable temporary: the owner must terminate promptly, and the
 marker cannot be treated as clean in that case.
 
+The dedicated collector runs its GPU operations and sample decisions serially
+on its owner thread; its IPC reader is joined before a sample can complete.
+Owner and sticky-state checks precede output and sample writes and clean
+attestation. These are observations, not an atomic guarantee against an
+unrelated thread changing an unsafe flag after a check. Other code must not
+perform CUDA work or change the owner state concurrently in this process.
+
 After worker shutdown and local disposal, a version-bound PyTorch cuBLAS
 workspace cleanup records the before/after counters. The child requires zero
 current allocated/reserved bytes, publishes a private candidate and attests
-clean while retaining the device lease until process exit. The parent reaps
+clean while retaining the device lease and both memory commitments until
+process exit. The cleanup record includes the active commitment sizes; the
+owner rechecks them immediately before attestation. The parent reaps
 the exact child, verifies artifact hashes, case/seed order, admission policy,
 profile identities and the zero-counter cleanup, and only then publishes a
 success terminal. The three profile IDs still require independent review and

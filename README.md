@@ -80,6 +80,8 @@ The [pretrained intervention smoke](results/distilgpt2-intervention-dev-cpu-v1-2
 
 The [sampled pretrained batch check](results/distilgpt2-batch-cpu-v1-20261028/RESULTS.md) compares serial and two-row outputs on four fixed public CPU cases against a prespecified tolerance, with negative controls and a same-host replay. It does not establish general batch separability or GPU throughput.
 
+The [grouped-broker CPU development replay](results/grouped-broker-cpu-dev-v3/README.md) exercises team routing and serial-versus-grouped logits on those same four cases. It is not independent held-out evidence or a GPU performance result.
+
 The recorded original experiment used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records that run's installed versions; it is not a cross-platform dependency lock. Later experiments record their own environments. To install the original run's PyTorch version in an isolated environment, use `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
 
 Install the test and transformer extras and use pytest to discover both

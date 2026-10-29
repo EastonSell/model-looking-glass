@@ -96,7 +96,7 @@ class TrustedLaunch:
 
 
 def prepare_trusted_launch(*, repo_root, site_packages, environment_root, private_parent,
-                           gpu_uuid, module, config_path, trusted_path, inherited_environment=None):
+                           hf_home, gpu_uuid, module, config_path, trusted_path, inherited_environment=None):
     """Prepare one fixed source-first launch without inheriting runtime knobs.
 
     The configuration contains paths and fixed study settings, never bearer
@@ -108,8 +108,8 @@ def prepare_trusted_launch(*, repo_root, site_packages, environment_root, privat
     if type(gpu_uuid) is not str:
         raise ValueError("physical GPU UUID must be a string")
     gpu_uuid = normalize_gpu_uuid(gpu_uuid)
-    repo, site, env_root, private = map(_directory,
-        (repo_root, site_packages, environment_root, private_parent))
+    repo, site, env_root, private, home = map(_directory,
+        (repo_root, site_packages, environment_root, private_parent, hf_home))
     if not site.is_relative_to(env_root):
         raise ValueError("site-packages is outside the selected environment")
     if type(trusted_path) is not str or not trusted_path:
@@ -138,6 +138,7 @@ def prepare_trusted_launch(*, repo_root, site_packages, environment_root, privat
         "CUDA_DEVICE_ORDER": "PCI_BUS_ID", "PYTORCH_CUDA_ALLOC_CONF": "backend:native",
         "CUBLAS_WORKSPACE_CONFIG": ":4096:8", "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1",
         "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1", "HF_HUB_DISABLE_TELEMETRY": "1",
+        "HF_HOME": str(home),
         "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONHASHSEED": "17",
         "PYTHONPYCACHEPREFIX": str(prefix),
     })

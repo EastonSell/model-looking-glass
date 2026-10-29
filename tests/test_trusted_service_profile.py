@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from looking_glass.memory_budget import CudaMemorySnapshot
 from looking_glass.resource_profile import (MemorySample, MeasuredResourceProfile,
-    ProfileProvenance, ProfileRegistry, encode_evidence)
+    ProfileProvenance, ProfileRegistry, ProfileUnavailable, encode_evidence)
 
 
 GIB = 1024 ** 3
@@ -208,11 +208,12 @@ class TrustedServiceProfileTests(unittest.TestCase):
         def observe(*args): events.append('runtime'); return fake_runtime()
         def dependency(): events.append('transformers'); return transformers
         with patch.object(module, '_guard_owner', side_effect=guard), \
-             patch.object(module, '_checked_environment', return_value={'CUDA_VISIBLE_DEVICES': UUID}), \
+             patch.object(module, '_checked_environment', return_value={'CUDA_VISIBLE_DEVICES': UUID, 'HF_HOME': 'home'}), \
              patch.object(module, 'prepare_trusted_source', return_value=preflight), \
              patch.object(module, '_load_torch', return_value=torch), \
              patch.object(module, '_measure_runtime', side_effect=observe), \
              patch.object(module, '_load_transformers', side_effect=dependency), \
+             patch.object(module, '_effective_hf_settings', return_value={'verified': True}), \
              patch.object(module, '_module_origin', side_effect=lambda mod, name: {'name': name}):
             result = module.build_trusted_service_identity(preflight, identity, object(), object())
         self.assertLess(events.index('runtime'), events.index('transformers'))
@@ -221,6 +222,7 @@ class TrustedServiceProfileTests(unittest.TestCase):
                          hashlib.sha256(result.runtime_manifest).hexdigest())
         self.assertEqual(json.loads(result.source_manifest)['base']['assets'], assets)
         self.assertEqual(json.loads(result.runtime_manifest)['device_uuid'], UUID)
+        self.assertEqual(json.loads(result.runtime_manifest)['effective_huggingface_settings'], {'verified': True})
         with patch.object(module, '_guard_owner'), \
              patch.object(module, '_checked_environment', return_value={}), \
              patch.object(module, 'prepare_trusted_source', return_value=None), \
@@ -230,18 +232,124 @@ class TrustedServiceProfileTests(unittest.TestCase):
 
     def test_runtime_environment_requires_fixed_controls_and_rejects_unknown_overrides(self):
         module = importlib.import_module('looking_glass.trusted_service_profile')
-        required = {'CUDA_VISIBLE_DEVICES': UUID, 'CUDA_DEVICE_ORDER': 'PCI_BUS_ID',
-                    'PYTORCH_CUDA_ALLOC_CONF': 'backend:native', 'CUBLAS_WORKSPACE_CONFIG': ':4096:8',
-                    'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1'}
-        with patch.dict(os.environ, required, clear=True):
-            result = module._checked_environment(UUID)
-            self.assertEqual(result['CUDA_VISIBLE_DEVICES'], UUID)
-            self.assertIsNone(result['CUDA_LAUNCH_BLOCKING'])
-        for change in ({'CUDA_VISIBLE_DEVICES': '0'}, {'OPENBLAS_NUM_THREADS': '2'},
-                       {'CUDA_LAUNCH_BLOCKING': '1'}, {'PYTORCH_ALLOC_CONF': 'backend:native'}):
-            with self.subTest(change=change), patch.dict(os.environ, {**required, **change}, clear=True):
+        with tempfile.TemporaryDirectory() as directory:
+            home = (Path(directory) / 'hf-home').resolve()
+            cache = home / 'hub'
+            cache.mkdir(parents=True)
+            other = (Path(directory) / 'other').resolve()
+            other.mkdir()
+            required = {'CUDA_VISIBLE_DEVICES': UUID, 'CUDA_DEVICE_ORDER': 'PCI_BUS_ID',
+                        'PYTORCH_CUDA_ALLOC_CONF': 'backend:native', 'CUBLAS_WORKSPACE_CONFIG': ':4096:8',
+                        'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1', 'HF_HOME': str(home),
+                        'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
+                        'HF_HUB_DISABLE_TELEMETRY': '1'}
+            with patch.dict(os.environ, required, clear=True):
+                result = module._checked_environment(UUID, str(cache))
+                self.assertEqual(result['CUDA_VISIBLE_DEVICES'], UUID)
+                self.assertEqual(result['HF_HOME'], str(home))
+                for name in ('HF_HUB_OFFLINE', 'TRANSFORMERS_OFFLINE', 'HF_HUB_DISABLE_TELEMETRY'):
+                    self.assertEqual(result[name], '1')
+                self.assertIsNone(result['CUDA_LAUNCH_BLOCKING'])
+                for bad_cache in (str(home), str(home / 'hub' / '..' / 'hub'), 'relative'):
+                    with self.subTest(bad_cache=bad_cache), self.assertRaises(ValueError):
+                        module._checked_environment(UUID, bad_cache)
+            for change in ({'CUDA_VISIBLE_DEVICES': '0'}, {'OPENBLAS_NUM_THREADS': '2'},
+                           {'CUDA_LAUNCH_BLOCKING': '1'}, {'PYTORCH_ALLOC_CONF': 'backend:native'},
+                           {'HF_HOME': ''}, {'HF_HOME': 'relative'},
+                           {'HF_HOME': str(home / 'missing')}, {'HF_HOME': str(other)},
+                           {'HF_HOME': str(home / '..' / 'hf-home')},
+                           {'HF_HUB_OFFLINE': '0'}, {'TRANSFORMERS_OFFLINE': '0'},
+                           {'HF_HUB_DISABLE_TELEMETRY': '0'}, {'HF_HUB_CACHE': str(cache)},
+                           {'HUGGINGFACE_HUB_CACHE': str(cache)}, {'TRANSFORMERS_CACHE': str(cache)}):
+                with self.subTest(change=change), patch.dict(os.environ, {**required, **change}, clear=True):
+                    with self.assertRaises(ValueError):
+                        module._checked_environment(UUID, str(cache))
+            for missing in ('HF_HOME', 'HF_HUB_OFFLINE', 'TRANSFORMERS_OFFLINE',
+                            'HF_HUB_DISABLE_TELEMETRY'):
+                with self.subTest(missing=missing), \
+                     patch.dict(os.environ, {k: v for k, v in required.items() if k != missing}, clear=True):
+                    with self.assertRaises(ValueError):
+                        module._checked_environment(UUID, str(cache))
+
+    def test_mismatched_hf_home_stops_before_torch_or_transformers_import(self):
+        module = importlib.import_module('looking_glass.trusted_service_profile')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            home, cache = root / 'home', root / 'elsewhere' / 'hub'
+            home.mkdir()
+            cache.mkdir(parents=True)
+            preflight = module.TrustedServiceSource(str(root), str(cache), b'source', b'assets', ())
+            identity = SimpleNamespace(gpu_uuid=UUID)
+            env = {'CUDA_VISIBLE_DEVICES': UUID, 'CUDA_DEVICE_ORDER': 'PCI_BUS_ID',
+                   'PYTORCH_CUDA_ALLOC_CONF': 'backend:native', 'CUBLAS_WORKSPACE_CONFIG': ':4096:8',
+                   'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1', 'HF_HOME': str(home),
+                   'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
+                   'HF_HUB_DISABLE_TELEMETRY': '1'}
+            with patch.dict(os.environ, env, clear=True), patch.object(module, '_guard_owner'), \
+                 patch.object(module, 'prepare_trusted_source', side_effect=AssertionError('source scan reached')), \
+                 patch.object(module, '_load_torch', side_effect=AssertionError('torch reached')), \
+                 patch.object(module, '_load_transformers', side_effect=AssertionError('transformers reached')):
                 with self.assertRaises(ValueError):
-                    module._checked_environment(UUID)
+                    module.build_trusted_service_identity(preflight, identity, object(), object())
+
+    def test_effective_hf_settings_reject_cached_import_time_drift(self):
+        module = importlib.import_module('looking_glass.trusted_service_profile')
+        with tempfile.TemporaryDirectory() as directory:
+            home = str(Path(directory).resolve())
+            cache, modules = str(Path(home) / 'hub'), str(Path(home) / 'modules')
+            constants = SimpleNamespace(HF_HOME=home, HF_HUB_CACHE=cache,
+                                        HF_HUB_OFFLINE=True, HF_HUB_DISABLE_TELEMETRY=True)
+            transformers_hub = SimpleNamespace(TRANSFORMERS_CACHE=cache,
+                                               HF_MODULES_CACHE=modules, _is_offline_mode=True)
+            def load(name):
+                return {'huggingface_hub.constants': constants,
+                        'transformers.utils.hub': transformers_hub}[name]
+            with patch.object(module.importlib, 'import_module', side_effect=load):
+                result = module._effective_hf_settings(home)
+                self.assertEqual(result['hf_home'], home)
+                for obj, name, value in ((constants, 'HF_HOME', str(Path(home) / 'other')),
+                                         (constants, 'HF_HUB_CACHE', str(Path(home) / 'other')),
+                                         (constants, 'HF_HUB_OFFLINE', False),
+                                         (constants, 'HF_HUB_DISABLE_TELEMETRY', 1),
+                                         (transformers_hub, 'TRANSFORMERS_CACHE', 'other'),
+                                         (transformers_hub, 'HF_MODULES_CACHE', 'other'),
+                                         (transformers_hub, '_is_offline_mode', False)):
+                    original = getattr(obj, name)
+                    setattr(obj, name, value)
+                    with self.subTest(field=name), self.assertRaises(ValueError):
+                        module._effective_hf_settings(home)
+                    setattr(obj, name, original)
+
+    def test_hf_home_changes_runtime_key(self):
+        module = importlib.import_module('looking_glass.trusted_service_profile')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            home, cache = root / 'home', root / 'home' / 'hub'
+            cache.mkdir(parents=True)
+            required = {'CUDA_VISIBLE_DEVICES': UUID, 'CUDA_DEVICE_ORDER': 'PCI_BUS_ID',
+                        'PYTORCH_CUDA_ALLOC_CONF': 'backend:native', 'CUBLAS_WORKSPACE_CONFIG': ':4096:8',
+                        'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1', 'HF_HUB_OFFLINE': '1',
+                        'TRANSFORMERS_OFFLINE': '1', 'HF_HUB_DISABLE_TELEMETRY': '1'}
+            runtimes = []
+            for selected_home in (home, root):
+                with patch.dict(os.environ, {**required, 'HF_HOME': str(selected_home)}, clear=True):
+                    environment = module._checked_environment(UUID, str(cache))
+                runtime = fake_runtime()
+                runtime['environment'] = environment
+                runtimes.append(runtime)
+            base = self.make_identity()
+            source_hash = hashlib.sha256(base.source_manifest).hexdigest()
+            identities = [dataclasses.replace(base, runtime_manifest=canonical(runtime),
+                          keys=module._make_workload_keys(source_hash, runtime))
+                          for runtime in runtimes]
+            self.assertTrue(all(a.runtime_settings_sha256 != b.runtime_settings_sha256
+                                for a, b in zip(identities[0].keys, identities[1].keys)))
+            profiles = self.make_profiles(identities[0])
+            pins = tuple(profile.profile_id for profile in profiles)
+            registry = ProfileRegistry(profiles, approved_profile_ids=pins)
+            module.resolve_trusted_service_profiles(registry, identities[0], pins)
+            with self.assertRaises(ProfileUnavailable):
+                module.resolve_trusted_service_profiles(registry, identities[1], pins)
 
     def test_relative_import_paths_are_bound_to_the_actual_working_directory(self):
         module = importlib.import_module('looking_glass.trusted_service_profile')

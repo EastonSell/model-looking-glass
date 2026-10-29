@@ -24,6 +24,7 @@ from .trusted_service_profile import prepare_trusted_source
 
 
 _REQUIRED_OWNER_CONTRACT = "fixed-two-token-commitments-v1"
+_REQUIRED_COMPLETION_CONTRACT = "service-result-retirement-v1"
 _REQUIRED_SPAWN_CONTRACT = "gated-rooted-child-v1"
 _REQUIRED_COLLECTOR_CONTRACT = "two-token-worker-profile-v1"
 
@@ -52,6 +53,7 @@ def _check_owner_contract(repo):
     supervisor = root / "looking_glass" / "supervisor.py"
     try:
         valid = (getattr(_owner_module, "FIXED_SERVICE_OWNER_CONTRACT", None) == _REQUIRED_OWNER_CONTRACT
+                 and getattr(_owner_module, "OWNER_COMPLETION_CUSTODY_CONTRACT", None) == _REQUIRED_COMPLETION_CONTRACT
                  and Path(_owner_module.__file__).resolve(strict=True) == owner.resolve(strict=True)
                  and getattr(_supervisor_module, "SUPERVISOR_LAUNCH_CUSTODY_CONTRACT", None) == _REQUIRED_SPAWN_CONTRACT
                  and Path(_supervisor_module.__file__).resolve(strict=True) == supervisor.resolve(strict=True)
@@ -59,7 +61,7 @@ def _check_owner_contract(repo):
     except (OSError, SyntaxError, TypeError, ValueError):
         valid = False
     if not valid:
-        raise RuntimeError("fixed service owner, launch-custody supervisor or worker profile collector is unavailable")
+        raise RuntimeError("fixed service owner, completion custody, launch-custody supervisor or worker profile collector is unavailable")
 
 
 class _PreparedService:
@@ -134,7 +136,7 @@ class _PreparedService:
 
 def prepare_two_token_service(*, repo_root, cache_root, workspace_root,
                               private_parent, site_packages, environment_root,
-                              gpu_uuid, physical_uuids, profiles, teams,
+                              hf_home, gpu_uuid, physical_uuids, profiles, teams,
                               trusted_path):
     """Prepare the fixed owner without initializing CUDA or starting a process.
 
@@ -157,6 +159,13 @@ def prepare_two_token_service(*, repo_root, cache_root, workspace_root,
     if type(identity) is not DeviceIdentity:
         raise RuntimeError("canonical device identity is required")
     source = prepare_trusted_source(repo_root, cache_root)
+    home = Path(hf_home)
+    if not home.is_absolute():
+        raise ValueError("HF_HOME must be an absolute directory")
+    home = home.resolve(strict=True)
+    cache = Path(source.cache_root)
+    if not home.is_dir() or cache == home or not cache.is_relative_to(home):
+        raise ValueError("checkpoint cache must be inside HF_HOME")
     _load_profile_registry(profiles, identity)
 
     parent = Path(private_parent)
@@ -187,7 +196,7 @@ def prepare_two_token_service(*, repo_root, cache_root, workspace_root,
         os.fsync(stream.fileno())
     launch = prepare_trusted_launch(
         repo_root=source.repo_root, site_packages=site_packages, environment_root=environment_root,
-        private_parent=launch_dir, gpu_uuid=uuid, module="looking_glass.gpu_service_process",
+        private_parent=launch_dir, hf_home=home, gpu_uuid=uuid, module="looking_glass.gpu_service_process",
         config_path=config_path, trusted_path=trusted_path)
     controller = _prepare_owner_controller(stop)
     return _PreparedService(controller=controller, launch=launch, identity=identity,

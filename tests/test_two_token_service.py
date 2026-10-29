@@ -20,7 +20,8 @@ class ServicePreparationTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name).resolve()
         self.repo = self.root / "repo"
-        self.cache = self.root / "cache"
+        self.hf_home = self.root / "hf-home"
+        self.cache = self.hf_home / "hub"
         self.env = self.root / "env"
         self.site = self.env / "site-packages"
         self.private = self.root / "private"
@@ -41,6 +42,8 @@ class ServicePreparationTests(unittest.TestCase):
         self.registry_mock = patch.object(service, "_load_profile_registry", return_value=(None, None)).start()
         patch.object(service._owner_module, "FIXED_SERVICE_OWNER_CONTRACT",
                      service._REQUIRED_OWNER_CONTRACT, create=True).start()
+        patch.object(service._owner_module, "OWNER_COMPLETION_CUSTODY_CONTRACT",
+                     service._REQUIRED_COMPLETION_CONTRACT, create=True).start()
         patch.object(service._owner_module, "__file__", str(self.package / "gpu_service.py")).start()
         patch.object(service._supervisor_module, "SUPERVISOR_LAUNCH_CUSTODY_CONTRACT",
                      service._REQUIRED_SPAWN_CONTRACT, create=True).start()
@@ -50,7 +53,7 @@ class ServicePreparationTests(unittest.TestCase):
     def prepare(self, **changes):
         arguments = dict(repo_root=self.repo, cache_root=self.cache, workspace_root=self.root,
                          private_parent=self.private, site_packages=self.site,
-                         environment_root=self.env, gpu_uuid=UUID, physical_uuids=(UUID,),
+                         environment_root=self.env, hf_home=self.hf_home, gpu_uuid=UUID, physical_uuids=(UUID,),
                          profiles=self.profiles, teams=("alpha", "beta"),
                          trusted_path=str(self.root))
         arguments.update(changes)
@@ -67,6 +70,7 @@ class ServicePreparationTests(unittest.TestCase):
         self.assertEqual(config.asset_manifest_sha256, hashlib.sha256(b"assets").hexdigest())
         self.assertEqual(launch.environment["CUDA_VISIBLE_DEVICES"], UUID)
         self.assertEqual(launch.environment["CUDA_DEVICE_ORDER"], "PCI_BUS_ID")
+        self.assertEqual(launch.environment["HF_HOME"], str(self.hf_home))
         self.assertNotIn("alpha", launch.environment.values())
         self.assertIn("looking_glass.gpu_service_process", launch.command)
         self.assertNotIn(UUID, repr(prepared))
@@ -115,6 +119,12 @@ class ServicePreparationTests(unittest.TestCase):
             with patch.object(service._owner_module, "FIXED_SERVICE_OWNER_CONTRACT", "old"):
                 with self.assertRaisesRegex(RuntimeError, "launch-custody supervisor"):
                     prepared.start()
+            with patch.object(service._owner_module, "OWNER_COMPLETION_CUSTODY_CONTRACT", None):
+                with self.assertRaisesRegex(RuntimeError, "completion custody"):
+                    prepared.start()
+            with patch.object(service._owner_module, "OWNER_COMPLETION_CUSTODY_CONTRACT", "old"):
+                with self.assertRaisesRegex(RuntimeError, "completion custody"):
+                    prepared.start()
             with patch.object(service._supervisor_module, "SUPERVISOR_LAUNCH_CUSTODY_CONTRACT", "old"):
                 with self.assertRaisesRegex(RuntimeError, "launch-custody supervisor"):
                     prepared.start()
@@ -132,6 +142,10 @@ class ServicePreparationTests(unittest.TestCase):
             self.prepare(physical_uuids=[UUID])
         with self.assertRaises(ValueError):
             self.prepare(profiles=self.profiles[:2])
+        with self.assertRaisesRegex(ValueError, "inside HF_HOME"):
+            self.prepare(hf_home=self.repo)
+        with self.assertRaisesRegex(ValueError, "inside HF_HOME"):
+            self.prepare(hf_home=self.cache)
         with self.assertRaises(ValueError):
             self.prepare(physical_uuids=("GPU-aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",))
         with patch.object(service, "resolve_device_identity", return_value=None):

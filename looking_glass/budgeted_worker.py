@@ -11,6 +11,7 @@ import threading
 
 import torch
 
+from .grouped_observation import _bind_forward
 from .memory_budget import AdmissionError, MemoryBudget
 from .resident_worker import (
     ForwardResult, InvalidRequest, RequestCancelled, ResidentWorker,
@@ -407,6 +408,8 @@ class BudgetedWorker:
                             reconciled = True
                             self._admission._lease_inflight = False
                         raise
+                if group is not None:
+                    _bind_forward(self._worker, profile, snapshot, launch)
                 try:
                     result = self._worker.execute(snapshot, cancel_event)
                 except WorkerSynchronizationError as exc:

@@ -1,13 +1,14 @@
 # Development-only synthetic intervention executor
 
-`looking_glass.causal_v2_executor` exercises the proposed v2 controls on the
-two retained reviewer inputs with first coordinates `+2` and `-2`. It rejects
-other input vectors; these two tuples are already in the published v2
+The public development helpers in `looking_glass.causal_v2_executor` exercise
+the proposed v2 controls on two retained reviewer inputs with first coordinates
+`+2` and `-2`. They reject other input vectors; these tuples are already in the published v2
 development exclusion union. This helper does not generate a discovery or
 held-out split, create a site schedule, enforce custody or phase order, seal
 predictions, publish evidence, or authorize a study. It is an instrumentation
 test for a small artificial residual model, not an explanation of a pretrained
-model or evidence of its reasoning.
+model or evidence of its reasoning. Private shared-kernel functions also serve
+the separate trusted study callback; they do not authorize a study.
 
 For a caller-supplied evaluation-mode `TinyResidual(width=8, depth=4)`, one
 retained development vector, one of the nine specified artificial targets,

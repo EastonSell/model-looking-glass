@@ -47,6 +47,21 @@ If CUDA was initialized before the live identity helper runs, the trusted owner
 must have performed that initialization under the same supervised lease; the
 helper does not prove the history of an existing process context.
 
+`HF_HOME` must be an explicit canonical existing directory strictly containing
+the selected canonical offline cache root. Validate this before importing
+Transformers, and include the exact `HF_HOME` in the runtime manifest used by
+both collection and service. A missing, changed or noncontaining value fails
+closed; previously collected identities without it do not match this runtime.
+The replacement environment must also set `HF_HUB_OFFLINE=1`,
+`TRANSFORMERS_OFFLINE=1` and `HF_HUB_DISABLE_TELEMETRY=1`. Record these settings
+and reject other `HF_`, `HUGGINGFACE_` and `TRANSFORMERS_` overrides. The
+loader's offline asset checks remain a separate control.
+The owner must start a fresh process without preloaded Hub or Transformers
+modules. After the supervised identity is established and Transformers is
+imported, the helper checks and records the effective import-time Hub and
+Transformers cache paths, offline modes and telemetry setting against that
+environment. These checks do not authenticate previously executed code.
+
 Use an isolated cooperative device window, the common UUID-derived lease and
 unsafe-marker supervisor. Establish ownership before every CUDA call and retain
 the lease through child exit. Apply and read back the native PyTorch allocator's

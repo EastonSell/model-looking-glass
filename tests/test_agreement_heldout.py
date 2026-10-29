@@ -110,9 +110,11 @@ def discovery_prediction(effect_sign=1, magnitude_tie=False):
                                        'quartets': [row for row in metrics['quartets'] if row['site'] == site],
                                        'pairs': pairs}})
         return result
-    record = {'schema': 'mlg-number-natural-predictions-v1',
+    record = {'schema': 'mlg-number-natural-predictions-v2',
               'protocol_sha256': commitments.PROTOCOL_SHA256, 'source_commit': 'a' * 40,
-              'checkpoint_revision': commitments.CHECKPOINT_REVISION, 'selection': selection,
+              'checkpoint_revision': commitments.CHECKPOINT_REVISION,
+              'discovery_event_sha256': '1' * 64, 'independent_audit_sha256': '2' * 64,
+              'selection': selection,
               'present_site_metrics': events('present_site_metrics'),
               'secondary_past_site_metrics': events('secondary_past_site_metrics')}
     return record
@@ -223,7 +225,8 @@ def test_abstention_and_duplicate_baselines_remain_frozen():
 
 @pytest.mark.parametrize('change', ['selected', 'mean', 'pair', 'missing_pair', 'past_label',
                                     'magnitude_family', 'boolean_count', 'magnitude_ids', 'past_case_ids',
-                                    'duplicate_magnitude_ids'])
+                                    'duplicate_magnitude_ids', 'v1_schema', 'missing_event_digest',
+                                    'upper_event_digest', 'short_audit_digest', 'boolean_audit_digest'])
 def test_frozen_discovery_corruption_rejected_even_when_digest_matches(change):
     record = discovery_prediction()
     event = record['present_site_metrics'][0]['metrics']
@@ -253,6 +256,16 @@ def test_frozen_discovery_corruption_rejected_even_when_digest_matches(change):
             for pair in past_event['metrics']['pairs']:
                 pair['target'] += '-other'
                 pair['donor'] += '-other'
+    elif change == 'v1_schema':
+        record['schema'] = 'mlg-number-natural-predictions-v1'
+    elif change == 'missing_event_digest':
+        del record['discovery_event_sha256']
+    elif change == 'upper_event_digest':
+        record['discovery_event_sha256'] = 'A' * 64
+    elif change == 'short_audit_digest':
+        record['independent_audit_sha256'] = '1' * 63
+    elif change == 'boolean_audit_digest':
+        record['independent_audit_sha256'] = True
     else:
         event['quartets'][0]['cell_counts']['same_lemma_same_number'] = True
     data, freeze = freeze_prediction(record)
@@ -289,11 +302,15 @@ def test_heldout_runner_uses_committed_cases_and_never_reranks(fake_study, tmp_p
     assert evaluation['prediction_freeze_sha256'] == fake_study['freeze'].sha256
     assert evaluation['heldout_commitment'] == fake_study['heldout_commitment']
     assert evaluation['exposure_inventory_sha256'] == fake_study['inventory_snapshot'].sha256
+    assert evaluation['discovery_event_sha256'] == '1' * 64
+    assert evaluation['independent_audit_sha256'] == '2' * 64
     assert all(len(site['families']) == 4 for site in evaluation['sites'])
     events = [json.loads(line)['event'] for line in (tmp_path / 'attempt' / 'events.jsonl').read_text().splitlines()]
     assert events[0]['phase'] == 'heldout'
     assert events[0]['heldout_commitment'] == fake_study['heldout_commitment']
     assert events[0]['exposure_inventory_sha256'] == fake_study['inventory_snapshot'].sha256
+    assert events[0]['discovery_event_sha256'] == '1' * 64
+    assert events[0]['independent_audit_sha256'] == '2' * 64
     assert len(events[0]['cases']) == 16
     committed = json.loads(fake_study['record_bytes'])['families']
     for family in committed:
@@ -333,9 +350,11 @@ def test_exact_discovery_journal_events_form_a_compatible_prediction_file(tmp_pa
     path = tmp_path / 'discovery'
     result = NaturalAgreementRunner(model, AgreementJournal(path, {'protocol': 'fabricated-only'})).run(cases)
     events = [json.loads(line)['event'] for line in (path / 'events.jsonl').read_text().splitlines()]
-    prediction = {'schema': 'mlg-number-natural-predictions-v1',
+    prediction = {'schema': 'mlg-number-natural-predictions-v2',
                   'protocol_sha256': commitments.PROTOCOL_SHA256, 'source_commit': 'a' * 40,
-                  'checkpoint_revision': commitments.CHECKPOINT_REVISION, 'selection': result['selection'],
+                  'checkpoint_revision': commitments.CHECKPOINT_REVISION,
+                  'discovery_event_sha256': hashlib.sha256((path / 'events.jsonl').read_bytes()).hexdigest(),
+                  'independent_audit_sha256': '2' * 64, 'selection': result['selection'],
                   'present_site_metrics': [event for event in events if event['kind'] == 'present_site_metrics'],
                   'secondary_past_site_metrics': [event for event in events
                                                   if event['kind'] == 'secondary_past_site_metrics']}
