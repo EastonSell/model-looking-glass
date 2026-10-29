@@ -89,6 +89,11 @@ A trusted operator must independently establish that the exact process tree has
 stopped before explicitly ending quarantine; no retry or success is inferred.
 Forced process termination or OS failure can release the handles, so those cases
 require separate process and device inspection.
+The observer and preparation supervisor ignore console interrupt signals from
+before either gate opens until exit. A normal console interrupt is therefore
+not recorded as a completed cancellation. An explicit forced termination can
+stop the process but releases its leases; if cleanup was not independently
+verified, reconcile the process tree before any further study action.
 The observation's commit
 point is the already observed zero exit, verified Job cleanup and successful
 revalidation of the bound preparation files. If writing the observation then
