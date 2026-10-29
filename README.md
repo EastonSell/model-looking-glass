@@ -101,7 +101,7 @@ On fixed public nonblind cases, both exploratory [agreement-direction rules](res
 
 The [subject-form sensitivity study](results/distilgpt2-agreement-subject-dependence-v1/RESULTS.md) found a larger signed response for the singular member in 31/32 public matched pairs, while subjectless fragments also responded. The cases are dependent and nonblind; morphology, lexical identity and context-dependent gain remain possible explanations.
 
-The [two-attractor patch follow-up](results/public-two-attractor-patch-v1-20261029/README.md) found a near-zero pooled clean interaction that concealed opposite subject-specific means. Its donor displacements were unequal and changed local lexical identity, so these descriptive results do not establish independent attractor channels or additivity.
+The [two-attractor patch follow-up](results/public-two-attractor-patch-v1-20261029/README.md) found a near-zero pooled clean interaction that concealed opposite subject-specific means. Its donor displacements were unequal and some donors changed local lexical identity, so these descriptive results do not establish independent attractor channels or additivity.
 
 The [natural-agreement held-out attempt](results/distilgpt2-natural-agreement-v1-20261028/heldout-attempt-status-v1.md) stopped without an evaluable result. Its one-use claim and sealed split remain preserved; the recorded RuntimeError and a no-model startup reproduction support, but do not prove, a missing dependency-path diagnosis. An [independent held-out auditor](docs/INDEPENDENT_NATURAL_HELDOUT_AUDIT.md) is prepared for saved controls and frozen-prediction errors after a valid reveal.
 
