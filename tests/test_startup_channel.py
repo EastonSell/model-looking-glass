@@ -405,6 +405,9 @@ class StartupChannelTests(unittest.TestCase):
         release = threading.Event()
         errors = []
         channel._claim()
+        custody = api._SpawnCustody('test-only')
+        custody._open_gate()
+        self.addCleanup(custody._close_gate)
 
         def slow_popen(*args, **kwargs):
             entered.set()
@@ -413,7 +416,7 @@ class StartupChannelTests(unittest.TestCase):
 
         def spawn():
             try:
-                channel._spawn(['unused'], cwd=None, child_env={})
+                channel._spawn(['unused'], cwd=None, child_env={}, custody=custody)
             except BaseException as exc:
                 errors.append(exc)
 
