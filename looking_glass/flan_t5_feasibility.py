@@ -276,18 +276,29 @@ def run(asset_dir, output):
                         or not bool(torch.isfinite(logits).all()) or not bool(torch.isfinite(state).all())):
                     save_failed_output(logits, state, name, "malformed-or-nonfinite")
                     raise ValueError("nonfinite or malformed model output")
-                selected = torch.log_softmax(logits[0], dim=-1)[torch.arange(len(target_ids)),
-                                                               torch.tensor(target_ids, dtype=torch.long)]
-                per_token = [float(x) for x in selected]
-                if not all(math.isfinite(x) for x in per_token):
-                    save_failed_output(logits, state, name, "nonfinite-logprob")
-                    raise ValueError("nonfinite selected log probabilities")
-                score = math.fsum(per_token)
-            log_bytes = logits.numpy().astype("<f4", copy=False).tobytes(order="C")
-            state_bytes = state.numpy().astype("<f4", copy=False).tobytes(order="C")
-            index = len(records)
-            filename = f"forward-{index:03d}.bin"
-            sha = evidence.write(filename, log_bytes + state_bytes)
+                log_bytes = logits.numpy().astype("<f4", copy=False).tobytes(order="C")
+                state_bytes = state.numpy().astype("<f4", copy=False).tobytes(order="C")
+                index = len(records)
+                filename = f"forward-{index:03d}.bin"
+                sha = evidence.write(filename, log_bytes + state_bytes)
+                active_forward.update(phase="scoring")
+                try:
+                    selected = torch.log_softmax(logits[0], dim=-1)[torch.arange(len(target_ids)),
+                                                                   torch.tensor(target_ids, dtype=torch.long)]
+                    per_token = [float(x) for x in selected]
+                    if not all(math.isfinite(x) for x in per_token):
+                        raise ValueError("nonfinite selected log probabilities")
+                    score = math.fsum(per_token)
+                except BaseException:
+                    try:
+                        evidence.json(f"forward-{index:03d}-scoring-failed.json",
+                                      {"name": name, "status": "scoring-failed", "file": filename,
+                                       "sha256": sha, "logits_bytes": len(log_bytes),
+                                       "encoder_bytes": len(state_bytes), "logits_shape": list(logits.shape),
+                                       "encoder_shape": list(state.shape)})
+                    except Exception:
+                        pass
+                    raise
             row = {"index": index, "name": name, "condition": condition,
                    "source_ids": source["input_ids"], "source_mask": source["attention_mask"],
                    "target_ids": target_ids, "decoder_ids": decoder_ids,
