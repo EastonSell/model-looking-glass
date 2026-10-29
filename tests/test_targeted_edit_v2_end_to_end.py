@@ -71,7 +71,7 @@ def fake_development(directory, *, source, manifest_sha, model, environment, pub
                 "mkldnn_enabled", "cuda_initialized", "omp_num_threads", "mkl_num_threads")}
     settings.update(float32_matmul_precision="highest", mkldnn_deterministic=False,
                     deterministic_warn_only=False, cpu_autocast_enabled=False, inference_mode_enabled=False,
-                    cuda_visibility="", hf_hub_offline="1", transformers_offline="1")
+                    cuda_visibility="-1", hf_hub_offline="1", transformers_offline="1")
     write_json(directory / "metadata.json", {**common, "model": model, "environment": environment,
                 "exposure": public, "custody": custody_result, "compatibility": compatibility,
                 "grid": grid, "controls": controls, "buffer_state_sha256": "c" * 64, "runtime_settings": settings,

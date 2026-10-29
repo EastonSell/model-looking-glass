@@ -29,6 +29,65 @@ def guard_for(model):
     return owner._ModelGuard(model, model, model.weight, torch, v1)
 
 
+@pytest.mark.parametrize("mask", ["", "0", None])
+def test_development_rejects_mask_drift_before_model_work(monkeypatch, mask):
+    if mask is None:
+        monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
+    else:
+        monkeypatch.setenv("CUDA_VISIBLE_DEVICES", mask)
+    with pytest.raises(owner.OwnerError, match="fresh CPU-only"):
+        owner._development_work(None, None, None, None, None, None, None, (torch,) + (None,) * 10)
+
+
+@pytest.mark.parametrize("point", ["load_mask", "load_setting", "tokenizer_setting", "unchanged"])
+def test_development_binds_full_runtime_before_discovery(monkeypatch, point):
+    monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "-1")
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    monkeypatch.setenv("TRANSFORMERS_OFFLINE", "1")
+    settings = {"precision": "highest"}
+    fake_torch = SimpleNamespace(cuda=SimpleNamespace(is_initialized=lambda: False),
+        is_inference_mode_enabled=lambda: False, is_autocast_enabled=lambda _device: False,
+        set_num_threads=lambda _n: None, set_num_interop_threads=lambda _n: None,
+        use_deterministic_algorithms=lambda _value: None, set_flush_denormal=lambda _value: True)
+    def runtime(_torch):
+        return {"cuda_visibility": __import__("os").environ.get("CUDA_VISIBLE_DEVICES"), **settings}
+    monkeypatch.setattr(owner, "_runtime_settings", runtime)
+    def load(**_kwargs):
+        if point == "load_mask":
+            monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "")
+        elif point == "load_setting":
+            settings["precision"] = "medium"
+        return SimpleNamespace(tokenizer=object())
+    def tokenizer(*_args):
+        if point == "tokenizer_setting":
+            settings["precision"] = "medium"
+    monkeypatch.setattr(owner, "_check_checkpoint", lambda *_args: (object(), object(), object()))
+    monkeypatch.setattr(owner, "_verify_tokenizer", tokenizer)
+    monkeypatch.setattr(owner, "_ModelGuard", lambda *_args: SimpleNamespace(
+        runtime_settings=runtime(fake_torch), state_sha="state", weight_sha="weight",
+        poisoned=False, verify=lambda: None))
+    calls = []
+    def candidate(*_args, **_kwargs):
+        calls.append(True)
+        raise LookupError("candidate reached")
+    fake_v1 = SimpleNamespace(_denormal_probe=lambda: None, _environment=lambda: {},
+        _candidate=candidate, CASES=((None, None, None, (1,)),), LONDON=1, PARIS=2, WEIGHT_SHAPE=(1,))
+    def check_runtime(snapshot, _environment):
+        assert snapshot == {"cuda_visibility": "-1", "precision": "highest"}
+    fake_evidence = SimpleNamespace(_check_runtime_settings=check_runtime)
+    deps = (fake_torch, None, SimpleNamespace(load_distilgpt2=load), fake_v1, None,
+            SimpleNamespace(ENVIRONMENT_FIELDS=()), fake_evidence, None, None, None, None)
+    manifest = {"v1_compatibility": {"environment": {}, "model_state_sha256": "state", "weight_sha256": "weight"}}
+    if point == "unchanged":
+        with pytest.raises(LookupError, match="candidate reached"):
+            owner._development_work(None, None, None, None, manifest, None, None, deps)
+        assert calls == [True]
+    else:
+        with pytest.raises(owner.OwnerError, match="runtime changed"):
+            owner._development_work(None, None, None, None, manifest, None, None, deps)
+        assert calls == []
+
+
 def test_condition_applies_exact_weight_then_restores_all_state():
     torch.manual_seed(11)
     model = torch.nn.Linear(3, 3)
@@ -298,7 +357,7 @@ def test_private_writer_is_accepted_by_independent_reader(monkeypatch, tmp_path)
     runtime = {"float32_matmul_precision": "highest", "mkldnn_deterministic": False,
         "deterministic_warn_only": False, "intraop_threads": 1, "interop_threads": 1,
         "deterministic_algorithms": True, "mkldnn_enabled": True, "cpu_autocast_enabled": False,
-        "inference_mode_enabled": False, "cuda_initialized": False, "cuda_visibility": "",
+        "inference_mode_enabled": False, "cuda_initialized": False, "cuda_visibility": "-1",
         "hf_hub_offline": "1", "transformers_offline": "1", "omp_num_threads": None, "mkl_num_threads": None}
     environment = {key: runtime[key] for key in ("intraop_threads", "interop_threads", "deterministic_algorithms",
         "mkldnn_enabled", "cuda_initialized", "omp_num_threads", "mkl_num_threads")}

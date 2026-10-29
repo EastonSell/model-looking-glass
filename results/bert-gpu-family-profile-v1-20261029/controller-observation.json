@@ -1,0 +1,9 @@
+{
+  "schema": "bert-gpu-family-controller-observation-v1",
+  "source_commit": "4a597641be89ee094145fbdacee4d3fcdd241e41",
+  "run_id": "1f67a55c190391f693c3f3739de6ff12",
+  "tool_observed_utc": "2026-10-29 04:39:30 UTC",
+  "tool_exit_code": 0,
+  "stdout": "{\"status\": \"success\", \"source_commit\": \"4a597641be89ee094145fbdacee4d3fcdd241e41\", \"run_id\": \"1f67a55c190391f693c3f3739de6ff12\"}\r\nController exit code: 0\r\n",
+  "interpretation": "Recorded from the completed execution tool response; this is an operator observation, not an independent process attestation."
+}

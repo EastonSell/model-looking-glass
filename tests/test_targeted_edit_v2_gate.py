@@ -30,7 +30,7 @@ def fake_handoff(monkeypatch):
     runtime = {"float32_matmul_precision": "highest", "mkldnn_deterministic": False,
                "deterministic_warn_only": False, "intraop_threads": 1, "interop_threads": 1,
                "deterministic_algorithms": True, "mkldnn_enabled": True, "cpu_autocast_enabled": False,
-               "inference_mode_enabled": False, "cuda_initialized": False, "cuda_visibility": "",
+               "inference_mode_enabled": False, "cuda_initialized": False, "cuda_visibility": "-1",
                "hf_hub_offline": "1", "transformers_offline": "1", "omp_num_threads": None,
                "mkl_num_threads": None}
     model = {"model_id": "synthetic-only"}
