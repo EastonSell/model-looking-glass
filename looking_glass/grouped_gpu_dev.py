@@ -5,6 +5,7 @@ the supervisor's exact physical-device lease.  See GROUPED_GPU_DEV_PLAN.md.
 """
 
 import argparse
+from datetime import datetime
 import gc
 import hashlib
 import importlib
@@ -20,6 +21,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+from types import SimpleNamespace
 import weakref
 
 from .device_identity import resolve_device_identity
@@ -33,9 +35,11 @@ from .supervisor import OwnerSession, run_supervised
 
 
 _GIB = 1024 ** 3
-_PROTOCOL = 'experiments/grouped_gpu_dev_v2.json'
+_OWNER_TIMEOUT_SECONDS = 900
+_PROTOCOL = 'experiments/grouped_gpu_dev_v3.json'
+_MANIFEST = 'protected-manifest/source-manifest.json'
 _SOURCE_PATHS = (
-    _PROTOCOL, 'scripts/grouped_gpu_dev_bootstrap.py', 'looking_glass/__init__.py',
+    _PROTOCOL, 'docs/GROUPED_GPU_DEV_PLAN.md', 'scripts/grouped_gpu_dev_bootstrap.py', 'looking_glass/__init__.py',
     'looking_glass/grouped_gpu_dev.py', 'looking_glass/bert_gpu_evidence.py',
     'looking_glass/gpu_oneshot.py', 'looking_glass/device_identity.py',
     'looking_glass/device_lease.py', 'looking_glass/supervisor.py',
@@ -64,9 +68,10 @@ _CUDA_DEPTH = 0
 _ATTEMPT_LOCK = threading.Lock()
 _ATTEMPT_STARTED = False
 _NO_CHILD_POPEN = None
-# The shared session-bound CUDA transition is not yet integrated or reviewed.
-# No parent or child may start the GPU pilot until that changes with tests.
-_GPU_BOUNDARY_READY = False
+_NO_CYCLIC_GC_REQUIRED = False
+# This exact source enables the reviewed, supervised one-shot development run.
+# It is not an authorization for a general shared service or other workload.
+_GPU_BOUNDARY_READY = True
 
 
 class _AttemptAlreadyStarted(RuntimeError):
@@ -136,14 +141,19 @@ def _protocol(path, expected_sha256):
         raise ValueError('fixed protocol bytes differ from the frozen digest')
     value = json.loads(raw)
     fixed = {
-        'schema': 'grouped-gpu-development-v2',
+        'schema': 'grouped-gpu-development-v3',
         'model': 'distilbert/distilgpt2',
         'revision': '2290a62682d06624634c1f46a6ad5be0f47f38aa',
         'seed': 2026102808, 'device': 'cuda:0', 'dtype': 'float32',
         'attention': 'eager', 'cache': 'disabled', 'autocast': 'disabled',
         'allocator_fraction': .25, 'minimum_preload_free_bytes': 5 * _GIB,
         'minimum_reserve_bytes': _GIB // 2, 'resident_commitment_bytes': 2 * _GIB,
-        'forward_commitment_bytes': _GIB, 'workspace_lifetime': 'retained-through-process-exit',
+        'forward_commitment_bytes': _GIB,
+        'workspace_lifetime': 'retained-through-guarded-cleanup-release-before-attestation',
+        'forward_order': ['serial-0-0', 'serial-0-1', 'mixed-0', 'serial-1-0', 'serial-1-1', 'mixed-1',
+                          'heldout-serial-0-0', 'heldout-serial-0-1', 'heldout-group-0',
+                          'heldout-serial-1-0', 'heldout-serial-1-1', 'heldout-group-1'],
+        'owner_timeout_seconds': _OWNER_TIMEOUT_SECONDS,
         'child_process_policy': 'popen-disabled-job-fail-closed',
         'per_request_shape': [1, 4],
         'combined_shape': [2, 4], 'model_output_width': 50257,
@@ -204,7 +214,7 @@ def _verify_child_sources(repo, run_dir, run_id, commit, manifest_sha256):
     if (type(manifest_sha256) is not str or re.fullmatch(r'[0-9a-f]{64}', manifest_sha256) is None
             or type(commit) is not str or re.fullmatch(r'[0-9a-f]{40}', commit) is None):
         raise RuntimeError('invalid parent source binding')
-    raw = _bounded_bytes(run_dir / 'source-manifest.json', 65536)
+    raw = _bounded_bytes(run_dir / _MANIFEST, 65536)
     if hashlib.sha256(raw).hexdigest() != manifest_sha256:
         raise RuntimeError('parent source manifest digest differs')
     manifest = json.loads(raw)
@@ -264,6 +274,91 @@ def _assert_disposable_return_slots():
         raise RuntimeError('guarded return slots retain uncertain or resource-bearing values')
 
 
+def _check_cleanup_reservations(session, lease, budget, resident, workspace, authority,
+                                protocol, expected_active):
+    """Check exact, host-only accounting and the still-held physical owner."""
+    if (_ROOTS[0] is not session or _ROOTS[1] is not lease
+            or _ROOTS[2] is not budget or _ROOTS[3] is not resident or _ROOTS[19] is not workspace
+            or _ROOTS[20] is not authority or resident is workspace or gc.isenabled()):
+        raise RuntimeError('cleanup owner roots or cyclic-GC state changed')
+    if _cuda_uncertain() or authority.unsafe:
+        raise RuntimeError('cleanup owner is unsafe')
+    OwnerSession.check(session, lease)
+    with budget._lock:
+        if (budget._trace_limits != {'gpu': 0, 'host': 0}
+                or budget._minimum_reserve_bytes != protocol['minimum_reserve_bytes']
+                or budget._leases != frozenset(expected_active)):
+            raise RuntimeError('cleanup accounting reservations changed')
+        for item, amount in ((resident, protocol['resident_commitment_bytes']),
+                             (workspace, protocol['forward_commitment_bytes'])):
+            if (item._budget is not budget or item._issued is not True
+                    or item._estimated_incremental_bytes != amount
+                    or item._trace_limits != {'gpu': 0, 'host': 0}
+                    or item._trace_used != {'gpu': 0, 'host': 0}):
+                raise RuntimeError('cleanup accounting reservation is invalid')
+    OwnerSession.check(session, lease)
+    if _cuda_uncertain() or authority.unsafe:
+        raise RuntimeError('cleanup owner became unsafe')
+
+
+def _guarded_cleanup(session, lease, torch, check_reservations, expected_total, on_partial):
+    """Check physical ownership and the fixed reservations around every CUDA call."""
+    from .cuda_cleanup import clear_cublas_after_drain
+    values = {}
+    def guarded(name, function):
+        def call(*args, **kwargs):
+            value = None
+            has_value = False
+            try:
+                if name == 'memory_allocated':
+                    # Start a new before/after pair; an interrupted second
+                    # snapshot must not inherit the first reserved counter.
+                    values.clear()
+                check_reservations()
+                value = function(*args, **kwargs)
+                has_value = True
+                if name in ('memory_allocated', 'memory_reserved'):
+                    values[name] = value
+                check_reservations()
+                if name in ('memory_allocated', 'memory_reserved'):
+                    if (type(value) is not int or not 0 <= value <= int(.25 * expected_total)
+                            or (name == 'memory_reserved' and value < values['memory_allocated'])):
+                        raise RuntimeError('invalid cleanup allocator counter')
+                return value
+            except BaseException:
+                # Even an interruption before the reset must not report the
+                # preceding phase's counters as this allocated reading.
+                partial = ({'memory_allocated': value} if has_value else {}) if name == 'memory_allocated' else values
+                on_partial(name, partial)
+                raise
+        return call
+    cuda = SimpleNamespace(**{name: guarded(name, getattr(torch.cuda, name)) for name in
+        ('is_initialized', 'synchronize', 'empty_cache', 'memory_allocated', 'memory_reserved')})
+    wrapped = SimpleNamespace(__version__=torch.__version__, version=torch.version, cuda=cuda,
+        _C=SimpleNamespace(_cuda_clearCublasWorkspaces=guarded('clear_cublas', torch._C._cuda_clearCublasWorkspaces)))
+    return clear_cublas_after_drain(session=session, lease=lease, torch=wrapped)
+
+
+def _release_clean_reservations(session, lease, budget, resident, workspace, authority, protocol):
+    """Release inert accounting after final device cleanup; never retry uncertainty."""
+    def check(expected):
+        _check_cleanup_reservations(session, lease, budget, resident, workspace,
+                                    authority, protocol, expected)
+    try:
+        check((resident, workspace))
+        resident.release()
+        check((workspace,))
+        workspace.release()
+        check(())
+    except BaseException as exc:
+        if _ROOTS[15] is None:
+            _ROOTS[15] = exc
+        else:
+            _ROOTS[18] = exc
+        authority.mark_unsafe()
+        raise
+
+
 def _cuda(session, lease, operation, /, *args, **kwargs):
     """Check the owner before each operation and stop after any uncertain call.
 
@@ -275,7 +370,7 @@ def _cuda(session, lease, operation, /, *args, **kwargs):
     still require process-level recovery.
     """
     global _CUDA_DEPTH
-    if _cuda_uncertain():
+    if _cuda_uncertain() or (_NO_CYCLIC_GC_REQUIRED and gc.isenabled()):
         raise RuntimeError('device operation is prohibited after uncertain failure')
     depth = _CUDA_DEPTH
     result = None
@@ -286,6 +381,8 @@ def _cuda(session, lease, operation, /, *args, **kwargs):
         _CUDA_DEPTH = depth + 1
         if _NO_CHILD_POPEN is not None:
             _assert_no_child_processes()
+        if _NO_CYCLIC_GC_REQUIRED and gc.isenabled():
+            raise RuntimeError('cyclic GC was enabled in the device owner')
         OwnerSession.check(session, lease)
         worker = _ROOTS[6]
         authority = _ROOTS[20]
@@ -298,6 +395,8 @@ def _cuda(session, lease, operation, /, *args, **kwargs):
         OwnerSession.check(session, lease)
         if _NO_CHILD_POPEN is not None:
             _assert_no_child_processes()
+        if _NO_CYCLIC_GC_REQUIRED and gc.isenabled():
+            raise RuntimeError('cyclic GC was enabled during a device operation')
         if _cuda_uncertain():
             raise RuntimeError('device operation observed nested uncertain failure') from _ROOTS[15]
         if authority is not None and authority.unsafe:
@@ -336,21 +435,48 @@ def _cuda(session, lease, operation, /, *args, **kwargs):
         _CUDA_DEPTH = depth
 
 
-def _snapshot(session, lease, torch):
-    _cuda(session, lease, torch.cuda.synchronize, 0)
-    free, total = _cuda(session, lease, torch.cuda.mem_get_info, 0)
-    result = {'device_free_bytes': free, 'device_total_bytes': total,
-              'allocated_bytes': _cuda(session, lease, torch.cuda.memory_allocated, 0),
-              'reserved_bytes': _cuda(session, lease, torch.cuda.memory_reserved, 0),
-              'peak_allocated_bytes': _cuda(session, lease, torch.cuda.max_memory_allocated, 0),
-              'peak_reserved_bytes': _cuda(session, lease, torch.cuda.max_memory_reserved, 0)}
-    return result
+def _snapshot(session, lease, torch, expected_total, on_partial):
+    """Reject a contradictory counter before issuing the next device query."""
+    result = {}
+    cap = int(.25 * expected_total)
+    try:
+        _cuda(session, lease, torch.cuda.synchronize, 0)
+        pair = _cuda(session, lease, torch.cuda.mem_get_info, 0)
+        if type(pair) is not tuple or len(pair) != 2:
+            raise RuntimeError('invalid device free/total reading')
+        free, total = pair
+        result.update(device_free_bytes=free, device_total_bytes=total)
+        if (type(free) is not int or type(total) is not int or total != expected_total
+                or free < 0 or free > total):
+            raise RuntimeError('invalid or changed device free/total reading')
+        allocated = _cuda(session, lease, torch.cuda.memory_allocated, 0)
+        result['allocated_bytes'] = allocated
+        if type(allocated) is not int or not 0 <= allocated <= cap:
+            raise RuntimeError('invalid allocator allocated reading')
+        reserved = _cuda(session, lease, torch.cuda.memory_reserved, 0)
+        result['reserved_bytes'] = reserved
+        if (type(reserved) is not int or not allocated <= reserved <= cap
+                or free + reserved > total):
+            raise RuntimeError('invalid allocator reserved reading')
+        peak_allocated = _cuda(session, lease, torch.cuda.max_memory_allocated, 0)
+        result['peak_allocated_bytes'] = peak_allocated
+        if type(peak_allocated) is not int or not allocated <= peak_allocated <= cap:
+            raise RuntimeError('invalid allocator allocated peak')
+        peak_reserved = _cuda(session, lease, torch.cuda.max_memory_reserved, 0)
+        result['peak_reserved_bytes'] = peak_reserved
+        if (type(peak_reserved) is not int or not max(reserved, peak_allocated) <= peak_reserved <= cap):
+            raise RuntimeError('invalid allocator reserved peak')
+        return result
+    except BaseException:
+        on_partial(result)
+        raise
 
 
 def _validate_memory_values(result):
     total, free = result['device_total_bytes'], result['device_free_bytes']
     if (any(type(value) is not int or value < 0 for value in result.values())
             or total == 0 or free > total or result['allocated_bytes'] > result['reserved_bytes']
+            or free + result['reserved_bytes'] > total
             or result['reserved_bytes'] > total or result['peak_reserved_bytes'] > total
             or result['peak_allocated_bytes'] < result['allocated_bytes']
             or result['peak_reserved_bytes'] < result['reserved_bytes']
@@ -384,6 +510,109 @@ def _check_peak_reset(record):
     if (record['allocated_bytes'] != record['peak_allocated_bytes']
             or record['reserved_bytes'] != record['peak_reserved_bytes']):
         raise RuntimeError('peak reset baseline differs from current counters')
+
+
+def _check_observed_headroom(record, protocol):
+    total, free, reserved = (record['device_total_bytes'], record['device_free_bytes'],
+                             record['reserved_bytes'])
+    reserve = max(_GIB, (total * 15 + 99) // 100, protocol['minimum_reserve_bytes'])
+    committed = protocol['resident_commitment_bytes'] + protocol['forward_commitment_bytes']
+    estimate = min(free - reserve - committed, total - reserved - reserve - committed)
+    if estimate < 0:
+        raise RuntimeError('recorded device headroom cannot cover commitments and reserve')
+    return {'reserve_bytes': reserve, 'committed_incremental_bytes': committed,
+            'admissible_estimate_bytes': estimate}
+
+
+def _check_workspace_peak(before, after, protocol):
+    _check_memory_pair(before, after)
+    allocated = after['peak_allocated_bytes'] - before['allocated_bytes']
+    reserved = after['peak_reserved_bytes'] - before['reserved_bytes']
+    if max(allocated, reserved) > protocol['forward_commitment_bytes']:
+        raise RuntimeError('observed forward peak exceeds the fixed workspace commitment')
+    return {'allocated_increment_bytes': allocated, 'reserved_increment_bytes': reserved}
+
+
+def _require_group_escalation(completed):
+    if not {'serial-0-0', 'serial-0-1'}.issubset(completed):
+        raise RuntimeError('two completed single-row controls are required before the grouped stage')
+
+
+def _resource_profile(memory, entries, protocol, runtime_sha256, source_hashes, checkpoint_sha256):
+    """Derive a provisional, source-bound observation from retained counters."""
+    if (type(memory) is not list or type(entries) is not list
+            or [entry.get('request_id') if type(entry) is dict else None for entry in entries]
+                != protocol['forward_order']
+            or entries[0] != {'request_id': 'serial-0-0', 'entry_shapes': [[1, 4]]}
+            or entries[1] != {'request_id': 'serial-0-1', 'entry_shapes': [[1, 4]]}
+            or entries[2] != {'request_id': 'mixed-0', 'entry_shapes': [[2, 4]]}):
+        raise RuntimeError('single-row observations must precede the first grouped stage')
+    if (type(source_hashes) is not dict or type(runtime_sha256) is not str
+            or re.fullmatch(r'[0-9a-f]{64}', runtime_sha256) is None
+            or type(checkpoint_sha256) is not str
+            or re.fullmatch(r'[0-9a-f]{64}', checkpoint_sha256) is None):
+        raise RuntimeError('profile identity is invalid')
+    fields = ('device_free_bytes', 'device_total_bytes', 'allocated_bytes', 'reserved_bytes',
+              'peak_allocated_bytes', 'peak_reserved_bytes')
+    def capture(stage):
+        matches = [record for record in memory if type(record) is dict and record.get('stage') == stage]
+        if len(matches) != 1:
+            raise RuntimeError('profile stage is missing or duplicated')
+        value = {key: matches[0].get(key) for key in fields}
+        _validate_memory_values(value)
+        return value
+    load_before, load_after = capture('before_model_load'), capture('after_model_load')
+    total = load_before['device_total_bytes']
+    if load_after['device_total_bytes'] != total:
+        raise RuntimeError('profile device total changed')
+    _check_observed_headroom(load_before, protocol)
+    _check_observed_headroom(load_after, protocol)
+    stages, seen = [], set()
+    for entry in entries:
+        if type(entry) is not dict or set(entry) != {'request_id', 'entry_shapes'}:
+            raise RuntimeError('profile model entry is invalid')
+        name, shapes = entry['request_id'], entry['entry_shapes']
+        if (type(name) is not str or re.fullmatch(
+                r'serial-[01]-[01]|mixed-[01]|heldout-serial-[01]-[01]|heldout-group-[01]', name) is None
+                or shapes not in ([[1, 4]], [[2, 4]])):
+            raise RuntimeError('profile model entry is invalid')
+        expected = [2, 4] if name.startswith(('mixed-', 'heldout-group-')) else [1, 4]
+        if shapes != [expected]:
+            raise RuntimeError('profile shape differs from its fixed stage')
+        path = 'broker' if name.startswith('heldout-group-') else 'control'
+        key = (path, tuple(expected))
+        before, after = capture('before-' + name), capture('after-' + name)
+        if before['device_total_bytes'] != total or after['device_total_bytes'] != total:
+            raise RuntimeError('profile device total changed')
+        _check_peak_reset(before)
+        before_headroom = _check_observed_headroom(before, protocol)
+        after_headroom = _check_observed_headroom(after, protocol)
+        incremental = _check_workspace_peak(before, after, protocol)
+        stages.append({'request_id': name, 'shape': expected, 'execution_path': path,
+                       'observation': 'repeat' if key in seen else 'first-for-path-and-shape',
+                       'baseline': before, 'endpoint': after,
+                       'observed_increment_bytes': incremental,
+                       'headroom_before': before_headroom, 'headroom_after': after_headroom})
+        seen.add(key)
+    return {'schema': 'grouped-gpu-resource-profile-v1', 'status': 'provisional',
+            'source_sha256': hashlib.sha256(_canonical(source_hashes)).hexdigest(),
+            'protocol_sha256': source_hashes.get(_PROTOCOL, hashlib.sha256(_canonical(protocol)).hexdigest()),
+            'runtime_sha256': runtime_sha256, 'checkpoint_sha256': checkpoint_sha256,
+            'worker_path': 'GroupedWorkspaceWorker to custody-bound ResidentWorker with guarded RNG',
+            'device_limits': {'allocator_fraction': protocol['allocator_fraction'],
+                              'allocator_cap_bytes': int(protocol['allocator_fraction'] * total),
+                              'resident_commitment_bytes': protocol['resident_commitment_bytes'],
+                              'workspace_commitment_bytes': protocol['forward_commitment_bytes'],
+                              'minimum_reserve_bytes': protocol['minimum_reserve_bytes']},
+            'host_ledger': dict(protocol['host_ledger']),
+            'control_host_ledger': dict(protocol['control_host_ledger']),
+            'snapshot_reservation': dict(protocol['snapshot_reservation']),
+            'worker_finite_scratch': dict(protocol['worker_finite_scratch']),
+            'validation_scratch': dict(protocol['validation_scratch']),
+            'comparison_scratch': dict(protocol['comparison_scratch']),
+            'trace_limits': {'device_bytes': 0, 'host_bytes': 0},
+            'model_load': {'before': load_before, 'after': load_after}, 'stages': stages,
+            'limitation': 'point-in-time observations, not a worst-case or production capacity bound'}
 
 
 def _check_committed_headroom(budget):
@@ -482,6 +711,8 @@ def _public_memory(record):
             'peak_allocated_bytes', 'peak_reserved_bytes', 'reserve_bytes',
             'committed_incremental_bytes', 'requested_incremental_bytes', 'admissible_estimate_bytes')
     result = {'stage': stage}
+    if record.get('partial') is True:
+        result['partial'] = True
     for key in keys:
         if key in record:
             value = record[key]
@@ -493,6 +724,38 @@ def _public_memory(record):
             kind):
         result['admission_kind'] = kind
     return result
+
+
+def _public_resource_profile(profile):
+    counter_keys = ('device_free_bytes', 'device_total_bytes', 'allocated_bytes', 'reserved_bytes',
+                    'peak_allocated_bytes', 'peak_reserved_bytes')
+    headroom_keys = ('reserve_bytes', 'committed_incremental_bytes', 'admissible_estimate_bytes')
+    def select(value, keys):
+        return {key: value[key] for key in keys}
+    stages = []
+    for stage in profile['stages']:
+        stages.append({**select(stage, ('request_id', 'shape', 'execution_path', 'observation')),
+                       'baseline': select(stage['baseline'], counter_keys),
+                       'endpoint': select(stage['endpoint'], counter_keys),
+                       'observed_increment_bytes': select(stage['observed_increment_bytes'],
+                           ('allocated_increment_bytes', 'reserved_increment_bytes')),
+                       'headroom_before': select(stage['headroom_before'], headroom_keys),
+                       'headroom_after': select(stage['headroom_after'], headroom_keys)})
+    ledger_keys = ('max_bytes', 'max_items', 'max_requests', 'max_operations')
+    return {**select(profile, ('schema', 'status', 'source_sha256', 'protocol_sha256',
+                               'runtime_sha256', 'checkpoint_sha256', 'worker_path', 'limitation')),
+            'device_limits': select(profile['device_limits'],
+                ('allocator_fraction', 'allocator_cap_bytes', 'resident_commitment_bytes',
+                 'workspace_commitment_bytes', 'minimum_reserve_bytes')),
+            'host_ledger': select(profile['host_ledger'], ledger_keys),
+            'control_host_ledger': select(profile['control_host_ledger'], ledger_keys),
+            'snapshot_reservation': select(profile['snapshot_reservation'], ('nbytes', 'items')),
+            'worker_finite_scratch': select(profile['worker_finite_scratch'], ('nbytes', 'items')),
+            'validation_scratch': select(profile['validation_scratch'], ('nbytes', 'items')),
+            'comparison_scratch': select(profile['comparison_scratch'], ('chunk_elements', 'declared_max_bytes')),
+            'trace_limits': select(profile['trace_limits'], ('device_bytes', 'host_bytes')),
+            'model_load': {key: select(profile['model_load'][key], counter_keys) for key in ('before', 'after')},
+            'stages': stages}
 
 
 def _public_measurement(measurement):
@@ -509,13 +772,15 @@ def _public_measurement(measurement):
                         'reference_separation': [_public_comparison(item) for item in group['reference_separation']],
                         'comparisons': cases})
     return {'status': 'passed', 'runtime_sha256': measurement['runtime_sha256'],
-            'runtime_redacted': {key: measurement['runtime_redacted'][key] for key in sorted(_RUNTIME_KEYS)},
+            'runtime_redacted': {key: measurement['runtime_redacted'][key] for key in sorted(_PUBLIC_RUNTIME_KEYS)},
             'sample_status': measurement['sample_status'],
             'sample_evidence_sha256': measurement['sample_evidence_sha256'],
+            'resource_profile': _public_resource_profile(measurement['resource_profile']),
             'model_entries': measurement['model_entries'], 'holdout': holdout,
             'memory': [_public_memory(item) for item in measurement['memory']],
             'cleanup': {'before': measurement['cleanup']['before'],
                         'after': measurement['cleanup']['after'],
+                        'accounting_leases_after': measurement['cleanup']['accounting_leases_after'],
                         'api': 'PyTorch 2.8.0+cu128 private _cuda_clearCublasWorkspaces'},
             'limitations': ['input-specific correctness development run; not a throughput benchmark',
                             'the full runtime manifest and selected device identity remain private',
@@ -544,7 +809,7 @@ def _verify_promotion(run_dir, run_id, supervised, gpu_uuid, protocol, protocol_
 
     owner = read('owner.json')
     started = read('started.json')
-    manifest = read('source-manifest.json', 65536)
+    manifest = read(_MANIFEST, 65536)
     candidate = read('candidate.json')
     observation = read('observations.json')
     runtime = read('private-runtime.json')
@@ -555,8 +820,9 @@ def _verify_promotion(run_dir, run_id, supervised, gpu_uuid, protocol, protocol_
     supervision = read('supervision.json')
     policy = read('frozen-policy.json')
     sample = read('sample-evidence.json')
+    resource_profile = read('resource-profile.json')
     identity = {'run_id': run_id, 'supervisor_run_id': supervised.run_id, 'pid': supervised.pid}
-    manifest_sha = inventory['source-manifest.json']['sha256']
+    manifest_sha = inventory[_MANIFEST]['sha256']
     require(manifest == {'schema': 'grouped-gpu-source-manifest-v1', 'run_id': run_id,
                          'source_commit': source_commit, 'source_sha256': source_hashes})
     require(started == {'schema': 'grouped-gpu-start-v1', 'run_id': run_id,
@@ -581,7 +847,7 @@ def _verify_promotion(run_dir, run_id, supervised, gpu_uuid, protocol, protocol_
     require(type(measurement) is dict and measurement.get('status') == 'passed')
     runtime_digest = hashlib.sha256(_canonical(runtime)).hexdigest()
     require(measurement.get('runtime_sha256') == runtime_digest
-            and measurement.get('runtime_redacted') == {**runtime, 'physical_gpu_uuid': 'redacted'})
+            and measurement.get('runtime_redacted') == _public_runtime(runtime))
     require(observation.get('schema') == 'grouped-gpu-observations-v1'
             and observation.get('run_id') == run_id and observation.get('status') == 'passed'
             and observation.get('cuda_uuid_verified') is True
@@ -679,6 +945,8 @@ def _verify_promotion(run_dir, run_id, supervised, gpu_uuid, protocol, protocol_
     cleanup_after = cleanup.get('after')
     require(type(cleanup_after) is dict and set(cleanup_after) == {'allocated_bytes', 'reserved_bytes'}
             and all(type(value) is int and value == 0 for value in cleanup_after.values()))
+    require(type(cleanup.get('accounting_leases_after')) is int
+            and cleanup['accounting_leases_after'] == 0)
     memory = measurement.get('memory')
     paths = sorted(run_dir.glob('memory-*.json'))
     require(type(memory) is list and 1 <= len(memory) <= 128 and len(paths) == len(memory)
@@ -729,6 +997,12 @@ def _verify_promotion(run_dir, run_id, supervised, gpu_uuid, protocol, protocol_
         _check_peak_reset(memory[start])
         for left, right in zip(memory[start:end], memory[start + 1:end + 1]):
             _check_memory_pair(left, right)
+            _check_observed_headroom(right, protocol)
+            _check_workspace_peak(memory[start], right, protocol)
+    expected_profile = _resource_profile(memory, expected_entries, protocol, runtime_digest, source_hashes,
+                                         asset_hashes['model.safetensors'])
+    require(_canonical(resource_profile) == _canonical(expected_profile)
+            and _canonical(measurement.get('resource_profile')) == _canonical(expected_profile))
     return inventory, measurement, assets
 
 
@@ -757,7 +1031,14 @@ def _bind_device(session, lease, torch):
     properties = _cuda(session, lease, torch.cuda.get_device_properties, 0)
     _cuda(session, lease, OwnerSession.verify_runtime_binding, session, lease,
           runtime_uuid=_runtime_uuid(torch, properties.uuid), device_count=1)
+    _check_device_total(properties.total_memory)
     return properties
+
+
+def _check_device_total(total, expected=None):
+    if (type(total) is not int or not 7 * _GIB <= total <= 9 * _GIB
+            or (expected is not None and total != expected)):
+        raise RuntimeError('device properties total changed or is outside the fixed contract')
 
 
 _RUNTIME_KEYS = frozenset(('schema', 'physical_gpu_uuid', 'driver', 'name', 'total_bytes',
@@ -767,6 +1048,52 @@ _RUNTIME_KEYS = frozenset(('schema', 'physical_gpu_uuid', 'driver', 'name', 'tot
     'deterministic_algorithms', 'flash_sdp', 'memory_efficient_sdp', 'math_sdp', 'cpu_autocast',
     'cuda_autocast', 'cublas_workspace_config', 'float32_matmul_precision', 'conversion_overwrite',
     'conversion_swap', 'attention', 'cache', 'dtype'))
+_PUBLIC_RUNTIME_KEYS = _RUNTIME_KEYS - {'name', 'python', 'platform'}
+
+
+def _public_runtime(runtime):
+    """Project only fixed runtime fields; free-form identifying strings stay private."""
+    if type(runtime) is not dict or not _PUBLIC_RUNTIME_KEYS.issubset(runtime):
+        raise RuntimeError('runtime projection is incomplete')
+    return {key: ('redacted' if key == 'physical_gpu_uuid' else runtime[key])
+            for key in sorted(_PUBLIC_RUNTIME_KEYS)}
+
+
+def _public_smi(snapshot):
+    if type(snapshot) is not dict:
+        raise RuntimeError('invalid public device inventory')
+    fields = ('total_bytes', 'free_bytes', 'used_bytes')
+    if (any(type(snapshot.get(key)) is not int for key in fields)
+            or not 7 * _GIB <= snapshot['total_bytes'] <= 9 * _GIB
+            or any(not 0 <= snapshot[key] <= snapshot['total_bytes'] for key in fields[1:])
+            or type(snapshot.get('driver_version')) is not str
+            or re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,3}', snapshot['driver_version']) is None
+            or len(snapshot['driver_version']) > 32
+            or type(snapshot.get('timestamp_utc')) is not str
+            or re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?\+00:00',
+                            snapshot['timestamp_utc']) is None):
+        raise RuntimeError('invalid public device inventory')
+    try:
+        datetime.fromisoformat(snapshot['timestamp_utc'])
+    except ValueError as exc:
+        raise RuntimeError('invalid public device inventory timestamp') from exc
+    return {key: snapshot[key] for key in (*fields, 'driver_version', 'timestamp_utc')}
+
+
+def _public_presence(value):
+    if type(value) is dict:
+        query, listed = value.get('query'), value.get('owner_pid_listed')
+        if query == 'ok' and type(listed) is bool:
+            return {'query': query, 'owner_pid_listed': listed}
+        if query in ('unavailable', 'inconclusive', 'not_attempted') and listed is None:
+            return {'query': query, 'owner_pid_listed': None}
+    return {'query': 'inconclusive', 'owner_pid_listed': None}
+
+
+def _public_error_type(value):
+    allowed = {'RuntimeError', 'MemoryError', 'OSError', 'TimeoutError', 'ValueError',
+               'OutOfMemoryError', 'WorkerOutOfMemory', 'GroupedBrokerUnavailable'}
+    return value if type(value) is str and value in allowed else 'OtherError'
 
 
 def _validate_runtime(runtime, protocol):
@@ -789,6 +1116,8 @@ def _validate_runtime(runtime, protocol):
     for key in ('physical_gpu_uuid', 'driver', 'name', 'python', 'platform'):
         if type(runtime[key]) is not str or not 1 <= len(runtime[key]) <= 256:
             raise RuntimeError('runtime identity field is invalid')
+    if re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,3}', runtime['driver']) is None or len(runtime['driver']) > 32:
+        raise RuntimeError('runtime driver version is invalid')
     if (type(runtime['compute_capability']) is not list or len(runtime['compute_capability']) != 2
             or any(type(value) is not int or not 0 <= value <= 99 for value in runtime['compute_capability'])
             or re.fullmatch(r'[0-9a-f]{64}', runtime['transformers_gpt2_source_sha256']) is None
@@ -805,15 +1134,14 @@ def _convert_model(session, lease, model, *, device, dtype):
         raise RuntimeError('model conversion returned another object')
 
 
-def _live_runtime(session, lease, torch, transformers, driver):
+def _live_runtime(session, lease, torch, transformers, driver, expected_total):
     if _cuda(session, lease, torch.cuda.device_count) != 1:
         raise RuntimeError('exactly one CUDA-visible device is required')
     properties = _cuda(session, lease, torch.cuda.get_device_properties, 0)
+    _check_device_total(properties.total_memory, expected_total)
     runtime_uuid = _runtime_uuid(torch, properties.uuid)
     _cuda(session, lease, OwnerSession.verify_runtime_binding, session, lease,
           runtime_uuid=runtime_uuid, device_count=1)
-    if not 7 * _GIB <= properties.total_memory <= 9 * _GIB:
-        raise RuntimeError('device total differs from the planned 8 GiB device')
     modeling = importlib.import_module('transformers.models.gpt2.modeling_gpt2')
     modeling_sha256 = hashlib.sha256(Path(modeling.__file__).read_bytes()).hexdigest()
     return {
@@ -846,14 +1174,14 @@ def _live_runtime(session, lease, torch, transformers, driver):
 
 
 def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, driver, source_hashes,
-         run_id, _worker_device='cuda:0'):
+         run_id, _worker_device='cuda:0', _expected_total=None):
     """Execute the fixed owner workload, returning only after verified cleanup."""
+    global _NO_CYCLIC_GC_REQUIRED
     if _worker_device not in ('cuda:0', 'cpu'):
         raise ValueError('unsupported internal test device')
     from . import batch_validation
     from .budgeted_worker import WorkloadProfile
     from .certified_batch_policy import CertifiedBatchPolicy, runtime_fingerprint
-    from .cuda_cleanup import clear_cublas_after_drain
     from .grouped_broker import GroupedBroker, SnapshotReservation, ValidationReservation
     from .grouped_owner_worker import GroupedWorkspaceWorker, retire_grouped_owner
     from .grouped_worker import GroupedWorker
@@ -864,6 +1192,13 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
     from .pretrained import ASSETS, REVISION, load_distilgpt2
     from .resident_worker import ForwardRequest, ResidentWorker
 
+    gc.disable()
+    _NO_CYCLIC_GC_REQUIRED = True
+    for index, value in ((0, session), (1, lease)):
+        if _ROOTS[index] is None:
+            _ROOTS[index] = value
+        elif _ROOTS[index] is not value:
+            raise RuntimeError('device owner root changed')
     _assert_no_child_processes()
     OwnerSession.check(session, lease)
     _validate_workspace_binding(session, Path(__file__).resolve().parents[1])
@@ -871,6 +1206,10 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
             or _cuda(session, lease, torch.cuda.device_count) != 1):
         raise RuntimeError('the leased CUDA device is unavailable')
     properties = _cuda(session, lease, torch.cuda.get_device_properties, 0)
+    if _expected_total is None and _worker_device != 'cpu':
+        raise RuntimeError('the initial leased device total is required')
+    _check_device_total(properties.total_memory, _expected_total)
+    expected_total = properties.total_memory
     _cuda(session, lease, OwnerSession.verify_runtime_binding, session, lease,
           runtime_uuid=_runtime_uuid(torch, properties.uuid), device_count=1)
     if _cuda(session, lease, torch.cuda.get_allocator_backend) != 'native':
@@ -880,19 +1219,22 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
     if _cuda(session, lease, torch.cuda.get_per_process_memory_fraction, 0) != expected_fraction:
         raise RuntimeError('allocator cap did not take effect')
     _cuda(session, lease, torch.cuda.manual_seed, protocol['seed'])
-    runtime = _live_runtime(session, lease, torch, transformers, driver)
+    runtime = _live_runtime(session, lease, torch, transformers, driver, expected_total)
     _validate_runtime(runtime, protocol)
     runtime_digest = runtime_fingerprint(runtime)
     _write_json(run_dir / 'private-runtime.json', runtime)
-    public_runtime = {**runtime, 'physical_gpu_uuid': 'redacted'}
+    public_runtime = _public_runtime(runtime)
     snapshots = []
     peak_start = None
     admission_context = ('resident', protocol['resident_commitment_bytes'])
 
     def record(label, value, policy=None):
         _record_memory(run_dir, snapshots, label, value, properties.total_memory, policy)
-        if peak_start is not None and len(snapshots) > peak_start + 1:
-            _check_memory_pair(snapshots[-2], snapshots[-1])
+        if peak_start is not None:
+            _check_observed_headroom(snapshots[-1], protocol)
+            if len(snapshots) > peak_start + 1:
+                _check_memory_pair(snapshots[-2], snapshots[-1])
+                _check_workspace_peak(snapshots[peak_start], snapshots[-1], protocol)
         return value
 
     def reset_peaks():
@@ -901,14 +1243,22 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
         _cuda(session, lease, torch.cuda.reset_peak_memory_stats, 0)
         peak_start = len(snapshots)
 
+    def partial_memory(label, value):
+        record = {'stage': label, 'partial': True, **{key: item if type(item) is int else
+                  {'invalid_type': type(item).__name__} for key, item in value.items()}}
+        _write_json(run_dir / f'memory-{len(snapshots):03d}.json', record)
+        snapshots.append(record)
+
     def observe(label, policy=None):
-        value = _snapshot(session, lease, torch)
+        value = _snapshot(session, lease, torch, properties.total_memory,
+                          lambda partial: partial_memory(label, partial))
         return record(label, value, policy)
 
     def telemetry():
         # This callback runs while MemoryBudget holds its re-entrant policy
         # lock, immediately before an admission decision.
-        value = _snapshot(session, lease, torch)
+        value = _snapshot(session, lease, torch, properties.total_memory,
+                          lambda partial: partial_memory('admission-invalid', partial))
         try:
             _validate_memory_values(value)
         except BaseException:
@@ -930,6 +1280,7 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
         return snapshot
 
     before = observe('before_model_load')
+    _check_observed_headroom(before, protocol)
     if before['device_free_bytes'] < protocol['minimum_preload_free_bytes']:
         raise RuntimeError('device free memory is below the fixed preload threshold')
     budget = MemoryBudget(telemetry, max_gpu_trace_bytes=0, max_host_trace_bytes=0,
@@ -969,10 +1320,9 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
         raise RuntimeError('model parameter count differs from the verified CPU load')
     if model.get_input_embeddings().weight is not model.get_output_embeddings().weight:
         raise RuntimeError('tied embedding/output weights were not preserved')
-    observe('after_model_load')
-    # Keep the forward workspace charged for the whole owner lifetime, not
-    # merely until an individual forward returns. Both leases survive until
-    # the supervised process exits, even after successful teardown.
+    _check_observed_headroom(observe('after_model_load'), protocol)
+    # Keep both commitments charged across every forward and guarded cleanup;
+    # they are released only after all tracked storage is drained and gone.
     admission_context = ('workspace', protocol['forward_commitment_bytes'])
     workspace_lease = budget.acquire(protocol['forward_commitment_bytes'], max_gpu_trace_bytes=0,
                                      max_host_trace_bytes=0)
@@ -989,11 +1339,11 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
         for rows in (1, 2))
     def owner_guard():
         _assert_no_child_processes()
-        if _cuda_uncertain():
+        if _cuda_uncertain() or gc.isenabled():
             raise RuntimeError('device owner has a pending uncertain failure')
         OwnerSession.check(session, lease)
         _assert_no_child_processes()
-        if _cuda_uncertain():
+        if _cuda_uncertain() or gc.isenabled():
             raise RuntimeError('device owner became uncertain during its lease check')
 
     authority = OwnerCompletionAuthority(device_guard=owner_guard)
@@ -1003,12 +1353,12 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
                                     profiles=profiles, authority=authority, seed=protocol['seed'])
     _ROOTS[6] = worker
     admission_context = None
-    contract = ForwardContract(model_id, REVISION, 'grouped-gpu-development-v2', _worker_device,
+    contract = ForwardContract(model_id, REVISION, 'grouped-gpu-development-v3', _worker_device,
         torch.float32, 'sha256:' + runtime_digest, protocol['seed'], True, True,
         'eval', 'none', 'disabled', 'none', False, False)
     input_schema = (('attention_mask', torch.int64), ('input_ids', torch.int64))
     output_bytes = 2 * 4 * protocol['model_output_width'] * 4
-    profile = BatchProfile('grouped-gpu-development-v2', 'gpu-sampled-v2', contract,
+    profile = BatchProfile('grouped-gpu-development-v3', 'gpu-sampled-v3', contract,
         input_schema, (1, 4), torch.float32, protocol['model_output_width'],
         protocol['absolute_tolerance'], protocol['relative_tolerance'], (2,),
         2, 1, 2, 8, 128, output_bytes, 128 + output_bytes)
@@ -1051,6 +1401,7 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
     model_code = type(model).forward.__code__
     observed = []
     entries = []
+    completed_single_controls = set()
 
     def model_observer(frame, event, arg):
         if event == 'call' and frame.f_code is model_code:
@@ -1060,6 +1411,8 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
     def measured_forward(values, *, request_id, seed):
         nonlocal admission_context
         try:
+            if tuple(values['input_ids'].shape) == (2, 4):
+                _require_group_escalation(completed_single_controls)
             _cuda(session, lease, torch.cuda.synchronize, 0)
             reset_peaks()
             before_forward = observe('before-' + request_id)
@@ -1082,6 +1435,9 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
             entries.append({'request_id': request_id, 'entry_shapes': observed[count:]})
             after_forward = observe('after-' + request_id)
             _check_memory_pair(before_forward, after_forward)
+            if request_id in ('serial-0-0', 'serial-0-1'):
+                _check_serial_reference(batch_validation, result, protocol['model_output_width'])
+                completed_single_controls.add(request_id)
             return result
         except BaseException as exc:
             # Validation may catch ordinary exceptions and reduce them to a
@@ -1117,7 +1473,7 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
         check = ValidationReservation(policy.compatibility_key, 2, reservation_id,
             protocol['validation_scratch']['nbytes'], protocol['validation_scratch']['items'])
         def collect_runtime():
-            manifest = _live_runtime(session, lease, torch, transformers, driver)
+            manifest = _live_runtime(session, lease, torch, transformers, driver, expected_total)
             _validate_runtime(manifest, protocol)
             return manifest
         broker = GroupedBroker(grouped, profile, policy, host_budget=host, identity=identity,
@@ -1138,6 +1494,7 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
                                 'reference_separation': separation, 'comparisons': []})
                 del serial, reference
                 continue
+            _require_group_escalation(completed_single_controls)
             request_id = f'heldout-broker-{i}'
             handles = [broker.submit(case['owner'], ForwardRequest(request_id, case['inputs'], protocol['seed']))
                        for case in cases]
@@ -1201,17 +1558,18 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
                 'runtime_redacted': public_runtime,
                 'exclusion_note': 'discovery_row_hashes are reserved later broker-row exclusions in this run',
                 'cuda_uuid_verified': True, 'status': status})
-    # Release references and commitments only after all work was synchronized
+    # Release references only after all work was synchronized
     # and both independent host ledgers have been disposed by their owners.
     sample_groups = heldout_groups = group = cases = case = None
     serial = reference = results = handles = tickets = ticket = handle = None
     _assert_disposable_return_slots()
     _cuda(session, lease, control_claim.release)
     _cuda(session, lease, control_request.close)
-    if control_budget.snapshot().used_bytes != 0:
-        raise RuntimeError('control host claims remain after validation')
-    if host is not None and host.snapshot().used_bytes != 0:
-        raise RuntimeError('broker host claims remain after validation')
+    for label, host_budget in (('control', control_budget), ('broker', host)):
+        if host_budget is not None:
+            state = host_budget.snapshot()
+            if state.used_bytes or state.used_items or state.requests or state.claims or state.operations:
+                raise RuntimeError(label + ' host custody remains after validation')
     if worker.quarantined or worker.failed:
         raise RuntimeError('worker is not healthy before teardown')
     if broker is None:
@@ -1221,34 +1579,65 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
     if not _cuda(session, lease, retire_grouped_owner, worker, broker, callers_quiescent=True):
         raise RuntimeError('grouped owner did not retire exactly once')
     _assert_disposable_return_slots()
-    # Do not keep a worker local in the helper performing the final drop: it
-    # owns the model. The physical owner and both fixed claims stay rooted.
+    def check_cleanup_reservations():
+        _check_cleanup_reservations(session, lease, budget, resident_lease, workspace_lease,
+                                    authority, protocol, (resident_lease, workspace_lease))
+    # The retired worker and broker are kept rooted until process exit. The
+    # worker's otherwise inert model reference must be detached explicitly:
+    # the broker/handle graph contains cycles while cyclic GC is disabled.
     try:
-        OwnerSession.check(session, lease)
-        if authority.unsafe or _cuda_uncertain():
-            raise RuntimeError('device owner became unsafe before final disposal')
-        _ROOTS[4] = _ROOTS[5] = _ROOTS[6] = _ROOTS[11] = _ROOTS[12] = _ROOTS[16] = None
-        broker = grouped = resident = worker = bundle = model = None
-        gc.collect()
-        OwnerSession.check(session, lease)
-        if authority.unsafe or _cuda_uncertain():
-            raise RuntimeError('device owner became unsafe during final disposal')
+        check_cleanup_reservations()
+        if (worker._teardown_broker is not broker or worker._model is not model
+                or _ROOTS[4] is not bundle or bundle.model is not model or _ROOTS[16] is not model
+                or resident._model is not None or not authority._worker_retired):
+            raise RuntimeError('retired grouped owner retained unexpected model custody')
+        # Another reference remains rooted in both the bundle and slot 16, so
+        # the authority lock never surrounds a model's final-reference drop.
+        with authority._decision_lock:
+            if authority.unsafe or not authority._worker_retired or worker._model is not model:
+                raise RuntimeError('owner became unsafe before model detachment')
+            worker._model = None
+        check_cleanup_reservations()
+        for index in (4, 16):
+            check_cleanup_reservations()
+            _ROOTS[index] = None
+            check_cleanup_reservations()
+        bundle = None
+        check_cleanup_reservations()
+        model = None
+        check_cleanup_reservations()
     except BaseException as exc:
         if _ROOTS[15] is None:
             _ROOTS[15] = exc
         else:
             _ROOTS[18] = exc
+        authority.mark_unsafe()
         raise
     if model_ref() is not None:
-        raise RuntimeError('model object remains alive after owner teardown')
-    cleanup = _cuda(session, lease, clear_cublas_after_drain, session=session, lease=lease, torch=torch)
+        raise RuntimeError('model object remains alive without cyclic collection')
+    def partial_cleanup(stage, values):
+        _write_json(run_dir / 'cleanup-partial.json', {'stage': stage, 'partial': True,
+            'counters': {key: item if type(item) is int else {'invalid_type': type(item).__name__}
+                         for key, item in values.items()}})
+    cleanup = _cuda(session, lease, _guarded_cleanup, session, lease, torch, check_cleanup_reservations,
+                    expected_total, partial_cleanup)
     if cleanup['after'] != {'allocated_bytes': 0, 'reserved_bytes': 0}:
         raise RuntimeError('CUDA allocator still owns bytes after teardown')
-    if set(budget.active_leases()) != {resident_lease, workspace_lease}:
-        raise RuntimeError('unexpected device memory commitments remain active')
+    check_cleanup_reservations()
+    resource_profile = None
+    if status == 'passed':
+        resource_profile = _resource_profile(snapshots, entries, protocol, runtime_digest, source_hashes,
+                                             ASSETS['model.safetensors'][1])
+        _write_json(run_dir / 'resource-profile.json', resource_profile)
+    # All device operations and actual storage custody have finished. These
+    # are now inert accounting records. Keep the physical lease and authority
+    # rooted and issue no further CUDA calls after the first release.
+    _release_clean_reservations(session, lease, budget, resident_lease, workspace_lease, authority, protocol)
+    cleanup['accounting_leases_after'] = 0
     return {'status': status, 'runtime_sha256': runtime_digest, 'sample_status': report['status'],
             'sample_evidence_sha256': report['evidence_sha256'], 'holdout': holdout, 'model_entries': entries,
             'memory': snapshots, 'cleanup': cleanup, 'runtime_redacted': public_runtime,
+            'resource_profile': resource_profile,
             'limitations': ['development correctness check, not latency or throughput',
                             'sample evidence is specific to these inputs and runtime',
                             'discovery_row_hashes are reserved later broker-row exclusions, not independent policy evidence',
@@ -1262,6 +1651,7 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
 
 def _owner_main(run_dir, cache_dir, run_id, commit, protocol_sha256, driver, source_manifest_sha256=None):
     """Run only under the real supervisor; never attest after an exception."""
+    global _NO_CYCLIC_GC_REQUIRED
     try:
         _require_bootstrap()
         _require_supervisor()
@@ -1294,21 +1684,25 @@ def _owner_main(run_dir, cache_dir, run_id, commit, protocol_sha256, driver, sou
         _write_json(Path(run_dir) / 'owner.json', {'schema': 'grouped-gpu-owner-v1',
                     'run_id': run_id, 'supervisor_run_id': session.run_id, 'pid': os.getpid(),
                     'source_manifest_sha256': source_manifest_sha256})
+        gc.disable()
+        _NO_CYCLIC_GC_REQUIRED = True
         OwnerSession.check(session, lease)
         import torch
         if torch.__version__ != '2.8.0+cu128' or torch.version.cuda != '12.8':
             raise RuntimeError('PyTorch or CUDA build differs from the fixed contract')
         _configure(session, lease, torch, protocol)
-        _bind_device(session, lease, torch)
+        bound_properties = _bind_device(session, lease, torch)
         import transformers
         result = _run(session, lease, torch, transformers, cache=Path(cache_dir), protocol=protocol,
-                      run_dir=Path(run_dir), driver=driver, source_hashes=sources, run_id=run_id)
+                      run_dir=Path(run_dir), driver=driver, source_hashes=sources, run_id=run_id,
+                      _expected_total=bound_properties.total_memory)
         candidate = {'schema': 'grouped-gpu-candidate-v1', 'run_id': run_id,
                      'supervisor_run_id': session.run_id, 'pid': os.getpid(), 'result': result}
         _write_json(Path(run_dir) / 'candidate.json', candidate)
         if _cuda_uncertain():
             raise RuntimeError('device owner remains uncertain before clean attestation')
-        OwnerSession.check(session, lease)
+        _check_cleanup_reservations(session, lease, _ROOTS[2], _ROOTS[3], _ROOTS[19],
+                                    _ROOTS[20], protocol, ())
         OwnerSession.attest_clean(session, lease)
         return 0
     except _AttemptAlreadyStarted:
@@ -1350,7 +1744,10 @@ def _protect_manifest(repo, sources, run_dir):
     guard_type = _source_guard_types(repo, sources['scripts/v2_source_guards.py'])['SourceFileLease']
     guard = guard_type.__new__(guard_type)
     _ROOTS[24] = guard
-    guard_type.__init__(guard, run_dir, [run_dir / 'source-manifest.json'])
+    manifest = run_dir / _MANIFEST
+    # Lock only the dedicated manifest directory: the sibling run directory
+    # must remain writable for create-only hard-link evidence publication.
+    guard_type.__init__(guard, manifest.parent, [manifest])
     guard.__enter__()
     return guard
 
@@ -1367,7 +1764,7 @@ def _new_process_job(repo, expected_sha256):
 def _supervise_owner(command, *, identity, repo, environment, job_source_sha256):
     job = _new_process_job(repo, job_source_sha256)
     return run_supervised(command, device_lease_path=identity.lock_path, marker_path=identity.marker_path,
-                          identity=identity, timeout=900, lease_timeout=30, cwd=repo,
+                          identity=identity, timeout=_OWNER_TIMEOUT_SECONDS, lease_timeout=30, cwd=repo,
                           env=environment, inherit_environment=False, require_zero_exit=True, process_job=job)
 
 
@@ -1408,7 +1805,8 @@ def run_development(*, workspace_root, cache_dir, output, site_packages, smi):
     from .pretrained import ASSETS
     verified_assets = [{'name': name, 'bytes': size, 'sha256': digest}
                        for name, (size, digest) in sorted(ASSETS.items())]
-    gpu_uuid, before = _smi_snapshot(smi)
+    gpu_uuid, before_private = _smi_snapshot(smi)
+    before = _public_smi(before_private)
     driver = before['driver_version']
     if type(driver) is not str or re.fullmatch(r'[0-9.]{1,32}', driver) is None:
         raise RuntimeError('invalid driver version from device inventory')
@@ -1423,14 +1821,17 @@ def run_development(*, workspace_root, cache_dir, output, site_packages, smi):
         'MKL_NUM_THREADS': '1'})
     identity = resolve_device_identity(root, gpu_uuid, physical_uuids=[gpu_uuid], environ=environment)
     run_dir = Path(tempfile.mkdtemp(prefix='grouped-gpu-dev-', dir=root / 'work'))
+    (run_dir / _MANIFEST).parent.mkdir()
     prefix = Path(tempfile.mkdtemp(prefix='pycache-', dir=run_dir))
     environment['PYTHONPYCACHEPREFIX'] = str(prefix)
     run_id = secrets.token_hex(16)
-    _write_json(run_dir / 'source-manifest.json', {'schema': 'grouped-gpu-source-manifest-v1',
+    _write_json(run_dir / 'private-smi-before.json', {'schema': 'grouped-gpu-private-smi-v1',
+                'run_id': run_id, 'snapshot': before_private})
+    _write_json(run_dir / _MANIFEST, {'schema': 'grouped-gpu-source-manifest-v1',
                 'run_id': run_id, 'source_commit': commit, 'source_sha256': sources})
-    source_manifest_sha256 = hashlib.sha256(_bounded_bytes(run_dir / 'source-manifest.json', 65536)).hexdigest()
+    source_manifest_sha256 = hashlib.sha256(_bounded_bytes(run_dir / _MANIFEST, 65536)).hexdigest()
     _protect_manifest(repo, sources, run_dir)
-    if hashlib.sha256(_bounded_bytes(run_dir / 'source-manifest.json', 65536)).hexdigest() != source_manifest_sha256:
+    if hashlib.sha256(_bounded_bytes(run_dir / _MANIFEST, 65536)).hexdigest() != source_manifest_sha256:
         raise RuntimeError('source manifest changed while acquiring protection')
     _write_json(run_dir / 'started.json', {'schema': 'grouped-gpu-start-v1', 'run_id': run_id,
                 'source_commit': commit, 'protocol_sha256': protocol_sha256,
@@ -1461,7 +1862,7 @@ def run_development(*, workspace_root, cache_dir, output, site_packages, smi):
                 raise write_error from exc
         raise
     except Exception as exc:
-        supervisor_error = type(exc).__name__
+        supervisor_error = _public_error_type(type(exc).__name__)
     if supervised is not None:
         _write_json(run_dir / 'supervision.json', {'schema': 'grouped-gpu-supervision-v1',
                     'run_id': run_id, 'supervisor_run_id': supervised.run_id, 'pid': supervised.pid,
@@ -1470,19 +1871,23 @@ def run_development(*, workspace_root, cache_dir, output, site_packages, smi):
     after = None
     telemetry_error = None
     try:
-        after_uuid, after = _smi_snapshot(smi)
+        after_uuid, after_private = _smi_snapshot(smi)
         if after_uuid != gpu_uuid:
             raise RuntimeError('physical device inventory changed')
+        _write_json(run_dir / 'private-smi-after.json', {'schema': 'grouped-gpu-private-smi-v1',
+                    'run_id': run_id, 'snapshot': after_private})
+        after = _public_smi(after_private)
     except Exception as exc:
         after = None
-        telemetry_error = type(exc).__name__
-    presence = (_owner_presence_after_exit(smi, supervised.pid) if supervised is not None
-                else {'query': 'not_attempted', 'owner_pid_listed': None})
+        telemetry_error = _public_error_type(type(exc).__name__)
+    presence = _public_presence(_owner_presence_after_exit(smi, supervised.pid) if supervised is not None
+                                else {'query': 'not_attempted', 'owner_pid_listed': None})
     result = {'schema': 'grouped-gpu-development-result-v1', 'run_id': run_id,
               'source_commit': commit, 'source_sha256': sources, 'protocol_sha256': protocol_sha256,
               'status': 'quarantined', 'supervisor_error_type': supervisor_error,
               'verified_checkpoint_assets': verified_assets,
-              'private_run_record': run_dir.name,
+              'limitations': ['post-exit process listing is a point observation, not proof of GPU idleness or native cleanup; WDDM limits per-process visibility',
+                              'device counters are sequential point observations, not a worst-case capacity bound'],
               'supervisor': ({'exit_code': supervised.exit_code, 'clean': supervised.clean,
                               'timed_out': supervised.timed_out} if supervised is not None else None),
               'nvidia_smi_before': before, 'nvidia_smi_after': after,
@@ -1530,14 +1935,13 @@ def run_development(*, workspace_root, cache_dir, output, site_packages, smi):
                 result['evidence_consistency'] = 'nonpassing-owner-result-not-promoted'
                 result['status'] = 'failed'
         except Exception as exc:
-            result['candidate_error_type'] = type(exc).__name__
+            result['candidate_error_type'] = _public_error_type(type(exc).__name__)
     else:
         try:
             failure = json.loads(_bounded_bytes(run_dir / 'failure.json', 4096))
             if failure.get('schema') == 'grouped-gpu-failure-v1' and failure.get('run_id') == run_id:
                 error_type = failure.get('error_type')
-                if type(error_type) is str and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,80}', error_type):
-                    result['owner_error_type'] = error_type
+                result['owner_error_type'] = _public_error_type(error_type)
         except (OSError, ValueError, AttributeError):
             pass
     _write_json(destination, result)
@@ -1564,5 +1968,17 @@ def main(argv=None):
     return 0 if result['status'] == 'passed' else 1
 
 
+def _owner_process_main(argv=None):
+    """End the direct owner without Python shutdown hooks after any outcome."""
+    status = 1
+    try:
+        status = main(argv)
+    finally:
+        os._exit(status if type(status) is int and 0 <= status <= 255 else 1)
+
+
 if __name__ == '__main__':
-    raise SystemExit(main())
+    if '--owner' in sys.argv[1:]:
+        _owner_process_main()
+    else:
+        raise SystemExit(main())

@@ -1,0 +1,107 @@
+{
+  "allowlisted_modules": [
+    "agreement_calibration_workspace",
+    "batch_validation",
+    "bert_gpu_evidence",
+    "budgeted_worker",
+    "certified_batch_policy",
+    "cuda_cleanup",
+    "device_identity",
+    "device_lease",
+    "fair_queue",
+    "gpu_oneshot",
+    "grouped_broker",
+    "grouped_broker_state",
+    "grouped_gpu_dev",
+    "grouped_observation",
+    "grouped_owner_worker",
+    "grouped_worker",
+    "host_budget",
+    "memory_budget",
+    "microbatch",
+    "owner_completion",
+    "pretrained",
+    "resident_worker",
+    "supervisor"
+  ],
+  "cache_assets_verified": true,
+  "checkpoint_assets": [
+    {
+      "bytes": 762,
+      "name": "config.json",
+      "sha256": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a"
+    },
+    {
+      "bytes": 124,
+      "name": "generation_config.json",
+      "sha256": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805"
+    },
+    {
+      "bytes": 456318,
+      "name": "merges.txt",
+      "sha256": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5"
+    },
+    {
+      "bytes": 352824413,
+      "name": "model.safetensors",
+      "sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+    },
+    {
+      "bytes": 1355256,
+      "name": "tokenizer.json",
+      "sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6"
+    },
+    {
+      "bytes": 26,
+      "name": "tokenizer_config.json",
+      "sha256": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f"
+    },
+    {
+      "bytes": 1042301,
+      "name": "vocab.json",
+      "sha256": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+    }
+  ],
+  "gpu_boundary_enabled": true,
+  "limits": [
+    "static committed-byte and protocol inventory only",
+    "no model, CUDA, dependency-byte or execution attestation",
+    "current cache hashes do not attest concurrently changed executed bytes"
+  ],
+  "plan_in_source_manifest": true,
+  "plan_sha256": "d78845ebcbc4292e4f6fbe12df3347914b5a87000fab18afb7f3f8df8cd5528c",
+  "protocol_sha256": "011e214dbdc57e29869f41e38082cd1fa4baaf15747169d0d778e6f27b33a6f1",
+  "source_commit": "f112060375e9b107277ac41bbfec6779abe4ae2a",
+  "source_path_count": 28,
+  "source_sha256": {
+    "docs/GROUPED_GPU_DEV_PLAN.md": "d78845ebcbc4292e4f6fbe12df3347914b5a87000fab18afb7f3f8df8cd5528c",
+    "experiments/grouped_gpu_dev_v3.json": "011e214dbdc57e29869f41e38082cd1fa4baaf15747169d0d778e6f27b33a6f1",
+    "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+    "looking_glass/agreement_calibration_workspace.py": "eb5c991d025e299efa3731d5be329ebd65f1e06b3622c9e870fdb851207568a3",
+    "looking_glass/batch_validation.py": "214732f79a476e82c325216b118525a9a3bac72860e7e98aab059180e17dda18",
+    "looking_glass/bert_gpu_evidence.py": "08a84c4eee1910f2322687f548501cc3eb0e39daa2714b36a26cf5f85ced3b5e",
+    "looking_glass/budgeted_worker.py": "96c573c0a85c63419c20a9e90d37942fcfb1569fba9d758faa4745ca9d19e35d",
+    "looking_glass/certified_batch_policy.py": "4355979f8655eff414ee763b6a107504503be2e5532654153d88e859f125c08d",
+    "looking_glass/cuda_cleanup.py": "bccde75044bd2ee0ab1c4dfd8826fa214fc497e0d44b0d56493303b2315d73c9",
+    "looking_glass/device_identity.py": "ad08eff6edbb1c94af9abec0d07d8a10944624488b8d723b10c75e8c67e10c45",
+    "looking_glass/device_lease.py": "7f52ad238a1c9e8800c3d1ebf3b6969edd810a02754d1462c34f06cf783b57bf",
+    "looking_glass/fair_queue.py": "af9b1fdf9b8b86483ee446a9d13bce72ff844341266707b757807ea6265ad1fb",
+    "looking_glass/gpu_oneshot.py": "bc994727276a9918741ee80bd1ad8913b01d474015bb8dfdadbbfed1de9e048f",
+    "looking_glass/grouped_broker.py": "a23756ce38dd2ca2af86e90dd0a477effb586c64c4dc5a6ad9812b4101361f8f",
+    "looking_glass/grouped_broker_state.py": "6a74329af5fc2b3e20212a578f834963d3a612e850b4414b5059c1ba0aa2049d",
+    "looking_glass/grouped_gpu_dev.py": "fd679995eeb303ce6ea9cc4c2c2f7bc00205b299913bc2b9ec63db763313b193",
+    "looking_glass/grouped_observation.py": "24f936fabf37f31ce6428698fa32865c8483e1fce45b64e89f0c6821bde8cf37",
+    "looking_glass/grouped_owner_worker.py": "34fe9ae4cacaf0b0d7b41c396151e450de8c157025524f8d1263b122247e1efc",
+    "looking_glass/grouped_worker.py": "66063be7d1510ce2998ef14b72a6eb4cde27dbb370b827fe5eff4f9fbf02702c",
+    "looking_glass/host_budget.py": "1bab870bba3d7f5d8ccdbf25458c7cb60192248c25506b451859fadcc6340d37",
+    "looking_glass/memory_budget.py": "27d7b1a352815b7a103e1d70a5f8f0a3ccffdd10dacb71a0744a47ad6f66e1b9",
+    "looking_glass/microbatch.py": "c1f50d987cb3cc253f21a46fde696f3443131ab743272685f14a94ad181e5032",
+    "looking_glass/owner_completion.py": "01497e6ecde4ef37362e71c18173b17a4a85b9725841ba86c857aac32336565c",
+    "looking_glass/pretrained.py": "c903a0cbbc83d70b7bbb4b812b637bfbd888fae252c1a38385d1654f4d157b4e",
+    "looking_glass/resident_worker.py": "d796ec9a86ad596e9b654e2e7f2d1ad0ed920ae9ecceb3096014289daceae176",
+    "looking_glass/supervisor.py": "435c998255e894e003e9f2d05a701407a9b58f75aa50de9a63e7cc35bb132a1d",
+    "scripts/grouped_gpu_dev_bootstrap.py": "8df83970b917dba8ce78ac1a7b0c62135a6d62b477ed59e7e49196589c9862b2",
+    "scripts/v2_source_guards.py": "9a9a6c2db19fc5923a1845fb620aebf43135a1cc72150f16b095a019576c7c5c"
+  },
+  "status": "passed"
+}
