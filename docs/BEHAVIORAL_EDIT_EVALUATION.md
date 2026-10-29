@@ -106,6 +106,61 @@ or under denormal-flushing settings. No KL or full-logit reconstruction is
 claimed. Summary means and maxima cover only valid compared pairs, and report
 their denominator so missing comparisons are not hidden.
 
+## Example: full-vocabulary logits
+
+The existing `describe` and `distances` functions in
+`looking_glass.distilbert_color_edit_metrics_v1` can prepare a full-row
+comparison for this report. Despite the module's study-specific name, these
+calculations accept supplied logit rows and do not run a model. Here the entire
+toy vocabulary has three IDs; the margin is the target logit minus a specified
+foil logit, not a margin over every other token.
+
+```python
+from looking_glass.behavioral_edit_evaluation import (
+    BehavioralCase, BehavioralObservation, ScalarComparison, evaluate_behavioral_edit,
+)
+from looking_glass.distilbert_color_edit_metrics_v1 import describe, distances
+
+before_logits = [2.0, 0.5, -1.0]
+after_logits = [0.4, 2.5, -1.0]
+target_id, foil_id = 1, 0
+before = describe(before_logits, (target_id, foil_id))
+after = describe(after_logits, (target_id, foil_id))
+
+def top_observation(description):
+    token = description['unique_top']
+    return (BehavioralObservation(value=token) if token is not None
+            else BehavioralObservation(status='tied'))
+
+def margin(description):
+    logits = description['logits']
+    return logits[str(target_id)] - logits[str(foil_id)]
+
+case = BehavioralCase(
+    'example', 'target', top_observation(before), top_observation(after),
+    measures=(ScalarComparison('target_minus_foil', margin(before), margin(after)),),
+)
+row = evaluate_behavioral_edit([case])['cases'][0]
+tv = distances(before_logits, after_logits)['tv']
+print(row['measures']['target_minus_foil'])  # before -1.5, after 2.1, delta +3.6
+print(row['outcome_value_changed'])          # True; None if either top is tied
+print(tv)                                    # TV over all three supplied IDs
+```
+
+`describe` exposes all tied top IDs and sets `unique_top` to `None` on a tie;
+the example preserves that uncertainty instead of calling the top unchanged.
+Both functions validate their inputs and require finite built-in `int` or
+`float` values (not booleans), rows of length 2–65,536 and magnitudes no larger
+than finite float32. They convert values to binary64. The
+distance routine requires equal lengths and uses a stable log-domain TV
+calculation; both routines fail if the calling thread flushes signed float32 or
+float64 subnormals. They do not verify that the caller supplied a complete
+vocabulary or that equal positions mean the same token: bind the tokenizer,
+vocabulary order, input and readout position across both rows yourself. Keep
+the original rows and runtime details for independent checking. TV includes any
+change to the target and foil; it is not by itself a measure of collateral
+damage or the success of an edit.
+
 ## Rollback evidence
 
 `RollbackEvidence` records whether rollback was reported attempted and optional
