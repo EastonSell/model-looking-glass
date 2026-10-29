@@ -372,11 +372,12 @@ def main():
         raise ValueError('output must be outside the source checkout')
     before = source_identity()
     output.mkdir(parents=False, exist_ok=False)
-    previous.previous._write_json(output / 'started.json',
-                                  {'status': 'started', 'source': before, 'cases_path': CASES_PATH, 'seed': SEED})
     counts = {'started': 0, 'completed': 0}
-    phase = 'runtime_setup'
+    phase = 'started_record'
     try:
+        previous.previous._write_json(output / 'started.json',
+                                      {'status': 'started', 'source': before, 'cases_path': CASES_PATH, 'seed': SEED})
+        phase = 'runtime_setup'
         torch.set_num_threads(1)
         torch.set_num_interop_threads(1)
         torch.use_deterministic_algorithms(True)

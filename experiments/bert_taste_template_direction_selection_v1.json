@@ -1,0 +1,31 @@
+{
+  "case_file_sha256": "e59f5e1da0b3ce8c99ea9c231b4998e1c1e685d09c20bff4fdb734dc4910256f",
+  "direct_child_exit_code": 0,
+  "finished_at_utc_operator_clock": "2026-10-29T08:11:48.422536+00:00",
+  "invocation": [
+    "python",
+    "-I",
+    "-B",
+    "-X",
+    "pycache_prefix=<fresh-empty-directory>",
+    "scripts/bert_taste_template_cases_v1.py",
+    "--tokenizer-json",
+    "<pinned-offline-tokenizer>",
+    "--selection-source-commit",
+    "210dfc676f9e1670391f8fe71f2a9c418d6fe962",
+    "--output",
+    "<new-output-file>"
+  ],
+  "prefix_empty_after": true,
+  "prefix_empty_before": true,
+  "python_version": "3.11.15 (main, Jun 11 2026, 04:59:07) [MSC v.1944 64 bit (AMD64)]",
+  "schema": "bert-taste-template-selection-observation-v1",
+  "scope": "Operator observation of one public tokenizer-only direct-child invocation; not an execution or publication-chronology attestation.",
+  "selector": "scripts/bert_taste_template_cases_v1.py",
+  "source_commit": "210dfc676f9e1670391f8fe71f2a9c418d6fe962",
+  "started_at_utc_operator_clock": "2026-10-29T08:11:46.799461+00:00",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256_line": "e59f5e1da0b3ce8c99ea9c231b4998e1c1e685d09c20bff4fdb734dc4910256f",
+  "tokenizer_sha256": "ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98",
+  "tokenizers_version": "0.22.2"
+}

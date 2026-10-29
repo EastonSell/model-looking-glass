@@ -1,5 +1,6 @@
 """Small random-model checks; no checkpoint or prospective study inputs."""
 import math
+import json
 import os
 from pathlib import Path
 import shutil
@@ -100,6 +101,27 @@ def test_invalid_dose_stops_after_clean_captures(monkeypatch):
     assert sum(e['event'] == 'forward_complete' for e in events) == 8
     assert events[-1]['event'] == 'dose_unavailable'
     assert 'forward' not in model.__dict__ and not study.previous.previous.has_hooks(model)
+
+
+def test_partial_start_write_marks_attempt_incomplete(tmp_path, monkeypatch):
+    output = tmp_path / 'attempt'
+    monkeypatch.setattr(study, 'source_identity', lambda: {'commit': 'fabricated'})
+    monkeypatch.setattr(sys, 'argv', ['study', '--cache-dir', str(tmp_path), '--output', str(output)])
+    real_write = study.previous.previous._write_json
+    def write(path, value):
+        if path.name == 'started.json':
+            path.write_bytes(b'{"partial":')
+            raise OSError('fabricated start write failure')
+        return real_write(path, value)
+    monkeypatch.setattr(study.previous.previous, '_write_json', write)
+    with pytest.raises(OSError, match='fabricated start write failure'):
+        study.main()
+    assert (output / 'started.json').read_bytes() == b'{"partial":'
+    incomplete = json.loads((output / 'incomplete.json').read_text(encoding='utf-8'))
+    assert incomplete['status'] == 'incomplete'
+    assert incomplete['phase'] == 'started_record'
+    assert incomplete['counts'] == {'started': 0, 'completed': 0}
+    assert not (output / 'result.json').exists()
 
 
 def test_post_return_failure_retains_raw_observation(monkeypatch):
