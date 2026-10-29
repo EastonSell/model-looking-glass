@@ -313,9 +313,12 @@ class GroupedWorkerTests(unittest.TestCase):
         grouped, model, gate, budget, _, request, claim, _, jobs = setup_group()
         group = grouped.prepare('batch-v1', jobs, request, claim, 'group-a')
         launch = group.launch()
-        # NumPy writes bypass Tensor._version; the independent digest still
-        # catches this cooperative-owner mistake before model execution.
-        launch.inputs['input_ids'].numpy()[0, 0] = 99
+        # A .data alias bypasses the original Tensor._version; the independent
+        # digest still catches this mistake without requiring NumPy.
+        tensor = launch.inputs['input_ids']
+        version = tensor._version
+        tensor.data[0, 0] = 99
+        self.assertEqual(tensor._version, version)
         with self.assertRaisesRegex(ValueError, 'snapshot differs'):
             grouped.execute(group, launch)
         self.assertEqual(model.calls, 0)
