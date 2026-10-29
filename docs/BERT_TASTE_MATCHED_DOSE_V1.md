@@ -36,9 +36,10 @@ failed prerequisite this is 516 forwards: six frames, six blocks, fourteen
 forwards per block, and two final checks per frame.
 
 For each frame and block, compute Euclidean L2 distances between the two
-clean ingredient vectors and between the two clean `the` vectors, using
-binary64 differences, `math.fsum` of squared coordinate differences and
-`math.sqrt`. The common radius is the smaller distance. For each direction
+clean ingredient vectors and between the two clean `the` vectors, using the
+exact Python expression `math.sqrt(math.fsum((a - b) ** 2 for a, b in
+zip(left, right)))` on binary64-decoded coordinates. The common radius is the
+smaller distance. For each direction
 and site, calculate the interpolation fraction as common radius divided by
 that site's distance, then form `recipient + fraction * (donor - recipient)`
 using separate binary64 subtraction and multiplication and `math.fsum` for
@@ -99,8 +100,19 @@ mask-logit bits. The public frames and this protocol were assembled after the
 prior exploratory result and are to be published together before any new
 forward; this is not a prospective holdout. A run does not become complete solely because a child wrote a
 result: an independently observed clean direct-child exit, matching hashes,
-and no incomplete marker are also required. This does not authenticate
-execution, unchanged dependencies or whole-process-tree cleanup.
+no incomplete marker, and the observer's ordered journal, input, metadata,
+selected landing, control and basic delivered-dose checks are also required.
+An external operator must also observe and retain the parent process's own
+zero exit. A parseable `complete` receipt alone does not prove that its write,
+flush or fsync returned successfully; a nonzero or uncertain parent exit
+leaves the attempt incomplete even if such bytes exist.
+Before issuing `complete`, the observer also executes the independently
+authored, source-bound standard-library reader from its checked source bytes
+in a fresh isolated no-bytecode interpreter; that reader reconstructs the
+result effects, interpolation and summaries. A separate replay of the same
+reader follows the direct-child exit. These checks do not authenticate
+execution, unchanged dependencies or whole-process-tree cleanup; using the
+same reader twice is not two independent numerical methods.
 
 Each journal contains `forward_start` and `forward_complete` records in the
 fixed schedule, plus one `dose_plan` per frame/block. A failed dose
@@ -113,9 +125,13 @@ If a forward fails before the plan releases its captures, those partial
 captures may be unavailable; prior completed records and the failed-forward
 start remain in the journal when writing succeeds.
 
-Run the published source through `scripts/bert_taste_matched_parent_v1.py`
-using an existing offline hub cache and a fresh output path outside the
-checkout. A separate `--preflight-only` invocation checks selected source
+Run the published source through `python -I -B -X pycache_prefix=<fresh-empty-prefix>
+scripts/bert_taste_matched_parent_v1.py` using an existing offline hub cache and
+a fresh output path outside the checkout. A trusted operator must create the
+exclusive parent prefix empty before interpreter startup and verify it remains
+empty afterward; the parent separately creates the child's fresh prefix. The
+child timeout is 900 seconds; a timeout is an incomplete attempt, not a
+performance result. A separate `--preflight-only` invocation checks selected source
 bytes, a fresh bytecode prefix, interpreter isolation flags and direct-child
 exit without loading Torch, the tokenizer, cache or model. Actual runtime,
 tokenization, inventory and checkpoint checks occur in the experiment child
@@ -123,3 +139,11 @@ before the first forward. The observer does not establish whole-tree cleanup;
 on Windows its direct child may be a virtual-environment redirector. A timeout,
 interruption or uncertain cleanup requires separate process reconciliation,
 and no incomplete attempt is silently repeated.
+
+The isolated child puts standard-library and installed dependency paths before
+the checkout and restricts checkout imports to declared source files; it also
+checks the origins of the already imported project modules. Its fresh prefix
+prevents use of an existing conventional bytecode cache under that prefix.
+This does not attest the complete bytes or behavior of Python, site-packages,
+native dependencies or untrusted import machinery. Those remain trusted
+runtime preconditions.
