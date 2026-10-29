@@ -1,0 +1,154 @@
+{
+  "coalescing": {
+    "claim_return_minus_boundary_ms": [
+      312.801,
+      396.491,
+      359.254,
+      439.187
+    ],
+    "eligibility": "peer relay ingress at or before the nominal boundary, already queued at the check and satisfying team and compatibility rules",
+    "fallback": "dispatcher-observed; compatible groups are checked before singleton fallback",
+    "nominal_boundary": "head broker-ready time plus 100 ms",
+    "nominal_wait_seconds": 0.1,
+    "peer_broker_ready_minus_boundary_ms": [
+      265.375,
+      335.156,
+      309.326,
+      382.006
+    ],
+    "peer_relay_minus_boundary_ms": [
+      -523.696,
+      -455.969,
+      -495.269,
+      -465.721
+    ]
+  },
+  "correctness": {
+    "comparison": "abs(grouped - serial) <= 1e-6 + 1e-5 * abs(serial)",
+    "matched_serial_grouped_rows": 8,
+    "raw_rows_retained_privately": 16,
+    "row_payload_bytes_each": 804112,
+    "swapped_row_comparisons_distinguishable": 8
+  },
+  "grouped": {
+    "broker_ready_to_model_ns": [
+      1332578000,
+      967202700,
+      1614075300,
+      1178919600,
+      1408871600,
+      999545400,
+      1555058300,
+      1073051900
+    ],
+    "jobs_completed": 8,
+    "jobs_per_second": 0.6251689030547299,
+    "late_peer_count": 4,
+    "model_call_count": 4,
+    "model_call_shape": [
+      2,
+      4
+    ],
+    "model_entry_to_synchronized_finish_ns": [
+      152317100,
+      150421600,
+      169266300,
+      161301300
+    ],
+    "relay_wait_median_ns": 357918300.0,
+    "response_median_ns": 3245931500.0,
+    "two_member_group_claims": 4,
+    "wall_duration_ns": 12796541800,
+    "window_final_sync": "completed"
+  },
+  "grouped_over_serial_wall_rate": 0.7914112858209864,
+  "limits": [
+    "single fixed-order closed-loop pair, not a general capacity or fairness study",
+    "the paths include distinct relay/broker work and profiling overhead",
+    "model entry to synchronized finish uses host timestamps, not CUDA-event device durations",
+    "device and host isolation, continuous memory minima and native/descendant cleanup are not established",
+    "coordinator and reviewers reported CPU checks, a 122,677,157-byte archive verification with original-file reads and a separate 132,831,744-byte logits file streamed twice plus 19,534,080 bytes read; operator/file times do not establish physical I/O, per-window overlap or effect; other background I/O was not measured",
+    "original detailed records, logits and audits remain private; this projection alone cannot reproduce the saved-output check",
+    "a separate reproduction requires remaining project dependencies, pinned assets, review and fresh admission"
+  ],
+  "memory": {
+    "grouped_process_peak_allocated_bytes": 370421760,
+    "grouped_process_peak_reserved_bytes": 406847488,
+    "minimum_sampled_device_free_bytes": 7018119168,
+    "scope": "free memory is a device-wide point; allocator peaks are owner-process reset-window observations",
+    "serial_process_peak_allocated_bytes": 369485824,
+    "serial_process_peak_reserved_bytes": 406847488
+  },
+  "runtime": {
+    "clock": "QueryPerformanceCounter",
+    "clock_resolution_seconds": 1e-07,
+    "compute_capability": [
+      7,
+      5
+    ],
+    "cpu_interop_threads": 1,
+    "cpu_threads": 1,
+    "cuda_build": "12.8",
+    "device": "NVIDIA GeForce RTX 2070 SUPER",
+    "driver": "616.92",
+    "python": "3.11.15",
+    "torch": "2.8.0+cu128",
+    "transformers": "4.57.3"
+  },
+  "schema": "shared-batch-throughput-24e9-public-summary-v1",
+  "serial": {
+    "jobs_completed": 8,
+    "jobs_per_second": 0.7899418598841416,
+    "model_call_count": 8,
+    "model_call_shape": [
+      1,
+      4
+    ],
+    "model_entry_to_synchronized_finish_ns": [
+      170912600,
+      127939000,
+      133885300,
+      130917900,
+      162092000,
+      166162600,
+      141491400,
+      151185300
+    ],
+    "relay_wait_median_ns": 1216778550.0,
+    "response_median_ns": 2492151450.0,
+    "wall_duration_ns": 10127327600,
+    "window_final_sync": "completed"
+  },
+  "source": {
+    "chronology": "source frozen locally before the run; exact protected source snapshot published afterward",
+    "local_commit": "24e9de6cc4025432ff3f4b2a72f1026213a843d6",
+    "local_tree": "10cbe13d7c41a5cd302c3db16b9f793653697edd",
+    "protected_file_count": 35,
+    "snapshot_scope": "35 protected source/protocol files only; not the complete historical Git tree or a self-contained runnable environment",
+    "source_snapshot": "executed-source/"
+  },
+  "workload": {
+    "attention": "eager",
+    "attention_mask": "all ones",
+    "clients": 2,
+    "dtype": "float32",
+    "input_rows": "[50256, n, n+100, n+200] for n = 103 through 110",
+    "input_shape_per_job": [
+      1,
+      4
+    ],
+    "jobs_per_client": 4,
+    "model": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "order": [
+      "serial",
+      "grouped"
+    ],
+    "output_shape_per_job": [
+      1,
+      4,
+      50257
+    ],
+    "seed": 2026102808
+  }
+}
