@@ -39,3 +39,5 @@ The selected site produced ten strict sign reversals across 32 opposite-number d
 - The owner exited zero, was reaped, and its job drained and closed; the private original supervisor and launcher terminal are bound by the hashes in the discovery record. They retain local paths and are not reproduced in this public archive.
 
 The earlier validation-only rehearsal remains preserved as incomplete: it loaded no model and ran no study forward. The corrected no-model rehearsal passed before this public discovery. No held-out examples had been generated when this discovery record was prepared.
+
+The discovery owner inherited `MKL_CBWR` and `ATEN_CPU_CAPABILITY`, but their values were not recorded, so their historical values are unknown. Separate synthetic CPU checks found that `MKL_CBWR=AUTO` versus `COMPATIBLE` can change matrix-multiplication bytes and `ATEN_CPU_CAPABILITY=default` versus `avx2` can change softmax bytes on this host. These omissions limit exact replay of the original runtime; they do not by themselves establish an error in the saved discovery.
