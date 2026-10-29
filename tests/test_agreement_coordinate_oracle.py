@@ -259,6 +259,12 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
                     self.assertEqual(event["sites"], expected_sites)
                 elif kind in seen_metric_sites:
                     site_id = event["site"]
+                    present = kind == "present_site_metrics"
+                    self.assertEqual(event["contrast"],
+                                     {"first_token": " is" if present else " was",
+                                      "first_id": 318 if present else 373,
+                                      "second_token": " are" if present else " were",
+                                      "second_id": 389 if present else 547})
                     self.assertNotIn(site_id, seen_metric_sites[kind])
                     seen_metric_sites[kind].add(site_id)
                     layer_text, component, role = site_id.split(":")
@@ -279,8 +285,14 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
                             "_same_number" if target.number == donor.number else "_opposite_number")
                         self.assertEqual(pair["cell"], expected_cell)
                         scores = struct.unpack("<4f", patches[(target.case_id, donor.case_id, (layer, component))]["logits"])
-                        offset = 0 if kind == "present_site_metrics" else 2
-                        self.assertEqual((pair["patched_is"], pair["patched_are"]), scores[offset:offset + 2])
+                        clean_scores = struct.unpack("<4f", _bits(clean[target.case_id]["logits"][list(_CONTRAST)]))
+                        offset = 0 if present else 2
+                        first, second = ("is", "are") if present else ("was", "were")
+                        self.assertEqual((pair[f"patched_{first}"], pair[f"patched_{second}"]), scores[offset:offset + 2])
+                        self.assertEqual((pair[f"clean_{first}"], pair[f"clean_{second}"]), clean_scores[offset:offset + 2])
+                        if not present:
+                            self.assertTrue(all(key not in pair for key in
+                                                ("clean_is", "clean_are", "patched_is", "patched_are")))
                     self.assertEqual(seen_pairs, {(target.case_id, donor.case_id)
                                                   for target in _CASES for donor in _CASES})
                 elif kind == "clean_capture":
