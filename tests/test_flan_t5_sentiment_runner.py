@@ -2,13 +2,17 @@
 import json
 import hashlib
 import copy
+import inspect
 import re
+import sys
 from types import SimpleNamespace
 from unittest import mock
 
 import pytest
 import torch
 
+import looking_glass.flan_t5_sentiment_journal as journal_module
+import looking_glass.flan_t5_sentiment_runner as runner_module
 from looking_glass.flan_t5_sentiment_journal import EvidenceJournal, Limits
 from looking_glass.flan_t5_sentiment_runner import (
     _EvaluationRunner, _encode_case, _label_targets, _run_fabricated, _require_live_runtime,
@@ -398,6 +402,73 @@ def test_component_failure_leaves_incomplete_and_no_further_forwards():
     assert model.calls == 10
     assert writer.terminal['status'] == 'incomplete'
     assert writer.terminal['active']['kind'] == 'decoder'
+
+
+def _interrupt_at_return(function):
+    lines, start = inspect.getsourcelines(function)
+    matches = [start + i for i, line in enumerate(lines) if line.strip() == 'return result']
+    assert len(matches) == 1
+    def trace(frame, event, arg):
+        if event == 'line' and frame.f_code is function.__code__ and frame.f_lineno == matches[0]:
+            sys.settrace(None)
+            raise KeyboardInterrupt('lost return after saved data')
+        return trace
+    return trace
+
+
+def test_lost_evaluation_return_stops_with_incomplete_saved_rows():
+    writer, model = MemoryJournal(), ToyModel().eval()
+    try:
+        sys.settrace(_interrupt_at_return(_EvaluationRunner.evaluate))
+        with pytest.raises(KeyboardInterrupt, match='lost return'):
+            _run_fabricated(model, ToyTokenizer(), fabricated_groups(), writer, width=2, vocab_size=8)
+    finally:
+        sys.settrace(None)
+    assert writer.terminal['status'] == 'incomplete'
+    assert model.encoder_calls == 1 and model.calls == 4
+    rows = [event['detail'] for event in writer.events if event['event'] == 'evaluation_return']
+    assert len(rows) == 1 and all(ref['path'] in writer.blobs for ref in rows[0]['all_logit_refs'])
+
+
+def test_lost_final_return_keeps_provisional_terminal_but_raises():
+    class SingleTerminal(MemoryJournal):
+        def finish(self, status, detail):
+            if self.terminal is not None:
+                raise RuntimeError('terminal already written')
+            super().finish(status, detail)
+
+    writer, model = SingleTerminal(), ToyModel().eval()
+    model.force_negative = True
+    try:
+        sys.settrace(_interrupt_at_return(runner_module._run_core))
+        with pytest.raises(KeyboardInterrupt, match='lost return'):
+            _run_fabricated(model, ToyTokenizer(), fabricated_groups(), writer, width=2, vocab_size=8)
+    finally:
+        sys.settrace(None)
+    # The external owner must classify the lost return and process exit; the
+    # locally saved terminal is only a provisional candidate.
+    assert writer.terminal['status'] == 'complete_candidate'
+    assert model.encoder_calls == 36 and model.calls > 0
+
+
+def test_lost_tensor_write_return_keeps_file_and_unknown_accounting(tmp_path, monkeypatch):
+    writer, model = journal(tmp_path), ToyModel().eval()
+    original = journal_module._write_new
+    def interrupt(path, raw):
+        original(path, raw)
+        if path.parent.name == 'tensors':
+            raise OSError('lost tensor-write return')
+    monkeypatch.setattr(journal_module, '_write_new', interrupt)
+    with pytest.raises(OSError, match='lost tensor-write return'):
+        _run_fabricated(model, ToyTokenizer(), fabricated_groups(), writer, width=2, vocab_size=8)
+    terminal = json.loads((writer.directory / 'terminal.json').read_text())
+    assert terminal['status'] == 'incomplete' and terminal['storage_accounting_complete'] is False
+    assert terminal['active_component']['kind'] == 'encoder'
+    assert len(list((writer.directory / 'tensors').glob('*.f32le'))) == 1
+    assert model.encoder_calls == 1 and model.calls == 0
+    assert sum(path.stat().st_size for path in writer.directory.rglob('*') if path.is_file()) <= writer.limits.total_bytes
+    with pytest.raises(journal_module.JournalError):
+        writer.begin_component({'kind': 'encoder'}, reserve_bytes=32)
 
 
 def test_complete_fabricated_schedule_uses_the_real_file_journal(tmp_path):
