@@ -18,6 +18,114 @@ class EffectCase:
     interval_high: float | None = None
 
 
+@dataclass(frozen=True)
+class InterventionCase:
+    """Matched scalar readouts and caller-supplied statuses for one case."""
+
+    case_id: str
+    baseline_status: str
+    eligibility: str
+    reference: float | None
+    candidate: float | None
+    control: float | None
+
+
+def summarize_interventions(cases):
+    """Summarize signed, matched intervention readouts without inferring benefit.
+
+    Baseline and eligibility statuses are caller-supplied. All available values
+    are retained, including values for excluded cases. Aggregate means use only
+    cases with a supported baseline, eligible intervention and all three finite
+    readouts. No confidence interval or independence claim is made.
+    """
+    try:
+        cases = list(cases)
+    except TypeError:
+        raise ValueError('cases must be an iterable of InterventionCase records') from None
+    if not cases:
+        raise ValueError('at least one case is required')
+
+    baseline_counts = dict.fromkeys(('supported', 'unsupported', 'unverified'), 0)
+    eligibility_counts = dict.fromkeys(('eligible', 'ineligible', 'unverified'), 0)
+    exclusions = dict.fromkeys(('baseline_unsupported', 'baseline_unverified',
+                                'intervention_ineligible', 'intervention_unverified',
+                                'missing_readout'), 0)
+    missing = dict.fromkeys(('reference', 'candidate', 'control'), 0)
+    rows = []
+    ids = set()
+    for case in cases:
+        if not isinstance(case, InterventionCase):
+            raise ValueError('cases must contain only InterventionCase records')
+        if not isinstance(case.case_id, str) or not case.case_id.strip():
+            raise ValueError('each case must have a nonempty string case_id')
+        if case.case_id in ids:
+            raise ValueError(f'duplicate case_id: {case.case_id!r}')
+        ids.add(case.case_id)
+        if not isinstance(case.baseline_status, str) or case.baseline_status not in baseline_counts:
+            raise ValueError(f'{case.case_id}: invalid baseline_status')
+        if not isinstance(case.eligibility, str) or case.eligibility not in eligibility_counts:
+            raise ValueError(f'{case.case_id}: invalid eligibility')
+        baseline_counts[case.baseline_status] += 1
+        eligibility_counts[case.eligibility] += 1
+
+        values = {}
+        for name in missing:
+            raw = getattr(case, name)
+            values[name] = None if raw is None else _finite_float(raw, f'{case.case_id}.{name}')
+            missing[name] += raw is None
+
+        def difference(left, right, name):
+            if values[left] is None or values[right] is None:
+                return None
+            result = values[left] - values[right]
+            if not math.isfinite(result):
+                raise ValueError(f'{case.case_id}.{name}: difference exceeds finite float range')
+            return result
+
+        candidate_effect = difference('candidate', 'reference', 'candidate_effect')
+        control_effect = difference('control', 'reference', 'control_effect')
+        contrast = difference('candidate', 'control', 'candidate_minus_control')
+
+        if case.baseline_status != 'supported':
+            reason = 'baseline_' + case.baseline_status
+        elif case.eligibility != 'eligible':
+            reason = 'intervention_' + case.eligibility
+        elif any(value is None for value in values.values()):
+            reason = 'missing_readout'
+        else:
+            reason = None
+        if reason is not None:
+            exclusions[reason] += 1
+        rows.append({'case_id': case.case_id, 'baseline_status': case.baseline_status,
+                     'eligibility': case.eligibility, **values,
+                     'candidate_effect': candidate_effect, 'control_effect': control_effect,
+                     'candidate_minus_control': contrast,
+                     'included_in_paired_summary': reason is None, 'exclusion_reason': reason})
+
+    paired = [row for row in rows if row['included_in_paired_summary']]
+    n = len(paired)
+
+    def mean(name):
+        if not paired:
+            return None
+        # Exact summation of the finite binary64 values avoids overflow and
+        # cancellation in the accumulator; only the final mean is rounded.
+        return float(sum((Fraction.from_float(row[name]) for row in paired), Fraction()) / n)
+
+    contrasts = [row['candidate_minus_control'] for row in paired]
+    return {'n_cases': len(rows), 'baseline_status_counts': baseline_counts,
+            'eligibility_counts': eligibility_counts, 'missing_readout_counts': missing,
+            'paired_cases': {'included': n, 'excluded': len(rows) - n,
+                             'exclusion_counts': exclusions},
+            'point': {'mean_candidate_effect': mean('candidate_effect'),
+                      'mean_control_effect': mean('control_effect'),
+                      'mean_candidate_minus_control': mean('candidate_minus_control'),
+                      'candidate_above_control': sum(value > 0 for value in contrasts),
+                      'candidate_equal_control': sum(value == 0 for value in contrasts),
+                      'candidate_below_control': sum(value < 0 for value in contrasts)},
+            'cases': rows}
+
+
 def evaluate_effects(cases, *, zero_tolerance=0.0, bootstrap_samples=2000,
                      confidence=0.95, seed=0, prediction_interval_level=None):
     """Evaluate scalar effect predictions against observations and a zero null."""
