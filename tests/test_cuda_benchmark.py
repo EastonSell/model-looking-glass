@@ -4,6 +4,7 @@ import io
 import os
 import subprocess
 import sys
+import site
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
@@ -22,15 +23,179 @@ except ImportError:
     torch = None
 
 
+class OwnerLaunchTests(unittest.TestCase):
+    def test_cleanup_attests_only_after_synchronization_and_zero_allocations(self):
+        events = []
+        class Lease:
+            def check(self): events.append("lease-check")
+        class Session:
+            def check(self, lease): events.append("session-check")
+            def attest_clean(self, lease): events.append("attest")
+        class Cuda:
+            def is_initialized(self): return True
+            def synchronize(self, device): events.append("synchronize")
+            def empty_cache(self): events.append("empty-cache")
+            def memory_allocated(self, device): return 0
+            def memory_reserved(self, device): return 0
+        lease, session, cuda = Lease(), Session(), Cuda()
+        bench._finish_owner(session, lease, cuda)
+        self.assertEqual(events, ["lease-check", "session-check", "synchronize",
+                                  "empty-cache", "synchronize", "attest"])
+        events.clear()
+        with patch.object(cuda, "synchronize", side_effect=RuntimeError("drain failed")):
+            with self.assertRaisesRegex(RuntimeError, "drain failed"):
+                bench._finish_owner(session, lease, cuda)
+        self.assertNotIn("attest", events)
+        events.clear()
+        with patch.object(cuda, "memory_allocated", return_value=1):
+            with self.assertRaisesRegex(RuntimeError, "allocations"):
+                bench._finish_owner(session, lease, cuda)
+        self.assertNotIn("attest", events)
+
+    def test_base_python_is_direct_child_and_loads_the_selected_venv(self):
+        """The Windows venv launcher cannot be the supervisor's owner PID."""
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            (root / "owner_probe.py").write_text(
+                "import json, os, sys, torch\n"
+                "from pathlib import Path\n"
+                "Path(sys.argv[1]).write_text(json.dumps({"
+                "'pid':os.getpid(),'parent':os.getppid(),'exe':sys.executable,"
+                "'torch_path':torch.__file__,'torch_version':str(torch.__version__),"
+                "'cuda_initialized':torch.cuda.is_initialized()}))\n", encoding="utf-8")
+            output = root / "probe.json"
+            command, environment = bench.direct_python_module(
+                "owner_probe", [str(output)], project=root)
+            environment["CUDA_VISIBLE_DEVICES"] = "-1"
+            child = subprocess.Popen(command, cwd=root, env=environment,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            stdout, stderr = child.communicate(timeout=30)
+            self.assertEqual(child.returncode, 0, (stdout, stderr))
+            probe = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(probe["pid"], child.pid)
+            self.assertEqual(probe["parent"], os.getpid())
+            self.assertEqual(Path(probe["exe"]).resolve(), Path(sys._base_executable).resolve())
+            self.assertFalse(probe["cuda_initialized"])
+            self.assertEqual(probe["torch_version"], str(torch.__version__))
+            self.assertEqual(Path(probe["torch_path"]).resolve(), Path(torch.__file__).resolve())
+
+    def test_cpu_preflight_failure_does_not_launch_supervised_owner(self):
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / "run"
+            with patch.object(bench, "_run_cpu_preflight", side_effect=RuntimeError("missing checkpoint")), \
+                 patch.object(bench, "_launch_supervised_owner") as launch:
+                with self.assertRaisesRegex(RuntimeError, "missing checkpoint"):
+                    bench.run_supervised_benchmark(output, workspace_root=Path(root),
+                                                   cache_dir=Path(root) / "missing")
+            launch.assert_not_called()
+            self.assertTrue((output / "failure.json").is_file())
+            self.assertFalse((output / "results.json").exists())
+
+    def test_parent_start_is_durable_before_interrupted_preflight(self):
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / "run"
+            def interrupt(cache_dir):
+                self.assertTrue((output / "parent_started.json").is_file())
+                raise KeyboardInterrupt()
+            with patch.object(bench, "_run_cpu_preflight", side_effect=interrupt):
+                with self.assertRaises(KeyboardInterrupt):
+                    bench.run_supervised_benchmark(output, workspace_root=Path(root),
+                                                   cache_dir=Path(root) / "cache")
+            self.assertEqual(json.loads((output / "failure.json").read_text())["status"], "cancelled")
+
+    def test_parent_evidence_failure_keeps_the_preflight_error_primary(self):
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / "run"
+            original_write = bench._write_json
+            def write(path, value):
+                if Path(path).name == "failure.json":
+                    raise OSError("failed recording")
+                return original_write(path, value)
+            with patch.object(bench, "_run_cpu_preflight", side_effect=RuntimeError("preflight failed")), \
+                 patch.object(bench, "_write_json", side_effect=write):
+                with self.assertRaisesRegex(RuntimeError, "preflight failed") as raised:
+                    bench.run_supervised_benchmark(output, workspace_root=Path(root),
+                                                   cache_dir=Path(root) / "cache")
+            self.assertIsInstance(raised.exception.__cause__, OSError)
+            self.assertTrue((output / "parent_started.json").is_file())
+
+    def test_parent_start_publication_interrupt_never_starts_preflight(self):
+        for interrupt_at in ("link", "cleanup"):
+            with self.subTest(interrupt_at=interrupt_at), tempfile.TemporaryDirectory() as root:
+                output = Path(root) / "run"
+                link, unlink = os.link, Path.unlink
+                def interrupted_link(source, target):
+                    link(source, target)
+                    if interrupt_at == "link" and Path(target).name == "parent_started.json":
+                        raise KeyboardInterrupt()
+                def interrupted_unlink(path, *args, **kwargs):
+                    if interrupt_at == "cleanup" and path.name == "parent_started.json.partial":
+                        raise KeyboardInterrupt()
+                    return unlink(path, *args, **kwargs)
+                with patch.object(os, "link", interrupted_link), patch.object(Path, "unlink", interrupted_unlink), \
+                     patch.object(bench, "_run_cpu_preflight") as preflight:
+                    with self.assertRaises(KeyboardInterrupt):
+                        bench.run_supervised_benchmark(output, workspace_root=Path(root),
+                                                       cache_dir=Path(root) / "cache")
+                preflight.assert_not_called()
+                self.assertTrue((output / "parent_started.json").is_file())
+                self.assertEqual(json.loads((output / "failure.json").read_text())["status"], "cancelled")
+
+    def test_parent_start_scratch_failure_does_not_launch_preflight_or_owner(self):
+        unlink = Path.unlink
+        def cannot_unlink(path, *args, **kwargs):
+            if path.name == "parent_started.json.partial":
+                raise OSError("scratch remains")
+            return unlink(path, *args, **kwargs)
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / "run"
+            with patch.object(Path, "unlink", cannot_unlink), \
+                 patch.object(bench, "_run_cpu_preflight") as preflight, \
+                 patch.object(bench, "_launch_supervised_owner") as launch:
+                with self.assertRaisesRegex(RuntimeError, "scratch"):
+                    bench.run_supervised_benchmark(output, workspace_root=Path(root),
+                                                   cache_dir=Path(root) / "cache")
+            preflight.assert_not_called()
+            launch.assert_not_called()
+            self.assertEqual(json.loads((output / "failure.json").read_text())["stage"], "parent_start_cleanup")
+            self.assertTrue(bench.verify_artifact_inventory(output))
+
+    def test_preflight_source_drift_blocks_owner_launch(self):
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / "run"
+            with patch.object(bench, "_run_cpu_preflight", return_value={"source_bundle_sha256": "wrong"}), \
+                 patch.object(bench, "_launch_supervised_owner") as launch, \
+                 patch.object(bench, "resolve_benchmark_identity", side_effect=AssertionError("should not query")):
+                with self.assertRaisesRegex(RuntimeError, "source"):
+                    bench.run_supervised_benchmark(output, workspace_root=Path(root),
+                                                   cache_dir=Path(root) / "cache")
+            launch.assert_not_called()
+            self.assertEqual(json.loads((output / "failure.json").read_text())["stage"], "cpu_preflight")
+
+
 class ScheduleTests(unittest.TestCase):
     def test_preflight_rejects_missing_location_replaced_by_second_invocation(self):
         identities = []
         for layer in range(6):
             for kind in ("block", "attn", "mlp"):
                 path = f"transformer.h.{layer}" + ("" if kind == "block" else f".{kind}")
-                identities.append((path, kind, layer, 0, 0, (), (0,), (0, 3, 7)))
+                selector = (0,) if kind in ("block", "attn") else ()
+                identities.append((path, kind, layer, 0, 0, selector, (0,), (0, 3, 7)))
         bench.validate_transformer_coverage(identities)
         identities[-1] = (*identities[0][:4], 1, *identities[0][5:])
+        with self.assertRaisesRegex(AssertionError, "coverage"):
+            bench.validate_transformer_coverage(identities)
+
+    def test_preflight_rejects_a_wrong_output_selector(self):
+        identities = []
+        for layer in range(6):
+            for kind in ("block", "attn", "mlp"):
+                path = f"transformer.h.{layer}" + ("" if kind == "block" else f".{kind}")
+                selector = (0,) if kind in ("block", "attn") else ()
+                identities.append((path, kind, layer, 0, 0, selector, (0,), (0, 3, 7)))
+        bench.validate_transformer_coverage(identities)
+        entry = identities[1]
+        identities[1] = (*entry[:5], (), *entry[6:])
         with self.assertRaisesRegex(AssertionError, "coverage"):
             bench.validate_transformer_coverage(identities)
 
@@ -140,6 +305,40 @@ class ScheduleTests(unittest.TestCase):
 
 
 class TelemetryTests(unittest.TestCase):
+    def test_cuda_runtime_uuid_normalizes_only_complete_physical_ids(self):
+        bare = "12345678-1234-1234-1234-123456789abc"
+        prefixed = "GPU-" + bare
+        self.assertEqual(bench._cuda_runtime_uuid(bare), prefixed)
+        self.assertEqual(bench._cuda_runtime_uuid(prefixed.upper()), prefixed)
+        for invalid in ("", "GPU-abc", "MIG-" + bare, bare + "extra", None):
+            with self.assertRaises(ValueError):
+                bench._cuda_runtime_uuid(invalid)
+
+    def test_post_idle_wait_ignores_queries_that_straddle_the_boundary(self):
+        monitor = SimpleNamespace(smi="nvidia-smi", errors=[], observations=[
+            {"query_started_monotonic_ns": 90, "observed_monotonic_ns": 110},
+            {"query_started_monotonic_ns": 101, "observed_monotonic_ns": 111},
+            {"query_started_monotonic_ns": 102, "observed_monotonic_ns": 112},
+        ])
+        def add_sample(_):
+            monitor.observations.append({"query_started_monotonic_ns": 103,
+                                         "observed_monotonic_ns": 113})
+        with patch.object(bench.time, "sleep", side_effect=add_sample) as sleep:
+            bench._wait_for_observations(monitor, threshold_ns=100)
+        sleep.assert_called_once()
+
+    def test_screen_checks_gaps_across_the_whole_idle_screen(self):
+        times = [1, 10, 19.5, 19.8, 20.2, 20.6, 21, 21.5, 22.2, 22.4, 22.6]
+        observations = [{"observed_monotonic_ns": int(n * 1_000_000_000),
+                         "query_started_monotonic_ns": int(n * 1_000_000_000),
+                         "query_ended_monotonic_ns": int(n * 1_000_000_000),
+                         "utilization_percent": 0, "gpu_uuid": "GPU-abc"} for n in times]
+        result = bench.classify_isolation(True, observations, 20_000_000_000,
+            21_000_000_000, [{"ok": True, "pids": []}] * 2, own_pid=1,
+            gpu_uuid="GPU-abc", telemetry_errors=[])
+        self.assertEqual(result["status"], "unverified")
+        self.assertTrue(any("gap" in reason for reason in result["reasons"]))
+
     def test_identity_uses_the_shared_uuid_derived_lock_before_cuda(self):
         uuid = "GPU-12345678-1234-1234-1234-123456789abc"
         result = SimpleNamespace(returncode=0, stderr="", stdout=f"{uuid}, One GPU, 8192, 616.92\n")
@@ -164,6 +363,8 @@ class TelemetryTests(unittest.TestCase):
 
     def test_isolation_screen_rejects_missing_data_and_foreign_processes(self):
         observations = [{"observed_monotonic_ns": n * 1_000_000_000,
+                         "query_started_monotonic_ns": n * 1_000_000_000,
+                         "query_ended_monotonic_ns": n * 1_000_000_000,
                          "utilization_percent": 0, "gpu_uuid": "GPU-abc"}
                         for n in (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)]
         processes = [{"ok": True, "pids": [44]}, {"ok": True, "pids": [44]}]
@@ -188,6 +389,24 @@ class TelemetryTests(unittest.TestCase):
         self.assertEqual(bench.classify_isolation(True, observations, 4_000_000_000,
             7_000_000_000, processes, own_pid=44, gpu_uuid="GPU-abc", telemetry_errors=[])["status"], "contaminated")
 
+    def test_screen_uses_conservative_query_time_bounds(self):
+        observations = [{"observed_monotonic_ns": n * 1_000_000_000,
+                         "query_started_monotonic_ns": n * 1_000_000_000,
+                         "query_ended_monotonic_ns": n * 1_000_000_000,
+                         "utilization_percent": 0, "gpu_uuid": "GPU-abc"}
+                        for n in range(1, 11)]
+        processes = [{"ok": True, "pids": []}] * 2
+        def screen():
+            return bench.classify_isolation(True, observations, 4_000_000_000,
+                7_000_000_000, processes, own_pid=1, gpu_uuid="GPU-abc", telemetry_errors=[])
+        self.assertEqual(screen()["status"], "no_contamination_observed")
+        observations[1]["query_started_monotonic_ns"] = 700_000_000
+        self.assertEqual(screen()["status"], "unverified")
+        observations[1]["query_started_monotonic_ns"] = 2_000_000_000
+        # The first post-idle query ends at 8 s but started while workload ran.
+        observations[7]["query_started_monotonic_ns"] = 6_000_000_000
+        self.assertEqual(screen()["status"], "unverified")
+
     def test_inventory_refuses_ambiguous_mapping_and_processes_are_scoped_to_gpu(self):
         gpu = SimpleNamespace(returncode=0, stderr="", stdout="GPU-a, One GPU, 8192, 616.92\n")
         with patch.object(bench, "_command", return_value=gpu):
@@ -207,6 +426,35 @@ class TelemetryTests(unittest.TestCase):
 
 
 class ArtifactTests(unittest.TestCase):
+    def test_terminal_interrupted_after_link_remains_authoritative(self):
+        real_link = os.link
+        def interrupt_after_link(source, target):
+            real_link(source, target)
+            if Path(target).name == "results.json":
+                raise KeyboardInterrupt()
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / "new"
+            with patch.object(os, "link", interrupt_after_link), \
+                 patch.object(bench, "_evaluate", return_value={"raw": [], "protocol": bench.PROTOCOL}):
+                with self.assertRaises(KeyboardInterrupt):
+                    bench.run_benchmark(output, quick=True)
+            self.assertTrue((output / "results.json").is_file())
+            self.assertFalse((output / "failure.json").exists())
+            self.assertFalse((output / "publication_ambiguous.json").exists())
+            self.assertTrue(bench.verify_artifact_inventory(output))
+
+    def test_evidence_redacts_physical_gpu_uuid_in_nested_fields_and_paths(self):
+        uuid = "GPU-12345678-1234-1234-1234-123456789abc"
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "evidence.json"
+            bench._write_json(path, {"gpu_uuid": uuid, "lease_path": f"/private/{uuid}.lock",
+                "cuda_visible_devices": uuid, "message": f"failure near {uuid.upper()}"})
+            raw = path.read_text(encoding="utf-8")
+            self.assertNotIn(uuid.lower(), raw.lower())
+            self.assertNotIn(uuid.upper(), raw)
+            self.assertEqual(json.loads(raw)["cuda_visible_devices"], "<redacted>")
+            self.assertIsNone(bench._public_evidence({"cuda_visible_devices": None})["cuda_visible_devices"])
+
     def test_supervisor_only_publishes_success_after_clean_reaped_owner(self):
         def evaluate(*, progress, **kwargs):
             progress["record_manifest"]({"model": "fixture"})
@@ -285,7 +533,7 @@ class ArtifactTests(unittest.TestCase):
             self.assertTrue((output / "failure.json").is_file())
             self.assertFalse((output / "results.json").exists())
 
-    def test_terminal_cleanup_failure_cannot_publish_both_outcomes(self):
+    def test_terminal_remains_published_if_scratch_cleanup_fails(self):
         real_unlink = Path.unlink
         failed = False
         def fail_once(path, *args, **kwargs):
@@ -298,32 +546,26 @@ class ArtifactTests(unittest.TestCase):
             output = Path(root) / "new"
             with patch.object(Path, "unlink", fail_once), \
                  patch.object(bench, "_evaluate", return_value={"raw": [], "protocol": bench.PROTOCOL}):
-                with self.assertRaisesRegex(OSError, "temporary cleanup failed"):
-                    bench.run_benchmark(output, quick=True)
-            self.assertFalse((output / "results.json").exists())
-            self.assertTrue((output / "failure.json").is_file())
+                bench.run_benchmark(output, quick=True)
+            self.assertTrue((output / "results.json").is_file())
+            self.assertFalse((output / "failure.json").exists())
+            self.assertTrue(bench.verify_artifact_inventory(output))
 
-    def test_failed_terminal_rollback_is_explicitly_ambiguous(self):
+    def test_stale_scratch_does_not_change_a_published_terminal(self):
         real_unlink = Path.unlink
-        failed = False
-        def fail_rollback(path, *args, **kwargs):
-            nonlocal failed
-            if path.name == "results.json.partial" and not failed:
-                failed = True
+        def fail_scratch(path, *args, **kwargs):
+            if path.name == "results.json.partial":
                 raise OSError("temporary cleanup failed")
-            if path.name == "results.json":
-                raise OSError("rollback failed")
             return real_unlink(path, *args, **kwargs)
         with tempfile.TemporaryDirectory() as root:
             output = Path(root) / "new"
-            with patch.object(Path, "unlink", fail_rollback), \
+            with patch.object(Path, "unlink", fail_scratch), \
                  patch.object(bench, "_evaluate", return_value={"raw": [], "protocol": bench.PROTOCOL}):
-                with self.assertRaisesRegex(RuntimeError, "ambiguous"):
-                    bench.run_benchmark(output, quick=True)
-            self.assertTrue((output / "publication_ambiguous.json").is_file())
+                bench.run_benchmark(output, quick=True)
+            self.assertTrue((output / "results.json").is_file())
+            self.assertTrue((output / "results.json.partial").exists())
             self.assertFalse((output / "failure.json").exists())
-            with self.assertRaisesRegex(ValueError, "artifact"):
-                bench.verify_artifact_inventory(output)
+            self.assertTrue(bench.verify_artifact_inventory(output))
 
     def test_final_lease_check_prevents_success_after_late_ownership_loss(self):
         def evaluate(*, progress, **kwargs):
@@ -512,6 +754,20 @@ bench.run_benchmark(sys.argv[1], quick=True)
 
 @unittest.skipUnless(torch is not None, "PyTorch is not installed")
 class EquivalenceTests(unittest.TestCase):
+    def test_owner_source_drift_is_rejected_before_lease_or_cuda(self):
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / "new"
+            owner = SimpleNamespace(run_id="fixture")
+            with patch.object(bench, "_validate_owner_session"), \
+                 patch.object(bench, "_acquire_device_lease") as acquire, \
+                 patch.object(torch.cuda, "is_available") as cuda_available:
+                with self.assertRaisesRegex(RuntimeError, "source"):
+                    bench.run_benchmark(output, quick=True, cache_dir=root,
+                        lease_path=Path(root) / "device.lock", candidate_only=True,
+                        owner_session=owner, cpu_preflight={"source_bundle_sha256": "wrong"})
+            acquire.assert_not_called()
+            cuda_available.assert_not_called()
+
     def test_unsupervised_execution_stops_before_cuda_or_device_lease(self):
         with tempfile.TemporaryDirectory() as root:
             output = Path(root) / "new"
@@ -523,10 +779,28 @@ class EquivalenceTests(unittest.TestCase):
             acquire.assert_not_called()
             cuda_available.assert_not_called()
 
+    def test_owner_without_verified_device_identity_stops_before_cuda(self):
+        with tempfile.TemporaryDirectory() as root:
+            output = Path(root) / "new"
+            lease_path = Path(root) / "device.lock"
+            owner = SimpleNamespace(run_id="fixture", check=lambda lease: None,
+                                    identity=None, device_lease_path=lease_path)
+            source, _ = bench.create_source_bundle(Path(bench.__file__).resolve().parent.parent)
+            with patch.object(bench, "_validate_owner_session"), \
+                 patch.object(bench, "_acquire_device_lease"), \
+                 patch.object(torch.cuda, "is_available") as cuda_available:
+                with self.assertRaisesRegex(RuntimeError, "identity"):
+                    bench.run_benchmark(output, quick=True, cache_dir=root, lease_path=lease_path,
+                                        candidate_only=True, owner_session=owner,
+                                        cpu_preflight={"source_bundle_sha256": hashlib.sha256(source).hexdigest()})
+            cuda_available.assert_not_called()
+
     def test_cuda_unavailable_is_recorded_as_failure_with_source_archive(self):
         with tempfile.TemporaryDirectory() as root:
             output = Path(root) / "new"
-            owner = SimpleNamespace(run_id="fixture-owner", check=lambda lease: None)
+            owner = SimpleNamespace(run_id="fixture-owner", check=lambda lease: None,
+                                    identity=object(), device_lease_path=Path(root) / "device.lock")
+            source, _ = bench.create_source_bundle(Path(bench.__file__).resolve().parent.parent)
             with patch.object(torch.cuda, "is_available", return_value=False), \
                  patch.object(bench, "_acquire_device_lease") as acquire, \
                  patch.object(bench, "_validate_owner_session"):
@@ -534,7 +808,8 @@ class EquivalenceTests(unittest.TestCase):
                     bench.run_benchmark(output, quick=True, exclusive=False,
                                         cache_dir=Path(root) / "cache",
                                         lease_path=Path(root) / "device.lock", candidate_only=True,
-                                        owner_session=owner)
+                                        owner_session=owner,
+                                        cpu_preflight={"source_bundle_sha256": hashlib.sha256(source).hexdigest()})
             acquire.assert_called_once()
             self.assertTrue((output / "candidate_failure.json").is_file())
             self.assertTrue((output / "source_bundle.zip").is_file())

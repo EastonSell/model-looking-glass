@@ -5,6 +5,7 @@ This is not the shared-service throughput experiment. Run as its own process.
 import argparse
 import csv
 from datetime import datetime, timezone
+import gc
 import hashlib
 import io
 import json
@@ -12,18 +13,71 @@ import os
 from pathlib import Path
 import platform
 import random
+import re
+import secrets
 import shutil
+import site
 import statistics
 import subprocess
 import sys
 import threading
 import time
+import traceback
 import zipfile
 
 
 PROTOCOL = "cuda-isolated-v1"
 MODES = ("none", "id", "direct", "gradient")
 _PROCESS_LEASES = []
+_GPU_UUID = re.compile(r"GPU-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE)
+
+
+def _public_evidence(value):
+    """Remove the physical device identifier from persisted output."""
+    if isinstance(value, str):
+        return _GPU_UUID.sub("GPU-<redacted>", value)
+    if isinstance(value, dict):
+        result = {}
+        for key, item in value.items():
+            safe_key = _public_evidence(key)
+            if safe_key in result:
+                raise ValueError("device redaction would collide evidence keys")
+            if isinstance(key, str) and key.lower() == "cuda_visible_devices":
+                result[safe_key] = None if item is None else "<redacted>"
+            else:
+                result[safe_key] = _public_evidence(item)
+        return result
+    if isinstance(value, (list, tuple)):
+        return [_public_evidence(item) for item in value]
+    return value
+
+
+def direct_python_module(module, arguments, *, project=None):
+    """Launch a module as the real Python child, with the caller's packages.
+
+    Windows virtualenv python.exe can be a redirector which creates a second
+    PID.  Skip automatic site initialization, then add the caller's known site
+    directories as paths without executing arbitrary .pth startup code.
+    """
+    if not isinstance(module, str) or not module or not isinstance(arguments, (list, tuple)):
+        raise ValueError("a module and an argument sequence are required")
+    if any(not isinstance(argument, str) for argument in arguments):
+        raise ValueError("module arguments must be strings")
+    project = Path(project or Path(__file__).resolve().parent.parent).resolve(strict=True)
+    locations = [str(Path(path).resolve()) for path in site.getsitepackages() if Path(path).is_dir()]
+    if not locations:
+        raise RuntimeError("cannot find the calling environment's site-packages")
+    base = Path(sys._base_executable).resolve(strict=True)
+    spec = json.dumps({"module": module, "project": str(project), "site_paths": locations},
+                      separators=(",", ":"))
+    bootstrap = ("import json,runpy,sys; s=json.loads(sys.argv.pop(1)); "
+                 "sys.path[:0]=[s['project'],*s['site_paths']]; "
+                 "runpy.run_module(s['module'],run_name='__main__',alter_sys=True)")
+    environment = os.environ.copy()
+    environment.pop("PYTHONHOME", None)
+    environment["PYTHONNOUSERSITE"] = "1"
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    return [str(base), "-S", "-c", bootstrap, spec, *arguments], environment
 
 
 def model_admission(free_bytes, total_bytes, model_bytes, trace_limit):
@@ -41,10 +95,12 @@ def model_admission(free_bytes, total_bytes, model_bytes, trace_limit):
             "limitation": "estimate is not a guarantee against CUDA out of memory"}
 
 
-def runtime_guard(lease, cuda, device, reserve_bytes, trace_limit):
+def runtime_guard(lease, cuda, device, reserve_bytes, trace_limit, owner_session=None):
     """Check cooperative ownership and current device-wide free headroom."""
     def check():
         lease.check()
+        if owner_session is not None:
+            owner_session.check(lease)
         free, total = cuda.mem_get_info(device)
         if free < reserve_bytes + trace_limit + 256 * 1024 ** 2:
             raise RuntimeError("device-wide free memory fell below the runtime reserve")
@@ -139,7 +195,8 @@ def classify_isolation(exclusive, observations, started_ns, ended_ns, process_qu
                       key=lambda row: row["observed_monotonic_ns"])
     before = [row for row in selected if row["observed_monotonic_ns"] < started_ns][-3:]
     after = [row for row in selected
-             if row["observed_monotonic_ns"] >= ended_ns + 1_000_000_000][-3:]
+             if type(row.get("query_started_monotonic_ns")) is int
+             and row["query_started_monotonic_ns"] >= ended_ns + 1_000_000_000][-3:]
     unavailable, contaminated = [], []
     if not exclusive:
         unavailable.append("exclusive reservation was not attested")
@@ -150,10 +207,17 @@ def classify_isolation(exclusive, observations, started_ns, ended_ns, process_qu
     if telemetry_errors:
         unavailable.append("telemetry query failed")
     if before and after:
-        window = [row["observed_monotonic_ns"] for row in selected
-                  if before[-1]["observed_monotonic_ns"] <= row["observed_monotonic_ns"] <= after[0]["observed_monotonic_ns"]]
-        if any(later - earlier > 2_000_000_000 for earlier, later in zip(window, window[1:])):
-            unavailable.append("telemetry coverage has a gap longer than two seconds")
+        window = [row for row in selected
+                  if before[0]["observed_monotonic_ns"] <= row["observed_monotonic_ns"] <= after[-1]["observed_monotonic_ns"]]
+        def valid_bounds(row):
+            start, end = row.get("query_started_monotonic_ns"), row.get("query_ended_monotonic_ns")
+            return (type(start) is int and type(end) is int
+                    and start <= end == row["observed_monotonic_ns"])
+        if not all(valid_bounds(row) for row in window):
+            unavailable.append("telemetry query time bounds are missing or invalid")
+        elif any(later["query_ended_monotonic_ns"] - earlier["query_started_monotonic_ns"] > 2_000_000_000
+                 for earlier, later in zip(window, window[1:])):
+            unavailable.append("telemetry coverage may have a gap longer than two seconds")
     if len(process_queries) != 2 or not all(query.get("ok") for query in process_queries):
         unavailable.append("compute process list unavailable")
     if any(row["utilization_percent"] > 5 for row in before + after):
@@ -199,7 +263,7 @@ def _gpu_inventory(smi, cuda_count=None):
     except ValueError as exc:
         raise RuntimeError("GPU inventory did not report total memory") from exc
     return {"ok": True, "uuid": uuid, "name": name, "total_bytes": total_bytes,
-            "driver_version": driver, "mapping": "only physical GPU and only CUDA-visible GPU"}
+            "driver_version": driver, "mapping": "sole physical GPU; CUDA binding verified separately"}
 
 
 def resolve_benchmark_identity(workspace_root, smi):
@@ -211,6 +275,18 @@ def resolve_benchmark_identity(workspace_root, smi):
     identity = resolve_device_identity(workspace_root, inventory["uuid"],
                                        physical_uuids=(inventory["uuid"],))
     return identity, inventory
+
+
+def _cuda_runtime_uuid(value):
+    """Normalize PyTorch's bare CUuuid or a complete NVIDIA GPU UUID."""
+    from .device_identity import normalize_gpu_uuid
+    if value is None:
+        raise ValueError("CUDA runtime did not provide a device UUID")
+    value = str(value)
+    if re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+                    value, re.IGNORECASE):
+        value = "GPU-" + value
+    return normalize_gpu_uuid(value)
 
 
 def _query_compute_processes(smi, gpu_uuid, phase):
@@ -465,7 +541,10 @@ def _wait_for_observations(monitor, threshold_ns=None, timeout=5.0):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         rows = monitor.observations
-        selected = rows if threshold_ns is None else [row for row in rows if row["observed_monotonic_ns"] >= threshold_ns]
+        selected = rows if threshold_ns is None else [
+            row for row in rows
+            if type(row.get("query_started_monotonic_ns")) is int
+            and row["query_started_monotonic_ns"] >= threshold_ns]
         if len(selected) >= 3 or monitor.errors:
             return
         time.sleep(0.05)
@@ -498,9 +577,11 @@ def validate_transformer_coverage(identities):
     for entry in identities:
         if len(entry) != 8:
             raise AssertionError("preflight coverage has malformed identity")
-        path, kind, layer, forward, invocation, _output, samples, tokens = entry
+        path, kind, layer, forward, invocation, output, samples, tokens = entry
         if forward != 0 or invocation != 0 or samples != (0,) or tokens != (0, 3, 7):
             raise AssertionError("preflight coverage has unexpected invocation or positions")
+        if output != ((0,) if kind in ("block", "attn") else ()):
+            raise AssertionError("preflight coverage has an unexpected output selector")
         observed.append((path, kind, layer))
     if len(observed) != len(expected) or set(observed) != expected:
         raise AssertionError("preflight coverage does not match every frozen transformer location")
@@ -540,6 +621,21 @@ def _validate_owner_session(session):
         raise RuntimeError("a real supervised owner session is required")
 
 
+def _finish_owner(session, lease, cuda):
+    """Attest only after the bound owner has drained and released allocations."""
+    if lease is None or not cuda.is_initialized():
+        raise RuntimeError("the GPU owner did not establish a verifiable CUDA lifecycle")
+    lease.check()
+    session.check(lease)
+    gc.collect()
+    cuda.synchronize(0)
+    cuda.empty_cache()
+    cuda.synchronize(0)
+    if cuda.memory_allocated(0) or cuda.memory_reserved(0):
+        raise RuntimeError("CUDA allocations remain after owner cleanup")
+    session.attest_clean(lease)
+
+
 def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
     project = Path(__file__).resolve().parent.parent
     bundle, hashes = create_source_bundle(project)
@@ -551,10 +647,19 @@ def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
     if not progress.get("candidate_only") or owner_session is None:
         raise RuntimeError("GPU benchmarks require a supervised owner subprocess")
     _validate_owner_session(owner_session)
+    if (progress.get("cpu_preflight") or {}).get("source_bundle_sha256") != hashlib.sha256(bundle).hexdigest():
+        raise RuntimeError("CPU preflight and GPU owner source bundles differ")
     lease = _acquire_device_lease(lease_path, lease_timeout)
     lease.check()
     owner_session.check(lease)
-    progress["final_guard"] = lease.check
+    if getattr(owner_session, "identity", None) is None:
+        raise RuntimeError("supervised GPU owner has no verified device identity")
+    if os.path.normcase(str(Path(lease_path).resolve())) != os.path.normcase(str(owner_session.device_lease_path)):
+        raise RuntimeError("benchmark lease does not match the supervised device identity")
+    def final_guard():
+        lease.check()
+        owner_session.check(lease)
+    progress["final_guard"] = final_guard
     progress["metadata"]["device_lease_path"] = str(lease_path)
     workspace_config = os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
     if workspace_config not in (":4096:8", ":16:8"):
@@ -577,8 +682,21 @@ def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
     torch.backends.cudnn.allow_tf32 = False
     torch.backends.cuda.matmul.allow_tf32 = False
     smi = shutil.which("nvidia-smi")
-    inventory = _gpu_inventory(smi, torch.cuda.device_count())
+    device_count = torch.cuda.device_count()
+    inventory = _gpu_inventory(smi, device_count)
+    properties = torch.cuda.get_device_properties(0)
+    runtime_uuid = _cuda_runtime_uuid(getattr(properties, "uuid", None))
+    owner_session.verify_runtime_binding(lease, runtime_uuid=runtime_uuid,
+                                         device_count=device_count, cuda_device_index=0)
+    from .device_identity import normalize_gpu_uuid
+    if not inventory.get("ok") or normalize_gpu_uuid(inventory["uuid"]) != owner_session.identity.gpu_uuid:
+        raise RuntimeError("nvidia-smi and supervised CUDA device identity disagree")
     loaded = load_distilgpt2(cache_dir=cache_dir, allow_download=False)
+    preflight_metadata = (progress.get("cpu_preflight") or {}).get("model_load_metadata")
+    if preflight_metadata is None or any(
+            preflight_metadata.get(key) != loaded.metadata.get(key)
+            for key in ("model_id", "model_revision", "asset_sha256")):
+        raise RuntimeError("the CPU preflight and GPU-owner checkpoint identities differ")
     model = loaded.model
     device = torch.device("cuda:0")
     token_ids = [15496, 11, 616, 1438, 318, 257, 1332, 13]
@@ -607,15 +725,20 @@ def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
         admission = model_admission(free, total, model_bytes, 4 * 1024 ** 2)
         fraction = (total - admission["reserve_bytes"]) / total
         admission["pytorch_allocator_fraction_limit"] = fraction
-        properties = torch.cuda.get_device_properties(device)
         environment = {
             "python_version": platform.python_version(), "platform": platform.platform(),
+            "python_executable": sys.executable, "python_base_executable": sys._base_executable,
+            "python_prefix": sys.prefix, "python_base_prefix": sys.base_prefix,
+            "python_search_path": list(sys.path),
+            "torch_module_file": torch.__file__, "transformers_module_file": transformers.__file__,
             "torch_version": str(torch.__version__), "transformers_version": transformers.__version__,
             "torch_cuda_version": torch.version.cuda, "cudnn_version": torch.backends.cudnn.version(),
             "cuda_device_name": properties.name,
+            "cuda_runtime_uuid": runtime_uuid,
             "cuda_compute_capability": [properties.major, properties.minor],
             "cuda_total_memory_bytes": properties.total_memory,
-            "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+            "visibility_policy": ("default sole physical GPU" if os.environ.get("CUDA_VISIBLE_DEVICES") is None
+                                  else "one explicit full GPU UUID"),
             "nvidia_inventory": inventory, "num_threads": torch.get_num_threads(),
             "deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
             "cublas_workspace_config": workspace_config,
@@ -626,13 +749,14 @@ def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
         }
         stage = {"protocol": PROTOCOL, "protocol_mode": "smoke" if quick else "full",
             "config": config, "model_load_metadata": json.loads(json.dumps(loaded.metadata)),
+            "cpu_preflight": progress["cpu_preflight"],
             "environment": environment, "admission": admission,
             "source": progress["metadata"].copy(), "git": _git_provenance(project)}
         if model.training or model.config.n_layer != 6 or model.config.n_embd != 768:
             progress["metadata"]["preload"] = stage
             progress["record_stage"]("preload", stage)
             raise RuntimeError("pretrained checkpoint does not match the frozen workload")
-        guard = runtime_guard(lease, torch.cuda, device, admission["reserve_bytes"], 4 * 1024 ** 2)
+        guard = runtime_guard(lease, torch.cuda, device, admission["reserve_bytes"], 4 * 1024 ** 2, owner_session)
         def prepare_device():
             torch.cuda.set_per_process_memory_fraction(fraction, device)
             guard()
@@ -695,7 +819,7 @@ def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
         if after_hashes != hashes:
             raise RuntimeError("benchmark repository source changed during the run")
         module_hashes = _loaded_module_hashes()
-        lease.check()
+        final_guard()
         return {"protocol": PROTOCOL, "protocol_mode": "smoke" if quick else "full",
             "manifest": manifest, "raw": progress["raw"], "timing_summary": summarize(progress["raw"]),
             "paired_ratios": summarize_paired_ratios(progress["raw"]),
@@ -705,13 +829,14 @@ def _evaluate(quick, exclusive, progress, cache_dir, lease_path, lease_timeout):
 
 
 def _write_json(path, value):
-    encoded = (json.dumps(value, indent=2, allow_nan=False) + "\n").encode("utf-8")
+    encoded = (json.dumps(_public_evidence(value), indent=2, allow_nan=False) + "\n").encode("utf-8")
     _write_bytes(path, encoded)
 
 
 def _write_bytes(path, value):
     temporary = path.with_name(path.name + ".partial")
     created, linked = False, False
+    original = None
     try:
         with temporary.open("xb") as handle:
             created = True
@@ -720,34 +845,39 @@ def _write_bytes(path, value):
             os.fsync(handle.fileno())
         os.link(temporary, path)
         linked = True
-        temporary.unlink()
-        created = False
-    except BaseException as original:
-        if linked:
+    except BaseException as exc:
+        original = exc
+        # A signal can arrive just after the link succeeded but before Python
+        # assigned linked. Once published, the destination is authoritative.
+        if created and not linked:
             try:
-                path.unlink()
-            except Exception as rollback_error:
-                raise RuntimeError("artifact publication is ambiguous; rollback failed") from rollback_error
-        raise original
-    finally:
-        if created:
-            try:
-                temporary.unlink(missing_ok=True)
+                linked = os.path.samefile(path, temporary)
             except OSError:
                 pass
+    if created:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            # A failed removal leaves unsealed scratch, not a new outcome.
+            pass
+        except BaseException as cleanup_error:
+            if original is None or isinstance(cleanup_error, (KeyboardInterrupt, SystemExit)):
+                original = cleanup_error
+    if original is not None and not (linked and isinstance(original, OSError)):
+        raise original
 
 
 def _write_csv(path, rows):
     with path.open("x", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
         writer.writeheader()
-        writer.writerows(rows)
+        writer.writerows(_public_evidence(rows))
 
 
 def _artifact_inventory(output_dir, strict=True, exclude=()):
     inventory = {}
     for path in sorted(Path(output_dir).iterdir()):
-        if path.name in ("results.json", "failure.json") or path.name in exclude:
+        if path.name in ("results.json", "failure.json") or path.name.endswith(".partial") or path.name in exclude:
             continue
         try:
             if path.is_symlink() or not path.is_file():
@@ -821,12 +951,25 @@ def publish_supervised_outcome(output_dir, supervision):
 
 
 def run_benchmark(output_dir, quick=False, exclusive=False, cache_dir=None,
-                  lease_path=None, lease_timeout=30, candidate_only=False, owner_session=None):
+                  lease_path=None, lease_timeout=30, candidate_only=False, owner_session=None,
+                  cpu_preflight=None, parent_run_id=None):
     """Create a new evidence directory and retain a record if evaluation fails."""
     output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=False)
+    if parent_run_id is None:
+        output_dir.mkdir(parents=True, exist_ok=False)
+    else:
+        if not candidate_only or owner_session is None or output_dir.is_symlink() or not output_dir.is_dir():
+            raise RuntimeError("only a supervised owner can use a parent-created run directory")
+        if {path.name for path in output_dir.iterdir()} != {"parent_started.json"}:
+            raise RuntimeError("parent-created run directory has unexpected contents")
+        parent = json.loads((output_dir / "parent_started.json").read_text(encoding="utf-8"))
+        if (parent.get("protocol") != PROTOCOL or parent.get("status") != "parent_started"
+                or parent.get("parent_run_id") != parent_run_id
+                or parent.get("pid") != getattr(owner_session, "supervisor_pid", None)):
+            raise RuntimeError("parent-created run evidence does not match the supervised owner")
     owner = {"run_id": getattr(owner_session, "run_id", None), "pid": os.getpid()}
     progress = {"raw": [], "metadata": {}, "source_bundle": None, "telemetry": None,
+                "cpu_preflight": cpu_preflight,
                 "owner_session": owner_session, "candidate_only": candidate_only}
     journal = None
     try:
@@ -835,12 +978,13 @@ def run_benchmark(output_dir, quick=False, exclusive=False, cache_dir=None,
             "started_utc": datetime.now(timezone.utc).isoformat(),
             "started_monotonic_ns": time.monotonic_ns(),
             "owner": owner,
+            "cpu_preflight": cpu_preflight,
             "cache_dir": None if cache_dir is None else str(cache_dir),
             "lease_path": None if lease_path is None else str(lease_path),
             "lease_timeout_seconds": lease_timeout})
         journal = (output_dir / "raw_progress.jsonl").open("x", encoding="utf-8", newline="\n")
         def record_sample(row):
-            journal.write(json.dumps(row, allow_nan=False, separators=(",", ":")) + "\n")
+            journal.write(json.dumps(_public_evidence(row), allow_nan=False, separators=(",", ":")) + "\n")
             journal.flush()
             os.fsync(journal.fileno())
             progress["raw"].append(row)
@@ -890,8 +1034,7 @@ def run_benchmark(output_dir, quick=False, exclusive=False, cache_dir=None,
         if progress["telemetry"] is not None:
             preserve("partial_telemetry.json", lambda: _write_json(output_dir / "partial_telemetry.json", progress["telemetry"]))
         if (output_dir / ("candidate.json" if candidate_only else "results.json")).exists():
-            preserve("publication_ambiguous.json", lambda: _write_json(output_dir / "publication_ambiguous.json",
-                {"status": "ambiguous", "error_type": type(exc).__name__, "message": str(exc)}))
+            # The linked candidate/terminal is already immutable and visible.
             if recording_errors:
                 raise exc from recording_errors[0][1]
             raise
@@ -919,20 +1062,217 @@ def run_benchmark(output_dir, quick=False, exclusive=False, cache_dir=None,
             journal.close()
 
 
+def _cpu_preflight(cache_dir):
+    """Load and exercise the frozen checkpoint in a separate CPU-only process."""
+    project = Path(__file__).resolve().parent.parent
+    source, hashes = create_source_bundle(project)
+    import torch
+    import transformers
+    from .pretrained import load_distilgpt2
+
+    if torch.cuda.is_initialized():
+        raise RuntimeError("CPU preflight unexpectedly initialized CUDA")
+    torch.set_num_threads(1)
+    torch.manual_seed(20261028)
+    bundle = load_distilgpt2(cache_dir=cache_dir, allow_download=False)
+    model = bundle.model
+    if model.training or model.config.n_layer != 6 or model.config.n_embd != 768:
+        raise RuntimeError("CPU checkpoint does not match the frozen model")
+    ids = torch.tensor([[15496, 11, 616, 1438, 318, 257, 1332, 13]], dtype=torch.long, device="cpu")
+    invoke, factory, identity = _transformer_workload(model, ids)
+    checks = verify_equivalence(invoke, factory, identity)
+    validate_transformer_coverage(checks["event_identities"])
+    expected_layout = {"shape": [1, 3, 768], "dtype": "torch.float32", "device": "cpu"}
+    if (checks["events_per_mode"] != 18 or checks["value_tensor_bytes"] != 18 * 3 * 768 * 4
+            or any(layout != expected_layout for layout in checks["value_layouts"])):
+        raise RuntimeError("CPU checkpoint trace does not match the frozen layout")
+    if torch.cuda.is_initialized():
+        raise RuntimeError("CPU preflight unexpectedly initialized CUDA")
+    modules = _loaded_module_hashes()
+    source_after, after_hashes = create_source_bundle(project)
+    if hashes != after_hashes or source != source_after:
+        raise RuntimeError("repository source changed during CPU preflight")
+    return {"model_load_metadata": bundle.metadata, "trace_preflight": checks,
+            "cuda_initialized": False, "source_bundle_sha256": hashlib.sha256(source).hexdigest(),
+            "repository_source_sha256": hashes, "loaded_module_file_sha256": modules,
+            "runtime": {"python_version": platform.python_version(), "executable": sys.executable,
+                        "prefix": sys.prefix, "torch_version": str(torch.__version__),
+                        "transformers_version": transformers.__version__}}
+
+
+def _run_cpu_preflight(cache_dir, timeout=180):
+    """Fail before reserving a GPU owner when the offline checkpoint is unusable."""
+    command, environment = direct_python_module(
+        "looking_glass.cuda_benchmark", ["--_cpu-preflight", "--cache-dir", str(cache_dir)])
+    environment["CUDA_VISIBLE_DEVICES"] = ""
+    try:
+        result = subprocess.run(command, env=environment, capture_output=True, text=True,
+            errors="replace", timeout=timeout, check=False,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError(f"CPU checkpoint preflight could not complete: {type(exc).__name__}") from exc
+    if result.returncode:
+        raise RuntimeError("CPU checkpoint preflight failed: " + result.stderr[-2000:])
+    try:
+        report = json.loads(result.stdout.splitlines()[-1])
+    except (ValueError, IndexError) as exc:
+        raise RuntimeError("CPU checkpoint preflight returned invalid evidence") from exc
+    from .pretrained import ASSETS, MODEL_ID, REVISION
+    metadata = report.get("model_load_metadata", {})
+    expected = {name: digest for name, (_, digest) in ASSETS.items()}
+    if (report.get("cuda_initialized") is not False or metadata.get("model_id") != MODEL_ID
+            or metadata.get("model_revision") != REVISION or metadata.get("asset_sha256") != expected):
+        raise RuntimeError("CPU checkpoint preflight identity is incomplete")
+    return report
+
+
+def _launch_supervised_owner(output, *, identity, cache_dir, cpu_preflight, parent_run_id,
+                             quick, exclusive, lease_timeout, timeout):
+    from .supervisor import run_supervised
+
+    arguments = ["--_owner", "--output", str(output), "--cache-dir", str(cache_dir),
+                 "--lease-timeout", str(lease_timeout),
+                 "--_parent-run-id", parent_run_id,
+                 "--_preflight-json", json.dumps(cpu_preflight, separators=(",", ":"))]
+    if quick:
+        arguments.append("--quick")
+    if exclusive:
+        arguments.append("--exclusive")
+    command, environment = direct_python_module("looking_glass.cuda_benchmark", arguments)
+    return run_supervised(command, device_lease_path=identity.lock_path,
+        marker_path=identity.marker_path, identity=identity, timeout=timeout,
+        lease_timeout=lease_timeout, cwd=str(Path(__file__).resolve().parent.parent), env=environment)
+
+
+def _record_parent_failure(output, stage, exc):
+    _write_json(output / "failure.json", {"protocol": PROTOCOL,
+        "status": "cancelled" if isinstance(exc, (KeyboardInterrupt, SystemExit)) else "failed",
+        "stage": stage, "error_type": type(exc).__name__, "message": str(exc),
+        "device_teardown": "unverified" if stage == "owner_launch" else "not started",
+        "artifact_inventory": _artifact_inventory(output)})
+
+
+def run_supervised_benchmark(output, *, workspace_root, cache_dir, quick=False, exclusive=False,
+                             lease_timeout=30, timeout=1800):
+    """Run the owner through the shared supervisor; accept only reaped outcomes."""
+    output = Path(output).resolve()
+    cache_dir = Path(cache_dir).resolve()
+    workspace_root = Path(workspace_root)
+    if not workspace_root.is_absolute():
+        raise ValueError("the shared GPU coordination root must be absolute")
+    workspace_root = workspace_root.resolve(strict=True)
+    output.mkdir(parents=True, exist_ok=False)
+    parent_run_id = secrets.token_hex(16)
+    parent_start = {"protocol": PROTOCOL, "status": "parent_started",
+        "parent_run_id": parent_run_id, "pid": os.getpid(),
+        "started_utc": datetime.now(timezone.utc).isoformat(),
+        "quick": quick, "exclusive_requested": exclusive, "cache_dir": str(cache_dir)}
+    try:
+        _write_json(output / "parent_started.json", parent_start)
+    except BaseException as exc:
+        published = False
+        try:
+            published = json.loads((output / "parent_started.json").read_text(encoding="utf-8")) == _public_evidence(parent_start)
+        except (OSError, ValueError):
+            pass
+        if published:
+            try:
+                _record_parent_failure(output, "parent_start", exc)
+            except Exception as recording_error:
+                raise exc from recording_error
+        raise
+    if (output / "parent_started.json.partial").exists():
+        exc = RuntimeError("parent start publication left scratch; GPU owner was not launched")
+        try:
+            _record_parent_failure(output, "parent_start_cleanup", exc)
+        except Exception as recording_error:
+            raise exc from recording_error
+        raise exc
+    try:
+        cpu_preflight = _run_cpu_preflight(cache_dir)
+        source, _ = create_source_bundle(Path(__file__).resolve().parent.parent)
+        if cpu_preflight.get("source_bundle_sha256") != hashlib.sha256(source).hexdigest():
+            raise RuntimeError("CPU preflight source changed before GPU owner launch")
+    except BaseException as exc:
+        try:
+            _record_parent_failure(output, "cpu_preflight", exc)
+        except Exception as recording_error:
+            raise exc from recording_error
+        raise
+    try:
+        identity, _ = resolve_benchmark_identity(workspace_root, shutil.which("nvidia-smi"))
+        supervision = _launch_supervised_owner(output, identity=identity, cache_dir=cache_dir,
+            cpu_preflight=cpu_preflight, parent_run_id=parent_run_id, quick=quick, exclusive=exclusive,
+            lease_timeout=lease_timeout, timeout=timeout)
+    except BaseException as exc:
+        if not (output / "started.json").exists():
+            try:
+                _record_parent_failure(output, "owner_launch", exc)
+            except Exception as recording_error:
+                raise exc from recording_error
+        raise
+    return publish_supervised_outcome(output, supervision)
+
+
+def _owner_main(args):
+    from .supervisor import OwnerSession
+
+    session = OwnerSession.from_environment()
+    exit_code = 0
+    try:
+        preflight = json.loads(args._preflight_json)
+        run_benchmark(args.output, quick=args.quick, exclusive=args.exclusive,
+            cache_dir=args.cache_dir, lease_path=session.device_lease_path,
+            lease_timeout=args.lease_timeout, candidate_only=True, owner_session=session,
+            cpu_preflight=preflight, parent_run_id=args._parent_run_id)
+    except BaseException as exc:
+        exit_code = 130 if isinstance(exc, KeyboardInterrupt) else 1
+        print("Owner experiment failed: " + _public_evidence(str(exc)), file=sys.stderr)
+        traceback.clear_frames(exc.__traceback__)
+    try:
+        if not _PROCESS_LEASES:
+            raise RuntimeError("owner did not acquire the device lease")
+        import torch
+        _finish_owner(session, _PROCESS_LEASES[-1], torch.cuda)
+    except BaseException as exc:
+        print("Owner cleanup was not verified: " + _public_evidence(str(exc)), file=sys.stderr)
+        return 1
+    return exit_code
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--output", type=Path)
     parser.add_argument("--quick", action="store_true", help="small smoke run, not the full protocol")
     parser.add_argument("--exclusive", action="store_true", help="attest a reserved, drained GPU window")
     parser.add_argument("--cache-dir", required=True, type=Path, help="explicit offline checkpoint cache")
-    parser.add_argument("--lease-path", required=True, type=Path, help="absolute cooperative device lock path")
+    parser.add_argument("--workspace-root", type=Path, help="shared GPU coordination root for all worktrees")
     parser.add_argument("--lease-timeout", type=float, default=30, help="lease wait in seconds, at most 60")
+    parser.add_argument("--timeout", type=float, default=1800, help="owner process timeout in seconds")
+    parser.add_argument("--_cpu-preflight", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--_owner", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--_preflight-json", help=argparse.SUPPRESS)
+    parser.add_argument("--_parent-run-id", help=argparse.SUPPRESS)
     args = parser.parse_args()
-    result = run_benchmark(args.output, quick=args.quick, exclusive=args.exclusive,
-                           cache_dir=args.cache_dir, lease_path=args.lease_path,
-                           lease_timeout=args.lease_timeout)
-    print(json.dumps({"output": str(args.output), "protocol": result["protocol"]}))
+    if args._cpu_preflight:
+        print(json.dumps(_cpu_preflight(args.cache_dir), separators=(",", ":")))
+        return 0
+    if args._owner:
+        if args.output is None or args._preflight_json is None or args._parent_run_id is None:
+            parser.error("owner needs output, parent run ID and preflight evidence")
+        return _owner_main(args)
+    if args.output is None or args.workspace_root is None:
+        parser.error("--output and --workspace-root are required")
+    try:
+        result = run_supervised_benchmark(args.output, workspace_root=args.workspace_root,
+            cache_dir=args.cache_dir, quick=args.quick, exclusive=args.exclusive,
+            lease_timeout=args.lease_timeout, timeout=args.timeout)
+    except Exception as exc:
+        print("Benchmark failed or remains incomplete: " + _public_evidence(str(exc)), file=sys.stderr)
+        return 1
+    print(json.dumps({"output": str(args.output), "protocol": result["protocol"], "status": result["status"]}))
+    return 0 if result["status"] == "succeeded" else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

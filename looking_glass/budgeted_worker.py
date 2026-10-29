@@ -101,6 +101,24 @@ def _worker_binding(worker):
             worker.max_sequence_length, worker.max_input_bytes, worker.max_output_bytes)
 
 
+def _model_cache_binding(worker):
+    model = worker._model  # ResidentWorker is exclusively owned by this wrapper.
+    if model is None:
+        raise ValueError('resident model is unavailable')
+    config = getattr(model, 'config', None)
+    if config is not None and hasattr(config, 'use_cache'):
+        if config.use_cache is not False:
+            raise ValueError('configured model cache must be explicitly disabled')
+        return id(model), id(config), False
+    # Arbitrary trusted model code can still cache internally; see the docs.
+    return id(model), id(config), None
+
+
+def _require_no_autocast():
+    if torch.is_autocast_enabled('cpu') or torch.is_autocast_enabled('cuda'):
+        raise RuntimeError('ambient autocast is incompatible with profiled execution')
+
+
 def _validate_profile(profile, worker, admission):
     if type(profile) is not WorkloadProfile:
         raise TypeError('profiles must be WorkloadProfile records')
@@ -165,6 +183,7 @@ class BudgetedWorker:
             raise ValueError('at least one trusted profile is required')
         self._worker, self._admission = worker, admission
         self._binding = _worker_binding(worker)
+        self._cache_binding = _model_cache_binding(worker)
         self._admission_binding = (admission._budget, admission.device,
                                    admission.max_estimated_incremental_bytes)
         self._local_poisoned = threading.Event()
@@ -186,9 +205,20 @@ class BudgetedWorker:
         return self._admission.quarantined
 
     @property
+    def failed(self):
+        """Nonblocking failure signal; normal closure alone does not set it."""
+        return self._local_poisoned.is_set() or self.quarantined or self._worker.poisoned
+
+    @property
     def poisoned(self):
         # Broker queries this while holding its condition; never acquire the gate.
-        return self._closed or self._local_poisoned.is_set() or self.quarantined or self._worker.poisoned
+        return self._closed or self.failed
+
+    @property
+    def max_input_bytes(self):
+        """Per-snapshot input-tensor limit; not an aggregate host-memory cap."""
+        self._check_available()
+        return self._binding[4]
 
     def _process_is_quarantined(self):
         try:
@@ -203,14 +233,20 @@ class BudgetedWorker:
                 and (admission._budget, admission.device,
                      admission.max_estimated_incremental_bytes) == self._admission_binding)
 
+    def _cache_matches(self):
+        try:
+            return _model_cache_binding(self._worker) == self._cache_binding
+        except BaseException:
+            return False
+
     def _check_available(self):
         if self._process_is_quarantined():
             self._admission._quarantined.set()
         if self._admission.quarantined:
             raise DeviceQuarantined('device completion is unverified; replace the process')
-        if not self._binding_matches():
+        if not self._binding_matches() or not self._cache_matches():
             self._local_poisoned.set()
-            raise WorkerUnavailable('worker identity or limits changed after profiling')
+            raise WorkerUnavailable('worker identity, cache policy or limits changed after profiling')
         if self.poisoned:
             raise WorkerUnavailable('budgeted worker is unavailable')
 
@@ -248,6 +284,7 @@ class BudgetedWorker:
             raise InvalidRequest('cancel_event must be a threading.Event')
         if cancel_event is not None and cancel_event.is_set():
             raise RequestCancelled('request cancelled before admission')
+        _require_no_autocast()
         self._check_available()
         # Own a snapshot for selection, so a caller cannot alter the selected
         # shape or dtype after admission. ResidentWorker snapshots again.
@@ -261,11 +298,20 @@ class BudgetedWorker:
             self._check_available()
             if cancel_event is not None and cancel_event.is_set():
                 raise RequestCancelled('request cancelled while awaiting admission')
+            _require_no_autocast()
             lease = self._admission._budget.acquire(profile.estimated_incremental_bytes,
                                                      max_gpu_trace_bytes=0, max_host_trace_bytes=0)
-            if cancel_event is not None and cancel_event.is_set():
-                self._release(lease)
-                raise RequestCancelled('request cancelled before execution')
+            try:
+                self._check_available()
+                _require_no_autocast()
+                if cancel_event is not None and cancel_event.is_set():
+                    raise RequestCancelled('request cancelled before execution')
+            except BaseException as exc:
+                if self.quarantined:
+                    self._admission._quarantine(lease, self._worker, exc)
+                else:
+                    self._release(lease, exc)
+                raise
             try:
                 result = self._worker.execute(snapshot, cancel_event)
             except WorkerSynchronizationError as exc:
@@ -276,7 +322,8 @@ class BudgetedWorker:
                     self._admission._quarantine(lease, self._worker, exc)
                     raise WorkerSynchronizationError(
                         f'worker process quarantined; original failure: {_describe_error(exc)}') from exc
-                if not self._binding_matches():
+                if (not self._binding_matches()
+                        or (not self._worker.poisoned and not self._cache_matches())):
                     self._admission._quarantine(lease, self._worker, exc)
                     raise WorkerContractError('worker binding changed during execution') from exc
                 self._release(lease, exc)
@@ -287,7 +334,7 @@ class BudgetedWorker:
             if self._process_is_quarantined():
                 self._admission._quarantine(lease, self._worker, result)
                 raise WorkerSynchronizationError('worker process quarantined after execution')
-            if not self._binding_matches():
+            if not self._binding_matches() or not self._cache_matches():
                 self._admission._quarantine(lease, self._worker, result)
                 raise WorkerContractError('worker binding changed during execution')
             if (type(result) is not ForwardResult or result.request_id != snapshot.request_id

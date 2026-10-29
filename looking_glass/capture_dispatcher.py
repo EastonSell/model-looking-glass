@@ -107,8 +107,33 @@ def _nonnegative(name, value):
 
 
 def _text(name, value):
-    if not isinstance(value, str) or not value.strip():
+    if type(value) is not str or not value.strip():
         raise ValueError(f"{name} must be a nonempty string")
+
+
+def _snapshot_requests(requests):
+    """Copy caller-owned specifications before validating and using them."""
+    if type(requests) not in (list, tuple) or not requests:
+        raise ValueError("requests must be a nonempty list or tuple")
+    copies = []
+    for request in tuple(requests):
+        if type(request) is not CaptureRequest:
+            raise ValueError("each request must be an exact CaptureRequest")
+        samples = request.samples
+        if type(samples) is not tuple or not samples:
+            raise ValueError("request samples must be a nonempty tuple")
+        sample_copies = []
+        for sample in samples:
+            if type(sample) is not SampleSelection:
+                raise ValueError("each sample must be an exact SampleSelection")
+            sample_copies.append(SampleSelection(sample.batch_position, sample.sample_id,
+                                                  sample.token_positions))
+        copies.append(CaptureRequest(
+            request.run_id, request.job_id, request.request_id, tuple(sample_copies),
+            request.forward_index, request.generation_step,
+            request.max_events, request.max_trace_bytes,
+        ))
+    return tuple(copies)
 
 
 # Prevent overlapping dispatcher executions within this process. This is not
@@ -131,18 +156,14 @@ class CaptureDispatcher:
         _positive("sequence_length", sequence_length)
         _positive("max_events", max_events)
         _positive("max_trace_bytes", max_trace_bytes)
-        if capture_device not in ("cpu", "source"):
+        if type(capture_device) is not str or capture_device not in ("cpu", "source"):
             raise ValueError("capture_device must be cpu or source")
-        if not isinstance(requests, (list, tuple)) or not requests:
-            raise ValueError("requests must be a nonempty list or tuple")
-        requests = tuple(requests)
+        requests = _snapshot_requests(requests)
         rows = set()
         request_ids = set()
         run_ids = set()
         run_forwards = {}
         for request in requests:
-            if not isinstance(request, CaptureRequest):
-                raise ValueError("each request must be a CaptureRequest")
             for name in ("run_id", "job_id", "request_id"):
                 _text(name, getattr(request, name))
             if request.request_id in request_ids:
@@ -157,12 +178,8 @@ class CaptureDispatcher:
                 _nonnegative("generation_step", request.generation_step)
             _positive("request max_events", request.max_events)
             _positive("request max_trace_bytes", request.max_trace_bytes)
-            if type(request.samples) is not tuple or not request.samples:
-                raise ValueError("request samples must be a nonempty tuple")
             sample_ids = set()
             for sample in request.samples:
-                if not isinstance(sample, SampleSelection):
-                    raise ValueError("each sample must be a SampleSelection")
                 _nonnegative("batch_position", sample.batch_position)
                 if sample.batch_position >= batch_size or sample.batch_position in rows:
                     raise ValueError("batch rows must have exactly one valid owner")
@@ -181,7 +198,10 @@ class CaptureDispatcher:
                     positions.add(position)
         if len(rows) != batch_size:
             raise ValueError("every batch row must have exactly one owner")
-        if not isinstance(sequence_starts, Mapping) or set(sequence_starts) != run_ids:
+        if not isinstance(sequence_starts, Mapping):
+            raise ValueError("explicit sequence_starts must map every run ID exactly once")
+        sequence_starts = dict(sequence_starts)
+        if any(type(key) is not str for key in sequence_starts) or set(sequence_starts) != run_ids:
             raise ValueError("explicit sequence_starts must map every run ID exactly once")
         for value in sequence_starts.values():
             _nonnegative("sequence start", value)

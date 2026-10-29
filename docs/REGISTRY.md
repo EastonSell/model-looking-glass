@@ -105,9 +105,16 @@ same-filesystem hard link that cannot replace an existing target. This requires
 a filesystem supporting those lock and hard-link semantics; failure is surfaced,
 with no unsafe overwrite fallback. A killed writer may leave `.pending`. The
 next write or finalization removes that scratch file while holding the lock,
-and status reports `pending_write` if it remains. A system error after a
-publication can make the caller uncertain whether it succeeded: inspect the
-run before deciding what happened. Atomic visibility and file `fsync` do not
+and status reports `pending_write` if it remains. Once the hard link succeeds,
+an operating-system error removing `.pending` does not turn the published
+record into a failed write; the leftover scratch file is reported by status and
+the next locked mutation retries its removal. If publication itself fails and
+scratch cleanup also fails, the publication error remains primary and the
+cleanup error is chained. Other system errors or interruptions after publication
+(for example, while releasing the lock) can still make the caller uncertain
+whether a write or finalization succeeded: inspect the run and compare its
+published contents with the intended operation before deciding what happened.
+Atomic visibility and file `fsync` do not
 promise durability through every power loss, controller, filesystem, or network
 share; test the deployment filesystem and keep independent backups as needed.
 

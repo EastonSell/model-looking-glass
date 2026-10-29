@@ -5,20 +5,16 @@ session; they are not a request-local dispatcher for a shared model broker.
 """
 
 from copy import deepcopy
-from threading import Lock
-from weakref import WeakSet
+from threading import Lock, current_thread
 
 import torch
 from torch import nn
 
+from .model_ownership import ModelLease
+
 
 _DEFAULT_MAX_TENSOR_BYTES = 16 * 1024 * 1024
 _DEFAULT_MAX_INVOCATIONS = 1024
-_MAX_REGISTERED_PATHS = 65536
-_active_modules = WeakSet()
-_active_lock = Lock()
-
-
 def _nonnegative_int(value, name):
     if type(value) is not int or value < 0:
         raise ValueError(f"{name} must be a nonnegative integer")
@@ -31,20 +27,6 @@ def _positive_int(value, name):
 
 def _tensor_bytes(tensor):
     return tensor.numel() * tensor.element_size()
-
-
-def _snapshot_tree(model):
-    # Include duplicate module paths: aliases carry distinct lookup names even
-    # though a forward hook cannot identify the Python call site that used one.
-    paths = []
-    try:
-        for path, module in model.named_modules(remove_duplicate=False):
-            if len(paths) >= _MAX_REGISTERED_PATHS:
-                raise ValueError("model has too many registered module paths")
-            paths.append((path, module))
-    except RecursionError as error:
-        raise ValueError("cyclic module trees are not supported") from error
-    return tuple(paths)
 
 
 def _validate_tensor(tensor, max_tensor_bytes):
@@ -85,11 +67,18 @@ class _ActivationSession:
         self.token_index = token_index
         self.max_tensor_bytes = max_tensor_bytes
         self.max_invocations = max_invocations
+        self._lifecycle_lock = Lock()
         self._used = False
-        self._owned_modules = ()
-        self._tree = ()
+        self._entering = False
+        self._entered = False
+        self._closing = False
+        self._owner_thread = None
+        self._lease = ModelLease(model)
         self._aliases = ()
-        self._handles = []
+        # Allocate all bookkeeping before registering any hook. Appending a
+        # returned handle can otherwise fail after the hook was installed.
+        self._handles = [None] * 4
+        self._registration_uncertain = False
         self._in_forward = False
         self._forward_count = 0
         self._invocations_seen = 0
@@ -100,77 +89,98 @@ class _ActivationSession:
         self._metadata = None
 
     def __enter__(self):
-        if self._used:
-            raise RuntimeError("activation sessions are single-use")
-        self._used = True
-        tree = _snapshot_tree(self.model)
-        modules = tuple(self.model.modules())
+        with self._lifecycle_lock:
+            if self._used:
+                raise RuntimeError("activation sessions are single-use")
+            self._used = True
+            self._entering = True
+            self._owner_thread = current_thread()
         try:
-            current_target = self.model.get_submodule(self.module_path)
-        except AttributeError as error:
-            raise RuntimeError("module path changed before session entry") from error
-        if current_target is not self.module or not any(m is self.module for m in modules):
-            raise RuntimeError("module path changed before session entry")
-        with _active_lock:
-            if any(module in _active_modules for module in modules):
-                raise RuntimeError("overlapping activation sessions require model isolation")
-            for module in modules:
-                _active_modules.add(module)
-            self._owned_modules = modules
-            self._tree = tree
-            self._aliases = tuple(path for path, module in tree if module is self.module)
-        try:
+            try:
+                current_target = self.model.get_submodule(self.module_path)
+            except AttributeError as error:
+                raise RuntimeError("module path changed before session entry") from error
+            if current_target is not self.module:
+                raise RuntimeError("module path changed before session entry")
+            self._lease.acquire()
             self._verify_model_tree()
-            self._handles.append(self.model.register_forward_pre_hook(self._before_forward))
-            self._handles.append(self.module.register_forward_hook(self._target_hook))
-            self._handles.append(self.model.register_forward_hook(self._complete_forward))
-            self._handles.append(self.model.register_forward_hook(self._finish_forward, always_call=True))
-        except BaseException:
-            self._cleanup()
+            self._aliases = tuple(path for path, module in self._lease.registered_paths
+                                  if module is self.module)
+            if not self._aliases:
+                raise RuntimeError("target module is not in the leased module tree")
+            self._register(0, self.model.register_forward_pre_hook, self._before_forward)
+            self._register(1, self.module.register_forward_hook, self._target_hook)
+            self._register(2, self.model.register_forward_hook, self._complete_forward)
+            self._register(3, self.model.register_forward_hook, self._finish_forward, always_call=True)
+            with self._lifecycle_lock:
+                if self._invalid:
+                    raise RuntimeError("activation session was invalidated during entry")
+                self._entered = True
+                self._entering = False
+        except BaseException as error:
+            try:
+                try:
+                    self._cleanup()
+                except BaseException as cleanup_error:
+                    raise error from cleanup_error
+            finally:
+                with self._lifecycle_lock:
+                    self._entering = False
             raise
         return self
 
+    def _register(self, slot, register, hook, **kwargs):
+        # PyTorch or a custom module can install a hook, then raise before
+        # returning its handle. Without that handle cleanup cannot prove safety.
+        self._registration_uncertain = True
+        handle = register(hook, **kwargs)
+        if not callable(getattr(handle, "remove", None)):
+            raise TypeError("hook registration returned an invalid handle")
+        self._handles[slot] = handle
+        self._registration_uncertain = False
+
     def _verify_model_tree(self):
         try:
-            current = _snapshot_tree(self.model)
-        except ValueError as error:
-            self._invalid = True
+            self._lease.verify_tree()
+        except RuntimeError as error:
+            self._mark_invalid()
             raise RuntimeError("model module tree changed during the session") from error
-        if (len(current) != len(self._tree)
-                or any(a_path != b_path or a_module is not b_module
-                       for (a_path, a_module), (b_path, b_module) in zip(current, self._tree))):
-            self._invalid = True
-            raise RuntimeError("model module tree changed during the session")
         try:
             target = self.model.get_submodule(self.module_path)
         except AttributeError as error:
-            self._invalid = True
+            self._mark_invalid()
             raise RuntimeError("module path changed during the session") from error
         if target is not self.module:
-            self._invalid = True
+            self._mark_invalid()
             raise RuntimeError("module path changed during the session")
 
     def _before_forward(self, module, inputs):
+        self._check_owner()
         if self._forward_count != 0 or self._in_forward:
-            self._invalid = True
+            self._mark_invalid()
             raise RuntimeError("session permits exactly one root model forward")
         self._verify_model_tree()
         self._forward_count = 1
         self._in_forward = True
 
     def _complete_forward(self, module, inputs, output):
+        self._check_owner()
         self._verify_model_tree()
         self._completed = True
         return None
 
     def _finish_forward(self, module, inputs, output):
+        if current_thread() is not self._owner_thread:
+            self._mark_invalid()
+            return None
         if not self._completed:
-            self._invalid = True
+            self._mark_invalid()
         self._in_forward = False
         return None
 
     def _target_hook(self, module, inputs, output):
         try:
+            self._check_owner()
             if not self._in_forward:
                 raise RuntimeError("target module must run within the root model forward")
             self._verify_model_tree()
@@ -212,8 +222,22 @@ class _ActivationSession:
             self._applied = True
             return replacement
         except BaseException:
-            self._invalid = True
+            self._mark_invalid()
             raise
+
+    def _mark_invalid(self):
+        with self._lifecycle_lock:
+            self._invalid = True
+            self._committed = False
+
+    def _check_owner(self):
+        with self._lifecycle_lock:
+            if current_thread() is not self._owner_thread:
+                self._invalid = True
+                self._committed = False
+                raise RuntimeError("activation session must run in its owning thread")
+            if self._invalid:
+                raise RuntimeError("activation session is already invalid")
 
     @property
     def metadata(self):
@@ -222,25 +246,84 @@ class _ActivationSession:
         return deepcopy(self._metadata)
 
     def _cleanup(self):
-        try:
-            for handle in self._handles:
+        first_error = None
+        for index, handle in enumerate(self._handles):
+            if handle is None:
+                continue
+            try:
                 handle.remove()
-            self._handles.clear()
+                self._handles[index] = None
+            except BaseException as error:
+                if first_error is None:
+                    first_error = error
+        if first_error is None and not self._registration_uncertain:
+            self._lease.release()
+        if first_error is not None:
+            raise first_error
+        if self._registration_uncertain:
+            raise RuntimeError("hook registration was indeterminate; discard this model and worker")
+
+    def close(self):
+        """Retry removal of known handles; indeterminate registration remains quarantined."""
+        with self._lifecycle_lock:
+            if not self._used:
+                raise RuntimeError("close is only available after session entry was attempted")
+            if self._entering or self._entered or self._closing:
+                raise RuntimeError("cannot close an active activation session")
+            self._closing = True
+        try:
+            self._cleanup()
         finally:
-            with _active_lock:
-                for module in self._owned_modules:
-                    _active_modules.discard(module)
-                self._owned_modules = ()
+            with self._lifecycle_lock:
+                self._closing = False
 
     def __exit__(self, exc_type, exc, tb):
-        success = (exc_type is None and not self._invalid and self._forward_count == 1
-                   and self._completed and self._applied and not self._in_forward)
-        self._cleanup()
-        if success:
-            self._committed = True
-        else:
+        with self._lifecycle_lock:
+            if self._closing:
+                if current_thread() is not self._owner_thread:
+                    self._invalid = True
+                    self._committed = False
+                raise RuntimeError("activation session cleanup is in progress")
+            if not self._entering and not self._entered:
+                raise RuntimeError("activation session is not in an active context")
+            if current_thread() is not self._owner_thread:
+                self._invalid = True
+                raise RuntimeError("activation session must exit in its owning thread")
+            if self._entering:
+                raise RuntimeError("activation session is not in an active context")
+            self._entered = False
+            self._closing = True
+        verification_error = None
+        if exc_type is None:
+            try:
+                self._verify_model_tree()
+            except BaseException as error:
+                verification_error = error
+        cleanup_error = None
+        try:
+            self._cleanup()
+        except BaseException as error:
+            cleanup_error = error
+        finally:
+            with self._lifecycle_lock:
+                success = (exc_type is None and verification_error is None
+                           and cleanup_error is None and not self._invalid
+                           and self._forward_count == 1 and self._completed
+                           and self._applied and not self._in_forward)
+                if success:
+                    self._committed = True
+                self._closing = False
+        if not success:
             self._discard()
             self._metadata = None
+            if cleanup_error is not None:
+                if exc is not None:
+                    raise exc.with_traceback(tb) from cleanup_error
+                if verification_error is not None:
+                    raise verification_error from cleanup_error
+                raise cleanup_error
+            if verification_error is not None:
+                raise verification_error
             if exc_type is None:
                 raise RuntimeError("session did not complete the requested intervention or capture")
         return False

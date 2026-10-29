@@ -140,6 +140,60 @@ class CaptureDispatcherTests(unittest.TestCase):
                     make_dispatcher(requests, batch_size=2, sequence_length=4,
                                       max_events=10, max_trace_bytes=100)
 
+    def test_post_validation_mutation_cannot_change_batch_ownership_or_caps(self):
+        sample_a = SampleSelection(0, "a0", (0,))
+        sample_b = SampleSelection(1, "b0", (1,))
+        first = request("a", [sample_a])
+        second = request("b", [sample_b])
+        starts = {"run": 4}
+        d = make_dispatcher((first, second), batch_size=2, sequence_length=2,
+                            max_events=2, max_trace_bytes=64,
+                            sequence_starts=starts)
+        object.__setattr__(sample_a, "batch_position", 1)
+        object.__setattr__(sample_a, "sample_id", "forged-sample")
+        object.__setattr__(sample_a, "token_positions", (1,))
+        object.__setattr__(first, "request_id", "forged-request")
+        object.__setattr__(first, "job_id", "forged-job")
+        object.__setattr__(first, "run_id", "forged-run")
+        object.__setattr__(first, "max_events", 0)
+        object.__setattr__(first, "max_trace_bytes", 0)
+        starts["run"] = 90
+        source = torch.tensor([[[11.], [12.]], [[21.], [22.]]])
+        _, events = d.run(lambda: d.record("tap", layer_index=0,
+                                          module_kind="block", output=source))
+        self.assertEqual([e.request_id for e in events], ["a", "b"])
+        self.assertEqual([e.job_id for e in events], ["job-a", "job-b"])
+        self.assertEqual([e.run_id for e in events], ["run", "run"])
+        self.assertEqual([e.sample_id for e in events], ["a0", "b0"])
+        self.assertEqual([e.batch_position for e in events], [0, 1])
+        self.assertEqual([e.token_positions for e in events], [(0,), (1,)])
+        self.assertEqual([e.sequence for e in events], [4, 5])
+        self.assertEqual([e.value.item() for e in events], [11., 22.])
+
+    def test_request_spec_subclasses_and_string_subclasses_are_rejected(self):
+        class RequestSubclass(CaptureRequest):
+            pass
+        class SampleSubclass(SampleSelection):
+            pass
+        class IDSubclass(str):
+            pass
+        r = request("a", [SampleSelection(0, "s", (0,))])
+        subclassed = RequestSubclass(r.run_id, r.job_id, r.request_id, r.samples,
+                                     r.forward_index, r.generation_step,
+                                     r.max_events, r.max_trace_bytes)
+        cases = [subclassed,
+                 request("a", [SampleSubclass(0, "s", (0,))]),
+                 request(IDSubclass("a"), [SampleSelection(0, "s", (0,))])]
+        for candidate in cases:
+            with self.subTest(candidate=candidate):
+                with self.assertRaises(ValueError):
+                    make_dispatcher((candidate,), batch_size=1, sequence_length=1,
+                                    max_events=2, max_trace_bytes=64)
+        with self.assertRaises(ValueError):
+            make_dispatcher((r,), batch_size=1, sequence_length=1,
+                            max_events=2, max_trace_bytes=64,
+                            sequence_starts={IDSubclass("run"): 0})
+
     def test_caps_are_checked_before_selecting_or_copying_any_slice(self):
         x = torch.ones(2, 4, 2)
         cases = [
