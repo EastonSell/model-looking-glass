@@ -73,6 +73,14 @@ python -I -S -B replay_short_cpu_gpu_public.py --cpu-dir <cpu-extraction>/data -
 The replay reads saved logits and records, with no model or GPU call. Its
 published output is `short-service-gpu16-public-replay-v1.json` (SHA-256
 `9ba90fadaf6986cfdd847da3215b5e11efa8de04adc144636c4848af90fe4e01`).
+The signed-zero regression makes temporary copies of the reconstructed public
+data and checks that numerically equal but bitwise different client/reference
+outputs are rejected:
+
+```text
+python -I -S -B test_replay_signed_zero.py --cpu-dir <cpu-extraction>/data --gpu-dir <gpu-extraction>/data --manifest <source-checkout>/experiments/short_cpu_service_reference_inputs_v1.json --scratch-dir <existing-absolute-scratch-directory>
+```
+
 The original candidate, owner/supervisor and outer-controller
 receipts contain private process or path identifiers and are not published.
 Their hashes in the saved result and independent reports are commitments to
