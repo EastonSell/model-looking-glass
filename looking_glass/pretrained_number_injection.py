@@ -788,6 +788,8 @@ class NumberInjectionExecutor:
                     metadata_json = None
                 try:
                     message = str(exc)[:1024]
+                except (KeyboardInterrupt, SystemExit):
+                    raise
                 except BaseException:
                     message = "exception message unavailable"
                 self._private_failures.append(PrivateFailureEvidence(safe_request, input_sha256, safe_condition,
@@ -799,6 +801,8 @@ class NumberInjectionExecutor:
             except BaseException as record_error:
                 if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                     raise exc.with_traceback(exc.__traceback__) from record_error
+                if isinstance(record_error, (KeyboardInterrupt, SystemExit)):
+                    raise record_error.with_traceback(record_error.__traceback__) from exc
                 try:
                     raise exc.with_traceback(exc.__traceback__) from record_error
                 except BaseException as original:

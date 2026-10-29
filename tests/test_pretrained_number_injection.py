@@ -733,6 +733,49 @@ class OrderedInjectionExecutorTests(unittest.TestCase):
             self.assertIsInstance(original.__cause__, MemoryError)
             self.assertTrue(executor.poisoned)
 
+    def test_failure_recording_cancellation_remains_primary(self):
+        for cancellation in (KeyboardInterrupt("cancel"), SystemExit(23)):
+            model = ToyModel()
+            with self.subTest(cancellation=type(cancellation).__name__), NumberInjectionExecutor(model, site=2) as executor:
+                class CancelOnAppend(list):
+                    def append(self, value):
+                        raise cancellation
+                executor._private_failures = CancelOnAppend()
+                with self.assertRaises(type(cancellation)) as caught:
+                    executor.forward([True], request_id=f"{1:032x}", condition="clean")
+                self.assertIs(caught.exception, cancellation)
+                self.assertIsInstance(caught.exception.__cause__, ValueError)
+                self.assertEqual(model.calls, 0)
+                self.assertTrue(executor.poisoned)
+                if isinstance(cancellation, SystemExit):
+                    self.assertEqual(caught.exception.code, 23)
+
+    def test_exception_formatting_cancellation_remains_primary(self):
+        class BadString(RuntimeError):
+            def __str__(self):
+                raise KeyboardInterrupt("format cancelled")
+        model = ToyModel()
+        with NumberInjectionExecutor(model, site=2) as executor:
+            with patch.object(model, "forward", side_effect=BadString()):
+                with self.assertRaises(KeyboardInterrupt) as caught:
+                    executor.forward([2, 3], request_id=f"{1:032x}", condition="clean")
+            self.assertIsInstance(caught.exception.__cause__, BadString)
+            self.assertTrue(executor.poisoned)
+
+    def test_original_cancellation_wins_over_recording_cancellation(self):
+        model = ToyModel()
+        with NumberInjectionExecutor(model, site=2) as executor:
+            class CancelOnAppend(list):
+                def append(self, value):
+                    raise KeyboardInterrupt("record cancelled")
+            executor._private_failures = CancelOnAppend()
+            with patch.object(model, "forward", side_effect=SystemExit(17)):
+                with self.assertRaises(SystemExit) as caught:
+                    executor.forward([2, 3], request_id=f"{1:032x}", condition="clean")
+            self.assertEqual(caught.exception.code, 17)
+            self.assertIsInstance(caught.exception.__cause__, KeyboardInterrupt)
+            self.assertTrue(executor.poisoned)
+
     def test_denormal_mode_change_during_forward_is_terminal(self):
         if not torch.set_flush_denormal(False):
             self.skipTest("runtime does not expose denormal flushing")
