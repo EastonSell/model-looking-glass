@@ -1,7 +1,9 @@
 """Small synthetic checks; these tests never load a pretrained model."""
 
 import copy
+import hashlib
 import math
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -163,6 +165,56 @@ def test_locality_metrics_agree_with_an_independent_closed_form(tiny_vocab):
     assert row["condition_nll"] == pytest.approx(math.log(normalizer), abs=1e-13)
     assert row["kl"] == pytest.approx(math.log(normalizer / 16) - x / 16, abs=1e-13)
     assert not report["criteria"]["all_locality_top_preserved"]
+
+
+def test_tied_extreme_logits_keep_the_log_normalizer_and_correct_kl(tiny_vocab, monkeypatch):
+    monkeypatch.setattr(v1, "VOCAB_SIZE", 4)
+    row = np.asarray([[2**60, 2**60, -(2**60), -(2**60)]], dtype="<f4")
+    uniform = np.zeros((1, 4), dtype="<f4")
+    scores = v2._scores({"extreme": row, "uniform": uniform}, (None,), ("extreme", "uniform"))
+    _z, logp, top = scores["extreme"][0]
+    _uz, uniform_logp, _top = scores["uniform"][0]
+    assert top == 0
+    assert logp[0] == pytest.approx(-math.log(2), abs=1e-15)
+    assert logp[1] == pytest.approx(-math.log(2), abs=1e-15)
+    assert -logp[0] == pytest.approx(math.log(2), abs=1e-15)
+    assert float(np.exp(logp).sum()) == pytest.approx(1.0, abs=1e-15)
+    kl = float(np.sum(np.exp(logp) * (logp - uniform_logp), dtype=np.float64))
+    assert kl == pytest.approx(math.log(2), abs=1e-15)
+
+
+def test_ordinary_logits_match_an_independent_float64_normalization(tiny_vocab, monkeypatch):
+    monkeypatch.setattr(v1, "VOCAB_SIZE", 4)
+    row = np.asarray([[-2.0, 0.0, 1.0, 3.0]], dtype="<f4")
+    _z, logp, top = v2._scores({"test": row}, (None,), ("test",))["test"][0]
+    denominator = math.fsum(math.exp(float(value) - 3.0) for value in row[0])
+    expected = [float(value) - 3.0 - math.log(denominator) for value in row[0]]
+    assert top == 3
+    assert np.allclose(logp, expected, rtol=0, atol=1e-15)
+
+
+def test_saved_v1_logits_remain_numerically_close_under_v2_normalization():
+    assert torch.set_flush_denormal(False)
+    root = Path(__file__).resolve().parents[1] / "results" / "targeted-edit-cpu-v1-20261028" / "reference"
+    pins = {"original": "947518214fd7c8bdfebd347a1944cc4ce5cb97ac9e622846cc7e21308f96c309",
+            "gradient": "43e94ab1a840df8c0d4fb65e56966befb06110a05edae9094e3817515cf339f7",
+            "random": "1d7fd5030e7d54bbab5ce3796f1a2e719e82c1e136de64294e061babf1c9fef7"}
+    old, new = {}, {}
+    for condition, pin in pins.items():
+        raw = (root / f"{condition}.f32").read_bytes()
+        assert hashlib.sha256(raw).hexdigest() == pin
+        rows = np.frombuffer(raw, dtype="<f4").reshape(len(v1.CASES), v1.VOCAB_SIZE)
+        old[condition] = [v1._score(row)[1] for row in rows]
+        new[condition] = [v2._score(row)[1] for row in rows]
+    for condition in pins:
+        assert max(float(np.max(np.abs(a - b))) for a, b in zip(old[condition], new[condition])) < 1e-12
+    for condition in ("gradient", "random"):
+        for index in range(5, len(v1.CASES)):
+            kl_old = np.sum(np.exp(old["original"][index]) *
+                            (old["original"][index] - old[condition][index]), dtype=np.float64)
+            kl_new = np.sum(np.exp(new["original"][index]) *
+                            (new["original"][index] - new[condition][index]), dtype=np.float64)
+            assert abs(float(kl_old - kl_new)) < 1e-12
 
 
 @pytest.mark.parametrize("mutation", ["missing", "wrong_dtype", "nonfinite", "wrong_shape"])
