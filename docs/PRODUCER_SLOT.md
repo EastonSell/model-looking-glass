@@ -20,7 +20,9 @@ registry. Generation allocation and registration
 must be serialized, or retried with a newer generation if a later one wins
 first. Bind any external identity to a registry/process epoch: a generation is
 not durable or unique across registry reconstruction, process restarts, or
-different registries.
+different registries. `adopt()` is repeatable and returns an alias to the same
+object; it does not enforce exclusive ownership. The trusted coordinator must
+assign one owner and account for all aliases.
 
 ```python
 from looking_glass.producer_slot import ProducerSlotRegistry

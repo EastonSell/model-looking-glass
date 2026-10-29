@@ -95,6 +95,12 @@ unknown values. Each event can be stored on a separate JSON Lines line.
 `from_dict` and `from_json` strictly require this version and all defined fields,
 reject additional or missing fields, duplicate JSON keys, nonstandard numbers,
 invalid types, negative coordinates, and out-of-range known axes/positions.
+Schema text fields, including identifiers and generation stage, require plain
+built-in strings. This keeps their serialized values, equality, and hashing
+consistent; string subclasses with custom behavior are not accepted.
+Programmatic `from_dict` inputs also require plain-string field names. Nested
+identity and generation records, and events passed to `validate_trace`, must be
+the exact schema classes so overridden serializers cannot bypass validation.
 Tuples in Python are JSON arrays on the wire. Rejecting unknown fields and
 versions prevents silently misinterpreting a future schema; any migration must
 be explicit. Validation is local to the declared metadata: it cannot verify a
