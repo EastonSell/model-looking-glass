@@ -2,10 +2,16 @@
 
 `run_two_team_smoke` is a bounded operator check for a prepared fixed
 two-token service. It is disabled until the actual fair owner exports the
-reviewed `two-team-fair-service-v1` compatibility marker. That marker is not
-proof of a measured profile or of the source's integrity. The operator must
-first obtain independently reviewed profiles for the exact worker path and
-frozen source/runtime, and arrange the exclusive supervised GPU window.
+reviewed `two-team-fair-service-v1` compatibility marker.
+`run_direct_two_team_smoke` uses the separately reviewed direct owner and
+requires its `two-team-direct-service-v1` marker and the reviewed completion
+custody marker. These entry points share one controller claim, so neither can
+run again on a controller already used by the other. Neither marker is proof of
+a measured profile or of the source's integrity. The operator must first obtain
+independently reviewed profiles for the exact worker path and frozen
+source/runtime, and arrange the exclusive supervised GPU window. The direct
+marker must remain absent until the owner's ingress, producer custody and
+quiescent teardown have been reviewed as a whole.
 
 The caller creates and retains a `prepare_two_token_service` handle configured
 for two distinct teams, and keeps exclusive controller access during the smoke.
