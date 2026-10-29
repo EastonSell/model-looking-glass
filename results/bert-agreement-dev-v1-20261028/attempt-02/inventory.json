@@ -1,0 +1,42 @@
+{
+  "controller_exit_observed": 0,
+  "controller_process_exit_observed_locally": true,
+  "controller_status": "complete",
+  "files": {
+    "controller-exit-capture.ps1": {
+      "bytes": 522,
+      "sha256": "a4551d52fb058e249bffc2908e8756eb144c54ae0a91d9a0760da066eaf5512f"
+    },
+    "controller-exit.json": {
+      "bytes": 58,
+      "sha256": "e87efbfd9725492a36a5f37f271f60ef0c44bdf0245a29f01df2a6c7d704c492"
+    },
+    "owner-candidate.json": {
+      "bytes": 12217,
+      "sha256": "c3fcb87678ac5663bd6f2d39d2d36ab98c12cbdf9e7311fb507534e6ff563131"
+    },
+    "owner-started.json": {
+      "bytes": 275,
+      "sha256": "7cef4de94bd295b9f11c01f60fda4d350f469fcd1ebf41f018a5a7a25fa2b04c"
+    },
+    "preflight.json": {
+      "bytes": 1524,
+      "sha256": "2e4fbf7a09edf4395ba00715786da2462e00e26a057f1979d236f8179b78c204"
+    },
+    "result.json": {
+      "bytes": 13088,
+      "sha256": "dc2b9160ac7b8acc694a65578261a2792509fae0fe9bbada9f48d590692d4ae8"
+    },
+    "started.json": {
+      "bytes": 233,
+      "sha256": "ec6e85dee8bc666b9b36d85597ecd8d74fce46e8a9964b69b1fcfee52999b70b"
+    }
+  },
+  "journal_shared_path": "../attempt-01/events.jsonl.gz",
+  "journal_uncompressed_bytes": 1187199,
+  "journal_uncompressed_sha256": "ff14574bf1b35058b3cff51e4752180ec589982cf3a547baba318a9591af8b67",
+  "owner_exit_recorded": 0,
+  "run_id": "dd100dc14f21292d5017a05828bb9288",
+  "schema": "bert-agreement-preserved-attempt-v1",
+  "source_commit": "186cbb8510caa28610348ee000b5504dc2cf6179"
+}
