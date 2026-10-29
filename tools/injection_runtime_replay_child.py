@@ -44,7 +44,9 @@ _MODEL_STATE = '94b22301fa1a03550f8b75a255d6c7bb2dda25ee6d9079b70321a81ac884c1f1
 _ROLES = ('clean', 'repeat', 'injected', *(f'forward_{i}' for i in range(1, 5)),
           *(f'reverse_{i}' for i in range(1, 5)), 'null', 'self', 'upstream', 'downstream', 'verify_clean')
 _SOURCE_NAMES = frozenset(('claim', 'owner', 'child', 'producer', 'supervisor', 'outer_observer',
-                           'cpu_job_adapter', 'row_guard', 'phase_ledger', 'source_guard', 'auditor'))
+                           'cpu_job_adapter', 'row_guard', 'phase_ledger', 'source_guard', 'auditor',
+                           'driver', 'controller', 'cpu_job', 'observer_audit', 'observer_custody',
+                           'auditor_core'))
 _BUDGETS = {'phase_logical_bytes': 72 * 1024**2, 'phase_physical_bytes': 192 * 1024**2,
             'pilot_logical_bytes': 8 * 1024**2, 'pilot_physical_bytes': 16 * 1024**2,
             'diagnostic_reserved_bytes': 4 * 1024**2}
