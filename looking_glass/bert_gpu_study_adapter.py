@@ -1,9 +1,10 @@
-"""CPU-tested prototype for the fixed BERT family observer; CUDA is disabled.
+"""Observer for the fixed BERT family and its bounded calibration owner.
 
 This private prototype does not load a checkpoint or own a device. Before it
 can execute on CUDA, a separately reviewed owner must bind the full family
 schedule, model/device lease, resource reservations, output custody, and
-failure/quarantine lifecycle. No current entry point enables CUDA execution.
+failure/quarantine lifecycle. CUDA is available only to the cooperative,
+source-bound family-calibration owner; the public study entry remains disabled.
 """
 
 import json
@@ -20,19 +21,37 @@ class _ObservationCustody:
     """Preallocated prototype roots; an external owner must retain this object."""
     __slots__ = ('entered', 'device_input', 'attention_mask', 'device_source_bits',
                  'device_source', 'plan', 'plan_source_roots', 'logits', 'captures',
-                 'capture_before', 'capture_after')
+                 'capture_roots')
 
     def __init__(self):
         self.entered = False
         self.device_input = self.attention_mask = self.device_source_bits = None
         self.device_source = self.plan = self.logits = self.captures = None
-        self.capture_before = self.capture_after = None
+        self.capture_roots = None
         self.plan_source_roots = ()
+
+
+class _RetainedPlanCaptures(dict):
+    """Keep completed private clones when an unsuccessful plan clears captures."""
+    def clear(self):
+        return None
+
+
+_CUDA_FAMILY_PROFILE_PERMIT = object()
 
 
 def run_cuda_observation(*args, **kwargs):
     """The study's CUDA observer is unavailable until its owner is reviewed."""
     raise RuntimeError('BERT GPU study execution is disabled pending full-family calibration')
+
+
+def _run_family_calibration_observation(model, input_ids, *, layer, token, mask_token, is_id, are_id,
+                                        source=None, self_patch=False, check_owner, synchronize, custody):
+    """Internal observer for the supervised, fixed development-family profile."""
+    return _observe_owned(model, input_ids, layer=layer, token=token, mask_token=mask_token,
+                          is_id=is_id, are_id=are_id, source=source, self_patch=self_patch,
+                          device='cuda:0', check_owner=check_owner, synchronize=synchronize,
+                          custody=custody, cuda_permit=_CUDA_FAMILY_PROFILE_PERMIT)
 
 
 def _observe_cpu_prototype(model, input_ids, *, layer, token, mask_token, is_id, are_id,
@@ -45,10 +64,9 @@ def _observe_cpu_prototype(model, input_ids, *, layer, token, mask_token, is_id,
 
 
 def _observe_owned(model, input_ids, *, layer, token, mask_token, is_id, are_id,
-                   source, self_patch, device, check_owner, synchronize, custody):
-    # A future CUDA owner must replace this gate only after reviewing and
-    # calibrating the complete 140-forward family lifecycle.
-    if type(device) is not str or device != 'cpu':
+                   source, self_patch, device, check_owner, synchronize, custody, cuda_permit=None):
+    if (type(device) is not str or
+            not (device == 'cpu' or (device == 'cuda:0' and cuda_permit is _CUDA_FAMILY_PROFILE_PERMIT))):
         raise RuntimeError('BERT GPU study execution is disabled pending full-family calibration')
     if not callable(check_owner) or not callable(synchronize):
         raise TypeError('trusted owner-check and synchronization callbacks are required')
@@ -144,6 +162,9 @@ def _observe_owned(model, input_ids, *, layer, token, mask_token, is_id, are_id,
         max_capture_bytes=2 * hidden * 4, max_source_bytes=hidden * 4,
         max_steps=3, max_invocations=1)
     custody.plan_source_roots = tuple(plan._sources.values())
+    capture_roots = _RetainedPlanCaptures()
+    custody.capture_roots = capture_roots
+    plan._captures = capture_roots
     check_owner()
 
     def host_float32(tensor):
@@ -154,29 +175,22 @@ def _observe_owned(model, input_ids, *, layer, token, mask_token, is_id, are_id,
         return host_bits.contiguous().view(torch.float32)
 
     with torch.inference_mode(), plan:
-        try:
-            check_owner()
-            check_configuration()
-            logits = model(input_ids=device_input, attention_mask=attention_mask,
-                           output_attentions=False, output_hidden_states=False, return_dict=True).logits
-            custody.logits = logits
-            check_owner()
-            check_configuration()
-            if (guarded(lambda: tuple(device_input[0].tolist())) != observed_ids
-                    or guarded(lambda: tuple(attention_mask[0].tolist())) != observed_mask):
-                raise RuntimeError('model input tensors changed during execution')
-            if (type(logits) is not torch.Tensor or logits.dtype != torch.float32
-                    or logits.device != execution_device or tuple(logits.shape) != (1, 10, vocab)
-                    or not guarded(lambda: bool(torch.isfinite(logits).all()))):
-                raise RuntimeError('model returned invalid or nonfinite logits')
-            mask_logits = host_float32(guarded(lambda: logits[0, mask_token]))
-            completion('output_live')
-        finally:
-            # Plan exit can clear captures on an error, so retain any completed
-            # device captures before it runs. A failed owner must retain the
-            # custody object until its dedicated process has terminated.
-            custody.capture_before = plan._captures.get('before')
-            custody.capture_after = plan._captures.get('after')
+        check_owner()
+        check_configuration()
+        logits = model(input_ids=device_input, attention_mask=attention_mask,
+                       output_attentions=False, output_hidden_states=False, return_dict=True).logits
+        custody.logits = logits
+        check_owner()
+        check_configuration()
+        if (guarded(lambda: tuple(device_input[0].tolist())) != observed_ids
+                or guarded(lambda: tuple(attention_mask[0].tolist())) != observed_mask):
+            raise RuntimeError('model input tensors changed during execution')
+        if (type(logits) is not torch.Tensor or logits.dtype != torch.float32
+                or logits.device != execution_device or tuple(logits.shape) != (1, 10, vocab)
+                or not guarded(lambda: bool(torch.isfinite(logits).all()))):
+            raise RuntimeError('model returned invalid or nonfinite logits')
+        mask_logits = host_float32(guarded(lambda: logits[0, mask_token]))
+        completion('output_live')
 
     captures, metadata = plan.captures, plan.metadata
     custody.captures = captures
@@ -211,12 +225,12 @@ def _observe_owned(model, input_ids, *, layer, token, mask_token, is_id, are_id,
     is_bits, are_bits = int(bits[is_id]) & 0xffffffff, int(bits[are_id]) & 0xffffffff
     is_logit, are_logit = decode_float32_bits(is_bits), decode_float32_bits(are_bits)
     completion('captures_live')
-    del logits, captures, plan, steps, device_source, device_input, attention_mask
+    del logits, captures, plan, steps, device_source, device_input, attention_mask, capture_roots
     custody.logits = custody.captures = custody.plan = None
     custody.device_input = custody.attention_mask = custody.device_source = None
     custody.device_source_bits = None
     custody.plan_source_roots = ()
-    custody.capture_before = custody.capture_after = None
+    custody.capture_roots = None
     if source is not None:
         del device_source_bits
     completion('device_refs_disposed')

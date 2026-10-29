@@ -14,8 +14,8 @@ from transformers import DistilBertConfig, DistilBertForMaskedLM
 from looking_glass.bert_agreement_runner import (SITES, _run_family,
     float32_bytes, run_family, run_observation)
 from looking_glass.bert_agreement_audit import audit_family_events
-from looking_glass.bert_gpu_study_adapter import (_ObservationCustody, _observe_cpu_prototype,
-    run_cuda_observation)
+from looking_glass.bert_gpu_study_adapter import (_ObservationCustody, _RetainedPlanCaptures, _observe_cpu_prototype,
+    _run_family_calibration_observation, run_cuda_observation)
 from looking_glass.intervention_plan import ActivationPlan
 
 
@@ -64,6 +64,15 @@ class AdapterTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'disabled'):
                 run_cuda_observation(object(), object(), layer=2, token=2, mask_token=6,
                                      is_id=20, are_id=21)
+
+    def test_internal_cuda_profile_checks_owner_before_access(self):
+        def rejected():
+            raise RuntimeError('no owner')
+        with patch.object(torch.cuda, 'synchronize', side_effect=AssertionError('CUDA touched')):
+            with self.assertRaisesRegex(RuntimeError, 'no owner'):
+                _run_family_calibration_observation(object(), object(), layer=2, token=2,
+                    mask_token=6, is_id=20, are_id=21, check_owner=rejected,
+                    synchronize=lambda stage: None, custody=_ObservationCustody())
 
     def test_synthetic_observations_match_cpu_reference_at_every_study_site(self):
         for layer, token in [(layer, token) for _, layer, token in SITES] + [(5, 2), (5, 6)]:
@@ -155,9 +164,29 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(len(custody.plan_source_roots), 1)
         self.assertEqual(float32_bytes(custody.plan_source_roots[0]), float32_bytes(source))
         self.assertIsNot(custody.plan_source_roots[0], source)
-        self.assertEqual(float32_bytes(custody.capture_after), float32_bytes(source))
-        self.assertEqual(tuple(custody.capture_before.shape), (16,))
+        self.assertEqual(float32_bytes(custody.capture_roots['after']), float32_bytes(source))
+        self.assertEqual(tuple(custody.capture_roots['before'].shape), (16,))
         self.assertFalse(any(m._forward_hooks or m._forward_pre_hooks for m in self.model.modules()))
+
+    def test_failed_drain_and_capture_cleanup_interrupt_retain_both_clones(self):
+        custody = _ObservationCustody()
+        source = torch.arange(16, dtype=torch.float32)
+        references = []
+        def sync(stage):
+            references.extend(weakref.ref(custody.capture_roots[name]) for name in ('before', 'after'))
+            raise RuntimeError('failed drain')
+        def interrupted_clear(captures):
+            raise MemoryError('interrupted capture cleanup')
+        with patch.object(_RetainedPlanCaptures, 'clear', interrupted_clear):
+            with self.assertRaises(MemoryError):
+                _observe_cpu_prototype(self.model, self.a, layer=2, token=2, mask_token=6,
+                    is_id=20, are_id=21, source=source, check_owner=lambda: None,
+                    synchronize=sync, custody=custody)
+        import gc
+        gc.collect()
+        self.assertEqual(len(references), 2)
+        self.assertTrue(all(reference() is not None for reference in references))
+        self.assertEqual(set(custody.capture_roots), {'before', 'after'})
 
     def test_plan_construction_failure_keeps_allocated_source_rooted(self):
         custody = _ObservationCustody()
