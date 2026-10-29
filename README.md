@@ -141,6 +141,8 @@ The [recognized-donor ViT follow-up](results/vision-coco-recognized-v4-20261029/
 
 In the [CLS versus spatial follow-up](results/vision-coco-cls-v5-20261029/README.md), both screened pairs were eligible but neither passed the fixed two-sided composite. Active controls sometimes had larger effects, and one spatial intervention changed top-1; the result does not imply no effect or equivalence. The pairs reused both donors and were conditioned on model recognition.
 
+In the [spatial ViT dose-response follow-up](results/vision-coco-spatial-dose-v6-20261029/README.md), all four model-screened pairs were evaluable, but none met the fixed control-adjusted low/high-dose composite. Some opposite-donor effects grew with dose while matched same-species or random controls were larger; a shared cat donor makes the observations dependent. The result does not establish absence of spatial information or class-specific localization.
+
 A [targeted parameter-edit experiment](results/targeted-edit-cpu-v1-20261028/README.md) changed the intended answer preference but failed its preset locality thresholds on public probes. The negative result and a same-host replay are preserved; the study does not establish general capability preservation.
 
 The [projected-edit follow-up](results/targeted-edit-projected-cpu-v1-20261028/README.md) was ineligible because only two of four targets had the required baseline preference; neither reversed. The projected and unprojected edits had different target effects, and the nine locality probes cannot establish broad capability preservation.
