@@ -103,6 +103,73 @@ def _check_cpu_precision():
         raise StudyFailure('CPU autocast is unsupported')
 
 
+_CONFIG_RUNTIME_FIELDS = (
+    'use_cache', '_attn_implementation', 'output_attentions', 'output_hidden_states',
+    'use_return_dict', 'return_dict', 'add_cross_attention', 'n_layer', 'n_head',
+    'n_embd', 'vocab_size', 'n_positions', 'n_ctx', 'activation_function',
+    'layer_norm_epsilon', 'scale_attn_weights', 'scale_attn_by_inverse_layer_idx',
+    'reorder_and_upcast_attn', 'tie_word_embeddings', 'model_type',
+)
+_MODULE_RUNTIME_FIELDS = (
+    'scale_attn_weights', 'scale_attn_by_inverse_layer_idx', 'reorder_and_upcast_attn',
+    'layer_idx', 'is_cross_attention', 'is_causal', 'embed_dim', 'num_heads',
+    'head_dim', 'split_size', 'pruned_heads', 'model_parallel', 'gradient_checkpointing',
+    '_attn_implementation', 'p', 'inplace', 'eps', 'normalized_shape',
+    'elementwise_affine', 'approximate', 'negative_slope', 'padding_idx', 'nf',
+)
+_MISSING_RUNTIME_FIELD = object()
+
+
+def _runtime_value(value):
+    """Snapshot supported plain values without equating booleans and integers."""
+    if value is None or type(value) in (bool, int, str):
+        return (type(value).__name__, value)
+    if type(value) is float and math.isfinite(value):
+        return ('float', value.hex())
+    if type(value) in (tuple, list):
+        return (type(value).__name__, tuple(_runtime_value(item) for item in value))
+    if type(value) in (set, frozenset) and all(type(item) is int for item in value):
+        return (type(value).__name__, tuple(sorted(value)))
+    raise StudyFailure('unsupported model execution-configuration value')
+
+
+def _runtime_fields(obj, names):
+    result = []
+    for name in names:
+        value = getattr(obj, name, _MISSING_RUNTIME_FIELD)
+        if value is not _MISSING_RUNTIME_FIELD:
+            result.append((name, _runtime_value(value)))
+    return tuple(result)
+
+
+def _global_runtime_configuration():
+    # A normal float32 input produces an exactly representable subnormal when
+    # multiplied by 0.5. Integer reinterpretation reads the result without an
+    # FTZ-sensitive float32-to-float64 conversion. This probes only the calling
+    # thread, not every BLAS or worker thread's floating-point control state.
+    normal_bits = torch.tensor([0x00800000], dtype=torch.int32, device='cpu')
+    product_bits = int((normal_bits.view(torch.float32) * 0.5).view(torch.int32).item())
+    if product_bits not in (0, 0x00400000):
+        raise StudyFailure('unsupported CPU denormal probe result')
+    return (('deterministic_algorithms', torch.are_deterministic_algorithms_enabled()),
+            ('deterministic_warn_only', torch.is_deterministic_algorithms_warn_only_enabled()),
+            ('cpu_threads', torch.get_num_threads()),
+            ('cpu_interop_threads', torch.get_num_interop_threads()),
+            ('float32_matmul_precision', torch.get_float32_matmul_precision()),
+            ('calling_thread_denormal_product_bits', product_bits))
+
+
+def _runtime_configuration(model):
+    """Observe declared GPT-2 execution flags; this is not a hostile-code defense."""
+    modules = []
+    for path, module in model.named_modules(remove_duplicate=False):
+        fields = _runtime_fields(module, _MODULE_RUNTIME_FIELDS)
+        config = getattr(module, 'config', None)
+        config_fields = _runtime_fields(config, _CONFIG_RUNTIME_FIELDS) if config is not None else ()
+        modules.append((path, fields, config_fields))
+    return (_global_runtime_configuration(), tuple(modules))
+
+
 def _model_contract(model):
     """Validate the supported execution configuration while ownership is held."""
     _check_cpu_precision()
@@ -120,7 +187,7 @@ def _model_contract(model):
     if any(b.device.type != 'cpu' or (b.is_floating_point() and b.dtype != torch.float32)
            for b in model.buffers()):
         raise StudyFailure('model buffers must be on CPU with float32 floating buffers')
-    return (model.config.n_embd, model.config.vocab_size)
+    return (model.config.n_embd, model.config.vocab_size, _runtime_configuration(model))
 
 
 def _error_message(error):
@@ -615,6 +682,10 @@ class NaturalAgreementRunner:
                 seeded_rng_sha256 = hashlib.sha256(torch.random.get_rng_state().numpy().tobytes()).hexdigest()
                 contract = {'kind': 'run_contract', 'cpu_rng_seed': _RNG_SEED,
                             'seeded_cpu_rng_sha256': seeded_rng_sha256,
+                            'execution_configuration': self._baseline_contract[2],
+                            'execution_configuration_sha256': hashlib.sha256(
+                                json.dumps(self._baseline_contract[2], separators=(',', ':'),
+                                           ensure_ascii=True).encode('ascii')).hexdigest(),
                             'cpu_threads': torch.get_num_threads(),
                             'deterministic_algorithms': torch.are_deterministic_algorithms_enabled(),
                             'cases': [{'case_id': case.case_id, 'quartet': case.quartet,
