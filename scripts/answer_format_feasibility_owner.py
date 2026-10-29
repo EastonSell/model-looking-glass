@@ -62,7 +62,7 @@ _ACTIVE_ATTEMPT = None
 _ATTEMPT_OWNED = False
 
 
-def check_public_payload(payload, expected_sha, cases, minimum_rows=()):
+def check_public_payload(payload, expected_sha, cases, minimum_rows=(), *, observed_binding=None):
     """Exempt only exact own reservations; reject all other prefix matches."""
     actual = base.digest(json.dumps(payload, sort_keys=True, separators=(",", ":"),
                                     ensure_ascii=True, allow_nan=False).encode("utf-8"))
@@ -74,20 +74,34 @@ def check_public_payload(payload, expected_sha, cases, minimum_rows=()):
                 or len({r["case_id"] for r in rows}) != 64
                 or len({r["record_id"] for r in records}) != len(records)):
             raise base.StudyError("case or public record identities differ")
-        desired = {"planned-" + r["case_id"]: r for r in rows}
+        desired = {r["case_id"]: r for r in rows}
         own, others = {}, []
         for record in records:
-            selected = desired.get(record["record_id"])
+            identity = record["record_id"]
+            is_planned = identity.startswith("planned-")
+            is_observed = identity.startswith("observed-")
+            case_id = identity[len("planned-"):] if is_planned else identity[len("observed-"):] if is_observed else ""
+            selected = desired.get(case_id)
             if selected is None:
                 others.append(tuple(record["token_ids"]))
             else:
+                if case_id in own:
+                    raise base.StudyError("own identity appears more than once")
                 if (record["token_ids"] != selected["token_ids"]
-                        or record["public_text"] != selected["prompt"] or record["category"] != "planned"
+                        or record["public_text"] != selected["prompt"]
                         or record["case_role"] != selected["role"]
-                        or record["candidate_token_ids"] != [selected["labels"][x]["token_id"] for x in LABELS]
-                        or record["reference_commit"] != CASES_COMMIT):
+                        or record["candidate_token_ids"] != [selected["labels"][x]["token_id"] for x in LABELS]):
                     raise base.StudyError("own reservation differs")
-                own[record["record_id"]] = record
+                if is_planned:
+                    if record["category"] != "planned" or record["reference_commit"] != CASES_COMMIT:
+                        raise base.StudyError("planned reservation provenance differs")
+                elif (not is_observed or selected["role"] != "development" or observed_binding is None
+                      or record["category"] != "observed-saved"
+                      or record["reference_commit"] != observed_binding["commit"]
+                      or not set(observed_binding["references"]) <= set(record["references"])
+                      or any(value not in record["provenance"] for value in observed_binding["hashes"])):
+                    raise base.StudyError("observed development provenance differs")
+                own[case_id] = record
         if len(own) != 64:
             raise base.StudyError("all 64 exact reservations are required")
         proposed = [tuple(r["token_ids"]) for r in rows]
@@ -166,11 +180,44 @@ def _fixed(checkout):
     return case_raw, reference, prior
 
 
-def _current(launch, checkout, head, raw, sha, attestation, minimum_rows=()):
+def _current(launch, checkout, head, raw, sha, attestation, minimum_rows=(), *, observed_binding=None):
     cases, _reference, _prior = _fixed(checkout)
-    result = check_public_payload(json.loads(raw), sha, json.loads(cases), minimum_rows)
+    result = check_public_payload(json.loads(raw), sha, json.loads(cases), minimum_rows,
+                                  observed_binding=observed_binding)
     base.check_inventory_attestation(launch, checkout, head, attestation, sha, result["version"])
+    _check_latest_inventory(launch, checkout, attestation, result["version"], sha)
     return result
+
+
+def _check_latest_inventory(launch, checkout, attestation, version, sha):
+    """Require a fresh cooperative official-tree and relevant-exposure observation."""
+    try:
+        observed = datetime.fromisoformat(attestation["observed_utc"])
+        age = (datetime.now(timezone.utc) - observed).total_seconds()
+        latest = attestation["latest_main_commit"]
+        if (observed.tzinfo is None or not 0 <= age <= 900
+                or type(latest) is not str or re.fullmatch(r"[0-9a-f]{40}", latest) is None
+                or attestation.get("latest_inventory_version") != version
+                or attestation.get("latest_inventory_sha256") != sha
+                or attestation.get("no_unreserved_relevant_inputs_reported") is not True
+                or type(attestation.get("currentness_reported_by")) is not str
+                or not attestation["currentness_reported_by"]):
+            raise base.StudyError("latest inventory observation is stale or contradictory")
+        base.commit_object(launch, checkout, latest)
+        launch._git(checkout, "merge-base", "--is-ancestor", attestation["reviewed_commit"], latest)
+        tree = launch._git(checkout, "ls-tree", "-r", "--name-only", latest, "--", "looking_glass").decode("utf-8")
+        versions = [int(m.group(1)) for line in tree.splitlines()
+                    if (m := re.fullmatch(r"looking_glass/pretrained_exposures_v([0-9]+)\.py", line))]
+        match = re.fullmatch(r"distilgpt2-development-exposures-v([0-9]+)", version)
+        if not versions or match is None or max(versions) != int(match.group(1)):
+            raise base.StudyError("reported inventory is not latest in the observed public tree")
+        source = launch._checked_path(checkout / attestation["source_path"])
+        source_raw = base.read(source, 1_000_000)
+        base.committed_file(launch, checkout, latest, source, source_raw)
+    except (KeyError, ValueError, TypeError, UnicodeError) as exc:
+        if isinstance(exc, base.StudyError):
+            raise
+        raise base.StudyError("invalid latest-inventory observation") from exc
 
 
 def _tokenizer(tokenizer, cases):
@@ -509,7 +556,10 @@ def main(argv=None):
     launch, executable, head, revision, sources, hashes = base.setup(checkout, venv, dependency, workdir, source_revision)
     case_raw, reference, prior = _fixed(checkout)
     minimum = () if args.mode == "freeze" else manifest["exposure"]["known_complete_rows"]
-    public = _current(launch, checkout, head, public_raw, args.inventory_sha, json.loads(inventory_review_raw), minimum)
+    public = None
+    if args.mode == "freeze" or args.phase != "heldout":
+        public = _current(launch, checkout, head, public_raw, args.inventory_sha,
+                          json.loads(inventory_review_raw), minimum)
     if ((args.mode == "freeze" or args.phase in ("rehearsal", "development"))
             and not base.windows_path_absent(launch, checkout, head, DEVELOPMENT_DIR)):
         raise base.StudyError("development evidence already exists")
@@ -585,6 +635,13 @@ def main(argv=None):
         development_directory, matrix_sha, result_sha = _check_development(
             launch, checkout, head, manifest, args.manifest_sha, reviewed,
             Path(args.development_phase) / "phase-record.json", args.development_record_sha, development_review)
+        observed_binding = {"commit": development_review["reviewed_commit"],
+            "references": [base.CASES, base.MANIFEST, DEVELOPMENT_DIR + "/phase-record.json",
+                           DEVELOPMENT_DIR + "/development/matrix.f32", DEVELOPMENT_DIR + "/development/journal.jsonl",
+                           DEVELOPMENT_DIR + "/development/results.json"],
+            "hashes": [base.CASES_SHA, args.development_record_sha, matrix_sha, result_sha]}
+        public = _current(launch, checkout, head, public_raw, args.inventory_sha,
+                          json.loads(inventory_review_raw), minimum, observed_binding=observed_binding)
     cache, study_root = launch._checked_path(args.cache), launch._checked_path(args.study_root)
     if (not cache.is_dir() or not study_root.is_dir() or study_root == checkout or study_root.is_relative_to(checkout)):
         raise base.StudyError("cache or persistent CPU study root differs")

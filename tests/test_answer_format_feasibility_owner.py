@@ -1,5 +1,5 @@
 """No-model tests for the two-stage feasibility owner's authority boundaries."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import importlib.util
 import json
@@ -73,6 +73,36 @@ def test_published_source_and_original_commitment_chain():
     assert prior["buffer_state_sha256"] == "f12cbc9f0cdf2fcb9567418d7d1129da0dd6db4f6c7aaa7f9edb32b3fe7668e8"
 
 
+@pytest.mark.parametrize("mutation", ["none", "unbound", "wrong_commit", "missing_reference", "wrong_hash", "heldout", "duplicate"])
+def test_only_evidence_bound_development_observations_are_exempt(payload, mutation):
+    cases, public = payload
+    binding = {"commit": "a" * 40, "references": ["cases.json", "phase.json", "matrix.f32"],
+               "hashes": ["b" * 64, "c" * 64, "d" * 64]}
+    index = 32 if mutation == "heldout" else 0
+    record = public["records"][index]
+    record["record_id"] = record["record_id"].replace("planned-", "observed-", 1)
+    record["category"] = "observed-saved"
+    record["reference_commit"] = binding["commit"]
+    record["references"] = list(binding["references"])
+    record["provenance"] = " ".join(binding["hashes"])
+    if mutation == "wrong_commit":
+        record["reference_commit"] = "0" * 40
+    elif mutation == "missing_reference":
+        record["references"].pop()
+    elif mutation == "wrong_hash":
+        record["provenance"] = " ".join(binding["hashes"][:-1])
+    elif mutation == "duplicate":
+        duplicate = dict(record)
+        duplicate["record_id"] = duplicate["record_id"].replace("observed-", "planned-", 1)
+        public["records"].append(duplicate)
+    if mutation == "none":
+        assert owner.check_public_payload(public, digest(public), cases, observed_binding=binding)["own_reserved_rows"] == 64
+    else:
+        with pytest.raises(owner.base.StudyError):
+            owner.check_public_payload(public, digest(public), cases,
+                                       observed_binding=None if mutation == "unbound" else binding)
+
+
 @pytest.mark.parametrize("changed", ["buffer", "runtime"])
 def test_state_mismatch_calls_no_phase_writer(changed, tmp_path):
     runtime = {"cpu": True}
@@ -107,6 +137,37 @@ def test_custody_requires_the_bound_natural_frame_and_scoped_absence(tmp_path):
     path.write_text(json.dumps({"observations": rows}), encoding="utf-8")
     with pytest.raises(owner.base.StudyError, match="successor"):
         owner.check_custody(path)
+
+
+@pytest.mark.parametrize("mutation", ["none", "stale", "wrong_version", "wrong_hash", "unknown_inputs", "later_tree"])
+def test_latest_inventory_requires_fresh_scoped_public_tree(monkeypatch, tmp_path, mutation):
+    source = tmp_path / "looking_glass/pretrained_exposures_v28.py"
+    source.parent.mkdir()
+    source.write_text("synthetic", encoding="utf-8")
+    now = datetime.now(timezone.utc)
+    report = {"observed_utc": now.isoformat(), "reviewed_commit": "a" * 40,
+              "latest_main_commit": "b" * 40, "latest_inventory_version": "distilgpt2-development-exposures-v28",
+              "latest_inventory_sha256": "c" * 64, "no_unreserved_relevant_inputs_reported": True,
+              "currentness_reported_by": "fabricated", "source_path": "looking_glass/pretrained_exposures_v28.py"}
+    if mutation == "stale":
+        report["observed_utc"] = (now - timedelta(minutes=16)).isoformat()
+    elif mutation == "wrong_version":
+        report["latest_inventory_version"] = "distilgpt2-development-exposures-v27"
+    elif mutation == "wrong_hash":
+        report["latest_inventory_sha256"] = "0" * 64
+    elif mutation == "unknown_inputs":
+        report["no_unreserved_relevant_inputs_reported"] = False
+    tree = b"looking_glass/pretrained_exposures_v28.py\n"
+    if mutation == "later_tree":
+        tree += b"looking_glass/pretrained_exposures_v29.py\n"
+    launch = SimpleNamespace(_git=lambda *args: tree, _checked_path=lambda p: Path(p).resolve(strict=True))
+    monkeypatch.setattr(owner.base, "commit_object", lambda *a: None)
+    monkeypatch.setattr(owner.base, "committed_file", lambda *a: None)
+    if mutation == "none":
+        owner._check_latest_inventory(launch, tmp_path, report, "distilgpt2-development-exposures-v28", "c" * 64)
+    else:
+        with pytest.raises(owner.base.StudyError):
+            owner._check_latest_inventory(launch, tmp_path, report, "distilgpt2-development-exposures-v28", "c" * 64)
 
 
 def test_abbreviated_child_phase_rejected():
