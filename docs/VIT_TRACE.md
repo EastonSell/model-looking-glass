@@ -47,8 +47,9 @@ then batch/token), independent of the order supplied. The run ID is limited to
 128 characters. The model output is the
 ordinary image-classifier logit object, not generated text. Generation/cache
 fields remain unknown; the generic transformer comparator has no ViT image
-pairing contract. A coordinate is an observation, not a causal localization
-or evidence of a particular visual concept.
+pairing contract. The separate [ViT trace comparison helper](VIT_TRACE_COMPARISON.md)
+checks explicitly paired processed-grid coordinates. A coordinate is an
+observation, not a causal localization or evidence of a particular visual concept.
 
 The adapter requires a standard, unmodified eager ViT classifier and patch
 embedding geometry, exact configured input dimensions, eval mode, no gradient
