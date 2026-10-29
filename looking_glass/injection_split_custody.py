@@ -5,6 +5,7 @@ ledger and pinned-tokenizer operations. This module does not attest those
 operations, create an OS security boundary, launch a model or publish anything.
 It preserves the frozen discovery commitment and never draws a replacement.
 """
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 import hashlib
 import hmac
@@ -13,6 +14,8 @@ import os
 from pathlib import Path
 import re
 import secrets
+import stat
+import threading
 
 from . import pretrained_number_commitments as commitments
 
@@ -20,6 +23,8 @@ from . import pretrained_number_commitments as commitments
 _LOGICAL_LIMIT = 72 * 1024**2
 _DISK_LIMIT = 192 * 1024**2
 _MAX_PUBLIC_BYTES = 16 * 1024**2
+_PREPARATION_STARTED = set()
+_PREPARATION_LOCK = threading.Lock()
 _TARGETS = {' is': 318, ' are': 389, ' was': 373, ' were': 547}
 _HEX64 = re.compile(r'[0-9a-f]{64}\Z')
 _HEX40 = re.compile(r'[0-9a-f]{40}\Z')
@@ -34,6 +39,11 @@ _OP_KEYS = frozenset({'schema', 'protocol_sha256', 'checkpoint_revision',
 _OP_V2_KEYS = _OP_KEYS | {'preparation_child_source_sha256',
                           'preparation_audit_source_sha256', 'outer_observer_source_sha256',
                           'gate_allocation_caller_source_sha256', 'gate_transition_caller_source_sha256'}
+_OP_V3_KEYS = _OP_V2_KEYS | {'runtime_deviation_sha256', 'heldout_runtime_sha256',
+                             'runtime_replay_plan_sha256', 'runtime_replay_source_sha256',
+                             'runtime_replay_claim_source_sha256', 'runtime_replay_owner_source_sha256',
+                             'preclaim_guard_source_sha256', 'phase_accounting_source_sha256',
+                             'runtime_replay_evidence_sha256'}
 _STUDY_FREEZE = 'c327e191214cfb661b429c6d0a66900ca773c148782e1cc88be669c54deaee98'
 _STUDY_SOURCE = 'e84f66ae63b6f20e6df81789f2e4741b13598fb1'
 _STUDY_RUNTIME = 'b6860ec21fe6f0ab626164b86b494d783f3c18c92a697744b118be4cdb33754e'
@@ -66,6 +76,10 @@ class PublicInputs:
     inventory_sha256: str
     operational_binding_bytes: bytes = field(repr=False)
     operational_binding_sha256: str
+    runtime_deviation_bytes: bytes | None = field(default=None, repr=False)
+    heldout_runtime_bytes: bytes | None = field(default=None, repr=False)
+    runtime_replay_plan_bytes: bytes | None = field(default=None, repr=False)
+    runtime_replay_evidence_bytes: bytes | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True)
@@ -125,7 +139,8 @@ def _read_source_hash():
     return _sha(data)
 
 
-def _check_inputs(public, site_nonce, site_record_bytes, publication_check, source_check, prediction_check):
+def _check_inputs(public, site_nonce, site_record_bytes, publication_check, source_check, prediction_check,
+                  runtime_check=None):
     if (type(public) is not PublicInputs or not callable(publication_check)
             or not callable(source_check) or not callable(prediction_check)):
         raise CustodyError('trusted publication inputs are required')
@@ -155,7 +170,8 @@ def _check_inputs(public, site_nonce, site_record_bytes, publication_check, sour
         binding = _parse_canonical(public.operational_binding_bytes)
         schema = binding.get('schema') if type(binding) is dict else None
         keys = (_OP_KEYS if schema == 'mlg-injection-heldout-operational-binding-v1'
-                else _OP_V2_KEYS if schema == 'mlg-injection-heldout-operational-binding-v2' else None)
+                else _OP_V2_KEYS if schema == 'mlg-injection-heldout-operational-binding-v2'
+                else _OP_V3_KEYS if schema == 'mlg-injection-heldout-operational-binding-v3' else None)
         if (keys is None or set(binding) != keys
                 or _sha(public.operational_binding_bytes) != _hex(public.operational_binding_sha256)):
             raise CustodyError('operational binding is invalid')
@@ -176,10 +192,21 @@ def _check_inputs(public, site_nonce, site_record_bytes, publication_check, sour
                     'auditor_source_sha256', 'gate_source_sha256', 'inventory_source_sha256',
                     'accounting_amendment_sha256', 'lease_source_sha256'):
             _hex(binding[key])
-        if schema == 'mlg-injection-heldout-operational-binding-v2':
+        if schema in ('mlg-injection-heldout-operational-binding-v2',
+                      'mlg-injection-heldout-operational-binding-v3'):
             for key in ('preparation_child_source_sha256', 'preparation_audit_source_sha256',
                         'outer_observer_source_sha256', 'gate_allocation_caller_source_sha256',
                         'gate_transition_caller_source_sha256'):
+                _hex(binding[key])
+        if schema == 'mlg-injection-heldout-operational-binding-v3':
+            if (_sha(public.runtime_deviation_bytes) != _hex(binding['runtime_deviation_sha256'])
+                    or _sha(public.heldout_runtime_bytes) != _hex(binding['heldout_runtime_sha256'])
+                    or _sha(public.runtime_replay_plan_bytes) != _hex(binding['runtime_replay_plan_sha256'])
+                    or _sha(public.runtime_replay_evidence_bytes) != _hex(binding['runtime_replay_evidence_sha256'])):
+                raise CustodyError('published runtime deviation or held-out runtime differs')
+            for key in ('runtime_replay_source_sha256', 'runtime_replay_claim_source_sha256',
+                        'runtime_replay_owner_source_sha256', 'preclaim_guard_source_sha256',
+                        'phase_accounting_source_sha256'):
                 _hex(binding[key])
         if type(binding['inventory_source_commit']) is not str or not _HEX40.fullmatch(binding['inventory_source_commit']):
             raise CustodyError('inventory source revision is invalid')
@@ -188,6 +215,11 @@ def _check_inputs(public, site_nonce, site_record_bytes, publication_check, sour
                      'site_commitment': site_commitment.encode('ascii') + b'\n',
                      'inventory': public.inventory_bytes,
                      'operational_binding': public.operational_binding_bytes}
+        if schema == 'mlg-injection-heldout-operational-binding-v3':
+            published['runtime_deviation'] = public.runtime_deviation_bytes
+            published['heldout_runtime'] = public.heldout_runtime_bytes
+            published['runtime_replay_plan'] = public.runtime_replay_plan_bytes
+            published['runtime_replay_evidence'] = public.runtime_replay_evidence_bytes
         for name, data in published.items():
             if publication_check(name, data) is not True:
                 raise CustodyError('published input readback did not match')
@@ -195,6 +227,11 @@ def _check_inputs(public, site_nonce, site_record_bytes, publication_check, sour
             raise CustodyError('operational source verification did not pass')
         if prediction_check(public.prediction_bytes, track['prediction_sha256']) is not True:
             raise CustodyError('frozen prediction validation did not pass')
+        if (schema == 'mlg-injection-heldout-operational-binding-v3'
+                and (not callable(runtime_check) or runtime_check(public.heldout_runtime_bytes,
+                    public.runtime_deviation_bytes, public.runtime_replay_plan_bytes,
+                    public.runtime_replay_evidence_bytes, binding) is not True)):
+            raise CustodyError('held-out runtime or compatibility replay did not verify')
         return freeze, snapshot, entropy
     except (KeyError, TypeError, AttributeError, ValueError) as error:
         if isinstance(error, CustodyError):
@@ -387,7 +424,8 @@ def _write_new(path, data):
 
 def prepare_once(public, private_parent, ledger_path, *, site_nonce, site_record_bytes,
                  tokenizer, claim_phase, publication_check, observe_inventory,
-                 source_check, prediction_check, gate_allocation):
+                 source_check, prediction_check, gate_allocation, runtime_check=None,
+                 preclaim_handoff_sha256=None, pre_draw_guard=None):
     """Claim the injection phase, draw one OS nonce and seal a private split.
 
     Readback, currentness, tokenizer asset/source verification, private ACLs and
@@ -395,7 +433,14 @@ def prepare_once(public, private_parent, ledger_path, *, site_nonce, site_record
     consumed; this function never retries or replaces a sampled case.
     """
     freeze, snapshot, plan_entropy = _check_inputs(public, site_nonce, site_record_bytes,
-                                                    publication_check, source_check, prediction_check)
+                                                    publication_check, source_check, prediction_check, runtime_check)
+    operation = _parse_canonical(public.operational_binding_bytes)
+    if operation.get('schema') == 'mlg-injection-heldout-operational-binding-v3':
+        _hex(preclaim_handoff_sha256)
+        if not callable(pre_draw_guard):
+            raise CustodyError('a pre-draw preclaim recheck is required')
+    elif preclaim_handoff_sha256 is not None or pre_draw_guard is not None:
+        raise CustodyError('a preclaim handoff belongs to operation v3')
     if not callable(claim_phase) or not callable(observe_inventory) or not callable(gate_allocation):
         raise CustodyError('trusted ledger and exposure observers are required')
     if observe_inventory() != snapshot.sha256:
@@ -416,24 +461,47 @@ def prepare_once(public, private_parent, ledger_path, *, site_nonce, site_record
         raise CustodyError('phase grant does not match the approved reservation')
     phase.mkdir()
     try:
-        _write_new(phase / 'claim.json', _canonical({
+        claim_record = {
             'schema': 'mlg-injection-heldout-claim-v1', 'prediction_freeze_sha256': freeze.sha256,
             'exposure_inventory_sha256': snapshot.sha256,
             'operational_binding_sha256': public.operational_binding_sha256,
-            'logical_limit_bytes': _LOGICAL_LIMIT, 'disk_limit_bytes': _DISK_LIMIT}))
+            'logical_limit_bytes': _LOGICAL_LIMIT, 'disk_limit_bytes': _DISK_LIMIT}
+        if preclaim_handoff_sha256 is not None:
+            claim_record['preclaim_handoff_sha256'] = preclaim_handoff_sha256
+        claim_bytes = _canonical(claim_record)
+        _write_new(phase / 'claim.json', claim_bytes)
         if observe_inventory() != snapshot.sha256:
             raise CustodyError('selected exposure inventory changed after the claim')
         if _read_source_hash() != json.loads(public.operational_binding_bytes)['custody_source_sha256']:
             raise CustodyError('custody source changed after the claim')
         if gate_allocation(freeze.sha256) is not True:
             raise CustodyError('shared allocation announcement did not complete')
+        binding = _parse_canonical(public.operational_binding_bytes)
+        if (binding.get('schema') == 'mlg-injection-heldout-operational-binding-v3'
+                and (not callable(runtime_check) or runtime_check(public.heldout_runtime_bytes,
+                     public.runtime_deviation_bytes, public.runtime_replay_plan_bytes,
+                     public.runtime_replay_evidence_bytes, binding) is not True)):
+            raise CustodyError('held-out runtime changed before the draw')
         if (observe_inventory() != snapshot.sha256
                 or _read_source_hash() != json.loads(public.operational_binding_bytes)['custody_source_sha256']):
             raise CustodyError('bound source or exposure inventory changed before the draw')
-        nonce = secrets.token_bytes(32)
-        if type(nonce) is not bytes or len(nonce) != 32:
-            raise CustodyError('OS nonce generation failed')
-        _write_new(phase / 'nonce.bin', nonce)
+        def draw_and_retain():
+            if _read_handoff(phase / 'claim.json') != claim_bytes:
+                raise CustodyError('the phase claim record changed before the draw')
+            value = secrets.token_bytes(32)
+            if type(value) is not bytes or len(value) != 32:
+                raise CustodyError('OS nonce generation failed')
+            _write_new(phase / 'nonce.bin', value)
+            if _read_handoff(phase / 'claim.json') != claim_bytes:
+                raise CustodyError('the phase claim record changed during the draw')
+            return value
+        if pre_draw_guard is None:
+            nonce = draw_and_retain()
+        else:
+            with pre_draw_guard() as guarded:
+                if guarded is not True:
+                    raise CustodyError('the claim or handoff changed before the draw')
+                nonce = draw_and_retain()
         if hmac.compare_digest(nonce, site_nonce) or hmac.compare_digest(nonce, plan_entropy):
             raise CustodyError('the private split nonce is not independent of prior bytes')
         allocation = commitments.sample_families(freeze, nonce, inventory_snapshot=snapshot,
@@ -478,16 +546,16 @@ def prepare_once(public, private_parent, ledger_path, *, site_nonce, site_record
         raise CustodyError('held-out preparation is incomplete') from None
 
 
-def prepare_study_once(public, private_parent, ledger_path, **kwargs):
-    """Require this study's immutable discovery identity before any claim."""
+def _check_study(public):
+    """Check this study's immutable discovery and prospective operation identity."""
     if type(public) is not PublicInputs:
         raise CustodyError('fixed study inputs are required')
     try:
         freeze = _parse_canonical(public.freeze_bytes)
         operation = _parse_canonical(public.operational_binding_bytes)
         track = freeze['tracks']['injection']
-        if (type(operation) is not dict or set(operation) != _OP_V2_KEYS
-                or operation.get('schema') != 'mlg-injection-heldout-operational-binding-v2'
+        if (type(operation) is not dict or set(operation) != _OP_V3_KEYS
+                or operation.get('schema') != 'mlg-injection-heldout-operational-binding-v3'
                 or public.freeze_sha256 != _STUDY_FREEZE or _sha(public.freeze_bytes) != _STUDY_FREEZE
                 or type(freeze['tracks']) is not dict or set(freeze['tracks']) != {'injection'}
                 or track.get('source_commit') != _STUDY_SOURCE
@@ -497,8 +565,118 @@ def prepare_study_once(public, private_parent, ledger_path, **kwargs):
                 or public.plan_sha256 != _STUDY_PLAN or _sha(public.plan_bytes) != _STUDY_PLAN
                 or public.site_commitment != _STUDY_SITE_COMMITMENT):
             raise CustodyError('fixed discovery identity does not match')
+        if _sha(public.operational_binding_bytes) != _hex(public.operational_binding_sha256):
+            raise CustodyError('operational binding digest does not match')
     except (KeyError, TypeError, AttributeError, ValueError) as error:
         if isinstance(error, CustodyError):
             raise
         raise CustodyError('fixed discovery identity is invalid') from None
-    return prepare_once(public, private_parent, ledger_path, **kwargs)
+
+
+def _path_digest(path):
+    return hashlib.sha256(os.path.normcase(os.path.abspath(str(path))).encode('utf-8')).hexdigest()
+
+
+def _preclaim_record(public, ledger, phase, config_sha256):
+    operation = _parse_canonical(public.operational_binding_bytes)
+    return {'schema': 'mlg-injection-heldout-preclaim-handoff-v1',
+            'prediction_freeze_sha256': _STUDY_FREEZE,
+            'operational_binding_sha256': _hex(public.operational_binding_sha256),
+            'preparation_config_sha256': _hex(config_sha256),
+            'ledger_path_sha256': _path_digest(ledger), 'phase_path_sha256': _path_digest(phase),
+            'runtime_replay_plan_sha256': _hex(operation['runtime_replay_plan_sha256']),
+            'runtime_replay_evidence_sha256': _hex(operation['runtime_replay_evidence_sha256']),
+            'logical_limit_bytes': _LOGICAL_LIMIT, 'disk_limit_bytes': _DISK_LIMIT,
+            'pilot_logical_bytes': 8 * 1024 ** 2, 'pilot_disk_bytes': 16 * 1024 ** 2,
+            'rehearsal_disk_bytes': 4 * 1024 ** 2}
+
+
+def _read_handoff(path):
+    """Read the bounded marker once, rejecting links and changing identities."""
+    before = path.lstat()
+    reparse = getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)
+    if (not stat.S_ISREG(before.st_mode) or path.is_symlink() or before.st_nlink != 1
+            or not before.st_ino or getattr(before, 'st_file_attributes', 0) & reparse
+            or not 0 < before.st_size <= 8192):
+        raise CustodyError('the preclaim handoff is not a bounded private file')
+    def identity(info):
+        return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_nlink)
+    with path.open('rb') as stream:
+        opened = os.fstat(stream.fileno())
+        data = stream.read(8193)
+        finished = os.fstat(stream.fileno())
+    after = path.lstat()
+    if (len(data) != before.st_size or identity(before) != identity(opened)
+            or identity(before) != identity(finished) or identity(before) != identity(after)):
+        raise CustodyError('the preclaim handoff changed during verification')
+    return data
+
+
+def prepare_study_preclaimed(public, private_parent, ledger_path, *, verify_preclaim, protect_preclaim,
+                             reconcile_phase, config_bytes, config_sha256, **kwargs):
+    """Consume one durable handoff for an already claimed injection phase.
+
+    The source-bound caller must have claimed the exact phase once before the
+    prespecified compatibility replay, and must verify the real ledger row,
+    side evidence, source and runtime. A failed or partial handoff is terminal.
+    This function never creates or retries a ledger claim.
+    """
+    _check_study(public)
+    if (not callable(verify_preclaim) or not callable(protect_preclaim) or not callable(reconcile_phase)
+            or 'claim_phase' in kwargs or 'preclaim_handoff_sha256' in kwargs or 'pre_draw_guard' in kwargs
+            or type(config_bytes) is not bytes or not 0 < len(config_bytes) <= 65536
+            or _sha(config_bytes) != _hex(config_sha256)):
+        raise CustodyError('a verified preclaim, reconciliation and configuration are required')
+    parent, ledger = Path(private_parent), Path(ledger_path)
+    if (not parent.is_absolute() or not parent.is_dir() or parent.is_symlink()
+            or not ledger.is_absolute()):
+        raise CustodyError('protected absolute paths are required')
+    phase = parent / ('injection-heldout-' + _STUDY_FREEZE)
+    marker = parent / (phase.name + '.preparation-started.json')
+    # This process never retries even if exclusive marker creation fails before
+    # producing a file. A durable external launch record guards process restarts.
+    attempt = os.path.normcase(os.path.abspath(str(phase)))
+    with _PREPARATION_LOCK:
+        if attempt in _PREPARATION_STARTED:
+            raise CustodyError('the fixed preparation was already attempted in this process')
+        _PREPARATION_STARTED.add(attempt)
+    if os.path.lexists(phase) or os.path.lexists(marker):
+        raise CustodyError('the fixed preparation has already started or is uncertain')
+    marker_bytes = _canonical(_preclaim_record(public, ledger, phase, config_sha256))
+    _write_new(marker, marker_bytes)
+
+    def verified_existing_grant(path, phase_name, *, output_path, stage='before_phase_creation'):
+        if (Path(path) != ledger or phase_name != 'injection_heldout' or Path(output_path) != phase
+                or verify_preclaim(ledger, phase_name, output_path=phase) is not True
+                or reconcile_phase(phase, pilot_logical_bytes=8 * 1024 ** 2,
+                    pilot_disk_bytes=16 * 1024 ** 2, rehearsal_disk_bytes=4 * 1024 ** 2,
+                    stage=stage) is not True
+                or _read_handoff(marker) != marker_bytes):
+            raise CustodyError('the existing claim or side evidence did not verify')
+        return _PreclaimedGrant('injection_heldout', str(phase), _LOGICAL_LIMIT, _DISK_LIMIT)
+
+    @contextmanager
+    def guard_before_draw():
+        with protect_preclaim(ledger, 'injection_heldout', output_path=phase) as protected:
+            if protected is not True:
+                raise CustodyError('the existing claim is not protected through the draw')
+            verified_existing_grant(ledger, 'injection_heldout', output_path=phase, stage='before_nonce')
+            yield True
+            if _read_handoff(marker) != marker_bytes:
+                raise CustodyError('the preclaim handoff changed during the draw')
+
+    return prepare_once(public, parent, ledger, claim_phase=verified_existing_grant,
+                        preclaim_handoff_sha256=_sha(marker_bytes), pre_draw_guard=guard_before_draw, **kwargs)
+
+
+@dataclass(frozen=True)
+class _PreclaimedGrant:
+    phase: str
+    output_path: str
+    logical_limit_bytes: int
+    disk_limit_bytes: int
+
+
+def prepare_study_once(public, private_parent, ledger_path, **kwargs):
+    """Compatibility alias for the fixed study's preclaimed-phase entry."""
+    return prepare_study_preclaimed(public, private_parent, ledger_path, **kwargs)
