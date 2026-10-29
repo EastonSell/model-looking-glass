@@ -155,6 +155,53 @@ class V2SourceLauncherTests(unittest.TestCase):
             self.assertFalse(fixture[4].exists())
             self.assertEqual(list(fixture[3].iterdir()), [])
 
+    def test_git_replacement_cannot_substitute_a_different_committed_tree(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = self.fixture(Path(directory))
+            checkout = fixture[0]
+            original = subprocess.check_output(['git', '-C', str(checkout), 'rev-parse', 'HEAD'], text=True).strip()
+            source = checkout / 'looking_glass' / 'trace_schema.py'
+            original_bytes = source.read_bytes()
+            alternate_bytes = b'VALUE = 42\n'
+            source.write_bytes(alternate_bytes)
+            subprocess.run(['git', '-C', str(checkout), 'add', '--', 'looking_glass/trace_schema.py'],
+                           check=True, capture_output=True)
+            subprocess.run(['git', '-C', str(checkout), 'commit', '-qm', 'alternate tree'],
+                           check=True, capture_output=True)
+            alternate = subprocess.check_output(['git', '-C', str(checkout), 'rev-parse', 'HEAD'], text=True).strip()
+            subprocess.run(['git', '-C', str(checkout), 'replace', original, alternate],
+                           check=True, capture_output=True)
+            subprocess.run(['git', '--no-replace-objects', '-C', str(checkout), 'checkout', '-q', '--detach', original],
+                           check=True, capture_output=True)
+            source.write_bytes(alternate_bytes)
+            result = self.run_launcher(fixture)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse(fixture[4].exists())
+            self.assertEqual(list(fixture[3].iterdir()), [])
+            source.write_bytes(original_bytes)
+            clean = self.run_launcher(fixture)
+            self.assertEqual(clean.returncode, 0, clean.stderr)
+            self.assertEqual(json.loads(clean.stdout)['source_revision'], original)
+            self.assertTrue(fixture[4].exists())
+
+    def test_inherited_git_environment_cannot_redirect_the_checkout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            intended, other = self.fixture(root / 'intended'), self.fixture(root / 'other')
+            revision = subprocess.check_output(['git', '-C', str(intended[0]), 'rev-parse', 'HEAD'],
+                                               text=True).strip()
+            env = {**os.environ, 'CUDA_VISIBLE_DEVICES': '-1',
+                   'GIT_DIR': str(other[0] / '.git'), 'GIT_WORK_TREE': str(other[0]),
+                   'GIT_CONFIG_COUNT': '1', 'GIT_CONFIG_KEY_0': 'badkey',
+                   'GIT_CONFIG_VALUE_0': 'injected',
+                   'GIT_GRAFT_FILE': str(other[0] / 'untrusted-grafts')}
+            result = subprocess.run(self.args(intended), capture_output=True, text=True,
+                                    env=env, cwd=intended[3], timeout=45)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout)['source_revision'], revision)
+            self.assertTrue(intended[4].exists())
+            self.assertFalse(other[4].exists())
+
     def test_missing_venv_home_does_not_default_to_current_directory(self):
         with tempfile.TemporaryDirectory() as directory:
             fixture = self.fixture(Path(directory))

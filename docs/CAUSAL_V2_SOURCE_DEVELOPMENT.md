@@ -5,6 +5,12 @@ policy. They do **not** launch a study or establish that a study is ready; no
 v2 split, hidden schedule, or held-out case is prepared by them. The
 diagnostic explicitly reports `study_ready: false`.
 
+Commit/tree inspection clears inherited `GIT_*` variables, disables replacement
+objects and grafts, and suppresses global/system Git configuration. This keeps
+ordinary repository redirection from silently changing the reported source
+tree; it does not authenticate the Git executable or defeat a malicious
+process running as the same account.
+
 `scripts/v2_source_bootstrap.py` is an isolated, CPU-masked import diagnostic.
 It requires `-I -S -B`, a fresh empty `-X pycache_prefix`, and explicit paths
 to a checkout, source-digest manifest, virtual environment, and dependency
