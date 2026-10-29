@@ -99,6 +99,7 @@ class _ClaimRecord:
     nbytes: int
     items: int
     binding: str | None = None
+    guard: object = None
 
 
 @dataclass(frozen=True)
@@ -211,6 +212,12 @@ class HostBudget:
         """Return current owner capabilities; stale transferred handles are excluded."""
         with self._lock:
             return tuple(record.handle for record in self._claims.values())
+
+    def active_claim_guards(self):
+        """Return claim guards retained by live records for trusted recovery."""
+        with self._lock:
+            guards = tuple(record.guard for record in self._claims.values() if record.guard is not None)
+        return guards
 
     def active_operations(self):
         """Return retained operation handles for verified cleanup or recovery."""
@@ -345,6 +352,10 @@ class HostRequest:
                     del budget._claims[claim_id]
                 raise
 
+    def claim_guard(self, owner, stage, nbytes, *, items=1):
+        """Create an unregistered, recoverable claim reservation guard."""
+        return HostClaimGuard(self, owner, stage, nbytes, items=items)
+
     def begin_operation(self, label, claims):
         """Pin all source/destination claims for a copy, send, or other use."""
         _text(label, "label")
@@ -411,6 +422,62 @@ class HostRequest:
                 if self._request_id not in budget._requests:
                     self._closed = True
             return True
+
+
+class HostClaimGuard:
+    """Retain one exact claim capability across reservation interruptions.
+
+    Creating a guard does not reserve. The trusted owner retains it before
+    calling reserve; after insertion, the ledger retains it until transfer or
+    release. It does not dispose storage or release a claim automatically.
+    """
+
+    def __init__(self, request, owner, stage, nbytes, *, items=1):
+        if type(request) is not HostRequest or type(request._budget) is not HostBudget:
+            raise ValueError('request must be an exact HostRequest')
+        self._request = request
+        self._budget = request._budget
+        self._owner = _text(owner, 'owner')
+        self._stage = _text(stage, 'stage')
+        self._nbytes = _integer(nbytes, 'nbytes', 0)
+        self._items = _integer(items, 'items', 1)
+        self._handle = None
+
+    def reserve(self):
+        """Register once or confirm the same still-live guarded claim."""
+        budget = self._budget
+        with budget._lock:
+            state = budget._request(self._request)
+            if self._handle is not None:
+                current = budget._claims.get(self._handle._claim_id)
+                if current is None or current.handle is not self._handle or current.guard is not self:
+                    raise InvalidHostHandle('guard has no live claim')
+            else:
+                if state.cancelled:
+                    raise HostRequestCancelled('request is cancelled')
+                if (sum(c.nbytes for c in budget._claims.values()) + self._nbytes > budget.max_bytes
+                        or sum(c.items for c in budget._claims.values()) + self._items > budget.max_items):
+                    raise HostBudgetExceeded('host byte or item limit exceeded')
+                claim_id = budget._next_claim
+                budget._next_claim += 1
+                self._handle = HostClaim(budget, claim_id, _issued=True)
+                record = _ClaimRecord(self._handle, self._request, self._stage, (self._owner,), (),
+                                      self._nbytes, self._items, guard=self)
+                budget._claims[claim_id] = record
+        return None
+
+    def adopt(self):
+        """Return the same live claim; cancellation still permits recovery."""
+        budget = self._budget
+        with budget._lock:
+            budget._request(self._request)
+            if self._handle is None:
+                raise InvalidHostHandle('guard has no live claim')
+            record = budget._claims.get(self._handle._claim_id)
+            if record is None or record.handle is not self._handle or record.guard is not self:
+                raise InvalidHostHandle('guard has no live claim')
+            claim = self._handle
+        return claim
 
 
 class HostClaim:
@@ -481,7 +548,7 @@ class HostClaim:
             handle = HostClaim(budget, self._claim_id, _issued=True)
             replacement = replace(
                 record, handle=handle, owners=record.owners + (new_owner,),
-                cleanup_transfers=record.cleanup_transfers + (cleanup,))
+                cleanup_transfers=record.cleanup_transfers + (cleanup,), guard=None)
             try:
                 budget._claims[self._claim_id] = replacement
                 self._stale = True
