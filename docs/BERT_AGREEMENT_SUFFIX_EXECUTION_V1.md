@@ -39,8 +39,12 @@ coordinated, source-bound owner and a fresh under-lease memory and storage
 admission; a free-memory snapshot alone is not a lease. No unrelated GPU work
 is blocked by a CPU run.
 
-The direct-child observer records a successful exit only for a reaped child
-whose source, metadata and completion record remain consistent. A lost spawn
+The direct-child observer creates a pending sentinel before spawning and
+removes it only after its successful exit receipt has been written and fsynced.
+The reader rejects a receipt whose sentinel remains. This is a cooperative
+publication boundary, not an observer-exit or power-loss durability guarantee.
+The observer records a successful exit only for a reaped child whose source,
+metadata and completion record remain consistent. A lost spawn
 handle or incomplete attempt does not justify a retry until the child state
 has been reconciled. The saved-output reader requires an independently supplied
 exit-receipt hash and completion hash, checks all 416 starts, returned events,

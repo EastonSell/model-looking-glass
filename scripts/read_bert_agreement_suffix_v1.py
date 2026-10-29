@@ -31,6 +31,7 @@ ASSETS = {"config.json": "69c94b0222d5d1f4b0ad027ca7416cdafb98378cbbb8305d0bf47c
           "vocab.txt": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"}
 VOCAB = 30522
 SEED = 20261029
+PENDING_NAME = "observer-pending.json"
 
 
 def file_sha(path):
@@ -156,6 +157,31 @@ def close_number(a, b):
     return math.isclose(float(a), float(b), rel_tol=1e-7, abs_tol=1e-12)
 
 
+def probability_ratio(new, old):
+    if old is None or new is None:
+        return None, "probability_unresolved"
+    if old == 0:
+        return None, "zero_denominator"
+    try:
+        value = new / old
+    except OverflowError:
+        return None, "overflow"
+    if not math.isfinite(value):
+        return None, "overflow"
+    return value, "finite"
+
+
+def valid_memory(value, device):
+    if device == "cpu":
+        return value is None
+    keys = {"cuda_free", "cuda_total", "allocated", "reserved", "peak_allocated", "peak_reserved"}
+    return (type(value) is dict and set(value) == keys
+            and all(type(value[k]) is int and value[k] >= 0 for k in keys)
+            and value["cuda_free"] <= value["cuda_total"]
+            and value["allocated"] <= value["peak_allocated"]
+            and value["reserved"] <= value["peak_reserved"])
+
+
 def donor_indices(cases, case):
     index = {(c["frame"], c["attractor_number"], c["lemma"], c["number"]): c["index"] for c in cases}
     return (index[case["frame"], case["attractor_number"], case["lemma"], 1 - case["number"]],
@@ -252,8 +278,8 @@ def summarize(rows):
 
 def replay(attempt, manifest, receipt, receipt_sha, complete_sha, expected_source, expected_git, expected_commit):
     mathutil.require_subnormals()
-    if (attempt / "failure.txt").exists() or file_sha(receipt) != receipt_sha:
-        raise ValueError("failure sentinel present or receipt differs")
+    if (attempt / "failure.txt").exists() or (receipt.parent / PENDING_NAME).exists() or file_sha(receipt) != receipt_sha:
+        raise ValueError("failure or observer-pending sentinel present, or receipt differs")
     completed_path, metadata_path = attempt / "complete.json", attempt / "metadata.json"
     if file_sha(completed_path) != complete_sha:
         raise ValueError("completion digest differs")
@@ -274,6 +300,14 @@ def replay(attempt, manifest, receipt, receipt_sha, complete_sha, expected_sourc
             or type(metadata.get("pid")) is not int or metadata.get("pid") <= 0
             or type(metadata.get("seed")) is not int or metadata.get("seed") != SEED
             or metadata.get("device") not in ("cpu", "cuda")
+            or metadata.get("base_interpreter_direct") is not True or metadata.get("isolated") is not True
+            or any(k not in metadata for k in ("initial_memory", "gpu_name", "cublas_workspace_config"))
+            or any(type(metadata.get(k)) is not str or not metadata[k].strip() or len(metadata[k]) > 512
+                   for k in ("python", "torch", "transformers", "numpy"))
+            or type(metadata.get("start_unix")) not in (int, float) or not math.isfinite(metadata["start_unix"])
+            or metadata["start_unix"] <= 0 or not valid_memory(metadata.get("initial_memory"), metadata.get("device"))
+            or (metadata.get("device") == "cpu" and metadata.get("gpu_name") is not None)
+            or (metadata.get("device") == "cuda" and (type(metadata.get("gpu_name")) is not str or not metadata["gpu_name"].strip()))
             or metadata.get("deterministic_algorithms") is not True or metadata.get("tf32") is not False
             or metadata.get("cudnn_benchmark") is not False or metadata.get("cudnn_deterministic") is not True
             or type(metadata.get("intra_threads")) is not int or metadata.get("intra_threads") != 1
@@ -300,18 +334,8 @@ def replay(attempt, manifest, receipt, receipt_sha, complete_sha, expected_sourc
     for i, sample in enumerate(memory):
         if set(sample) != {"event_index", "memory"} or type(sample.get("event_index")) is not int or sample["event_index"] != i:
             raise ValueError("memory sample order differs")
-        value = sample.get("memory")
-        if metadata["device"] == "cpu":
-            if value is not None:
-                raise ValueError("CPU memory sample differs")
-        else:
-            keys = {"cuda_free", "cuda_total", "allocated", "reserved", "peak_allocated", "peak_reserved"}
-            if (type(value) is not dict or set(value) != keys
-                    or any(type(value[k]) is not int or value[k] < 0 for k in keys)
-                    or value["cuda_free"] > value["cuda_total"]
-                    or value["allocated"] > value["peak_allocated"]
-                    or value["reserved"] > value["peak_reserved"]):
-                raise ValueError("CUDA memory sample differs")
+        if not valid_memory(sample.get("memory"), metadata["device"]):
+            raise ValueError("per-forward memory sample differs")
     if (attempt / "logits.f32").stat().st_size != 416 * VOCAB * 4 or (attempt / "witness.f32").stat().st_size != 416 * 2 * 768 * 4:
         raise ValueError("saved tensor byte counts differ")
     logits = np.memmap(attempt / "logits.f32", dtype="<f4", mode="r", shape=(416, VOCAB))
@@ -386,8 +410,15 @@ def replay(attempt, manifest, receipt, receipt_sha, complete_sha, expected_sourc
                         or any(not close_number(event["direction_cosines"][k], v) for k, v in cosines.items())):
                     raise ValueError("recorded dose, donor geometry or source differs")
                 if arm in ("self", "clean_after"):
-                    if not compare_bits(before, after) or not compare_bits(values, baseline):
-                        raise ValueError("self or clean-after differs from clean")
+                    expected_donor = index if arm == "self" else None
+                    if (not compare_bits(before, after) or not compare_bits(values, baseline)
+                            or event.get("donor_index") != expected_donor
+                            or (arm == "self" and type(event.get("donor_index")) is not int)
+                            or event.get("random_seed") is not None
+                            or type(event.get("actual_l2")) not in (int, float) or event["actual_l2"] != 0
+                            or type(event.get("relative_direction_error")) not in (int, float)
+                            or event["relative_direction_error"] != 0):
+                        raise ValueError("self or clean-after evidence differs from clean")
                     continue
                 direction = (random if arm == "random" else directions["terminal", "opposite"]
                              if arm == "fixed_terminal_opposite" else directions[variant, arm])
@@ -407,7 +438,7 @@ def replay(attempt, manifest, receipt, receipt_sha, complete_sha, expected_sourc
         t, c = row_result["terminal"], row_result["continued"]
         old_mass, new_mass = t["clean"]["p_is_plus_p_are"], c["clean"]["p_is_plus_p_are"]
         row_result["mass_change"] = None if old_mass is None or new_mass is None else new_mass - old_mass
-        row_result["mass_ratio"] = None if old_mass is None or new_mass is None or old_mass == 0 else new_mass / old_mass
+        row_result["mass_ratio"], row_result["mass_ratio_status"] = probability_ratio(new_mass, old_mass)
         tc, cc = t["clean"]["binary_correct"], c["clean"]["binary_correct"]
         row_result["binary_transition"] = ("correct" if tc else "wrong") + "_to_" + ("correct" if cc else "wrong")
         row_result["context_recipe_delta_same"] = c["opposite_minus_same"] - t["opposite_minus_same"]

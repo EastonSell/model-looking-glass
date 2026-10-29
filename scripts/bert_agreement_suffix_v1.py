@@ -361,6 +361,7 @@ def main():
                 "python": sys.version, "torch": torch.__version__, "transformers": transformers.__version__,
                 "numpy": np.__version__, "git_sha256": EARLY_GIT, "start_unix": time.time(),
                 "initial_memory": common.memory_sample(device),
+                "base_interpreter_direct": True, "isolated": bool(sys.flags.isolated),
                 "deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
                 "tf32": torch.backends.cuda.matmul.allow_tf32 or torch.backends.cudnn.allow_tf32,
                 "cudnn_benchmark": torch.backends.cudnn.benchmark,

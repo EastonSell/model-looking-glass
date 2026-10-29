@@ -23,6 +23,7 @@ SOURCE_PATHS = ("scripts/bert_agreement_suffix_v1.py", "scripts/read_bert_agreem
                 "scripts/read_cross_model_agreement_v1.py", "docs/BERT_AGREEMENT_SUFFIX_EXECUTION_V1.md",
                 "docs/BERT_AGREEMENT_SUFFIX_V1.md",
                 "experiments/bert_agreement_suffix_cases_v1.json")
+PENDING_NAME = "observer-pending.json"
 
 
 def digest(path):
@@ -81,6 +82,9 @@ def save_json(path, value):
 def observe(command, controller, attempt, commit, environment, timeout, repo, git, hashes, git_sha):
     process, exit_code, interrupted = None, None, None
     start = time.time()
+    pending = controller / PENDING_NAME
+    save_json(pending, {"schema": "bert-agreement-suffix-observer-pending-v1", "source_commit": commit,
+                        "start_unix": start})
     with (controller / "child.log").open("xb") as log:
         try:
             process = subprocess.Popen(command, cwd=controller, env=environment, stdin=subprocess.DEVNULL,
@@ -123,6 +127,8 @@ def observe(command, controller, attempt, commit, environment, timeout, repo, gi
         except BaseException as error:
             receipt["completion_check_error"] = type(error).__name__
     save_json(controller / "exit-observation.json", receipt)
+    if receipt["status"] == "complete":
+        pending.unlink()
     return receipt
 
 

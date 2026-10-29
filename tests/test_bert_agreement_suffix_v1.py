@@ -64,6 +64,9 @@ def complete_fake_attempt(tmp_path, monkeypatch):
     metadata = {"pid": 123, "source_commit": commit, "sources_sha256": source,
                 "git_sha256": git_sha, "assets_sha256": reader.ASSETS, "case_sha256": study.CASE_SHA,
                 "schema": "bert-agreement-suffix-attempt-v1", "device": "cpu", "seed": study.SEED,
+                "python": "fake-python", "torch": "fake-torch", "transformers": "fake-transformers",
+                "numpy": "fake-numpy", "start_unix": 1.0, "initial_memory": None, "gpu_name": None,
+                "base_interpreter_direct": True, "isolated": True,
                 "deterministic_algorithms": True, "tf32": False, "cudnn_benchmark": False,
                 "cudnn_deterministic": True, "intra_threads": 1, "inter_threads": 1,
                 "cublas_workspace_config": None}
@@ -125,6 +128,17 @@ def test_candidate_probability_underflow_is_reported_unresolved():
     assert score["p_is"] is None and score["p_is_plus_p_are"] is None
 
 
+def test_finite_tiny_pair_mass_ratio_overflow_is_reported():
+    assert torch.set_flush_denormal(False)
+    old, new = np.zeros(30522, dtype=np.float32), np.zeros(30522, dtype=np.float32)
+    old[[reader.TARGETS["is"], reader.TARGETS["are"]]] = -727
+    new[[reader.TARGETS["is"], reader.TARGETS["are"]]] = 10
+    old_mass = reader.clean_score(old, 0)["p_is_plus_p_are"]
+    new_mass = reader.clean_score(new, 0)["p_is_plus_p_are"]
+    assert old_mass is not None and old_mass > 0 and new_mass is not None
+    assert reader.probability_ratio(new_mass, old_mass) == (None, "overflow")
+
+
 def test_trace_cap_stops_before_writing_start(tmp_path, monkeypatch):
     monkeypatch.setattr(study, "OUTPUT_CAP", study.TAIL_RESERVE + 1)
     journal = study.Journal(tmp_path, vocab=16)
@@ -149,6 +163,8 @@ def test_full_fake_schedule_and_reader_reject_coherently_rehashed_wrong_donor(tm
         write_json(complete_path, complete)
         observation = json.loads(receipt.read_bytes())
         observation["complete_sha256"] = study.file_sha(complete_path)
+        if name == "metadata.json":
+            observation["metadata_sha256"] = study.file_sha(root / name)
         write_json(receipt, observation)
     def checked_replay():
         return reader.replay(root, manifest(), receipt, study.file_sha(receipt),
@@ -173,8 +189,28 @@ def test_full_fake_schedule_and_reader_reject_coherently_rehashed_wrong_donor(tm
         checked_replay()
     loading_path.write_bytes(loading_original)
     rebind("loading.json")
+    metadata_path = root / "metadata.json"
+    metadata_original = metadata_path.read_bytes()
+    metadata = json.loads(metadata_original)
+    del metadata["torch"]
+    write_json(metadata_path, metadata)
+    rebind("metadata.json")
+    with pytest.raises(ValueError, match="metadata differs"):
+        checked_replay()
+    metadata_path.write_bytes(metadata_original)
+    rebind("metadata.json")
     events_path = root / "events.jsonl"
-    events = [json.loads(line) for line in events_path.read_text().splitlines()]
+    events_original = events_path.read_bytes()
+    events = [json.loads(line) for line in events_original.splitlines()]
+    changed_self = next(e for e in events if e["arm"] == "self")
+    changed_self.update({"donor_index": 999, "random_seed": 123, "actual_l2": 42, "relative_direction_error": 1})
+    events_path.write_text("".join(json.dumps(e, sort_keys=True, separators=(",", ":")) + "\n" for e in events), encoding="utf-8")
+    rebind("events.jsonl")
+    with pytest.raises(ValueError, match="self or clean-after evidence"):
+        checked_replay()
+    events_path.write_bytes(events_original)
+    rebind("events.jsonl")
+    events = [json.loads(line) for line in events_original.splitlines()]
     changed = next(e for e in events if e["arm"] == "opposite")
     changed["donor_index"] = 31 if changed["donor_index"] != 31 else 30
     events_path.write_text("".join(json.dumps(e, sort_keys=True, separators=(",", ":")) + "\n" for e in events), encoding="utf-8")
@@ -230,9 +266,42 @@ def test_observer_reaps_harmless_child_and_rejects_failure_sentinel(tmp_path, mo
         assert type(result["exit_code"]) is int and result["exit_code"] == 0
         assert result["child_pid"] is not None and result["interrupted"] is None
         assert result["status"] == ("complete" if mode == "ok" else "incomplete")
+        assert (controller / observer.PENDING_NAME).exists() == (mode != "ok")
         if mode == "postcheck":
             assert result["completion_check_error"] == "ValueError"
         assert (controller / "exit-observation.json").is_file()
+
+
+def test_interrupted_receipt_write_keeps_pending_marker_and_cannot_replay(tmp_path, monkeypatch):
+    controller, attempt = tmp_path / "controller", tmp_path / "attempt"
+    controller.mkdir()
+    commit, hashes = "a" * 40, {"source": "c" * 64}
+    git = Path(shutil.which("git")).resolve()
+    git_sha = observer.digest(git)
+    monkeypatch.setattr(observer, "checked_sources", lambda *_args: hashes)
+    original = observer.save_json
+    def interrupted(path, value):
+        if path.name == "exit-observation.json":
+            with path.open("xb") as stream:
+                stream.write((json.dumps(value) + "\n").encode())
+                stream.flush()
+                raise KeyboardInterrupt()
+        return original(path, value)
+    monkeypatch.setattr(observer, "save_json", interrupted)
+    code = ("import hashlib,json,os;from pathlib import Path;"
+            f"p=Path({str(attempt)!r});p.mkdir();"
+            f"meta={{'pid':os.getpid(),'source_commit':{commit!r},'sources_sha256':{hashes!r},'git_sha256':{git_sha!r}}};"
+            "(p/'metadata.json').write_text(json.dumps(meta));"
+            "h=hashlib.sha256((p/'metadata.json').read_bytes()).hexdigest();"
+            "(p/'complete.json').write_text(json.dumps({'status':'complete','events':416,'metadata_json_sha256':h}));")
+    with pytest.raises(KeyboardInterrupt):
+        observer.observe([str(Path(sys._base_executable).resolve()), "-c", code], controller, attempt,
+                         commit, os.environ.copy(), 30, tmp_path, git, hashes, git_sha)
+    receipt = controller / "exit-observation.json"
+    assert json.loads(receipt.read_bytes())["status"] == "complete"
+    assert (controller / observer.PENDING_NAME).is_file()
+    with pytest.raises(ValueError, match="observer-pending sentinel"):
+        reader.replay(attempt, {}, receipt, observer.digest(receipt), "unused", hashes, git_sha, commit)
 
 
 def test_isolated_source_bootstrap_ignores_checkout_shadow_with_positive_control(tmp_path):
