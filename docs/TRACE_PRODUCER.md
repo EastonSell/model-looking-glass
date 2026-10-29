@@ -39,6 +39,12 @@ transferred claims remain charged and keep the request open. Owner labels are
 visible metadata, not authentication: cooperating code must not reuse another
 acquisition's label.
 
+The four reservations are sequential, not one atomic bundle admission. Two
+concurrent acquisitions can each reserve part of the available capacity and
+then both fail even when one complete profile would fit. The coordinator must
+serialize or atomically schedule whole-bundle admission and fairly retry failed
+requests; this helper does not provide a fairness policy or queue.
+
 `envelope.run(forward)` pins all four claims as one ledger operation, invokes
 the callable once, and finishes the operation before returning a result. It
 requires synchronous work that has completed before return. It rejects declared

@@ -123,6 +123,9 @@ class InterventionTests(unittest.TestCase):
                 return self.tap(x[:, ::2, :]).stride(1)
         model = LayoutSensitive()
         x = torch.zeros(1, 4, 3)
+        sliced = x[:, ::2, :]
+        if sliced.clone().stride() == sliced.stride():
+            self.skipTest('this torch build preserves the example layout on clone')
         untouched = model(x)
         with ActivationIntervention(model, 'tap', operation='null'):
             control = model(x)

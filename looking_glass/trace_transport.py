@@ -16,13 +16,21 @@ import uuid
 import torch
 
 from .capture_dispatcher import CapturedSlice
-from .host_budget import HostBudgetExceeded
+from .host_budget import HostBudgetExceeded, InvalidHostHandle
 
 _METADATA_ENVELOPE = 65536
 
 
 class DeliveryError(RuntimeError):
     """A delivery is invalid, cancelled, failed, or not in the required state."""
+
+
+class DeliveryConstructionError(DeliveryError):
+    """Construction cleanup is uncertain; guard identifies the exact request."""
+
+    def __init__(self, guard):
+        super().__init__("constructor cleanup requires supervision")
+        self.guard = guard
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +83,38 @@ def _encode_payload(payload):
         return payload.numpy().tobytes(order="C")
     finally:
         payload = None
+
+
+def _recover_constructor(budget, guard, request_id, metadata_bytes, owner):
+    """Release only payload-free metadata owned by this exact generation."""
+    try:
+        generation = guard.generation
+    except InvalidHostHandle:
+        # The guard did not register, or its exact generation already closed.
+        # A reused request ID is never touched by this guard.
+        guard.cancel_and_close_empty()
+        return
+    # Stop any new ordinary reservations on this exact request before
+    # inspecting and disposing its constructor-only metadata claim.
+    guard.adopt().cancel()
+    owned = []
+    for claim in budget.active_claims():
+        try:
+            info = claim.info()
+        except InvalidHostHandle:
+            # A different request's claim may have been released concurrently.
+            continue
+        if info.request_id == request_id and info.request_generation == generation:
+            if (info.stage != "metadata" or info.owners != (owner,)
+                    or info.cleanup_transfers != () or info.active_operations != 0
+                    or info.nbytes != metadata_bytes or info.items != 1):
+                raise DeliveryError("unexpected constructor claim requires supervision")
+            owned.append(claim)
+    if len(owned) > 1:
+        raise DeliveryError("multiple constructor claims require supervision")
+    for claim in owned:
+        claim.release()
+    guard.cancel_and_close_empty()
 
 
 def _validate_event(event, identity, max_bytes, source_bytes, metadata_limit):
@@ -158,6 +198,7 @@ class TraceDelivery:
                                           request_id, sample_id, batch_position,
                                           delivery_id)
         self._request_id = "delivery-" + delivery_id
+        construction_owner = "constructor-" + uuid.uuid4().hex
         self._max_payload_bytes = max_payload_bytes
         self._metadata_limit = metadata_reserve_bytes
         self._condition = threading.Condition(threading.RLock())
@@ -181,17 +222,24 @@ class TraceDelivery:
         self._pending = None
         self._metadata = None
         self._nbytes = None
-        self._request = budget.open_request(self._request_id)
         self._metadata_claim = None
+        # The side-effect-free guard exists before registration. The ledger
+        # retains it with the exact generation if adoption is interrupted.
+        guard = budget.request_guard(self._request_id)
         try:
+            guard.open()
+            self._request = guard.adopt()
+            self._generation = guard.generation
             self._metadata_claim = self._request.reserve(
-                "delivery", "metadata", metadata_reserve_bytes)
-            self._generation = self._metadata_claim.info().request_generation
+                construction_owner, "metadata", metadata_reserve_bytes)
             self._store_request = store.request(self._request_id)
         except BaseException:
-            if self._metadata_claim is not None:
-                self._metadata_claim.release()
-            self._request.close()
+            try:
+                _recover_constructor(budget, guard, self._request_id,
+                                     metadata_reserve_bytes, construction_owner)
+            except BaseException:
+                # The live guard remains discoverable for trusted recovery.
+                raise DeliveryConstructionError(guard) from None
             raise
 
     @property

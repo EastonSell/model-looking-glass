@@ -1,23 +1,30 @@
 """CPU-only custody and routing tests for the trace-delivery adapter."""
 from dataclasses import replace
 from concurrent.futures import Future
+import dis
 import gc
 import hashlib
 import inspect
+import struct
 import sys
 import threading
 import time
+import types
 import unittest
 from unittest import mock
 import weakref
 
 import torch
 
-from looking_glass.capture_dispatcher import CapturedSlice
-from looking_glass.host_budget import HostBudget, HostBudgetExceeded
+from looking_glass.capture_dispatcher import (
+    CaptureDispatcher, CaptureRequest, CapturedSlice, SampleSelection,
+)
+from looking_glass.host_budget import (
+    HostBudget, HostBudgetExceeded, HostClaim, HostRequestCancelled,
+)
 from looking_glass.trace_store import HostTraceStore
 from looking_glass.trace_transport import (
-    DeliveryError, TraceDelivery,
+    DeliveryConstructionError, DeliveryError, TraceDelivery,
 )
 
 
@@ -48,6 +55,198 @@ def make_delivery(*, limit=131072):
 
 
 class TraceTransportTests(unittest.TestCase):
+    def test_interrupted_constructor_reclaims_only_its_own_metadata_generation(self):
+        """Interrupt request adoption and metadata handle assignment."""
+        instructions = list(dis.get_instructions(TraceDelivery.__init__))
+        metadata_stores = [op.offset for op in instructions
+                           if op.opname == "STORE_ATTR" and op.argval == "_metadata_claim"]
+        self.assertEqual(len(metadata_stores), 2)
+        offsets = [
+            next(op.offset for op in instructions
+                 if op.opname == "STORE_ATTR" and op.argval == "_request"),
+            metadata_stores[-1],
+        ]
+        for target in offsets:
+            with self.subTest(offset=target):
+                budget = HostBudget(max_bytes=200000, max_items=8, max_requests=3,
+                                    max_operations=3)
+                store = HostTraceStore(max_tensor_bytes=64, max_items=4)
+                unrelated = budget.open_request("unrelated")
+                unrelated_claim = unrelated.reserve("other", "data", 9)
+
+                def interrupt(frame, action, _arg):
+                    if frame.f_code is TraceDelivery.__init__.__code__:
+                        if action == "call":
+                            frame.f_trace_opcodes = True
+                        if action == "opcode" and frame.f_lasti == target:
+                            sys.settrace(None)
+                            raise KeyboardInterrupt("simulated handoff interruption")
+                    return interrupt
+
+                try:
+                    sys.settrace(interrupt)
+                    with self.assertRaises(BaseException):
+                        TraceDelivery(
+                            budget, store, broker_id="0" * 32, job_id=7,
+                            team_id="team", run_id="run", request_id="request",
+                            sample_id="sample", batch_position=0,
+                            max_payload_bytes=64, metadata_reserve_bytes=META,
+                        )
+                finally:
+                    sys.settrace(None)
+                snap = budget.snapshot()
+                self.assertEqual(snap.used_bytes, 9)
+                self.assertEqual([item.request_id for item in snap.requests], ["unrelated"])
+                unrelated_claim.release()
+                unrelated.close()
+
+    def test_constructor_failure_preserves_reused_id_from_another_generation(self):
+        budget = HostBudget(max_bytes=200000, max_items=8, max_requests=3, max_operations=3)
+        store = HostTraceStore(max_tensor_bytes=64, max_items=4)
+        existing = budget.open_request("delivery-" + "a" * 32)
+        claim = existing.reserve("other", "data", 9)
+        with mock.patch("looking_glass.trace_transport.uuid.uuid4",
+                        return_value=types.SimpleNamespace(hex="a" * 32)):
+            with self.assertRaises(ValueError):
+                TraceDelivery(
+                    budget, store, broker_id="0" * 32, job_id=7, team_id="team",
+                    run_id="run", request_id="request", sample_id="sample",
+                    batch_position=0, max_payload_bytes=64, metadata_reserve_bytes=META,
+                )
+        self.assertEqual(claim.info().nbytes, 9)
+        self.assertEqual(budget.snapshot().used_bytes, 9)
+        claim.release()
+        existing.close()
+
+    def test_constructor_failed_cleanup_leaves_guard_for_supervisor(self):
+        budget = HostBudget(max_bytes=200000, max_items=8, max_requests=3, max_operations=3)
+        store = HostTraceStore(max_tensor_bytes=64, max_items=4)
+        with mock.patch.object(store, "request", side_effect=RuntimeError("store failure")):
+            with mock.patch.object(HostClaim, "release", side_effect=MemoryError("cleanup")):
+                with self.assertRaises(DeliveryConstructionError) as captured:
+                    TraceDelivery(
+                        budget, store, broker_id="0" * 32, job_id=7,
+                        team_id="team", run_id="run", request_id="request",
+                        sample_id="sample", batch_position=0, max_payload_bytes=64,
+                        metadata_reserve_bytes=META,
+                    )
+        guards = budget.active_guards()
+        self.assertEqual(len(guards), 1)
+        self.assertIs(captured.exception.guard, guards[0])
+        generation = guards[0].generation
+        claims = [claim for claim in budget.active_claims()
+                  if claim.info().request_generation == generation]
+        self.assertEqual(len(claims), 1)
+        self.assertEqual(claims[0].info().stage, "metadata")
+        claims[0].release()
+        self.assertTrue(guards[0].cancel_and_close_empty())
+        self.assertEqual(budget.snapshot().used_bytes, 0)
+        self.assertEqual(len(budget.snapshot().requests), 0)
+
+    def test_constructor_tombstones_generation_before_scanning_claims(self):
+        budget = HostBudget(max_bytes=200000, max_items=8, max_requests=3, max_operations=3)
+        store = HostTraceStore(max_tensor_bytes=64, max_items=4)
+        original = budget.active_claims
+        checked = []
+
+        def inspect_during_recovery():
+            guarded_request = budget.active_guards()[0].adopt()
+            with self.assertRaises(HostRequestCancelled):
+                guarded_request.reserve("other", "late", 1)
+            checked.append(True)
+            return original()
+
+        with mock.patch.object(store, "request", side_effect=RuntimeError("store failure")):
+            with mock.patch.object(budget, "active_claims", new=inspect_during_recovery):
+                with self.assertRaises(RuntimeError):
+                    TraceDelivery(
+                        budget, store, broker_id="0" * 32, job_id=7, team_id="team",
+                        run_id="run", request_id="request", sample_id="sample",
+                        batch_position=0, max_payload_bytes=64, metadata_reserve_bytes=META,
+                    )
+        self.assertEqual(checked, [True])
+        self.assertEqual(budget.snapshot().used_bytes, 0)
+        self.assertEqual(len(budget.snapshot().requests), 0)
+
+    def test_constructor_does_not_dispose_foreign_generation_claims(self):
+        budget = HostBudget(max_bytes=200000, max_items=8, max_requests=3, max_operations=3)
+        store = HostTraceStore(max_tensor_bytes=64, max_items=4)
+        foreign_claims = []
+
+        def reserve_foreign_then_fail(_request_id):
+            request = budget.active_guards()[0].adopt()
+            foreign_claims.append(request.reserve("external", "payload", 13))
+            raise RuntimeError("store failure")
+
+        with mock.patch.object(store, "request", new=reserve_foreign_then_fail):
+            with self.assertRaises(DeliveryConstructionError) as captured:
+                TraceDelivery(
+                    budget, store, broker_id="0" * 32, job_id=7, team_id="team",
+                    run_id="run", request_id="request", sample_id="sample",
+                    batch_position=0, max_payload_bytes=64, metadata_reserve_bytes=META,
+                )
+        self.assertEqual(foreign_claims[0].info().nbytes, 13)
+        self.assertEqual(budget.snapshot().used_bytes, META + 13)
+        guard = captured.exception.guard
+        for claim in budget.active_claims():
+            if claim.info().request_generation == guard.generation:
+                claim.release()  # Fixture has no real payload; supervisor disposes it.
+        self.assertTrue(guard.cancel_and_close_empty())
+        self.assertEqual(budget.snapshot().used_bytes, 0)
+
+    def test_dispatcher_capture_round_trips_through_owned_delivery(self):
+        """A real hook capture preserves identity, coordinates and bytes."""
+        # Only the delivery source is reserved; fixture input/output and
+        # dispatcher workspace are outside this adapter's ledger.
+        budget = HostBudget(max_bytes=131072, max_items=12, max_requests=4, max_operations=4)
+        store = HostTraceStore(max_tensor_bytes=64, max_items=4)
+        delivery = TraceDelivery(
+            budget, store, broker_id="0" * 32, job_id=7, team_id="team",
+            run_id="run", request_id="request", sample_id="sample", batch_position=0,
+            max_payload_bytes=64, metadata_reserve_bytes=META,
+        )
+        # This envelope is reserved before the dispatcher creates the slice.
+        delivery.reserve_source(16)
+        request = CaptureRequest(
+            run_id="run", job_id="lg-" + "0" * 32 + "-7", request_id="request",
+            samples=(SampleSelection(0, "sample", (2,)),), forward_index=0,
+            generation_step=None, max_events=1, max_trace_bytes=16,
+        )
+        dispatcher = CaptureDispatcher(
+            (request,), batch_size=1, sequence_length=3, max_events=1,
+            max_trace_bytes=16, sequence_starts={"run": 4},
+        )
+        model = torch.nn.Identity()
+        hook = model.register_forward_hook(
+            lambda _module, _args, output: dispatcher.record(
+                "block.0", layer_index=0, module_kind="block", output=output,
+                output_path=()))
+        try:
+            _output, events = dispatcher.run(
+                lambda: model(torch.arange(12, dtype=torch.float32).reshape(1, 3, 4)))
+        finally:
+            hook.remove()
+        self.assertEqual(len(events), 1)
+        delivery.stage(events[0])
+        manifest = delivery.publish()
+        self.assertEqual(manifest.event.identity.job_id, request.job_id)
+        self.assertEqual(manifest.event.batch_positions, (0,))
+        self.assertEqual(manifest.event.token_positions, (2,))
+        self.assertEqual(manifest.event.sequence, 4)
+        self.assertEqual(manifest.event.module_path, "block.0")
+        self.assertEqual(manifest.event.invocation, 0)
+        digests = []
+        delivery.send(lambda data: digests.append(hashlib.sha256(data).digest()))
+        expected = struct.pack("<4f", 8.0, 9.0, 10.0, 11.0)
+        self.assertEqual(digests, [hashlib.sha256(expected).digest()])
+        delivery.ack_received(delivery.identity)
+        delivery.ack_release(delivery.identity)
+        events = None
+        delivery.confirm_source_disposed()
+        self.assertTrue(delivery.drain(1))
+        self.assertEqual(budget.snapshot().used_bytes, 0)
+        self.assertEqual(store.usage().claimed_items, 0)
+
     def test_owned_sample_receipt_and_release_are_distinct(self):
         budget, store, delivery = make_delivery()
         delivery.reserve_source(8)
@@ -92,6 +291,20 @@ class TraceTransportTests(unittest.TestCase):
         foreign = None
         delivery.confirm_source_disposed()
         self.assertTrue(delivery.drain(1))
+
+    def test_foreign_broker_lifetime_is_rejected_before_copy(self):
+        budget, store, delivery = make_delivery()
+        delivery.reserve_source(8)
+        foreign = replace(event(), job_id="lg-" + "1" * 32 + "-7")
+        with mock.patch("looking_glass.trace_store._clone_tensor") as clone:
+            with self.assertRaises(DeliveryError):
+                delivery.stage(foreign)
+            clone.assert_not_called()
+        self.assertEqual(store.usage().claimed_items, 0)
+        foreign = None
+        delivery.confirm_source_disposed()
+        self.assertTrue(delivery.drain(1))
+        self.assertEqual(budget.snapshot().used_bytes, 0)
 
     def test_store_copy_is_reserved_before_allocating(self):
         budget, store, delivery = make_delivery(limit=META + 15)
