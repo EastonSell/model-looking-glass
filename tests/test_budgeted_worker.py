@@ -86,6 +86,16 @@ class BudgetedWorkerTests(unittest.TestCase):
         failed.close()
         self.assertTrue(failed.failed)
 
+    def test_exposes_bound_input_limit_read_only_and_rejects_changed_binding(self):
+        wrapper, worker, _, _ = make_wrapper()
+        self.assertEqual(wrapper.max_input_bytes, worker.max_input_bytes)
+        with self.assertRaises(AttributeError):
+            wrapper.max_input_bytes = 1
+        worker.model_id = 'b' * 64
+        with self.assertRaises(Exception):
+            _ = wrapper.max_input_bytes
+        self.assertTrue(wrapper.poisoned)
+
     def test_real_worker_success_releases_lease_only_after_forward_returns(self):
         entered, finish = threading.Event(), threading.Event()
 

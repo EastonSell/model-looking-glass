@@ -71,6 +71,43 @@ class FairAdapterTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.make_adapter(target=object())
 
+    def test_rejects_target_with_smaller_item_limit(self):
+        target = InMemoryHandoff()
+        target.max_item_bytes = 3
+        with self.assertRaises(ValueError):
+            self.make_adapter(target=target, max_item_bytes=5)
+
+    def test_target_binding_receives_canonical_teams_and_limit_once(self):
+        class BindingTarget(InMemoryHandoff):
+            def __init__(self):
+                super().__init__()
+                self.binding = None
+
+            def bind_waiting_queue(self, teams, max_item_bytes):
+                if self.binding is not None:
+                    raise RuntimeError('target already bound')
+                self.binding = (teams, max_item_bytes)
+
+        target = BindingTarget()
+        self.make_adapter(target=target)
+        self.assertEqual(target.binding, (frozenset({'A', 'B'}), 5))
+        with self.assertRaises(RuntimeError):
+            self.make_adapter(target=target)
+
+    def test_invalid_adapter_does_not_bind_target(self):
+        class BindingTarget(InMemoryHandoff):
+            def __init__(self):
+                super().__init__()
+                self.bound = False
+
+            def bind_waiting_queue(self, teams, max_item_bytes):
+                self.bound = True
+
+        target = BindingTarget()
+        with self.assertRaises(ValueError):
+            self.make_adapter(target=target, max_waiters=1)
+        self.assertFalse(target.bound)
+
     def test_current_broker_is_rejected_as_an_atomic_target(self):
         class Cancelled(Exception):
             pass
