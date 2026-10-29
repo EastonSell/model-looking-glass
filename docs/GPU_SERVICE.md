@@ -3,9 +3,11 @@
 The owner composition in `looking_glass/gpu_service.py` is **not a public
 launcher or a measured GPU service**. Its supported target is the pinned
 DistilGPT2 checkpoint and one exact no-capture forward signature: one batch,
-two `int64` input IDs, a 512 KiB tensor output cap, and a 4 MiB JSON response
+the `int64` input IDs `[15496, 995]`, a 512 KiB tensor output cap, and a 4 MiB JSON response
 cap. One seed-17 cold forward on `[15496, 995]` is intended to precede warm
-requests. The worker serializes model execution; multiple clients may submit
+requests. The initial service accepts only the same input and warm seeds 29,
+43, or 71; broader requests need matching evidence or a reviewed bound. The
+worker serializes model execution; multiple clients may submit
 work, but this is not evidence of concurrent GPU kernels, throughput, or a
 safe upper bound on memory use. Trace retention is zero in this initial mode.
 
@@ -15,7 +17,17 @@ constructed live keys, retains the model-load reservation until process exit,
 and repeats the lease, runtime, and headroom checks before copying weights.
 The actual CPU model must pass an explicit verifier before that copy. At
 shutdown, the owner distinguishes workload failure from verified device drain;
-unverified state latches process quarantine and retains reachable resources.
+worker or broker quarantine prevents attestation, including a quarantine
+observed after synchronization. Unverified state latches process quarantine
+and retains known owner resources. A preallocated process-lifetime custody
+root holds the budget before lease admission, the model-owning backend, and
+other known resources without relying on an allocation during failure handling.
+One process is used for at most one owner and must exit after its result. This
+does not prove retention of CUDA temporaries internal to a failed operation.
+Once a drain fails, the process latch prevents retries and clean attestation.
+The final recheck relies on the service having stopped every potential
+signaler; it is not an atomic lock between an independently running signaler
+and attestation. An uncertain shutdown must remain unverified.
 These ordering checks are CPU-tested with fakes, including real supervisor
 subprocesses and an authenticated two-team CPU service. They do not establish
 that the GPU path works on this machine.
@@ -25,9 +37,24 @@ source/runtime/model verifier, a private supervisor-to-parent startup channel,
 and separately reviewed measured model-load and forward profiles. None of the
 present test profiles is measured or approved. All real owners on this machine
 must use the same canonical project workspace root for device coordination.
+The generic test profile loader does not prove that its evidence used the
+specified token case and stage seeds; a production verifier must check both.
 The runtime UUID representation also requires verification against the actual
 device under supervision. A missing prerequisite must fail before launching an
 owner; an uncertain owner must exit with its sticky marker intact.
+
+The shared direct-child bootstrap in `looking_glass/gpu_bootstrap.py` suppresses site initialization and
+pre-execution `PYTHONPATH`, keeps the standard library before project paths,
+and rejects sourceless bytecode and origins absent from its source manifest.
+It compiles project and environment Python code from the same bytes it hashes.
+For native extensions it checks bytes before the OS opens the path; that is not
+an atomic native-load verification. The frozen checkout, environment and
+private cache directory must remain trusted and unchanged for the owner
+lifetime. The source manifest also does not hash every OS or driver component.
+These checks do not create a sandbox against arbitrary native code.
+An opt-in CPU smoke exercises this shared guard with a real offline checkpoint
+and a synthetic dry-run inventory; this is not a production source manifest,
+GPU profile, or validation of CUDA-specific imports.
 
 ## Development incident: unintended CUDA query
 

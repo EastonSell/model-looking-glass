@@ -31,6 +31,16 @@ appropriately private, out-of-band channel. Avoid putting tokens in logs or
 command-line arguments. Do not expose the endpoint through a proxy, tunnel or
 port forward.
 
+The client does not authenticate the server. If an owner exits and its port is
+reused by another local process, a stale client can send that process its
+bearer token. Create clients with freshly distributed addresses and tokens for
+each server lifetime; discard them when the owner stops or a connection fails,
+and do not retry them after an unexpected disconnect. Each completed job closes
+its own connection normally. This lifecycle discipline does not eliminate the
+port-reuse race. Use the transport only among trusted local processes. A broker
+ID sent by an unauthenticated peer would not by itself prove the server's
+identity.
+
 ```python
 # In the model-owning process, after constructing a trusted model:
 from looking_glass.broker import Broker
