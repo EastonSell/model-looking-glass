@@ -1,11 +1,13 @@
 """Synthetic transitions against the real cooperative gate and lock."""
 import hashlib
+from functools import wraps
 import importlib.util
 import io
 import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -16,6 +18,28 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / 'tools' / 'agreement_split_gate_transition.py'
 RELEASE = (ROOT if (ROOT / 'tools' / 'agreement_split_gate_allocation.py').is_file()
            else ROOT.parent.parent / 'gate-allocation-release')
+FIXTURE = ROOT / 'tests' / 'fixtures' / 'agreement-split-gate-02e1c5d' / 'looking_glass'
+_CHILD = __name__ == '__main__' and os.environ.get('MLG_GATE_TEST_CHILD') == '1'
+
+
+def isolated_cases(cls):
+    """Run source-first transitions in fresh interpreters, not the test runner."""
+    def wrap(name, test):
+        @wraps(test)
+        def run(self):
+            if _CHILD:
+                return test(self)
+            env = dict(os.environ)
+            env['MLG_GATE_TEST_CHILD'] = '1'
+            result = subprocess.run([sys.executable, '-B', '-E', '-s', '-S', __file__,
+                                     cls.__name__ + '.' + name], cwd=ROOT, env=env,
+                                    capture_output=True, text=True, errors='replace', timeout=60)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return run
+    for name, test in tuple(vars(cls).items()):
+        if name.startswith('test_'):
+            setattr(cls, name, wrap(name, test))
+    return cls
 
 
 def module(path, name):
@@ -25,8 +49,11 @@ def module(path, name):
     return result
 
 
+@isolated_cases
 class TransitionTests(unittest.TestCase):
     def setUp(self):
+        if not _CHILD:
+            return
         self.assertTrue(SOURCE.is_file(), 'transition implementation is required')
         self.transition = module(SOURCE, 'test_transition')
         self.helper = module(RELEASE / 'tools' / 'agreement_split_gate_allocation.py', 'test_gate_helper')
@@ -35,7 +62,8 @@ class TransitionTests(unittest.TestCase):
         (self.root / 'gate.lock').write_bytes(b'')
         self.sources = base / 'sources'; (self.sources / 'looking_glass').mkdir(parents=True)
         for name in self.helper.SOURCE_HASHES:
-            shutil.copyfile(RELEASE / 'looking_glass' / (name + '.py'), self.sources / 'looking_glass' / (name + '.py'))
+            self.assertEqual(hashlib.sha256(self.reader(name)).hexdigest(), self.helper.SOURCE_HASHES[name])
+            shutil.copyfile(FIXTURE / (name + '.py'), self.sources / 'looking_glass' / (name + '.py'))
         rs = self.root.lstat(); ls = (self.root / 'gate.lock').lstat()
         path_hash = hashlib.sha256(os.path.normcase(os.path.abspath(str(self.root))).encode()).hexdigest()
         patcher = mock.patch.multiple(self.helper, GATE_ROOT_SHA256=path_hash,
@@ -58,7 +86,7 @@ class TransitionTests(unittest.TestCase):
 
     @staticmethod
     def reader(name):
-        return (RELEASE / 'looking_glass' / (name + '.py')).read_bytes()
+        return (FIXTURE / (name + '.py')).read_bytes()
 
     def test_public_commitment_then_unallocated_peer_is_explicitly_unchecked(self):
         value = self.transition.operate('commit', 'natural', self.root, self.sources,

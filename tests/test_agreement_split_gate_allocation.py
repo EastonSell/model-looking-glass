@@ -1,10 +1,12 @@
 """Fabricated-only source-first shared-gate tests; no real study allocation."""
 import hashlib
+from functools import wraps
 import importlib.util
 import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -15,11 +17,35 @@ HERE = Path(__file__).resolve().parent.parent
 SPEC = importlib.util.spec_from_file_location('natural_gate_caller_test', HERE / 'tools' / 'agreement_split_gate_allocation.py')
 CALLER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(CALLER)
-REVIEWED = HERE / 'looking_glass'
+REVIEWED = HERE / 'tests' / 'fixtures' / 'agreement-split-gate-02e1c5d' / 'looking_glass'
+_CHILD = __name__ == '__main__' and os.environ.get('MLG_GATE_TEST_CHILD') == '1'
 
 
+def isolated_cases(cls):
+    """Exercise each source-first scenario without changing pytest's modules."""
+    def wrap(name, test):
+        @wraps(test)
+        def run(self):
+            if _CHILD:
+                return test(self)
+            env = dict(os.environ)
+            env['MLG_GATE_TEST_CHILD'] = '1'
+            result = subprocess.run([sys.executable, '-B', '-E', '-s', '-S', __file__,
+                                     cls.__name__ + '.' + name], cwd=HERE, env=env,
+                                    capture_output=True, text=True, errors='replace', timeout=60)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return run
+    for name, test in tuple(vars(cls).items()):
+        if name.startswith('test_'):
+            setattr(cls, name, wrap(name, test))
+    return cls
+
+
+@isolated_cases
 class GateCallerTests(unittest.TestCase):
     def setUp(self):
+        if not _CHILD:
+            return
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.base = Path(self.temp.name).resolve()
@@ -29,6 +55,7 @@ class GateCallerTests(unittest.TestCase):
         self.source_root = self.base / 'source'
         (self.source_root / 'looking_glass').mkdir(parents=True)
         for name in CALLER.SOURCE_HASHES:
+            self.assertEqual(hashlib.sha256(self.reader(name)).hexdigest(), CALLER.SOURCE_HASHES[name])
             shutil.copyfile(REVIEWED / (name + '.py'), self.source_root / 'looking_glass' / (name + '.py'))
         st = self.root.lstat()
         lock = (self.root / 'gate.lock').lstat()
