@@ -30,12 +30,17 @@ ASSETS = {
 }
 SOURCE_PATHS = (
     'scripts/bert_agreement_bootstrap.py', 'docs/BERT_AGREEMENT_V1.md',
-    'experiments/bert_agreement_public_cases_v1.json', 'looking_glass/__init__.py',
-    'looking_glass/bert_agreement_cases.py', 'looking_glass/bert_agreement_runner.py',
+    'docs/CPU_STUDY_SUPERVISION.md', 'docs/SUPERVISOR.md', 'docs/BERT_AGREEMENT_EXPOSURES_V2.md',
+    'experiments/bert_agreement_public_cases_v1.json', 'experiments/bert_agreement_exposures_v2.json',
+    'looking_glass/__init__.py', 'looking_glass/bert_agreement_cases.py',
+    'looking_glass/bert_agreement_exposures_v2.py', 'looking_glass/bert_agreement_runner.py',
     'looking_glass/bert_agreement_audit.py', 'looking_glass/bert_agreement_study.py',
     'looking_glass/pretrained.py', 'looking_glass/intervention_plan.py',
     'looking_glass/interventions.py', 'looking_glass/model_ownership.py',
+    'looking_glass/cpu_study_supervision.py', 'looking_glass/supervisor.py',
+    'looking_glass/device_lease.py', 'looking_glass/device_identity.py',
 )
+_CPU_CUSTODY = {}
 
 
 def stage_verified_assets(snapshot, destination):
@@ -257,8 +262,8 @@ class LoadedMaskedBert:
 
 def load_pinned_distilbert(cache_dir):
     """Load the exact pinned CPU masked model from local verified assets only."""
-    if os.environ.get('CUDA_VISIBLE_DEVICES') != '-1':
-        raise RuntimeError('CPU study requires CUDA_VISIBLE_DEVICES=-1 before dependency import')
+    if os.environ.get('CUDA_VISIBLE_DEVICES') not in ('-1', ''):
+        raise RuntimeError('CPU study requires CUDA visibility to be masked before dependency import')
     import torch
     import transformers
 
@@ -524,16 +529,30 @@ def _reported_machine(platform_module):
     return value or 'unknown'
 
 
+def _cpu_study_binding(root):
+    from .cpu_study_supervision import CPU_STUDY_SUPERVISION_CONTRACT
+    canonical = os.path.normcase(str(Path(root).resolve(strict=True)))
+    return {'contract': CPU_STUDY_SUPERVISION_CONTRACT,
+            'custody_root_sha256': hashlib.sha256(canonical.encode('utf-8')).hexdigest()}
+
+
 def _checked_manifest(repo, commit, git_exe, split):
     from .bert_agreement_cases import verify_manifest_bytes
+    from .bert_agreement_exposures_v2 import verify_snapshot_bytes
 
     hashes = verify_git_sources(repo, commit, SOURCE_PATHS, git_exe=git_exe)
     manifest_raw = (Path(repo) / 'experiments/bert_agreement_public_cases_v1.json').read_bytes()
+    exposure_raw = (Path(repo) / 'experiments/bert_agreement_exposures_v2.json').read_bytes()
     protocol = (Path(repo) / 'docs/BERT_AGREEMENT_V1.md').read_bytes()
     if (hashlib.sha256(manifest_raw).hexdigest() != hashes['experiments/bert_agreement_public_cases_v1.json']
+            or hashlib.sha256(exposure_raw).hexdigest() != hashes['experiments/bert_agreement_exposures_v2.json']
             or hashlib.sha256(protocol).hexdigest() != hashes['docs/BERT_AGREEMENT_V1.md']):
-        raise RuntimeError('protocol or manifest changed after source verification')
+        raise RuntimeError('protocol, manifest or exposure snapshot changed after source verification')
     checked = verify_manifest_bytes(manifest_raw)
+    exposure = verify_snapshot_bytes(exposure_raw)
+    if (exposure.snapshot_sha256 != hashes['experiments/bert_agreement_exposures_v2.json']
+            or exposure.public_evaluation_rows != 64 or exposure.exact_development_evaluation_overlap != 0):
+        raise RuntimeError('exposure snapshot does not match the public case inventory')
     lines = protocol.splitlines()
     frozen = b'Status: **frozen before evaluation.**'
     if split == 'evaluation' and (len(lines) < 3 or lines[2] != frozen or lines.count(frozen) != 1):
@@ -543,7 +562,7 @@ def _checked_manifest(repo, commit, git_exe, split):
 
 def _require_bootstrap():
     if (os.environ.get('LOOKING_GLASS_BERT_BOOTSTRAP_PID') != str(os.getpid())
-            or os.environ.get('CUDA_VISIBLE_DEVICES') != '-1'
+            or os.environ.get('CUDA_VISIBLE_DEVICES') not in ('-1', '')
             or not sys.flags.isolated or not sys.flags.no_site or not sys.dont_write_bytecode
             or not sys.pycache_prefix or any(Path(sys.pycache_prefix).iterdir())):
         raise RuntimeError('the source-isolated, CPU-masked bootstrap is required')
@@ -558,7 +577,7 @@ def _require_checkout(repo):
     return actual
 
 
-def _owner_main(*, repo, cache, run_dir, commit, git_exe, split, family, run_id):
+def _owner_main(*, repo, cache, run_dir, commit, git_exe, split, family, run_id, custody_root=None):
     """Run one CPU owner; the supervising controller decides final status."""
     stage = 'startup'
     try:
@@ -566,15 +585,26 @@ def _owner_main(*, repo, cache, run_dir, commit, git_exe, split, family, run_id)
         _require_checkout(repo)
         if split == 'evaluation':
             raise RuntimeError('evaluation requires reviewed child-process custody')
+        cpu_binding = None
+        if custody_root is not None:
+            stage = 'custody_claim'
+            from .cpu_study_supervision import claim_cpu_study
+            session, lease = claim_cpu_study(custody_root)
+            _CPU_CUSTODY.update(session=session, lease=lease)
+            cpu_binding = _cpu_study_binding(custody_root)
         if 'torch' in sys.modules or 'transformers' in sys.modules:
             raise RuntimeError('model dependencies were imported before owner checks')
         if split not in ('development', 'evaluation') or (split == 'development' and
                 (type(family) is not int or not 1 <= family <= 4)) or (split == 'evaluation' and family is not None):
             raise ValueError('invalid study selection')
+        stage = 'source_preflight'
         hashes, manifest, manifest_sha = _checked_manifest(repo, commit, git_exe, split)
-        _write_json(Path(run_dir) / 'owner-started.json', {'schema': 'bert-agreement-owner-start-v1',
-                    'run_id': run_id, 'pid': os.getpid(), 'source_commit': commit,
-                    'manifest_sha256': manifest_sha, 'split': split, 'family': family})
+        owner_started = {'schema': 'bert-agreement-owner-start-v1', 'run_id': run_id,
+                         'pid': os.getpid(), 'source_commit': commit, 'manifest_sha256': manifest_sha,
+                         'split': split, 'family': family}
+        if cpu_binding is not None:
+            owner_started['cpu_study'] = cpu_binding
+        _write_json(Path(run_dir) / 'owner-started.json', owner_started)
         stage = 'model_load'
         import gc
         import platform
@@ -630,13 +660,19 @@ def _owner_main(*, repo, cache, run_dir, commit, git_exe, split, family, run_id)
         _require_denormals(torch)
         del witness, loaded
         gc.collect()
-        _write_json(Path(run_dir) / 'owner-candidate.json',
-                    {'schema': 'bert-agreement-owner-v1', 'status': 'complete',
+        if torch.cuda.is_initialized():
+            raise RuntimeError('CPU owner initialized CUDA during teardown')
+        candidate = {'schema': 'bert-agreement-owner-v1', 'status': 'complete',
                      'run_id': run_id, 'pid': os.getpid(), 'source_commit': commit,
                      'source_sha256': hashes, 'manifest_sha256': manifest_sha,
                      'split': split, 'family': family, 'journal_sha256': journal_sha,
                      'runtime': runtime, 'model': model_metadata,
-                     'model_state_sha256_before_after': state_sha, 'audited': audited})
+                     'model_state_sha256_before_after': state_sha, 'audited': audited}
+        if cpu_binding is not None:
+            candidate['cpu_study'] = cpu_binding
+        _write_json(Path(run_dir) / 'owner-candidate.json', candidate)
+        if custody_root is not None:
+            session.attest_clean(lease)
         return 0
     except BaseException as error:
         try:
@@ -659,7 +695,7 @@ def _owner_main(*, repo, cache, run_dir, commit, git_exe, split, family, run_id)
         return 1
 
 
-def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, timeout=600):
+def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, timeout=600, custody_root=None):
     """Run an isolated CPU owner, then audit its closed evidence after exit."""
     import secrets
     import shutil
@@ -680,6 +716,7 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
     destination.mkdir()
     run_id = secrets.token_hex(16)
     child = None
+    owner_pid = None
     exit_code = None
     manifest_sha = None
     owner_state = 'not_started'
@@ -689,6 +726,8 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
     owner_failure_read_error_type = None
     owner_cancellation = None
     owner_cancellation_read_error_type = None
+    supervision = None
+    cpu_binding = None
     stage = 'startup'
     try:
         controller_started = {'schema': 'bert-agreement-controller-start-v1',
@@ -703,15 +742,31 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
             raise RuntimeError('Git and the bootstrap dependency directory are required')
         git_exe = str(Path(git_exe).resolve(strict=True))
         hashes, manifest, manifest_sha = _checked_manifest(root, commit, git_exe, split)
+        if custody_root is not None:
+            custody = Path(custody_root)
+            if not custody.is_absolute() or not custody.is_dir():
+                raise ValueError('CPU study custody root must be an existing absolute directory')
+            custody = custody.resolve(strict=True)
+            output_root = destination.resolve(strict=True)
+            if any(a == b or a.is_relative_to(b) or b.is_relative_to(a)
+                   for a, b in ((custody, root), (custody, output_root))):
+                raise ValueError('CPU study custody root must be separate from checkout and attempt')
+            cpu_binding = _cpu_study_binding(custody)
         preflight = {'schema': 'bert-agreement-preflight-v1', 'run_id': run_id, 'source_commit': commit,
                      'source_sha256': hashes, 'manifest_sha256': manifest_sha, 'split': split, 'family': family}
+        if cpu_binding is not None:
+            preflight['cpu_study'] = cpu_binding
         _write_json(destination / 'preflight.json', preflight)
         prefix = destination / 'owner-pycache'
         prefix.mkdir()
+        working = destination / 'owner-working'
+        temporary = working / 'tmp'
+        temporary.mkdir(parents=True)
         environment = {key: os.environ[key] for key in
-                       ('SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'COMSPEC', 'PATHEXT') if key in os.environ}
+                       ('SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATHEXT') if key in os.environ}
         system_root = Path(environment.get('SYSTEMROOT', 'C:/Windows'))
         environment.update({'PATH': str(system_root / 'System32') if os.name == 'nt' else '/usr/bin:/bin',
+                            'TEMP': str(temporary), 'TMP': str(temporary),
                             'CUDA_VISIBLE_DEVICES': '-1', 'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1',
                             'OPENBLAS_NUM_THREADS': '1', 'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
                             'TOKENIZERS_PARALLELISM': 'false', 'HF_HUB_DISABLE_TELEMETRY': '1'})
@@ -720,29 +775,52 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
                    '--worker', '--repo', str(root), '--cache', str(cache_path),
                    '--output', str(destination), '--commit', commit, '--git', git_exe,
                    '--split', split, '--family', str(family or 0), '--run-id', run_id]
-        # Popen can create the process before Python receives its handle. Until
-        # wait succeeds, lack of a handle is conservatively possibly active.
+        if custody_root is not None:
+            command.extend(('--custody-root', str(custody)))
         stage = 'owner_start'
         owner_state = 'possibly_active'
-        child = subprocess.Popen(command, cwd=root, env=environment, stdin=subprocess.DEVNULL,
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        try:
-            stage = 'owner_wait'
-            exit_code = child.wait(timeout=timeout)
-            owner_state = 'reaped'
-        except BaseException as wait_error:
-            wait_error_type = type(wait_error).__name__
+        if custody_root is not None:
+            from .cpu_study_supervision import run_cpu_study
+            from .supervisor import SupervisionResult
+            observed = run_cpu_study(command, study_root=custody, timeout=timeout,
+                                     cwd=working, env=environment, inherit_environment=False)
+            if (type(observed) is not SupervisionResult or type(observed.pid) is not int or observed.pid <= 0
+                    or (observed.exit_code is not None and type(observed.exit_code) is not int)
+                    or type(observed.clean) is not bool or type(observed.timed_out) is not bool
+                    or type(observed.run_id) is not str or re.fullmatch('[0-9a-f]{32}', observed.run_id) is None
+                    or type(observed.reason) is not str):
+                raise RuntimeError('CPU study supervision result is malformed')
+            owner_pid, exit_code = observed.pid, observed.exit_code
+            supervision = {'scope': 'cooperative-cpu-study-custody-only',
+                           'run_id': observed.run_id, 'pid': observed.pid,
+                           'exit_code': observed.exit_code, 'clean': observed.clean,
+                           'timed_out': observed.timed_out, 'reason': observed.reason}
+            owner_state = 'reaped' if exit_code is not None else 'possibly_active'
+        else:
+            # Legacy development-only path: on ambiguous Popen return the
+            # recorded owner state stays possibly active and blocks a retry.
+            child = subprocess.Popen(command, cwd=working, env=environment, stdin=subprocess.DEVNULL,
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            owner_pid = child.pid
             try:
-                if child.poll() is None:
-                    child.kill()
-                exit_code = child.wait(timeout=10)
+                stage = 'owner_wait'
+                exit_code = child.wait(timeout=timeout)
                 owner_state = 'reaped'
-            except BaseException as cleanup_error:
-                cleanup_error_type = type(cleanup_error).__name__
-                if isinstance(cleanup_error, (KeyboardInterrupt, SystemExit)):
-                    raise cleanup_error from wait_error
-            raise
+            except BaseException as wait_error:
+                wait_error_type = type(wait_error).__name__
+                try:
+                    if child.poll() is None:
+                        child.kill()
+                    exit_code = child.wait(timeout=10)
+                    owner_state = 'reaped'
+                except BaseException as cleanup_error:
+                    cleanup_error_type = type(cleanup_error).__name__
+                    if isinstance(cleanup_error, (KeyboardInterrupt, SystemExit)):
+                        raise cleanup_error from wait_error
+                raise
         if exit_code != 0:
+            if owner_state != 'reaped':
+                raise RuntimeError('CPU owner termination remains uncertain')
             if (destination / 'owner-cancelled.json').exists():
                 try:
                     record = _read_json(destination / 'owner-cancelled.json')
@@ -750,8 +828,9 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
                                         'error_type', 'previous_error_type'}
                             or record['schema'] != 'bert-agreement-owner-cancel-v1'
                             or record['status'] != 'incomplete' or record['run_id'] != run_id
-                            or type(record['pid']) is not int or record['pid'] != child.pid
-                            or record['stage'] not in ('startup', 'model_load', 'forwards', 'verification')
+                            or type(record['pid']) is not int or record['pid'] != owner_pid
+                            or record['stage'] not in ('startup', 'custody_claim', 'source_preflight',
+                                                       'model_load', 'forwards', 'verification')
                             or record['error_type'] not in ('KeyboardInterrupt', 'SystemExit')
                             or type(record['previous_error_type']) is not str
                             or re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,79}', record['previous_error_type']) is None):
@@ -764,8 +843,9 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
                 if (set(record) != {'schema', 'status', 'run_id', 'pid', 'stage', 'error_type'}
                         or record['schema'] != 'bert-agreement-owner-failure-v1'
                         or record['status'] != 'incomplete' or record['run_id'] != run_id
-                        or type(record['pid']) is not int or record['pid'] != child.pid
-                        or record['stage'] not in ('startup', 'model_load', 'forwards', 'verification')
+                        or type(record['pid']) is not int or record['pid'] != owner_pid
+                        or record['stage'] not in ('startup', 'custody_claim', 'source_preflight',
+                                                   'model_load', 'forwards', 'verification')
                         or type(record['error_type']) is not str
                         or re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,79}', record['error_type']) is None):
                     raise ValueError('invalid owner failure record')
@@ -773,19 +853,25 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
             except Exception as failure_error:
                 owner_failure_read_error_type = type(failure_error).__name__
             raise RuntimeError('the owner exited without a successful result')
+        if supervision is not None and (supervision['clean'] is not True or supervision['timed_out'] is not False):
+            raise RuntimeError('the CPU study owner did not establish clean custody')
         stage = 'evidence_validation'
         candidate = _read_json(destination / 'owner-candidate.json')
         audited = audit_event_journal(manifest, destination / 'events.jsonl', split=split, family=family,
                                       mask_id=103, hidden_size=768, expected_sha256=candidate.get('journal_sha256'))
-        validate_owner_result(candidate, run_id=run_id, pid=child.pid, exit_code=exit_code,
+        validate_owner_result(candidate, run_id=run_id, pid=owner_pid, exit_code=exit_code,
                               source_commit=commit, journal_sha256=audited['sha256'])
         started = _read_json(destination / 'owner-started.json')
-        if (not _same_json(started, {'schema': 'bert-agreement-owner-start-v1', 'run_id': run_id,
-                                    'pid': child.pid, 'source_commit': commit, 'manifest_sha256': manifest_sha,
-                                    'split': split, 'family': family})
+        expected_started = {'schema': 'bert-agreement-owner-start-v1', 'run_id': run_id,
+                            'pid': owner_pid, 'source_commit': commit, 'manifest_sha256': manifest_sha,
+                            'split': split, 'family': family}
+        if cpu_binding is not None:
+            expected_started['cpu_study'] = cpu_binding
+        if (not _same_json(started, expected_started)
                 or not _same_json(_read_json(destination / 'started.json'), controller_started)
                 or not _same_json(_read_json(destination / 'preflight.json'), preflight)
                 or candidate.get('source_sha256') != hashes or candidate.get('manifest_sha256') != manifest_sha
+                or not _same_json(candidate.get('cpu_study'), cpu_binding)
                 or candidate.get('split') != split or not _same_json(candidate.get('family'), family)
                 or not _same_json(candidate.get('audited'), audited) or any(prefix.iterdir())
                 or verify_git_sources(root, commit, SOURCE_PATHS, git_exe=git_exe) != hashes):
@@ -819,7 +905,8 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
         if artifacts['events.jsonl']['sha256'] != audited['sha256']:
             raise RuntimeError('closed journal changed during evidence inventory')
         result = {'schema': 'bert-agreement-controller-result-v1', 'status': 'complete',
-                  'run_id': run_id, 'owner_pid': child.pid, 'owner_exit_code': exit_code, 'owner_state': owner_state,
+                  'run_id': run_id, 'owner_pid': owner_pid, 'owner_exit_code': exit_code, 'owner_state': owner_state,
+                  'cpu_supervision': supervision, 'cpu_study': cpu_binding,
                   'source_commit': commit, 'source_sha256': hashes, 'manifest_sha256': manifest_sha,
                   'split': split, 'family': family, 'journal_sha256': audited['sha256'],
                   'runtime': runtime, 'model': model, 'artifacts': artifacts,
@@ -836,13 +923,15 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
     except BaseException as error:
         result = {'schema': 'bert-agreement-controller-result-v1', 'status': 'incomplete',
                   'run_id': run_id, 'source_commit': commit, 'manifest_sha256': manifest_sha,
-                  'split': split, 'family': family, 'owner_pid': None if child is None else child.pid,
+                  'split': split, 'family': family, 'owner_pid': owner_pid,
+                  'cpu_supervision': supervision, 'cpu_study': cpu_binding,
                   'owner_exit_code': exit_code, 'owner_state': owner_state, 'stage': stage,
                   'error_type': type(error).__name__, 'wait_error_type': wait_error_type,
                   'cleanup_error_type': cleanup_error_type,
                   'cancelled': isinstance(error, (KeyboardInterrupt, SystemExit)) or owner_cancellation is not None or
                                (owner_failure is not None and owner_failure['error_type'] in ('KeyboardInterrupt', 'SystemExit')),
-                  'timed_out': isinstance(error, subprocess.TimeoutExpired),
+                  'timed_out': isinstance(error, subprocess.TimeoutExpired) or
+                               (supervision is not None and supervision['timed_out']),
                   'owner_failure': owner_failure, 'owner_failure_read_error_type': owner_failure_read_error_type,
                   'owner_cancellation': owner_cancellation,
                   'owner_cancellation_read_error_type': owner_cancellation_read_error_type,
@@ -885,6 +974,7 @@ def main(argv=None):
     parser.add_argument('--commit', required=True)
     parser.add_argument('--split', choices=('development', 'evaluation'), required=True)
     parser.add_argument('--family', type=int, default=0)
+    parser.add_argument('--custody-root', help='existing persistent CPU study custody directory')
     parser.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--git', help=argparse.SUPPRESS)
     parser.add_argument('--run-id', help=argparse.SUPPRESS)
@@ -892,9 +982,10 @@ def main(argv=None):
     family = args.family or None
     if args.worker:
         return _owner_main(repo=args.repo, cache=args.cache, run_dir=args.output, commit=args.commit,
-                           git_exe=args.git, split=args.split, family=family, run_id=args.run_id)
+                           git_exe=args.git, split=args.split, family=family, run_id=args.run_id,
+                           custody_root=args.custody_root)
     result = run_cpu_controller(repo=args.repo, cache=args.cache, output_dir=args.output,
-                                commit=args.commit, split=args.split, family=family)
+                                commit=args.commit, split=args.split, family=family, custody_root=args.custody_root)
     print(json.dumps({'status': result['status'], 'run_id': result['run_id']}, sort_keys=True))
     return 0 if result['status'] == 'complete' else 1
 
