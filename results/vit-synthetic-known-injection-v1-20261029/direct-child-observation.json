@@ -1,0 +1,16 @@
+{
+  "schema": "vit-synthetic-direct-child-observation-v1",
+  "source_commit": "42a7ea04411f07210aaa9efc2e47956b16f4590c",
+  "pid": 11536,
+  "started_utc": "2026-10-29T11:56:03.7281415Z",
+  "exited_utc": "2026-10-29T11:56:25.8069216Z",
+  "reaped": true,
+  "exit_code": 0,
+  "output_path": "attempt/ (inside the published archive)",
+  "stdout_sha256": "7178554e7bb10fcb52103b29b76e052c81c0f8b38624830dc471cdd4a17e757e",
+  "stderr_sha256": "5bfb03b81e62c1a971a7ce3c5c29bb8cd2680aa1bf28c9061d6dceb799497670",
+  "complete_present": true,
+  "incomplete_present": false,
+  "raw_local_observation_sha256": "0a99d4fdfa3e63c8c70eb8a77580fde99ce3fbd4249f4a9eb093f252abc98adc",
+  "redaction": "The local absolute output path was replaced with the archive-relative location."
+}
