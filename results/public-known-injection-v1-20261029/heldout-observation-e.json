@@ -1,0 +1,21 @@
+{
+  "schema": "public-known-injection-heldout-observation-v1",
+  "observed_at_utc": "2026-10-29 11:43:51 UTC",
+  "main": "57fd1560ad08d09a1d03fe11d569bd1be21209d2",
+  "latest_exposure": {
+    "version": "distilgpt2-development-exposures-v35",
+    "module_blob": "7a48d1c2c979e55e28379258e3a1443a32f11cb9",
+    "canonical_sha256": "3a7ecf81eb7f04759ed5b8ffd0607c5955b634b938756e76eb52d2435aef9610"
+  },
+  "pre_run_sha256": "b4f632ed69f0b20ceb82a176ee64047a815771231072ec04bb60dc880c18d6c6",
+  "discovery_receipt_sha256": "a53fdf018647dc281eddbc78eb8225d437f7156d56745e520d1d944de6fa1a3a",
+  "discovery_freeze_commit": "05d6981e44e5f329c91c2992cd3ee49368567087",
+  "discovery_freeze_blob": "ae20f38bb4325e1a433b29929f785e0a5f3b0cce",
+  "discovery_freeze_sha256": "5c1d1d0f9db7a5b9daca7cd6784e231f442456a25a8ecac5b99f0bd8d7645152",
+  "independent_freeze_readback": "Reviewer reported exact public readback and independent recomputation at 2026-10-29 11:43:31 UTC before this observation.",
+  "free_bytes_observed": {
+    "c_free": 2948710400,
+    "e_free": 397658550272
+  },
+  "scope": "Public point-in-time and cooperative direct-process observations; no proof of unknown exposures, protected-split disjointness, or synchronized execution."
+}
