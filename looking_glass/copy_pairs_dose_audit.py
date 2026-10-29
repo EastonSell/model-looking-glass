@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 import hashlib
+import json
 import re
 import struct
 
@@ -355,7 +356,7 @@ def audit_saved_family(cases, records, raw_files, *, family_index: int, vocabula
             if name in ("target_rank", "top_token_id"):
                 if type(saved_value) is not int or saved_value != value:
                     raise ValueError("saved rank or top token differs")
-            elif type(saved_value) not in (int, float) or not math.isfinite(saved_value) or saved_value != value:
+            elif not _typed_equal(saved_value, value):
                 raise ValueError("saved score differs")
         if "cproj_output" in chunks:
             _decode(chunks["cproj_output"], 11 * 768)  # Reject nonfinite values at every position.
@@ -403,6 +404,167 @@ def audit_saved_family(cases, records, raw_files, *, family_index: int, vocabula
     }
     return {"case_ids": ids, "delivery": delivery_report, "numerical": numerical,
             "output_diagnostics": output_diagnostics}
+
+
+def _typed_equal(actual, expected) -> bool:
+    """Compare JSON-shaped values without bool/int or int/float aliasing."""
+    if type(actual) is not type(expected):
+        return False
+    if type(expected) is dict:
+        return set(actual) == set(expected) and all(_typed_equal(actual[k], v) for k, v in expected.items())
+    if type(expected) is list:
+        return len(actual) == len(expected) and all(_typed_equal(a, b) for a, b in zip(actual, expected))
+    if type(expected) is float:
+        return (math.isfinite(actual) and math.isfinite(expected)
+                and struct.pack("<d", actual) == struct.pack("<d", expected))
+    return actual == expected
+
+
+def _json_object(raw: bytes) -> dict:
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate JSON key")
+            result[key] = value
+        return result
+
+    try:
+        value = json.loads(raw.decode("utf-8"), object_pairs_hook=unique,
+                           parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite JSON")))
+    except (UnicodeError, json.JSONDecodeError, RecursionError) as error:
+        raise ValueError("invalid JSON evidence") from error
+    if type(value) is not dict:
+        raise ValueError("expected a JSON object")
+    return value
+
+
+def audit_journal(result, raw: bytes) -> int:
+    """Reconcile all 1,769 journal events against the supplied saved result.
+
+    This checks the recorded sequence and content, not whether those events
+    happened, their wall-clock order, or process/source authenticity. Call it
+    together with the strict raw-data replay and independently bound receipt.
+    """
+    if type(raw) is not bytes or len(raw) > 8 * 1024 * 1024 or not raw.endswith(b"\n"):
+        raise ValueError("journal is missing, incomplete or oversized")
+    if (type(result) is not dict or type(result.get("cases")) is not list or len(result["cases"]) != 576
+            or type(result.get("family_doses")) is not list or len(result["family_doses"]) != 8
+            or type(result.get("case_diagnostics")) is not list or len(result["case_diagnostics"]) != 32
+            or type(result.get("runtime")) is not dict):
+        raise ValueError("journal result is incomplete")
+    lines = raw.splitlines()
+    if len(lines) != 1769:
+        raise ValueError("journal event count differs")
+    events = iter(lines)
+
+    def check(expected):
+        event = _json_object(next(events))
+        if not _typed_equal(event, expected):
+            raise ValueError("journal event differs from result")
+
+    def check_action(record):
+        if (type(record) is not dict or "event" in record or type(record.get("case_id")) is not str
+                or type(record.get("action")) is not str):
+            raise ValueError("journal action identity is invalid")
+        check({"event": "start", "case_id": record["case_id"], "action": record["action"]})
+        check({"event": "raw_recorded", "case_id": record["case_id"],
+               "action": record["action"], "raw": record.get("raw")})
+        check({**record, "event": "complete"})
+
+    try:
+        check({"event": "runtime_ready", "cpu_rng_seed": 20261029, "actual_runtime": result["runtime"]})
+        for group in range(8):
+            rows = result["cases"][group * 72:(group + 1) * 72]
+            for record in rows[:8]:
+                check_action(record)
+            family = result["family_doses"][group]
+            if type(family) is not dict or "event" in family:
+                raise ValueError("journal family identity is invalid")
+            check({**family, "event": "family_dose"})
+            for variant in range(4):
+                for record in rows[8 + variant * 16:8 + (variant + 1) * 16]:
+                    check_action(record)
+                diagnostic = result["case_diagnostics"][4 * group + variant]
+                if type(diagnostic) is not dict or "event" in diagnostic:
+                    raise ValueError("journal diagnostic identity is invalid")
+                check({**diagnostic, "event": "case_diagnostics"})
+    except (KeyError, TypeError, StopIteration) as error:
+        raise ValueError("journal event is incomplete") from error
+    return len(lines)
+
+
+def validate_recorded_family_metadata(cases, records, report, family_dose, case_diagnostics) -> None:
+    """Compare runner dose, intervention and output claims to a prior replay.
+
+    The report must be the unmodified result of ``audit_saved_family`` for
+    these same records under exclusive caller ownership. This verifies the
+    recorded metadata against independently recomputed bytes; it does not bind
+    a process receipt, source revision, case publication or execution.
+    """
+    try:
+        if (type(cases) is not list or len(cases) != 4 or type(records) is not list or len(records) != 72
+                or report["case_ids"] != [case["case_id"] for case in cases]):
+            raise ValueError("family metadata identity differs")
+        delivery = report["delivery"]
+        requested = {"low": delivery["q_low"], "match": delivery["q_match"], "high": delivery["q_high"]}
+        variants = []
+        for row in delivery["variants"]:
+            doses = {}
+            for dose in ("low", "match", "high"):
+                doses[dose] = {}
+                for head in (2, 7, 10):
+                    single = row["singles"][f"h{head}_{dose}"]
+                    doses[dose][str(head)] = {
+                        "source_l2": row["norms"][f"h{head}"],
+                        "requested_fraction": single["fraction"], "achieved_l2": single["achieved"],
+                        "changed_float32_elements": single["changed_elements"],
+                        "changed_binary_bits": single["changed_bit_count"],
+                    }
+            variants.append(doses)
+        expected_family = {"group": cases[0]["group"], "m": delivery["minimum_norm"],
+                           "requested_l2": requested, "variants": variants}
+        if not _typed_equal(family_dose, expected_family):
+            raise ValueError("family dose metadata differs")
+        by_id = {case["case_id"]: case for case in cases}
+        for record in records:
+            case = by_id[record["case_id"]]
+            if any(type(record[key]) is not type(case[key]) or record[key] != case[key]
+                   for key in ("case_id", "group", "variant", "target_id")):
+                raise ValueError("record metadata identity differs")
+            action = record["action"]
+            if action in ("clean", "noop", "clean_after"):
+                if "intervention" not in record or record["intervention"] is not None:
+                    raise ValueError("control intervention metadata differs")
+                continue
+            if action not in ARMS:
+                raise ValueError("unknown intervention metadata")
+            parts = action.split("_")
+            dose, heads = parts[-1], [int(name[1:]) for name in parts[:-1]]
+            variant = case["variant"]
+            expected = {"heads": heads, "position": 10, "dose": dose, "requested_l2_each": requested[dose],
+                        "components": {str(head): variants[variant][dose][str(head)] for head in heads}}
+            if len(heads) == 2:
+                pair = delivery["variants"][variant]["pairs"][action]
+                combined = pair["combined_norm"]
+                expected["joint_combined_achieved_l2"] = combined
+                expected["joint_combined_requested_l2"] = requested["match"] if dose == "low" else math.sqrt(2.0) * requested["high"]
+                if dose == "low":
+                    expected["joint_minus_matching_single_l2"] = {
+                        str(head): combined - variants[variant]["match"][str(head)]["achieved_l2"] for head in heads}
+            if not _typed_equal(record.get("intervention"), expected):
+                raise ValueError("intervention metadata differs")
+        expected_diagnostics = []
+        for case, observed in zip(cases, report["output_diagnostics"]):
+            residuals = {dose: {f"{a[1:]}_{b[1:]}": observed["pair_residual_norms"][f"{a}_{b}_{dose}"]
+                                for a, b in PAIRS} for dose in ("low", "high")}
+            expected_diagnostics.append({"case_id": case["case_id"],
+                "final_output_delta_l2": observed["output_delta_norms"],
+                "pair_minus_singles_output_residual_l2": residuals})
+        if not _typed_equal(case_diagnostics, expected_diagnostics):
+            raise ValueError("output diagnostic metadata differs")
+    except (KeyError, TypeError, IndexError) as error:
+        raise ValueError("family metadata is incomplete") from error
 
 
 def summarize_study(families) -> dict:
@@ -465,7 +627,79 @@ def summarize_study(families) -> dict:
             "mean_comparisons": mean_comparisons, "top_one": top_one}
 
 
-def replay_result(cases, result, read_case, *, vocabulary_size: int = 50257) -> dict:
+def _expected_runner_summary(aggregate) -> dict:
+    """Translate independent family calculations into the saved summary schema."""
+    metrics = ("target_log_probability", "target_logit")
+    families = []
+    for group, family in enumerate(aggregate["families"]):
+        numerical = family["numerical"]
+        rows = numerical["rows"]
+        arms = {}
+        for name in ARMS:
+            item = {"target_ranks": [row["scores"][name]["target_rank"] for row in rows],
+                    "target_top1": [row["scores"][name]["top_token_id"] == row["target_id"] for row in rows]}
+            for metric in metrics:
+                values = numerical["arms"][name][metric]["deltas"]
+                item[metric] = {"case_deltas": values, "repeat_delta": values[0],
+                                "shuffle_mean_delta": math.fsum(values[1:]) / 3,
+                                "family_contrast": numerical["arms"][name][metric]["contrast"]}
+            arms[name] = item
+        interactions = {}
+        pair_comparisons = {}
+        for dose in ("low", "high"):
+            interactions[dose] = {}
+            for first, second in PAIRS:
+                short = f"{first[1:]}_{second[1:]}"
+                pair = numerical["pairs"][f"{first}_{second}_{dose}"]
+                item = {}
+                for metric, alternate in (("target_log_probability", "log_probability"), ("target_logit", "target_logit")):
+                    item[metric] = pair[alternate]["interaction"]
+                    item[f"{metric}_case_interactions"] = pair[alternate]["prompt_interactions"]
+                interactions[dose][short] = item
+            pair_comparisons[dose] = {
+                metric: {"2_10_minus_2_7": numerical["comparisons"][alternate][dose]["h2_h10_minus_h2_h7"],
+                         "2_10_minus_7_10": numerical["comparisons"][alternate][dose]["h2_h10_minus_h7_h10"]}
+                for metric, alternate in (("target_log_probability", "log_probability"), ("target_logit", "target_logit"))}
+        match_logp, match_target, dose_comparisons = {}, {}, {}
+        for first, second in PAIRS:
+            short = f"{first[1:]}_{second[1:]}"
+            pair = numerical["pairs"][f"{first}_{second}_low"]
+            for out, metric in ((match_logp, "log_probability"), (match_target, "target_logit")):
+                out[short] = {first: pair[metric]["pair_minus_match_a"], second: pair[metric]["pair_minus_match_b"]}
+            dose_comparisons[short] = {
+                metric: numerical["comparisons"][alternate]["high_minus_low"][f"{first}_{second}"]
+                for metric, alternate in (("target_log_probability", "log_probability"), ("target_logit", "target_logit"))}
+        families.append({"group": group + 1, "arms": arms, "interactions": interactions,
+            "total_match_comparisons": match_logp, "total_match_logit_comparisons": match_target,
+            "pair_comparisons": pair_comparisons, "dose_comparisons": dose_comparisons,
+            "clean_target_ranks": [row["scores"]["clean"]["target_rank"] for row in rows],
+            "clean_target_top1": [row["scores"]["clean"]["top_token_id"] == row["target_id"] for row in rows]})
+    return {"families": families,
+        "mean_contrast_by_arm": {metric: {name: aggregate["mean_arms"][name][metric]["contrast"] for name in ARMS} for metric in metrics},
+        "mean_repeat_delta_by_arm": {metric: {name: aggregate["mean_arms"][name][metric]["repeat_delta"] for name in ARMS} for metric in metrics},
+        "mean_shuffle_delta_by_arm": {metric: {name: aggregate["mean_arms"][name][metric]["shuffle_mean_delta"] for name in ARMS} for metric in metrics},
+        "mean_interactions": {dose: {f"{a[1:]}_{b[1:]}": {
+            metric: aggregate["mean_pairs"][f"{a}_{b}_{dose}"][alternate]["interaction"]
+            for metric, alternate in (("target_log_probability", "log_probability"), ("target_logit", "target_logit"))}
+            for a, b in PAIRS} for dose in ("low", "high")},
+        "mean_pair_comparisons": {dose: {metric: {
+            "2_10_minus_2_7": aggregate["mean_comparisons"][alternate][dose]["h2_h10_minus_h2_h7"],
+            "2_10_minus_7_10": aggregate["mean_comparisons"][alternate][dose]["h2_h10_minus_h7_h10"]}
+            for metric, alternate in (("target_log_probability", "log_probability"), ("target_logit", "target_logit"))}
+            for dose in ("low", "high")},
+        "mean_dose_comparisons": {f"{a[1:]}_{b[1:]}": {
+            metric: aggregate["mean_comparisons"][alternate]["high_minus_low"][f"{a}_{b}"]
+            for metric, alternate in (("target_log_probability", "log_probability"), ("target_logit", "target_logit"))}
+            for a, b in PAIRS},
+        "mean_total_match_comparisons": {metric: {f"{a[1:]}_{b[1:]}": {
+            a: aggregate["mean_pairs"][f"{a}_{b}_low"][alternate]["pair_minus_match_a"],
+            b: aggregate["mean_pairs"][f"{a}_{b}_low"][alternate]["pair_minus_match_b"]} for a, b in PAIRS}
+            for metric, alternate in (("target_log_probability", "log_probability"), ("target_logit", "target_logit"))},
+        "top1_clean": aggregate["top_one"]["clean"],
+        "top1_by_arm": {name: aggregate["top_one"][name] for name in ARMS}}
+
+
+def replay_result(cases, result, read_case, *, vocabulary_size: int = 50257, verify_metadata: bool = False) -> dict:
     """Replay a complete result, reading at most four case files at a time.
 
     ``read_case(id)`` must return the complete immutable per-case bytes, and
@@ -473,10 +707,14 @@ def replay_result(cases, result, read_case, *, vocabulary_size: int = 50257) -> 
     fixed 576-record schedule and witnesses. It does not authenticate the
     result, receipt, source revision, cases, supervisor, or actual execution;
     a separate evidence-binding caller is required before any completion claim.
-    A smaller vocabulary is accepted only for fabricated tests.
+    ``verify_metadata=True`` additionally compares the recorded dose,
+    intervention, output-diagnostic and summary claims to the replay. A smaller
+    vocabulary is accepted only for fabricated tests.
     """
     if type(vocabulary_size) is not int or not 1 <= vocabulary_size <= 50257:
         raise ValueError("invalid vocabulary size")
+    if type(verify_metadata) is not bool:
+        raise ValueError("invalid metadata verification option")
     if type(cases) is not list or len(cases) != 32 or not callable(read_case):
         raise ValueError("expected 32 ordered cases and a case reader")
     for group in range(8):
@@ -497,12 +735,22 @@ def replay_result(cases, result, read_case, *, vocabulary_size: int = 50257) -> 
     file_size = 18 * 4 * vocabulary_size + 16 * 3 * 11 * 768 * 4
     if type(result.get("raw_payload_bytes")) is not int or result["raw_payload_bytes"] != 32 * file_size:
         raise ValueError("result payload count differs")
+    if verify_metadata and (type(result.get("family_doses")) is not list or len(result["family_doses"]) != 8
+            or type(result.get("case_diagnostics")) is not list or len(result["case_diagnostics"]) != 32
+            or type(result.get("summary")) is not dict):
+        raise ValueError("result metadata is incomplete")
     families = []
     for group in range(8):
         family_cases = cases[group * 4:group * 4 + 4]
         files = {case["case_id"]: read_case(case["case_id"]) for case in family_cases}
-        families.append(audit_saved_family(family_cases, result["cases"][group * 72:(group + 1) * 72],
-                                           files, family_index=group, vocabulary_size=vocabulary_size))
+        family_records = result["cases"][group * 72:(group + 1) * 72]
+        report = audit_saved_family(family_cases, family_records, files, family_index=group, vocabulary_size=vocabulary_size)
+        if verify_metadata:
+            validate_recorded_family_metadata(family_cases, family_records, report, result["family_doses"][group],
+                                              result["case_diagnostics"][group * 4:(group + 1) * 4])
+        families.append(report)
     aggregate = summarize_study(families)
+    if verify_metadata and not _typed_equal(result["summary"], _expected_runner_summary(aggregate)):
+        raise ValueError("recorded summary differs from saved bytes")
     aggregate["scope"] = "saved-record numerical and landing-witness consistency only; receipt, source and execution are not authenticated"
     return aggregate

@@ -25,15 +25,21 @@ slice offsets, lengths and SHA-256 digests, complete scores, no-op/clean
 controls, pre-action input equality and full projection-output finiteness. It
 reports every output norm and pair residual. `replay_result` checks all eight
 families, the fixed schedule, 576 counters and aggregate payload length; its
-callback is invoked for only one family of four case files at a time.
+callback is invoked for only one family of four case files at a time. With
+`verify_metadata=True`, it also compares every recorded family-dose and
+intervention field, projection diagnostic and the complete runner summary to
+the replay, including binary64 signed zero. `audit_journal` independently
+reconciles all 1,769 saved journal events against the result and rejects extra,
+failed or incomplete sequences. These functions must be used together.
 `summarize_study` preserves every family and uses `math.fsum` for means. The
 default vocabulary size is 50,257; smaller explicit sizes exist only for
 fabricated tests.
 
 These functions are **not yet a complete study evidence reader**. In
 particular, they do not bind the case file, manifest, exposure inventory,
-source revision, process receipt, whole-file hashes, journal or runner's
-summary to an independently published identity. The eventual caller must
+source revision, process receipt or whole-file hashes to an independently
+published identity. Journal and metadata consistency checks do not prove
+their claimed execution. The eventual caller must
 perform those checks before reporting an execution complete, and must preserve
 partial/failure records without silently retrying. `read_case` must itself
 enforce a bounded read; the function checks byte length after it returns. The
