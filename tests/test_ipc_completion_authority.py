@@ -161,14 +161,16 @@ def test_server_will_not_start_after_the_owner_is_already_unsafe():
         stop_owner(model, broker)
 
 
-def test_binding_inspection_failure_marks_the_pinned_owner():
+def test_binding_removal_marks_the_pinned_owner_before_server_start():
     model, _, _, _, _, authority, _, broker, _ = make_owner()
     server = IPCServer(broker, completion_authority=authority)
     try:
         del broker._completion_authority
         with pytest.raises(Exception):
             server.start()
-        assert authority.unsafe and server.custody_quarantined
+        assert authority.unsafe and broker.quarantined
+        # No socket or transport custody was acquired before this denial.
+        assert not server.custody_quarantined
     finally:
         broker._completion_authority = authority
         server.close(timeout=1)

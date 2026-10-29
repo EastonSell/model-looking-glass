@@ -19,9 +19,11 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import weakref
 
 from .device_identity import resolve_device_identity
+from .agreement_calibration_workspace import shared_workspace_root
 from .device_lease import DeviceLease
 from .bert_gpu_evidence import write_json_new as _write_json
 from .gpu_oneshot import (_owner_presence_after_exit, _runtime_uuid, _smi_snapshot,
@@ -31,7 +33,7 @@ from .supervisor import OwnerSession, run_supervised
 
 
 _GIB = 1024 ** 3
-_PROTOCOL = 'experiments/grouped_gpu_dev_v1.json'
+_PROTOCOL = 'experiments/grouped_gpu_dev_v2.json'
 _SOURCE_PATHS = (
     _PROTOCOL, 'scripts/grouped_gpu_dev_bootstrap.py', 'looking_glass/__init__.py',
     'looking_glass/grouped_gpu_dev.py', 'looking_glass/bert_gpu_evidence.py',
@@ -43,14 +45,40 @@ _SOURCE_PATHS = (
     'looking_glass/fair_queue.py', 'looking_glass/microbatch.py',
     'looking_glass/grouped_worker.py', 'looking_glass/grouped_broker_state.py',
     'looking_glass/grouped_broker.py', 'looking_glass/batch_validation.py',
-    'looking_glass/certified_batch_policy.py',
+    'looking_glass/certified_batch_policy.py', 'looking_glass/grouped_observation.py',
+    'looking_glass/grouped_owner_worker.py', 'looking_glass/owner_completion.py',
+    'looking_glass/agreement_calibration_workspace.py',
+    'scripts/v2_source_guards.py',
 )
 # The owner remains process-rooted on every failure.  Its device lease is held
 # until process exit; no exception path makes a clean attestation.
-_ROOTS = [None] * 19
+_ROOTS = [None] * 25
+# The dedicated driver is single-threaded. A slot for each permitted nested
+# call retains completed results independently of public exception frames.
+_CUDA_RESULTS = [None] * 8
+_CUDA_ERRORS = [None] * 8
+_CUDA_INTERRUPTS = [None] * 8
+# An extra marker covers rejection at the maximum depth before work starts.
+_CUDA_PENDING = [False] * 9
+_CUDA_DEPTH = 0
+_ATTEMPT_LOCK = threading.Lock()
+_ATTEMPT_STARTED = False
+_NO_CHILD_POPEN = None
 # The shared session-bound CUDA transition is not yet integrated or reviewed.
 # No parent or child may start the GPU pilot until that changes with tests.
 _GPU_BOUNDARY_READY = False
+
+
+class _AttemptAlreadyStarted(RuntimeError):
+    pass
+
+
+def _claim_attempt():
+    global _ATTEMPT_STARTED
+    with _ATTEMPT_LOCK:
+        if _ATTEMPT_STARTED:
+            raise _AttemptAlreadyStarted('only one grouped owner attempt is allowed per process')
+        _ATTEMPT_STARTED = True
 
 
 def _canonical(value):
@@ -71,6 +99,28 @@ def _require_gpu_boundary():
         raise RuntimeError('the session-bound GPU worker boundary has not been reviewed')
 
 
+def _workspace_root(repo, requested):
+    expected = shared_workspace_root(repo)
+    path = Path(requested)
+    if not path.is_absolute() or path.resolve(strict=True) != expected:
+        raise ValueError('workspace root differs from the shared device namespace')
+    return expected
+
+
+def _validate_workspace_spec(session, repo):
+    spec = getattr(session, '_identity_spec', None)
+    if type(spec) is not dict or type(spec.get('workspace_root')) is not str:
+        raise RuntimeError('a supervised physical-device workspace is required')
+    _workspace_root(repo, spec['workspace_root'])
+
+
+def _validate_workspace_binding(session, repo):
+    identity = session.identity
+    if identity is None:
+        raise RuntimeError('a supervised physical-device identity is required')
+    _workspace_root(repo, identity.workspace_root)
+
+
 def _require_bootstrap():
     package = str(Path(__file__).resolve().parent)
     if (not sys.flags.isolated or not sys.flags.no_site or not sys.dont_write_bytecode
@@ -86,14 +136,16 @@ def _protocol(path, expected_sha256):
         raise ValueError('fixed protocol bytes differ from the frozen digest')
     value = json.loads(raw)
     fixed = {
-        'schema': 'grouped-gpu-development-v1',
+        'schema': 'grouped-gpu-development-v2',
         'model': 'distilbert/distilgpt2',
         'revision': '2290a62682d06624634c1f46a6ad5be0f47f38aa',
         'seed': 2026102808, 'device': 'cuda:0', 'dtype': 'float32',
         'attention': 'eager', 'cache': 'disabled', 'autocast': 'disabled',
         'allocator_fraction': .25, 'minimum_preload_free_bytes': 5 * _GIB,
         'minimum_reserve_bytes': _GIB // 2, 'resident_commitment_bytes': 2 * _GIB,
-        'forward_commitment_bytes': _GIB, 'per_request_shape': [1, 4],
+        'forward_commitment_bytes': _GIB, 'workspace_lifetime': 'retained-through-process-exit',
+        'child_process_policy': 'popen-disabled-job-fail-closed',
+        'per_request_shape': [1, 4],
         'combined_shape': [2, 4], 'model_output_width': 50257,
         'resident_input_limit_bytes': 128, 'resident_output_limit_bytes': 2 * 1024 ** 2,
         'absolute_tolerance': 1e-6, 'relative_tolerance': 1e-5,
@@ -119,45 +171,169 @@ def _protocol(path, expected_sha256):
     return value
 
 
+def _git(repo, *args):
+    executable = shutil.which('git')
+    if executable is None:
+        raise RuntimeError('Git is unavailable for parent source verification')
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.upper().startswith('GIT_')}
+    environment.update({'GIT_NO_REPLACE_OBJECTS': '1', 'GIT_GRAFT_FILE': os.devnull,
+                        'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': os.devnull,
+                        'GIT_ATTR_NOSYSTEM': '1', 'GIT_TERMINAL_PROMPT': '0'})
+    result = subprocess.run([executable, '--no-replace-objects', '-c', 'core.fsmonitor=false',
+                             '-C', str(repo), *args], capture_output=True, check=True,
+                            timeout=10, env=environment)
+    return result.stdout
+
+
 def _verify_sources(repo, commit):
+    if type(commit) is not str or re.fullmatch(r'[0-9a-f]{40}', commit) is None:
+        raise ValueError('an exact source commit is required')
     hashes = {}
     for path in _SOURCE_PATHS:
         current = (repo / path).read_bytes()
-        recorded = subprocess.run(['git', 'show', commit + ':' + path], cwd=repo,
-                                  capture_output=True, check=True, timeout=10).stdout
+        recorded = _git(repo, 'show', commit + ':' + path)
         if current != recorded:
             raise RuntimeError('committed source bytes do not match the checkout')
         hashes[path] = hashlib.sha256(current).hexdigest()
     return hashes
 
 
+def _verify_child_sources(repo, run_dir, run_id, commit, manifest_sha256):
+    """Recheck parent-verified source bytes without spawning a child process."""
+    if (type(manifest_sha256) is not str or re.fullmatch(r'[0-9a-f]{64}', manifest_sha256) is None
+            or type(commit) is not str or re.fullmatch(r'[0-9a-f]{40}', commit) is None):
+        raise RuntimeError('invalid parent source binding')
+    raw = _bounded_bytes(run_dir / 'source-manifest.json', 65536)
+    if hashlib.sha256(raw).hexdigest() != manifest_sha256:
+        raise RuntimeError('parent source manifest digest differs')
+    manifest = json.loads(raw)
+    if (type(manifest) is not dict or set(manifest) != {'schema', 'run_id', 'source_commit', 'source_sha256'}
+            or manifest['schema'] != 'grouped-gpu-source-manifest-v1' or manifest['run_id'] != run_id
+            or manifest['source_commit'] != commit or type(manifest['source_sha256']) is not dict
+            or set(manifest['source_sha256']) != set(_SOURCE_PATHS)):
+        raise RuntimeError('parent source manifest does not match this owner')
+    hashes = manifest['source_sha256']
+    for path in _SOURCE_PATHS:
+        digest = hashes[path]
+        if (type(digest) is not str or re.fullmatch(r'[0-9a-f]{64}', digest) is None
+                or hashlib.sha256(_bounded_bytes(repo / path, 4 * 1024 * 1024)).hexdigest() != digest):
+            raise RuntimeError('owner source bytes differ from the parent manifest')
+    return hashes
+
+
+def _install_no_child_processes():
+    """Block ``subprocess.Popen`` inside the trusted one-shot owner.
+
+    Calls through ``os.system``, ``os.spawn*`` or native APIs are not blocked.
+    The Windows Job fails closed if a descendant is not fully inventoried.
+    This is an in-process contract, not a sandbox.
+    """
+    global _NO_CHILD_POPEN
+    base = subprocess.Popen
+    if (type(base) is not type or base.__module__ != 'subprocess' or base.__name__ != 'Popen'
+            or _NO_CHILD_POPEN is not None):
+        raise RuntimeError('unexpected subprocess policy before owner setup')
+
+    class UnavailablePopen(base):
+        def __init__(self, *args, **kwargs):
+            raise OSError('subprocess creation is disabled in the grouped owner')
+
+        def __del__(self):
+            pass
+
+    _NO_CHILD_POPEN = UnavailablePopen
+    subprocess.Popen = UnavailablePopen
+
+
+def _assert_no_child_processes():
+    if _NO_CHILD_POPEN is None or subprocess.Popen is not _NO_CHILD_POPEN:
+        raise RuntimeError('the owner subprocess policy changed')
+
+
+def _cuda_uncertain():
+    # Active ancestors are expected; a pending call at or below the current
+    # depth represents an abandoned/failed call whose handler may not have
+    # reached the ordinary exception latch.
+    return _ROOTS[15] is not None or any(_CUDA_PENDING[_CUDA_DEPTH:])
+
+
+def _assert_disposable_return_slots():
+    if (_CUDA_DEPTH != 0 or _cuda_uncertain()
+            or any(type(value) not in (type(None), bool, int, float, str) for value in _CUDA_RESULTS)):
+        raise RuntimeError('guarded return slots retain uncertain or resource-bearing values')
+
+
 def _cuda(session, lease, operation, /, *args, **kwargs):
     """Check the owner before each operation and stop after any uncertain call.
 
+    A returned object remains in its preallocated nesting slot until that slot
+    is reused. The single driver must transfer it before a later call reuses
+    that slot. Deeper nesting is rejected before another operation begins.
     A rooted exception preserves its known Python references until process exit.
     Repeated asynchronous interruption and inaccessible runtime temporaries
     still require process-level recovery.
     """
-    if _ROOTS[15] is not None:
+    global _CUDA_DEPTH
+    if _cuda_uncertain():
         raise RuntimeError('device operation is prohibited after uncertain failure')
+    depth = _CUDA_DEPTH
+    result = None
     try:
+        _CUDA_PENDING[depth] = True
+        if depth >= len(_CUDA_RESULTS):
+            raise RuntimeError('device operation nesting exceeds custody capacity')
+        _CUDA_DEPTH = depth + 1
+        if _NO_CHILD_POPEN is not None:
+            _assert_no_child_processes()
         OwnerSession.check(session, lease)
         worker = _ROOTS[6]
+        authority = _ROOTS[20]
+        if authority is not None and authority.unsafe:
+            raise RuntimeError('device owner authority is unsafe')
         if worker is not None and (worker.quarantined or worker.failed):
             raise RuntimeError('resident worker is unavailable')
         result = operation(*args, **kwargs)
+        _CUDA_RESULTS[depth] = result
         OwnerSession.check(session, lease)
-        if _ROOTS[15] is not None:
+        if _NO_CHILD_POPEN is not None:
+            _assert_no_child_processes()
+        if _cuda_uncertain():
             raise RuntimeError('device operation observed nested uncertain failure') from _ROOTS[15]
+        if authority is not None and authority.unsafe:
+            raise RuntimeError('device owner authority became unsafe')
         if worker is not None and (worker.quarantined or worker.failed):
             raise RuntimeError('resident worker became unavailable')
+        _CUDA_PENDING[depth] = False
         return result
     except BaseException as exc:
+        if depth < len(_CUDA_ERRORS):
+            # If a one-shot interruption lands before the first store, the
+            # finally block still roots the original error and its partials.
+            try:
+                _CUDA_ERRORS[depth] = exc
+            finally:
+                _CUDA_ERRORS[depth] = exc
+        # A single interrupt before the normal slot assignment can leave a
+        # returned object only in this frame. Retain it independently of the
+        # exception traceback, which a caller may clear after receiving it.
+        if result is not None and depth < len(_CUDA_RESULTS):
+            _CUDA_RESULTS[depth] = result
         if _ROOTS[15] is None:
             _ROOTS[15] = exc
         else:
             _ROOTS[18] = exc
         raise
+    finally:
+        if depth < len(_CUDA_ERRORS) and _CUDA_PENDING[depth] and _CUDA_ERRORS[depth] is None:
+            # A single interrupt can land on entry to the exception handler,
+            # before its own custody store. Preserve both that interruption
+            # and the original context before control reaches the caller.
+            active = sys.exc_info()[1]
+            if active is not None:
+                _CUDA_INTERRUPTS[depth] = active
+                _CUDA_ERRORS[depth] = active.__context__ if active.__context__ is not None else active
+        _CUDA_DEPTH = depth
 
 
 def _snapshot(session, lease, torch):
@@ -312,7 +488,8 @@ def _public_memory(record):
             result[key] = value if type(value) is int and 0 <= value <= 2 ** 63 - 1 else None
     kind = record.get('admission_kind')
     if type(kind) is str and re.fullmatch(
-            r'resident|precopy|forward-(?:serial-[01]-[01]|mixed-[01]|heldout-serial-[01]-[01]|heldout-group-[01])',
+            r'resident|precopy|workspace|owner-verify|'
+            r'forward-(?:serial-[01]-[01]|mixed-[01]|heldout-serial-[01]-[01]|heldout-group-[01])',
             kind):
         result['admission_kind'] = kind
     return result
@@ -347,7 +524,7 @@ def _public_measurement(measurement):
 
 
 def _verify_promotion(run_dir, run_id, supervised, gpu_uuid, protocol, protocol_sha256, expected_assets,
-                      source_hashes, *, _expected_device='cuda:0'):
+                      source_hashes, *, source_commit, _expected_device='cuda:0'):
     """Reconcile retained evidence before a clean child can become a pass.
 
     This checks consistency of the trusted owner's records; it cannot replay
@@ -366,6 +543,8 @@ def _verify_promotion(run_dir, run_id, supervised, gpu_uuid, protocol, protocol_
             raise RuntimeError('saved owner evidence is incomplete or inconsistent')
 
     owner = read('owner.json')
+    started = read('started.json')
+    manifest = read('source-manifest.json', 65536)
     candidate = read('candidate.json')
     observation = read('observations.json')
     runtime = read('private-runtime.json')
@@ -377,7 +556,13 @@ def _verify_promotion(run_dir, run_id, supervised, gpu_uuid, protocol, protocol_
     policy = read('frozen-policy.json')
     sample = read('sample-evidence.json')
     identity = {'run_id': run_id, 'supervisor_run_id': supervised.run_id, 'pid': supervised.pid}
-    require(owner == {'schema': 'grouped-gpu-owner-v1', **identity})
+    manifest_sha = inventory['source-manifest.json']['sha256']
+    require(manifest == {'schema': 'grouped-gpu-source-manifest-v1', 'run_id': run_id,
+                         'source_commit': source_commit, 'source_sha256': source_hashes})
+    require(started == {'schema': 'grouped-gpu-start-v1', 'run_id': run_id,
+                        'source_commit': source_commit, 'protocol_sha256': protocol_sha256,
+                        'source_manifest_sha256': manifest_sha})
+    require(owner == {'schema': 'grouped-gpu-owner-v1', **identity, 'source_manifest_sha256': manifest_sha})
     require(candidate.get('schema') == 'grouped-gpu-candidate-v1'
             and all(candidate.get(key) == item for key, item in identity.items()))
     require(_canonical(supervision) == _canonical({'schema': 'grouped-gpu-supervision-v1', **identity,
@@ -517,16 +702,22 @@ def _verify_promotion(run_dir, run_id, supervised, gpu_uuid, protocol, protocol_
                     and record['device_free_bytes'] >= reserve + committed + requested
                     and record['device_total_bytes'] >= record['reserved_bytes'] + reserve + committed + requested
                     and record['admissible_estimate_bytes'] >= requested)
-    expected_stages = ['before_model_load', 'admission', 'admission', 'after_model_load']
+    expected_stages = ['before_model_load', 'admission', 'admission', 'after_model_load',
+                       'admission', 'admission']
     for entry in expected_entries:
-        expected_stages.extend(['before-' + entry['request_id'], 'admission', 'after-' + entry['request_id']])
+        expected_stages.extend(['before-' + entry['request_id'], 'admission', 'admission',
+                                'after-' + entry['request_id']])
     require([record.get('stage') for record in memory] == expected_stages
             and memory[0]['device_free_bytes'] >= protocol['minimum_preload_free_bytes'])
     admissions = [record for record in memory if record['stage'] == 'admission']
     expected_admissions = [('resident', 0, protocol['resident_commitment_bytes']),
-                           ('precopy', protocol['resident_commitment_bytes'], 0)]
-    expected_admissions.extend(('forward-' + entry['request_id'], protocol['resident_commitment_bytes'],
-                                protocol['forward_commitment_bytes']) for entry in expected_entries)
+                           ('precopy', protocol['resident_commitment_bytes'], 0),
+                           ('workspace', protocol['resident_commitment_bytes'], protocol['forward_commitment_bytes']),
+                           ('owner-verify', protocol['resident_commitment_bytes'] +
+                            protocol['forward_commitment_bytes'], 0)]
+    for entry in expected_entries:
+        expected_admissions.extend([('forward-' + entry['request_id'], protocol['resident_commitment_bytes'] +
+                                     protocol['forward_commitment_bytes'], 0)] * 2)
     require([(item.get('admission_kind'), item.get('committed_incremental_bytes'),
               item.get('requested_incremental_bytes')) for item in admissions] == expected_admissions)
     for entry in expected_entries:
@@ -660,18 +851,22 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
     if _worker_device not in ('cuda:0', 'cpu'):
         raise ValueError('unsupported internal test device')
     from . import batch_validation
-    from .budgeted_worker import BudgetedWorker, DeviceAdmission, WorkloadProfile
+    from .budgeted_worker import WorkloadProfile
     from .certified_batch_policy import CertifiedBatchPolicy, runtime_fingerprint
     from .cuda_cleanup import clear_cublas_after_drain
     from .grouped_broker import GroupedBroker, SnapshotReservation, ValidationReservation
+    from .grouped_owner_worker import GroupedWorkspaceWorker, retire_grouped_owner
     from .grouped_worker import GroupedWorker
     from .host_budget import HostBudget
     from .memory_budget import CudaMemorySnapshot, MemoryBudget
     from .microbatch import BatchProfile, ForwardContract
+    from .owner_completion import OwnerCompletionAuthority
     from .pretrained import ASSETS, REVISION, load_distilgpt2
     from .resident_worker import ForwardRequest, ResidentWorker
 
+    _assert_no_child_processes()
     OwnerSession.check(session, lease)
+    _validate_workspace_binding(session, Path(__file__).resolve().parents[1])
     if (not _cuda(session, lease, torch.cuda.is_available)
             or _cuda(session, lease, torch.cuda.device_count) != 1):
         raise RuntimeError('the leased CUDA device is unavailable')
@@ -775,25 +970,45 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
     if model.get_input_embeddings().weight is not model.get_output_embeddings().weight:
         raise RuntimeError('tied embedding/output weights were not preserved')
     observe('after_model_load')
+    # Keep the forward workspace charged for the whole owner lifetime, not
+    # merely until an individual forward returns. Both leases survive until
+    # the supervised process exits, even after successful teardown.
+    admission_context = ('workspace', protocol['forward_commitment_bytes'])
+    workspace_lease = budget.acquire(protocol['forward_commitment_bytes'], max_gpu_trace_bytes=0,
+                                     max_host_trace_bytes=0)
+    _ROOTS[19] = workspace_lease
+    admission_context = None
     model_id = hashlib.sha256(_canonical(bundle.metadata['asset_sha256'])).hexdigest()
     resident = ResidentWorker(model_id, model, device=_worker_device, max_batch_size=2,
         max_sequence_length=4, max_input_bytes=protocol['resident_input_limit_bytes'],
         max_output_bytes=protocol['resident_output_limit_bytes'])
     _ROOTS[5] = resident
-    admission = DeviceAdmission(budget, device=_worker_device,
-                                max_estimated_incremental_bytes=protocol['forward_commitment_bytes'])
     schemas = (('attention_mask', 'torch.int64'), ('input_ids', 'torch.int64'))
     profiles = tuple(WorkloadProfile('grouped-dev-' + str(rows), model_id, _worker_device, (rows, 4),
         schemas, protocol['resident_output_limit_bytes'], protocol['forward_commitment_bytes'])
         for rows in (1, 2))
-    worker = BudgetedWorker(resident, admission, profiles)
+    def owner_guard():
+        _assert_no_child_processes()
+        if _cuda_uncertain():
+            raise RuntimeError('device owner has a pending uncertain failure')
+        OwnerSession.check(session, lease)
+        _assert_no_child_processes()
+        if _cuda_uncertain():
+            raise RuntimeError('device owner became uncertain during its lease check')
+
+    authority = OwnerCompletionAuthority(device_guard=owner_guard)
+    _ROOTS[20] = authority
+    admission_context = ('owner-verify', 0)
+    worker = GroupedWorkspaceWorker(resident, budget, resident_lease, workspace_lease,
+                                    profiles=profiles, authority=authority, seed=protocol['seed'])
     _ROOTS[6] = worker
-    contract = ForwardContract(model_id, REVISION, 'grouped-gpu-development-v1', _worker_device,
+    admission_context = None
+    contract = ForwardContract(model_id, REVISION, 'grouped-gpu-development-v2', _worker_device,
         torch.float32, 'sha256:' + runtime_digest, protocol['seed'], True, True,
         'eval', 'none', 'disabled', 'none', False, False)
     input_schema = (('attention_mask', torch.int64), ('input_ids', torch.int64))
     output_bytes = 2 * 4 * protocol['model_output_width'] * 4
-    profile = BatchProfile('grouped-gpu-development-v1', 'gpu-sampled-v1', contract,
+    profile = BatchProfile('grouped-gpu-development-v2', 'gpu-sampled-v2', contract,
         input_schema, (1, 4), torch.float32, protocol['model_output_width'],
         protocol['absolute_tolerance'], protocol['relative_tolerance'], (2,),
         2, 1, 2, 8, 128, output_bytes, 128 + output_bytes)
@@ -850,11 +1065,15 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
             before_forward = observe('before-' + request_id)
             _check_peak_reset(before_forward)
             count = len(observed)
-            admission_context = ('forward-' + request_id, protocol['forward_commitment_bytes'])
+            admission_context = ('forward-' + request_id, 0)
             sys.setprofile(model_observer)
             try:
-                result = _cuda(session, lease, worker.execute,
-                               ForwardRequest(request_id, values, seed)).logits
+                producer = _cuda(session, lease, worker.execute_control,
+                                 ForwardRequest(request_id, values, seed))
+                _ROOTS[21] = producer
+                _cuda(session, lease, worker.confirm_control_result, producer)
+                result = producer.logits
+                _ROOTS[21] = producer = None
             finally:
                 sys.setprofile(None)
                 admission_context = None
@@ -875,7 +1094,7 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
     report = batch_validation.run_validation(frozen, binding, sample_groups, measured_forward,
                                               expected_protocol_sha256=frozen['protocol_sha256'])
     _write_json(run_dir / 'sample-evidence.json', report)
-    if _ROOTS[15] is not None:
+    if _cuda_uncertain():
         raise RuntimeError('sampled forward failed; device owner requires replacement')
     if worker.failed or worker.quarantined:
         raise RuntimeError('worker became unavailable during sampled validation')
@@ -931,7 +1150,7 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
             before_forward = observe(f'before-heldout-group-{i}')
             _check_peak_reset(before_forward)
             count = len(observed)
-            admission_context = (f'forward-heldout-group-{i}', protocol['forward_commitment_bytes'])
+            admission_context = (f'forward-heldout-group-{i}', 0)
             sys.setprofile(model_observer)
             try:
                 if not _cuda(session, lease, broker.run_once, timeout=3):
@@ -970,7 +1189,8 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
                 handle.dispose()
             if host.snapshot().used_bytes or worker.quarantined:
                 raise RuntimeError('host claims or device state remain uncertain after a cohort')
-        broker.close()
+        if not _cuda(session, lease, broker.close):
+            raise RuntimeError('grouped broker did not close cleanly')
     status = ('passed' if report['status'] == 'passed' and len(holdout) == 2
               and all(group['status'] == 'compared' and len(group['comparisons']) == 2 for group in holdout)
               and all(case['status'] == 'matched' for group in holdout for case in group['comparisons'])
@@ -985,24 +1205,46 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
     # and both independent host ledgers have been disposed by their owners.
     sample_groups = heldout_groups = group = cases = case = None
     serial = reference = results = handles = tickets = ticket = handle = None
-    control_claim.release()
-    control_request.close()
+    _assert_disposable_return_slots()
+    _cuda(session, lease, control_claim.release)
+    _cuda(session, lease, control_request.close)
     if control_budget.snapshot().used_bytes != 0:
         raise RuntimeError('control host claims remain after validation')
     if host is not None and host.snapshot().used_bytes != 0:
         raise RuntimeError('broker host claims remain after validation')
     if worker.quarantined or worker.failed:
         raise RuntimeError('worker is not healthy before teardown')
-    worker.close()
-    _ROOTS[4] = _ROOTS[5] = _ROOTS[6] = _ROOTS[11] = _ROOTS[12] = _ROOTS[16] = None
-    broker = grouped = resident = worker = bundle = model = None
-    gc.collect()
+    if broker is None:
+        raise RuntimeError('validation did not establish a grouped owner to retire')
+    _cuda(session, lease, worker.close)
+    _cuda(session, lease, resident.close)
+    if not _cuda(session, lease, retire_grouped_owner, worker, broker, callers_quiescent=True):
+        raise RuntimeError('grouped owner did not retire exactly once')
+    _assert_disposable_return_slots()
+    # Do not keep a worker local in the helper performing the final drop: it
+    # owns the model. The physical owner and both fixed claims stay rooted.
+    try:
+        OwnerSession.check(session, lease)
+        if authority.unsafe or _cuda_uncertain():
+            raise RuntimeError('device owner became unsafe before final disposal')
+        _ROOTS[4] = _ROOTS[5] = _ROOTS[6] = _ROOTS[11] = _ROOTS[12] = _ROOTS[16] = None
+        broker = grouped = resident = worker = bundle = model = None
+        gc.collect()
+        OwnerSession.check(session, lease)
+        if authority.unsafe or _cuda_uncertain():
+            raise RuntimeError('device owner became unsafe during final disposal')
+    except BaseException as exc:
+        if _ROOTS[15] is None:
+            _ROOTS[15] = exc
+        else:
+            _ROOTS[18] = exc
+        raise
     if model_ref() is not None:
         raise RuntimeError('model object remains alive after owner teardown')
     cleanup = _cuda(session, lease, clear_cublas_after_drain, session=session, lease=lease, torch=torch)
     if cleanup['after'] != {'allocated_bytes': 0, 'reserved_bytes': 0}:
         raise RuntimeError('CUDA allocator still owns bytes after teardown')
-    if budget.active_leases() != (resident_lease,):
+    if set(budget.active_leases()) != {resident_lease, workspace_lease}:
         raise RuntimeError('unexpected device memory commitments remain active')
     return {'status': status, 'runtime_sha256': runtime_digest, 'sample_status': report['status'],
             'sample_evidence_sha256': report['evidence_sha256'], 'holdout': holdout, 'model_entries': entries,
@@ -1018,31 +1260,44 @@ def _run(session, lease, torch, transformers, *, cache, protocol, run_dir, drive
                             'repeated async interruption and return-before-assignment require process recovery']}
 
 
-def _owner_main(run_dir, cache_dir, run_id, commit, protocol_sha256, driver):
+def _owner_main(run_dir, cache_dir, run_id, commit, protocol_sha256, driver, source_manifest_sha256=None):
     """Run only under the real supervisor; never attest after an exception."""
     try:
         _require_bootstrap()
         _require_supervisor()
         _require_gpu_boundary()
+        _claim_attempt()
         if any(name == root or name.startswith(root + '.') for name in sys.modules
                for root in ('torch', 'transformers', 'huggingface_hub')):
             raise RuntimeError('CUDA-capable modules were imported before the device lease')
+        _install_no_child_processes()
+        _assert_no_child_processes()
         session = OwnerSession.from_environment()
         _ROOTS[0] = session
+        repo = Path(__file__).resolve().parents[1]
+        _validate_workspace_spec(session, repo)
+        sources = _verify_child_sources(repo, Path(run_dir), run_id, commit, source_manifest_sha256)
+        # The child takes independent leases before device acquisition. If the
+        # controller dies, its handles may close while these remain held until
+        # this child exits; a second verification binds the protected bytes.
+        _protect_sources(repo, sources)
+        _protect_manifest(repo, sources, Path(run_dir))
+        if _verify_child_sources(repo, Path(run_dir), run_id, commit, source_manifest_sha256) != sources:
+            raise RuntimeError('source bytes changed while acquiring child protection')
         lease = DeviceLease.acquire(session.device_lease_path, timeout=30)
         _ROOTS[1] = lease
         OwnerSession.check(session, lease)
-        if session.identity is None:
-            raise RuntimeError('a supervised physical-device identity is required')
-        repo = Path(__file__).resolve().parents[1]
-        sources = _verify_sources(repo, commit)
+        _validate_workspace_binding(session, repo)
         if sources[_PROTOCOL] != protocol_sha256:
             raise RuntimeError('protocol differs from the parent-frozen digest')
         protocol = _protocol(repo / _PROTOCOL, protocol_sha256)
         _write_json(Path(run_dir) / 'owner.json', {'schema': 'grouped-gpu-owner-v1',
-                    'run_id': run_id, 'supervisor_run_id': session.run_id, 'pid': os.getpid()})
+                    'run_id': run_id, 'supervisor_run_id': session.run_id, 'pid': os.getpid(),
+                    'source_manifest_sha256': source_manifest_sha256})
         OwnerSession.check(session, lease)
         import torch
+        if torch.__version__ != '2.8.0+cu128' or torch.version.cuda != '12.8':
+            raise RuntimeError('PyTorch or CUDA build differs from the fixed contract')
         _configure(session, lease, torch, protocol)
         _bind_device(session, lease, torch)
         import transformers
@@ -1051,11 +1306,13 @@ def _owner_main(run_dir, cache_dir, run_id, commit, protocol_sha256, driver):
         candidate = {'schema': 'grouped-gpu-candidate-v1', 'run_id': run_id,
                      'supervisor_run_id': session.run_id, 'pid': os.getpid(), 'result': result}
         _write_json(Path(run_dir) / 'candidate.json', candidate)
-        if _ROOTS[15] is not None:
+        if _cuda_uncertain():
             raise RuntimeError('device owner remains uncertain before clean attestation')
         OwnerSession.check(session, lease)
         OwnerSession.attest_clean(session, lease)
         return 0
+    except _AttemptAlreadyStarted:
+        raise
     except BaseException as exc:
         _ROOTS[13] = exc
         try:
@@ -1070,13 +1327,59 @@ def _owner_main(run_dir, cache_dir, run_id, commit, protocol_sha256, driver):
         return 1
 
 
+def _source_guard_types(repo, expected_sha256):
+    source = repo / 'scripts/v2_source_guards.py'
+    raw = _bounded_bytes(source, 131072)
+    if hashlib.sha256(raw).hexdigest() != expected_sha256:
+        raise RuntimeError('source-guard code differs from the verified checkout')
+    namespace = {'__name__': '_grouped_process_job', '__file__': str(source)}
+    exec(compile(raw, str(source), 'exec'), namespace)
+    return namespace
+
+
+def _protect_sources(repo, sources):
+    guard_type = _source_guard_types(repo, sources['scripts/v2_source_guards.py'])['SourceFileLease']
+    guard = guard_type.__new__(guard_type)
+    _ROOTS[23] = guard
+    guard_type.__init__(guard, repo, [repo / name for name in _SOURCE_PATHS])
+    guard.__enter__()
+    return guard
+
+
+def _protect_manifest(repo, sources, run_dir):
+    guard_type = _source_guard_types(repo, sources['scripts/v2_source_guards.py'])['SourceFileLease']
+    guard = guard_type.__new__(guard_type)
+    _ROOTS[24] = guard
+    guard_type.__init__(guard, run_dir, [run_dir / 'source-manifest.json'])
+    guard.__enter__()
+    return guard
+
+
+def _new_process_job(repo, expected_sha256):
+    namespace = _source_guard_types(repo, expected_sha256)
+    job_type = namespace['WindowsJob']
+    job = job_type.__new__(job_type)
+    _ROOTS[22] = job
+    job_type.__init__(job)
+    return job
+
+
+def _supervise_owner(command, *, identity, repo, environment, job_source_sha256):
+    job = _new_process_job(repo, job_source_sha256)
+    return run_supervised(command, device_lease_path=identity.lock_path, marker_path=identity.marker_path,
+                          identity=identity, timeout=900, lease_timeout=30, cwd=repo,
+                          env=environment, inherit_environment=False, require_zero_exit=True, process_job=job)
+
+
 def run_development(*, workspace_root, cache_dir, output, site_packages, smi):
     """Supervise the fixed development owner and publish a redacted record."""
     _require_bootstrap()
     _require_supervisor()
     _require_gpu_boundary()
+    _claim_attempt()
     _verify_controller_import_mode()
-    root = Path(workspace_root).resolve(strict=True)
+    repo = Path(__file__).resolve().parents[1]
+    root = _workspace_root(repo, workspace_root)
     cache = Path(cache_dir).resolve(strict=True)
     site = Path(site_packages).resolve(strict=True)
     if str(site) != os.environ.get('LOOKING_GLASS_GROUPED_SITE'):
@@ -1086,14 +1389,19 @@ def run_development(*, workspace_root, cache_dir, output, site_packages, smi):
         raise ValueError('output must be an absolute new path with an existing parent')
     with tempfile.NamedTemporaryFile(prefix='.grouped-write-test-', dir=destination.parent):
         pass
-    repo = Path(__file__).resolve().parents[1]
-    commit = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=repo, capture_output=True,
-                            text=True, check=True, timeout=10).stdout.strip()
-    dirty = subprocess.run(['git', 'status', '--porcelain', '--untracked-files=all'], cwd=repo,
-                           capture_output=True, text=True, check=True, timeout=10).stdout
+    commit = _git(repo, 'rev-parse', '--verify', 'HEAD').strip().decode('ascii')
+    dirty = _git(repo, 'status', '--porcelain', '--untracked-files=all')
     if re.fullmatch(r'[0-9a-f]{40}', commit) is None or dirty:
         raise RuntimeError('a clean committed source checkout is required')
     sources = _verify_sources(repo, commit)
+    _protect_sources(repo, sources)
+    # The controller/bootstrap started before the share leases and is a
+    # trusted quiescent-start assumption. Recheck all committed source bytes
+    # under the leases before the child can import any project module.
+    if (_git(repo, 'rev-parse', '--verify', 'HEAD').strip().decode('ascii') != commit
+            or _git(repo, 'status', '--porcelain', '--untracked-files=all')
+            or _verify_sources(repo, commit) != sources):
+        raise RuntimeError('source checkout changed while acquiring protection')
     protocol_sha256 = sources[_PROTOCOL]
     protocol = _protocol(repo / _PROTOCOL, protocol_sha256)
     _verify_offline_cache(cache)
@@ -1118,8 +1426,15 @@ def run_development(*, workspace_root, cache_dir, output, site_packages, smi):
     prefix = Path(tempfile.mkdtemp(prefix='pycache-', dir=run_dir))
     environment['PYTHONPYCACHEPREFIX'] = str(prefix)
     run_id = secrets.token_hex(16)
+    _write_json(run_dir / 'source-manifest.json', {'schema': 'grouped-gpu-source-manifest-v1',
+                'run_id': run_id, 'source_commit': commit, 'source_sha256': sources})
+    source_manifest_sha256 = hashlib.sha256(_bounded_bytes(run_dir / 'source-manifest.json', 65536)).hexdigest()
+    _protect_manifest(repo, sources, run_dir)
+    if hashlib.sha256(_bounded_bytes(run_dir / 'source-manifest.json', 65536)).hexdigest() != source_manifest_sha256:
+        raise RuntimeError('source manifest changed while acquiring protection')
     _write_json(run_dir / 'started.json', {'schema': 'grouped-gpu-start-v1', 'run_id': run_id,
-                'source_commit': commit, 'protocol_sha256': protocol_sha256})
+                'source_commit': commit, 'protocol_sha256': protocol_sha256,
+                'source_manifest_sha256': source_manifest_sha256})
     _write_json(run_dir / 'protocol-source.json', {'schema': 'grouped-gpu-protocol-source-v1',
                 'sha256': protocol_sha256, 'protocol_utf8': (repo / _PROTOCOL).read_bytes().decode('utf-8')})
     _write_json(run_dir / 'asset-verification.json', {'schema': 'grouped-gpu-assets-v1',
@@ -1130,13 +1445,12 @@ def run_development(*, workspace_root, cache_dir, output, site_packages, smi):
     command = [sys._base_executable, '-I', '-B', '-S', '-X', 'pycache_prefix=' + str(prefix),
                str(repo / 'scripts/grouped_gpu_dev_bootstrap.py'), '--site-packages', str(site),
                '--owner', str(run_dir), str(cache), run_id,
-               commit, protocol_sha256, driver]
+               commit, protocol_sha256, driver, source_manifest_sha256]
     supervised = None
     supervisor_error = None
     try:
-        supervised = run_supervised(command, device_lease_path=identity.lock_path, marker_path=identity.marker_path,
-                                    identity=identity, timeout=900, lease_timeout=30, cwd=repo,
-                                    env=environment, inherit_environment=False)
+        supervised = _supervise_owner(command, identity=identity, repo=repo, environment=environment,
+                                      job_source_sha256=sources['scripts/v2_source_guards.py'])
     except (KeyboardInterrupt, SystemExit) as exc:
         try:
             _write_json(run_dir / 'controller-cancelled.json', {'schema': 'grouped-gpu-cancelled-v1',
@@ -1204,7 +1518,8 @@ def run_development(*, workspace_root, cache_dir, output, site_packages, smi):
                 raise RuntimeError('owner candidate lacks a valid outcome')
             if candidate['result']['status'] == 'passed':
                 inventory, measurement, _ = _verify_promotion(run_dir, run_id, supervised, gpu_uuid,
-                                                              protocol, protocol_sha256, verified_assets, sources)
+                                                              protocol, protocol_sha256, verified_assets, sources,
+                                                              source_commit=commit)
                 result['evidence_inventory'] = inventory
                 result['measurement'] = _public_measurement(measurement)
                 result['evidence_consistency'] = 'verified-saved-records-no-raw-logits'
@@ -1231,7 +1546,8 @@ def run_development(*, workspace_root, cache_dir, output, site_packages, smi):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--owner', nargs=6, metavar=('RUN_DIR', 'CACHE', 'RUN_ID', 'COMMIT', 'PROTOCOL_SHA', 'DRIVER'),
+    parser.add_argument('--owner', nargs=7, metavar=('RUN_DIR', 'CACHE', 'RUN_ID', 'COMMIT', 'PROTOCOL_SHA',
+                                                    'DRIVER', 'SOURCE_MANIFEST_SHA'),
                         help=argparse.SUPPRESS)
     parser.add_argument('--workspace-root')
     parser.add_argument('--cache-dir')

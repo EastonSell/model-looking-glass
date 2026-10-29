@@ -65,6 +65,491 @@ def make_owner(*, model=None, cold_warm=False, device_guard=None):
 
 
 class OwnerCompletionTests(unittest.TestCase):
+    def test_bound_broker_requires_supported_thread_failure_hook(self):
+        _, _, _, _, _, authority, worker, _, _ = make_owner(cold_warm=True)
+        worker._cold_pending = False
+        with patch('looking_glass.broker._supports_bound_owner_thread_hook', return_value=False):
+            with self.assertRaisesRegex(RuntimeError, 'owner thread failure hook'):
+                Broker(worker, max_pending=1, max_pending_per_team=1,
+                       completion_authority=authority)
+        self.assertIsNone(authority._broker)
+        self.assertFalse(authority.unsafe)
+
+    def test_bound_broker_rejects_replacing_its_completion_authority(self):
+        model, _, budget, load, workspace, authority, _, broker, request = make_owner()
+        handle = broker.submit('team', request)
+        try:
+            self.assertTrue(model.entered.wait(5))
+            with self.assertRaisesRegex(RuntimeError, 'completion authority'):
+                broker._completion_authority = None
+            self.assertIs(broker._completion_authority, authority)
+            self.assertTrue(authority.unsafe)
+            self.assertTrue(broker.quarantined)
+            self.assertEqual(set(budget.active_leases()), {load, workspace})
+        finally:
+            model.release.set()
+            try:
+                broker.close(timeout=5)
+            except BrokerShutdownError:
+                broker._thread.join(5)
+        try:
+            outcome = handle.wait(2)
+        except BrokerUnavailable:
+            pass
+        else:
+            self.assertNotEqual(outcome.state, RequestState.SUCCEEDED)
+
+    def test_interrupted_authority_change_still_latches_original(self):
+        for delete in (False, True):
+            with self.subTest(delete=delete):
+                model, _, _, _, _, authority, _, broker, request = make_owner()
+                handle = broker.submit('team', request)
+                function = (Broker._completion_authority.fdel if delete
+                            else Broker._completion_authority.fset)
+                lines, first = inspect.getsourcelines(function)
+                target = next(first + index for index, line in enumerate(lines)
+                              if line.strip() == 'authority._unsafe = True')
+                fired = []
+                def trace(frame, event, arg):
+                    if (frame.f_code is function.__code__ and event == 'line'
+                            and frame.f_lineno == target and not fired):
+                        fired.append(True)
+                        raise KeyboardInterrupt('binding signal interrupted')
+                    return trace
+                previous = sys.gettrace()
+                try:
+                    self.assertTrue(model.entered.wait(5))
+                    sys.settrace(trace)
+                    with self.assertRaises(KeyboardInterrupt):
+                        if delete:
+                            del broker._completion_authority
+                        else:
+                            broker._completion_authority = None
+                finally:
+                    sys.settrace(previous)
+                    model.release.set()
+                self.assertEqual(fired, [True])
+                self.assertTrue(authority.unsafe)
+                self.assertTrue(broker.quarantined)
+                self.assertIs(broker._completion_authority, authority)
+                try:
+                    broker.close(timeout=5)
+                except BrokerShutdownError:
+                    broker._thread.join(5)
+                try:
+                    outcome = handle.wait(2)
+                except BrokerUnavailable:
+                    pass
+                else:
+                    self.assertNotEqual(outcome.state, RequestState.SUCCEEDED)
+
+    def test_bound_broker_roots_an_exception_at_owner_thread_return(self):
+        from looking_glass import broker as broker_module
+        failure = KeyboardInterrupt('owner return interrupted')
+        fired = threading.Event()
+        return_offsets = [instruction.offset for instruction in dis.get_instructions(Broker._run)
+                          if instruction.opname == 'RETURN_VALUE']
+        self.assertTrue(return_offsets)
+        def trace(frame, event, arg):
+            if frame.f_code is Broker._run.__code__:
+                if event == 'call':
+                    frame.f_trace_opcodes = True
+                elif event == 'opcode' and frame.f_lasti == return_offsets[0] and not fired.is_set():
+                    fired.set()
+                    raise failure
+            return trace
+        previous = threading.gettrace()
+        with patch.object(threading, 'excepthook', lambda args: None):
+            threading.settrace(trace)
+            try:
+                model, _, budget, load, workspace, authority, _, broker, _ = make_owner()
+            finally:
+                threading.settrace(previous)
+            try:
+                with self.assertRaises(BrokerShutdownError):
+                    broker.close(timeout=5)
+                self.assertTrue(fired.is_set())
+                self.assertTrue(authority.unsafe)
+                self.assertTrue(broker.quarantined)
+                self.assertIs(broker._owner_escaping_failure, failure)
+                self.assertIsNotNone(failure.__traceback__)
+                self.assertIn(broker, broker_module._owner_registry)
+                self.assertEqual(set(budget.active_leases()), {load, workspace})
+            finally:
+                model.release.set()
+                broker._thread.join(5)
+
+    def test_bound_broker_stays_registered_after_owner_thread_is_joined(self):
+        from looking_glass import broker as broker_module
+        at_return, resume = threading.Event(), threading.Event()
+        return_offsets = [instruction.offset for instruction in dis.get_instructions(Broker._run)
+                          if instruction.opname == 'RETURN_VALUE']
+        self.assertTrue(return_offsets)
+        def trace(frame, event, arg):
+            if frame.f_code is Broker._run.__code__:
+                if event == 'call':
+                    frame.f_trace_opcodes = True
+                elif event == 'opcode' and frame.f_lasti == return_offsets[0]:
+                    at_return.set()
+                    if not resume.wait(5):
+                        raise RuntimeError('owner return gate timed out')
+            return trace
+        previous = threading.gettrace()
+        threading.settrace(trace)
+        try:
+            model, _, _, _, _, authority, _, broker, _ = make_owner()
+        finally:
+            threading.settrace(previous)
+        try:
+            broker.close(wait=False)
+            self.assertTrue(at_return.wait(5))
+            self.assertTrue(broker._thread.is_alive())
+            self.assertIn(broker, broker_module._owner_registry)
+            self.assertFalse(authority.unsafe)
+        finally:
+            resume.set()
+        self.assertTrue(broker.close(timeout=5))
+        self.assertIn(broker, broker_module._owner_registry)
+
+    def test_interrupted_bound_close_keeps_process_owner_root(self):
+        from looking_glass import broker as broker_module
+        model, _, budget, load, workspace, authority, _, broker, _ = make_owner()
+        lines, first = inspect.getsourcelines(Broker._close)
+        target = next(first + index for index, line in enumerate(lines)
+                      if line.strip() == 'return stopped')
+        fired = []
+        def trace(frame, event, arg):
+            if frame.f_code is Broker._close.__code__ and event == 'line' and frame.f_lineno == target:
+                fired.append(True)
+                raise KeyboardInterrupt('close return interrupted')
+            return trace
+        previous = sys.gettrace()
+        try:
+            sys.settrace(trace)
+            with self.assertRaises(KeyboardInterrupt):
+                broker.close(timeout=5)
+        finally:
+            sys.settrace(previous)
+            model.release.set()
+        self.assertEqual(fired, [True])
+        self.assertTrue(authority.unsafe)
+        self.assertIn(broker, broker_module._owner_registry)
+        self.assertEqual(set(budget.active_leases()), {load, workspace})
+
+    def test_interrupted_owner_hook_signal_still_latches_bound_authority(self):
+        model, _, _, _, _, authority, _, broker, _ = make_owner()
+        lines, first = inspect.getsourcelines(Broker._capture_owner_thread_failure_inner)
+        target = next(first + index for index, line in enumerate(lines)
+                      if line.strip() == 'authority._unsafe = True')
+        fired = []
+        original = RuntimeError('owner thread failure')
+        def trace(frame, event, arg):
+            if (frame.f_code is Broker._capture_owner_thread_failure_inner.__code__
+                    and event == 'line' and frame.f_lineno == target and not fired):
+                fired.append(True)
+                raise KeyboardInterrupt('unsafe signal interrupted')
+            return trace
+        previous = sys.gettrace()
+        try:
+            try:
+                raise original
+            except RuntimeError:
+                sys.settrace(trace)
+                broker._capture_owner_thread_failure(broker._thread)
+        finally:
+            sys.settrace(previous)
+            model.release.set()
+        self.assertEqual(fired, [True])
+        self.assertTrue(authority.unsafe)
+        self.assertTrue(broker.quarantined)
+        self.assertIs(broker._owner_escaping_failure, original)
+        try:
+            broker.close(timeout=5)
+        except BrokerShutdownError:
+            broker._thread.join(5)
+
+    def test_interrupted_owner_hook_capture_preserves_private_traceback(self):
+        model, _, _, _, _, authority, _, broker, _ = make_owner()
+        lines, first = inspect.getsourcelines(Broker._capture_owner_thread_failure_inner)
+        target = next(first + index for index, line in enumerate(lines)
+                      if line.strip() == 'self._owner_escaping_failure = exc')
+        fired, refs = [], []
+        class PartialOwner:
+            pass
+        def fail_with_partial():
+            owner = PartialOwner()
+            refs.append(weakref.ref(owner))
+            raise RuntimeError('failure with partial owner')
+        def trace(frame, event, arg):
+            if (frame.f_code is Broker._capture_owner_thread_failure_inner.__code__
+                    and event == 'line' and frame.f_lineno == target and not fired):
+                fired.append(True)
+                raise KeyboardInterrupt('failure capture interrupted')
+            return trace
+        previous = sys.gettrace()
+        try:
+            try:
+                fail_with_partial()
+            except RuntimeError:
+                sys.settrace(trace)
+                broker._capture_owner_thread_failure(broker._thread)
+        finally:
+            sys.settrace(previous)
+            model.release.set()
+        self.assertEqual(fired, [True])
+        self.assertTrue(authority.unsafe)
+        self.assertIsNotNone(broker._owner_hook_traceback)
+        broker._owner_escaping_failure.__traceback__ = None
+        gc.collect()
+        self.assertIsNotNone(refs[0]())
+        try:
+            broker.close(timeout=5)
+        except BrokerShutdownError:
+            broker._thread.join(5)
+
+    def test_interrupted_owner_hook_keeps_both_distinct_failures(self):
+        model, _, _, _, _, authority, _, broker, _ = make_owner()
+        first_failure = RuntimeError('first owner failure')
+        second_failure = RuntimeError('second owner failure')
+        broker._owner_escaping_failure = first_failure
+        lines, first = inspect.getsourcelines(Broker._capture_owner_thread_failure_inner)
+        target = next(first + index for index, line in enumerate(lines)
+                      if line.strip() == 'self._owner_hook_failure = exc')
+        fired = []
+        def trace(frame, event, arg):
+            if (frame.f_code is Broker._capture_owner_thread_failure_inner.__code__
+                    and event == 'line' and frame.f_lineno == target and not fired):
+                fired.append(True)
+                raise KeyboardInterrupt('second capture interrupted')
+            return trace
+        previous = sys.gettrace()
+        try:
+            try:
+                raise second_failure
+            except RuntimeError:
+                sys.settrace(trace)
+                broker._capture_owner_thread_failure(broker._thread)
+        finally:
+            sys.settrace(previous)
+            model.release.set()
+        self.assertEqual(fired, [True])
+        self.assertTrue(authority.unsafe)
+        self.assertIs(broker._owner_escaping_failure, first_failure)
+        self.assertIs(broker._owner_hook_failure, second_failure)
+        self.assertIsNotNone(broker._owner_hook_traceback)
+        try:
+            broker.close(timeout=5)
+        except BrokerShutdownError:
+            broker._thread.join(5)
+
+    def test_owner_hook_captures_traceback_from_active_exception_context(self):
+        from types import TracebackType
+        model, _, _, _, _, authority, _, broker, _ = make_owner()
+        class SpoofedTraceback(RuntimeError):
+            @property
+            def __traceback__(self):
+                return 'not a traceback'
+        error = SpoofedTraceback('owner fault')
+        try:
+            try:
+                raise error
+            except SpoofedTraceback:
+                broker._capture_owner_thread_failure(broker._thread)
+            self.assertTrue(authority.unsafe)
+            self.assertIs(broker._owner_escaping_failure, error)
+            self.assertIs(type(broker._owner_hook_traceback), TracebackType)
+        finally:
+            model.release.set()
+            try:
+                broker.close(timeout=5)
+            except BrokerShutdownError:
+                broker._thread.join(5)
+
+    def test_owner_hook_recovers_interruption_during_exception_unpack(self):
+        model, _, _, _, _, authority, _, broker, _ = make_owner()
+        target = next(instruction.offset for instruction in dis.get_instructions(
+                      Broker._capture_owner_thread_failure_inner)
+                      if instruction.opname == 'UNPACK_SEQUENCE')
+        refs, fired = [], []
+        class PartialOwner:
+            pass
+        def fail_with_partial():
+            owner = PartialOwner()
+            refs.append(weakref.ref(owner))
+            raise RuntimeError('owner with private partial')
+        def trace(frame, event, arg):
+            if frame.f_code is Broker._capture_owner_thread_failure_inner.__code__:
+                if event == 'call':
+                    frame.f_trace_opcodes = True
+                elif event == 'opcode' and frame.f_lasti == target and not fired:
+                    fired.append(True)
+                    raise KeyboardInterrupt('exception unpack interrupted')
+            return trace
+        previous = sys.gettrace()
+        try:
+            try:
+                fail_with_partial()
+            except RuntimeError:
+                sys.settrace(trace)
+                try:
+                    broker._capture_owner_thread_failure(broker._thread)
+                except KeyboardInterrupt:
+                    pass
+        finally:
+            sys.settrace(previous)
+            model.release.set()
+        self.assertEqual(fired, [True])
+        self.assertTrue(authority.unsafe)
+        self.assertIsInstance(broker._owner_escaping_failure, RuntimeError)
+        self.assertIsNotNone(broker._owner_hook_traceback)
+        gc.collect()
+        self.assertIsNotNone(refs[0]())
+        try:
+            broker.close(timeout=5)
+        except BrokerShutdownError:
+            broker._thread.join(5)
+
+    def test_bound_worker_rejects_direct_execution_before_snapshot(self):
+        model, resident, budget, load, workspace, authority, worker, broker, request = make_owner()
+        handle = broker.submit('team', request)
+        try:
+            self.assertTrue(model.entered.wait(5))
+            original = resident.snapshot_request
+            caller = threading.current_thread()
+
+            def guarded_snapshot(value):
+                if threading.current_thread() is caller:
+                    raise AssertionError('direct execution reached snapshot')
+                return original(value)
+
+            with patch.object(resident, 'snapshot_request', new=guarded_snapshot):
+                with self.assertRaises(WorkerUnavailable):
+                    worker.execute(request)
+            self.assertFalse(authority.unsafe)
+        finally:
+            model.release.set()
+        self.assertEqual(handle.wait(5).state, RequestState.SUCCEEDED)
+        self.assertEqual(set(budget.active_leases()), {load, workspace})
+        self.assertTrue(broker.close(timeout=5))
+
+    def test_broker_binding_rejects_direct_preparation_in_progress(self):
+        model, resident, _, _, _, authority, worker, _, request = make_owner(cold_warm=True)
+        worker._cold_pending = False  # Exercise a ready worker before binding.
+        entered, resume, errors = threading.Event(), threading.Event(), []
+        original = resident.snapshot_request
+
+        def blocked_snapshot(value):
+            entered.set()
+            if not resume.wait(5):
+                raise RuntimeError('snapshot test timed out')
+            return original(value)
+
+        def execute():
+            try:
+                worker.execute(request)
+            except BaseException as exc:
+                errors.append(exc)
+
+        thread = threading.Thread(target=execute)
+        with patch.object(resident, 'snapshot_request', new=blocked_snapshot):
+            thread.start()
+            try:
+                self.assertTrue(entered.wait(5))
+                with self.assertRaises(WorkerUnavailable):
+                    Broker(worker, max_pending=1, max_pending_per_team=1,
+                           completion_authority=authority)
+                self.assertIsNone(authority._broker)
+                self.assertFalse(authority.unsafe)
+            finally:
+                model.release.set()
+                resume.set()
+                thread.join(5)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(errors, [])
+
+    def test_broker_constructor_failure_after_binding_quarantines(self):
+        _, _, budget, load, workspace, authority, worker, _, _ = make_owner(cold_warm=True)
+        worker._cold_pending = False  # Exercise construction after warmup.
+        failure = MemoryError('queue allocation failed')
+        with patch('looking_glass.broker.FairTeamQueue', side_effect=failure):
+            with self.assertRaises(BrokerUnavailable) as raised:
+                Broker(worker, max_pending=1, max_pending_per_team=1,
+                       completion_authority=authority)
+        self.assertTrue(authority.unsafe)
+        self.assertIsNotNone(authority._broker)
+        self.assertIs(authority._broker_construction_error, failure)
+        self.assertIsNone(raised.exception.__context__)
+        self.assertEqual(set(budget.active_leases()), {load, workspace})
+
+    def test_broker_binding_rejects_incomplete_worker_cleanup(self):
+        _, _, _, _, _, authority, worker, _, _ = make_owner(cold_warm=True)
+        worker._cold_pending = False
+        self.assertTrue(worker._lock.acquire(blocking=False))
+        try:
+            with self.assertRaises(WorkerUnavailable):
+                Broker(worker, max_pending=1, max_pending_per_team=1,
+                       completion_authority=authority)
+            self.assertIsNone(authority._broker)
+            self.assertFalse(authority.unsafe)
+        finally:
+            worker._lock.release()
+        self.assertTrue(worker._execution_gate.acquire(blocking=False))
+        worker._execution_gate.release()
+
+    def test_broker_binding_requires_prior_result_custody_to_be_transferred(self):
+        model, _, _, _, _, authority, worker, _, request = make_owner(cold_warm=True)
+        worker._cold_pending = False
+        model.release.set()
+        result = worker.execute(request)
+        with self.assertRaises(WorkerUnavailable):
+            Broker(worker, max_pending=1, max_pending_per_team=1,
+                   completion_authority=authority)
+        self.assertIsNone(authority._broker)
+        self.assertFalse(authority.unsafe)
+        worker._transfer_result(result)
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1,
+                        completion_authority=authority)
+        self.assertTrue(broker.close(timeout=5))
+
+    def test_broker_binding_rejects_result_transfer_in_progress(self):
+        model, _, _, _, _, authority, worker, _, request = make_owner(cold_warm=True)
+        worker._cold_pending = False
+        model.release.set()
+        result = worker.execute(request)
+        entered, resume, errors = threading.Event(), threading.Event(), []
+        original = worker._stage_transfer_locked
+
+        def blocked_transfer(value):
+            entered.set()
+            if not resume.wait(5):
+                raise RuntimeError('transfer test timed out')
+            return original(value)
+
+        def transfer():
+            try:
+                worker._transfer_result(result)
+            except BaseException as exc:
+                errors.append(exc)
+
+        thread = threading.Thread(target=transfer)
+        with patch.object(worker, '_stage_transfer_locked', new=blocked_transfer):
+            thread.start()
+            try:
+                self.assertTrue(entered.wait(5))
+                with self.assertRaises(WorkerUnavailable):
+                    Broker(worker, max_pending=1, max_pending_per_team=1,
+                           completion_authority=authority)
+                self.assertIsNone(authority._broker)
+                self.assertFalse(authority.unsafe)
+            finally:
+                resume.set()
+                thread.join(5)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(errors, [])
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1,
+                        completion_authority=authority)
+        self.assertTrue(broker.close(timeout=5))
+
     def test_unsafe_during_real_forward_suppresses_success_and_retains_workspace(self):
         model, resident, budget, load, workspace, authority, worker, broker, request = make_owner()
         handle = broker.submit('team', request)
@@ -903,13 +1388,13 @@ class OwnerCompletionTests(unittest.TestCase):
                 cancel.set()
                 return {'logits': torch.stack((input_ids.float(), input_ids.float() + 1), dim=-1)}
         _, _, _, _, _, authority, worker, _, request = make_owner(model=CancelModel(), cold_warm=True)
-        source, first = inspect.getsourcelines(LifetimeWorkspaceWorker.execute)
+        source, first = inspect.getsourcelines(LifetimeWorkspaceWorker._execute_owned)
         decisions = [first + index for index, line in enumerate(source)
                      if line.strip() == 'if (self._authority.unsafe or self._worker.quarantined']
         self.assertEqual(len(decisions), 1)
         refs = []
         def trace(frame, event, arg):
-            if (frame.f_code is LifetimeWorkspaceWorker.execute.__code__ and event == 'line'
+            if (frame.f_code is LifetimeWorkspaceWorker._execute_owned.__code__ and event == 'line'
                     and frame.f_lineno == decisions[0] and not refs):
                 refs.append(weakref.ref(worker._custody.request.inputs['input_ids']))
                 authority.mark_unsafe()

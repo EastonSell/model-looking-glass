@@ -1,0 +1,1858 @@
+{
+  "boundaries": {
+    "clients_joined_ns": 1260316671652200,
+    "end_ns": 1260316672089500,
+    "owner_drain_ns": 1260316672074600,
+    "start_ns": 1260316289496700
+  },
+  "client_errors": [
+    null,
+    null,
+    null
+  ],
+  "clock": {
+    "adjustable": false,
+    "implementation": "QueryPerformanceCounter()",
+    "monotonic": true,
+    "name": "perf_counter_ns",
+    "nominal_resolution_ns": 100
+  },
+  "owner": {
+    "model_and_lease_disposal_attested": false,
+    "resource_profile_verified": false,
+    "supervised_device_owner": false,
+    "synthetic_device_telemetry": true,
+    "work_drained": true
+  },
+  "plan": {
+    "jobs": [
+      {
+        "expected_output_sha256": "d5aece3a833fc8b1a78d5bbeb8e44b46a51f7a446a218a7aeb7527801aeffe3a",
+        "input_ids": [
+          1,
+          1001
+        ],
+        "input_sha256": "8aaf2c3a17efeb952ee6dfca64732b94c91afe377b93572c167d6453bf744512",
+        "job_id": "job-0001",
+        "request_sha256": "98d33029407afb2e710e47f119313a95dd1d0308c0f93f7fa6c62fe909262701",
+        "team_id": "alpha"
+      },
+      {
+        "expected_output_sha256": "cc2c72f1c86c1a9973d47893b3981a5d3da7317d4b118aca616de658d50ff5ad",
+        "input_ids": [
+          2,
+          1002
+        ],
+        "input_sha256": "861959a45979cdb6dd623f9960cf9916213b8200776b316790346a8f77a2036e",
+        "job_id": "job-0002",
+        "request_sha256": "d92ecd680e8125ae8ba38630e2e74d949f43e1147ff8cdcd645ddc4bd5b10e93",
+        "team_id": "alpha"
+      },
+      {
+        "expected_output_sha256": "4f9df62adfcc37c4a3d9b5d0163fffec27cf25e8b0bd56d5f2bb017579baf50a",
+        "input_ids": [
+          3,
+          1003
+        ],
+        "input_sha256": "3df6bf02b6f79dec9ddadea816ecf617de42eabb1c240021abf6d3bfdf31cd23",
+        "job_id": "job-0003",
+        "request_sha256": "306b61f341ff28e21f44c05421ef17e4450212b2bf3b200a297b4f47d3b1091f",
+        "team_id": "alpha"
+      },
+      {
+        "expected_output_sha256": "e1f1356d3315ff88b96493b327e469d4ceed80e92b3911c592fc475aaf57e0b1",
+        "input_ids": [
+          4,
+          1004
+        ],
+        "input_sha256": "17e7c77f008f738bbf4a815beecb86b8b13f730f92019286f1a316793d8ffd69",
+        "job_id": "job-0004",
+        "request_sha256": "df422bfb9e7b71fd8736cb9cbdd3f2a9512ba7545f5088bc9397596806d7c368",
+        "team_id": "alpha"
+      },
+      {
+        "expected_output_sha256": "58d5cc18045b8d60e0adf8737caceff2ed3fc9b128d15dc632dcca61eda4ff23",
+        "input_ids": [
+          5,
+          1005
+        ],
+        "input_sha256": "2067959cbb5e92b674f49ef30e570b5c088960d5cf723d19b3466c6a0e1ce367",
+        "job_id": "job-0005",
+        "request_sha256": "b459adcfa3976a67351895d2d699865957630f22d41a8945d9ddca1b8118c850",
+        "team_id": "beta"
+      },
+      {
+        "expected_output_sha256": "e0b846f394bc69aead75bd377ffb09a5f4e2bf4e61c9636affb5ecfda5d3f710",
+        "input_ids": [
+          6,
+          1006
+        ],
+        "input_sha256": "c1458895a7a0a0c8424a3f2fe1b95bb099a6451f11872c2aa31c9a7375432520",
+        "job_id": "job-0006",
+        "request_sha256": "45729de130a536390d45ecc01b48ce6c91a6bab98010440eaaa93a779949f141",
+        "team_id": "beta"
+      },
+      {
+        "expected_output_sha256": "b8909d761baa72bf150dee9241b0c8f5054ab6eff900860e2bb588adfeae8f4c",
+        "input_ids": [
+          7,
+          1007
+        ],
+        "input_sha256": "1910f0ed0782231d0589669d8ad612bc1245c6ffe0fc60598f56c1db276105fc",
+        "job_id": "job-0007",
+        "request_sha256": "f3c593f73308f761d60a2bc81e3cd2e3a2b9e731b3743af85223d60fec4761d8",
+        "team_id": "beta"
+      },
+      {
+        "expected_output_sha256": "54261ae934da82e1308339b290315f16d78665a7b0215041c424e4cee4e4def1",
+        "input_ids": [
+          8,
+          1008
+        ],
+        "input_sha256": "10b4abee46272781518d7a5f588b4f9cef8de475e31cf75fed62893442bd9d0b",
+        "job_id": "job-0008",
+        "request_sha256": "2b8d70d39d291949c1370948388ce24e131a499725c1898a016126613b49e4b7",
+        "team_id": "beta"
+      },
+      {
+        "expected_output_sha256": "de2c8c76b29dfbf2be88d9ef69b0f7c8b2c66538e706b34ab6d6bb5a92ff29e4",
+        "input_ids": [
+          9,
+          1009
+        ],
+        "input_sha256": "30c4c88c63107e4e1a28b860f78635fd4736b6b353655fe42935cfbf9d258e0f",
+        "job_id": "job-0009",
+        "request_sha256": "e397ecf66a4eafa00983e6a17d1ffe45ede7bfa40068bb1d147192adcb1b1f30",
+        "team_id": "gamma"
+      },
+      {
+        "expected_output_sha256": "290444a5f29169eceeec41f6b3e1af2d15f114c2561ab0cebddda6ceb293403e",
+        "input_ids": [
+          10,
+          1010
+        ],
+        "input_sha256": "1546b8bc92b5e90a2e162075dc7a6a5a54169ad10fcbcaeb2993108f4aba35d5",
+        "job_id": "job-0010",
+        "request_sha256": "27bf394d5bafeb29bc3e36ea2d6531f88084623208943fe3b83c8622783dd372",
+        "team_id": "gamma"
+      },
+      {
+        "expected_output_sha256": "ae153fbd147d8c5719ec26cc01fa26c6667a78f7a64ea23b3e1a628d43938dd3",
+        "input_ids": [
+          11,
+          1011
+        ],
+        "input_sha256": "614ce7e12c5e042039f0e040791416700abd30fd9abf8cab09b289936c335b43",
+        "job_id": "job-0011",
+        "request_sha256": "131e3c3e1c78c716b8e3e0aa007c87e0f5c6812cf05673761752fcafb740bbce",
+        "team_id": "gamma"
+      },
+      {
+        "expected_output_sha256": "1f6b47111cc8eb3e1901a664f203c78284aef53ee20bdea6e4f93ed056b6dd9b",
+        "input_ids": [
+          12,
+          1012
+        ],
+        "input_sha256": "e69ce9ba176b98a0b1f0949c9a91fbf97869f03748482e14ef9104c69a9664f4",
+        "job_id": "job-0012",
+        "request_sha256": "6c33bebc19d239a325712ad0bed7676bda547f7334c67183681a4c3d9e706131",
+        "team_id": "gamma"
+      }
+    ],
+    "jobs_per_team": 4,
+    "max_pending": 3,
+    "max_pending_per_team": 1,
+    "model_hold_us": 20000,
+    "model_sha256": "d87f7223ab947d59971980e399b0e662ae3a4ad16fd4f1049e589f5488cb5f4b",
+    "model_spec": {
+      "dtype": "float32",
+      "input_shape": [
+        1,
+        2
+      ],
+      "kind": "synthetic-input-to-float32",
+      "model_hold_us": 20000,
+      "output_shape": [
+        1,
+        2,
+        1
+      ]
+    },
+    "profile_sha256": "ec3dc50685a7e8889249cf030201178a412ca359ae97e6be914ac9dc72a5cad7",
+    "seed": 17,
+    "start_spacing_us": 0,
+    "teams": [
+      "alpha",
+      "beta",
+      "gamma"
+    ],
+    "version": "synthetic-cpu-shared-load-v1"
+  },
+  "plan_sha256": "18e23e94fd4263f2db5bc18794159063f34fcf34a2942134e5f83bc6ecdb2e2d",
+  "recording": {
+    "events": [
+      {
+        "kind": "window_start",
+        "time_ns": 1260316289496700
+      },
+      {
+        "input_sha256": "2067959cbb5e92b674f49ef30e570b5c088960d5cf723d19b3466c6a0e1ce367",
+        "job_id": "job-0005",
+        "kind": "attempt",
+        "request_sha256": "b459adcfa3976a67351895d2d699865957630f22d41a8945d9ddca1b8118c850",
+        "team_id": "beta",
+        "time_ns": 1260316289580700
+      },
+      {
+        "input_sha256": "8aaf2c3a17efeb952ee6dfca64732b94c91afe377b93572c167d6453bf744512",
+        "job_id": "job-0001",
+        "kind": "attempt",
+        "request_sha256": "98d33029407afb2e710e47f119313a95dd1d0308c0f93f7fa6c62fe909262701",
+        "team_id": "alpha",
+        "time_ns": 1260316289716000
+      },
+      {
+        "input_sha256": "30c4c88c63107e4e1a28b860f78635fd4736b6b353655fe42935cfbf9d258e0f",
+        "job_id": "job-0009",
+        "kind": "attempt",
+        "request_sha256": "e397ecf66a4eafa00983e6a17d1ffe45ede7bfa40068bb1d147192adcb1b1f30",
+        "team_id": "gamma",
+        "time_ns": 1260316289775200
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-1",
+        "group_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-1",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+            "broker_job_id": 1,
+            "job_id": "job-0005",
+            "row_offset": 0,
+            "team_id": "beta"
+          }
+        ],
+        "profile_sha256": "ec3dc50685a7e8889249cf030201178a412ca359ae97e6be914ac9dc72a5cad7",
+        "time_ns": 1260316298423800
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-1",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1260316318996600
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-2",
+        "group_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-2",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+            "broker_job_id": 2,
+            "job_id": "job-0001",
+            "row_offset": 0,
+            "team_id": "alpha"
+          }
+        ],
+        "profile_sha256": "ec3dc50685a7e8889249cf030201178a412ca359ae97e6be914ac9dc72a5cad7",
+        "time_ns": 1260316319595500
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-2",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1260316340000900
+      },
+      {
+        "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+        "broker_job_id": 1,
+        "job_id": "job-0005",
+        "kind": "ready",
+        "team_id": "beta",
+        "time_ns": 1260316297116600
+      },
+      {
+        "job_id": "job-0005",
+        "kind": "selected",
+        "time_ns": 1260316297461400
+      },
+      {
+        "job_id": "job-0005",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1260316319284400
+      },
+      {
+        "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+        "broker_job_id": 2,
+        "job_id": "job-0001",
+        "kind": "ready",
+        "team_id": "alpha",
+        "time_ns": 1260316298540700
+      },
+      {
+        "job_id": "job-0001",
+        "kind": "selected",
+        "time_ns": 1260316319329100
+      },
+      {
+        "job_id": "job-0001",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1260316340284700
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0001",
+        "kind": "returned",
+        "output_sha256": "d5aece3a833fc8b1a78d5bbeb8e44b46a51f7a446a218a7aeb7527801aeffe3a",
+        "state": "succeeded",
+        "time_ns": 1260316359876400
+      },
+      {
+        "input_sha256": "861959a45979cdb6dd623f9960cf9916213b8200776b316790346a8f77a2036e",
+        "job_id": "job-0002",
+        "kind": "attempt",
+        "request_sha256": "d92ecd680e8125ae8ba38630e2e74d949f43e1147ff8cdcd645ddc4bd5b10e93",
+        "team_id": "alpha",
+        "time_ns": 1260316359912700
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0005",
+        "kind": "returned",
+        "output_sha256": "58d5cc18045b8d60e0adf8737caceff2ed3fc9b128d15dc632dcca61eda4ff23",
+        "state": "succeeded",
+        "time_ns": 1260316360039800
+      },
+      {
+        "input_sha256": "c1458895a7a0a0c8424a3f2fe1b95bb099a6451f11872c2aa31c9a7375432520",
+        "job_id": "job-0006",
+        "kind": "attempt",
+        "request_sha256": "45729de130a536390d45ecc01b48ce6c91a6bab98010440eaaa93a779949f141",
+        "team_id": "beta",
+        "time_ns": 1260316360063800
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-3",
+        "group_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-3",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+            "broker_job_id": 3,
+            "job_id": "job-0009",
+            "row_offset": 0,
+            "team_id": "gamma"
+          }
+        ],
+        "profile_sha256": "ec3dc50685a7e8889249cf030201178a412ca359ae97e6be914ac9dc72a5cad7",
+        "time_ns": 1260316340686800
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-3",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1260316360895100
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-4",
+        "group_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-4",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+            "broker_job_id": 4,
+            "job_id": "job-0006",
+            "row_offset": 0,
+            "team_id": "beta"
+          }
+        ],
+        "profile_sha256": "ec3dc50685a7e8889249cf030201178a412ca359ae97e6be914ac9dc72a5cad7",
+        "time_ns": 1260316362730000
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-4",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1260316383387400
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-5",
+        "group_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-5",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+            "broker_job_id": 5,
+            "job_id": "job-0002",
+            "row_offset": 0,
+            "team_id": "alpha"
+          }
+        ],
+        "profile_sha256": "ec3dc50685a7e8889249cf030201178a412ca359ae97e6be914ac9dc72a5cad7",
+        "time_ns": 1260316383798400
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-5",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1260316404603700
+      },
+      {
+        "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+        "broker_job_id": 3,
+        "job_id": "job-0009",
+        "kind": "ready",
+        "team_id": "gamma",
+        "time_ns": 1260316298977700
+      },
+      {
+        "job_id": "job-0009",
+        "kind": "selected",
+        "time_ns": 1260316340337200
+      },
+      {
+        "job_id": "job-0009",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1260316361132700
+      },
+      {
+        "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+        "broker_job_id": 5,
+        "job_id": "job-0002",
+        "kind": "ready",
+        "team_id": "alpha",
+        "time_ns": 1260316363389500
+      },
+      {
+        "job_id": "job-0002",
+        "kind": "selected",
+        "time_ns": 1260316383606300
+      },
+      {
+        "job_id": "job-0002",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1260316404881200
+      },
+      {
+        "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+        "broker_job_id": 4,
+        "job_id": "job-0006",
+        "kind": "ready",
+        "team_id": "beta",
+        "time_ns": 1260316362345300
+      },
+      {
+        "job_id": "job-0006",
+        "kind": "selected",
+        "time_ns": 1260316362458200
+      },
+      {
+        "job_id": "job-0006",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1260316383573200
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0006",
+        "kind": "returned",
+        "output_sha256": "e0b846f394bc69aead75bd377ffb09a5f4e2bf4e61c9636affb5ecfda5d3f710",
+        "state": "succeeded",
+        "time_ns": 1260316421864900
+      },
+      {
+        "input_sha256": "1910f0ed0782231d0589669d8ad612bc1245c6ffe0fc60598f56c1db276105fc",
+        "job_id": "job-0007",
+        "kind": "attempt",
+        "request_sha256": "f3c593f73308f761d60a2bc81e3cd2e3a2b9e731b3743af85223d60fec4761d8",
+        "team_id": "beta",
+        "time_ns": 1260316421894400
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0002",
+        "kind": "returned",
+        "output_sha256": "cc2c72f1c86c1a9973d47893b3981a5d3da7317d4b118aca616de658d50ff5ad",
+        "state": "succeeded",
+        "time_ns": 1260316422001700
+      },
+      {
+        "input_sha256": "3df6bf02b6f79dec9ddadea816ecf617de42eabb1c240021abf6d3bfdf31cd23",
+        "job_id": "job-0003",
+        "kind": "attempt",
+        "request_sha256": "306b61f341ff28e21f44c05421ef17e4450212b2bf3b200a297b4f47d3b1091f",
+        "team_id": "alpha",
+        "time_ns": 1260316422025400
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0009",
+        "kind": "returned",
+        "output_sha256": "de2c8c76b29dfbf2be88d9ef69b0f7c8b2c66538e706b34ab6d6bb5a92ff29e4",
+        "state": "succeeded",
+        "time_ns": 1260316422405200
+      },
+      {
+        "input_sha256": "1546b8bc92b5e90a2e162075dc7a6a5a54169ad10fcbcaeb2993108f4aba35d5",
+        "job_id": "job-0010",
+        "kind": "attempt",
+        "request_sha256": "27bf394d5bafeb29bc3e36ea2d6531f88084623208943fe3b83c8622783dd372",
+        "team_id": "gamma",
+        "time_ns": 1260316422428400
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-6",
+        "group_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-6",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+            "broker_job_id": 6,
+            "job_id": "job-0003",
+            "row_offset": 0,
+            "team_id": "alpha"
+          }
+        ],
+        "profile_sha256": "ec3dc50685a7e8889249cf030201178a412ca359ae97e6be914ac9dc72a5cad7",
+        "time_ns": 1260316424530300
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-6",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1260316444932400
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-7",
+        "group_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-7",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+            "broker_job_id": 7,
+            "job_id": "job-0007",
+            "row_offset": 0,
+            "team_id": "beta"
+          }
+        ],
+        "profile_sha256": "ec3dc50685a7e8889249cf030201178a412ca359ae97e6be914ac9dc72a5cad7",
+        "time_ns": 1260316445385600
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-7",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1260316466081000
+      },
+      {
+        "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+        "broker_job_id": 7,
+        "job_id": "job-0007",
+        "kind": "ready",
+        "team_id": "beta",
+        "time_ns": 1260316425098100
+      },
+      {
+        "job_id": "job-0007",
+        "kind": "selected",
+        "time_ns": 1260316445193800
+      },
+      {
+        "job_id": "job-0007",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1260316466356400
+      },
+      {
+        "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+        "broker_job_id": 6,
+        "job_id": "job-0003",
+        "kind": "ready",
+        "team_id": "alpha",
+        "time_ns": 1260316423808300
+      },
+      {
+        "job_id": "job-0003",
+        "kind": "selected",
+        "time_ns": 1260316423965200
+      },
+      {
+        "job_id": "job-0003",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1260316445158900
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0003",
+        "kind": "returned",
+        "output_sha256": "4f9df62adfcc37c4a3d9b5d0163fffec27cf25e8b0bd56d5f2bb017579baf50a",
+        "state": "succeeded",
+        "time_ns": 1260316485422500
+      },
+      {
+        "input_sha256": "17e7c77f008f738bbf4a815beecb86b8b13f730f92019286f1a316793d8ffd69",
+        "job_id": "job-0004",
+        "kind": "attempt",
+        "request_sha256": "df422bfb9e7b71fd8736cb9cbdd3f2a9512ba7545f5088bc9397596806d7c368",
+        "team_id": "alpha",
+        "time_ns": 1260316485459200
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0007",
+        "kind": "returned",
+        "output_sha256": "b8909d761baa72bf150dee9241b0c8f5054ab6eff900860e2bb588adfeae8f4c",
+        "state": "succeeded",
+        "time_ns": 1260316485649400
+      },
+      {
+        "input_sha256": "10b4abee46272781518d7a5f588b4f9cef8de475e31cf75fed62893442bd9d0b",
+        "job_id": "job-0008",
+        "kind": "attempt",
+        "request_sha256": "2b8d70d39d291949c1370948388ce24e131a499725c1898a016126613b49e4b7",
+        "team_id": "beta",
+        "time_ns": 1260316485681200
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-8",
+        "group_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-8",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+            "broker_job_id": 8,
+            "job_id": "job-0010",
+            "row_offset": 0,
+            "team_id": "gamma"
+          }
+        ],
+        "profile_sha256": "ec3dc50685a7e8889249cf030201178a412ca359ae97e6be914ac9dc72a5cad7",
+        "time_ns": 1260316466634300
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-8",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1260316486978100
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-9",
+        "group_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-9",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+            "broker_job_id": 9,
+            "job_id": "job-0004",
+            "row_offset": 0,
+            "team_id": "alpha"
+          }
+        ],
+        "profile_sha256": "ec3dc50685a7e8889249cf030201178a412ca359ae97e6be914ac9dc72a5cad7",
+        "time_ns": 1260316488842200
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-9",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1260316509444600
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-10",
+        "group_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-10",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+            "broker_job_id": 10,
+            "job_id": "job-0008",
+            "row_offset": 0,
+            "team_id": "beta"
+          }
+        ],
+        "profile_sha256": "ec3dc50685a7e8889249cf030201178a412ca359ae97e6be914ac9dc72a5cad7",
+        "time_ns": 1260316509942600
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-10",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1260316530606700
+      },
+      {
+        "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+        "broker_job_id": 8,
+        "job_id": "job-0010",
+        "kind": "ready",
+        "team_id": "gamma",
+        "time_ns": 1260316425453800
+      },
+      {
+        "job_id": "job-0010",
+        "kind": "selected",
+        "time_ns": 1260316466416600
+      },
+      {
+        "job_id": "job-0010",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1260316487249700
+      },
+      {
+        "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+        "broker_job_id": 9,
+        "job_id": "job-0004",
+        "kind": "ready",
+        "team_id": "alpha",
+        "time_ns": 1260316488240700
+      },
+      {
+        "job_id": "job-0004",
+        "kind": "selected",
+        "time_ns": 1260316488368800
+      },
+      {
+        "job_id": "job-0004",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1260316509701000
+      },
+      {
+        "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+        "broker_job_id": 10,
+        "job_id": "job-0008",
+        "kind": "ready",
+        "team_id": "beta",
+        "time_ns": 1260316489265600
+      },
+      {
+        "job_id": "job-0008",
+        "kind": "selected",
+        "time_ns": 1260316509738600
+      },
+      {
+        "job_id": "job-0008",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1260316530796600
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0004",
+        "kind": "returned",
+        "output_sha256": "e1f1356d3315ff88b96493b327e469d4ceed80e92b3911c592fc475aaf57e0b1",
+        "state": "succeeded",
+        "time_ns": 1260316546817000
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0010",
+        "kind": "returned",
+        "output_sha256": "290444a5f29169eceeec41f6b3e1af2d15f114c2561ab0cebddda6ceb293403e",
+        "state": "succeeded",
+        "time_ns": 1260316547309900
+      },
+      {
+        "input_sha256": "614ce7e12c5e042039f0e040791416700abd30fd9abf8cab09b289936c335b43",
+        "job_id": "job-0011",
+        "kind": "attempt",
+        "request_sha256": "131e3c3e1c78c716b8e3e0aa007c87e0f5c6812cf05673761752fcafb740bbce",
+        "team_id": "gamma",
+        "time_ns": 1260316547329500
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0008",
+        "kind": "returned",
+        "output_sha256": "54261ae934da82e1308339b290315f16d78665a7b0215041c424e4cee4e4def1",
+        "state": "succeeded",
+        "time_ns": 1260316547524700
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-11",
+        "group_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-11",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+            "broker_job_id": 11,
+            "job_id": "job-0011",
+            "row_offset": 0,
+            "team_id": "gamma"
+          }
+        ],
+        "profile_sha256": "ec3dc50685a7e8889249cf030201178a412ca359ae97e6be914ac9dc72a5cad7",
+        "time_ns": 1260316549528600
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-11",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1260316570150200
+      },
+      {
+        "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+        "broker_job_id": 11,
+        "job_id": "job-0011",
+        "kind": "ready",
+        "team_id": "gamma",
+        "time_ns": 1260316549030300
+      },
+      {
+        "job_id": "job-0011",
+        "kind": "selected",
+        "time_ns": 1260316549115900
+      },
+      {
+        "job_id": "job-0011",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1260316570382300
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0011",
+        "kind": "returned",
+        "output_sha256": "ae153fbd147d8c5719ec26cc01fa26c6667a78f7a64ea23b3e1a628d43938dd3",
+        "state": "succeeded",
+        "time_ns": 1260316608910700
+      },
+      {
+        "input_sha256": "e69ce9ba176b98a0b1f0949c9a91fbf97869f03748482e14ef9104c69a9664f4",
+        "job_id": "job-0012",
+        "kind": "attempt",
+        "request_sha256": "6c33bebc19d239a325712ad0bed7676bda547f7334c67183681a4c3d9e706131",
+        "team_id": "gamma",
+        "time_ns": 1260316608935700
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-12",
+        "group_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-12",
+        "input_shape": [
+          1,
+          2
+        ],
+        "kind": "forward_entry",
+        "members": [
+          {
+            "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+            "broker_job_id": 12,
+            "job_id": "job-0012",
+            "row_offset": 0,
+            "team_id": "gamma"
+          }
+        ],
+        "profile_sha256": "ec3dc50685a7e8889249cf030201178a412ca359ae97e6be914ac9dc72a5cad7",
+        "time_ns": 1260316610968700
+      },
+      {
+        "call_id": "lg-6b1ece8febfd40c1ad34d5a1dd332365-12",
+        "error": null,
+        "kind": "forward_finished",
+        "state": "succeeded",
+        "synchronized": true,
+        "time_ns": 1260316631666700
+      },
+      {
+        "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+        "broker_job_id": 12,
+        "job_id": "job-0012",
+        "kind": "ready",
+        "team_id": "gamma",
+        "time_ns": 1260316610466700
+      },
+      {
+        "job_id": "job-0012",
+        "kind": "selected",
+        "time_ns": 1260316610557800
+      },
+      {
+        "job_id": "job-0012",
+        "kind": "broker_terminal",
+        "state": "succeeded",
+        "time_ns": 1260316631887100
+      },
+      {
+        "cancellation_accepted": null,
+        "cancellation_decision_ns": null,
+        "cancellation_requested": false,
+        "cancellation_requested_ns": null,
+        "error": null,
+        "job_id": "job-0012",
+        "kind": "returned",
+        "output_sha256": "1f6b47111cc8eb3e1901a664f203c78284aef53ee20bdea6e4f93ed056b6dd9b",
+        "state": "succeeded",
+        "time_ns": 1260316671572800
+      },
+      {
+        "drained": true,
+        "kind": "owner_drain",
+        "time_ns": 1260316672074600
+      },
+      {
+        "kind": "window_end",
+        "time_ns": 1260316672089500
+      }
+    ],
+    "events_complete": true,
+    "explicit_faults": 0,
+    "late_records": 0,
+    "lost_capacity": 0,
+    "lost_internal": 0,
+    "lost_invalid": 0,
+    "max_events": 4096,
+    "max_wire_bytes": 1048576,
+    "recorded": 87,
+    "wire_bytes_upper_bound": 151651
+  },
+  "runtime": {
+    "device": "cpu",
+    "external_activity": "unmeasured",
+    "python": "3.11.15",
+    "torch": "2.8.0+cu128",
+    "torch_num_threads": 12
+  },
+  "samples": [
+    {
+      "attempt_ns": 1260316289716000,
+      "broker_cancellation_decision": "unobserved",
+      "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+      "broker_job_id": 2,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1260316359134100,
+      "error": null,
+      "handled_ns": 1260316359876400,
+      "job_id": "job-0001",
+      "output_sha256": "d5aece3a833fc8b1a78d5bbeb8e44b46a51f7a446a218a7aeb7527801aeffe3a",
+      "state": "succeeded",
+      "team_id": "alpha"
+    },
+    {
+      "attempt_ns": 1260316359912700,
+      "broker_cancellation_decision": "unobserved",
+      "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+      "broker_job_id": 5,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1260316421119100,
+      "error": null,
+      "handled_ns": 1260316422001700,
+      "job_id": "job-0002",
+      "output_sha256": "cc2c72f1c86c1a9973d47893b3981a5d3da7317d4b118aca616de658d50ff5ad",
+      "state": "succeeded",
+      "team_id": "alpha"
+    },
+    {
+      "attempt_ns": 1260316422025400,
+      "broker_cancellation_decision": "unobserved",
+      "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+      "broker_job_id": 6,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1260316485060000,
+      "error": null,
+      "handled_ns": 1260316485422500,
+      "job_id": "job-0003",
+      "output_sha256": "4f9df62adfcc37c4a3d9b5d0163fffec27cf25e8b0bd56d5f2bb017579baf50a",
+      "state": "succeeded",
+      "team_id": "alpha"
+    },
+    {
+      "attempt_ns": 1260316485459200,
+      "broker_cancellation_decision": "unobserved",
+      "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+      "broker_job_id": 9,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1260316546599400,
+      "error": null,
+      "handled_ns": 1260316546817000,
+      "job_id": "job-0004",
+      "output_sha256": "e1f1356d3315ff88b96493b327e469d4ceed80e92b3911c592fc475aaf57e0b1",
+      "state": "succeeded",
+      "team_id": "alpha"
+    },
+    {
+      "attempt_ns": 1260316289580700,
+      "broker_cancellation_decision": "unobserved",
+      "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+      "broker_job_id": 1,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1260316359473000,
+      "error": null,
+      "handled_ns": 1260316360039800,
+      "job_id": "job-0005",
+      "output_sha256": "58d5cc18045b8d60e0adf8737caceff2ed3fc9b128d15dc632dcca61eda4ff23",
+      "state": "succeeded",
+      "team_id": "beta"
+    },
+    {
+      "attempt_ns": 1260316360063800,
+      "broker_cancellation_decision": "unobserved",
+      "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+      "broker_job_id": 4,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1260316421346400,
+      "error": null,
+      "handled_ns": 1260316421864900,
+      "job_id": "job-0006",
+      "output_sha256": "e0b846f394bc69aead75bd377ffb09a5f4e2bf4e61c9636affb5ecfda5d3f710",
+      "state": "succeeded",
+      "team_id": "beta"
+    },
+    {
+      "attempt_ns": 1260316421894400,
+      "broker_cancellation_decision": "unobserved",
+      "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+      "broker_job_id": 7,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1260316484975600,
+      "error": null,
+      "handled_ns": 1260316485649400,
+      "job_id": "job-0007",
+      "output_sha256": "b8909d761baa72bf150dee9241b0c8f5054ab6eff900860e2bb588adfeae8f4c",
+      "state": "succeeded",
+      "team_id": "beta"
+    },
+    {
+      "attempt_ns": 1260316485681200,
+      "broker_cancellation_decision": "unobserved",
+      "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+      "broker_job_id": 10,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1260316547077900,
+      "error": null,
+      "handled_ns": 1260316547524700,
+      "job_id": "job-0008",
+      "output_sha256": "54261ae934da82e1308339b290315f16d78665a7b0215041c424e4cee4e4def1",
+      "state": "succeeded",
+      "team_id": "beta"
+    },
+    {
+      "attempt_ns": 1260316289775200,
+      "broker_cancellation_decision": "unobserved",
+      "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+      "broker_job_id": 3,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1260316422286000,
+      "error": null,
+      "handled_ns": 1260316422405200,
+      "job_id": "job-0009",
+      "output_sha256": "de2c8c76b29dfbf2be88d9ef69b0f7c8b2c66538e706b34ab6d6bb5a92ff29e4",
+      "state": "succeeded",
+      "team_id": "gamma"
+    },
+    {
+      "attempt_ns": 1260316422428400,
+      "broker_cancellation_decision": "unobserved",
+      "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+      "broker_job_id": 8,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1260316547032800,
+      "error": null,
+      "handled_ns": 1260316547309900,
+      "job_id": "job-0010",
+      "output_sha256": "290444a5f29169eceeec41f6b3e1af2d15f114c2561ab0cebddda6ceb293403e",
+      "state": "succeeded",
+      "team_id": "gamma"
+    },
+    {
+      "attempt_ns": 1260316547329500,
+      "broker_cancellation_decision": "unobserved",
+      "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+      "broker_job_id": 11,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1260316608622200,
+      "error": null,
+      "handled_ns": 1260316608910700,
+      "job_id": "job-0011",
+      "output_sha256": "ae153fbd147d8c5719ec26cc01fa26c6667a78f7a64ea23b3e1a628d43938dd3",
+      "state": "succeeded",
+      "team_id": "gamma"
+    },
+    {
+      "attempt_ns": 1260316608935700,
+      "broker_cancellation_decision": "unobserved",
+      "broker_id": "6b1ece8febfd40c1ad34d5a1dd332365",
+      "broker_job_id": 12,
+      "client_cancellation_requested": false,
+      "client_receipt_ns": 1260316671326200,
+      "error": null,
+      "handled_ns": 1260316671572800,
+      "job_id": "job-0012",
+      "output_sha256": "1f6b47111cc8eb3e1901a664f203c78284aef53ee20bdea6e4f93ed056b6dd9b",
+      "state": "succeeded",
+      "team_id": "gamma"
+    }
+  ],
+  "summary": {
+    "acceptance_unknown": 0,
+    "accepted_observed": 12,
+    "ambiguous_samples": 0,
+    "attempted": 12,
+    "elapsed_ns": 382592800,
+    "event_audit_errors": [],
+    "extra_or_ambiguous_sample_rows": 0,
+    "invalid_state_samples": 0,
+    "missing_samples": 0,
+    "nominal_resolution_screen": {
+      "client_receipt_intervals_observed": 12,
+      "client_receipt_intervals_short": 0,
+      "queue_wait_intervals_observed": 12,
+      "queue_wait_intervals_short": 0,
+      "threshold_ns": 10000,
+      "window_short": false
+    },
+    "owner_drained": true,
+    "planned": 12,
+    "queue": {
+      "by_team": {
+        "alpha": {
+          "strictly_intervening_selections": {
+            "max": 0,
+            "n": 4,
+            "p50": 0.0,
+            "p95": 0
+          },
+          "wait_ns": {
+            "max": 20788400,
+            "n": 4,
+            "p50": 10186850.0,
+            "p95": 20788400
+          }
+        },
+        "beta": {
+          "strictly_intervening_selections": {
+            "max": 0,
+            "n": 4,
+            "p50": 0.0,
+            "p95": 0
+          },
+          "wait_ns": {
+            "max": 20473000,
+            "n": 4,
+            "p50": 10220250.0,
+            "p95": 20473000
+          }
+        },
+        "gamma": {
+          "strictly_intervening_selections": {
+            "max": 1,
+            "n": 4,
+            "p50": 0.5,
+            "p95": 1
+          },
+          "wait_ns": {
+            "max": 41359500,
+            "n": 4,
+            "p50": 20526950.0,
+            "p95": 41359500
+          }
+        }
+      },
+      "jobs": [
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0005",
+          "ready_ns": 1260316297116600,
+          "selected_ns": 1260316297461400,
+          "strictly_intervening_selections": 0,
+          "team_id": "beta",
+          "wait_ns": 344800
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0001",
+          "ready_ns": 1260316298540700,
+          "selected_ns": 1260316319329100,
+          "strictly_intervening_selections": 0,
+          "team_id": "alpha",
+          "wait_ns": 20788400
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0009",
+          "ready_ns": 1260316298977700,
+          "selected_ns": 1260316340337200,
+          "strictly_intervening_selections": 1,
+          "team_id": "gamma",
+          "wait_ns": 41359500
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0002",
+          "ready_ns": 1260316363389500,
+          "selected_ns": 1260316383606300,
+          "strictly_intervening_selections": 0,
+          "team_id": "alpha",
+          "wait_ns": 20216800
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0006",
+          "ready_ns": 1260316362345300,
+          "selected_ns": 1260316362458200,
+          "strictly_intervening_selections": 0,
+          "team_id": "beta",
+          "wait_ns": 112900
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0007",
+          "ready_ns": 1260316425098100,
+          "selected_ns": 1260316445193800,
+          "strictly_intervening_selections": 0,
+          "team_id": "beta",
+          "wait_ns": 20095700
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0003",
+          "ready_ns": 1260316423808300,
+          "selected_ns": 1260316423965200,
+          "strictly_intervening_selections": 0,
+          "team_id": "alpha",
+          "wait_ns": 156900
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0010",
+          "ready_ns": 1260316425453800,
+          "selected_ns": 1260316466416600,
+          "strictly_intervening_selections": 1,
+          "team_id": "gamma",
+          "wait_ns": 40962800
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0004",
+          "ready_ns": 1260316488240700,
+          "selected_ns": 1260316488368800,
+          "strictly_intervening_selections": 0,
+          "team_id": "alpha",
+          "wait_ns": 128100
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0008",
+          "ready_ns": 1260316489265600,
+          "selected_ns": 1260316509738600,
+          "strictly_intervening_selections": 0,
+          "team_id": "beta",
+          "wait_ns": 20473000
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0011",
+          "ready_ns": 1260316549030300,
+          "selected_ns": 1260316549115900,
+          "strictly_intervening_selections": 0,
+          "team_id": "gamma",
+          "wait_ns": 85600
+        },
+        {
+          "boundary_ties": 0,
+          "job_id": "job-0012",
+          "ready_ns": 1260316610466700,
+          "selected_ns": 1260316610557800,
+          "strictly_intervening_selections": 0,
+          "team_id": "gamma",
+          "wait_ns": 91100
+        }
+      ],
+      "wait_ns": {
+        "max": 41359500,
+        "n": 12,
+        "p50": 10220250.0,
+        "p95": 41359500
+      }
+    },
+    "queue_observations_valid": true,
+    "states": {
+      "cancelled": 0,
+      "failed": 0,
+      "invalid_output": 0,
+      "rejected": 0,
+      "succeeded": 12,
+      "unattempted": 0,
+      "unresolved": 0
+    },
+    "successful_input_positions_per_second": 62.729878868603905,
+    "successful_jobs_per_second": 31.364939434301952,
+    "teams": {
+      "alpha": {
+        "acceptance_unknown": 0,
+        "accepted_observed": 4,
+        "ambiguous_samples": 0,
+        "attempted": 4,
+        "invalid_state_samples": 0,
+        "missing_samples": 0,
+        "planned": 4,
+        "states": {
+          "cancelled": 0,
+          "failed": 0,
+          "invalid_output": 0,
+          "rejected": 0,
+          "succeeded": 4,
+          "unattempted": 0,
+          "unresolved": 0
+        },
+        "successful_input_positions_per_second": 20.90995962286797,
+        "successful_jobs_per_second": 10.454979811433985,
+        "timing_by_state": {
+          "cancelled": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "failed": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "invalid_output": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "rejected": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "succeeded": {
+            "client_handled_ns": {
+              "max": 70160400,
+              "n": 4,
+              "p50": 62743050.0,
+              "p95": 70160400
+            },
+            "client_receipt_ns": {
+              "max": 69418100,
+              "n": 4,
+              "p50": 62120500.0,
+              "p95": 69418100
+            }
+          },
+          "unattempted": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "unresolved": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          }
+        }
+      },
+      "beta": {
+        "acceptance_unknown": 0,
+        "accepted_observed": 4,
+        "ambiguous_samples": 0,
+        "attempted": 4,
+        "invalid_state_samples": 0,
+        "missing_samples": 0,
+        "planned": 4,
+        "states": {
+          "cancelled": 0,
+          "failed": 0,
+          "invalid_output": 0,
+          "rejected": 0,
+          "succeeded": 4,
+          "unattempted": 0,
+          "unresolved": 0
+        },
+        "successful_input_positions_per_second": 20.90995962286797,
+        "successful_jobs_per_second": 10.454979811433985,
+        "timing_by_state": {
+          "cancelled": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "failed": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "invalid_output": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "rejected": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "succeeded": {
+            "client_handled_ns": {
+              "max": 70459100,
+              "n": 4,
+              "p50": 62799250.0,
+              "p95": 70459100
+            },
+            "client_receipt_ns": {
+              "max": 69892300,
+              "n": 4,
+              "p50": 62238950.0,
+              "p95": 69892300
+            }
+          },
+          "unattempted": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "unresolved": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          }
+        }
+      },
+      "gamma": {
+        "acceptance_unknown": 0,
+        "accepted_observed": 4,
+        "ambiguous_samples": 0,
+        "attempted": 4,
+        "invalid_state_samples": 0,
+        "missing_samples": 0,
+        "planned": 4,
+        "states": {
+          "cancelled": 0,
+          "failed": 0,
+          "invalid_output": 0,
+          "rejected": 0,
+          "succeeded": 4,
+          "unattempted": 0,
+          "unresolved": 0
+        },
+        "successful_input_positions_per_second": 20.90995962286797,
+        "successful_jobs_per_second": 10.454979811433985,
+        "timing_by_state": {
+          "cancelled": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "failed": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "invalid_output": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "rejected": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "succeeded": {
+            "client_handled_ns": {
+              "max": 132630000,
+              "n": 4,
+              "p50": 93759300.0,
+              "p95": 132630000
+            },
+            "client_receipt_ns": {
+              "max": 132510800,
+              "n": 4,
+              "p50": 93497450.0,
+              "p95": 132510800
+            }
+          },
+          "unattempted": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "unresolved": {
+            "client_handled_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            },
+            "client_receipt_ns": {
+              "max": null,
+              "n": 0,
+              "p50": null,
+              "p95": null
+            }
+          }
+        }
+      }
+    },
+    "timing_by_state": {
+      "cancelled": {
+        "client_handled_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        },
+        "client_receipt_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        }
+      },
+      "failed": {
+        "client_handled_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        },
+        "client_receipt_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        }
+      },
+      "invalid_output": {
+        "client_handled_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        },
+        "client_receipt_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        }
+      },
+      "rejected": {
+        "client_handled_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        },
+        "client_receipt_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        }
+      },
+      "succeeded": {
+        "client_handled_ns": {
+          "max": 132630000,
+          "n": 12,
+          "p50": 63017100.0,
+          "p95": 132630000
+        },
+        "client_receipt_ns": {
+          "max": 132510800,
+          "n": 12,
+          "p50": 62712550.0,
+          "p95": 132510800
+        }
+      },
+      "unattempted": {
+        "client_handled_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        },
+        "client_receipt_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        }
+      },
+      "unresolved": {
+        "client_handled_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        },
+        "client_receipt_ns": {
+          "max": null,
+          "n": 0,
+          "p50": null,
+          "p95": null
+        }
+      }
+    }
+  },
+  "version": "synthetic-cpu-shared-load-v1"
+}

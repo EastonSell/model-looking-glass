@@ -1,0 +1,16 @@
+{
+  "cuda_visible_devices": "-1",
+  "plan_digest": "18e23e94fd4263f2db5bc18794159063f34fcf34a2942134e5f83bc6ecdb2e2d",
+  "process_status": "exited",
+  "report_sha256": "d978bd263f327126338534e762c9f4520b22dc94c8fbace1480e49e1ffe33fce",
+  "returncode": 0,
+  "scope": "CPU synthetic owner exit observation only; not GPU or process-attestation evidence",
+  "source_revision": "1d04f252860d9ed30d5e2d6b0b0b7c38e455cda1",
+  "stderr": "",
+  "stdout": "",
+  "timeout_seconds": 45,
+  "version": "cpu-synthetic-process-watchdog-v1",
+  "watchdog": "python subprocess.run",
+  "working_tree_status": "clean",
+  "written_utc": "2026-10-29T05:35:32.854487+00:00"
+}

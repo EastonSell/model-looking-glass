@@ -16,7 +16,8 @@ _MODULES = frozenset((
     'device_lease', 'supervisor', 'cuda_cleanup', 'pretrained', 'resident_worker',
     'memory_budget', 'budgeted_worker', 'host_budget', 'fair_queue', 'microbatch',
     'grouped_worker', 'grouped_broker_state', 'grouped_broker', 'batch_validation',
-    'certified_batch_policy',
+    'certified_batch_policy', 'grouped_observation', 'grouped_owner_worker', 'owner_completion',
+    'agreement_calibration_workspace',
 ))
 
 

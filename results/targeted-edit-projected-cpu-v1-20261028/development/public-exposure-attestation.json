@@ -1,0 +1,8 @@
+{
+  "source_sha256": "42324ce5697fb718fb6d230f7c89bc0fb1055c1fdea258f7167152d7cf98a397",
+  "inventory_sha256": "6c6ed34755dd9daebdde9a2de07f65c0c5d20301656416d873f321fa2c146d34",
+  "reviewed_commit": "75491173df44b1af7a662ec56b77636a26459dd3",
+  "reviewer": "throughput",
+  "source_path": "looking_glass/pretrained_exposures_v15.py",
+  "observed_utc": "2026-10-29T06:43:31.8383811+00:00"
+}

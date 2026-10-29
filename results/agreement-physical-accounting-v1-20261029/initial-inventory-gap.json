@@ -1,0 +1,35 @@
+{
+  "schema": "mlg-agreement-initial-inventory-gap-v1",
+  "status": "incomplete-initial-inventory-reconciliation-required",
+  "scope": "Physical evidence accounting only; no scientific outcome or verification of the private site is asserted.",
+  "initial_inventory_manifest_sha256": "798fc9de82385a73053fca350681c32a7d1e00cf34d711ce20803c5509972db0",
+  "private_observation_manifest_sha256": "bf6a5d3e5b4c42472cd9fa2e3b4b694c7ed5caf193bb9c5505907490ee2ae931",
+  "observation": "Four public-result checkout roots were absent from the initialized inventory and were detected after the injection phase claim committed. Their creation times relative to the claim are not established. The initial inventory must not be described as complete.",
+  "new_public_copy_roots": 4,
+  "additional_natural_files": 44,
+  "additional_natural_apparent_bytes": 49099408,
+  "additional_prior_files": 32,
+  "additional_prior_apparent_bytes": 13035328,
+  "duplicate_payloads": {
+    "natural_archives": 4,
+    "natural_archive_bytes_each": 11485872,
+    "natural_archive_sha256": "9ea7ebf83f0580335cbf35b65b2277d8990090adff5b3eb8d0b3b68409cd3a69",
+    "prior_preflight_logits": 4,
+    "prior_preflight_bytes_each": 3216448,
+    "prior_preflight_sha256": "7c262f3fe81236888a8f5fdb6d31f7835666674be9ffbf36f8ce2ca6a375eb6c",
+    "additional_unique_tensor_bytes_from_these_copies": 0
+  },
+  "known_physical_lower_bounds": {
+    "initial_natural_apparent_bytes": 1045652195,
+    "initial_prior_apparent_bytes": 919673918,
+    "natural_with_these_roots_bytes": 1094751603,
+    "prior_with_these_roots_bytes": 932709246,
+    "natural_discovery_share_bytes": 4294967296,
+    "all_full_phase_shares_bytes": 4865392640,
+    "ledger_allowance_bytes": 134217728,
+    "full_shares_plus_allowance_plus_known_prior_bytes": 5932319614,
+    "study_physical_allowance_bytes": 8589934592
+  },
+  "limitations": "The listed known copies and full reserved shares fit the stated apparent-byte allowances. These numbers are lower bounds, exclude other newly created evidence and this report's own copies, and do not measure allocated filesystem clusters. They do not prove current-inventory completeness or sufficient space against concurrent writers. The fixed 512 MiB logical tensor cap and all logical phase shares are unchanged.",
+  "claim_handling": "The original injection claim remains consumed. No retry or private-site redraw is authorized by this observation. Before any later phase, the custodian must refresh and independently review all evidence, recheck free space and use a reviewed reconciliation that preserves every existing claim; do not reset or replace the ledger."
+}
