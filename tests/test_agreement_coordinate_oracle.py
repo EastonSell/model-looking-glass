@@ -9,6 +9,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import struct
 import tempfile
 import unittest
 
@@ -227,6 +228,7 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
 
             def raw(row, name):
                 ref = row["tensors"][name]
+                self.assertEqual(ref["dtype"], "float32-le")
                 data = (path / "tensors" / (ref["sha256"] + ".f32le")).read_bytes()
                 self.assertEqual(len(data), ref["bytes"])
                 self.assertEqual(hashlib.sha256(data).hexdigest(), ref["sha256"])
@@ -234,13 +236,54 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
 
             counts, seen_patches, seen_controls, seen_clean = {}, set(), set(), set()
             seen_repeat, seen_final, seen_null = set(), set(), set()
+            seen_metric_sites = {"present_site_metrics": set(), "secondary_past_site_metrics": set()}
             capture_sites = _SITES + ((5, "block"), (5, "block"))
             for row in rows:
                 event, kind = row["event"], row["event"]["kind"]
                 counts[kind] = counts.get(kind, 0) + 1
-                if kind != "summary":
+                if kind not in ("summary", "run_contract", *seen_metric_sites):
                     self.assertEqual(event["quartet"], "synthetic-q")
-                if kind == "clean_capture":
+                if kind == "run_contract":
+                    self.assertEqual(event["cases"], [
+                        {"case_id": case.case_id, "quartet": "synthetic-q", "lemma": case.lemma,
+                         "number": case.number, "input_ids": list(case.tokens),
+                         "attention_mask": [1] * len(case.tokens), "subject_index": case.subject_index}
+                        for case in _CASES])
+                    expected_sites = []
+                    for layer, component, role in ([(layer, component, "last") for layer, component in _SITES] +
+                                                   [(5, "block", "last"), (5, "block", "subject")]):
+                        site_path = f"transformer.h.{layer}" + ("" if component == "block" else "." + component)
+                        expected_sites.append({"id": f"{layer}:{component}:{role}", "module_path": site_path,
+                                               "layer": layer, "component": component, "token_role": role,
+                                               "output_selector": [0] if component in ("attn", "block") else []})
+                    self.assertEqual(event["sites"], expected_sites)
+                elif kind in seen_metric_sites:
+                    site_id = event["site"]
+                    self.assertNotIn(site_id, seen_metric_sites[kind])
+                    seen_metric_sites[kind].add(site_id)
+                    layer_text, component, role = site_id.split(":")
+                    layer = int(layer_text)
+                    self.assertEqual(role, "last")
+                    self.assertIn((layer, component), _SITES)
+                    self.assertEqual(event["metrics"]["site_summary"]["site"], site_id)
+                    pairs = event["metrics"]["pairs"]
+                    self.assertEqual(len(pairs), 16)
+                    seen_pairs = set()
+                    for pair in pairs:
+                        target, donor = by_id[pair["target"]], by_id[pair["donor"]]
+                        self.assertEqual((pair["site"], pair["quartet"]), (site_id, "synthetic-q"))
+                        key = (target.case_id, donor.case_id)
+                        self.assertNotIn(key, seen_pairs)
+                        seen_pairs.add(key)
+                        expected_cell = ("same_lemma" if target.lemma == donor.lemma else "different_lemma") + (
+                            "_same_number" if target.number == donor.number else "_opposite_number")
+                        self.assertEqual(pair["cell"], expected_cell)
+                        scores = struct.unpack("<4f", patches[(target.case_id, donor.case_id, (layer, component))]["logits"])
+                        offset = 0 if kind == "present_site_metrics" else 2
+                        self.assertEqual((pair["patched_is"], pair["patched_are"]), scores[offset:offset + 2])
+                    self.assertEqual(seen_pairs, {(target.case_id, donor.case_id)
+                                                  for target in _CASES for donor in _CASES})
+                elif kind == "clean_capture":
                     case = by_id[event["case"]]
                     self.assertNotIn(case.case_id, seen_clean)
                     seen_clean.add(case.case_id)
@@ -293,8 +336,11 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
                     self.assertEqual(donor.lemma, target.lemma)
                     self.assertNotEqual(donor.number, target.number)
                     self.assertEqual(event["reference"], donor.case_id if role == "last" else target.case_id)
+                    self.assertIs(event["post_action_matches_donor_bits"], True)
                     self.assertEqual((event["site"]["module_path"], event["site"]["output_selector"],
-                                      event["site"]["token_role"]), ("transformer.h.5", [0], role))
+                                      event["site"]["token_role"], event["site"]["id"],
+                                      event["site"]["layer"], event["site"]["component"]),
+                                     ("transformer.h.5", [0], role, f"5:block:{role}", 5, "block"))
                     steps = event["plan_metadata"]["steps"]
                     self.check_action_steps(steps, target, 5, "block", role, "patch")
                     self.assertEqual(raw(row, "before"), _bits(clean[target.case_id]["sites"][(5, "block")][role]))
@@ -339,6 +385,10 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
             self.assertEqual(seen_patches, set(patches))
             self.assertEqual(seen_controls, set(controls))
             self.assertEqual((seen_repeat, seen_final, seen_null), (set(by_id), set(by_id), set(by_id)))
+            expected_site_ids = {f"{layer}:{kind}:last" for layer, kind in _SITES}
+            self.assertTrue(all(sites == expected_site_ids for sites in seen_metric_sites.values()))
+            self.assertEqual(counts["run_contract"], 1)
+            self.assertEqual(counts["summary"], 1)
             self.assertEqual({kind: counts[kind] for kind in ("clean_capture", "patch", "delivery",
                                                               "subject_position", "null", "clean_repeat",
                                                               "final_clean")},
