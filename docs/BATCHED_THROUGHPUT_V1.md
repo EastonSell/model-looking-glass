@@ -1,9 +1,13 @@
 # Batched shared-model throughput: proposed protocol v1
 
 Status: **development protocol and offline analyzer, not a GPU result or an
-admission policy**. The current broker executes one forward at a time; the
-grouped broker is still under review. This protocol must not be reported as
-executed until the real broker emits the measurements below and the complete
+admission policy**. An experimental grouped broker and standalone
+[grouped](GROUPED_OBSERVATION.md) and [serial](SERIAL_OBSERVATION.md)
+observation hooks are implemented and CPU-tested. The staged GPU-service owner
+uses a serial broker and remains launch-gated; its session-bound worker is not
+covered by the standalone serial hook. A matched, supervised GPU throughput
+comparison has not been run. This protocol must not be reported as executed
+until the actual service emits the measurements below and the complete
 owner/device chain has been independently checked. The earlier four-request
 shared-load result used no batching and cannot serve as an exact baseline for a
 different workload.
