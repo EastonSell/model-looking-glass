@@ -74,6 +74,13 @@ unverified attempt with its original position, stage and partial records. A
 material implementation or protocol correction requires a new, published
 revision and a separately identified experiment; it must not silently replace
 these attempts. Do not pool the earlier v2 observations into this analysis.
+For each attempt, bind the supervisor run ID and child PID to a creation time
+observed by the parent from a live Windows process handle. Check the child's
+record against the supervisor's actual PID/run ID and that handle observation,
+then verify a zero exit and reap. A reused run ID or PID/creation-time pair
+invalidates every affected attempt; a missing or ambiguous identity is
+incomplete. A PID may be reused only with a different verified creation time.
+Keep these identities in the private evidence, not the public projection.
 
 The device may be released between owners so other reviewed GPU workloads can
 run. Each owner needs an explicit coordinated project quiet window for its
@@ -101,7 +108,10 @@ flush/fsync occurs after each sample interval, but it and NVIDIA polling can
 perturb later samples; mode order can also have carryover effects despite the
 balanced schedule. Record monitoring query intervals as descriptive context,
 without post hoc exclusions or reweighting based on overlap. The clock rule
-bounds nominal resolution, not total timing accuracy.
+bounds nominal resolution, not total timing accuracy. For evidence consistency,
+reject an event duration more than 100 microseconds longer than its enclosing
+synchronized wall interval. This is a conservative rounding allowance, not a
+calibration of either clock's accuracy.
 
 Use the v2 activity classifier and its complete-coverage rules for the span
 from preflight through the last measured sample: three valid idle observations
@@ -114,7 +124,10 @@ data. Keep the strict distinction between screen **status** and **availability**
 a foreign listed GPU PID or idle utilization above 5% is contamination, while
 an error, identity mismatch or inadequate coverage makes availability
 unverified even if the status is also contaminated. Do not promote an
-unavailable screen as a completed comparison.
+unavailable screen as a completed comparison. Require the after-workload
+process query to start no earlier than workload end, finish within five
+seconds of that end, and take no more than two seconds. These endpoint
+freshness limits do not establish continuous absence of other activity.
 
 Permit completed contaminated sessions only as explicitly exploratory
 observations. Preserve both contamination reasons, all sampled utilization and
