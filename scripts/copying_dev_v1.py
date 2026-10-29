@@ -11,6 +11,9 @@ import platform
 import subprocess
 import sys
 
+if __name__ == "__main__" and os.environ.get("CUDA_VISIBLE_DEVICES") != "-1":
+    raise RuntimeError("set CUDA_VISIBLE_DEVICES=-1 before starting the CPU screen")
+
 import numpy as np
 import torch
 
@@ -108,6 +111,17 @@ def state_hash(model):
     return digest.hexdigest()
 
 
+def runtime_checks(model):
+    if (os.environ.get("CUDA_VISIBLE_DEVICES") != "-1" or torch.cuda.is_initialized()
+            or torch.get_num_threads() != 1 or torch.is_autocast_enabled("cpu")
+            or model.training or any(module.training for module in model.modules())
+            or model.config._attn_implementation != "eager" or model.config.use_cache is not False
+            or any(parameter.device.type != "cpu" or parameter.dtype != torch.float32
+                   for parameter in model.parameters())):
+        raise RuntimeError("model runtime does not match the fixed CPU execution policy")
+    return numeric_policy()
+
+
 def planned_cases():
     ids = [token for _, group in GROUPS for token in group]
     if len(ids) != 48 or len(set(ids)) != 48:
@@ -162,6 +176,8 @@ def main():
             if actual != case["token_ids"] or len(actual) != LENGTH:
                 raise RuntimeError("pinned tokenizer did not produce the fixed token sequence")
         model = bundle.model
+        if runtime_checks(model) != probe_before:
+            raise RuntimeError("initial model runtime differs")
         before = state_hash(model)
         with (args.output_dir / "attempt.jsonl").open("xb") as log, \
              (args.output_dir / "last_logits.f32").open("xb") as logits_file, \
@@ -170,10 +186,12 @@ def main():
             event(log, {"event": "start", "case_id": first["case_id"], "mode": "uncaptured"})
             first_ids = torch.tensor([first["token_ids"]], dtype=torch.int64)
             submitted += 1
+            runtime_checks(model)
             with torch.inference_mode():
                 plain = model(input_ids=first_ids, attention_mask=torch.ones_like(first_ids),
                               use_cache=False, output_attentions=False, return_dict=True)
             root_returned += 1
+            runtime_checks(model)
             if (plain.past_key_values is not None or tuple(plain.logits.shape) != (1, LENGTH, VOCAB)
                     or not bool(torch.isfinite(plain.logits[0, -1]).all())):
                 raise RuntimeError("invalid uncaptured control")
@@ -186,10 +204,12 @@ def main():
                 event(log, {"event": "start", "case_id": case["case_id"]})
                 ids = torch.tensor([case["token_ids"]], dtype=torch.int64)
                 submitted += 1
+                runtime_checks(model)
                 with torch.inference_mode():
                     output = model(input_ids=ids, attention_mask=torch.ones_like(ids),
                                    use_cache=False, output_attentions=True, return_dict=True)
                 root_returned += 1
+                runtime_checks(model)
                 if (output.past_key_values is not None or tuple(output.logits.shape) != (1, LENGTH, VOCAB)
                         or len(output.attentions) != LAYERS):
                     raise RuntimeError("unexpected output shape or cache")
@@ -221,7 +241,7 @@ def main():
                 event(log, {"event": "complete", "case_id": case["case_id"],
                             "logits_sha256": record["logits_sha256"], "attention_sha256": record["attention_sha256"]})
         after = state_hash(model)
-        post_probe = numeric_policy()
+        post_probe = runtime_checks(model)
         if before != after or post_probe != probe_before or torch.cuda.is_initialized():
             raise RuntimeError("model state or execution policy changed")
         pairs = []
@@ -245,7 +265,10 @@ def main():
                               "system": platform.system(), "machine": platform.machine(),
                               "byteorder": sys.byteorder, "intraop_threads": torch.get_num_threads(),
                               "deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
-                              "cuda_initialized": torch.cuda.is_initialized(), "post_probe": post_probe},
+                              "cuda_visibility": "-1", "cuda_initialized": torch.cuda.is_initialized(),
+                              "cpu_autocast": torch.is_autocast_enabled("cpu"), "model_eval": not model.training,
+                              "attention_implementation": model.config._attn_implementation,
+                              "use_cache": model.config.use_cache, "post_probe": post_probe},
                   "logits_sha256": sha((args.output_dir / "last_logits.f32").read_bytes()),
                   "attentions_sha256": sha((args.output_dir / "attentions.f32").read_bytes()),
                   "uncaptured_logits_sha256": sha(plain_raw), "captured_logits_bitwise_match": True,

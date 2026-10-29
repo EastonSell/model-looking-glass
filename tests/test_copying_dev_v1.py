@@ -1,10 +1,13 @@
 """Pure checks for the public copying screen; no pretrained forward."""
 import math
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import numpy as np
+import torch
 
-from scripts.copying_dev_v1 import GROUPS, PERMUTATIONS, planned_cases, statistics
+from scripts.copying_dev_v1 import GROUPS, PERMUTATIONS, numeric_policy, planned_cases, runtime_checks, statistics
 
 
 class CopyingDevelopmentTests(unittest.TestCase):
@@ -33,6 +36,26 @@ class CopyingDevelopmentTests(unittest.TestCase):
         self.assertAlmostEqual(result["target_log_probability"],
                                2.0 - math.log(math.exp(1.0) + 2 * math.exp(2.0) + math.exp(-1.0)))
         self.assertEqual(statistics(raw, 0)["target_rank"], 3)
+
+    def test_runtime_checks_reject_changed_mode_and_autocast(self):
+        model = torch.nn.Linear(2, 2).eval()
+        model.config = SimpleNamespace(_attn_implementation="eager", use_cache=False)
+        previous_threads = torch.get_num_threads()
+        self.addCleanup(torch.set_num_threads, previous_threads)
+        with patch.dict("os.environ", {"CUDA_VISIBLE_DEVICES": "-1"}):
+            numeric_policy(initialize=True)
+            runtime_checks(model)
+            model.train()
+            with self.assertRaises(RuntimeError):
+                runtime_checks(model)
+            model.eval()
+            model.config.use_cache = True
+            with self.assertRaises(RuntimeError):
+                runtime_checks(model)
+            model.config.use_cache = False
+            with torch.autocast("cpu", dtype=torch.bfloat16):
+                with self.assertRaises(RuntimeError):
+                    runtime_checks(model)
 
 
 if __name__ == "__main__":

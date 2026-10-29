@@ -18,7 +18,8 @@ group `[a,b,c,d,e,f]`, evaluate these four fixed inputs in the listed order:
 3. `[b,d,e,c,a,f,a,b,c,d,e]`
 4. `[d,a,e,b,c,f,a,b,c,d,e]`
 
-The target is `f` at the final input position. Within each group, the prompts
+The next-token target is `f`, scored from logits at the final input position;
+its earlier occurrence is at position 5. Within each group, the prompts
 have the same multiset of input tokens, the same last five tokens and the same
 earlier position of `f`. The controls change the earlier local ordering and
 the context in which `f` was encoded, so any difference may reflect those
@@ -32,7 +33,8 @@ version. Retain all 50,257 final-position float32 logits and all six layers'
 Check shape, finiteness, probability-row normalization and the causal mask.
 Record each target's raw logit, binary64 log probability computed
 from the saved float32 logits, one-based rank (`1 +` the number of strictly
-greater logits), and top-token ID. Report each repeated-versus-control
+greater logits), and top-token ID (ties choose the lowest token ID; all tied
+maxima have rank 1). Report each repeated-versus-control
 log-probability difference, the mean difference against the three controls
 for each group, and the eight-group mean and number with positive mean. Also
 report repeated and control top-one counts. Do not infer statistical
@@ -49,7 +51,8 @@ negative screen is a result, not a reason to silently change cases or controls.
 The runner binds the exact source revision and pinned offline model/tokenizer
 asset hashes, records thread/runtime and numerical probes, saves an append-only
 attempt log and raw tensor streams, and publishes a result only after complete
-forwards and matching before/after model-state hashes. An interrupted attempt
+forwards and matching before/after model-state hashes. A valid result also
+requires a zero process exit and no failure record; an interrupted attempt
 remains incomplete with any saved prefix; a new attempt uses a new directory.
 Source and local timestamps are operational records, not proof of isolation,
 pretraining-data independence, or an externally witnessed precommit.
