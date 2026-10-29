@@ -6,6 +6,10 @@ not admit trace jobs using this adapter. Its tests do not establish GPU safety,
 machine-wide RAM limits, remote authentication, throughput, or a bound on the
 memory of consumers.
 
+For recoverable construction of a delivery in a bounded trusted-owner slot,
+see [TRACE_DELIVERY_GUARD.md](TRACE_DELIVERY_GUARD.md). That prototype does
+not enable trace service jobs or replace the custody sequence below.
+
 `TraceDelivery` stages one event for one sample. It takes trusted individual
 identity fields for the broker lifetime ID, job, team, run, request, sample
 and batch row, constructs a `DeliveryIdentity`, and creates a fresh random

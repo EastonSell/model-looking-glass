@@ -54,7 +54,7 @@ class DeliveryManifest:
 
 
 def _text(value):
-    return type(value) is str and bool(value.strip()) and len(value) <= 128
+    return type(value) is str and 0 < len(value) <= 128 and bool(value.strip())
 
 
 def _int(value):
@@ -183,6 +183,10 @@ class TraceDelivery:
     def __init__(self, budget, store, *, broker_id, job_id, team_id, run_id,
                  request_id, sample_id, batch_position, max_payload_bytes,
                  metadata_reserve_bytes=_METADATA_ENVELOPE):
+        # An enclosing adoption slot may retire a failed construction only
+        # when this is true. Set false before any ledger registration; a
+        # guarded cleanup sets it true again only after it has completed.
+        self._construction_clean = True
         if (type(broker_id) is not str or len(broker_id) != 32
                 or any(char not in "0123456789abcdef" for char in broker_id)
                 or not _int(job_id) or job_id == 0
@@ -226,6 +230,7 @@ class TraceDelivery:
         # The side-effect-free guard exists before registration. The ledger
         # retains it with the exact generation if adoption is interrupted.
         guard = budget.request_guard(self._request_id)
+        self._construction_clean = False
         try:
             guard.open()
             self._request = guard.adopt()
@@ -240,6 +245,7 @@ class TraceDelivery:
             except BaseException:
                 # The live guard remains discoverable for trusted recovery.
                 raise DeliveryConstructionError(guard) from None
+            self._construction_clean = True
             raise
 
     @property
