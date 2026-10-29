@@ -129,18 +129,38 @@ def test_published_discovery_handoff_binds_all_archive_parts_terminal_and_receip
                 'reaped': True, 'forced_stop': False, 'status': 'complete',
                 'terminal_sha256': hashlib.sha256(files['terminal.json']).hexdigest()}
     index_raw, observer_raw = encode(index), encode(observer)
+    readback = {'schema': 'vision-occlusion-v1-discovery-public-readback', 'status': 'pass',
+                'public_commit': 'd' * 40, 'archive_sha256': index['archive_sha256'],
+                'index_sha256': hashlib.sha256(index_raw).hexdigest(),
+                'parts': [{**part, 'git_blob': hashlib.sha1(b'blob ' + str(len(raw)).encode() + bytes([0]) + raw).hexdigest()}
+                          for part, raw in zip(index['parts'], parts)]}
+    readback_raw = encode(readback)
     freeze = {'schema': 'vision-occlusion-v1-discovery-freeze', 'status': 'complete',
               'manifest_sha256': 'b' * 64, 'selected_ids': ids,
               'terminal_sha256': observer['terminal_sha256'], 'archive_sha256': index['archive_sha256'],
               'index_sha256': hashlib.sha256(index_raw).hexdigest(),
               'observer_sha256': hashlib.sha256(observer_raw).hexdigest()}
     freeze_raw = encode(freeze)
-    assert verify_public_discovery(freeze_raw, index_raw, observer_raw, data,
+    assert verify_public_discovery(freeze_raw, index_raw, observer_raw, readback_raw, data,
                                    manifest_sha='b' * 64, model_state='c' * 64) == terminal
     with pytest.raises(ValueError, match='archive'):
-        verify_public_discovery(freeze_raw, index_raw, observer_raw, data[:-1] + b'X',
+        verify_public_discovery(freeze_raw, index_raw, observer_raw, readback_raw, data[:-1] + b'X',
                                 manifest_sha='b' * 64, model_state='c' * 64)
     broken = {**observer, 'reaped': False}
     with pytest.raises(ValueError, match='observer'):
-        verify_public_discovery(freeze_raw, index_raw, encode(broken), data,
+        verify_public_discovery(freeze_raw, index_raw, encode(broken), readback_raw, data,
                                 manifest_sha='b' * 64, model_state='c' * 64)
+    with pytest.raises(ValueError, match='readback'):
+        verify_public_discovery(freeze_raw, index_raw, observer_raw,
+                                encode({**readback, 'parts': []}), data,
+                                manifest_sha='b' * 64, model_state='c' * 64)
+
+
+def test_bounded_archive_read_rejects_before_accepting_oversized_input(tmp_path):
+    from tools.run_vision_coco_occlusion import read_bounded
+
+    path = tmp_path / 'archive'
+    path.write_bytes(b'12345')
+    assert read_bounded(path, 5) == b'12345'
+    with pytest.raises(ValueError, match='bounded'):
+        read_bounded(path, 4)

@@ -34,6 +34,7 @@ RESULT = 'results/vision-coco-occlusion-v1-20261029'
 DISCOVERY = RESULT + '/discovery-freeze.json'
 DISCOVERY_INDEX = RESULT + '/discovery-evidence-index.json'
 DISCOVERY_OBSERVER = RESULT + '/discovery-observer.json'
+DISCOVERY_READBACK = RESULT + '/discovery-public-readback.json'
 SCREEN = RESULT + '/screen-result.json'
 SCREEN_ARCHIVE = RESULT + '/screen-evidence.zip'
 MODEL_STATE = 'd1bfb26b30f847366de6388385d547fc29cc3c20b330c4faad993891e165eccd'
@@ -74,7 +75,7 @@ def snapshot(revision, mode):
         raise ValueError('local source revision differs')
     paths = list(SOURCES)
     if mode in ('screen', 'evaluation'):
-        paths.extend((DISCOVERY, DISCOVERY_INDEX, DISCOVERY_OBSERVER))
+        paths.extend((DISCOVERY, DISCOVERY_INDEX, DISCOVERY_OBSERVER, DISCOVERY_READBACK))
     if mode == 'evaluation':
         paths.extend((SCREEN, SCREEN_ARCHIVE))
     sources = {}
@@ -197,11 +198,20 @@ def verify_public_screen_archive(data, archive_bytes):
     return sha(archive_bytes)
 
 
-def verify_public_discovery(freeze_raw, index_raw, observer_raw, archive_bytes, *,
+def read_bounded(path, limit):
+    with path.open('rb') as stream:
+        value = stream.read(limit + 1)
+    if len(value) > limit:
+        raise ValueError('bounded read exceeded')
+    return value
+
+
+def verify_public_discovery(freeze_raw, index_raw, observer_raw, readback_raw, archive_bytes, *,
                             manifest_sha=MANIFEST_SHA, model_state=MODEL_STATE):
     """Bind the published discovery outcome to its archive, parts and direct exit."""
     try:
-        freeze, index, observer = (json.loads(raw) for raw in (freeze_raw, index_raw, observer_raw))
+        freeze, index, observer, readback = (json.loads(raw) for raw in
+                                             (freeze_raw, index_raw, observer_raw, readback_raw))
         ids = [328437, 142719, 476736, 503893]
         if (freeze.get('schema') != 'vision-occlusion-v1-discovery-freeze' or
                 freeze.get('status') != 'complete' or freeze.get('manifest_sha256') != manifest_sha or
@@ -223,6 +233,13 @@ def verify_public_discovery(freeze_raw, index_raw, observer_raw, archive_bytes, 
         parts = index.get('parts')
         if not isinstance(parts, list) or not 1 <= len(parts) <= 128:
             raise ValueError('discovery archive parts differ')
+        if (readback.get('schema') != 'vision-occlusion-v1-discovery-public-readback' or
+                readback.get('status') != 'pass' or type(readback.get('public_commit')) is not str or
+                not re.fullmatch('[0-9a-f]{40}', readback['public_commit']) or
+                readback.get('index_sha256') != sha(index_raw) or
+                readback.get('archive_sha256') != index['archive_sha256'] or
+                not isinstance(readback.get('parts'), list) or len(readback['parts']) != len(parts)):
+            raise ValueError('discovery public readback differs')
         offset = 0
         for position, part in enumerate(parts):
             if (not isinstance(part, dict) or part.get('file') != f'discovery-evidence.part-{position:03d}' or
@@ -231,6 +248,9 @@ def verify_public_discovery(freeze_raw, index_raw, observer_raw, archive_bytes, 
             chunk = archive_bytes[offset:offset + part['bytes']]
             if len(chunk) != part['bytes'] or part.get('sha256') != sha(chunk):
                 raise ValueError('discovery archive part differs')
+            blob = hashlib.sha1(b'blob ' + str(len(chunk)).encode() + bytes([0]) + chunk).hexdigest()
+            if readback['parts'][position] != {**part, 'git_blob': blob}:
+                raise ValueError('discovery public readback part differs')
             offset += part['bytes']
         if offset != len(archive_bytes):
             raise ValueError('discovery archive part lengths differ')
@@ -354,13 +374,15 @@ def main(args):
             if args.discovery_archive is None:
                 raise ValueError('screen needs the published discovery archive')
             verify_public_discovery((ROOT / DISCOVERY).read_bytes(), (ROOT / DISCOVERY_INDEX).read_bytes(),
-                                    (ROOT / DISCOVERY_OBSERVER).read_bytes(), args.discovery_archive.read_bytes())
+                                    (ROOT / DISCOVERY_OBSERVER).read_bytes(), (ROOT / DISCOVERY_READBACK).read_bytes(),
+                                    read_bounded(args.discovery_archive, 100_000_000))
             images, expected = manifest['images'], None
         else:
             if args.discovery_archive is None:
                 raise ValueError('evaluation needs the published discovery archive')
             verify_public_discovery((ROOT / DISCOVERY).read_bytes(), (ROOT / DISCOVERY_INDEX).read_bytes(),
-                                    (ROOT / DISCOVERY_OBSERVER).read_bytes(), args.discovery_archive.read_bytes())
+                                    (ROOT / DISCOVERY_OBSERVER).read_bytes(), (ROOT / DISCOVERY_READBACK).read_bytes(),
+                                    read_bounded(args.discovery_archive, 100_000_000))
             if args.screen_data is None or not args.screen_data.is_absolute() or not args.screen_data.is_dir():
                 raise ValueError('evaluation needs the closed screen data')
             screened = verify_saved_screen(manifest['images'], args.screen_data,
