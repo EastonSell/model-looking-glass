@@ -1,0 +1,37 @@
+{
+  "combined_bytes": 24470665,
+  "combined_sha256": "4308884eefd1bd4f69da55d4e5f6e58f4df56381401b2a39cd7e02ea302fdc61",
+  "parts": [
+    {
+      "bytes": 4194304,
+      "name": "selected.f32.gz.part-000",
+      "sha256": "239ae5cdce2b0f935710ead5b884c8d7a7bb0655d5475426e1fd9b118e28afb4"
+    },
+    {
+      "bytes": 4194304,
+      "name": "selected.f32.gz.part-001",
+      "sha256": "823917c7435a50c9a69a4a1d18f1050a0a25e03f8a490dab1955db6042e97c95"
+    },
+    {
+      "bytes": 4194304,
+      "name": "selected.f32.gz.part-002",
+      "sha256": "0fb48faca26c143a9014cbbe211239e2305863898652cdc85555ffc5a4277bef"
+    },
+    {
+      "bytes": 4194304,
+      "name": "selected.f32.gz.part-003",
+      "sha256": "f48d97223d40966b6df28ebc41479f8fe9fe527f7913acef6702d151fe1da07b"
+    },
+    {
+      "bytes": 4194304,
+      "name": "selected.f32.gz.part-004",
+      "sha256": "15c8b524666e974b50a79104db0a1fd91b28495aa6a090b70586b9e2679e838d"
+    },
+    {
+      "bytes": 3499145,
+      "name": "selected.f32.gz.part-005",
+      "sha256": "4079f338d57087115839d1b1ba6e7ec051c5543de68ec359c72915653a06085e"
+    }
+  ],
+  "schema": "bert-negation-selected-logit-parts-v1"
+}

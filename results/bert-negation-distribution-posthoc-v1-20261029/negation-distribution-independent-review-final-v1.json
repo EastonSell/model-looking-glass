@@ -1,0 +1,11 @@
+{
+  "cases": 8,
+  "journal_events": 456,
+  "journal_sha256": "a67b5ea0ab7d4f7078bab57ad315f9bcf90302be674e8723c05c0785a011ccd1",
+  "physical_unique_vectors": 224,
+  "report_sha256": "d5bd1451890fbf8f1a73e8f474e6060aa62c5665f6fd2f69a54d246dae76459b",
+  "scope": "Independent saved-logit comparisons and original-to-subset bytes, not execution or activation-witness attestation.",
+  "selected_logical_vectors_compared": 288,
+  "status": "pass",
+  "subset_sha256": "4308884eefd1bd4f69da55d4e5f6e58f4df56381401b2a39cd7e02ea302fdc61"
+}
