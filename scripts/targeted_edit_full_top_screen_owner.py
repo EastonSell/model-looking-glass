@@ -50,7 +50,7 @@ NAT_WRAPPER = "tools/natural_heldout_custody.py"
 NAT_WRAPPER_SHA = "cc6f8d82bc9167aa34d3357ea64364f15153dc00a6cdef60e7b547e66b68f3cb"
 NAT_SUCCESSOR_SHA = "6303eb0713d64b020eea3fe491a686c9020ea424754443372aef73749bc87bc4"
 base.EXTRA = (base.SCRIPT, "scripts/targeted_edit_projected_study.py", base.PROTOCOL,
-              base.SUPPLEMENT, base.OWNER_DOCUMENT, base.CASES, FRAME, SUPPORT, base.REFERENCE, PRIOR,
+              base.SUPPLEMENT, "docs/TARGETED_EDIT_FULL_TOP_STAGE_SOURCE_V1.md", base.OWNER_DOCUMENT, base.CASES, FRAME, SUPPORT, base.REFERENCE, PRIOR,
               NAT_COMMITMENT, NAT_OPERATIONAL, NAT_BINDING, NAT_WRAPPER,
               "scripts/build_targeted_edit_full_top_cases.py",
               "tests/test_targeted_edit_full_top.py", "tests/test_targeted_edit_full_top_screen.py",
