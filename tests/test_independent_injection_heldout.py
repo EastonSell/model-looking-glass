@@ -4,7 +4,9 @@ import importlib.util
 import hashlib
 import json
 import math
+import subprocess
 import struct
+import sys
 
 import pytest
 
@@ -24,6 +26,35 @@ def test_binary32_injection_rounding_handles_cancellation_and_large_values():
     assert module.rounded_add_bits(0xff7fffff, direction) == 0xff7fffff
     with pytest.raises(ValueError):
         module.rounded_add_bits(0x7f800000, direction)
+
+
+@pytest.mark.skipif(sys.platform != 'win32', reason='Windows CRT rounding control is unavailable')
+def test_injection_rounding_is_exact_and_nonnearest_binary64_is_rejected():
+    program = '''
+import ctypes
+from tools.audit_injection_heldout import rounded_add_bits, require_nearest_binary64
+control = ctypes.CDLL("msvcrt")._controlfp
+control.argtypes = (ctypes.c_uint, ctypes.c_uint)
+control.restype = ctypes.c_uint
+prior = control(0, 0)
+try:
+    for mode in (0, 0x100, 0x200, 0x300):
+        control(mode, 0x300)
+        if rounded_add_bits(0x3f800000, 0x3c93cd3a) != 0x3f824f35:
+            raise AssertionError("binary32 result depends on host rounding")
+        try:
+            require_nearest_binary64()
+        except ValueError:
+            if mode == 0:
+                raise
+        else:
+            if mode != 0:
+                raise AssertionError("non-nearest binary64 mode was accepted")
+finally:
+    control(prior, 0x300)
+'''
+    child = subprocess.run([sys.executable, '-B', '-c', program], capture_output=True, text=True, timeout=15)
+    assert child.returncode == 0, child.stderr
 
 
 def test_private_patch_and_null_require_exact_selected_and_untouched_bits():

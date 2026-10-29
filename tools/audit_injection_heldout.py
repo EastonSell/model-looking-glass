@@ -272,21 +272,48 @@ def direction_bits():
     return tuple(out)
 
 
-def rounded_add_bits(left, right):
-    """Add two finite binary32 values and return nearest-even binary32 bits.
+def _binary32_units(bits):
+    """Return an exact signed integer multiple of the least binary32 unit."""
+    require(type(bits) is int and 0 <= bits < (1 << 32), 'invalid float32 bits')
+    exponent, fraction = (bits >> 23) & 255, bits & 0x7fffff
+    require(exponent != 255, 'nonfinite float32')
+    magnitude = fraction if exponent == 0 else ((1 << 23) | fraction) << (exponent - 1)
+    return -magnitude if bits >> 31 else magnitude
 
-    The only supported right operand is one of the fixed direction values.
-    Cancellation of those binary32 values cannot produce a nonzero subnormal,
-    so the final host conversion cannot flush a nonzero result.
-    """
+
+def rounded_add_bits(left, right):
+    """Add fixed finite binary32 values using exact integers and ties-to-even."""
     require(right in (0x3c93cd3a, 0xbc93cd3a), 'direction component differs')
-    total = math.fsum((float32(left), float32(right)))
-    try:
-        result = struct.unpack('<I', struct.pack('<f', total))[0]
-    except OverflowError as error:
-        raise ValueError('injection result is not finite') from error
-    float32(result)
-    return result
+    total = _binary32_units(left) + _binary32_units(right)
+    if total == 0:
+        return 0
+    sign, magnitude = (0x80000000 if total < 0 else 0), abs(total)
+    maximum = 0x7f7fffff
+    max_units = _binary32_units(maximum)
+    if magnitude > max_units:
+        gap = max_units - _binary32_units(maximum - 1)
+        require(2 * (magnitude - max_units) < gap, 'injection result is not finite')
+        return sign | maximum
+    low, high = 0, maximum
+    while high - low > 1:
+        middle = (low + high) // 2
+        if _binary32_units(middle) <= magnitude:
+            low = middle
+        else:
+            high = middle
+    low_distance = magnitude - _binary32_units(low)
+    high_distance = _binary32_units(high) - magnitude
+    chosen = low if low_distance < high_distance or (low_distance == high_distance and low % 2 == 0) else high
+    return sign | chosen
+
+
+def require_nearest_binary64():
+    """Reject non-nearest host rounding before and after metric calculations."""
+    one = float.fromhex('0x1p+0')
+    half = float.fromhex('0x1p-53')
+    quarter = float.fromhex('0x1p-54')
+    require(one + half == one and one - quarter == one and -one + quarter == -one and -one - half == -one,
+            'binary64 rounding mode is not nearest-even')
 
 
 def check_action_scope(before, after, *, token_count, operation, donor, delta=None):
@@ -570,6 +597,7 @@ def audit_saved(*, journal_dir, receipts_bytes, started_bytes, terminal_bytes, b
     post-score bindings. This checks saved bytes, not publication, tokenization,
     actual execution, child exit, model integrity, or sampler disjointness.
     """
+    require_nearest_binary64()
     keys = {'binding_sha256', 'heldout_commitment', 'site_commitment', 'prediction_sha256',
             'freeze_sha256', 'evaluation_sha256', 'model_state_sha256'}
     require(externally_quiescent is True and type(expected) is dict, 'independent bindings or quiescence are missing')
@@ -742,6 +770,7 @@ def audit_saved(*, journal_dir, receipts_bytes, started_bytes, terminal_bytes, b
         'heldout_commitment_sha256': expected['heldout_commitment'], 'selection': selection,
         'clean_accuracy': accuracy, 'sites': sites, 'cases': case_scores}
     require(same(evaluation, expected_evaluation), 'saved evaluation differs from independent recomputation')
+    require_nearest_binary64()
     return {'schema': 'mlg-independent-injection-heldout-audit-v1',
             'status': 'independent_saved_evidence_pass', 'records': 128,
             'binding_sha256': expected['binding_sha256'], 'heldout_commitment': expected['heldout_commitment'],

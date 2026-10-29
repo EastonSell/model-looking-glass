@@ -11,7 +11,7 @@ The `audit_saved` entry point independently verifies the two salted
 commitments and the frozen prediction binding; it checks all 128 ordered
 frames, checksums, independently retained receipts, and public capture
 coordinates. It reconstructs the fixed sign vector, exact selected-token
-addition and realized delta, patch and null delivery, untouched token bytes,
+addition with integer nearest-even rounding and realized delta, patch and null delivery, untouched token bytes,
 same-site order and adjacent witnesses, donors, upstream conditions, and
 clean/repeat/null/self/upstream/downstream controls. It recomputes every
 case's margins, first difference, vector norms, frozen-prediction and zero
@@ -19,6 +19,11 @@ errors, family groupings, reverse effects, and full-vocabulary restoration,
 and requires the complete saved evaluation to agree. The 72 MiB tensor
 check conservatively counts occurrences; it is not an RSS bound and may
 overcount duplicate payloads.
+
+The audit probes the calling thread's binary64 rounding mode before and after
+its tolerance and metric calculations and rejects a mode other than
+nearest-even. The probes are boundary checks; they cannot rule out a
+transient mode change between observations or changes on other threads.
 
 The `expected` digests passed to `audit_saved` must be supplied independently
 from the published freeze and commitments and the observed post-score
