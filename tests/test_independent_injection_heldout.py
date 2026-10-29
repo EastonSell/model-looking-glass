@@ -22,6 +22,15 @@ def test_binary32_injection_rounding_handles_cancellation_and_large_values():
     direction = 0x3c93cd3a
     assert module.rounded_add_bits(0, direction) == direction
     assert module.rounded_add_bits(0xbc93cd3a, direction) == 0
+    # The first two sums are exact midpoints: round to the even neighbor,
+    # once downward and once upward. Negation must preserve that choice.
+    assert module.rounded_add_bits(0x3d800000, direction) == 0x3da4f34e
+    assert module.rounded_add_bits(0x3d800001, direction) == 0x3da4f350
+    assert module.rounded_add_bits(0xbd800000, 0xbc93cd3a) == 0xbda4f34e
+    assert module.rounded_add_bits(0xbd800001, 0xbc93cd3a) == 0xbda4f350
+    assert module.rounded_add_bits(0x3dffffff, direction) == 0x3e1279a7
+    assert module.rounded_add_bits(0xbc93cd39, direction) == 0x31000000
+    assert module.rounded_add_bits(0xbc93cd3b, direction) == 0xb1000000
     assert module.rounded_add_bits(0x7f7fffff, direction) == 0x7f7fffff
     assert module.rounded_add_bits(0xff7fffff, direction) == 0xff7fffff
     with pytest.raises(ValueError):
