@@ -160,6 +160,54 @@ def _evaluation_analysis(output, identity, snapshot, guard, v1, v2, evidence, ga
     return {"analysis_denormal_probe_before": before, "analysis_denormal_probe_after": after}
 
 
+def _evaluation_work(repo, cache, output, identity, manifest_value, snapshot, deps):
+    """Private orchestration only; a reviewed live controller must gate its use.
+
+    The caller must independently verify source origins, the committed
+    selection and evaluation witness, direct-child custody and process-tree
+    isolation before calling. A failure aborts the isolated owner; this helper
+    does not attest model disposal or publish a terminal.
+    """
+    torch, np, _pretrained, v1, v2, _edits, evidence, _manifest, _custody, _exposure, gate = deps
+    identity = _identity(identity, v2, evidence)
+    if (type(snapshot) is not gate.SelectionSnapshot or snapshot.selection_commit != identity["selection_commit"]
+            or snapshot.terminal_sha256 != identity["selection_terminal_sha256"]
+            or v1._sha(snapshot.manifest_bytes) != identity["manifest_sha256"]
+            or owner._canonical(manifest_value) != snapshot.manifest_bytes):
+        raise owner.OwnerError("evaluation selection snapshot identity differs")
+    try:
+        frozen_manifest = v1._decode_document(snapshot.manifest_bytes)
+        development = v1._decode_document(snapshot.metadata_bytes)
+        if (frozen_manifest["version"] != v2.VERSION or frozen_manifest["source_commit"] != identity["source_commit"]
+                or development["source_commit"] != identity["source_commit"]
+                or development["manifest_sha256"] != identity["manifest_sha256"]
+                or development["phase"] != "development" or not evidence._run_id(development["run_id"])
+                or development["run_id"] == identity["run_id"]):
+            raise owner.OwnerError("evaluation development identity differs")
+    except (KeyError, TypeError) as exc:
+        raise owner.OwnerError("evaluation snapshot is incomplete") from exc
+    loaded, guard, gradient, random, discovery, reference, compatibility, environment = \
+        owner._prepare_v1_reconstruction(repo, cache, manifest_value, deps)
+    guard.verify()
+    model_metadata = {**loaded.metadata, "evaluation_mode": True}
+    updates = gate.reconstruct_selected_controls(snapshot, reference_bytes=reference, environment=environment,
+        model_metadata=model_metadata, model_state_sha256=guard.state_sha, buffer_state_sha256=guard.buffer_sha,
+        runtime_settings=guard.runtime_settings, original=guard.original, v1_gradient=gradient,
+        v1_random=random, discovery=discovery)
+    if type(updates) is not dict or set(updates) != {"selected", "random", "opposite"}:
+        raise owner.OwnerError("reconstructed control set differs")
+    updates = {**updates, "v1_1_percent": gradient}
+    _selection, applied, _intended = _snapshot(identity, snapshot, guard, v1, evidence, gate)
+    _evaluation_conditions(output, identity, snapshot, guard, updates, applied, v1, v2, evidence, gate)
+    probes = _evaluation_analysis(output, identity, snapshot, guard, v1, v2, evidence, gate, np)
+    guard.verify()
+    if torch.cuda.is_initialized():
+        raise owner.OwnerError("CUDA was initialized during the CPU study")
+    return {"model": model_metadata, "environment": environment, "compatibility": compatibility,
+            "controls": development["controls"], "buffer_state_sha256": guard.buffer_sha,
+            "runtime_settings": guard.runtime_settings, **probes}
+
+
 def _reconcile_evaluation(destination, identity, terminal_sha, snapshot, witness_observed_utc,
                           v1, evidence, audit, torch):
     """Audit the exact saved destination after an ambiguous publication return."""

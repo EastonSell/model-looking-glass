@@ -404,8 +404,8 @@ def _read_development_arrays(output, v1, v2, evidence, np):
     return arrays
 
 
-def _development_work(repo, cache, output, identity, manifest_value, public, receipt, deps):
-    """Run the already-gated private model; never called by the disabled entry point."""
+def _prepare_v1_reconstruction(repo, cache, manifest_value, deps):
+    """Reconstruct the frozen v1 candidate in an already-gated private owner."""
     torch, np, pretrained, v1, v2, edits, evidence, _manifest, _custody, _exposure, _gate = deps
     if (sys.byteorder != "little" or os.environ.get("CUDA_VISIBLE_DEVICES") != "-1"
             or os.environ.get("HF_HUB_OFFLINE") != "1" or os.environ.get("TRANSFORMERS_OFFLINE") != "1"
@@ -448,6 +448,14 @@ def _development_work(repo, cache, output, identity, manifest_value, public, rec
             original=guard.original, v1_gradient=gradient, v1_random=random, discovery=discovery)
     except v1.StudyError as exc:
         raise Incompatible("v1 candidate reconstruction differs") from exc
+    return loaded, guard, gradient, random, discovery, reference, compatibility, environment
+
+
+def _development_work(repo, cache, output, identity, manifest_value, public, receipt, deps):
+    """Run the already-gated private model; never called by the disabled entry point."""
+    torch, np, _pretrained, v1, v2, edits, evidence, _manifest, _custody, _exposure, _gate = deps
+    loaded, guard, gradient, _random, discovery, _reference, compatibility, environment = \
+        _prepare_v1_reconstruction(repo, cache, manifest_value, deps)
     updates, grid = {}, {}
     for name, dose in v2.GRID:
         updates[name] = edits.construct_dose(guard.original, gradient, dose)
