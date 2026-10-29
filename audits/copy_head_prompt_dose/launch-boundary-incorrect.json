@@ -1,0 +1,11 @@
+{
+  "inventory_modules_changed_since_v33": [],
+  "observed_main": "57a481d477e3d983b092f963d8d3e24002cc7961",
+  "prelaunch_public_commit": "7ef4cb9c7b8e8825db42a0a2c29eede197217d42",
+  "schema": "copy-head-prompt-launch-boundary-v1",
+  "scope": "Point-in-time cooperative public inventory check; no protected pool or pretraining conclusion.",
+  "utc_clock_observed": "2026-10-29T11:26:59.928527+00:00",
+  "v33_canonical_sha256": "e586bae02145a62a7163eb030485fa85a33f9e94cd0949a9f88f3f74c7de194b",
+  "v33_independent_public_comparison": "134016 input and 134016 continuation comparisons, zero relations with exact own-reservation exemption",
+  "v34_candidate_public_cross_comparison": "3072 candidate/input or continuation pairs, zero relations; candidate status is not asserted as merged"
+}

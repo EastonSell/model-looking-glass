@@ -7,6 +7,9 @@ serially; it does not batch requests, provide a fairness guarantee, use a GPU,
 or authorize any GPU trace profile. This first slice accepts one input row and
 one sample per request, with bounded token positions and trace sites.
 
+For the separate CPU composition scheduled by the existing resident broker,
+see [Broker-owned CPU trace IPC](BROKERED_CPU_TRACE_IPC.md).
+
 The owner creates the CPU worker, host budget, trace store and shared service
 as described in [CPU_SHARED_TRACE_SERVICE.md](CPU_SHARED_TRACE_SERVICE.md),
 then starts `TraceIPCServer(service, max_event_bytes=..., max_trace_bytes=...)`.

@@ -1,0 +1,17 @@
+stage,d,fact_id,family,spain_top_madrid,sweden_top_stockholm
+development,14.592666625976562,france,statement,True,False
+development,12.679126739501953,france,question,True,True
+development,13.483879089355469,japan,statement,False,False
+development,13.038047790527344,japan,question,False,True
+development,14.323123931884766,italy,statement,True,False
+development,12.874427795410156,italy,question,True,True
+development,16.558242797851562,uk,statement,True,True
+development,14.914237976074219,uk,question,True,True
+heldout,15.971946716308594,france,statement,True,True
+heldout,15.866718292236328,france,question,True,True
+heldout,15.28790283203125,japan,statement,False,True
+heldout,15.797557830810547,japan,question,True,True
+heldout,15.09463882446289,italy,statement,True,True
+heldout,15.747928619384766,italy,question,True,True
+heldout,17.624237060546875,uk,statement,True,True
+heldout,17.017887115478516,uk,question,True,True

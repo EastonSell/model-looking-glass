@@ -112,7 +112,8 @@ def _check_owner_contract(repo):
 class _PreparedService:
     """Keep this handle before starting; it also controls interrupted startup."""
 
-    def __init__(self, *, controller, launch, identity, source, profiles, teams, repo):
+    def __init__(self, *, controller, launch, identity, source, profiles, teams, repo,
+                 serving_memory_path=None):
         self._controller = controller
         self._launch = launch
         self._identity = identity
@@ -120,6 +121,7 @@ class _PreparedService:
         self._profiles = profiles
         self._teams = teams
         self._repo = repo
+        self._serving_memory_path = serving_memory_path
 
     def __repr__(self):
         return "<prepared fixed supervised service>"
@@ -158,6 +160,11 @@ class _PreparedService:
         """Return the local coordination marker; its path contains the GPU UUID."""
         return self._identity.marker_path
 
+    @property
+    def serving_memory_path(self):
+        """Return the private optional observation file, or None when disabled."""
+        return self._serving_memory_path
+
     def shutdown(self, *, timeout=30):
         """Cancel pre-start or signal the owner and return its teardown result.
 
@@ -185,7 +192,7 @@ class _PreparedService:
 def prepare_two_token_service(*, repo_root, cache_root, workspace_root,
                               private_parent, site_packages, environment_root,
                               hf_home, gpu_uuid, physical_uuids, profiles, teams,
-                              trusted_path):
+                              trusted_path, observe_serving_memory=False):
     """Prepare the fixed owner without initializing CUDA or starting a process.
 
     ``physical_uuids`` must be a current trusted physical inventory; exactly
@@ -194,6 +201,8 @@ def prepare_two_token_service(*, repo_root, cache_root, workspace_root,
     :class:`ProfileFiles`. The actual runtime identity and case/seed evidence
     are reconstructed and checked again under the child's device lease.
     """
+    if type(observe_serving_memory) is not bool:
+        raise ValueError('observe_serving_memory must be a boolean')
     teams = _teams(teams)
     if (type(profiles) is not tuple or len(profiles) != 3
             or any(type(item) is not ProfileFiles for item in profiles)):
@@ -238,6 +247,9 @@ def prepare_two_token_service(*, repo_root, cache_root, workspace_root,
         "source_base_sha256": hashlib.sha256(source.source_base).hexdigest(),
         "asset_manifest_sha256": hashlib.sha256(source.asset_manifest).hexdigest(),
     }
+    serving_memory_path = launch_dir / 'serving-memory.json' if observe_serving_memory else None
+    if observe_serving_memory:
+        config['observe_serving_memory'] = True
     config_path = launch_dir / "config.json"
     payload = json.dumps(config, separators=(",", ":"), allow_nan=False).encode("utf-8")
     fd = os.open(config_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0), 0o600)
@@ -252,4 +264,5 @@ def prepare_two_token_service(*, repo_root, cache_root, workspace_root,
         config_path=config_path, trusted_path=trusted_path)
     controller = _prepare_owner_controller(stop)
     return _PreparedService(controller=controller, launch=launch, identity=identity,
-                            source=source, profiles=profiles, teams=teams, repo=source.repo_root)
+                            source=source, profiles=profiles, teams=teams, repo=source.repo_root,
+                            serving_memory_path=serving_memory_path)

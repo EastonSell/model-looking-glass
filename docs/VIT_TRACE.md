@@ -47,8 +47,9 @@ then batch/token), independent of the order supplied. The run ID is limited to
 128 characters. The model output is the
 ordinary image-classifier logit object, not generated text. Generation/cache
 fields remain unknown; the generic transformer comparator has no ViT image
-pairing contract. A coordinate is an observation, not a causal localization
-or evidence of a particular visual concept.
+pairing contract. The separate [ViT trace comparison helper](VIT_TRACE_COMPARISON.md)
+checks explicitly paired processed-grid coordinates. A coordinate is an
+observation, not a causal localization or evidence of a particular visual concept.
 
 The adapter requires a standard, unmodified eager ViT classifier and patch
 embedding geometry, exact configured input dimensions, eval mode, no gradient
@@ -93,3 +94,7 @@ that input and runtime, not model accuracy, device performance or a visual
 explanation. The [sample report](../examples/vit-trace-cpu-sample.json) was
 generated with Pillow 11.3.0 on the exposed v1 image; the image itself is not
 included and numeric hashes can vary across runtimes.
+
+For same-model donor capture, replacement and explicit self/no-op and
+dose-aware active controls on CLS or a processed-grid patch token, see the
+[bounded ViT donor-patch workflow](VIT_DONOR_PATCH.md).

@@ -190,7 +190,8 @@ class TraceIPCServer:
     def __init__(self, service, *, max_control_bytes=8192, max_event_bytes,
                  max_trace_bytes, timeout=30):
         from .cpu_shared_trace_service import CpuSharedTraceService
-        if type(service) is not CpuSharedTraceService:
+        from .cpu_broker_trace_service import BrokeredCpuTraceService
+        if type(service) not in (CpuSharedTraceService, BrokeredCpuTraceService):
             raise ValueError('an exact CPU shared trace service is required')
         _limits(max_control_bytes, max_event_bytes, max_trace_bytes, timeout)
         # The wire schema and pre-forward byte calculation are float32 CPU.
@@ -217,6 +218,8 @@ class TraceIPCServer:
         self.address = None
         self.broker_id = service._owner._broker_id
         self.process_generation = service._owner._process_generation
+        if type(service) is BrokeredCpuTraceService:
+            service._bind_server(self)
 
     @property
     def team_tokens(self):

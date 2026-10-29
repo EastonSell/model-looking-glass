@@ -71,10 +71,26 @@ The current numeric decoder also limits each hidden or vocabulary vector to
 The caller must exclusively own the model throughout all six calls, including
 against noncooperating threads or other processes. Hooks are sequential and
 the underlying lease is cooperative. No `generate`, cached decoding, compiled
-execution, autocast, CUDA workflow or pre-existing hooks are supported. If a
-`KeyboardInterrupt` or `SystemExit` occurs during a forward, PyTorch may skip
-completion hooks and leave the plan's hooks and lease installed. Discard the
-model and worker instead of attempting to reuse them.
+execution, autocast, CUDA workflow or pre-existing hooks are supported. By
+default the model is called directly. If a `KeyboardInterrupt` or `SystemExit`
+occurs during a direct forward, PyTorch may skip completion hooks and leave the
+plan's hooks and lease installed; discard the model and worker.
+
+For an exclusively owned, quiescent model whose operations are synchronously
+completed on CPU, a caller may explicitly pass `synchronous_cpu=True`. All six
+forwards then use the [synchronous CPU plan wrapper](INTERVENTION_PLANS.md),
+including receiver, donor and repeat traces. When an exception propagates from
+the wrapper's own root model call under its stated contract, it can invalidate
+the failed evidence and remove its hooks and cooperative lease after Python
+unwinds; no partial workflow result is returned. The caller still must verify
+model and runtime state before reuse. Known non-CPU outputs, reentrant or
+foreign lifecycle activity, or an interrupted/uncertain plan transition can
+leave hooks and the lease retained. Retain the model, error and traceback,
+including accessible plan and other resource roots, and quarantine the worker
+when cleanup or ownership is uncertain. Visible CPU
+tensor checks do not prove there was no hidden device work, deferred native
+operation, or noncooperating thread; that is the caller's responsibility. This
+option makes no CUDA cleanup or device-quiescence claim.
 
 For a runnable offline CPU example, the pinned FLAN-T5-small assets used by
 the repository's [trace smoke](FLAN_T5_TRACE.md) can be reused:

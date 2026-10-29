@@ -1,0 +1,1998 @@
+{
+  "assets": {
+    "config.json": {
+      "bytes": 483,
+      "sha256": "69c94b0222d5d1f4b0ad027ca7416cdafb98378cbbb8305d0bf47c9365c60c83"
+    },
+    "model.safetensors": {
+      "bytes": 267954768,
+      "sha256": "5e3f1108e3cb34ee048634875d8482665b65ac713291a7e32396fb18f6ff0063"
+    },
+    "tokenizer.json": {
+      "bytes": 466062,
+      "sha256": "ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98"
+    },
+    "tokenizer_config.json": {
+      "bytes": 48,
+      "sha256": "a025160ef0431f1a392f6f050c1310f4c5d9fb6f275932dbccba73c4d214bf10"
+    },
+    "vocab.txt": {
+      "bytes": 231508,
+      "sha256": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+    }
+  },
+  "candidate_order": [
+    "banana",
+    "strawberry",
+    "lemon"
+  ],
+  "cases": [
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "yellow",
+      "id": "banana-discovery",
+      "input_ids": [
+        101,
+        1996,
+        3609,
+        1997,
+        1037,
+        22503,
+        15212,
+        2003,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 8,
+      "object": "banana",
+      "role": "discovery",
+      "text": "The color of a ripe banana is [MASK].",
+      "tokens": [
+        "[CLS]",
+        "the",
+        "color",
+        "of",
+        "a",
+        "ripe",
+        "banana",
+        "is",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "yellow": 3756
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "yellow",
+      "id": "banana-calibration-01",
+      "input_ids": [
+        101,
+        1037,
+        22503,
+        15212,
+        2003,
+        4050,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 6,
+      "object": "banana",
+      "role": "calibration-01",
+      "text": "A ripe banana is typically [MASK].",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "ripe",
+        "banana",
+        "is",
+        "typically",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "yellow": 3756
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "yellow",
+      "id": "banana-calibration-02",
+      "input_ids": [
+        101,
+        1996,
+        3302,
+        1997,
+        1037,
+        22503,
+        15212,
+        2003,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 8,
+      "object": "banana",
+      "role": "calibration-02",
+      "text": "The surface of a ripe banana is [MASK].",
+      "tokens": [
+        "[CLS]",
+        "the",
+        "surface",
+        "of",
+        "a",
+        "ripe",
+        "banana",
+        "is",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "yellow": 3756
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "yellow",
+      "id": "banana-heldout-01",
+      "input_ids": [
+        101,
+        1037,
+        22503,
+        15212,
+        2003,
+        2788,
+        103,
+        1999,
+        3609,
+        1012,
+        102
+      ],
+      "mask_index": 6,
+      "object": "banana",
+      "role": "heldout-01",
+      "text": "A ripe banana is usually [MASK] in color.",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "ripe",
+        "banana",
+        "is",
+        "usually",
+        "[MASK]",
+        "in",
+        "color",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "yellow": 3756
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "yellow",
+      "id": "banana-heldout-02",
+      "input_ids": [
+        101,
+        1996,
+        2648,
+        1997,
+        1037,
+        22503,
+        15212,
+        2003,
+        4050,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 9,
+      "object": "banana",
+      "role": "heldout-02",
+      "text": "The outside of a ripe banana is typically [MASK].",
+      "tokens": [
+        "[CLS]",
+        "the",
+        "outside",
+        "of",
+        "a",
+        "ripe",
+        "banana",
+        "is",
+        "typically",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "yellow": 3756
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "yellow",
+      "id": "banana-heldout-03",
+      "input_ids": [
+        101,
+        1996,
+        3302,
+        1997,
+        1037,
+        22503,
+        15212,
+        2038,
+        1037,
+        103,
+        3609,
+        1012,
+        102
+      ],
+      "mask_index": 9,
+      "object": "banana",
+      "role": "heldout-03",
+      "text": "The surface of a ripe banana has a [MASK] color.",
+      "tokens": [
+        "[CLS]",
+        "the",
+        "surface",
+        "of",
+        "a",
+        "ripe",
+        "banana",
+        "has",
+        "a",
+        "[MASK]",
+        "color",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "yellow": 3756
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "yellow",
+      "id": "banana-heldout-04",
+      "input_ids": [
+        101,
+        2043,
+        1037,
+        15212,
+        22503,
+        3619,
+        1010,
+        2049,
+        5171,
+        3609,
+        2003,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 11,
+      "object": "banana",
+      "role": "heldout-04",
+      "text": "When a banana ripens, its typical color is [MASK].",
+      "tokens": [
+        "[CLS]",
+        "when",
+        "a",
+        "banana",
+        "ripe",
+        "##ns",
+        ",",
+        "its",
+        "typical",
+        "color",
+        "is",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "yellow": 3756
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "accepted": [
+        "fruit"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "fruit",
+      "id": "banana-locality-01",
+      "input_ids": [
+        101,
+        1037,
+        15212,
+        2003,
+        1037,
+        2785,
+        1997,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 7,
+      "object": "banana",
+      "role": "same_object_locality",
+      "text": "A banana is a kind of [MASK].",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "banana",
+        "is",
+        "a",
+        "kind",
+        "of",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "fruit": 5909
+      }
+    },
+    {
+      "accepted": [
+        "plant"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "plant",
+      "id": "banana-locality-02",
+      "input_ids": [
+        101,
+        1037,
+        15212,
+        7502,
+        2006,
+        1037,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 6,
+      "object": "banana",
+      "role": "same_object_locality",
+      "text": "A banana grows on a [MASK].",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "banana",
+        "grows",
+        "on",
+        "a",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "plant": 3269
+      }
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "red",
+      "id": "strawberry-discovery",
+      "input_ids": [
+        101,
+        1996,
+        3609,
+        1997,
+        1037,
+        22503,
+        16876,
+        2003,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 8,
+      "object": "strawberry",
+      "role": "discovery",
+      "text": "The color of a ripe strawberry is [MASK].",
+      "tokens": [
+        "[CLS]",
+        "the",
+        "color",
+        "of",
+        "a",
+        "ripe",
+        "strawberry",
+        "is",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "red": 2417
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "red",
+      "id": "strawberry-calibration-01",
+      "input_ids": [
+        101,
+        1037,
+        22503,
+        16876,
+        2003,
+        4050,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 6,
+      "object": "strawberry",
+      "role": "calibration-01",
+      "text": "A ripe strawberry is typically [MASK].",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "ripe",
+        "strawberry",
+        "is",
+        "typically",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "red": 2417
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "red",
+      "id": "strawberry-calibration-02",
+      "input_ids": [
+        101,
+        1996,
+        3302,
+        1997,
+        1037,
+        22503,
+        16876,
+        2003,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 8,
+      "object": "strawberry",
+      "role": "calibration-02",
+      "text": "The surface of a ripe strawberry is [MASK].",
+      "tokens": [
+        "[CLS]",
+        "the",
+        "surface",
+        "of",
+        "a",
+        "ripe",
+        "strawberry",
+        "is",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "red": 2417
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "red",
+      "id": "strawberry-heldout-01",
+      "input_ids": [
+        101,
+        1037,
+        22503,
+        16876,
+        2003,
+        2788,
+        103,
+        1999,
+        3609,
+        1012,
+        102
+      ],
+      "mask_index": 6,
+      "object": "strawberry",
+      "role": "heldout-01",
+      "text": "A ripe strawberry is usually [MASK] in color.",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "ripe",
+        "strawberry",
+        "is",
+        "usually",
+        "[MASK]",
+        "in",
+        "color",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "red": 2417
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "red",
+      "id": "strawberry-heldout-02",
+      "input_ids": [
+        101,
+        1996,
+        2648,
+        1997,
+        1037,
+        22503,
+        16876,
+        2003,
+        4050,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 9,
+      "object": "strawberry",
+      "role": "heldout-02",
+      "text": "The outside of a ripe strawberry is typically [MASK].",
+      "tokens": [
+        "[CLS]",
+        "the",
+        "outside",
+        "of",
+        "a",
+        "ripe",
+        "strawberry",
+        "is",
+        "typically",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "red": 2417
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "red",
+      "id": "strawberry-heldout-03",
+      "input_ids": [
+        101,
+        1996,
+        3302,
+        1997,
+        1037,
+        22503,
+        16876,
+        2038,
+        1037,
+        103,
+        3609,
+        1012,
+        102
+      ],
+      "mask_index": 9,
+      "object": "strawberry",
+      "role": "heldout-03",
+      "text": "The surface of a ripe strawberry has a [MASK] color.",
+      "tokens": [
+        "[CLS]",
+        "the",
+        "surface",
+        "of",
+        "a",
+        "ripe",
+        "strawberry",
+        "has",
+        "a",
+        "[MASK]",
+        "color",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "red": 2417
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "red",
+      "id": "strawberry-heldout-04",
+      "input_ids": [
+        101,
+        2043,
+        1037,
+        16876,
+        22503,
+        3619,
+        1010,
+        2049,
+        5171,
+        3609,
+        2003,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 11,
+      "object": "strawberry",
+      "role": "heldout-04",
+      "text": "When a strawberry ripens, its typical color is [MASK].",
+      "tokens": [
+        "[CLS]",
+        "when",
+        "a",
+        "strawberry",
+        "ripe",
+        "##ns",
+        ",",
+        "its",
+        "typical",
+        "color",
+        "is",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "red": 2417
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "accepted": [
+        "fruit"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "fruit",
+      "id": "strawberry-locality-01",
+      "input_ids": [
+        101,
+        1037,
+        16876,
+        2003,
+        1037,
+        2785,
+        1997,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 7,
+      "object": "strawberry",
+      "role": "same_object_locality",
+      "text": "A strawberry is a kind of [MASK].",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "strawberry",
+        "is",
+        "a",
+        "kind",
+        "of",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "fruit": 5909
+      }
+    },
+    {
+      "accepted": [
+        "plant"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "plant",
+      "id": "strawberry-locality-02",
+      "input_ids": [
+        101,
+        1037,
+        16876,
+        7502,
+        2006,
+        1037,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 6,
+      "object": "strawberry",
+      "role": "same_object_locality",
+      "text": "A strawberry grows on a [MASK].",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "strawberry",
+        "grows",
+        "on",
+        "a",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "plant": 3269
+      }
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "yellow",
+      "id": "lemon-discovery",
+      "input_ids": [
+        101,
+        1996,
+        3609,
+        1997,
+        1037,
+        22503,
+        14380,
+        2003,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 8,
+      "object": "lemon",
+      "role": "discovery",
+      "text": "The color of a ripe lemon is [MASK].",
+      "tokens": [
+        "[CLS]",
+        "the",
+        "color",
+        "of",
+        "a",
+        "ripe",
+        "lemon",
+        "is",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "yellow": 3756
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "yellow",
+      "id": "lemon-calibration-01",
+      "input_ids": [
+        101,
+        1037,
+        22503,
+        14380,
+        2003,
+        4050,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 6,
+      "object": "lemon",
+      "role": "calibration-01",
+      "text": "A ripe lemon is typically [MASK].",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "ripe",
+        "lemon",
+        "is",
+        "typically",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "yellow": 3756
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "yellow",
+      "id": "lemon-calibration-02",
+      "input_ids": [
+        101,
+        1996,
+        3302,
+        1997,
+        1037,
+        22503,
+        14380,
+        2003,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 8,
+      "object": "lemon",
+      "role": "calibration-02",
+      "text": "The surface of a ripe lemon is [MASK].",
+      "tokens": [
+        "[CLS]",
+        "the",
+        "surface",
+        "of",
+        "a",
+        "ripe",
+        "lemon",
+        "is",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "yellow": 3756
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "yellow",
+      "id": "lemon-heldout-01",
+      "input_ids": [
+        101,
+        1037,
+        22503,
+        14380,
+        2003,
+        2788,
+        103,
+        1999,
+        3609,
+        1012,
+        102
+      ],
+      "mask_index": 6,
+      "object": "lemon",
+      "role": "heldout-01",
+      "text": "A ripe lemon is usually [MASK] in color.",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "ripe",
+        "lemon",
+        "is",
+        "usually",
+        "[MASK]",
+        "in",
+        "color",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "yellow": 3756
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "yellow",
+      "id": "lemon-heldout-02",
+      "input_ids": [
+        101,
+        1996,
+        2648,
+        1997,
+        1037,
+        22503,
+        14380,
+        2003,
+        4050,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 9,
+      "object": "lemon",
+      "role": "heldout-02",
+      "text": "The outside of a ripe lemon is typically [MASK].",
+      "tokens": [
+        "[CLS]",
+        "the",
+        "outside",
+        "of",
+        "a",
+        "ripe",
+        "lemon",
+        "is",
+        "typically",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "yellow": 3756
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "yellow",
+      "id": "lemon-heldout-03",
+      "input_ids": [
+        101,
+        1996,
+        3302,
+        1997,
+        1037,
+        22503,
+        14380,
+        2038,
+        1037,
+        103,
+        3609,
+        1012,
+        102
+      ],
+      "mask_index": 9,
+      "object": "lemon",
+      "role": "heldout-03",
+      "text": "The surface of a ripe lemon has a [MASK] color.",
+      "tokens": [
+        "[CLS]",
+        "the",
+        "surface",
+        "of",
+        "a",
+        "ripe",
+        "lemon",
+        "has",
+        "a",
+        "[MASK]",
+        "color",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "yellow": 3756
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "counterfactual": "purple",
+      "factual": "yellow",
+      "id": "lemon-heldout-04",
+      "input_ids": [
+        101,
+        2043,
+        1037,
+        14380,
+        22503,
+        3619,
+        1010,
+        2049,
+        5171,
+        3609,
+        2003,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 11,
+      "object": "lemon",
+      "role": "heldout-04",
+      "text": "When a lemon ripens, its typical color is [MASK].",
+      "tokens": [
+        "[CLS]",
+        "when",
+        "a",
+        "lemon",
+        "ripe",
+        "##ns",
+        ",",
+        "its",
+        "typical",
+        "color",
+        "is",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630,
+        "purple": 6379,
+        "yellow": 3756
+      },
+      "wrong_target": "blue"
+    },
+    {
+      "accepted": [
+        "fruit"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "fruit",
+      "id": "lemon-locality-01",
+      "input_ids": [
+        101,
+        1037,
+        14380,
+        2003,
+        1037,
+        2785,
+        1997,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 7,
+      "object": "lemon",
+      "role": "same_object_locality",
+      "text": "A lemon is a kind of [MASK].",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "lemon",
+        "is",
+        "a",
+        "kind",
+        "of",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "fruit": 5909
+      }
+    },
+    {
+      "accepted": [
+        "plant",
+        "tree"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "plant",
+      "id": "lemon-locality-02",
+      "input_ids": [
+        101,
+        1037,
+        14380,
+        7502,
+        2006,
+        1037,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 6,
+      "object": "lemon",
+      "role": "same_object_locality",
+      "text": "A lemon grows on a [MASK].",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "lemon",
+        "grows",
+        "on",
+        "a",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "plant": 3269,
+        "tree": 3392
+      }
+    },
+    {
+      "accepted": [
+        "white"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "white",
+      "id": "color-01",
+      "input_ids": [
+        101,
+        4840,
+        4586,
+        2003,
+        4050,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 5,
+      "object": null,
+      "role": "other_color",
+      "text": "Fresh snow is typically [MASK].",
+      "tokens": [
+        "[CLS]",
+        "fresh",
+        "snow",
+        "is",
+        "typically",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "white": 2317
+      }
+    },
+    {
+      "accepted": [
+        "red"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "red",
+      "id": "color-02",
+      "input_ids": [
+        101,
+        22503,
+        12851,
+        2024,
+        4050,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 5,
+      "object": null,
+      "role": "other_color",
+      "text": "Ripe tomatoes are typically [MASK].",
+      "tokens": [
+        "[CLS]",
+        "ripe",
+        "tomatoes",
+        "are",
+        "typically",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "red": 2417
+      }
+    },
+    {
+      "accepted": [
+        "blue"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "blue",
+      "id": "color-03",
+      "input_ids": [
+        101,
+        1996,
+        3609,
+        1997,
+        1037,
+        3154,
+        12217,
+        3712,
+        2003,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 9,
+      "object": null,
+      "role": "other_color",
+      "text": "The color of a clear daytime sky is [MASK].",
+      "tokens": [
+        "[CLS]",
+        "the",
+        "color",
+        "of",
+        "a",
+        "clear",
+        "daytime",
+        "sky",
+        "is",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "blue": 2630
+      }
+    },
+    {
+      "accepted": [
+        "green"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "green",
+      "id": "color-04",
+      "input_ids": [
+        101,
+        4840,
+        5568,
+        2003,
+        4050,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 5,
+      "object": null,
+      "role": "other_color",
+      "text": "Fresh grass is typically [MASK].",
+      "tokens": [
+        "[CLS]",
+        "fresh",
+        "grass",
+        "is",
+        "typically",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "green": 2665
+      }
+    },
+    {
+      "accepted": [
+        "purple"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "purple",
+      "id": "color-05",
+      "input_ids": [
+        101,
+        1996,
+        5156,
+        3609,
+        1997,
+        1037,
+        22503,
+        8288,
+        24759,
+        4630,
+        2003,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 11,
+      "object": null,
+      "role": "other_color",
+      "text": "The usual color of a ripe eggplant is [MASK].",
+      "tokens": [
+        "[CLS]",
+        "the",
+        "usual",
+        "color",
+        "of",
+        "a",
+        "ripe",
+        "egg",
+        "##pl",
+        "##ant",
+        "is",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "purple": 6379
+      }
+    },
+    {
+      "accepted": [
+        "dog"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "dog",
+      "id": "unrelated-01",
+      "input_ids": [
+        101,
+        1037,
+        17022,
+        2003,
+        1037,
+        2402,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 6,
+      "object": null,
+      "role": "unrelated",
+      "text": "A puppy is a young [MASK].",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "puppy",
+        "is",
+        "a",
+        "young",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "dog": 3899
+      }
+    },
+    {
+      "accepted": [
+        "cat"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "cat",
+      "id": "unrelated-02",
+      "input_ids": [
+        101,
+        1037,
+        18401,
+        2003,
+        1037,
+        2402,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 6,
+      "object": null,
+      "role": "unrelated",
+      "text": "A kitten is a young [MASK].",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "kitten",
+        "is",
+        "a",
+        "young",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "cat": 4937
+      }
+    },
+    {
+      "accepted": [
+        "instrument"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "instrument",
+      "id": "unrelated-03",
+      "input_ids": [
+        101,
+        1037,
+        6710,
+        2003,
+        1037,
+        3315,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 6,
+      "object": null,
+      "role": "unrelated",
+      "text": "A violin is a musical [MASK].",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "violin",
+        "is",
+        "a",
+        "musical",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "instrument": 6602
+      }
+    },
+    {
+      "accepted": [
+        "bird"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "bird",
+      "id": "unrelated-04",
+      "input_ids": [
+        101,
+        1037,
+        19479,
+        2003,
+        1037,
+        2828,
+        1997,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 7,
+      "object": null,
+      "role": "unrelated",
+      "text": "A sparrow is a type of [MASK].",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "sparrow",
+        "is",
+        "a",
+        "type",
+        "of",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "bird": 4743
+      }
+    },
+    {
+      "accepted": [
+        "flower"
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "expected": "flower",
+      "id": "unrelated-05",
+      "input_ids": [
+        101,
+        1037,
+        3123,
+        2003,
+        1037,
+        2828,
+        1997,
+        103,
+        1012,
+        102
+      ],
+      "mask_index": 7,
+      "object": null,
+      "role": "unrelated",
+      "text": "A rose is a type of [MASK].",
+      "tokens": [
+        "[CLS]",
+        "a",
+        "rose",
+        "is",
+        "a",
+        "type",
+        "of",
+        "[MASK]",
+        ".",
+        "[SEP]"
+      ],
+      "word_ids": {
+        "flower": 6546
+      }
+    }
+  ],
+  "cls_id": 101,
+  "mask_id": 103,
+  "model": "distilbert/distilbert-base-uncased",
+  "protocol_commit": "d27eb3f6e1af00d4b045fb91b20cad5b25c8b699",
+  "protocol_sha256": "d414ab04137b842cd28d232b31e2ca5b62833ade06ef0ede4a6ce17da081f937",
+  "revision": "12040accade4e8a0f71eabdb258fecc2e7e948be",
+  "schema": "distilbert-color-edit-cases-v1",
+  "scope": "Public tokenizer-only case reservation; no model forward or unknown-exposure claim.",
+  "sep_id": 102,
+  "tokenizer_versions": {
+    "tokenizers": "0.22.2",
+    "transformers": "4.57.3"
+  }
+}
