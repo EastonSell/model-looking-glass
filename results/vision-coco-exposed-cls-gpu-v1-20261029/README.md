@@ -4,7 +4,7 @@ One previously exposed cat/dog pair was run through the pinned pretrained ViT-ti
 
 The frozen protocol was published before the first forward in source commit `8a2ebc71747a3c01b46e124efbbbbf67b7a09eb3`; the corresponding source is merged in PR #607. The selected v4 targets were cat 405058 and dog 196065, with same-species donors 69231 and 142769, at encoder block index 2. The earlier v4 outcomes and donor selection were already known. That earlier spatial-only CPU intervention used a different dose rule, so this GPU comparison is not an exact CPU replication.
 
-The table reports annotation-oriented changes in the dog-minus-cat log-sum-exp score. Positive means movement toward the other species group; each opposite-donor action has same-species and fixed-random controls at the same realized absolute dose.
+The table reports annotation-oriented changes in the dog-minus-cat log-sum-exp score. Positive means movement toward the other species group; each opposite-donor action has same-species and fixed-random controls with realized absolute doses matched within 1%.
 
 | Target | Site | Opposite donor | Same species | Random |
 | --- | --- | ---: | ---: | ---: |
