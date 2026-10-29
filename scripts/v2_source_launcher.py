@@ -285,7 +285,7 @@ def run(checkout, venv, dependencies, work, module, timeout):
             raise LaunchError("guarded child command exceeds the Windows bound")
         quarantine.child = subprocess.Popen(arguments, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
                                             stderr=subprocess.DEVNULL, close_fds=True,
-                                            creationflags=subprocess.CREATE_NO_WINDOW, cwd=work)
+                                            creationflags=subprocess.DETACHED_PROCESS, cwd=work)
         quarantine.job.assign(quarantine.child)
         remote_handles = guards.duplicate_to_process(handles, quarantine.child)
         frame = _TOKEN + json.dumps({"guard_handles": remote_handles}, separators=(",", ":")).encode("ascii")

@@ -117,6 +117,9 @@ class V2SourceGuardTests(unittest.TestCase):
             AssignProcessToJobObject = kernel.AssignProcessToJobObject
             TerminateJobObject = kernel.TerminateJobObject
             QueryInformationJobObject = kernel.QueryInformationJobObject
+            OpenProcess = kernel.OpenProcess
+            IsProcessInJob = kernel.IsProcessInJob
+            WaitForSingleObject = kernel.WaitForSingleObject
             def __init__(self):
                 self.closed = []
             def CloseHandle(self, handle):
@@ -169,8 +172,8 @@ threading.Event().wait(3600)
                 grandchild = kernel.OpenProcess(0x00100000, False, int(ready.read_text()))
                 self.assertTrue(grandchild)
                 job.terminate_and_wait()
-                child.wait(timeout=5)
                 self.assertEqual(kernel.WaitForSingleObject(grandchild, 0), 0)
+                child.wait(timeout=5)
             finally:
                 job.close()
                 if child.poll() is None:
@@ -178,6 +181,201 @@ threading.Event().wait(3600)
                 child.wait(timeout=5)
                 if grandchild:
                     kernel.CloseHandle(grandchild)
+
+    def test_previously_unobserved_exited_member_never_becomes_confirmed(self):
+        guards = _load_guards()
+        base_python = str(Path(sys.base_prefix) / "python.exe")
+        with tempfile.TemporaryDirectory() as directory:
+            ready = Path(directory) / "child-finished.txt"
+            code = f'''
+import pathlib, subprocess, sys, threading
+sys.stdin.readline()
+subprocess.run([{base_python!r}, "-I", "-S", "-B", "-c", "pass"],
+               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+               creationflags=subprocess.DETACHED_PROCESS, check=True)
+pathlib.Path({str(ready)!r}).write_text("done")
+threading.Event().wait(3600)
+'''
+            child = subprocess.Popen([base_python, "-I", "-S", "-B", "-c", code],
+                                     stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL, creationflags=subprocess.DETACHED_PROCESS)
+            job = guards.WindowsJob()
+            try:
+                job.assign(child)
+                child.stdin.write(b"go\n")
+                child.stdin.close()
+                child.stdin = None
+                deadline = time.monotonic() + 10
+                while not ready.exists() and child.poll() is None and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertTrue(ready.exists())
+                with self.assertRaises(guards.SourceGuardError):
+                    job.terminate_and_wait()
+                child.wait(timeout=5)  # Termination was still requested.
+                with self.assertRaises(guards.SourceGuardError):
+                    job.terminate_and_wait()  # An empty job cannot repair missing history.
+                self.assertFalse(job._confirmed)
+            finally:
+                job.close()
+                if child.poll() is None:
+                    child.kill()
+                child.wait(timeout=5)
+
+    def test_process_wait_timeout_retains_handles_for_cleanup_retry(self):
+        from unittest.mock import patch
+        guards = _load_guards()
+        base_python = str(Path(sys.base_prefix) / "python.exe")
+        child = subprocess.Popen([base_python, "-I", "-S", "-B", "-c",
+                                  "import sys,threading; sys.stdin.readline(); threading.Event().wait(3600)"],
+                                 stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL, creationflags=subprocess.DETACHED_PROCESS)
+        job = guards.WindowsJob()
+        try:
+            job.assign(child)
+            child.stdin.write(b"go\n")
+            child.stdin.close()
+            child.stdin = None
+            with patch.object(job._kernel, "WaitForSingleObject", return_value=258):
+                with self.assertRaises(guards.SourceGuardError):
+                    job.terminate_and_wait()
+            self.assertTrue(job._processes)
+            self.assertFalse(job._confirmed)
+            job.terminate_and_wait()
+            self.assertTrue(job._confirmed)
+            self.assertEqual(job._processes, {})
+            child.wait(timeout=5)
+        finally:
+            job.close()
+            if child.poll() is None:
+                child.kill()
+            child.wait(timeout=5)
+
+    def test_lifetime_count_increase_after_inventory_is_unconfirmed(self):
+        from unittest.mock import patch
+        guards = _load_guards()
+        base_python = str(Path(sys.base_prefix) / "python.exe")
+        child = subprocess.Popen([base_python, "-I", "-S", "-B", "-c",
+                                  "import sys,threading; sys.stdin.readline(); threading.Event().wait(3600)"],
+                                 stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL, creationflags=subprocess.DETACHED_PROCESS)
+        job = guards.WindowsJob()
+        try:
+            job.assign(child)
+            child.stdin.write(b"go\n")
+            child.stdin.close()
+            child.stdin = None
+            original, calls = job._accounting, [0]
+            def changed_count():
+                value = original()
+                calls[0] += 1
+                if calls[0] >= 3:
+                    value.total_processes += 1
+                return value
+            with patch.object(job, "_accounting", side_effect=changed_count):
+                with self.assertRaises(guards.SourceGuardError):
+                    job.terminate_and_wait()
+            child.wait(timeout=5)
+            with self.assertRaises(guards.SourceGuardError):
+                job.terminate_and_wait()
+            self.assertFalse(job._confirmed)
+        finally:
+            job.close()
+            if child.poll() is None:
+                child.kill()
+            child.wait(timeout=5)
+
+    def test_confirmed_process_handle_close_failure_can_be_retried(self):
+        from unittest.mock import patch
+        guards = _load_guards()
+        base_python = str(Path(sys.base_prefix) / "python.exe")
+        child = subprocess.Popen([base_python, "-I", "-S", "-B", "-c",
+                                  "import sys,threading; sys.stdin.readline(); threading.Event().wait(3600)"],
+                                 stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL, creationflags=subprocess.DETACHED_PROCESS)
+        job = guards.WindowsJob()
+        try:
+            job.assign(child)
+            child.stdin.write(b"go\n")
+            child.stdin.close()
+            child.stdin = None
+            original, first = job._kernel.CloseHandle, [True]
+            def fail_once(handle):
+                if first[0]:
+                    first[0] = False
+                    return 0
+                return original(handle)
+            with patch.object(job._kernel, "CloseHandle", side_effect=fail_once):
+                with self.assertRaises(guards.SourceGuardError):
+                    job.terminate_and_wait()
+            self.assertTrue(job._confirmed)
+            self.assertTrue(job._processes)
+            job.terminate_and_wait()
+            self.assertEqual(job._processes, {})
+            child.wait(timeout=5)
+        finally:
+            job.close()
+            if child.poll() is None:
+                child.kill()
+            child.wait(timeout=5)
+
+    def test_ambiguous_interrupted_handle_closes_are_never_retried(self):
+        guards = _load_guards()
+        class Kernel:
+            def __init__(self):
+                self.calls = []
+            def CloseHandle(self, handle):
+                self.calls.append(handle)
+                if len(self.calls) == 1:
+                    # Simulates interruption after an unobservable OS close.
+                    raise KeyboardInterrupt
+                return 1
+
+        def cases():
+            kernel = Kernel()
+            job = object.__new__(guards.WindowsJob)
+            job._kernel, job._handle, job._processes, job._confirmed = kernel, 222, {1: 111}, True
+            job._closing_process, job._closing_job = False, False
+            yield "process", kernel, lambda: job.terminate_and_wait()
+            kernel = Kernel()
+            job = object.__new__(guards.WindowsJob)
+            job._kernel, job._handle, job._processes = kernel, 222, {}
+            job._closing_process, job._closing_job = False, False
+            yield "job", kernel, job.close
+            kernel = Kernel()
+            lease = object.__new__(guards.SourceFileLease)
+            lease._kernel, lease._handles, lease._active, lease._closing = kernel, [111], True, False
+            yield "source", kernel, lease.close
+            kernel = Kernel()
+            cache = object.__new__(guards.PrivateEmptyCache)
+            cache._kernel, cache._handle, cache._active, cache._used = kernel, 111, True, True
+            cache._denied, cache.path, cache._closing = False, None, False
+            yield "cache", kernel, cache.close
+            kernel = Kernel()
+            copies = object.__new__(guards.InheritableHandles)
+            copies._kernel, copies._duplicates, copies._closing = kernel, [111], False
+            yield "duplicate", kernel, copies.close
+
+        for name, kernel, close in cases():
+            with self.subTest(name=name):
+                with self.assertRaises(KeyboardInterrupt):
+                    close()
+                with self.assertRaises(guards.SourceGuardError):
+                    close()
+                self.assertEqual(len(kernel.calls), 1)
+
+    def test_inventory_interrupt_survives_a_failed_termination_request(self):
+        from unittest.mock import patch
+        guards = _load_guards()
+        job = guards.WindowsJob()
+        try:
+            with patch.object(job, "_inventory", side_effect=KeyboardInterrupt), \
+                    patch.object(job._kernel, "TerminateJobObject", return_value=0):
+                with self.assertRaises(KeyboardInterrupt) as error:
+                    job.terminate_and_wait()
+            self.assertIsInstance(error.exception.__cause__, guards.SourceGuardError)
+            self.assertTrue(job._unconfirmed)
+        finally:
+            job.close()
 
     def test_remote_duplicates_protect_source_after_parent_lease_closes(self):
         guards = _load_guards()

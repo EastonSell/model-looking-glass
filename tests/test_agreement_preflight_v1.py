@@ -170,26 +170,51 @@ for enabled in (False, True):
         script = Path(__file__).resolve().parents[1] / "tools" / "run_agreement_preflight_v1.py"
         with tempfile.TemporaryDirectory() as tmp:
             prefix = Path(tmp) / "no-bytecode"
-            failed = subprocess.run([sys.executable, str(script), "--help"], capture_output=True, text=True)
+            environment = os.environ.copy()
+            environment.pop("PYTHONPYCACHEPREFIX", None)
+            environment.pop("PYTHONOPTIMIZE", None)
+            failed = subprocess.run([sys.executable, str(script), "--help"], env=environment,
+                                    capture_output=True, text=True)
             self.assertNotEqual(failed.returncode, 0)
             self.assertIn("pycache_prefix", failed.stderr)
             command = [sys.executable, "-B", "-X", f"pycache_prefix={prefix}"]
-            accepted = subprocess.run([*command, str(script), "--help"], capture_output=True, text=True)
+            accepted = subprocess.run([*command, str(script), "--help"], env=environment,
+                                      capture_output=True, text=True)
             self.assertEqual(accepted.returncode, 0, accepted.stderr)
             source = Path(tmp) / "stale_probe.py"
             source.write_text("VALUE = 1\n", encoding="utf-8")
-            py_compile.compile(str(source), doraise=True)
+            # The child without -X reads its default cache, even if the parent
+            # test interpreter has its own pycache_prefix.
+            default_cache = source.parent / "__pycache__" / f"{source.stem}.{sys.implementation.cache_tag}.pyc"
+            py_compile.compile(str(source), cfile=str(default_cache), doraise=True, optimize=0,
+                               invalidation_mode=py_compile.PycInvalidationMode.TIMESTAMP)
             stat = source.stat()
             source.write_text("VALUE = 2\n", encoding="utf-8")
             os.utime(source, ns=(stat.st_atime_ns, stat.st_mtime_ns))
             probe = "import stale_probe; print(stale_probe.VALUE)"
-            stale = subprocess.run([sys.executable, "-B", "-c", probe], cwd=tmp,
+            stale = subprocess.run([sys.executable, "-B", "-c", probe], cwd=tmp, env=environment,
                                    capture_output=True, text=True, check=True)
-            fresh = subprocess.run([*command, "-c", probe], cwd=tmp,
+            fresh = subprocess.run([*command, "-c", probe], cwd=tmp, env=environment,
                                    capture_output=True, text=True, check=True)
             self.assertEqual(stale.stdout.strip(), "1")
             self.assertEqual(fresh.stdout.strip(), "2")
             self.assertFalse(prefix.exists())
+
+    def test_source_first_check_when_parent_uses_pycache_prefix(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as tmp:
+            parent_prefix = Path(tmp) / "parent-cache"
+            environment = os.environ.copy()
+            environment["PYTHONPYCACHEPREFIX"] = str(Path(tmp) / "environment-cache")
+            environment["PYTHONOPTIMIZE"] = "1"
+            environment["SOURCE_DATE_EPOCH"] = "946684800"
+            result = subprocess.run([
+                sys.executable, "-B", "-X", f"pycache_prefix={parent_prefix}",
+                "-m", "unittest", "discover", "-s", "tests",
+                "-p", "test_agreement_preflight_v1.py", "-k",
+                "test_source_first_bootstrap_rejects_ordinary_imports_and_bypasses_stale_pyc", "-q",
+            ], cwd=root, env=environment, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_supervisor_records_child_failure_without_model_execution(self):
         script = Path(__file__).resolve().parents[1] / "tools" / "supervise_agreement_preflight_v1.py"
