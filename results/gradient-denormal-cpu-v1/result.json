@@ -1,0 +1,82 @@
+{
+  "device": "cpu",
+  "dtype": "float32",
+  "input_bits_hex": [
+    "00000001",
+    "007fffff",
+    "00800000",
+    "80000001",
+    "807fffff",
+    "80800000",
+    "00000000",
+    "80000000"
+  ],
+  "limitations": [
+    "fixed hand-selected inputs; no statistical or model-level claim",
+    "source hashes are consistency evidence, not proof of executed machine code",
+    "torch.equal is a floating-point comparison and does not distinguish signed zero"
+  ],
+  "machine": "AMD64",
+  "observations": [
+    {
+      "bitwise_equal": true,
+      "direct_bits_hex": [
+        "00000001",
+        "007fffff",
+        "00800000",
+        "80000001",
+        "807fffff",
+        "80800000",
+        "00000000",
+        "80000000"
+      ],
+      "flush_denormal": false,
+      "gradient_bits_hex": [
+        "00000001",
+        "007fffff",
+        "00800000",
+        "80000001",
+        "807fffff",
+        "80800000",
+        "00000000",
+        "80000000"
+      ],
+      "torch_equal": true
+    },
+    {
+      "bitwise_equal": false,
+      "direct_bits_hex": [
+        "00000001",
+        "007fffff",
+        "00800000",
+        "80000001",
+        "807fffff",
+        "80800000",
+        "00000000",
+        "80000000"
+      ],
+      "flush_denormal": true,
+      "gradient_bits_hex": [
+        "00000000",
+        "00000000",
+        "00800000",
+        "80000000",
+        "80000000",
+        "80800000",
+        "00000000",
+        "80000000"
+      ],
+      "torch_equal": true
+    }
+  ],
+  "platform": "Windows-10-10.0.26200-SP0",
+  "protocol": "gradient-denormal-cpu-v1",
+  "python_version": "3.11.15",
+  "source_commit": "67365514b75ed077c2cc5016c3398192c34fafd7",
+  "source_sha256": {
+    "experiments/gradient_denormal_v1.py": "1614b81f1839703278d8932b241226277af2a359541cdfca2fa668e856226a25",
+    "looking_glass/probes.py": "3ba99f7289bb2f12cc7e0c1e255c22a7c7aff3a48e1348ec5d503956e0c8e730"
+  },
+  "torch_intraop_threads": 1,
+  "torch_version": "2.8.0+cu128"
+}

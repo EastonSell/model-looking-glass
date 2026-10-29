@@ -9,6 +9,12 @@ Create an ephemeral tensor q of zeros, with the same shape and dtype as a, requi
 
 For finite a at q=0, the reported scalar is zero and the mathematical derivative with respect to q is exactly a. The implementation computes only this separate gradient. q is not a model parameter and is never passed to an optimizer. This is an ordinary autodiff identity, not a new theorem and not an application of the Trojan cancellation gate. Finite precision and execution contexts still require empirical checks.
 
+That identity is not a bitwise guarantee for floating-point execution. A
+[CPU denormal control](GRADIENT_DENORMAL_V1.md) observed subnormal bits being
+lost by gradient readout under flushing, while `torch.equal` still reported
+equality. Compare raw representations when bitwise fidelity is required and
+record the execution mode.
+
 The channel observes a before constructing t; it therefore cannot reveal information that direct capture lacked. The useful empirical comparison is reliability and overhead, not a presumed information advantage. The full tensor must still be stored or processed somewhere.
 
 ## Provenance is additional information
