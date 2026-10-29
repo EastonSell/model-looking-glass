@@ -163,6 +163,7 @@ def run(asset_dir, output):
     try:
         numeric_environment = {name: os.environ.get(name) for name in
                                ("MKL_CBWR", "ATEN_CPU_CAPABILITY", "OMP_NUM_THREADS", "MKL_NUM_THREADS")}
+        torch_preloaded = "torch" in sys.modules
         import torch
         import tokenizers
         import transformers
@@ -206,7 +207,8 @@ def run(asset_dir, output):
                        "system": platform.system(), "system_release": platform.release(),
                        "processor": platform.processor(), "cpu_count": os.cpu_count(),
                        "mkldnn_enabled": torch.backends.mkldnn.enabled,
-                       "numeric_environment_before_torch": numeric_environment,
+                       "numeric_environment_at_run_entry": numeric_environment,
+                       "torch_preloaded_at_run_entry": torch_preloaded,
                        "attention_implementation": getattr(model.config, "_attn_implementation", None),
                        "torch_build_config": torch.__config__.show(),
                        "subnormal_multiply_bits": subnormal_bits,

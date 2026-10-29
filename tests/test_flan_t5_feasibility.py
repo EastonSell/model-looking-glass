@@ -132,6 +132,7 @@ def fake_child(output, scenario):
             return
         result = runner.run(Path(output).parent, Path(output))
     assert result["status"] == "complete"
+    assert result["environment"]["torch_preloaded_at_run_entry"] is True
     if scenario == "unsupported":
         assert result["forwards"] == 12
         assert [x["status"] for x in result["pairs"]] == ["baseline-unsupported"] * 2
