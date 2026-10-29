@@ -98,6 +98,8 @@ The [FLAN-T5 encoder study](results/flan-t5-equal-dose-cpu-v1-20261029/README.md
 
 The separate [FLAN-T5 dose-response attempt](results/flan-t5-dose-response-cpu-v1-20261029/README.md) was inconclusive: all six cases failed the baseline, and no patches ran. The differing target lengths are a possible contributor, not an established explanation.
 
+In a [length-matched FLAN-T5 follow-up](results/flan-t5-equal-length-response-cpu-v1-20261029/README.md), four public word pairs met the fixed three-dose directional-response rule in both templates; two pairs were baseline-unsupported and were not patched. The largest matched-dose word-position patch reversed the original two-target preference in only one of 16 evaluable cell-direction comparisons. This is a small teacher-forced score study, not evidence of generated translation, generalization or a unique mechanism; equal token lengths do not remove lexical-prior differences.
+
 A [targeted parameter-edit experiment](results/targeted-edit-cpu-v1-20261028/README.md) changed the intended answer preference but failed its preset locality thresholds on public probes. The negative result and a same-host replay are preserved; the study does not establish general capability preservation.
 
 The [projected-edit follow-up](results/targeted-edit-projected-cpu-v1-20261028/README.md) was ineligible because only two of four targets had the required baseline preference; neither reversed. The projected and unprojected edits had different target effects, and the nine locality probes cannot establish broad capability preservation.
@@ -180,5 +182,6 @@ Full activations can contain sensitive information. This synthetic benchmark sav
 - [Implementation plan](docs/superpowers/plans/2026-10-28-runtime-probes.md)
 
 This work grew out of the [Trojan Regularizer Audit](https://github.com/EastonSell/turing-complete-malware-pytorch-backward-pass-audit), but addresses trusted runtime instrumentation. It is not a general backdoor detector or model-safety certification. Ordinary PyTorch hooks and the gradient identity are standard mechanisms; possible value lies in the measured placement, provenance and operating costs, not a novelty claim for those mechanisms.
+
 
 
