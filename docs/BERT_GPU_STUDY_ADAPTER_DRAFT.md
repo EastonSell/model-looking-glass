@@ -13,8 +13,9 @@ logits, float32-bit arithmetic and failure events. The prototype accepts one
 CPU int64 row of ten tokens, builds an all-ones mask, and uses the same six
 block paths and batch/token/selector/invocation coordinates as the CPU runner.
 Its before/patch/after plan verifies exact action metadata, finite complete
-logits, self/donor landing bits, eager attention and disabled CPU and execution
-device autocast before and after the forward. These checks describe observed
+logits, self/donor landing bits, the eager-attention configuration and actual
+per-block attention classes, and disabled CPU and execution-device autocast
+before and after the forward. These checks describe observed
 state at their boundaries; they do not detect transient same-process changes.
 The returned mask logits and captures are owned CPU tensors copied through
 integer views, so their saved bit representation does not depend on float32

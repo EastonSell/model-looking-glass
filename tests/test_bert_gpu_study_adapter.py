@@ -200,6 +200,18 @@ class AdapterTests(unittest.TestCase):
                 self.prototype(self.a, 2, 2)
             forward.assert_not_called()
 
+    def test_eager_config_cannot_mask_sdpa_attention_modules(self):
+        config = DistilBertConfig(vocab_size=64, dim=16, hidden_dim=32, n_layers=6,
+            n_heads=4, dropout=0., attention_dropout=0., max_position_embeddings=32,
+            attn_implementation='sdpa')
+        model = DistilBertForMaskedLM(config).eval()
+        model.config._attn_implementation = 'eager'
+        with patch.object(model, 'forward', wraps=model.forward) as forward:
+            with self.assertRaisesRegex(RuntimeError, 'eager attention'):
+                _observe_cpu_prototype(model, self.a, layer=2, token=2, mask_token=6,
+                    is_id=20, are_id=21, check_owner=lambda: None, synchronize=lambda stage: None)
+            forward.assert_not_called()
+
     def test_eager_attention_drift_is_rejected_after_forward(self):
         original = self.model.forward
         prior = self.model.config._attn_implementation

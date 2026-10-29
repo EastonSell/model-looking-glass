@@ -10,6 +10,7 @@ import json
 
 import torch
 from transformers import DistilBertForMaskedLM
+from transformers.models.distilbert.modeling_distilbert import MultiHeadSelfAttention
 
 from .bert_agreement_runner import Observation, _has_hooks, decode_float32_bits, float32_bytes
 from .intervention_plan import ActivationPlan
@@ -82,6 +83,8 @@ def _observe_owned(model, input_ids, *, layer, token, mask_token, is_id, are_id,
     execution_device = torch.device(device)
     def check_configuration():
         if (getattr(model.config, '_attn_implementation', None) != 'eager'
+                or any(type(block.attention) is not MultiHeadSelfAttention
+                       for block in model.distilbert.transformer.layer)
                 or torch.is_autocast_enabled('cpu')
                 or torch.is_autocast_enabled(execution_device.type)):
             raise RuntimeError('eager attention and disabled autocast are required')
