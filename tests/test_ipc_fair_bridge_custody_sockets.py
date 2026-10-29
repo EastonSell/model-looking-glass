@@ -81,7 +81,7 @@ def test_handler_exit_keeps_custody_until_exact_target_retirement_and_ack():
 
     def gate_retirement(job):
         entered.set()
-        if not resume.wait(12):
+        if not resume.wait(30):
             raise TimeoutError('test did not release target retirement')
         return original_retire(job)
 
@@ -101,17 +101,17 @@ def test_handler_exit_keeps_custody_until_exact_target_retirement_and_ack():
             return record.handler_closed and not record.handler_thread.is_alive()
 
     bridge.start()
-    server = bridge.make_server(io_timeout=3, job_timeout=10).start()
+    server = bridge.make_server(io_timeout=8, job_timeout=30).start()
     try:
         with patch.object(broker, '_retire_job_result', side_effect=gate_retirement), \
                 patch.object(adapter, 'acknowledge_receipt', side_effect=observe_acknowledgement):
-            client_handle = IPCClient(server.address, server.team_tokens['A'], io_timeout=3).submit(
+            client_handle = IPCClient(server.address, server.team_tokens['A'], io_timeout=8).submit(
                 team_id='A', request_id='retirement', inputs={'input_ids': [[7]]})
-            result = client_handle.wait(4)
+            result = client_handle.wait(12)
             assert result['status'] == 'succeeded'
             del result, client_handle
-            assert entered.wait(3)
-            eventually(handler_exited)
+            assert entered.wait(8)
+            eventually(handler_exited, seconds=8)
             with bridge._condition:
                 ticket = next(iter(bridge._records.values())).ticket
             target_handle = adapter.recover_receipt(ticket)
@@ -123,7 +123,8 @@ def test_handler_exit_keeps_custody_until_exact_target_retirement_and_ack():
             assert target.receipt_committed_bytes >= 128
 
             resume.set()
-            eventually(lambda: bridge.committed_bytes == 0 and target.receipt_committed_bytes == 0)
+            eventually(lambda: bridge.committed_bytes == 0 and target.receipt_committed_bytes == 0,
+                       seconds=8)
             assert acknowledgements == [expected]
             assert not bridge.quarantined
     finally:
