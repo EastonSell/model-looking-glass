@@ -32,8 +32,9 @@ truth of the activity screen. Those observations require independent review.
 
 The v1.2 baseline was the independently reviewed local saved-evidence reader
 with SHA-256 `01ec3f448032f7ac569c71eb856f65d82b7c21433345c9beadad263c525803f0`.
-The v1.3 extension is prospective and was prepared before the intended v1.3
-session; it is not a benchmark result.
+The v1.3 extension was developed while the session was underway and finalized
+and reviewed after the controller's observed exit. It is a saved-record audit,
+not a preregistered benchmark result.
 
 The CPU fixture contains the exact protocol-module bytes from execution commit
 `0c14778447ed6dcbc4890984641370659a09ffef` (SHA-256
