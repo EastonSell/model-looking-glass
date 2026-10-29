@@ -432,6 +432,20 @@ def _load_prediction(raw, digest, execution_device):
     return parsed
 
 
+def revealed_site_rank(discovery_bytes, *, prediction_sha256, execution_device, revealed_layer):
+    """Return the revealed site's 1-based position in the frozen ranking.
+
+    The custodian must first verify the site commitment and publication order,
+    and bind the expected prediction digest to the published freeze. This pure
+    lookup does not establish those facts or alter the discovery selection.
+    """
+    if (type(execution_device) is not str or execution_device not in ("cpu", "cuda:0") or
+            type(revealed_layer) is not int or revealed_layer not in _SITES):
+        raise EvaluationInvalid("supported device and revealed layer are required")
+    prediction = _load_prediction(discovery_bytes, prediction_sha256, execution_device)
+    return prediction["ranking"].index(revealed_layer) + 1
+
+
 def _squared_logits(cases, site):
     for case in cases:
         clean = decode_f32_le(case.clean.logits)

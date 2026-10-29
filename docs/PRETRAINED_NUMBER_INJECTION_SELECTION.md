@@ -110,6 +110,23 @@ Clean correctness uses the fixed present-tense sign rule. A zero margin is
 incorrect and is also included in the separately reported tie count; the tie
 count is therefore a subset of the incorrect count.
 
+## Rank after site reveal
+
+Publish `revealed_site_rank` with the rest of the analysis source before
+discovery, but call it only after the protocol permits the site reveal. It
+checks the exact immutable prediction bytes against their expected SHA-256 and
+the frozen selection invariants, then returns the revealed layer's 1-based
+position in that already-frozen ranking. It neither reranks nor changes a
+prediction. Ties use the original lower-layer-first rule. An all-zero vote
+ranking still has deterministic positions, but the original `first_changed`
+remains `null`: report that abstention alongside the rank rather than calling
+the position a successful localization.
+
+The custodian must independently verify the site nonce and site commitment,
+the published prediction digest and aggregate, and the timing of the reveal.
+The lookup accepts a layer supplied by the caller; it cannot itself establish
+those facts. Discovery continues to accept no hidden site.
+
 Failures raise `DiscoveryInvalid` rather than yielding a partial successful
 freeze. The caller must record an incomplete attempt and retain all available
 raw observations, failed controls and cleanup evidence; tracebacks and locals
