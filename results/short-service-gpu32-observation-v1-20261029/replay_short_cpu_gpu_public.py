@@ -196,6 +196,9 @@ def audit(cpu_dir, gpu_dir, manifest_path, source, bucket, result_sha):
         raw = read(gpu_dir / (name + '.f32'), bucket * VOCAB * 4, hashes[name])
         require(len(raw) == bucket * VOCAB * 4, 'GPU full-logit size differs')
         payloads[name] = raw
+    for team in ('alpha', 'beta'):
+        require(payloads['client-' + team] == payloads['reference-' + team],
+                'client and same-device reference bytes differ')
     positions = [case['active_position'] for case in cases]
     def row(name, position):
         start = position * VOCAB * 4
