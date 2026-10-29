@@ -1,0 +1,91 @@
+{
+  "condition_summaries": {
+    "matched": {
+      "changed_locality_tops": 1,
+      "max_locality_tv": 0.018974687028809067,
+      "mean_locality_js": 0.00010807456728606272,
+      "mean_locality_kl": 0.000429586285466014,
+      "mean_locality_tv": 0.0080128810637941,
+      "mean_target_gain": 0.8058176040649414
+    },
+    "nuisance": {
+      "changed_locality_tops": 2,
+      "max_locality_tv": 0.02511593035052475,
+      "mean_locality_js": 0.00019265550547790285,
+      "mean_locality_kl": 0.0007638855640027656,
+      "mean_locality_tv": 0.010669265405020523,
+      "mean_target_gain": 1.0708670616149902
+    },
+    "opposite": {
+      "changed_locality_tops": 0,
+      "max_locality_tv": 0.011712488420926094,
+      "mean_locality_js": 6.700364371806226e-05,
+      "mean_locality_kl": 0.0002696651622366931,
+      "mean_locality_tv": 0.005845749806965822,
+      "mean_target_gain": -0.7174854278564453
+    },
+    "projected": {
+      "changed_locality_tops": 1,
+      "max_locality_tv": 0.01174578114914645,
+      "mean_locality_js": 6.973227718338839e-05,
+      "mean_locality_kl": 0.00027671906687401347,
+      "mean_locality_tv": 0.005869987059834585,
+      "mean_target_gain": 0.7176966667175293
+    },
+    "projected_random": {
+      "changed_locality_tops": 0,
+      "max_locality_tv": 0.000599149433527798,
+      "mean_locality_js": 8.477679069906052e-08,
+      "mean_locality_kl": 3.391177831677164e-07,
+      "mean_locality_tv": 0.0002938057292669115,
+      "mean_target_gain": 2.574920654296875e-05
+    },
+    "unprojected": {
+      "changed_locality_tops": 2,
+      "max_locality_tv": 0.025131012213398703,
+      "mean_locality_js": 0.00019362542193767667,
+      "mean_locality_kl": 0.0007677181503125784,
+      "mean_locality_tv": 0.010691694584095067,
+      "mean_target_gain": 1.074434757232666
+    }
+  },
+  "limitations": [
+    "public baseline-selected cases, not a blind or representative sample",
+    "locality covers only 12 next-token distributions, not general capability",
+    "interpolation is selected on these same targets and is not an actual edited model",
+    "saved evidence and process records do not authenticate execution"
+  ],
+  "numpy_version": "2.4.6",
+  "provenance": {
+    "cases_sha256": "fc3f00a0b4f7884a3c00011186420d16322009edf75b6b09e4296953dad198e3",
+    "execution_source_commit": "3e90fe4b9e30ddd661c2a0c6f6083d5da65f7a29",
+    "matrix_sha256": {
+      "matched": "319d0dfacb51c108bf247af9cf4a69f6e3e57aaafe36c7997f28106d14a2499d",
+      "nuisance": "353e8be4347ecd270fccff56fedae3e0e591d0d26db4e445ccc40cd9d1c13d6d",
+      "opposite": "e8fbab822c7218dbd9141280f7031613db69477ee93b8589c25e89d6c81d7ac9",
+      "original": "1915716986868f1896415a6f5af1cd6cffe81d60fe08a2eca7c422f85a937278",
+      "projected": "b5c4cb63399d37a9729d6497a228e3229bd93bd1f1b0478da050171322fdadc1",
+      "projected_random": "c4335419d40c4e5ca5d98fd34278065e29fd0e20d907631797244f55232265dc",
+      "unprojected": "0dedbc319075a87d5b641ba6220292926920543dfb2cbdb9917fbfcd10c08388"
+    },
+    "observations_sha256": "76477d15ec279b28827591b3d643767b51321e68b54196eee49134c35dd4c809",
+    "phase_sha256": "79faacd17bac96039729e241e0ef92b853f70b8b8a9fb326b09ff1e4fbc4bd78",
+    "published_result_commit": "475228289efa7840fa577833d17573a6a73e001e",
+    "selection_sha256": "9ea861d89c8ed78c038947dbdb331d6dba1ea8267901ce06e5492dab32e7c11f",
+    "tokenizer_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6"
+  },
+  "scope": "post-hoc saved next-token distributions; no new model execution",
+  "sensitivity": {
+    "construction": "original logits + alpha * (matched logits - original logits)",
+    "mean_interpolated_locality_kl": 0.0003401908806040566,
+    "mean_interpolated_locality_tv": 0.0071349937920134375,
+    "mean_interpolated_target_gain": 0.7176966667175293,
+    "mean_projected_target_gain": 0.7176966667175293,
+    "projected_lower_kl_than_actual_matched": 12,
+    "projected_lower_kl_than_interpolation": 8,
+    "projected_lower_tv_than_actual_matched": 12,
+    "projected_lower_tv_than_interpolation": 8,
+    "scale_alpha": 0.890644065229046,
+    "scope": "post-hoc interpolation of saved logits; not a model forward or a new edit"
+  }
+}
