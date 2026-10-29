@@ -84,9 +84,23 @@ class FairTeamQueue:
         with self._lock:
             if not self._rotation:
                 raise QueueEmpty()
-            team = self._teams[self._rotation[0]]
-            key = team[next(iter(team))].compatibility_key
+            key = self._teams[self._rotation[0]][
+                next(iter(self._teams[self._rotation[0]]))].compatibility_key
         return key
+
+    def peek_head_id(self):
+        """Return the present fair head's job ID without claiming its payload.
+
+        The result may become stale immediately. A coordinator needing a
+        stable peek/claim must serialize its queue mutations separately; a
+        successful pop still needs the recoverable cohort-claim ledger. For
+        custody, use broker-owned immutable job IDs without payload references.
+        """
+        with self._lock:
+            if not self._rotation:
+                raise QueueEmpty()
+            job_id = next(iter(self._teams[self._rotation[0]]))
+        return job_id
 
     def pop_compatible(self, compatibility_key, *, claim_id, allowed_sizes, max_per_team):
         """Atomically claim the longest allowed compatible round-robin prefix.
