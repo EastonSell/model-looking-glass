@@ -45,3 +45,12 @@ record. The actual successor owner, rehearsal verifier, query outer observer,
 cross-track first-forward gate, phase preparation and independent saved-result
 auditor are separate obligations. No private pool query or successor nonce is
 created by publishing these components.
+
+The separately composed outer observer treats any nonzero query-parent exit as
+an incomplete observation. A comparator collision makes that parent exit
+nonzero, so this composition retains custody and stops rather than returning an
+independently authenticated collision result. It must never infer clearance
+from a missing or incomplete observation. The later phase caller must lease
+the invocation marker and all retained handoff files through verification and
+the phase claim, and independently establish the outer caller's own exit and
+reaping.
