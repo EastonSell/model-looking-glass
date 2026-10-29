@@ -876,6 +876,7 @@ _CUDA_ENV_PREFIXES = ('CUDA_', 'CUBLAS_', 'CUDNN_', 'NVIDIA_', 'PYTORCH_', 'TORC
 _CHILD_OS_ENV = ('PATH', 'PATHEXT', 'SYSTEMROOT', 'WINDIR', 'SYSTEMDRIVE', 'COMSPEC',
                  'TEMP', 'TMP', 'USERPROFILE', 'HOMEDRIVE', 'HOMEPATH', 'HOME',
                  'LOCALAPPDATA', 'APPDATA')
+_DEVELOPMENT_ALLOCATOR_FRACTION = 0.25
 
 
 def _capture_cuda_environment(environment):
@@ -1008,9 +1009,9 @@ def _configure_cuda_allocator(torch_module, device):
     backend = torch_module.cuda.get_allocator_backend()
     if backend != 'native':
         raise RuntimeError('the CUDA allocator backend must be native')
-    torch_module.cuda.set_per_process_memory_fraction(0.75, device)
+    torch_module.cuda.set_per_process_memory_fraction(_DEVELOPMENT_ALLOCATOR_FRACTION, device)
     fraction = float(torch_module.cuda.get_per_process_memory_fraction(device))
-    if not isfinite(fraction) or abs(fraction - 0.75) > 1e-6:
+    if not isfinite(fraction) or abs(fraction - _DEVELOPMENT_ALLOCATOR_FRACTION) > 1e-6:
         raise RuntimeError('the CUDA allocator fraction did not match the requested cap')
     return backend, fraction
 
@@ -1714,7 +1715,7 @@ def _validate_owner_evidence(owner_dir, *, supervision, preflight, gpu_uuid, rep
             or environment.get('allocator_backend') != 'native'
             or type(environment.get('allocator_fraction')) not in (int, float)
             or not isfinite(environment['allocator_fraction'])
-            or abs(environment['allocator_fraction'] - 0.75) > 1e-6
+            or abs(environment['allocator_fraction'] - _DEVELOPMENT_ALLOCATOR_FRACTION) > 1e-6
             or type(environment.get('torch_threads')) is not int or environment['torch_threads'] != 1
             or type(environment.get('torch_interop_threads')) is not int or environment['torch_interop_threads'] != 1
             or environment.get('cudnn_benchmark') is not False or environment.get('cudnn_deterministic') is not True
