@@ -906,8 +906,8 @@ def check_replay_output_paths(workspace, config_path, output, terminal_path, pos
 def verify_parent_command(raw, context, owner, cache_parent, purpose, config_path, *, role='parent'):
     """Reconstruct the source-bound direct-base parent command from saved bytes."""
     if (type(raw) is not bytes or not 0 < len(raw) <= 8192
-            or purpose not in ('validation', 'claim', 'replay') or role not in ('parent', 'observer')
-            or (role == 'observer' and purpose != 'validation')):
+            or purpose not in ('validation', 'claim', 'replay') or role not in ('parent', 'observer', 'operator')
+            or (role != 'parent' and purpose != 'validation')):
         raise ValueError('the saved replay-parent command differs')
     try:
         command = json.loads(raw, object_pairs_hook=_unique)
@@ -1030,8 +1030,8 @@ def observe_replay_parent(context, finder, *, workspace, cache_parent, purpose, 
     verify its semantics, budget and prerequisites in ``authority``. The
     returned observation does not establish this observer's own clean exit.
     """
-    if (purpose not in ('validation', 'claim', 'replay') or role not in ('parent', 'observer')
-            or (role == 'observer' and purpose != 'validation') or type(environment) is not dict
+    if (purpose not in ('validation', 'claim', 'replay') or role not in ('parent', 'observer', 'operator')
+            or (role != 'parent' and purpose != 'validation') or type(environment) is not dict
             or not callable(authority) or not callable(terminal_check) or type(timeout) is not int
             or not 1 <= timeout <= 7200 or type(extra_files) not in (tuple, list)):
         raise ValueError('the replay-parent observation arguments differ')
@@ -1479,6 +1479,22 @@ def make_validation_exit_receipt(context, config, child, owner, outer, outer_raw
         'driver_sha256': context['plan']['sources']['driver'], 'forward_count': 0}
 
 
+def check_validation_exit_receipt(context, config, child, owner, raw, operator_pid, operator_birth):
+    """Check an operator terminal against the retained live process identity."""
+    run = Path(config['run_dir'])
+    outer_raw = _ordinary_source(str(run / 'observer-observer' / 'observation.json'), 8192)
+    outer = _canonical_object(outer_raw, 8192)
+    inner = _canonical_object(_ordinary_source(str(run / 'parent-observer' / 'observation.json'), 8192), 8192)
+    _, supervisor = _validation_supervisor(config)
+    if os.getpid() in (operator_pid, outer.get('parent_pid'), inner.get('parent_pid'), supervisor['child_pid']):
+        raise ValueError('the root observer and nested process identities overlap')
+    expected = make_validation_exit_receipt(context, config, child, owner, outer, outer_raw,
+                                             operator_pid, operator_birth)
+    if type(raw) is not bytes or raw != canonical(expected):
+        raise ValueError('the observed validation operator terminal differs')
+    return True
+
+
 def run_validation_parent(config_path):
     """Run the exact source-bound, no-claim and no-model validation child."""
     _assert_validation_parent_isolated()
@@ -1644,18 +1660,62 @@ def run_validation_operator(config_path):
     return run_bound_imports(context['graph'], execute)
 
 
+def run_validation_root(config_path):
+    """Retain the validation operator; the caller must observe this root's exit."""
+    flags = sys.flags
+    if (not (flags.isolated and flags.ignore_environment and flags.no_site and flags.no_user_site
+             and flags.safe_path and sys.dont_write_bytecode and flags.optimize == 0)
+            or Path(sys.executable).resolve(strict=True) != Path(sys._base_executable).resolve(strict=True)):
+        raise ValueError('the source-first validation root is not isolated')
+    config_raw = _ordinary_source(config_path, 65536)
+    config = parse_validation_parent_config(config_raw, config_path)
+    workspace, run = Path(config['workspace']), Path(config['run_dir'])
+    diagnostic = workspace / 'work' / 'injection-heldout-runtime-rehearsal-v1'
+    context = capture_preflight(plan_path=config['plan_path'], plan_url=config['plan_url'],
+        source_locations=config['source_locations'], public_paths=config['public_paths'],
+        frozen_root=config['frozen_root'], cache_dir=config['cache_dir'])
+    def execute(finder):
+        modules = _execution_modules(finder)
+        owner, child = modules['owner'], modules['child']
+        claim = importlib.import_module('tools.injection_replay_claim')
+        if (getattr(getattr(claim, '__spec__', None), 'loader', None) is not finder
+                or finder.assert_intact() is not True):
+            raise ValueError('the validation accounting source is not bound')
+        parent = workspace / 'work' / 'number-injection-heldout-cpu-v1'
+        def authority():
+            if (_ordinary_source(config_path, 65536) != config_raw
+                    or owner.verify_private_parent(parent, tuple(config['parent_identity'])) is not True
+                    or check_unclaimed_validation(str(workspace), tuple(config['ledger_identity'])) is not True):
+                return False
+            total, _ = claim._diagnostic_bytes(diagnostic)
+            return total <= 4 * 1024 * 1024
+        total, _ = claim._diagnostic_bytes(diagnostic)
+        if total > 1024 * 1024 or authority() is not True:
+            raise ValueError('the no-model root has insufficient reserved space')
+        return observe_replay_parent(context, finder, workspace=str(workspace), cache_parent=str(run),
+            purpose='validation', role='operator', config_path=config_path,
+            terminal_path=str(run / 'validation-exit.json'), output=str(run / 'operator-observer'),
+            command_path=str(run / 'operator-command.json'), environment=dict(os.environ), authority=authority,
+            terminal_check=lambda raw, pid, birth: check_validation_exit_receipt(
+                context, config, child, owner, raw, pid, birth))
+    return run_bound_imports(context['graph'], execute)
+
+
 def main(argv=None, stream=None):
     try:
         await_start(stream)
         args = list(sys.argv[1:] if argv is None else argv)
-        if len(args) != 2 or args[0] not in ('--validation-parent', '--validation-observer', '--validation-operator'):
+        if len(args) != 2 or args[0] not in ('--validation-parent', '--validation-observer',
+                                             '--validation-operator', '--validation-root'):
             raise ValueError('the replay-parent mode is unavailable')
         if args[0] == '--validation-parent':
             run_validation_parent(args[1])
         elif args[0] == '--validation-observer':
             run_validation_observer(args[1])
-        else:
+        elif args[0] == '--validation-operator':
             run_validation_operator(args[1])
+        else:
+            run_validation_root(args[1])
         return 0
     except KeyboardInterrupt:
         return 130

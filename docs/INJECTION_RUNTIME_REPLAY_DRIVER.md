@@ -1,8 +1,9 @@
 # Prospective injection replay validation driver
 
 This source provides the no-model validation process for the separately
-published injection runtime compatibility plan. Its three command-line modes
-are gated validation parent, validation observer and validation operator.
+published injection runtime compatibility plan. Its four command-line modes
+are gated validation parent, validation observer, validation operator and
+source-first validation root.
 They do not claim the injection phase, read the concealed site or split,
 load a model, or perform a forward. The helper functions for later claim and
 replay remain components, not independent authorization to run them.
@@ -22,10 +23,10 @@ and diagnostic accounting and produces a private parent terminal. The outer
 observer retains the parent's process handle and birth identity, verifies the
 child's saved supervisor record and reaping, and writes a private observer
 terminal. The operator observes that observer in turn and writes a private
-`validation-exit.json` with status `awaiting_operator_exit`. The operator's
-own clean exit must still be observed independently from a retained process
-handle before the record can be used. Saved files alone cannot establish that
-exit or authorize a phase claim.
+`validation-exit.json` with status `awaiting_operator_exit`. The source-first
+root separately retains and reaps that operator and verifies the nested
+terminal. The root's own successful exit must then be observed independently.
+Saved files alone cannot establish that exit or authorize a phase claim.
 
 The no-model diagnostic root is within the existing 4 MiB injection-phase side
 reservation. A full fresh inventory, including the operator exit observation

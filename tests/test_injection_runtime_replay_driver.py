@@ -798,6 +798,7 @@ def test_validation_parent_gate_precedes_any_parent_work(monkeypatch):
     monkeypatch.setattr(driver, 'run_validation_parent', lambda path: calls.append(path))
     monkeypatch.setattr(driver, 'run_validation_observer', lambda path: calls.append('observe:' + path))
     monkeypatch.setattr(driver, 'run_validation_operator', lambda path: calls.append('operator:' + path))
+    monkeypatch.setattr(driver, 'run_validation_root', lambda path: calls.append('root:' + path))
     assert driver.main(['--validation-parent', 'private-config'], io.BytesIO(b'')) == 1
     assert calls == []
     assert driver.main(['--validation-parent', 'private-config'], io.BytesIO(driver.START_TOKEN)) == 0
@@ -808,6 +809,8 @@ def test_validation_parent_gate_precedes_any_parent_work(monkeypatch):
     assert calls == ['private-config', 'observe:private-config']
     assert driver.main(['--validation-operator', 'private-config'], io.BytesIO(driver.START_TOKEN)) == 0
     assert calls == ['private-config', 'observe:private-config', 'operator:private-config']
+    assert driver.main(['--validation-root', 'private-config'], io.BytesIO(driver.START_TOKEN)) == 0
+    assert calls == ['private-config', 'observe:private-config', 'operator:private-config', 'root:private-config']
 
 
 def test_validation_parent_eof_never_reads_config_or_starts_external_work(tmp_path):
@@ -927,6 +930,13 @@ def test_validation_observer_rebuilds_the_exact_child_config_and_parent_terminal
     outer_raw = driver.canonical(outer)
     exit_receipt = driver.make_validation_exit_receipt(context, config, child, owner, outer, outer_raw, 99, 789)
     assert exit_receipt['status'] == 'awaiting_operator_exit' and exit_receipt['observer_pid'] == 77
+    outer_dir = run / 'observer-observer'
+    outer_dir.mkdir()
+    (outer_dir / 'observation.json').write_bytes(outer_raw)
+    exit_raw = driver.canonical(exit_receipt)
+    assert driver.check_validation_exit_receipt(context, config, child, owner, exit_raw, 99, 789) is True
+    with pytest.raises(ValueError):
+        driver.check_validation_exit_receipt(context, config, child, owner, exit_raw, 100, 789)
     for alias in (77, 42, 17):
         with pytest.raises(ValueError):
             driver.make_validation_exit_receipt(context, config, child, owner, outer, outer_raw, alias, 789)
