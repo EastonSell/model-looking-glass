@@ -42,6 +42,30 @@ class SourceFirstEntryTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'bounded'):
                 entry.load_reader(source)
 
+    def test_relative_or_aliased_attempt_rejects_output_inside_it(self):
+        reader = entry.load_reader(ROOT / 'looking_glass/agreement_substitution_science_v1.py')
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            (folder / 'attempt').mkdir()
+            (folder / 'alias').mkdir()
+            old = Path.cwd()
+            try:
+                os.chdir(folder)
+                for attempt in ('attempt', str(folder / 'alias' / '..' / 'attempt')):
+                    output = folder / 'attempt' / 'report.json'
+                    args = ['--attempt', attempt, '--output', str(output),
+                            '--cases', 'unused', '--directions', 'unused', '--numeric-source', 'unused',
+                            '--source-revision', 'a' * 40, '--prelaunch-sha256', '1' * 64,
+                            '--reservation-sha256', '2' * 64, '--latest-exposure-sha256', '3' * 64,
+                            '--events-sha256', '4' * 64, '--start-scope',
+                            'public prospective agreement noun-substitution']
+                    with patch.object(reader, 'load_numeric', side_effect=AssertionError('must not load')):
+                        with self.assertRaisesRegex(ValueError, 'outside the attempt'):
+                            reader.main(args)
+                    self.assertFalse(output.exists())
+            finally:
+                os.chdir(old)
+
 
 if __name__ == '__main__':
     unittest.main()

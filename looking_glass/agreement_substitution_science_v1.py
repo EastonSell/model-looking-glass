@@ -595,8 +595,13 @@ def main(argv=None):
         parser.add_argument('--' + name, required=True)
     args = parser.parse_args(argv)
     output, attempt = Path(args.output), Path(args.attempt)
-    if (not output.is_absolute() or not output.parent.is_dir() or output.exists()
-            or output == attempt or attempt in output.parents):
+    if not output.is_absolute() or not output.parent.is_dir() or os.path.lexists(output):
+        raise ValueError('fresh report path outside the attempt is required')
+    # Compare resolved identities, since a relative or aliased attempt path may
+    # name the same directory as an absolute output parent.
+    resolved_attempt = attempt.resolve(strict=True)
+    resolved_output = output.resolve(strict=False)
+    if resolved_output == resolved_attempt or resolved_attempt in resolved_output.parents:
         raise ValueError('fresh report path outside the attempt is required')
     science = load_numeric(args.numeric_source)
     cases, directions = load_frozen_inputs(args.cases, args.directions)
