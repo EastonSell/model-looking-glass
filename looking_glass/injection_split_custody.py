@@ -31,6 +31,8 @@ _OP_KEYS = frozenset({'schema', 'protocol_sha256', 'checkpoint_revision',
     'owner_source_sha256', 'journal_source_sha256', 'supervisor_source_sha256',
     'auditor_source_sha256', 'gate_source_sha256', 'inventory_source_sha256',
     'inventory_source_commit', 'accounting_amendment_sha256', 'lease_source_sha256'})
+_OP_V2_KEYS = _OP_KEYS | {'preparation_child_source_sha256',
+                          'preparation_audit_source_sha256', 'outer_observer_source_sha256'}
 _STUDY_FREEZE = 'c327e191214cfb661b429c6d0a66900ca773c148782e1cc88be669c54deaee98'
 _STUDY_SOURCE = 'e84f66ae63b6f20e6df81789f2e4741b13598fb1'
 _STUDY_RUNTIME = 'b6860ec21fe6f0ab626164b86b494d783f3c18c92a697744b118be4cdb33754e'
@@ -150,10 +152,13 @@ def _check_inputs(public, site_nonce, site_record_bytes, publication_check, sour
         if hmac.compare_digest(entropy, site_nonce):
             raise CustodyError('private site nonce matches public entropy')
         binding = _parse_canonical(public.operational_binding_bytes)
-        if (type(binding) is not dict or set(binding) != _OP_KEYS
+        schema = binding.get('schema') if type(binding) is dict else None
+        keys = (_OP_KEYS if schema == 'mlg-injection-heldout-operational-binding-v1'
+                else _OP_V2_KEYS if schema == 'mlg-injection-heldout-operational-binding-v2' else None)
+        if (keys is None or set(binding) != keys
                 or _sha(public.operational_binding_bytes) != _hex(public.operational_binding_sha256)):
             raise CustodyError('operational binding is invalid')
-        fixed = {'schema': 'mlg-injection-heldout-operational-binding-v1',
+        fixed = {'schema': schema,
                  'protocol_sha256': commitments.PROTOCOL_SHA256,
                  'checkpoint_revision': commitments.CHECKPOINT_REVISION,
                  'discovery_source_commit': track['source_commit'],
@@ -170,6 +175,10 @@ def _check_inputs(public, site_nonce, site_record_bytes, publication_check, sour
                     'auditor_source_sha256', 'gate_source_sha256', 'inventory_source_sha256',
                     'accounting_amendment_sha256', 'lease_source_sha256'):
             _hex(binding[key])
+        if schema == 'mlg-injection-heldout-operational-binding-v2':
+            for key in ('preparation_child_source_sha256', 'preparation_audit_source_sha256',
+                        'outer_observer_source_sha256'):
+                _hex(binding[key])
         if type(binding['inventory_source_commit']) is not str or not _HEX40.fullmatch(binding['inventory_source_commit']):
             raise CustodyError('inventory source revision is invalid')
         published = {'freeze': public.freeze_bytes, 'runtime': public.runtime_bytes,
@@ -473,8 +482,11 @@ def prepare_study_once(public, private_parent, ledger_path, **kwargs):
         raise CustodyError('fixed study inputs are required')
     try:
         freeze = _parse_canonical(public.freeze_bytes)
+        operation = _parse_canonical(public.operational_binding_bytes)
         track = freeze['tracks']['injection']
-        if (public.freeze_sha256 != _STUDY_FREEZE or _sha(public.freeze_bytes) != _STUDY_FREEZE
+        if (type(operation) is not dict or set(operation) != _OP_V2_KEYS
+                or operation.get('schema') != 'mlg-injection-heldout-operational-binding-v2'
+                or public.freeze_sha256 != _STUDY_FREEZE or _sha(public.freeze_bytes) != _STUDY_FREEZE
                 or type(freeze['tracks']) is not dict or set(freeze['tracks']) != {'injection'}
                 or track.get('source_commit') != _STUDY_SOURCE
                 or track.get('runtime_sha256') != _STUDY_RUNTIME or _sha(public.runtime_bytes) != _STUDY_RUNTIME

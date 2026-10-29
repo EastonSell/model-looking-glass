@@ -144,6 +144,15 @@ class InjectionCustodyTests(unittest.TestCase):
                 gate_allocation=lambda freeze: self.claim.events.append('gate') or True,
                 observe_inventory=observe or (lambda: self.inventory_sha))
 
+    def v2_public(self):
+        binding = json.loads(self.operational)
+        binding.update({'schema': 'mlg-injection-heldout-operational-binding-v2',
+            'preparation_child_source_sha256': '1' * 64,
+            'preparation_audit_source_sha256': '2' * 64,
+            'outer_observer_source_sha256': '3' * 64})
+        raw = canonical(binding)
+        return replace(self.inputs, operational_binding_bytes=raw, operational_binding_sha256=digest(raw))
+
     def test_claim_precedes_one_draw_and_private_commitment_verifies(self):
         prepared = self.prepare()
         self.assertEqual(self.claim.events, ['claim', 'gate', 'draw'])
@@ -195,12 +204,38 @@ class InjectionCustodyTests(unittest.TestCase):
                 source_check=lambda binding: True, prediction_check=lambda raw, sha: True)
         self.assertEqual(self.claim.events, [])
 
+    def test_fixed_study_requires_v2_preparation_sources_before_claim(self):
+        pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
+                '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
+                '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
+        options = dict(site_nonce=SITE_NONCE, site_record_bytes=self.site.record_bytes,
+            tokenizer=FakeTokenizer(), claim_phase=self.claim, publication_check=lambda name, raw: True,
+            source_check=lambda binding: True, prediction_check=lambda raw, sha: True,
+            gate_allocation=lambda freeze: True, observe_inventory=lambda: self.inventory_sha)
+        with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes', return_value=SPLIT_NONCE):
+            with self.assertRaises(ValueError):
+                custody.prepare_study_once(self.inputs, self.root, self.root / 'fake-ledger', **options)
+            self.assertEqual(self.claim.events, [])
+            for field in ('preparation_child_source_sha256', 'preparation_audit_source_sha256',
+                          'outer_observer_source_sha256'):
+                with self.subTest(field=field):
+                    altered = json.loads(self.v2_public().operational_binding_bytes)
+                    altered[field] = 'NOT-A-SHA256'
+                    raw = canonical(altered)
+                    bad = replace(self.inputs, operational_binding_bytes=raw, operational_binding_sha256=digest(raw))
+                    with self.assertRaises(ValueError):
+                        custody.prepare_study_once(bad, self.root, self.root / 'fake-ledger', **options)
+                    self.assertEqual(self.claim.events, [])
+            result = custody.prepare_study_once(self.v2_public(), self.root, self.root / 'fake-ledger', **options)
+            self.assertTrue((result.phase_root / 'preparation-complete.json').is_file())
+            self.assertEqual(self.claim.events, ['claim'])
+
     def test_fixed_entry_accepts_only_the_independently_pinned_inputs(self):
         pins = {'_STUDY_FREEZE': self.freeze.sha256, '_STUDY_SOURCE': self.source,
                 '_STUDY_RUNTIME': digest(self.runtime), '_STUDY_PREDICTION': digest(self.prediction),
                 '_STUDY_PLAN': digest(self.plan), '_STUDY_SITE_COMMITMENT': self.site.commitment_sha256}
         with mock.patch.multiple(custody, **pins), mock.patch.object(custody.secrets, 'token_bytes', return_value=SPLIT_NONCE):
-            prepared = custody.prepare_study_once(self.inputs, self.root, self.root / 'fake-ledger',
+            prepared = custody.prepare_study_once(self.v2_public(), self.root, self.root / 'fake-ledger',
                 site_nonce=SITE_NONCE, site_record_bytes=self.site.record_bytes,
                 tokenizer=FakeTokenizer(), claim_phase=self.claim,
                 publication_check=lambda name, raw: True, observe_inventory=lambda: self.inventory_sha,
