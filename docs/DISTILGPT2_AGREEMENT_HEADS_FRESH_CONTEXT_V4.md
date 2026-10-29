@@ -1,5 +1,10 @@
 # Fresh-context fixed-donor agreement check
 
+> **Superseded before model forwarding.** This original v4 proposal reused
+> three subject lemmas from earlier exposed head-development cases. Use the
+> corrected [v4.1 protocol](DISTILGPT2_AGREEMENT_HEADS_FRESH_CONTEXT_V4_1.md).
+> Its case manifest is a separate fixed prospective proposal.
+
 ## Question and scope
 
 Does the previously fixed layer-3 head 4 retain the same signed donor-number

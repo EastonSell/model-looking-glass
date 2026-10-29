@@ -1,12 +1,18 @@
 # DistilGPT-2 agreement-head fresh-context cases
 
+> **Superseded before model forwarding.** Three subject lemmas in these
+> cases appeared in earlier exposed head-development cases. The corrected
+> [v4.1 protocol](../../docs/DISTILGPT2_AGREEMENT_HEADS_FRESH_CONTEXT_V4_1.md)
+> fixes a replacement case set; the original manifest and receipts are kept
+> here as historical evidence and were not reserved or forwarded.
+
 These are the 16 public, nonblind cases fixed by the [v4 protocol](../../docs/DISTILGPT2_AGREEMENT_HEADS_FRESH_CONTEXT_V4.md). They cross four sentence frames with four subject lemmas in the protocol's fixed quartet order. Case preparation used only the pinned tokenizer; no model forward on these cases is asserted. The manifest is a case inventory, not an execution result or an exposure reservation.
 
 The four answer continuations are included for public overlap checking and are read from final-position logits if the study runs. The proposed model inputs are the 16 base rows, not base-plus-answer forwards. L3H4 and L3H8 were selected on previously exposed development evidence; the data-informed fixed-dose design, singular/plural token differences, repeated frames and lemmas, and other limits are specified in the protocol.
 
 ## Reproducing the cases
 
-Run `scripts/prepare_agreement_head_v4_fresh_cases.py` with `--snapshot` pointing to the offline pinned DistilGPT-2 tokenizer snapshot, `--protocol` pointing to the v4 protocol file and `--output` pointing to a new file. The script checks the protocol and four tokenizer asset SHA-256s, requires `tokenizers` 0.22.2, loads no model, verifies one varying subject-token position per quartet and the four one-token answer continuations, and writes a create-only manifest. Both normal and optimized Python reproduced SHA-256 `e90584985df00a7749687d49139a83aa7488bff47f65af16f79b24572bba33ee`.
+Run `scripts/prepare_agreement_head_v4_fresh_cases.py` with `--snapshot` pointing to the offline pinned DistilGPT-2 tokenizer snapshot, `--protocol` pointing to the original, pre-notice v4 protocol bytes at commit [`8d97920ff7e1214c14c3b0e256390d3df6de05f3`](https://github.com/EastonSell/model-looking-glass/blob/8d97920ff7e1214c14c3b0e256390d3df6de05f3/docs/DISTILGPT2_AGREEMENT_HEADS_FRESH_CONTEXT_V4.md) (SHA-256 `38ca8bc913ed1763bec798e2aa4119af1e8d2b4fe1525485e4c805c522ec4a81`) and `--output` pointing to a new file. The script checks the protocol and four tokenizer asset SHA-256s, requires `tokenizers` 0.22.2, loads no model, verifies one varying subject-token position per quartet and the four one-token answer continuations, and writes a create-only manifest. Both normal and optimized Python reproduced SHA-256 `e90584985df00a7749687d49139a83aa7488bff47f65af16f79b24572bba33ee`.
 
 ## Public-only comparisons
 
