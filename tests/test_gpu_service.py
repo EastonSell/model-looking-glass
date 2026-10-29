@@ -28,6 +28,8 @@ from looking_glass.gpu_service import (_canonical_runtime_uuid, _run_bound_owner
 
 
 GIB = 1024 ** 3
+LOAD_COMMITMENT = 2 * GIB
+JOB_COMMITMENT = 512 * 1024 ** 2
 UUID = 'GPU-00000000-0000-0000-0000-000000000001'
 
 _CUDA_PATCHES = []
@@ -198,6 +200,7 @@ class FakeKey:
     model_id: str = 'a' * 64
     device: str = 'cuda:0'
     device_uuid: str = UUID
+    device_total_bytes: int = 8 * GIB
     checkpoint_sha256: str = 'e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b'
     checkpoint_revision: str = '2290a62682d06624634c1f46a6ad5be0f47f38aa'
     model_config_sha256: str = '4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a'
@@ -243,6 +246,9 @@ class KeyContractTests(unittest.TestCase):
             (load, replace(cold, warmup_protocol_sha256='f' * 64),
              replace(warm, warmup_protocol_sha256='f' * 64)),
             (replace(load, capture_policy_sha256='f' * 64), cold, warm),
+            (replace(load, device_total_bytes=9 * GIB), cold, warm),
+            (replace(load, device_total_bytes=True), cold, warm),
+            tuple(replace(key, device_total_bytes=6 * GIB) for key in (load, cold, warm)),
             (load, replace(cold, output_limit_bytes=2 * 1024 * 1024),
              replace(warm, output_limit_bytes=2 * 1024 * 1024)),
         ]
@@ -488,6 +494,59 @@ print('verified-offline-cpu-model')
 
 
 class ConcreteBackendContractTests(unittest.TestCase):
+    def test_runtime_binding_stops_if_supervision_is_lost_between_queries(self):
+        import torch
+        events = []
+        session = FakeSession(events)
+        backend = _TorchServiceBackend(session=session, device_lease=object(),
+            cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
+        def count():
+            events.append('count')
+            session.reject_check = True
+            return 1
+        def properties(index):
+            events.append('properties')
+        with patch.object(torch.cuda, 'device_count', side_effect=count), \
+             patch.object(torch.cuda, 'get_device_properties', side_effect=properties):
+            with self.assertRaisesRegex(RuntimeError, 'supervised lease'):
+                backend.runtime_binding()
+        self.assertEqual(events.count('count'), 1)
+        self.assertNotIn('properties', events)
+
+    def test_telemetry_stops_if_supervision_is_lost_between_queries(self):
+        import torch
+        events = []
+        session = FakeSession(events)
+        backend = _TorchServiceBackend(session=session, device_lease=object(),
+            cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
+        def available():
+            events.append('availability')
+            session.reject_check = True
+            return True
+        with patch.object(torch.cuda, 'is_available', side_effect=available), \
+             patch.object(torch.cuda, 'mem_get_info', side_effect=lambda *args: events.append('memory')):
+            with self.assertRaisesRegex(RuntimeError, 'supervised lease'):
+                backend.telemetry()
+        self.assertEqual(events.count('availability'), 1)
+        self.assertNotIn('memory', events)
+
+    def test_synchronization_fails_if_supervision_is_lost_during_call(self):
+        import torch
+        events = []
+        session = FakeSession(events)
+        backend = _TorchServiceBackend(session=session, device_lease=object(),
+            cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
+        def synchronize(index):
+            events.append('sync')
+            session.reject_check = True
+        with patch.object(torch.cuda, 'synchronize', side_effect=synchronize):
+            with self.assertRaisesRegex(RuntimeError, 'supervised lease'):
+                backend.synchronize()
+        self.assertEqual(events.count('sync'), 1)
+
     def test_runtime_count_cannot_query_properties_after_quarantine(self):
         import torch
         events, latched = [], [False]
@@ -568,11 +627,11 @@ class ConcreteBackendContractTests(unittest.TestCase):
             return worker
         fake_service = SimpleNamespace(make_gpt2_request_factory=lambda **kwargs: factory)
         load = SimpleNamespace(key=SimpleNamespace(model_id='c' * 64))
-        cold = SimpleNamespace(estimated_incremental_bytes=1024)
-        warm = SimpleNamespace(estimated_incremental_bytes=1024)
+        cold = SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT)
+        warm = SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT)
         budget = MemoryBudget(lambda: CudaMemorySnapshot(7 * GIB, 8 * GIB, 0, 0),
                               max_gpu_trace_bytes=0, max_host_trace_bytes=0)
-        lease = budget.acquire(GIB, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        lease = budget.acquire(LOAD_COMMITMENT, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
         with patch.dict(sys.modules, {'looking_glass.service': fake_service}), \
              patch('looking_glass.pretrained.load_distilgpt2', return_value=SimpleNamespace(model=CpuModel())), \
              patch('looking_glass.resident_worker.ResidentWorker', return_value=object()), \
@@ -619,6 +678,46 @@ class ConcreteBackendContractTests(unittest.TestCase):
                     live_key_builder=lambda identity: (), verify_loaded_model=lambda model: True,
                     verify_device_model=verifier)
 
+    def test_cpu_load_is_seeded_immediately_before_offline_loader(self):
+        import torch
+        from looking_glass.memory_budget import MemoryBudget
+        events = []
+        backend = _TorchServiceBackend(session=FakeSession(events), device_lease=object(),
+            cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
+        backend._resolved_keys = ()
+        budget = MemoryBudget(lambda: CudaMemorySnapshot(7 * GIB, 8 * GIB, 0, 0),
+                              max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        lease = budget.acquire(LOAD_COMMITMENT, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        profiles = (None, SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT),
+                    SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT))
+        generator = SimpleNamespace(manual_seed=lambda seed: events.append(('seed', seed)))
+        def cpu_load(**kwargs):
+            events.append(('load', kwargs['allow_download']))
+            raise ValueError('stop after CPU loader entry')
+        fake_service = SimpleNamespace(make_gpt2_request_factory=lambda **kwargs: None)
+        with patch.dict(sys.modules, {'looking_glass.service': fake_service}), \
+             patch.object(torch.random, 'default_generator', generator), \
+             patch('looking_glass.pretrained.load_distilgpt2', side_effect=cpu_load):
+            with self.assertRaisesRegex(ValueError, 'stop after CPU loader entry'):
+                backend.construct(budget, lease, profiles)
+        self.assertEqual(events[-2:], [('seed', 17), ('load', False)])
+
+    def test_construct_refuses_a_smaller_resident_lease_before_cpu_load(self):
+        from looking_glass.memory_budget import MemoryBudget
+        backend = _TorchServiceBackend(session=FakeSession([]), device_lease=object(),
+            cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
+        backend._resolved_keys = ()
+        budget = MemoryBudget(lambda: CudaMemorySnapshot(7 * GIB, 8 * GIB, 0, 0),
+                              max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        lease = budget.acquire(GIB, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        fake_service = SimpleNamespace(make_gpt2_request_factory=lambda **kwargs: None)
+        with patch.dict(sys.modules, {'looking_glass.service': fake_service}), \
+             patch('looking_glass.pretrained.load_distilgpt2', side_effect=AssertionError('loader reached')):
+            with self.assertRaisesRegex(RuntimeError, 'resident-load reservation'):
+                backend.construct(budget, lease, (None, None, None))
+
     def test_copy_flags_and_postcopy_verifier_gate_worker_creation(self):
         import torch
         from looking_glass.memory_budget import MemoryBudget
@@ -663,7 +762,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
             backend.synchronize = lambda: events.append('synchronize')
             budget = MemoryBudget(lambda: CudaMemorySnapshot(7 * GIB, 8 * GIB, 0, 0),
                                   max_gpu_trace_bytes=0, max_host_trace_bytes=0)
-            lease = budget.acquire(GIB, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+            lease = budget.acquire(LOAD_COMMITMENT, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
             fake_service = SimpleNamespace(make_gpt2_request_factory=lambda **kwargs: None)
             load = SimpleNamespace(key=SimpleNamespace(model_id='c' * 64))
 
@@ -678,7 +777,9 @@ class ConcreteBackendContractTests(unittest.TestCase):
                  patch.object(torch.__future__, 'get_overwrite_module_params_on_conversion', side_effect=lambda: flags[0]), \
                  patch.object(torch.__future__, 'get_swap_module_params_on_conversion', side_effect=lambda: flags[1]):
                 try:
-                    backend.construct(budget, lease, (load, None, None))
+                    backend.construct(budget, lease, (load,
+                        SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT),
+                        SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT)))
                 except Exception as exc:
                     return events, exc
             self.fail('construction unexpectedly completed')
@@ -734,9 +835,65 @@ class ConcreteBackendContractTests(unittest.TestCase):
         self.assertEqual(warm.model_id, keys[2].model_id)
         self.assertEqual(cold.shape, (1, 2))
         self.assertEqual(warm.shape, (1, 2))
+        # The measured estimate is an eligibility check. The worker must
+        # reserve the full predeclared job amount, even when the estimate is smaller.
+        self.assertEqual(cold.estimated_incremental_bytes, JOB_COMMITMENT)
+        self.assertEqual(warm.estimated_incremental_bytes, JOB_COMMITMENT)
         missing = ProfileRegistry((load,), approved_profile_ids=(load.profile_id,))
         with self.assertRaises(ProfileUnavailable):
             backend.resolve_profiles(missing, keys)
+
+    def test_oversize_forward_estimate_is_rejected_before_loading(self):
+        from looking_glass.resource_profile import ProfileRegistry
+        keys, registry = measured_keys_and_registry()
+        profiles = [registry.resolve(key) for key in keys]
+        profiles[1] = replace(profiles[1], margin_bytes=JOB_COMMITMENT + 1)
+        oversized = ProfileRegistry(tuple(profiles),
+                                    approved_profile_ids=tuple(p.profile_id for p in profiles))
+        backend = _TorchServiceBackend(session=FakeSession([]), device_lease=object(),
+            cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: keys,
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
+        with self.assertRaisesRegex(ValueError, 'commitment'):
+            backend.resolve_profiles(oversized, keys)
+        self.assertIsNone(backend._resolved_keys)
+
+    def test_cold_and_warm_workers_hold_fixed_job_lease_during_execution(self):
+        import torch
+        from torch import nn
+        from looking_glass.memory_budget import MemoryBudget
+        from looking_glass.budgeted_worker import BudgetedWorker, DeviceAdmission
+        from looking_glass.resident_worker import ForwardRequest, ResidentWorker
+
+        keys, registry = measured_keys_and_registry()
+        backend = _TorchServiceBackend(session=FakeSession([]), device_lease=object(),
+            cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: keys,
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True)
+        _, cold, warm = backend.resolve_profiles(registry, keys)
+        cold, warm = replace(cold, device='cpu'), replace(warm, device='cpu')
+        budget = MemoryBudget(lambda: CudaMemorySnapshot(7 * GIB, 8 * GIB, 0, 0),
+                              max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        resident_lease = budget.acquire(LOAD_COMMITMENT, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        observed = []
+
+        class TinyModel(nn.Module):
+            def forward(self, input_ids):
+                observed.append(tuple(sorted(lease.estimated_incremental_bytes
+                                             for lease in budget.active_leases())))
+                return input_ids.to(torch.float32).unsqueeze(-1)
+
+        resident = ResidentWorker(cold.model_id, TinyModel().eval(), device='cpu',
+                                  max_batch_size=1, max_sequence_length=2,
+                                  max_input_bytes=64 * 1024, max_output_bytes=512 * 1024)
+        admission = DeviceAdmission(budget, device='cpu', max_estimated_incremental_bytes=JOB_COMMITMENT)
+        cold_worker = BudgetedWorker(resident, admission, (cold,))
+        warm_worker = BudgetedWorker(resident, admission, (warm,))
+        for worker, seed in ((cold_worker, 17), (warm_worker, 29)):
+            request = ForwardRequest('fixed-test', {'input_ids': torch.tensor([[15496, 995]])}, seed)
+            worker.execute(request)
+            self.assertEqual(budget.active_leases(), (resident_lease,))
+        self.assertEqual(observed, [(JOB_COMMITMENT, LOAD_COMMITMENT)] * 2)
+        warm_worker.close()
+        resident_lease.release()
 
     def test_owner_rechecks_supervision_after_cpu_loading_before_cuda_copy(self):
         from looking_glass.memory_budget import MemoryBudget
@@ -760,12 +917,14 @@ class ConcreteBackendContractTests(unittest.TestCase):
             return SimpleNamespace(model=CpuModel())
         budget = MemoryBudget(lambda: CudaMemorySnapshot(7 * GIB, 8 * GIB, 0, 0),
                               max_gpu_trace_bytes=0, max_host_trace_bytes=0)
-        lease = budget.acquire(1, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        lease = budget.acquire(LOAD_COMMITMENT, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
         fake_service = SimpleNamespace(make_gpt2_request_factory=lambda **kwargs: None)
         with patch.dict(sys.modules, {'looking_glass.service': fake_service}), \
              patch('looking_glass.pretrained.load_distilgpt2', side_effect=cpu_load):
             with self.assertRaisesRegex(RuntimeError, 'supervised lease'):
-                backend.construct(budget, lease, (None, None, None))
+                backend.construct(budget, lease, (None,
+                    SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT),
+                    SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT)))
         self.assertNotIn('cuda-copy', events)
 
     def test_owner_rechecks_live_headroom_after_cpu_loading_before_cuda_copy(self):
@@ -790,12 +949,14 @@ class ConcreteBackendContractTests(unittest.TestCase):
             return SimpleNamespace(model=CpuModel())
         budget = MemoryBudget(lambda: CudaMemorySnapshot(free[0], 8 * GIB, 0, 0),
                               max_gpu_trace_bytes=0, max_host_trace_bytes=0)
-        lease = budget.acquire(GIB, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        lease = budget.acquire(LOAD_COMMITMENT, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
         fake_service = SimpleNamespace(make_gpt2_request_factory=lambda **kwargs: None)
         with patch.dict(sys.modules, {'looking_glass.service': fake_service}), \
              patch('looking_glass.pretrained.load_distilgpt2', side_effect=cpu_load):
             with self.assertRaises(AdmissionError):
-                backend.construct(budget, lease, (None, None, None))
+                backend.construct(budget, lease, (None,
+                    SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT),
+                    SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT)))
         self.assertNotIn('cuda-copy', events)
 
     def test_model_verification_failure_stops_before_cuda_copy(self):
@@ -817,12 +978,14 @@ class ConcreteBackendContractTests(unittest.TestCase):
                 events.append('cuda-copy')
         budget = MemoryBudget(lambda: CudaMemorySnapshot(7 * GIB, 8 * GIB, 0, 0),
                               max_gpu_trace_bytes=0, max_host_trace_bytes=0)
-        lease = budget.acquire(GIB, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        lease = budget.acquire(LOAD_COMMITMENT, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
         fake_service = SimpleNamespace(make_gpt2_request_factory=lambda **kwargs: None)
         with patch.dict(sys.modules, {'looking_glass.service': fake_service}), \
              patch('looking_glass.pretrained.load_distilgpt2', return_value=SimpleNamespace(model=CpuModel())):
             with self.assertRaisesRegex(ValueError, 'do not match'):
-                backend.construct(budget, lease, (None, None, None))
+                backend.construct(budget, lease, (None,
+                    SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT),
+                    SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT)))
         self.assertNotIn('cuda-copy', events)
 
     def test_model_verifier_must_explicitly_return_true(self):
@@ -838,12 +1001,14 @@ class ConcreteBackendContractTests(unittest.TestCase):
                                      vocab_size=50257, n_positions=1024)
         budget = MemoryBudget(lambda: CudaMemorySnapshot(7 * GIB, 8 * GIB, 0, 0),
                               max_gpu_trace_bytes=0, max_host_trace_bytes=0)
-        lease = budget.acquire(GIB, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        lease = budget.acquire(LOAD_COMMITMENT, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
         fake_service = SimpleNamespace(make_gpt2_request_factory=lambda **kwargs: None)
         with patch.dict(sys.modules, {'looking_glass.service': fake_service}), \
              patch('looking_glass.pretrained.load_distilgpt2', return_value=SimpleNamespace(model=CpuModel())):
             with self.assertRaisesRegex(RuntimeError, 'model verification'):
-                backend.construct(budget, lease, (None, None, None))
+                backend.construct(budget, lease, (None,
+                    SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT),
+                    SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT)))
 
 
 class FakeBackend:
@@ -874,7 +1039,7 @@ class FakeBackend:
         self.events.append('resolve-profiles')
         if self.missing:
             raise LookupError('no approved profile')
-        return (FakeProfile(GIB), FakeProfile(GIB), FakeProfile(GIB))
+        return (FakeProfile(GIB), FakeProfile(JOB_COMMITMENT), FakeProfile(JOB_COMMITMENT))
 
     def telemetry(self):
         self.events.append('telemetry')
@@ -917,6 +1082,46 @@ class OwnerOrderTests(unittest.TestCase):
                                 registry=object(), stop_event=threading.Event(),
                                 announce=lambda server: None)
 
+    def test_resident_lease_uses_fixed_commitment_not_smaller_profile_estimate(self):
+        events, session, backend = self.setup_run()
+        result = self.run_owner(session, backend)
+        self.assertTrue(result.teardown_verified)
+        self.assertEqual(backend.load_lease.estimated_incremental_bytes, LOAD_COMMITMENT)
+        self.assertFalse(backend.load_lease.released)
+
+    def test_oversize_load_profile_fails_before_memory_telemetry(self):
+        events, session, backend = self.setup_run()
+        backend.resolve_profiles = lambda registry, keys: (
+            FakeProfile(LOAD_COMMITMENT + 1), FakeProfile(JOB_COMMITMENT), FakeProfile(JOB_COMMITMENT))
+        with self.assertRaisesRegex(ValueError, 'commitment'):
+            self.run_owner(session, backend)
+        self.assertNotIn('telemetry', events)
+        self.assertNotIn('load-and-warmup', events)
+
+    def test_device_total_mismatch_prevents_initial_model_load(self):
+        events, session, backend = self.setup_run()
+        backend.telemetry = lambda: CudaMemorySnapshot(8 * GIB, 9 * GIB, 0, 0)
+        with self.assertRaisesRegex(RuntimeError, 'device total'):
+            self.run_owner(session, backend)
+        self.assertNotIn('load-and-warmup', events)
+        self.assertNotIn('attest', events)
+
+    def test_changed_device_total_prevents_job_admission_after_load(self):
+        events, session, backend = self.setup_run()
+        def construct(budget, resident_lease, profiles):
+            events.append('loaded')
+            backend.telemetry = lambda: CudaMemorySnapshot(8 * GIB, 9 * GIB, 0, 0)
+            budget.try_acquire(JOB_COMMITMENT, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+            events.append('job-started')
+        backend.construct = construct
+        with self.assertRaisesRegex(RuntimeError, 'device total'):
+            self.run_owner(session, backend)
+        self.assertIn('loaded', events)
+        self.assertNotIn('job-started', events)
+        self.assertNotIn('attest', events)
+        self.assertFalse(gpu_service._OWNER_CUSTODY[5].released)
+
+
     def test_failed_post_verifier_sync_retains_model_and_lease_without_attesting(self):
         events = []
         session, device_lease = FakeSession(events), object()
@@ -929,7 +1134,9 @@ class OwnerOrderTests(unittest.TestCase):
         backend.runtime_binding = lambda: (UUID, 1)
         backend.telemetry = lambda: CudaMemorySnapshot(7 * GIB, 8 * GIB, 0, 0)
         backend.resolve_profiles = lambda registry, selected: (
-            SimpleNamespace(key=keys[0], estimated_incremental_bytes=GIB), None, None)
+            SimpleNamespace(key=keys[0], estimated_incremental_bytes=GIB),
+            SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT),
+            SimpleNamespace(estimated_incremental_bytes=JOB_COMMITMENT))
 
         class CpuModel:
             training = False

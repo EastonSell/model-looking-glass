@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 from threading import Event, Lock
 
-from .memory_budget import MemoryBudget
+from .memory_budget import CudaMemorySnapshot, MemoryBudget
 
 
 # A failed device drain is a process-lifetime event. Retain known owner
@@ -55,6 +55,9 @@ def _validate_service_keys(identity, keys):
         if any(
             key.model_id != load.model_id or key.device != 'cuda:0'
             or key.device_uuid != identity.gpu_uuid
+            or type(key.device_total_bytes) is not int
+            or key.device_total_bytes != load.device_total_bytes
+            or not 7 * 1024 ** 3 <= key.device_total_bytes <= 9 * 1024 ** 3
             or key.checkpoint_sha256 != ASSETS['model.safetensors'][1]
             or key.checkpoint_revision != REVISION
             or key.model_config_sha256 != ASSETS['config.json'][1]
@@ -220,16 +223,21 @@ class _TorchServiceBackend:
     def runtime_binding(self):
         # This is the sole CUDA query permitted between session.check and
         # verify_runtime_binding: it obtains the actual runtime identity.
-        _require_unquarantined(allow_pending=True)
+        self._check_owner_lease(allow_pending=True)
         import torch
         count = torch.cuda.device_count()
-        _require_unquarantined(allow_pending=True)
+        self._check_owner_lease(allow_pending=True)
         if type(count) is not int or count != 1:
             raise RuntimeError('the CUDA runtime must expose exactly one device')
         properties = torch.cuda.get_device_properties(0)
-        _require_unquarantined(allow_pending=True)
+        self._check_owner_lease(allow_pending=True)
         uuid_type = getattr(torch._C, '_CUuuid', None)
         return _canonical_runtime_uuid(getattr(properties, 'uuid', None), uuid_type), count
+
+    def _check_owner_lease(self, *, allow_pending=False):
+        _require_unquarantined(allow_pending=allow_pending)
+        self.session.check(self.device_lease)
+        _require_unquarantined(allow_pending=allow_pending)
 
     def live_keys(self, identity):
         _require_unquarantined()
@@ -249,6 +257,7 @@ class _TorchServiceBackend:
 
     def resolve_profiles(self, registry, keys):
         from .resource_profile import WorkloadKey, ProfileRegistry, resolve_worker_profile
+        from .trusted_service_profile import LOAD_COMMITMENT, JOB_COMMITMENT
 
         if type(registry) is not ProfileRegistry or any(type(key) is not WorkloadKey for key in keys):
             raise TypeError('trusted measured profiles and exact live workload keys are required')
@@ -256,33 +265,42 @@ class _TorchServiceBackend:
         load = registry.resolve(keys[0])
         cold = resolve_worker_profile(registry, keys[1])
         warm = resolve_worker_profile(registry, keys[2])
+        for profile, limit in ((load, LOAD_COMMITMENT), (cold, JOB_COMMITMENT),
+                               (warm, JOB_COMMITMENT)):
+            estimate = profile.estimated_incremental_bytes
+            if type(estimate) is not int or not 0 < estimate <= limit:
+                raise ValueError('measured estimate exceeds its fixed service commitment')
+        # A profile's measured estimate establishes eligibility; the worker
+        # reserves the larger fixed commitment prescribed by this protocol.
+        cold = replace(cold, estimated_incremental_bytes=JOB_COMMITMENT)
+        warm = replace(warm, estimated_incremental_bytes=JOB_COMMITMENT)
         self._resolved_keys = keys
         return load, cold, warm
 
     def telemetry(self):
-        _require_unquarantined()
+        self._check_owner_lease()
         from .memory_budget import CudaMemorySnapshot, TelemetryError
         import torch
         try:
             available = torch.cuda.is_available()
-            _require_unquarantined()
+            self._check_owner_lease()
             if not available:
                 raise RuntimeError('CUDA is not available')
             free, total = torch.cuda.mem_get_info(0)
-            _require_unquarantined()
+            self._check_owner_lease()
             allocated = torch.cuda.memory_allocated(0)
-            _require_unquarantined()
+            self._check_owner_lease()
             reserved = torch.cuda.memory_reserved(0)
-            _require_unquarantined()
+            self._check_owner_lease()
             return CudaMemorySnapshot(free, total, allocated, reserved)
         except Exception as exc:
             raise TelemetryError(f'cannot read CUDA memory telemetry: {exc}') from exc
 
     def synchronize(self):
-        _require_unquarantined(allow_pending=True)
+        self._check_owner_lease(allow_pending=True)
         import torch
         torch.cuda.synchronize(0)
-        _require_unquarantined(allow_pending=True)
+        self._check_owner_lease(allow_pending=True)
 
     @staticmethod
     def _require_conversion_policy():
@@ -301,12 +319,20 @@ class _TorchServiceBackend:
         from .broker import Broker
         from .ipc import IPCServer
         from .service import make_gpt2_request_factory
+        from .trusted_service_profile import LOAD_COMMITMENT, JOB_COMMITMENT
 
-        if resident_lease.released or budget.active_leases() != (resident_lease,):
+        if (resident_lease.released or budget.active_leases() != (resident_lease,)
+                or resident_lease.estimated_incremental_bytes != LOAD_COMMITMENT):
             raise RuntimeError('a live exclusive resident-load reservation is required')
         if self._resolved_keys is None:
             raise RuntimeError('live profiles must be resolved before model loading')
         load, cold, warm = profiles
+        if any(getattr(profile, 'estimated_incremental_bytes', None) != JOB_COMMITMENT
+               for profile in (cold, warm)):
+            raise RuntimeError('cold and warm jobs require the fixed forward commitment')
+        # This is the CPU generator, matching the load-stage protocol without
+        # the global torch.manual_seed helper's CUDA side effects.
+        torch.random.default_generator.manual_seed(17)
         bundle = load_distilgpt2(cache_dir=self.cache_dir, allow_download=False)
         self._retained[0] = bundle
         _require_unquarantined()
@@ -342,7 +368,7 @@ class _TorchServiceBackend:
             raise AdmissionError('live headroom changed before the model copy')
         _require_unquarantined()
         self._require_conversion_policy()
-        _require_unquarantined()
+        self._check_owner_lease()
         converted = model.to(device='cuda:0', dtype=torch.float32)
         if converted is not model:
             # A nonstandard conversion may have produced another device object.
@@ -463,6 +489,7 @@ def _run_bound_owner(session, device_lease, *, backend, registry, stop_event,
 
 def _run_bound_owner_inner(session, device_lease, *, backend, registry,
                            stop_event, announce, minimum_reserve_bytes):
+    from .trusted_service_profile import LOAD_COMMITMENT
     session.check(device_lease)
     if session.identity is None:
         raise RuntimeError('GPU ownership requires an identity-aware supervisor')
@@ -492,13 +519,16 @@ def _run_bound_owner_inner(session, device_lease, *, backend, registry,
         raise ValueError('load, cold-forward and warm-forward profiles are required')
     load_profile, _, _ = profiles
     estimate = load_profile.estimated_incremental_bytes
-    if type(estimate) is not int or estimate <= 0:
-        raise ValueError('model-load estimate must be a positive integer')
+    if type(estimate) is not int or not 0 < estimate <= LOAD_COMMITMENT:
+        raise ValueError('model-load estimate exceeds its fixed service commitment')
 
     def guarded_telemetry():
         verify_binding()
         snapshot = backend.telemetry()
         _require_unquarantined()
+        if (type(snapshot) is not CudaMemorySnapshot
+                or any(snapshot.device_total_bytes != key.device_total_bytes for key in keys)):
+            raise RuntimeError('live device total differs from the resolved workload keys')
         return snapshot
 
     budget = MemoryBudget(guarded_telemetry, max_gpu_trace_bytes=0,
@@ -507,7 +537,7 @@ def _run_bound_owner_inner(session, device_lease, *, backend, registry,
     # The budget itself roots every published lease, including when an
     # interruption prevents acquire() from returning its newly issued handle.
     _OWNER_CUSTODY[4] = budget
-    resident_lease = budget.acquire(estimate, max_gpu_trace_bytes=0,
+    resident_lease = budget.acquire(LOAD_COMMITMENT, max_gpu_trace_bytes=0,
                                     max_host_trace_bytes=0)
     _OWNER_CUSTODY[5] = resident_lease
     _require_unquarantined()
