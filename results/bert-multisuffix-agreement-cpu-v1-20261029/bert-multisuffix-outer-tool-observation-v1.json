@@ -1,0 +1,10 @@
+{
+  "schema": "bert-multisuffix-outer-tool-observation-v1",
+  "source_commit": "42519c13a5b33ce3601b89ba65d67b07ebd2f78d",
+  "tool": "functions.write_stdin",
+  "session_id": 70686,
+  "tool_exit_code": 0,
+  "observed_output": "observer exit 0 interrupted None receipt 4f85c2794bb45a6e598069c97be1a089d0203c80c5c625ac325eeceb25d42347\n",
+  "outer_record_sha256": "86897fe8a359ee97c22dc84e93ba85a9958051a467c07befc9f6880cfb5c48a4",
+  "scope": "Operator transcription of the completed tool result; not independent operating-system or process-tree attestation."
+}
