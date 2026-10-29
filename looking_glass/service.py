@@ -24,6 +24,17 @@ class OwnerResult:
     teardown_verified: bool = False
 
 
+@dataclass(frozen=True)
+class OwnerHealth:
+    """One cooperative, nonblocking observation; never an admission grant."""
+    quarantined: bool
+    worker_unavailable: bool
+    worker_failed: bool
+    broker_failed: bool
+    broker_closed: bool
+    broker_owner_alive: bool
+
+
 def make_gpt2_request_factory(*, vocab_size, max_positions, max_batch, max_tokens):
     """Validate wire token matrices against a trusted pinned GPT-2 config."""
     for name, value, maximum in (
@@ -75,6 +86,30 @@ def _error(exc):
     except BaseException:
         message = '<exception message unavailable>'
     return type(exc).__name__, message
+
+
+def _observe_thread_exception(thread, failed, on_failure=None):
+    """Latch an escaped target exception before CPython reports it.
+
+    This per-thread hook covers exceptions escaping the target's return, as
+    well as its body, without changing the process-wide threading hook. It is
+    a CPython-specific best effort; interruption of thread bootstrap, this
+    hook, or the interpreter's finalizer still requires process recovery.
+    """
+    original = getattr(thread, '_invoke_excepthook', None)
+    if not callable(original):
+        raise RuntimeError('thread exception observation is unavailable')
+
+    def notify(owner_thread):
+        failed[0] = True
+        if on_failure is not None:
+            try:
+                on_failure()
+            finally:
+                on_failure()
+        original(owner_thread)
+
+    thread._invoke_excepthook = notify
 
 
 class _CpuServiceWorker:
@@ -142,8 +177,76 @@ def serve_cpu_model(model, *, model_id, team_ids, stop_event, announce,
                        verify_drain=lambda: True, shutdown_timeout=shutdown_timeout)
 
 
+def _notify_health_uncertainty(callback):
+    # The trusted latch is idempotent. If a one-shot interruption arrives at
+    # callback entry, the finally attempt still has a chance to publish it.
+    try:
+        callback()
+    finally:
+        callback()
+
+
 def serve_owner(server, broker, worker, stop_event, *, announce, verify_drain,
-                poll_interval=0.1, shutdown_timeout=10):
+                poll_interval=0.1, shutdown_timeout=10, health_provider=None,
+                on_health_uncertain=None):
+    """Run an assembled owner and report whether its teardown was verified.
+
+    ``announce(server)`` must keep credentials private. ``verify_drain()``
+    must verify completed device work and leases after shutdown and return
+    exactly True. Workload failure can coexist with verified teardown.
+
+    The optional ``health_provider`` and ``on_health_uncertain`` are a paired
+    trusted interface. The provider must return an exact ``OwnerHealth`` with
+    bool fields, without blocking on the broker condition. Its
+    ``worker_unavailable`` field means persistently closed or poisoned, not
+    transient backpressure. It must synchronously signal resource uncertainty
+    to the owner authority and retain any resource-bearing partials or escaped
+    exception graphs independently; scalar-only observations are preferable.
+    The paired callback must be nonblocking and idempotent, and mark that same
+    authority unsafe. It can be invoked more than once, including during error
+    handling. A malformed, failed, or uncertain observation cannot establish
+    verified teardown. In this mode quarantine leaves cleanup to process
+    recovery instead of starting best-effort cleanup threads.
+
+    Health observations are non-atomic, can be stale, and do not grant
+    admission or order a concurrent fault with startup, result publication, or
+    retirement. All fault sources need their own coordinated authority signal.
+    An external process watchdog must bound stalled or repeatedly interrupted
+    callbacks. A verified result joins this helper's lifecycle threads; it
+    does not establish quiescence of separately owned threads or protect every
+    possible interpreter bootstrap, exception-hook, or finalizer interruption.
+    These lifecycle helpers format callback errors and delegate escaped thread
+    errors; they do not privately retain each original callback failure graph.
+    Trusted announce, transport, broker/worker close, and drain callbacks must
+    themselves retain any resource-bearing partials or failure-only claims
+    until recovery, or supply separately reviewed producer-failure custody.
+    """
+    options = dict(announce=announce, verify_drain=verify_drain,
+                   poll_interval=poll_interval, shutdown_timeout=shutdown_timeout,
+                   health_provider=health_provider, on_health_uncertain=on_health_uncertain)
+    if health_provider is None:
+        return _serve_owner_impl(server, broker, worker, stop_event, **options)
+    if not callable(health_provider) or not callable(on_health_uncertain):
+        raise TypeError('health provider and uncertainty callback must both be callable')
+    verified = False
+    try:
+        result = _serve_owner_impl(server, broker, worker, stop_event, **options)
+        verified = result.teardown_verified is True
+        return result
+    finally:
+        if not verified:
+            # An interrupted observation/handler must not return to the owner
+            # while the common authority remains clear. The source callback is
+            # trusted and idempotent; repeated interruption requires recovery.
+            try:
+                on_health_uncertain()
+            finally:
+                on_health_uncertain()
+
+
+def _serve_owner_impl(server, broker, worker, stop_event, *, announce, verify_drain,
+                      poll_interval=0.1, shutdown_timeout=10, health_provider=None,
+                      on_health_uncertain=None):
     """Run an already-configured owner and report if teardown was verified.
 
     `announce(server)` must deliver credentials only to trusted recipients.
@@ -153,36 +256,150 @@ def serve_owner(server, broker, worker, stop_event, *, announce, verify_drain,
     may coexist with verified teardown and must still be reported as failure.
     If QUARANTINED, the owner process must terminate promptly while retaining
     its lease until process exit.
+
+    A verified result waits for both lifecycle threads and rejects exceptions
+    escaping their targets via CPython's per-thread exception hook. It does
+    not certify arbitrary interruptions of CPython thread bootstrap/finalizers
+    or quiescence of independently owned monitor and transport threads.
+
+    A trusted nonblocking ``health_provider`` may replace the legacy worker
+    and broker property reads. Worker unavailability means persistent closed
+    or poisoned state, not transient backpressure. The provider must report
+    observed resource uncertainty to its owner authority synchronously and
+    retain any resource-bearing partials or exception graph independently.
+    The idempotent paired ``on_health_uncertain`` callback marks that authority
+    when an observation raises, is malformed, reports quarantine, or observes
+    a closed/dead broker during service. A process watchdog must still bound a
+    provider or notification that stalls or is repeatedly interrupted.
+    In this opt-in mode an uncertain shutdown is left for process recovery;
+    no new best-effort cleanup threads are started after quarantine.
+    The pre-start health check is observational and does not replace a
+    source-time authority guard against a concurrent fault during startup.
     """
     if not callable(announce) or not callable(verify_drain):
         raise TypeError('announce and verify_drain must be callable')
+    if ((health_provider is None) != (on_health_uncertain is None)
+            or (health_provider is not None and (not callable(health_provider)
+                                                  or not callable(on_health_uncertain)))):
+        raise TypeError('health provider and uncertainty callback must both be callable')
     if type(poll_interval) not in (int, float) or not 0 < poll_interval <= 1:
         raise ValueError('poll_interval must be in (0, 1]')
     if type(shutdown_timeout) not in (int, float) or not 0 <= shutdown_timeout <= 300:
         raise ValueError('shutdown_timeout must be in [0, 300]')
+
+    broker_close_started = [False]
+
+    def notify_uncertainty_best_effort():
+        if health_provider is not None:
+            try:
+                _notify_health_uncertainty(on_health_uncertain)
+            except BaseException:
+                pass
+
+    def quarantine_cleanup():
+        if health_provider is None:
+            _request_quarantine_cleanup(server, broker)
+
+    def observation():
+        accepted = False
+        try:
+            value = health_provider()
+            fields = ('quarantined', 'worker_unavailable', 'worker_failed',
+                      'broker_failed', 'broker_closed', 'broker_owner_alive')
+            if type(value) is not OwnerHealth or any(type(getattr(value, field)) is not bool for field in fields):
+                raise ValueError('malformed owner health observation')
+            accepted = True
+            return value
+        finally:
+            if not accepted:
+                _notify_health_uncertainty(on_health_uncertain)
+
+    def quarantine_seen():
+        if health_provider is None:
+            return bool(worker.quarantined or broker.quarantined)
+        value = observation()
+        if (value.quarantined or (not broker_close_started[0]
+                and (value.broker_closed or not value.broker_owner_alive))):
+            _notify_health_uncertainty(on_health_uncertain)
+            return True
+        return False
+
+    def serving_status():
+        if health_provider is None:
+            if worker.quarantined or broker.quarantined:
+                return OwnerStatus.QUARANTINED
+            if worker.poisoned or not broker.available:
+                return OwnerStatus.WORKER_FAILED
+            return None
+        value = observation()
+        if value.quarantined or value.broker_closed or not value.broker_owner_alive:
+            _notify_health_uncertainty(on_health_uncertain)
+            return OwnerStatus.QUARANTINED
+        if value.worker_unavailable or value.worker_failed or value.broker_failed:
+            return OwnerStatus.WORKER_FAILED
+        return None
+
+    def terminal_status():
+        if health_provider is None:
+            if worker.quarantined or broker.quarantined:
+                return OwnerStatus.QUARANTINED
+            return OwnerStatus.WORKER_FAILED if worker.failed or broker.failed else OwnerStatus.CLEAN
+        value = observation()
+        if value.quarantined or not value.broker_closed or value.broker_owner_alive:
+            _notify_health_uncertainty(on_health_uncertain)
+            return OwnerStatus.QUARANTINED
+        # Closed/dead is expected only here, after successful broker close/join.
+        return OwnerStatus.WORKER_FAILED if value.worker_failed or value.broker_failed else OwnerStatus.CLEAN
+
+    if health_provider is not None:
+        try:
+            prestart = serving_status()
+        except BaseException as exc:
+            return OwnerResult(OwnerStatus.QUARANTINED, *_error(exc))
+        if prestart is not None:
+            if prestart is not OwnerStatus.QUARANTINED:
+                notify_uncertainty_best_effort()
+            return OwnerResult(OwnerStatus.QUARANTINED)
+
     status = None
     failure = None
     startup_done = Event()
     startup_errors = []
+    # A startup exception handler can itself be interrupted. Begin with an
+    # unknown outcome and publish one only after the path has completed.
+    startup_outcome = [None]
+    startup_terminal = [False]
+    startup_thread_failed = [False]
 
     def startup():
         try:
             server.start()
             announce(server)
         except BaseException as exc:
-            startup_errors.append(_error(exc))
+            try:
+                if health_provider is not None:
+                    _notify_health_uncertainty(on_health_uncertain)
+                startup_errors.append(_error(exc))
+                startup_outcome[0] = 'failed'
+            except BaseException:
+                pass
+        else:
+            startup_outcome[0] = 'succeeded'
         finally:
-            startup_done.set()
+            try:
+                startup_done.set()
+            except BaseException:
+                return
+            startup_terminal[0] = True
 
-    Thread(target=startup, name='looking-glass-owner-startup', daemon=True).start()
+    startup_thread = Thread(target=startup, name='looking-glass-owner-startup', daemon=True)
+    _observe_thread_exception(startup_thread, startup_thread_failed, on_health_uncertain)
+    startup_thread.start()
     startup_deadline = monotonic() + shutdown_timeout
     while not startup_done.wait(poll_interval):
         try:
-            if worker.quarantined or broker.quarantined:
-                status = OwnerStatus.QUARANTINED
-                break
-            if worker.poisoned or not broker.available:
-                status = OwnerStatus.WORKER_FAILED
+            status = serving_status()
+            if status is not None:
                 break
         except BaseException as exc:
             status = OwnerStatus.QUARANTINED
@@ -192,17 +409,36 @@ def serve_owner(server, broker, worker, stop_event, *, announce, verify_drain,
             status = OwnerStatus.SHUTDOWN_INCOMPLETE
             break
 
-    if status is None and startup_errors:
+    # An Event can be visible before its producing thread has returned. The
+    # clean path must join that producer; a stuck or uncertain exit is never a
+    # verified device drain. Continue observing quarantine while joining.
+    while status is None and startup_done.is_set() and startup_thread.is_alive():
+        try:
+            status = serving_status()
+            if status is not None:
+                break
+        except BaseException as exc:
+            status = OwnerStatus.QUARANTINED
+            failure = _error(exc)
+            break
+        remaining = startup_deadline - monotonic()
+        if remaining <= 0:
+            status = OwnerStatus.SHUTDOWN_INCOMPLETE
+            break
+        startup_thread.join(min(poll_interval, remaining))
+
+    if status is None and startup_outcome[0] == 'failed':
         status = OwnerStatus.SHUTDOWN_INCOMPLETE
-        failure = startup_errors[0]
+        if startup_errors:
+            failure = startup_errors[0]
+    if status is None and (startup_thread_failed[0] or not startup_terminal[0]
+                           or startup_outcome[0] is None):
+        status = OwnerStatus.SHUTDOWN_INCOMPLETE
     if status is None:
         while True:
             try:
-                if worker.quarantined or broker.quarantined:
-                    status = OwnerStatus.QUARANTINED
-                    break
-                if worker.poisoned or not broker.available:
-                    status = OwnerStatus.WORKER_FAILED
+                status = serving_status()
+                if status is not None:
                     break
             except BaseException as exc:
                 status = OwnerStatus.QUARANTINED
@@ -212,19 +448,26 @@ def serve_owner(server, broker, worker, stop_event, *, announce, verify_drain,
                 break
 
     if status is OwnerStatus.QUARANTINED:
-        _request_quarantine_cleanup(server, broker)
+        quarantine_cleanup()
         return OwnerResult(status, *(failure or (None, None)))
+
+    if health_provider is not None and startup_outcome[0] == 'failed':
+        return OwnerResult(OwnerStatus.SHUTDOWN_INCOMPLETE, *(failure or (None, None)))
 
     # A startup thread that has not finished can still create or announce a
     # server after cleanup. Request shutdown, but never attest that teardown.
-    if not startup_done.is_set():
-        _request_quarantine_cleanup(server, broker)
+    if (not startup_done.is_set() or startup_thread.is_alive() or startup_thread_failed[0] or not startup_terminal[0]
+            or startup_outcome[0] is None):
+        notify_uncertainty_best_effort()
+        quarantine_cleanup()
         return OwnerResult(status or OwnerStatus.SHUTDOWN_INCOMPLETE,
                            *(failure or (None, None)))
 
     deadline = monotonic() + shutdown_timeout
     done = Event()
     results = []
+    finish_terminal = [False]
+    finish_thread_failed = [False]
 
     def finish():
         try:
@@ -235,41 +478,82 @@ def serve_owner(server, broker, worker, stop_event, *, announce, verify_drain,
                 server.stop_accepting(timeout=max(0, min(1.0, deadline - monotonic())))
                 server.drain(timeout=max(0, min(1.0, deadline - monotonic())))
             server_stopped = server.close(timeout=max(0, deadline - monotonic()))
-            broker_stopped = broker.close(timeout=max(0, deadline - monotonic()))
-            if worker.quarantined or broker.quarantined:
-                result = OwnerResult(OwnerStatus.QUARANTINED)
-            elif not server_stopped or not broker_stopped:
+            if health_provider is not None and server_stopped is not True:
+                _notify_health_uncertainty(on_health_uncertain)
                 result = OwnerResult(OwnerStatus.SHUTDOWN_INCOMPLETE)
-            elif verify_drain() is not True or worker.quarantined or broker.quarantined:
+            elif health_provider is not None and quarantine_seen():
                 result = OwnerResult(OwnerStatus.QUARANTINED)
             else:
-                final_status = status or (OwnerStatus.WORKER_FAILED if worker.failed or broker.failed else OwnerStatus.CLEAN)
-                result = OwnerResult(final_status, *(failure or (None, None)), teardown_verified=True)
+                broker_close_started[0] = True
+                broker_stopped = broker.close(timeout=max(0, deadline - monotonic()))
+                if quarantine_seen():
+                    result = OwnerResult(OwnerStatus.QUARANTINED)
+                elif (not server_stopped or not broker_stopped
+                      or (health_provider is not None and broker_stopped is not True)):
+                    notify_uncertainty_best_effort()
+                    result = OwnerResult(OwnerStatus.SHUTDOWN_INCOMPLETE)
+                elif health_provider is not None and terminal_status() is OwnerStatus.QUARANTINED:
+                    result = OwnerResult(OwnerStatus.QUARANTINED)
+                elif verify_drain() is not True:
+                    notify_uncertainty_best_effort()
+                    result = OwnerResult(OwnerStatus.QUARANTINED)
+                else:
+                    final_health = terminal_status()
+                    if final_health is OwnerStatus.QUARANTINED:
+                        result = OwnerResult(OwnerStatus.QUARANTINED)
+                    else:
+                        final_status = status or final_health
+                        result = OwnerResult(final_status, *(failure or (None, None)), teardown_verified=True)
         except BaseException as exc:
+            notify_uncertainty_best_effort()
             result = OwnerResult(OwnerStatus.QUARANTINED, *_error(exc))
         results.append(result)
-        done.set()
+        try:
+            done.set()
+        except BaseException:
+            return
+        finish_terminal[0] = True
 
-    Thread(target=finish, name='looking-glass-owner-shutdown', daemon=True).start()
+    finish_thread = Thread(target=finish, name='looking-glass-owner-shutdown', daemon=True)
+    _observe_thread_exception(finish_thread, finish_thread_failed, on_health_uncertain)
+    finish_thread.start()
     while True:
         try:
-            if worker.quarantined or broker.quarantined:
-                _request_quarantine_cleanup(server, broker)
+            if quarantine_seen():
+                quarantine_cleanup()
                 return OwnerResult(OwnerStatus.QUARANTINED)
         except BaseException as exc:
-            _request_quarantine_cleanup(server, broker)
+            quarantine_cleanup()
             return OwnerResult(OwnerStatus.QUARANTINED, *_error(exc))
         remaining = deadline - monotonic()
         if done.wait(max(0, min(poll_interval, remaining))):
+            while finish_thread.is_alive():
+                try:
+                    if quarantine_seen():
+                        quarantine_cleanup()
+                        return OwnerResult(OwnerStatus.QUARANTINED)
+                except BaseException as exc:
+                    quarantine_cleanup()
+                    return OwnerResult(OwnerStatus.QUARANTINED, *_error(exc))
+                remaining = deadline - monotonic()
+                if remaining <= 0:
+                    notify_uncertainty_best_effort()
+                    return OwnerResult(OwnerStatus.SHUTDOWN_INCOMPLETE)
+                finish_thread.join(min(poll_interval, remaining))
+            if finish_thread_failed[0] or not finish_terminal[0]:
+                notify_uncertainty_best_effort()
+                return OwnerResult(OwnerStatus.SHUTDOWN_INCOMPLETE)
             try:
-                if worker.quarantined or broker.quarantined:
+                final_health = terminal_status()
+                if final_health is OwnerStatus.QUARANTINED:
                     return OwnerResult(OwnerStatus.QUARANTINED)
-                if results[0].status is OwnerStatus.CLEAN and (worker.failed or broker.failed):
+                if results[0].status is OwnerStatus.CLEAN and final_health is OwnerStatus.WORKER_FAILED:
                     return OwnerResult(OwnerStatus.WORKER_FAILED, teardown_verified=True)
             except BaseException as exc:
                 return OwnerResult(OwnerStatus.QUARANTINED, *_error(exc))
             return results[0]
         if remaining <= 0:
+            notify_uncertainty_best_effort()
             return OwnerResult(OwnerStatus.SHUTDOWN_INCOMPLETE)
 
 
