@@ -79,6 +79,9 @@ class DeviceAdmission:
         self.max_estimated_incremental_bytes = max_estimated_incremental_bytes
         self._lock = threading.Lock()
         self._quarantined = threading.Event()
+        # Existing storage for the sticky state is populated before the Event
+        # notification, which may itself fail under memory pressure.
+        self._quarantine_latched = False
         # Protected by the admission gate. A stranded marker means an
         # admission may have published a lease without a cleanup receipt.
         self._lease_inflight = False
@@ -87,7 +90,7 @@ class DeviceAdmission:
 
     @property
     def quarantined(self):
-        if self._quarantined.is_set():
+        if self._is_latched():
             return True
         # Distinguish a healthy active owner from a marker left after the gate
         # became free. Never wait for a damaged or long-running gate here.
@@ -98,10 +101,21 @@ class DeviceAdmission:
         finally:
             self._lock.release()
 
+    def _is_latched(self):
+        return self._quarantine_latched or self._quarantined.is_set()
+
+    def _latch(self):
+        self._quarantine_latched = True
+        try:
+            self._quarantined.set()
+        except Exception:
+            # The sticky state is authoritative even if notification fails.
+            pass
+
     def _quarantine(self, lease, worker, detail=None):
         # Set first: retaining additional references may itself fail during OOM.
         # MemoryBudget already keeps the lease alive even if this append fails.
-        self._quarantined.set()
+        self._latch()
         try:
             self._holds.append((lease, worker, detail))
         except BaseException:
@@ -251,7 +265,7 @@ class BudgetedWorker:
 
     def _check_available(self):
         if self._process_is_quarantined():
-            self._admission._quarantined.set()
+            self._admission._latch()
         if self._admission.quarantined:
             raise DeviceQuarantined('device completion is unverified; replace the process')
         if not self._binding_matches() or not self._cache_matches():
@@ -269,7 +283,7 @@ class BudgetedWorker:
         # Another waiter can discover an ambiguous gate acquisition while this
         # forward is running. If that signal is already visible, keep this
         # lease and its worker under the same process-replacement quarantine.
-        if self._admission._quarantined.is_set():
+        if self._admission._is_latched():
             self._admission._quarantine(lease, self._worker, original)
             message = 'device admission quarantined; replace the process'
             if original is not None:
@@ -389,7 +403,7 @@ class BudgetedWorker:
                 if self._process_is_quarantined():
                     self._admission._quarantine(lease, self._worker, result)
                     raise WorkerSynchronizationError('worker process quarantined after execution')
-                if self._admission._quarantined.is_set():
+                if self._admission._is_latched():
                     self._admission._quarantine(lease, self._worker, result)
                     raise DeviceQuarantined('device admission quarantined during execution')
                 if not self._binding_matches() or not self._cache_matches():
@@ -408,7 +422,7 @@ class BudgetedWorker:
                 self._admission._lease_inflight = False
                 # The drain is verified and the lease has been released, but a
                 # concurrent quarantine signal can still suppress this result.
-                if self._admission._quarantined.is_set():
+                if self._admission._is_latched():
                     raise DeviceQuarantined('device admission quarantined after execution')
                 return result
             finally:
@@ -423,8 +437,8 @@ class BudgetedWorker:
         with self._admission._lock:
             # The gate is held here, so its nonblocking health probe cannot
             # observe a stranded marker. Inspect and latch it directly.
-            if self._admission._lease_inflight and not self._admission._quarantined.is_set():
-                self._admission._quarantined.set()
+            if self._admission._lease_inflight and not self._admission._is_latched():
+                self._admission._latch()
             if self._closed:
                 return
             self._closed = True

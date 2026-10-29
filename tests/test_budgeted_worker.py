@@ -864,6 +864,95 @@ class BudgetedWorkerTests(unittest.TestCase):
         self.assertTrue(admission.quarantined)
         self.assertEqual(budget.snapshot().active_leases, 1)
 
+    def test_failed_quarantine_notification_still_stops_running_peer(self):
+        entered, finish = threading.Event(), threading.Event()
+        results, errors = [], []
+
+        class Blocking(SmallModel):
+            def forward(self, input_ids, **kwargs):
+                entered.set()
+                if not finish.wait(5):
+                    raise RuntimeError('test timed out')
+                return super().forward(input_ids, **kwargs)
+
+        first, _, budget, admission = make_wrapper(make_worker(Blocking()))
+        second = BudgetedWorker(make_worker(), admission, (profile(),))
+        original_lock = admission._lock
+
+        class InterruptedWaitLock:
+            def acquire(self, *args, **kwargs):
+                acquired = original_lock.acquire(*args, **kwargs)
+                if 'timeout' in kwargs and not acquired:
+                    raise KeyboardInterrupt('gate acquisition result unavailable')
+                return acquired
+
+            def release(self):
+                return original_lock.release()
+
+            def locked(self):
+                return original_lock.locked()
+
+        admission._lock = InterruptedWaitLock()
+
+        def run(worker, name):
+            try:
+                results.append(worker.execute(request(name)))
+            except BaseException as exc:
+                errors.append(exc)
+
+        a = threading.Thread(target=run, args=(first, 'first'))
+        b = threading.Thread(target=run, args=(second, 'second'))
+        with patch.object(admission._quarantined, 'set', side_effect=MemoryError('notification failed')):
+            a.start()
+            try:
+                self.assertTrue(entered.wait(5))
+                b.start()
+                b.join(5)
+                self.assertFalse(b.is_alive())
+            finally:
+                finish.set()
+                a.join(5)
+        self.assertFalse(a.is_alive())
+        self.assertEqual(results, [])
+        self.assertTrue(any(isinstance(exc, KeyboardInterrupt) for exc in errors))
+        self.assertTrue(any(isinstance(exc, DeviceQuarantined) for exc in errors))
+        self.assertTrue(admission.quarantined)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+
+    def test_process_quarantine_survives_failed_admission_notification(self):
+        wrapper, worker, budget, admission = make_wrapper()
+        with patch.object(ResidentWorker, 'quarantined', new_callable=PropertyMock, return_value=True):
+            with patch.object(admission._quarantined, 'set', side_effect=MemoryError('notification failed')):
+                with self.assertRaises(DeviceQuarantined):
+                    wrapper.execute(request())
+                wrapper.close()
+        self.assertTrue(admission.quarantined)
+        self.assertIsNotNone(worker._model)
+        self.assertEqual(budget.snapshot().active_leases, 0)
+
+    def test_close_latches_stranded_lease_when_notification_fails(self):
+        wrapper, worker, budget, admission = make_wrapper()
+        lease = budget.try_acquire(1024, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        admission._lease_inflight = True
+        with patch.object(admission._quarantined, 'set', side_effect=MemoryError('notification failed')):
+            wrapper.close()
+        self.assertTrue(admission.quarantined)
+        self.assertIsNotNone(worker._model)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+        self.assertIsNotNone(lease)
+
+    def test_interrupted_notification_propagates_with_sticky_quarantine(self):
+        wrapper, worker, budget, admission = make_wrapper()
+        lease = budget.try_acquire(1024, max_gpu_trace_bytes=0, max_host_trace_bytes=0)
+        admission._lease_inflight = True
+        with patch.object(admission._quarantined, 'set', side_effect=KeyboardInterrupt('notification interrupted')):
+            with self.assertRaises(KeyboardInterrupt):
+                wrapper.close()
+        self.assertTrue(admission.quarantined)
+        self.assertIsNotNone(worker._model)
+        self.assertEqual(budget.snapshot().active_leases, 1)
+        self.assertIsNotNone(lease)
+
     def test_peer_quarantine_after_release_suppresses_result(self):
         wrapper, _, budget, admission = make_wrapper()
         original = wrapper._release
