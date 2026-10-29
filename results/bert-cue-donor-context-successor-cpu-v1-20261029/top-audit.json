@@ -1,0 +1,98 @@
+{
+  "actual_norm_max": 0.5000000661217959,
+  "actual_norm_min": 0.49999993675996984,
+  "clean_top_ties": 0,
+  "event_counts": {
+    "baseline": 4,
+    "clean": 32,
+    "radius": 4,
+    "repeat": 32,
+    "self": 128,
+    "transfer": 896
+  },
+  "examples": [
+    {
+      "clean_top_id": 2087,
+      "clean_top_ties": 1,
+      "clean_top_token": "most",
+      "donor_context": 1,
+      "donor_cue": "often",
+      "pair_id": "evaluation-02",
+      "patched_top_id": 8810,
+      "patched_top_ties": 1,
+      "patched_top_token": "portions",
+      "site": "cue2",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "often",
+      "top_changed": true
+    }
+  ],
+  "journal_sha256": "cde003fb88e17fa4b9af3215e8e0ccbef23fb2d5df83e1ef859715b4bc5c17de",
+  "manifest_sha256": "917bad800f72a9613e69d8feae3faf90ffbae5cc446bbeb3e2c8df1d03678dc9",
+  "max_relative_error": 1.322435918549303e-07,
+  "requested_fraction_max": 0.5580122053833974,
+  "requested_fraction_min": 0.027246488961138727,
+  "result_sha256": "3674c152b3c6e24383f191443ca50d2697baaf0c9334c22fa7766f759ace05c4",
+  "scope": "Post-outcome descriptive scan of saved full mask logits and recorded dose fields; not execution or landing attestation.",
+  "top_summaries": [
+    {
+      "changed": 0,
+      "site": "cue2",
+      "split": "discovery",
+      "transfers": 56,
+      "unique_recipients_changed": 0
+    },
+    {
+      "changed": 0,
+      "site": "object2",
+      "split": "discovery",
+      "transfers": 56,
+      "unique_recipients_changed": 0
+    },
+    {
+      "changed": 0,
+      "site": "mask2",
+      "split": "discovery",
+      "transfers": 56,
+      "unique_recipients_changed": 0
+    },
+    {
+      "changed": 0,
+      "site": "cue5",
+      "split": "discovery",
+      "transfers": 56,
+      "unique_recipients_changed": 0
+    },
+    {
+      "changed": 1,
+      "site": "cue2",
+      "split": "evaluation",
+      "transfers": 168,
+      "unique_recipients_changed": 1
+    },
+    {
+      "changed": 0,
+      "site": "object2",
+      "split": "evaluation",
+      "transfers": 168,
+      "unique_recipients_changed": 0
+    },
+    {
+      "changed": 0,
+      "site": "mask2",
+      "split": "evaluation",
+      "transfers": 168,
+      "unique_recipients_changed": 0
+    },
+    {
+      "changed": 0,
+      "site": "cue5",
+      "split": "evaluation",
+      "transfers": 168,
+      "unique_recipients_changed": 0
+    }
+  ],
+  "transfer_top_ties": 0,
+  "vocab_sha256": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+}
