@@ -7,7 +7,16 @@ The long-term goal is to turn internal observations into explanations that predi
 - [Research roadmap: observation → tracing → tested explanations → targeted changes](docs/RESEARCH_ROADMAP.md)
 - [Efficiency plan: parallel agent teams and a shared GPU experiment service](docs/EFFICIENCY_PLAN.md)
 
-These documents are plans, not implemented capabilities. The released API remains single-threaded; no GPU scheduler, pretrained-model result, causal explanation engine or model repair system is claimed yet.
+The roadmap is a research plan, not a claim that its milestones are complete. The original `TraceSession` remains single-threaded. Separate components now provide bounded trace snapshots, trace metadata, experiment records, localization, causal metrics, and GPU scheduling primitives; they do not yet constitute a validated shared GPU service. No pretrained-model study, tested causal explanation, or model repair result is claimed by the initial experiment.
+
+## Current building blocks
+
+- The [trace schema](docs/TRACE_SCHEMA.md) records execution coordinates separately from tensor values and hypotheses. Unknown coordinates remain unknown.
+- The [fair queue](docs/FAIR_QUEUE.md) rotates among admitted teams; it does not by itself guarantee admission fairness or equal GPU time.
+- The [memory budget](docs/MEMORY_BUDGET.md) tracks conservative leases and trace allowances. Estimates and logical byte counts are not peak-memory guarantees or proof of device enforcement.
+- The [experiment registry](docs/REGISTRY.md) records manifests, artifacts and terminal states. [Research cases](docs/RESEARCH_CASES.md), [localization](docs/LOCALIZATION.md), and [causal metrics](docs/CAUSAL_METRICS.md) support controlled, reproducible evaluations; the public held-out cases are not a protected blind benchmark.
+
+These components have their own tests and limits; their presence alone does not establish end-to-end model sharing, causal discovery, or GPU throughput.
 
 ## First experiment
 
@@ -37,7 +46,9 @@ The initial model is a small randomly initialized residual network with a contro
 
 ## Run locally
 
-Python 3.10+ and PyTorch 2.6+ are required. Use the [official PyTorch installation instructions](https://pytorch.org/get-started/locally/) for your platform. No models or datasets are downloaded by this code, and traces stay in the local process/files.
+Python 3.10+ and PyTorch 2.6+ are required. Use the [official PyTorch installation instructions](https://pytorch.org/get-started/locally/) for your platform. The original CPU experiment downloads no models or datasets, and traces stay in the local process/files.
+
+The optional `transformer` extra pins Transformers 4.57.3 for the GPT-2 tooling under development: install it with `python -m pip install -e ".[transformer]"` after selecting the appropriate PyTorch build. The original CPU experiment does not require this extra or a checkpoint download.
 
 The recorded run used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records its installed version inventory; it is not a cross-platform dependency lock. Other versions allowed by the package metadata have not been validated here. For the tested CPU version, install into an isolated environment with `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
 
@@ -59,14 +70,15 @@ import torch
 
 model = TinyResidual(width=16)
 x = torch.randn(8, 16)
-with TraceSession(model, mode="gradient", placement="dense", run_id="example") as trace:
+with TraceSession(model, mode="gradient", placement="dense", run_id="example",
+                  max_tensor_bytes=65536) as trace:
     y = model(x, route=0)
 for event in trace.events:
     print(event.metadata())
     activation_copy = event.value
 ```
 
-`TapPoint` is an identity module that can be inserted at explicit model boundaries. Sparse placement records block outputs; dense placement records every available tap. `TraceSession` is single-use and single-threaded. Concurrent tracing, checkpoint recomputation, compiled execution and distributed models are outside this initial implementation. A configured event limit raises on overflow; capture errors abort the call and are not silently ignored. Direct and gradient capture require finite floating tensors.
+`TapPoint` is an identity module that can be inserted at explicit model boundaries. Sparse placement records block outputs; dense placement records every available tap. `TraceSession` is single-use and single-threaded. Concurrent tracing, checkpoint recomputation, compiled execution and distributed models are outside this initial implementation. Configured event and cumulative captured-tensor-byte limits raise on overflow; capture errors are not silently ignored. The byte allowance covers logical snapshots, not temporary allocations or peak memory. Direct and gradient capture require finite floating tensors.
 
 Full activations can contain sensitive information. This synthetic benchmark saves no input data, model weights or activation tensors in its result files. If you use the API on a real model, control who can access the in-memory traces and any files you write; the taps are not a privacy mechanism.
 

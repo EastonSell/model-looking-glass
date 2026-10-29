@@ -5,9 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "model-looking-glass"
 version = "0.1.0"
-description = "A reproducible comparison of direct activation capture and isolated gradient readout"
+description = "Reproducible neural-network observation and causal experiments"
 requires-python = ">=3.10"
 dependencies = ["torch>=2.6"]
+
+[project.optional-dependencies]
+transformer = ["transformers==4.57.3"]
 
 [tool.setuptools.packages.find]
 include = ["looking_glass*"]
