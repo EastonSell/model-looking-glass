@@ -91,7 +91,7 @@ class TraceBatchProvenanceTests(unittest.TestCase):
             samples = tuple(SampleTrace(row_samples[input_index][row], row_tokens[input_index][row])
                             for row in (0, 1))
             spec = TraceSpec("batch-run", samples, sites, case + 3, 19 + case * 8,
-                             None, 8, 768)
+                             11 if case == 1 else None, 8, 768)
             plan = bind_trace_plan(identity, spec, TraceLimits(2, 5, 2, 4, 8, 768, 3),
                                    batch_size=2, sequence_length=5, layer_count=2)
             registration = f"{case + 1:032x}"
@@ -125,7 +125,10 @@ class TraceBatchProvenanceTests(unittest.TestCase):
                 row = event.batch_position
                 metadata = event.to_trace_event()
                 expected[metadata.sequence] = metadata
-                self.assertEqual(metadata.generation, GenerationContext())
+                # The one supplied logical step is preserved; position IDs and
+                # padding never fill the unknown cache fields or stage.
+                self.assertEqual(metadata.generation,
+                                 GenerationContext(generation_step=spec.generation_step))
                 self.assertEqual(metadata.identity, RunIdentity(
                     "batch-run", f"lg-{broker_id}-{identity.job_id}",
                     identity.request_id, row_samples[input_index][row]))
