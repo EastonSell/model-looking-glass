@@ -8,10 +8,10 @@ Before this query, seven distinct public-input predicates had been compared
 with the original committed natural split: 240 rows across those inputs, 200
 unique rows, and seven recorded clear results. The year-transfer predicate was
 deliberately repeated on the same fixed rows and sealed split to obtain a
-source-bound process observation, for eight invocations and 288 submitted rows
-in total. The proposed fixed 256-by-16 pool comparison
-is a further aggregate disclosure; it is not redundant confirmation of those
-earlier checks. No private row, nonce, or per-row finding is needed for this
+source-bound process observation, also recording clear. That makes eight
+invocations and 288 submitted rows in total. The proposed fixed 256-by-16 pool
+comparison is a further aggregate disclosure; it is not redundant confirmation
+of those earlier checks. No private row, nonce, or per-row finding is needed for this
 account.
 
 The intended public result is only `clear` or `collision`, the fixed public
