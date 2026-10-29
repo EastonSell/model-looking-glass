@@ -9,8 +9,9 @@ families. It retains all 68 case responses, twelve factorial cells, the
 fragment and demonstrative comparators, baseline counts, grouped statistics,
 and both fixed criteria. Baseline failures are labelled baseline-limited; cases
 and negative contrasts are never removed. The full-vocabulary KL calculation
-uses nonnegative log-domain contributions; a positive total below binary64's
-representable range is explicitly marked as underflowed to zero. The replay
+uses nonnegative log-domain contributions and directly sums small normalizer
+changes, including individually underflowed weights; a positive total below
+binary64's representable range is explicitly marked as underflowed to zero. The replay
 checks calling-thread binary64 subnormal arithmetic before and after the audit
 and around KL calculations; it stops if that arithmetic is flushed to zero.
 

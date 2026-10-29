@@ -506,6 +506,46 @@ def require_binary64_subnormals():
         raise ValueError('calling-thread binary64 subnormal arithmetic differs')
 
 
+
+def _normalizer_shift(clean, arm, p_peak, q_peak, p_normalizer, q_normalizer):
+    """Compute log(Q/P), preserving small and individually underflowed changes."""
+    direct, positive_logs, negative_logs = [], [], []
+    smallest_normal = math.ldexp(1.0, -1022)
+    for p, q in zip(clean, arm):
+        change = math.fsum((q, -q_peak, -p, p_peak))
+        if change == 0.0:
+            continue
+        p_log, q_log = math.fsum((p, -p_peak)), math.fsum((q, -q_peak))
+        p_weight, q_weight = math.exp(p_log), math.exp(q_log)
+        difference = (p_weight * math.expm1(change) if abs(change) < 0.5
+                      else q_weight - p_weight)
+        if (p_weight >= smallest_normal and q_weight >= smallest_normal
+                and abs(difference) >= smallest_normal):
+            direct.append(difference)
+            continue
+        if abs(change) < 0.5:
+            log_magnitude = math.fsum((p_log, math.log(abs(math.expm1(change)))))
+        elif change > 0:
+            log_magnitude = math.fsum((q_log, math.log1p(-math.exp(-change))))
+        else:
+            log_magnitude = math.fsum((p_log, math.log1p(-math.exp(change))))
+        (positive_logs if change > 0 else negative_logs).append(log_magnitude)
+
+    def total(log_values):
+        if not log_values:
+            return 0.0
+        peak = max(log_values)
+        position = log_values.index(peak)
+        rest = math.fsum(math.exp(value - peak) for i, value in enumerate(log_values) if i != position)
+        return math.exp(peak + math.log1p(rest))
+
+    mass_change = math.fsum((math.fsum(direct), total(positive_logs), -total(negative_logs)))
+    relative_change = mass_change * math.exp(-p_normalizer)
+    if -0.5 < relative_change < 0.5:
+        return math.log1p(relative_change)
+    return math.fsum((q_normalizer, -p_normalizer))
+
+
 def stable_kl(clean, arm):
     """KL(clean||arm) from nonnegative log-domain terms, preserving tiny tails.
 
@@ -528,9 +568,12 @@ def stable_kl(clean, arm):
 
     p_peak, p_normalizer = normalizer(clean)
     q_peak, q_normalizer = normalizer(arm)
+
+    normalizer_shift = _normalizer_shift(clean, arm, p_peak, q_peak, p_normalizer, q_normalizer)
+
     terms = []
     for p, q in zip(clean, arm):
-        delta = math.fsum((q, -q_peak, -p, p_peak, p_normalizer, -q_normalizer))
+        delta = math.fsum((q, -q_peak, -p, p_peak, -normalizer_shift))
         if delta == 0.0:
             continue
         if abs(delta) < 0.01:

@@ -329,3 +329,48 @@ def test_stable_kl_rechecks_calling_thread_arithmetic_before_return(monkeypatch)
     with pytest.raises(ValueError, match='subnormal'):
         module.stable_kl((0.0, -100.0), (0.0, -80.0))
     assert len(calls) == 2
+
+
+def test_stable_kl_resolves_f32_minimum_change_among_tied_logits():
+    epsilon = math.ldexp(1.0, -149)
+    expected = math.ldexp(1.0, -301)
+    actual, underflow = science().stable_kl((0.0, 0.0), (0.0, -epsilon))
+    assert actual == pytest.approx(expected, rel=1e-12, abs=0.0)
+    assert underflow is False
+    actual, underflow = science().stable_kl((0.0, 0.0, -1000.0), (0.0, -epsilon, -1020.0))
+    assert actual == pytest.approx(expected, rel=1e-12, abs=0.0)
+    assert underflow is False
+
+
+def test_normalizer_retains_aggregate_of_underflowed_weight_changes():
+    count = 50000
+    clean = (0.0,) + (-745.2,) * count
+    arm = (0.0,) + (-744.9,) * count
+    with localcontext() as ctx:
+        ctx.prec = 500
+        p_weight = Decimal.from_float(-745.2).exp()
+        q_weight = Decimal.from_float(-744.9).exp()
+        expected = float(((1 + count * q_weight) / (1 + count * p_weight)).ln())
+    actual = science()._normalizer_shift(clean, arm, 0.0, 0.0, 0.0, 0.0)
+    assert expected > 0.0
+    assert actual == pytest.approx(expected, rel=0.001, abs=5e-324)
+
+
+def test_kl_mixed_underflow_and_large_common_offset():
+    epsilon = math.ldexp(1.0, -149)
+    clean, arm = (0.0, 0.0, -800.0), (0.0, -epsilon, -230.0)
+    with localcontext() as ctx:
+        ctx.prec = 500
+        p = [Decimal.from_float(x).exp() for x in clean]
+        q = [Decimal.from_float(x).exp() for x in arm]
+        ps, qs = sum(p), sum(q)
+        p = [x / ps for x in p]; q = [x / qs for x in q]
+        expected = float(sum(x * (x / y).ln() for x, y in zip(p, q)))
+    actual, flag = science().stable_kl(clean, arm)
+    assert not flag and actual == pytest.approx(expected, rel=1e-11, abs=0.0)
+    clean, arm = (0.0, 0.0, -100.0), (0.0, -0.125, -80.0)
+    baseline = science().stable_kl(clean, arm)
+    offset = float(2**20)
+    shifted = science().stable_kl(tuple(x + offset for x in clean), tuple(x + offset for x in arm))
+    assert shifted[0] == pytest.approx(baseline[0], rel=1e-12, abs=0.0)
+    assert shifted[1] == baseline[1]
