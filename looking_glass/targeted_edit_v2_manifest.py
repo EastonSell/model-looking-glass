@@ -60,7 +60,7 @@ RULES = {
                  "v1_reference": "the reconstructed original 1% intended gradient update"},
     "selected_direction": "float32(float64(D1) * (dose * ||float64(W)||_F / ||float64(D1)||_F)); D1 is the rounded v1 intended float32 gradient update",
     "rounding": "float64 scale, float32 cast and addition",
-    "score": "v1 float64 log-softmax, NLL and KL; smallest token ID wins top-token ties",
+    "score": "float64 shifted log-softmax: (z-max)-log(sum(exp(z-max))); NLL and KL; smallest token ID wins top-token ties",
 }
 _RULES_CANONICAL = v1._canonical(RULES)
 

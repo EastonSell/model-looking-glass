@@ -19,10 +19,11 @@ from .trusted_service_profile import (
 
 RUNTIME_SCHEMA = 'trusted-custody-service-runtime-v1'
 EXECUTION_PATH = 'looking_glass.owner_completion.LifetimeWorkspaceWorker.execute'
-_PROTOCOL_DOCUMENT_SHA256 = '0b4cd53e7272a5afcd91807c36ad29ea39bee7a87d734f6da567445a4f568044'
+_PROTOCOL_DOCUMENT_SHA256 = '1b7aecc7b02080b14e946b1d06d5340d212e2b6d4e661bc36487f24cf521964c'
 _PROTOCOL_BYTES = _canonical_json_bytes({
     'schema': 'custody-forward-execution-v1',
     'protocol_document_sha256': _PROTOCOL_DOCUMENT_SHA256,
+    'recorder_policy': 'disabled',
     'call_chain': [EXECUTION_PATH,
                    'looking_glass.resident_worker.ResidentWorker._execute_with_custody',
                    'looking_glass.resident_worker.ResidentWorker._execute',

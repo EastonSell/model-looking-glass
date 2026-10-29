@@ -43,6 +43,7 @@ class CustodyServiceProfileTests(unittest.TestCase):
                          'looking_glass.owner_completion.LifetimeWorkspaceWorker.execute')
         self.assertEqual(runtime['custody_execution']['workspace_commitment_bytes'], 512 * 1024 ** 2)
         self.assertEqual(runtime['custody_execution']['resident_commitment_bytes'], 2 * 1024 ** 3)
+        self.assertEqual(runtime['custody_execution']['recorder_policy'], 'disabled')
         self.assertTrue(all(a.runtime_settings_sha256 != b.runtime_settings_sha256
                             for a, b in zip(self.direct.keys, identity.keys)))
         registry, pins = self.registry_for(identity)
@@ -62,6 +63,7 @@ class CustodyServiceProfileTests(unittest.TestCase):
         source_hash = hashlib.sha256(identity.source_manifest).hexdigest()
         for field, value in (('workspace_commitment_bytes', 1), ('resident_commitment_bytes', 1),
                              ('guarded_rng', False), ('max_concurrent_forwards', 2),
+                             ('recorder_policy', 'enabled'),
                              ('protocol_document_sha256', 'f' * 64),
                              ('call_chain', ['looking_glass.resident_worker.ResidentWorker.execute'])):
             runtime = json.loads(identity.runtime_manifest)

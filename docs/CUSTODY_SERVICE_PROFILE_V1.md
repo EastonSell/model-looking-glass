@@ -26,6 +26,12 @@ profile pin alone cannot prove those facts. Both retain the distinct 2 GiB
 resident and 512 MiB workspace commitments through process exit, with zero
 GPU and host trace allowance and at most one forward at a time.
 
+This is an unobserved workload: the broker has no attached recorder for the
+owner lifetime, and no grouped or serial forward-observation scope is active
+on the actual worker thread for a profiled call. The owner and collector must
+enforce these conditions, not merely record the descriptor. Instrumented or
+traced execution needs a separately versioned identity and measured profile.
+
 Run one cold forward using seed 17, transfer the exact cold result through
 `_finish_cold`, and then run warm forwards using seeds 29, 43 and 71 with the
 same fixed int64 `[1, 2]` input IDs `[15496, 995]`. Each warm result must be

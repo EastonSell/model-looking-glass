@@ -29,6 +29,9 @@ _PUBLIC_LIMITS = {"pre_manifest.json": 512 * 1024,
                   "results.json": 32 * _MIB,
                   "reveal.json": 16 * _MIB,
                   "failure.json": 16 * 1024}
+_SOURCE_STAGES = ("before_discovery", "after_discovery", "after_heldout", "before_success")
+_SOURCE_LIMIT = _MIB
+_SOURCE_ENTRIES_LIMIT = 4096
 _PUBLIC_RESERVE = 128 * _MIB
 _PRIVATE_LIMITS = {"private_material.json": 4 * _MIB,
                    "prediction_record.json": 16 * _MIB,
@@ -300,7 +303,7 @@ def _preflight(prepared, expected_context, exclusion_bytes, pilot_bytes, histori
 
 def run_study_once(path, *, prepared, expected_context, exclusion_bytes, pilot_bytes,
                    historical_cases, source_sha256, clarification_sha256, runtime,
-                   created_utc, executor, score, classify_exposure):
+                   created_utc, executor, score, classify_exposure, source_inventory=None):
     """Execute one checked study attempt through trusted executor/scorer callbacks.
 
     The caller must establish the separate source/runtime boundary, provide a
@@ -313,7 +316,10 @@ def run_study_once(path, *, prepared, expected_context, exclusion_bytes, pilot_b
         raise ValueError("study path must be absolute")
     if not callable(score) or not callable(classify_exposure):
         raise TypeError("scorer and exposure classifier must be callable")
-    if (sum(_PUBLIC_LIMITS.values()) + max(_PUBLIC_LIMITS.values())
+    public_limits = dict(_PUBLIC_LIMITS)
+    if source_inventory is not None:
+        public_limits.update({f"source_inventory_{name}.json": _SOURCE_LIMIT for name in _SOURCE_STAGES})
+    if (sum(public_limits.values()) + max(public_limits.values())
             + 2 * registry.MAX_METADATA_BYTES > _PUBLIC_RESERVE):
         raise CustodianError("public registry exceeds the reserved disk envelope")
     budget = ForwardBudget()
@@ -333,7 +339,7 @@ def run_study_once(path, *, prepared, expected_context, exclusion_bytes, pilot_b
         _sync_directory(public_run.path)
         if (public_run.path / ".pending").exists():
             raise CustodianError("public publication left pending evidence")
-        _record(public_run.path, name, data, _PUBLIC_LIMITS[name], public_expected)
+        _record(public_run.path, name, data, public_limits[name], public_expected)
         public_safe = True
 
     def put_private(name, data):
@@ -364,7 +370,33 @@ def run_study_once(path, *, prepared, expected_context, exclusion_bytes, pilot_b
         private_expected[cell.name] = {"bytes": len(raw), "sha256": _sha(raw)}
         private_safe = True
 
+    previous_sources = {}
+    manifest_sources = None
+    def save_source_inventory(name):
+        nonlocal previous_sources
+        if source_inventory is None:
+            return
+        reported = source_inventory()
+        if type(reported) is not dict or len(reported) > _SOURCE_ENTRIES_LIMIT:
+            raise CustodianError("source inventory is invalid or exceeds its entry limit")
+        # The caller must not mutate its returned dictionary during this copy.
+        # Validate only the owned snapshot, not the still caller-owned object.
+        owned = dict(reported)
+        if (not owned or len(owned) > _SOURCE_ENTRIES_LIMIT or type(manifest_sources) is not dict
+                or any(type(path) is not str or type(digest) is not str
+                       or manifest_sources.get(path) != digest for path, digest in owned.items())
+                or any(owned.get(path) != digest for path, digest in previous_sources.items())):
+            raise CustodianError("source inventory is invalid, unbound, or lost prior imports")
+        raw = canonical_json({"schema": "synthetic-v2-source-inventory-v1", "stage": name,
+            "pre_manifest_sha256": _sha(manifest), "source_sha256": owned})
+        if len(raw) > _SOURCE_LIMIT:
+            raise CustodianError("source inventory exceeds its evidence limit")
+        put_public(f"source_inventory_{name}.json", raw)
+        previous_sources = owned
+
     try:
+        if source_inventory is not None and not callable(source_inventory):
+            raise TypeError("source inventory must be callable when supplied")
         snapshot, manifest, public, heldout, schedule, states, assignments, chunk_limits, identities = _preflight(
             prepared, expected_context, exclusion_bytes, pilot_bytes, historical_cases,
             source_sha256, clarification_sha256, runtime, created_utc)
@@ -381,9 +413,9 @@ def run_study_once(path, *, prepared, expected_context, exclusion_bytes, pilot_b
         private_safe = True
         public_safe = False
         public_run = registry.create_run(root / "public", **identities,
-            artifact_limits=_PUBLIC_LIMITS,
-            required_artifacts=[name for name in _PUBLIC_LIMITS if name != "failure.json"],
-            max_total_bytes=sum(_PUBLIC_LIMITS.values()))
+            artifact_limits=public_limits,
+            required_artifacts=[name for name in public_limits if name != "failure.json"],
+            max_total_bytes=sum(public_limits.values()))
         _sync_directory(public_run.path)
         _sync_directory(root)
         if registry.verify_run(public_run.path)["pending_write"]:
@@ -395,6 +427,14 @@ def run_study_once(path, *, prepared, expected_context, exclusion_bytes, pilot_b
             "heldout": heldout, "schedule": schedule, "heldout_root": snapshot.heldout_root.hex(),
             "site_nonce": snapshot.site_nonce.hex(), "prediction_nonce": snapshot.prediction_nonce.hex()})
         put_private("private_material.json", material)
+        if source_inventory is not None:
+            saved_manifest = _read(public_run.path / "artifacts" / "pre_manifest.json",
+                                   _PUBLIC_LIMITS["pre_manifest.json"])
+            if saved_manifest != manifest:
+                raise CustodianError("saved pre-manifest changed before source inventory")
+            manifest_sources = _json(saved_manifest, _PUBLIC_LIMITS["pre_manifest.json"]).get("source_sha256")
+        stage = "source_inventory_before_discovery"
+        save_source_inventory("before_discovery")
         cells = []
         prediction_raw = freeze_raw = commitment_raw = None
         for phase in ("discovery", "heldout"):
@@ -465,6 +505,8 @@ def run_study_once(path, *, prepared, expected_context, exclusion_bytes, pilot_b
                     _record(public_run.path, name, raw, _PUBLIC_LIMITS[name], public_expected)
                 _record(private.path, "prediction_record.json", prediction_raw,
                         _PRIVATE_LIMITS["prediction_record.json"], private_expected)
+                stage = "source_inventory_after_discovery"
+                save_source_inventory("after_discovery")
             rows = public["discovery_cases"] if phase == "discovery" else heldout["cases"]
             prediction_cursor = 0
             for model_index, seed in enumerate(_MODEL_SEEDS):
@@ -508,6 +550,8 @@ def run_study_once(path, *, prepared, expected_context, exclusion_bytes, pilot_b
         if (budget.submissions != _EXPECTED_FORWARDS or budget.root_forwards != _EXPECTED_FORWARDS
                 or budget._pending):
             raise CustodianError("forward count does not match the fixed successful plan")
+        stage = "source_inventory_after_heldout"
+        save_source_inventory("after_heldout")
         stage = "exposure_classification"
         exposure = classify_exposure()
         if (type(exposure) is not dict
@@ -548,6 +592,14 @@ def run_study_once(path, *, prepared, expected_context, exclusion_bytes, pilot_b
             raise CustodianError("scorer did not consume all held-out chunks")
         _check_summary(results, exposure["classification"], manifest, freeze_raw, prediction_raw,
                        assignments, heldout, private_expected)
+        stage = "source_inventory_before_success"
+        save_source_inventory("before_success")
+        if source_inventory is not None:
+            for name in _SOURCE_STAGES:
+                artifact = f"source_inventory_{name}.json"
+                raw = _read(public_run.path / "artifacts" / artifact, _SOURCE_LIMIT)
+                if {"bytes": len(raw), "sha256": _sha(raw)} != public_expected[artifact]:
+                    raise CustodianError("saved source inventory changed after publication")
         put_public("results.json", results)
         reveal = canonical_json({"schema": "synthetic-v2-reveal-v1", "heldout": heldout,
             "schedule": schedule, "heldout_root": snapshot.heldout_root.hex(),

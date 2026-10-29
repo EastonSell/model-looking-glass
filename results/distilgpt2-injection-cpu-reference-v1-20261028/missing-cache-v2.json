@@ -1,0 +1,55 @@
+{
+  "cache_exists_before": false,
+  "checkpoint": {
+    "asset_sha256": {
+      "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+      "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+      "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+      "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+      "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+      "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+    },
+    "model_id": "distilbert/distilgpt2",
+    "revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa"
+  },
+  "failure_phase": "test",
+  "final_source_commit": "b0a6788b3dea0074397a72719a7d09112877971c",
+  "return_code": 1,
+  "runtime": {
+    "CUDA_VISIBLE_DEVICES": "",
+    "MKL_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1",
+    "libraries": {
+      "huggingface_hub": "0.36.2",
+      "numpy": "2.4.6",
+      "safetensors": "0.8.0",
+      "tokenizers": "0.22.2",
+      "torch": "2.8.0+cu128",
+      "transformers": "4.57.3"
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.15 (main, Jun 11 2026, 04:59:07) [MSC v.1944 64 bit (AMD64)]"
+  },
+  "schema": "mlg-disclosed-injection-cpu-reference-v1",
+  "scope": "disclosed-site CPU development mechanics; not discovery or benchmark",
+  "selected_source_sha256": {
+    "looking_glass/agreement_numeric.py": "f9a5a9ee3627162d843c0dc0d8c6ea9d98c000a4b6d472fb55254fb3395d07dc",
+    "looking_glass/intervention_plan.py": "6470676938e73e48234128c30ba1d10a49104ee8513434871bc6e973c55d6120",
+    "looking_glass/interventions.py": "71cbcf4776660d2dd883b82815f710b0c909228fd1762504f9e3f984f7f6c60f",
+    "looking_glass/live_profile.py": "b29df1518a66b7c445e582d7a78c430db0253d11b9e3a4825530f6a3bd25e6fc",
+    "looking_glass/model_ownership.py": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434",
+    "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+    "looking_glass/pretrained_number_injection.py": "836ecadcad4fd83c72f05c4e730fa2e3cb2fa30c0ca89061163e4d59221e88a8",
+    "tests/test_number_injection_pretrained_reference.py": "b6d0eafc097e0aedf3e9f268e9ba1cdcad18c79f09aa3df7aa49b8fb5f1a2b8b",
+    "tools/injection_cpu_reference_evidence.py": "8e3ab1634ced278aa096ebea8d914cb82788959df17b209262d82f500b679927"
+  },
+  "selected_source_unchanged": true,
+  "source_commit": "b0a6788b3dea0074397a72719a7d09112877971c",
+  "source_tree": "d35513e6eb37c1ef1dacf9f9d3a8ceaeea0069ab",
+  "status": "failed",
+  "stderr_bytes": 2436,
+  "stderr_sha256": "2903fb0891808751fd7f5166ef12d6379a3bc195b7bc168d09b03af20170c74e",
+  "stdout_bytes": 0,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

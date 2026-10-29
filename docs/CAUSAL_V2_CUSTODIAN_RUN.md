@@ -81,6 +81,25 @@ proof that the callbacks ran as claimed. A source-verified launcher, actual
 executor and scorer must bind the exact executed sources and model identities;
 arbitrary callbacks must not be treated as scientific evidence.
 
+The optional trusted `source_inventory()` callback returns a nonempty map of
+checkout-relative paths to SHA-256 strings observed by the active source
+finder. The source-bound study entrypoint must provide this callback. The
+custodian publishes and reads back four bounded public snapshots: before
+discovery, after the discovery freeze and commitment but before held-out work,
+after held-out cleanup, and after scoring but before publishing results.
+Each snapshot includes the pre-manifest hash and
+must match its saved source map; later snapshots must retain every earlier
+entry. An observation may contain at most 4,096 paths and its canonical
+artifact at most 1 MiB. Published snapshots are checked again before results.
+Exceptions, missing or changed entries, and uncertain writes stop the attempt
+and retain prior evidence under the existing failure rules. The callback is a
+cooperative launcher attestation: the caller must keep each returned map
+quiescent while the custodian copies it. This component cannot prove
+completeness, authenticate source bytes, or observe imports after the last snapshot.
+The caller must guard the entire invocation with an idempotent executor close:
+path, general argument, and budget setup can fail before the custodian's own
+cleanup handler is entered.
+
 Each attempt is single-use. The first unexpected exception, failed validation,
 storage uncertainty or cancellation stops further forwards. A completed prefix
 of a failed cell is published as incomplete when the private writer is known

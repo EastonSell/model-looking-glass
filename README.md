@@ -68,6 +68,8 @@ The [DistilGPT2 agreement preflight](results/distilgpt2-agreement-preflight-v1-2
 
 The [DistilGPT2 copying screen](results/distilgpt2-copying-dev-v1-20261028/README.md) found higher target log probability after repetition than after each of three first-block shuffles in eight public development families. The shuffles also change local transitions; the observed attention pattern proposes a head for intervention but does not establish a cause.
 
+In a [follow-up intervention](results/distilgpt2-copy-head-eval-v1-20261028/README.md) on eight new public families, zeroing the selected head at the final input position reduced the repeated-versus-shuffled log-probability contrast by 0.638 nats on average, compared with an increase of 0.130 for one same-layer control head. All eight repeated targets remained top-ranked after the selected-head intervention. These fixed-order exploratory tests do not establish a complete copying circuit.
+
 A [targeted parameter-edit experiment](results/targeted-edit-cpu-v1-20261028/README.md) changed the intended answer preference but failed its preset locality thresholds on public probes. The negative result and a same-host replay are preserved; the study does not establish general capability preservation.
 
 ## Run locally
