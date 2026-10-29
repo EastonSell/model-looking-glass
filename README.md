@@ -70,6 +70,8 @@ The [balanced DistilBERT CPU evaluation](results/bert-agreement-cpu-evaluation-v
 
 The [matched-dose follow-up](results/bert-matched-dose-v1-20261029/README.md) did not meet its preregistered early-site persistence rule: only four of eight family differences favored block 0 over block 2, versus six required. The result does not establish that the sites are equivalent. A separate [taste-context exploration](results/bert-taste-context-v1-20261029/RESULTS.md) found donor-directed ingredient-patch effects on four public sentence frames, although the clean `sweet`/`sour` preference was not reliable across frames.
 
+In the [taste-context propagation follow-up](results/bert_taste_context_propagation_v1/RESULTS.md), the early ingredient intervention's contrast against two orthogonal controls was positive in all 24 recipient/template cells at each measured block-3 position. A direct block-3 `the` intervention shifted the taste score opposite its lexical donor in all 24 cells. These correlated public examples do not identify a unique route or a general taste representation.
+
 In a [matched-dose taste follow-up](results/bert-taste-matched-dose-v1-20261029/RESULTS.md), 29 of 30 directional comparisons across blocks 0–4 favored the ingredient patch over the position control. Only three of six frames met the baseline rule, all using the same template; the comparisons are dependent and do not establish a general taste mechanism.
 
 The [crossed-template taste study](results/bert_taste_template_direction_v1/RESULTS.md) compared six public stems under two templates. Its mean ingredient-versus-`the` donor-signed contrasts were +0.085 for `after adding` and +0.068 for `with some`; the `the` control itself moved opposite the donor in all 24 comparisons. These dependent, nonblind comparisons do not establish a general taste mechanism.
@@ -81,6 +83,8 @@ The [grouped DistilGPT2 GPU pilot](results/grouped-gpu-resource-v3-20261029/READ
 The [DistilGPT2 agreement preflight](results/distilgpt2-agreement-preflight-v1-20261028/README.md) found the grammatical verb preferred on all 16 fixed public development prompts; it establishes a small behavior to investigate, not a held-out or causal result.
 
 The independently audited [agreement discovery](results/distilgpt2-natural-agreement-v1-20261028/README.md) selected the layer 3 attention output at the final token. Across four public families, opposite-number donors caused a mean 3.095-logit greater shift away from the target's present-tense agreement margin than same-number donors. They reversed the margin in 10 of 32 donor–target pairs involving six distinct targets, versus none of 32 same-number pairs. These are development results, and a shift can reflect weakening rather than transfer of number information; held-out prediction remains to be tested.
+
+On fixed public nonblind cases, both exploratory [agreement-direction rules](results/distilgpt2-agreement-direction-study-v1/RESULTS.md) passed (8/8 families and 16/16 pairs). Subject-free but number-marked context fragments also showed a substantial response, so the result does not establish an abstract number feature or unique circuit.
 
 The [natural-agreement held-out attempt](results/distilgpt2-natural-agreement-v1-20261028/heldout-attempt-status-v1.md) stopped without an evaluable result. Its one-use claim and sealed split remain preserved; the recorded RuntimeError and a no-model startup reproduction support, but do not prove, a missing dependency-path diagnosis. An [independent held-out auditor](docs/INDEPENDENT_NATURAL_HELDOUT_AUDIT.md) is prepared for saved controls and frozen-prediction errors after a valid reveal.
 
@@ -110,6 +114,8 @@ The locally held-out [FLAN-T5 follow-up](results/flan-t5-heldout-response-cpu-v1
 
 The [pretrained ViT intervention study](results/vision-coco-vit-v1-20261029/README.md) found that none of four evaluable held-out image pairs met the preset rule; four other pairs were baseline-ineligible. The patches had nonzero effects and were large relative to recipient token-state norms. Same-species controls were available for only four of 16 receiver sides, and outside-box controls can include other objects, so the result does not establish the absence of visual effects or a uniquely localized object representation.
 
+The [same-site small-dose ViT follow-up](results/vision-coco-same-site-v3-20261029/README.md) was inconclusive: two of eight pairs met the baseline gate and neither passed the composite. The reused cat-annotated donor was classified as a dog by the model, so these dependent, annotation-matched comparisons do not establish spatial localization.
+
 A [targeted parameter-edit experiment](results/targeted-edit-cpu-v1-20261028/README.md) changed the intended answer preference but failed its preset locality thresholds on public probes. The negative result and a same-host replay are preserved; the study does not establish general capability preservation.
 
 The [projected-edit follow-up](results/targeted-edit-projected-cpu-v1-20261028/README.md) was ineligible because only two of four targets had the required baseline preference; neither reversed. The projected and unprojected edits had different target effects, and the nine locality probes cannot establish broad capability preservation.
@@ -131,6 +137,8 @@ The [pretrained trace smoke](results/pretrained-trace-cpu-v1-20261028/README.md)
 The [pretrained intervention smoke](results/distilgpt2-intervention-dev-cpu-v1-20261028/README.md) checks a known injection and same-site activation restoration on one public input, with an independent same-host replay. It tests intervention mechanics, not a held-out behavioral explanation.
 
 The [pretrained trace and intervention example](docs/PRETRAINED_TRACE_INTERVENTION_EXAMPLE.md) shows how to use the APIs directly on a short CPU input, with a bounded trace, self-patch control and saved explanatory output. Its known artificial edit demonstrates the tools; it is not an explanation of the model's ordinary behavior.
+
+The [clean-versus-corrupted trace workflow](docs/GPT2_TRACE_WORKFLOW.md) compares selected observations after a known embedding edit and tests same-site restoration against controls. The example is a mechanics check, not a causal discovery.
 
 The [sampled pretrained batch check](results/distilgpt2-batch-cpu-v1-20261028/RESULTS.md) compares serial and two-row outputs on four fixed public CPU cases against a prespecified tolerance, with negative controls and a same-host replay. It does not establish general batch separability or GPU throughput.
 
