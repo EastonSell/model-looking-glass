@@ -1,5 +1,7 @@
 """Synthetic direct-process observation; no checkpoint or study input."""
 import importlib.util
+import json
+import os
 import pathlib
 import sys
 import tempfile
@@ -16,6 +18,24 @@ spec.loader.exec_module(subject)
 
 
 class DirectObservationTests(unittest.TestCase):
+    def test_observer_requires_matching_complete_operator_start(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = pathlib.Path(temp) / "operator-start.json"
+            with self.assertRaises(RuntimeError):
+                subject.await_operator_start(path, "a" * 64, "b" * 40, "c" * 64, timeout=0.01)
+            row = {"pid": os.getpid(), "source_sha256": "a" * 64, "source_revision": "b" * 40,
+                   "operator_sha256": "c" * 64,
+                   "propagation_report_sha256": subject.PROPAGATION_SHA256,
+                   "started_utc": "2026-01-01T00:00:00Z", "scope": "cooperative observation"}
+            path.write_text(json.dumps(row), encoding="utf-8")
+            subject.await_operator_start(path, "a" * 64, "b" * 40, "c" * 64, timeout=0.1)
+            row["pid"] += 1; path.write_text(json.dumps(row), encoding="utf-8")
+            with self.assertRaises(RuntimeError):
+                subject.await_operator_start(path, "a" * 64, "b" * 40, "c" * 64, timeout=0.1)
+            path.write_text('{"pid": 1, "pid": 1}', encoding="utf-8")
+            with self.assertRaises(RuntimeError):
+                subject.await_operator_start(path, "a" * 64, "b" * 40, "c" * 64, timeout=0.1)
+
     def test_reaped_exit_and_logs_are_recorded(self):
         with tempfile.TemporaryDirectory() as temp:
             result = subject.run_direct([sys.executable, "-I", "-B", "-c", "print('done')"],

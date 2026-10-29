@@ -8,10 +8,50 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
+import time
 import types
 from datetime import datetime, timezone
+
+PROPAGATION_SHA256 = "25f4e43477355b357bc13e71e44f60c2135b490ea14359bb87b5448a33784d26"
+
+
+def _unique(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise RuntimeError("duplicate operator-start key")
+        value[key] = item
+    return value
+
+
+def await_operator_start(path, source_sha, revision, operator_sha, *, timeout=30):
+    """Wait for the operator's complete, PID-bound atomic publication."""
+    if (not re.fullmatch(r"[0-9a-f]{64}", source_sha) or not re.fullmatch(r"[0-9a-f]{40}", revision)
+            or not re.fullmatch(r"[0-9a-f]{64}", operator_sha)):
+        raise RuntimeError("operator start identity is malformed")
+    deadline = time.monotonic() + timeout
+    while not path.exists():
+        if time.monotonic() >= deadline:
+            raise RuntimeError("operator start receipt did not arrive")
+        time.sleep(min(0.05, max(0.0, deadline - time.monotonic())))
+    raw = path.read_bytes()
+    if len(raw) > 16384:
+        raise RuntimeError("operator start receipt exceeds its bound")
+    try:
+        record = json.loads(raw, object_pairs_hook=_unique,
+                            parse_constant=lambda _x: (_ for _ in ()).throw(RuntimeError("nonfinite JSON")))
+    except (ValueError, UnicodeError) as error:
+        raise RuntimeError("operator start receipt is malformed") from error
+    if (type(record) is not dict or type(record.get("pid")) is not int or record["pid"] != os.getpid()
+            or record.get("source_sha256") != source_sha or record.get("source_revision") != revision
+            or record.get("operator_sha256") != operator_sha
+            or record.get("propagation_report_sha256") != PROPAGATION_SHA256
+            or type(record.get("started_utc")) is not str or len(record["started_utc"]) > 64):
+        raise RuntimeError("operator start receipt identity differs")
+    return record
 
 
 def _now():
@@ -77,7 +117,8 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("source", "sources", "sources-sha256", "source-revision", "venv", "dependency", "study-root",
-                 "observer-prefix", "observation", "output", "mode", "cache", "stage"):
+                 "observer-prefix", "observation", "output", "mode", "cache", "stage",
+                 "operator-start", "operator-sha256"):
         parser.add_argument("--" + name, required=True)
     parser.add_argument("--timeout", type=int, default=900)
     args = parser.parse_args()
@@ -87,6 +128,7 @@ def main():
             or sys.pycache_prefix is None or Path(sys.pycache_prefix).resolve(strict=True) != prefix
             or any(prefix.iterdir()) or os.environ.get("CUDA_VISIBLE_DEVICES") != "-1"):
         raise RuntimeError("observer startup or fresh prefix differs")
+    await_operator_start(Path(args.operator_start), args.sources_sha256, args.source_revision, args.operator_sha256)
     source_bytes = Path(args.sources).read_bytes()
     if len(source_bytes) > 2_000_000 or hashlib.sha256(source_bytes).hexdigest() != args.sources_sha256:
         raise RuntimeError("source map digest differs")
