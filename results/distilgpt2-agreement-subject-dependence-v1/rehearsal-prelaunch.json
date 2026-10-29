@@ -1,0 +1,140 @@
+{
+  "cases": {
+    "ordered_rows_sha256": "d31073b25d816258ff1bcbfcb7237eac5346b160a5ed2de65fea220bdb806ff1",
+    "path": "experiments/distilgpt2_agreement_subject_dependence_cases_v1.json",
+    "revision": "4db27a4f6d96a97c28ad644b911b9c5eacd4f55d",
+    "sha256": "5f3a2c850454e74da2bdc3819d492357f829994c126e1ac95d90ca3813b0643e"
+  },
+  "checkpoint": {
+    "model_id": "distilbert/distilgpt2",
+    "revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "tokenizer_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+    "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+  },
+  "custody": {
+    "injection": {
+      "direct_target_conflict": "none reported",
+      "observation_sha256": "981a2a031c14fc07fc283881b37782444f2d6f4bcbfbb3b79b08b913561e8c58",
+      "refreshed_utc": "2026-10-29T10:13:29.682784+00:00",
+      "status": "no_protected_rows"
+    },
+    "natural": {
+      "case_sha256": "5f3a2c850454e74da2bdc3819d492357f829994c126e1ac95d90ca3813b0643e",
+      "observation_sha256": "dbda7746166796a1c378e9952439044a2c6b12cf6441f80aff46a44efbed2120",
+      "refreshed_utc": "2026-10-29T10:13:29.682784+00:00",
+      "scope": "public support comparison; sealed-split coverage conditional on source-bound preparation; no private membership queried",
+      "status": "clear",
+      "support_receipt_sha256": "61d1f8555ad901924364fb89c731b0870ff057d6caeebcf4b5d293e819be1753"
+    }
+  },
+  "directions": {
+    "manifest_sha256": "91dc4170eff6ac60416e5b3f884f2a28f41f9a4c1ad7339b409e32baeadf3a0e",
+    "revision": "15c0ef7f8141322aeb1fa31dc02cab5a68fc16b8",
+    "u_sha256": "d1ddf7d4ee3103400ca6c23f25536e615135beebb24f2d326ad6fe5d46728be0",
+    "v1_sha256": "4a08130c4fd2c3557f9e40b92865c23411d395123c53251a286b63c796b476bb",
+    "v2_sha256": "4ca1f10e411e0476bcee76b98bc8515705e61035cfa6e8d71608e15af80f4b02"
+  },
+  "exposure": {
+    "binding_scope": "The child reconstructs the recorded reservation; any later current inventory is an operator observation.",
+    "latest_module": "looking_glass/pretrained_exposures_v27.py",
+    "latest_revision": "baff8872b35193bcaf767c9e260ad4820e36332e",
+    "latest_sha256": "ef42683a664dda450e82c69afedda34a8a34f2daf9f50f2db54f6c9d846f07e5",
+    "latest_version": "distilgpt2-development-exposures-v27",
+    "operator_observation_sha256": "87629cdb8ded2f55e193f25f5a88779720d47ef0de1e3e4af5f0b3f721a2750e",
+    "operator_refreshed_utc": "2026-10-29T10:13:29.682784+00:00",
+    "operator_revision": "baff8872b35193bcaf767c9e260ad4820e36332e",
+    "operator_sha256": "ef42683a664dda450e82c69afedda34a8a34f2daf9f50f2db54f6c9d846f07e5",
+    "operator_version": "distilgpt2-development-exposures-v27",
+    "reservation_revision": "baff8872b35193bcaf767c9e260ad4820e36332e",
+    "reservation_sha256": "ef42683a664dda450e82c69afedda34a8a34f2daf9f50f2db54f6c9d846f07e5",
+    "reservation_version": "distilgpt2-development-exposures-v27"
+  },
+  "independent_reader_status": "reviewed",
+  "limits": {
+    "automatic_retry": false,
+    "event_log_bytes": 67108864,
+    "expected_forwards": 720,
+    "external_receipt_allowance_bytes": 16777216,
+    "failed_return_reserve_bytes": 2492208,
+    "invalid_candidate_reserve_bytes": 6144,
+    "logical_success_bytes": 189468480,
+    "minimum_free_disk_bytes": 2147483648,
+    "per_forward_bytes": 4194304,
+    "physical_attempt_bytes": 1073741824,
+    "retained_tensor_bytes": 536870912
+  },
+  "observer": {
+    "mode": "gated isolated direct child",
+    "scope": "Cooperative direct-child observation, not authenticated execution or descendant drain.",
+    "sha256": "a51a3a0c9185041e25cba8371bba60e616fdf4e4d1512cb5397c40c04c72a8c5",
+    "support_sha256": "4e3e88634871fcd0d820ea649f7159952d5e6a26fe3a8c098ceb641f4dc28584"
+  },
+  "owner": {
+    "entry_path": "tools/agreement_subject_cpu_v1.py",
+    "entry_script_sha256": "2539ecfadbb4d216344ee6f88a6ae8e2254ce14f2f928d22d0f634c3a06fa44a",
+    "executor_path": "looking_glass/agreement_subject_executor_v1.py",
+    "executor_sha256": "004498c7e6ebbef56825d9fa7c603421437989bce99972e36b0349b8d5676e41",
+    "source_publication": "https://github.com/EastonSell/model-looking-glass/pull/534",
+    "source_revision": "cc4937690db8e0ea8532d3f89f14b6e95465ac65",
+    "source_tree": "31b882ea1fcb221c26f20eff044aa89db19e34aa",
+    "supervision_sha256": {
+      "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+      "looking_glass/cpu_study_supervision.py": "785cadf59df0cae7ed47fe7b8bd4ba7c40b8ff1686be5e12dfcdb44187d48d32",
+      "looking_glass/device_identity.py": "ad08eff6edbb1c94af9abec0d07d8a10944624488b8d723b10c75e8c67e10c45",
+      "looking_glass/device_lease.py": "7f52ad238a1c9e8800c3d1ebf3b6969edd810a02754d1462c34f06cf783b57bf",
+      "looking_glass/supervisor.py": "435c998255e894e003e9f2d05a701407a9b58f75aa50de9a63e7cc35bb132a1d"
+    }
+  },
+  "protocol": {
+    "path": "docs/AGREEMENT_SUBJECT_DEPENDENCE_V1.md",
+    "revision": "54f0f8d3ac7e60efc3005f0f49415715ba34ff47",
+    "sha256": "bd39b4556023110d0de88fb21381a0a3ce1e17cad862cdd0259b67849f540714"
+  },
+  "purpose": "rehearsal",
+  "recorded_utc": "2026-10-29T10:20:33.990936+00:00",
+  "reference": {
+    "manifest_sha256": "69c7bdadb365c83bd4a591da405cc5e1dccd686c204a68f9b03264c604e82ed5",
+    "path": "results/distilgpt2-agreement-subject-output-reference-v1/output-slope.f64le",
+    "revision": "54f0f8d3ac7e60efc3005f0f49415715ba34ff47",
+    "sha256": "bdb31d5b74b6cff17ed2a683415beab22e36b101220257d774909be6f9f804bd"
+  },
+  "runtime": {
+    "base_python_sha256": "749a54c7896d14138d74c6e35f89cb4f8fb1c59d1dd6ddaeaa8107b2a8e0aba2",
+    "claim_cuda_visibility": "",
+    "cpu_interop_threads": 1,
+    "cpu_threads": 1,
+    "environment": {
+      "ATEN_CPU_CAPABILITY": null,
+      "CUDA_VISIBLE_DEVICES": "-1",
+      "HF_HUB_OFFLINE": "1",
+      "MKL_CBWR": null,
+      "MKL_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "TRANSFORMERS_OFFLINE": "1"
+    },
+    "huggingface_hub": "0.36.2",
+    "inherited_environment_sha256": {
+      "APPDATA": "2491633653b76afee36ca0485519f8f08b2ccf542111ada60c162569b442fe14",
+      "COMSPEC": "56a79d121b8a0f187e172d87f06c86f8ae9bc3d047ba8505bf03e77030687ad4",
+      "HOMEDRIVE": "82179da1705476f753fdbb9fb58fef251195a42a5d468128266e12228af7e75b",
+      "HOMEPATH": "6fea37e6975dfa41e7b0ea75ea71f8c355710cb6616c7e6e9cedbde265df2da0",
+      "LOCALAPPDATA": "d21bc2e4e22d1d83586b8794169fa12204fef7ed43f2a098e5aac04cedee7639",
+      "NUMBER_OF_PROCESSORS": "c2356069e9d1e79ca924378153cfbbfb4d4416b1f99d41a2940bfdb66c5319db",
+      "PATH": "9cf19f4d2ef6a13aa0fa1086563b5cb5ca83e5b69c26de43766fac9b121719aa",
+      "PATHEXT": "a6e17897274808450499132f0802335799834f33795cbeca1c073278b006b650",
+      "PROCESSOR_ARCHITECTURE": "558b624e3a60d3e4a393272854dbbd35c6fea3f18ee692235dcbe31be8370700",
+      "SYSTEMROOT": "c2bb903d586d19ec0d6eb6a2a659a882fd51244d6a137cee3595a385fda042f1",
+      "TEMP": "ac2a20822eade7cd633a4322488f46f74987bcd58a0cb418b3370ced7219c4bc",
+      "TMP": "ac2a20822eade7cd633a4322488f46f74987bcd58a0cb418b3370ced7219c4bc",
+      "USERPROFILE": "c577c186077ad42e30897b2e1b06e0e7c1b196fbf30b537a33df3c2af91493d5",
+      "WINDIR": "c2bb903d586d19ec0d6eb6a2a659a882fd51244d6a137cee3595a385fda042f1"
+    },
+    "numpy": "2.4.6",
+    "python": "3.11.15",
+    "tokenizers": "0.22.2",
+    "torch": "2.8.0+cu128",
+    "transformers": "4.57.3"
+  },
+  "schema": "distilgpt2-agreement-subject-prelaunch-v1",
+  "scope": "Operator/custodian reports do not authenticate execution, private membership or complete exposure history."
+}
