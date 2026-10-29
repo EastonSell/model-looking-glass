@@ -1,0 +1,58 @@
+{
+  "audit_script_sha256": "78358a3a8eee7c930b80d3b20247b49b821ce54af07e15893b5d2ac1c489b7eb",
+  "audit_utc": "2026-10-29T03:19:51.754088+00:00",
+  "checks": {
+    "finite_vector_bytes_and_exact_landing": true,
+    "git_source_blobs_and_clean_checkout": true,
+    "post_run_cache_five_file_sha256": true,
+    "private_run_pid_and_candidate_hash_linkage": true,
+    "public_shaped_result_private_path_and_raw_uuid_scan": true,
+    "recorded_checkpoint_metadata": true,
+    "selected_logit_bit_decoding_and_self_control": true,
+    "thirteen_synchronized_memory_stages": true
+  },
+  "evidence_sha256": {
+    "after_cleanup.json": "a81dce50640d3cfb270b942ee258c3e1c66e90bb04fd30d47a4b36032e4d4a1a",
+    "after_cross.json": "3e408514735f844477b1e6bb4a4ebb733cd99398b9c24ee5d1d1286ad8531524",
+    "after_donor.json": "4d7b5357a99b2e9cc3afabc5d45ca284c4c3f3f0146068d52a328b3625cc0f45",
+    "after_model_copy.json": "6c4800c463f6bd26c5f9ae9993944cde8d84e6042274461219b31924ac242977",
+    "after_self.json": "d8fe1d70a0c1fd8fde47379474fdce1acbc375ead787a8ee16ed9a9523d9b1df",
+    "after_target.json": "11ad5bf15de79c40c3d877ea84f3bcf9cd86746a23b9d420ff360a8e598f97f4",
+    "before_cross.json": "d8fe1d70a0c1fd8fde47379474fdce1acbc375ead787a8ee16ed9a9523d9b1df",
+    "before_donor.json": "11ad5bf15de79c40c3d877ea84f3bcf9cd86746a23b9d420ff360a8e598f97f4",
+    "before_model_copy.json": "f5c4a6821bf92fbcdf23a343198cfe924958ad4837a05ec7e4dcbdf08bfdb3d0",
+    "before_model_load.json": "a51d6de601b0f746526dbb2d776e95595bd951cf8c533e5eb66cacb7dbd5c868",
+    "before_self.json": "4d7b5357a99b2e9cc3afabc5d45ca284c4c3f3f0146068d52a328b3625cc0f45",
+    "before_target.json": "5e71079e53c254bead23c0232c3507fc5fa6ec0e90e09738f0731b6a7125ce28",
+    "candidate.json": "aa4ab352a3f60ef29157809923683e86d6a9acb1f2cb96a57d94c1cc7d9c1da0",
+    "cleanup_before_workspace_clear.json": "49309fbb2c44791ff69386454694809dd7cebe366fc0509aa4d0853af1db4115",
+    "cleanup_weakrefs.json": "14523d1f206c46390c308daabef3820168bb133ef056c8f6f2e1c4c0eddf925b",
+    "final.json": "0d7ae82c0cd64513d4730e2cf0903123bb9e1c14d38ba596e063ece1779f06ac",
+    "owner.json": "2141c8433f8a47ca1b5c647a6b560d69c42088304e38b7d9f43e259bef984f53",
+    "started.json": "3588a7aa4f99175d311c0cdebcd576010e16044f611c94b297d20d622d9b077c",
+    "supervision.json": "2e51ea6f555b7dd53943b81f3c5f3f15bceb225697de9ee787c7faf1c7b19b37"
+  },
+  "limitations": [
+    "One exposed development pair and four forwards; not a held-out or general causal result.",
+    "Full mask-position logits were not retained; their digest and the owner\u2019s equality assertion are saved.",
+    "Runtime GPU UUID equality is an in-process owner attestation; raw UUIDs were not retained for independent comparison.",
+    "PyTorch allocator counters omit some context and native memory; WDDM device process observations may be incomplete.",
+    "The optional cache check hashes files at audit time, not the transient copies loaded by the past run."
+  ],
+  "measurements": {
+    "cross_minus_target_margin": -5.996591091156006,
+    "final_allocated_bytes": 0,
+    "final_reserved_bytes": 0,
+    "is_minus_are_by_stage": {
+      "cross": -4.4023027420043945,
+      "donor": -5.062202453613281,
+      "self": 1.5942883491516113,
+      "target": 1.5942883491516113
+    },
+    "peak_allocated_bytes": 307767808,
+    "peak_reserved_bytes": 339738624
+  },
+  "result_sha256": "3ca46d8824a181e10836a701c5b6926dd865a86b171ba5cd3963a6db3477d7d2",
+  "schema": "bert-gpu-calibration-independent-review-v1",
+  "source_commit": "c2bff8183003ac25ec28475d23ddd20e7026f370"
+}
