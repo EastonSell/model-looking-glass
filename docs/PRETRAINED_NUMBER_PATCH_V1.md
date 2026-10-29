@@ -176,7 +176,8 @@ revealed remains incomplete; any later held-out test for it requires a new
 prospective attempt with fresh cases. Thus an injection-track failure need not
 suppress a completed natural track, and vice versa. Shared clean/control or
 model-integrity failures invalidate every result that depends on them. Report
-each track's status and the composite status, with all partial data retained.
+each track's status and the composite status, retaining all completed records
+and any available bounded partial evidence.
 
 For reproducible commitments use these exact records. `canonical(record)` is
 UTF-8 encoding of JSON serialized with sorted keys, `ensure_ascii=True`,
