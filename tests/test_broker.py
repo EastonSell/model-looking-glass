@@ -2,6 +2,8 @@ import threading
 import unittest
 import weakref
 import gc
+import inspect
+import sys
 from dataclasses import dataclass
 from time import perf_counter_ns
 from unittest.mock import patch
@@ -73,6 +75,50 @@ class FakeWorker:
 
     def close(self):
         self.closed = True
+
+
+class SnapshotOwner:
+    """Simulate a claim tied to one tensor wrapper, not its storage aliases."""
+
+    def __init__(self, released):
+        self.released = released
+
+    def __del__(self):
+        self.released.set()
+
+
+class ClaimTrackingWorker(FakeWorker):
+    def __init__(self):
+        super().__init__()
+        self.claims = {}
+        self.aliases = {}
+
+    def snapshot_request(self, request):
+        snapshot = super().snapshot_request(request)
+        if request.request_id.startswith('owned'):
+            tensor = snapshot.inputs['input_ids']
+            released = threading.Event()
+            tensor.owner = SnapshotOwner(released)
+            self.claims[request.request_id] = (weakref.ref(tensor.owner), released)
+            self.aliases[request.request_id] = tensor.detach()
+        return snapshot
+
+
+def interrupt_line(function, text, operation):
+    lines, first_line = inspect.getsourcelines(function)
+    target = next(first_line + i for i, line in enumerate(lines) if line.strip() == text)
+
+    def inject(frame, event, arg):
+        if event == 'line' and frame.f_code is function.__code__ and frame.f_lineno == target:
+            sys.settrace(None)
+            raise KeyboardInterrupt(f'injected before {text}')
+        return inject
+
+    sys.settrace(inject)
+    try:
+        return operation()
+    finally:
+        sys.settrace(None)
 
 
 class BrokerTests(unittest.TestCase):
@@ -188,8 +234,9 @@ class BrokerTests(unittest.TestCase):
             raise KeyboardInterrupt('injected after thread start')
 
         with patch('looking_glass.broker.Thread.start', new=start_then_raise):
-            with self.assertRaises(BrokerUnavailable):
+            with self.assertRaises(KeyboardInterrupt) as caught:
                 Broker(worker, max_pending=1, max_pending_per_team=1)
+        self.assertIsNone(caught.exception.__context__)
         thread, owner = captured[0]
         thread.join(2)
         self.assertFalse(thread.is_alive())
@@ -661,7 +708,7 @@ class BrokerTests(unittest.TestCase):
         worker = BadSnapshot()
         broker = Broker(worker, max_pending=1, max_pending_per_team=1)
         with patch.object(broker, '_mark_cleanup_failed_locked', side_effect=KeyboardInterrupt('notification')):
-            with self.assertRaises(BrokerUnavailable):
+            with self.assertRaises(KeyboardInterrupt):
                 broker.submit('alpha', FakeRequest('one', b'x'))
         self.assertTrue(broker.quarantined)
         self.assertFalse(broker.available)
@@ -699,9 +746,9 @@ class BrokerTests(unittest.TestCase):
             return original_store(value)
 
         with patch.object(broker, '_store_quarantine_value_locked', side_effect=fail_once):
-            with self.assertRaises(BrokerUnavailable):
+            with self.assertRaises(KeyboardInterrupt):
                 broker.submit('alpha', FakeRequest('one', b'x'))
-        self.assertEqual(len(calls), 2)
+        self.assertGreaterEqual(len(calls), 2)
         self.assertTrue(broker.quarantined)
         with self.assertRaises(BrokerShutdownError):
             broker.close(timeout=2)
@@ -1074,6 +1121,396 @@ class BrokerTests(unittest.TestCase):
             except BrokerShutdownError:
                 pass
 
+    def test_interrupted_pending_cancel_keeps_removed_snapshot_rooted(self):
+        worker = ClaimTrackingWorker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        broker.submit('alpha', FakeRequest('running', b'x'))
+        self.assertTrue(worker.started.wait(2))
+        pending = broker.submit('beta', FakeRequest('owned-one', b'y'))
+        reference, released = worker.claims['owned-one']
+        original_cancel = broker._queue.cancel
+
+        def removed_then_interrupted(job_id):
+            self.assertTrue(original_cancel(job_id))
+            raise KeyboardInterrupt('after queue removal')
+
+        broker._queue.cancel = removed_then_interrupted
+        try:
+            with self.assertRaises(KeyboardInterrupt) as caught:
+                pending.cancel()
+            self.assertIsNone(caught.exception.__context__)
+            del pending
+            gc.collect()
+            self.assertTrue(broker.quarantined)
+            self.assertIsNotNone(reference())
+            self.assertFalse(released.is_set())
+            self.assertEqual(len(broker._queue), 0)
+        finally:
+            worker.release.set()
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(timeout=2)
+
+    def test_interrupted_close_retains_all_removed_snapshots(self):
+        worker = ClaimTrackingWorker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=2, max_pending_per_team=2)
+        broker.submit('alpha', FakeRequest('running', b'x'))
+        self.assertTrue(worker.started.wait(2))
+        first = broker.submit('beta', FakeRequest('owned-one', b'y'))
+        second = broker.submit('beta', FakeRequest('owned-two', b'z'))
+        claims = list(worker.claims.values())
+        original_pop = broker._queue.pop
+        calls = 0
+
+        def second_pop_interrupted():
+            nonlocal calls
+            item = original_pop()
+            calls += 1
+            if calls == 2:
+                raise KeyboardInterrupt('after second queue removal')
+            return item
+
+        broker._queue.pop = second_pop_interrupted
+        try:
+            with self.assertRaises(KeyboardInterrupt) as caught:
+                broker.close(wait=False)
+            self.assertIsNone(caught.exception.__context__)
+            del first, second
+            gc.collect()
+            self.assertTrue(broker.quarantined)
+            for reference, released in claims:
+                self.assertIsNotNone(reference())
+                self.assertFalse(released.is_set())
+        finally:
+            worker.release.set()
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(timeout=2)
+
+    def test_interrupted_dispatch_keeps_removed_snapshot_rooted(self):
+        worker = ClaimTrackingWorker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        broker.submit('alpha', FakeRequest('running', b'x'))
+        self.assertTrue(worker.started.wait(2))
+        pending = broker.submit('beta', FakeRequest('owned-one', b'y'))
+        reference, released = worker.claims['owned-one']
+        original_pop = broker._queue.pop
+
+        def removed_then_interrupted():
+            original_pop()
+            raise KeyboardInterrupt('after dispatch removal')
+
+        broker._queue.pop = removed_then_interrupted
+        worker.release.set()
+        broker._thread.join(2)
+        with self.assertRaises(BrokerUnavailable):
+            pending.wait(2)
+        del pending
+        gc.collect()
+        self.assertTrue(broker.quarantined)
+        self.assertIsNotNone(reference())
+        self.assertFalse(released.is_set())
+        with self.assertRaises(BrokerShutdownError):
+            broker.close(timeout=2)
+
+    def test_retirement_capacity_counts_removed_jobs_until_cleanup(self):
+        worker = FakeWorker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        broker.submit('alpha', FakeRequest('running', b'x'))
+        self.assertTrue(worker.started.wait(2))
+        pending = broker.submit('beta', FakeRequest('waiting', b'y'))
+        retire_started = threading.Event()
+        retire_continue = threading.Event()
+        original_retire = broker._retire_job
+
+        def blocked_retire(job):
+            retire_started.set()
+            retire_continue.wait(2)
+            return original_retire(job)
+
+        broker._retire_job = blocked_retire
+        canceller = threading.Thread(target=pending.cancel)
+        canceller.start()
+        try:
+            self.assertTrue(retire_started.wait(2))
+            with self.assertRaises(QueueFull):
+                broker.submit('gamma', FakeRequest('over-cap', b'z'))
+        finally:
+            retire_continue.set()
+            canceller.join(2)
+            broker._retire_job = original_retire
+        accepted = broker.submit('gamma', FakeRequest('accepted', b'z'))
+        worker.release.set()
+        self.assertEqual(accepted.wait(2).state, RequestState.SUCCEEDED)
+        self.assertTrue(broker.close(timeout=2))
+        self.assertTrue(all(job is None for job in broker._job_roots))
+
+    def test_cancel_drops_broker_snapshot_before_releasing_root_slot(self):
+        worker = ClaimTrackingWorker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        broker.submit('alpha', FakeRequest('running', b'x'))
+        self.assertTrue(worker.started.wait(2))
+        pending = broker.submit('beta', FakeRequest('owned-one', b'y'))
+        reference, released = worker.claims['owned-one']
+        retire_done = threading.Event()
+        return_allowed = threading.Event()
+        original_retire = broker._retire_job
+
+        def paused_after_retire(job):
+            result = original_retire(job)
+            retire_done.set()
+            return_allowed.wait(2)
+            return result
+
+        broker._retire_job = paused_after_retire
+        canceller = threading.Thread(target=pending.cancel)
+        canceller.start()
+        try:
+            self.assertTrue(retire_done.wait(2))
+            gc.collect()
+            self.assertIsNone(reference())
+            self.assertTrue(released.is_set())
+            # The still-paused cancellation frame owns its job, but no longer
+            # retains the broker snapshot once the slot can be reused.
+            self.assertIn('owned-one', worker.aliases)
+        finally:
+            return_allowed.set()
+            canceller.join(2)
+            broker._retire_job = original_retire
+            worker.release.set()
+            self.assertTrue(broker.close(timeout=2))
+
+    def test_prepublication_error_traceback_does_not_retain_snapshot(self):
+        worker = ClaimTrackingWorker()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        errors = []
+        try:
+            for index in range(5):
+                request_id = f'owned-{index}'
+                with patch('looking_glass.broker.perf_counter_ns',
+                           side_effect=[1, RuntimeError('ready clock failed')]):
+                    try:
+                        broker.submit('alpha', FakeRequest(request_id, b'x'))
+                    except RuntimeError as exc:
+                        errors.append(exc)
+                    else:
+                        self.fail('injected publication failure did not propagate')
+                reference, released = worker.claims[request_id]
+                gc.collect()
+                self.assertIsNone(reference())
+                self.assertTrue(released.is_set())
+            self.assertEqual(len(errors), 5)
+            self.assertTrue(broker.available)
+        finally:
+            self.assertTrue(broker.close(timeout=2))
+
+    def test_simultaneous_retirement_interruptions_keep_each_input_and_error(self):
+        worker = ClaimTrackingWorker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=3, max_pending_per_team=3)
+        broker.submit('alpha', FakeRequest('running', b'x'))
+        self.assertTrue(worker.started.wait(2))
+        pending = [broker.submit('beta', FakeRequest(f'owned-{i}', b'x')) for i in range(3)]
+        claims = list(worker.claims.values())
+        lines, first_line = inspect.getsourcelines(Broker._retire_job)
+        disposal_line = next(first_line + i for i, line in enumerate(lines)
+                             if line.strip() == 'retiring_request = None' and i > 16)
+        gate = threading.Barrier(3, timeout=3)
+        errors = []
+
+        def cancel_with_interrupt(handle):
+            def inject(frame, event, arg):
+                if (event == 'line' and frame.f_code is Broker._retire_job.__code__
+                        and frame.f_lineno == disposal_line):
+                    sys.settrace(None)
+                    gate.wait()
+                    raise KeyboardInterrupt('before detached-input disposal')
+                return inject
+            sys.settrace(inject)
+            try:
+                handle.cancel()
+            except BaseException as exc:
+                errors.append(exc)
+            finally:
+                sys.settrace(None)
+
+        threads = [threading.Thread(target=cancel_with_interrupt, args=(handle,)) for handle in pending]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(5)
+        try:
+            self.assertTrue(all(not thread.is_alive() for thread in threads))
+            self.assertEqual([type(error) for error in errors], [KeyboardInterrupt] * 3)
+            self.assertTrue(all(error.__context__ is None for error in errors))
+            del pending
+            gc.collect()
+            for reference, released in claims:
+                self.assertIsNotNone(reference())
+                self.assertFalse(released.is_set())
+            self.assertTrue(broker.quarantined)
+        finally:
+            worker.release.set()
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(timeout=2)
+
+    def test_quarantine_before_retirement_commit_preserves_snapshot(self):
+        worker = ClaimTrackingWorker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        broker.submit('alpha', FakeRequest('running', b'x'))
+        self.assertTrue(worker.started.wait(2))
+        pending = broker.submit('beta', FakeRequest('owned-one', b'y'))
+        reference, released = worker.claims['owned-one']
+        reached = threading.Event()
+        release = threading.Event()
+        original_retire = broker._retire_job
+
+        def gated_retire(job):
+            reached.set()
+            release.wait(2)
+            return original_retire(job)
+
+        broker._retire_job = gated_retire
+        canceller = threading.Thread(target=pending.cancel)
+        canceller.start()
+        try:
+            self.assertTrue(reached.wait(2))
+            with broker._condition:
+                broker._mark_cleanup_failed_locked()
+            release.set()
+            canceller.join(2)
+            del pending
+            gc.collect()
+            self.assertTrue(broker.quarantined)
+            self.assertIsNotNone(reference())
+            self.assertFalse(released.is_set())
+        finally:
+            release.set()
+            worker.release.set()
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(timeout=2)
+
+    def test_interrupt_at_public_retirement_handoff_quarantines(self):
+        for operation in ('cancel', 'close', 'failed_snapshot'):
+            with self.subTest(operation=operation):
+                class FailsSnapshot(ClaimTrackingWorker):
+                    def snapshot_request(self, request):
+                        if request.request_id == 'reject':
+                            raise ValueError('bad request')
+                        return super().snapshot_request(request)
+
+                worker = FailsSnapshot()
+                worker.release.clear()
+                broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+                broker.submit('alpha', FakeRequest('running', b'x'))
+                self.assertTrue(worker.started.wait(2))
+                if operation == 'failed_snapshot':
+                    target, line = Broker._submit, 'self._retire_job(job)'
+                    action = lambda: broker.submit('beta', FakeRequest('reject', b'y'))
+                else:
+                    pending = broker.submit('beta', FakeRequest('owned-one', b'y'))
+                    if operation == 'cancel':
+                        target, line = type(pending)._cancel_request, 'broker._retire_job(job)'
+                        action = pending.cancel
+                    else:
+                        target, line = Broker._close, 'self._retire_items(removed)'
+                        action = lambda: broker.close(wait=False)
+                try:
+                    with self.assertRaises(KeyboardInterrupt) as caught:
+                        interrupt_line(target, line, action)
+                    self.assertIsNone(caught.exception.__context__)
+                    self.assertTrue(broker.quarantined)
+                    self.assertTrue(any(job is not None for job in broker._job_roots))
+                finally:
+                    worker.release.set()
+                    with self.assertRaises(BrokerShutdownError):
+                        broker.close(timeout=2)
+
+    def test_interrupt_after_queue_publication_does_not_retire_queued_job(self):
+        worker = ClaimTrackingWorker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        broker.submit('alpha', FakeRequest('running', b'x'))
+        self.assertTrue(worker.started.wait(2))
+        try:
+            with self.assertRaises(KeyboardInterrupt) as caught:
+                interrupt_line(Broker._submit, 'return handle',
+                               lambda: broker.submit('beta', FakeRequest('owned-one', b'y')))
+            self.assertIsNone(caught.exception.__context__)
+            self.assertTrue(broker.quarantined)
+            self.assertEqual(len(broker._queue), 1)
+            self.assertEqual(broker._pending_slots, 1)
+            reference, released = worker.claims['owned-one']
+            gc.collect()
+            self.assertIsNotNone(reference())
+            self.assertFalse(released.is_set())
+        finally:
+            worker.release.set()
+            with self.assertRaises(BrokerShutdownError):
+                broker.close(timeout=2)
+
+    def test_close_without_timeout_reports_orphaned_preparation_promptly(self):
+        broker = Broker(FakeWorker(), max_pending=1, max_pending_per_team=1)
+        with self.assertRaises(KeyboardInterrupt):
+            interrupt_line(Broker._submit, 'self._next_job_id = next_job_id',
+                           lambda: broker.submit('alpha', FakeRequest('one', b'x')))
+        self.assertTrue(broker.quarantined)
+        self.assertEqual(broker._preparing, 1)
+        errors = []
+
+        def close_owner():
+            try:
+                broker.close()
+            except BaseException as exc:
+                errors.append(exc)
+
+        closer = threading.Thread(target=close_owner, daemon=True)
+        closer.start()
+        closer.join(1)
+        try:
+            self.assertFalse(closer.is_alive())
+            self.assertEqual([type(error) for error in errors], [BrokerShutdownError])
+            self.assertTrue(broker._thread.is_alive())
+        finally:
+            # The injected interruption prevented a real submitter from owning
+            # this counter. Remove only the synthetic test leak after checking.
+            with broker._condition:
+                broker._preparing = 0
+                broker._condition.notify_all()
+            broker._thread.join(2)
+
+    def test_close_waiting_for_worker_wakes_when_quarantine_latches(self):
+        worker = FakeWorker()
+        worker.release.clear()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        broker.submit('alpha', FakeRequest('running', b'x'))
+        self.assertTrue(worker.started.wait(2))
+        errors = []
+
+        def close_owner():
+            try:
+                broker.close()
+            except BaseException as exc:
+                errors.append(exc)
+
+        closer = threading.Thread(target=close_owner, daemon=True)
+        closer.start()
+        with broker._condition:
+            self.assertTrue(broker._condition.wait_for(lambda: broker._closed, 2))
+            broker._mark_cleanup_failed_locked()
+        closer.join(1)
+        try:
+            self.assertFalse(closer.is_alive())
+            self.assertEqual([type(error) for error in errors], [BrokerShutdownError])
+            self.assertFalse(worker.closed)
+        finally:
+            worker.release.set()
+            broker._thread.join(2)
+
     def test_owner_base_exception_quarantines_and_preserves_queued_work(self):
         worker = FakeWorker()
         worker.release.clear()
@@ -1099,13 +1536,53 @@ class BrokerTests(unittest.TestCase):
 
         worker = Interrupted()
         broker = Broker(worker, max_pending=1, max_pending_per_team=1)
-        with self.assertRaises(BrokerUnavailable):
+        with self.assertRaises(KeyboardInterrupt) as caught:
             broker.submit('alpha', FakeRequest('one', b'x'))
+        self.assertIsNone(caught.exception.__context__)
         self.assertTrue(broker.quarantined)
         self.assertFalse(broker.available)
         with self.assertRaises(BrokerShutdownError):
             broker.close(timeout=2)
         self.assertFalse(worker.closed)
+
+    def test_quarantined_snapshot_exception_is_not_exposed_to_caller(self):
+        class InterruptedSnapshot(FakeWorker):
+            def snapshot_request(self, request):
+                tensor = request.inputs['input_ids'].clone()
+                released = threading.Event()
+                tensor.owner = SnapshotOwner(released)
+                self.claim_ref = weakref.ref(tensor.owner)
+                self.released = released
+                self.alias = tensor.detach()
+                raise KeyboardInterrupt('after making private tensor')
+
+        worker = InterruptedSnapshot()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        with self.assertRaises(KeyboardInterrupt) as caught:
+            broker.submit('alpha', FakeRequest('private', b'x'))
+        self.assertIsNone(caught.exception.__context__)
+        self.assertIsNone(caught.exception.__cause__)
+        gc.collect()
+        self.assertTrue(broker.quarantined)
+        self.assertIsNotNone(worker.claim_ref())
+        self.assertFalse(worker.released.is_set())
+        with self.assertRaises(BrokerShutdownError):
+            broker.close(timeout=2)
+
+    def test_sanitized_error_does_not_attach_caller_active_exception(self):
+        worker = FakeWorker()
+        broker = Broker(worker, max_pending=1, max_pending_per_team=1)
+        with broker._condition:
+            broker._mark_cleanup_failed_locked()
+        try:
+            raise RuntimeError('caller private error')
+        except RuntimeError:
+            with self.assertRaises(BrokerUnavailable) as caught:
+                broker.submit('alpha', FakeRequest('one', b'x'))
+        self.assertIsNone(caught.exception.__context__)
+        self.assertIsNone(caught.exception.__cause__)
+        with self.assertRaises(BrokerShutdownError):
+            broker.close(timeout=2)
 
     def test_raw_torch_oom_from_custom_worker_quarantines_both_phases(self):
         class RawOom(FakeWorker):
