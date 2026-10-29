@@ -72,14 +72,18 @@ own separately established completion and disposal conditions are met.
    A timeout/cancel request does not stop an in-flight worker.
 4. An unhandled `BaseException`, uncertain registration/binding/submission,
    failed request construction, failed handle observation or cancellation,
-   uncertain result serialization or notification failure
+   uncertain result serialization, notification failure, or subsequent
+   connection-bookkeeping failure
    suppresses the notice or leaves its outcome uncertain. The nonblocking
    `server.custody_quarantined` property latches an observed uncertain
    transition. If a callback recorded a notice and then raised, the server
    cannot retract it: the guardian must treat notice alone as insufficient to
    release anything and quarantine/reconcile the record. A blocked callback or
    a missing notice can remain pending before this flag is set. A false flag
-   is therefore not proof that all records are safe or drained.
+   is therefore not proof that all records are safe or drained. The server
+   latches an observed post-notice bookkeeping failure before its handler
+   exits; a supervisor must still monitor the signal and its own records.
+   Neither notice nor handler thread exit alone proves payload disposal.
 5. The supervisor must monitor the guardian and broker independently, stop
    new admission when custody is uncertain, and retain or quarantine claims
    until it proves completion/disposal or performs appropriate process-level
