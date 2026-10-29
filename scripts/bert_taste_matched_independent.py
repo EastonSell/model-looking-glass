@@ -123,6 +123,15 @@ def _summary(record):
             'selected binary64 scalar sign or bits differ')
     margin = math.fsum((sweet, -sour))
     _exact_number(summary.get('sweet_minus_sour'), margin, 'stored margin differs')
+    ps, po = summary.get('sweet_probability'), summary.get('sour_probability')
+    require(type(ps) in (int, float) and type(po) in (int, float)
+            and math.isfinite(ps) and math.isfinite(po) and 0 <= ps <= 1 and 0 <= po <= 1
+            and ps + po <= 1 + 1e-12
+            and not (sweet > sour and ps < po) and not (sour > sweet and po < ps),
+            'target probabilities are inconsistent')
+    if ps >= sys.float_info.min and po >= sys.float_info.min:
+        require(math.isclose(math.log(ps) - math.log(po), margin, rel_tol=1e-12, abs_tol=1e-10),
+                'target probability log odds differ from logits')
     return summary, margin
 
 
@@ -189,6 +198,7 @@ def audit_records(manifest, records, *, hidden=768, vocab=30522, layer_count=6):
             'invalid target IDs')
     require(len({row['id'] for row in rows}) == len(rows), 'duplicate row identity')
     reference, baselines, initial, effects, doses, eligibility = {}, {}, {}, [], [], {}
+    summaries_by_logit_hash = {}
     cursor, completed = 0, 0
 
     def forward(row, layer, position, mode, donor=None):
@@ -212,6 +222,12 @@ def audit_records(manifest, records, *, hidden=768, vocab=30522, layer_count=6):
         require(_valid_sha(end.get('full_before_sha256')), 'missing full-output hash')
         before, values = vector(end.get('before_float32_le_base64'), hidden)
         summary, margin = _summary(end)
+        logit_hash = summary['mask_logits_sha256']
+        if logit_hash in summaries_by_logit_hash:
+            require(_typed_equal(summary, summaries_by_logit_hash[logit_hash]),
+                    'identical mask-logit hash has inconsistent summaries')
+        else:
+            summaries_by_logit_hash[logit_hash] = summary
         completed += 1
         return end, before, values, summary, margin
 
