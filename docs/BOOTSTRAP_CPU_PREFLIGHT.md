@@ -70,8 +70,10 @@ hashes of test output, and refuses to overwrite an existing record. Choose a
 new output path outside the checkout so the source remains clean during the
 run. The collector launches the unittest parent in isolated mode with bytecode
 writes disabled and a fresh, empty private cache prefix, and checks that this
-prefix stays empty. A failure is saved with its status and a bounded phase and
-type when available; raw logs are withheld.
+prefix stays empty. If the test is launched and the output can be written, a
+failure is saved with its status and a bounded phase and type when available;
+raw logs are withheld. Initial setup failures, interruption, or output-write
+errors can leave no complete record.
 
 ```powershell
 python tools/bootstrap_pretrained_cpu_evidence.py --repository . `
@@ -83,3 +85,25 @@ The optional `controlled-missing-cache` purpose requires an absent cache path
 and records whether that path existed before the test. It exercises failure at
 child startup; the loader's missing-asset behavior is checked separately inside
 the successful preflight using a real partial cache.
+
+## Saved CPU checks
+
+The [primary](../evidence/bootstrap-pretrained-cpu-v1.json) and
+[independent](../evidence/bootstrap-pretrained-cpu-independent-v1.json)
+records describe separate clean-source CPU runs at the commits recorded inside
+the files. Both verified the seven pinned assets and the fixed case; each
+observed a 402,056-byte output and a 1,929,172-byte synthetic full IPC frame.
+These observations are not GPU measurements or guaranteed response bounds.
+The [primary absent-cache](../evidence/bootstrap-pretrained-cpu-absent-cache-v1.json)
+and [independent absent-cache](../evidence/bootstrap-pretrained-cpu-independent-absent-cache-v1.json)
+records preserve deliberate startup failures with a cache path recorded absent
+before execution; they are not loader-level missing-asset tests.
+
+The independent reviewer also reported an adversarial bytecode control in a
+separate checkout: a timestamp-valid compiled test file was replaced with a
+sentinel while retaining its cache header. An ordinary isolated `-B` unittest
+invocation read that cache; a fresh `-X pycache_prefix` ignored it, and the
+collector then passed with the poisoned file still present. The reviewer
+removed the file afterward. The saved aggregate JSON does not itself contain the
+poisoned file or independently attest that setup; this paragraph records the
+reviewer's observation rather than claiming a saved bytecode experiment.
