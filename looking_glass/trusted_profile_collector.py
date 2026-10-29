@@ -33,8 +33,21 @@ from .trusted_service_profile import (FORWARD_CASE_SHA256, JOB_COMMITMENT,
     resolve_trusted_service_profiles)
 
 
+TRUSTED_SERVICE_COLLECTOR_CONTRACT = 'two-token-worker-profile-v1'
+
+
 class CollectorError(RuntimeError):
     """A sample, evidence record or worker result did not meet the protocol."""
+
+
+def _require_gated_supervisor():
+    """Require the reviewed spawn/launch-grant interface from this checkout."""
+    from . import supervisor
+    expected = Path(__file__).resolve().with_name('supervisor.py')
+    if (getattr(supervisor, 'SUPERVISOR_LAUNCH_CUSTODY_CONTRACT', None)
+            != 'gated-rooted-child-v1'
+            or Path(supervisor.__file__).resolve(strict=True) != expected):
+        raise CollectorError('the reviewed gated child-launch supervisor is required')
 
 
 # These slots exist before any admission or CUDA work. The dedicated owner
@@ -339,6 +352,7 @@ def _owner_main(config):
     session = lease = None
     run_dir = Path(config['run_dir'])
     try:
+        _require_gated_supervisor()
         session = OwnerSession.from_environment()
         _PROCESS_CUSTODY[0] = session
         lease = DeviceLease.acquire(session.device_lease_path, timeout=30)
@@ -570,6 +584,7 @@ def run_supervised_collector(*, workspace_root, cache_root, site_packages, envir
     _write_json(run_dir / 'started.json', {'schema': 'trusted-profile-start-v1', 'run_id': run_id,
                 'source_commit': revision, 'started_utc': utc_now()})
     try:
+        _require_gated_supervisor()
         source = prepare_trusted_source(str(repo), str(cache))
         system_root = Path(os.environ.get('SYSTEMROOT', 'C:/Windows'))
         gpu_uuid, before = _smi_snapshot(str(system_root / 'System32' / 'nvidia-smi.exe'))

@@ -14,6 +14,10 @@ and a private evidence directory outside the checkout. It uses the shared
 fixed launcher and identity-aware supervisor. Collection and the subsequent
 service must execute from the same frozen checkout path and environment;
 source, dependency, runtime or configuration changes can invalidate the keys.
+Both parent and child require the reviewed gated, rooted child-launch custody
+contract before attempting ownership. The marker identifies the expected
+interface; it does not authenticate arbitrary process code. If native spawn
+ends without a usable child handle, the outcome remains quarantined.
 The child reads the parent-pinned configuration bytes before CUDA, holds the
 canonical device lease and verifies the runtime GPU identity. The private
 artifacts contain the GPU UUID and absolute paths and should not be published

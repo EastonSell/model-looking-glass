@@ -78,6 +78,12 @@ class _JobAccounting(ctypes.Structure):
                 ("active_processes", wintypes.DWORD), ("terminated_processes", wintypes.DWORD)]
 
 
+class _JobProcessList(ctypes.Structure):
+    # A fixed bound makes an oversized or incomplete inventory fail closed.
+    _fields_ = [("assigned", wintypes.DWORD), ("count", wintypes.DWORD),
+                ("ids", ctypes.c_size_t * 256)]
+
+
 class WindowsJob:
     """Kill assigned children when the owning process closes its job handle.
 
@@ -100,6 +106,18 @@ class WindowsJob:
                                                             wintypes.LPVOID, wintypes.DWORD,
                                                             ctypes.POINTER(wintypes.DWORD))
         self._kernel.QueryInformationJobObject.restype = wintypes.BOOL
+        self._kernel.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        self._kernel.OpenProcess.restype = wintypes.HANDLE
+        self._kernel.IsProcessInJob.argtypes = (wintypes.HANDLE, wintypes.HANDLE, ctypes.POINTER(wintypes.BOOL))
+        self._kernel.IsProcessInJob.restype = wintypes.BOOL
+        self._kernel.WaitForSingleObject.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+        self._kernel.WaitForSingleObject.restype = wintypes.DWORD
+        self._processes = {}
+        self._unconfirmed = False
+        self._stopping = False
+        self._confirmed = False
+        self._closing_process = False
+        self._closing_job = False
         self._handle = self._kernel.CreateJobObjectW(None, None)
         if not self._handle:
             raise SourceGuardError("cannot create the process job")
@@ -116,34 +134,146 @@ class WindowsJob:
             raise
 
     def assign(self, process):
-        if self._handle is None or process.poll() is not None:
+        if self._handle is None or self._closing_job or self._stopping or process.poll() is not None:
             raise SourceGuardError("job or child is not active")
         if not self._kernel.AssignProcessToJobObject(self._handle, int(process._handle)):
             raise SourceGuardError("cannot assign the child to the process job")
+        try:
+            self._remember(process.pid)
+        except BaseException:
+            # The assignment already happened; later cleanup must terminate it,
+            # but cannot claim a complete lifetime inventory.
+            self._unconfirmed = True
+            raise
+
+    def _remember(self, pid):
+        if pid in self._processes:
+            raise SourceGuardError("process identifier was reused in the job")
+        # Synchronization confirms termination; query rights check membership.
+        handle = self._kernel.OpenProcess(0x00100000 | 0x1000, False, pid)
+        if not handle:
+            raise SourceGuardError("cannot retain a job process handle")
+        self._processes[pid] = handle
+        member = wintypes.BOOL()
+        if not self._kernel.IsProcessInJob(handle, self._handle, ctypes.byref(member)) or not member.value:
+            raise SourceGuardError("job process membership could not be confirmed")
+
+    def _accounting(self):
+        info = _JobAccounting()
+        if not self._kernel.QueryInformationJobObject(self._handle, 1, ctypes.byref(info),
+                                                      ctypes.sizeof(info), None):
+            raise SourceGuardError("cannot inspect process job termination")
+        return info
+
+    def _inventory(self):
+        before = self._accounting()
+        listing = _JobProcessList()
+        if not self._kernel.QueryInformationJobObject(self._handle, 3, ctypes.byref(listing),
+                                                      ctypes.sizeof(listing), None):
+            raise SourceGuardError("cannot obtain a bounded process inventory")
+        ids = list(listing.ids[:listing.count])
+        if (listing.count > 256 or listing.count != listing.assigned or len(set(ids)) != listing.count
+                or before.active_processes != listing.count):
+            raise SourceGuardError("process inventory is incomplete or changed")
+        for pid in ids:
+            if pid not in self._processes:
+                self._remember(pid)
+            else:
+                member = wintypes.BOOL()
+                if (not self._kernel.IsProcessInJob(self._processes[pid], self._handle, ctypes.byref(member))
+                        or not member.value):
+                    raise SourceGuardError("retained process is no longer the listed job member")
+        after = self._accounting()
+        if (after.total_processes != before.total_processes or after.active_processes != listing.count
+                or after.total_processes != len(self._processes)):
+            raise SourceGuardError("lifetime process inventory could not be established")
+        return after.total_processes
+
+    def _close_processes(self):
+        if self._closing_process:
+            raise SourceGuardError("a process-handle close has an unknown outcome")
+        failures = []
+        for pid, handle in tuple(self._processes.items()):
+            self._closing_process = True
+            closed = self._kernel.CloseHandle(handle)
+            if closed:
+                del self._processes[pid]
+            else:
+                failures.append(pid)
+            self._closing_process = False
+        if failures:
+            raise SourceGuardError("cannot close all retained process handles")
 
     def terminate_and_wait(self, timeout=5):
-        """Terminate assigned processes and wait for the entire job to drain."""
-        if self._handle is None or not 0 < timeout <= 10:
+        """Terminate and confirm all inventoried job process handles signal.
+
+        Missing, raced or unobservable lifetime members make confirmation fail;
+        termination is still requested, and retained handles remain retryable.
+        """
+        if self._handle is None or self._closing_job or not 0 < timeout <= 10:
             raise SourceGuardError("invalid job termination or timeout")
-        if not self._kernel.TerminateJobObject(self._handle, 1):
-            raise SourceGuardError("cannot terminate the process job")
+        if self._confirmed:
+            self._close_processes()
+            return
+        inventory_error = None
+        if not self._stopping:
+            self._stopping = True
+            try:
+                self._inventory_total = self._inventory()
+            except BaseException as error:
+                self._unconfirmed = True
+                inventory_error = error
+        try:
+            terminated = self._kernel.TerminateJobObject(self._handle, 1)
+        except BaseException as error:
+            if (isinstance(inventory_error, (KeyboardInterrupt, SystemExit))
+                    and not isinstance(error, (KeyboardInterrupt, SystemExit))):
+                raise inventory_error from error
+            raise
+        if not terminated:
+            error = SourceGuardError("cannot terminate the process job")
+            if isinstance(inventory_error, (KeyboardInterrupt, SystemExit)):
+                raise inventory_error from error
+            raise error
+        if inventory_error is not None:
+            raise inventory_error
+        if self._unconfirmed:
+            raise SourceGuardError("job lifetime process inventory remains unconfirmed")
         deadline = time.monotonic() + timeout
         while True:
-            info = _JobAccounting()
-            if not self._kernel.QueryInformationJobObject(self._handle, 1, ctypes.byref(info),
-                                                          ctypes.sizeof(info), None):
-                raise SourceGuardError("cannot inspect process job termination")
+            info = self._accounting()
+            if info.total_processes != self._inventory_total:
+                self._unconfirmed = True
+                raise SourceGuardError("a process joined after the inventory")
             if info.active_processes == 0:
-                return
+                break
             if time.monotonic() >= deadline:
                 raise SourceGuardError("process job did not drain")
             time.sleep(0.05)
+        for handle in self._processes.values():
+            remaining = max(0, min(10000, int((deadline - time.monotonic()) * 1000)))
+            result = self._kernel.WaitForSingleObject(handle, remaining)
+            if result != 0:  # WAIT_TIMEOUT and WAIT_FAILED both leave cleanup unconfirmed.
+                raise SourceGuardError("a job process handle did not signal")
+        final = self._accounting()
+        if final.total_processes != self._inventory_total or final.active_processes != 0:
+            self._unconfirmed = True
+            raise SourceGuardError("job membership changed during termination")
+        self._confirmed = True
+        self._close_processes()
 
     def close(self):
+        self._close_processes()
+        if self._closing_job:
+            raise SourceGuardError("a job-handle close has an unknown outcome")
         if self._handle is not None:
-            if not self._kernel.CloseHandle(self._handle):
+            self._closing_job = True
+            closed = self._kernel.CloseHandle(self._handle)
+            if not closed:
+                self._closing_job = False
                 raise SourceGuardError("cannot close the process job")
             self._handle = None
+            self._closing_job = False
 
     def __enter__(self):
         if self._handle is None:
@@ -180,6 +310,7 @@ class SourceFileLease:
         self._handles = []
         self._kernel = None
         self._active = False
+        self._closing = False
 
     def __enter__(self):
         if self._kernel is not None:
@@ -207,17 +338,22 @@ class SourceFileLease:
     def _close(self):
         # Partial cleanup is quarantine, not an active complete lease.
         self._active = False
+        if self._closing:
+            raise SourceGuardError("a source-handle close has an unknown outcome")
         while self._handles:
             handle = self._handles[-1]
+            self._closing = True
             try:
                 closed = self._kernel.CloseHandle(handle)
             except OSError as error:
                 raise SourceGuardError("source protection could not be released") from error
             if not closed:
+                self._closing = False
                 raise SourceGuardError("source protection could not be released")
             # Remove each confirmed close immediately; a failure retains the
             # remaining handles and requires quarantine until cleanup succeeds.
             self._handles.pop()
+            self._closing = False
 
     def close(self):
         """Retry release of any handles retained after a cleanup failure."""
@@ -277,6 +413,7 @@ class PrivateEmptyCache:
         self._denied = False
         self._used = False
         self._active = False
+        self._closing = False
 
     def __enter__(self):
         if self._used:
@@ -305,10 +442,16 @@ class PrivateEmptyCache:
 
     def _cleanup(self):
         self._active = False
+        if self._closing:
+            raise SourceGuardError("a cache-handle close has an unknown outcome")
         if self._handle is not None:
-            if not self._kernel.CloseHandle(self._handle):
+            self._closing = True
+            closed = self._kernel.CloseHandle(self._handle)
+            if not closed:
+                self._closing = False
                 raise SourceGuardError("cache directory protection could not be released")
             self._handle = None
+            self._closing = False
         if self._denied:
             _icacls(self.path, "/remove:d", "*S-1-1-0")
             self._denied = False
@@ -343,6 +486,7 @@ class InheritableHandles:
         self._originals = tuple(handles)
         self._duplicates = []
         self._kernel = None
+        self._closing = False
 
     def __enter__(self):
         if self._kernel is not None:
@@ -372,10 +516,16 @@ class InheritableHandles:
     def close(self):
         if self._kernel is None:
             raise SourceGuardError("inheritable handle list was never entered")
+        if self._closing:
+            raise SourceGuardError("a duplicate-handle close has an unknown outcome")
         while self._duplicates:
-            if not self._kernel.CloseHandle(self._duplicates[-1]):
+            self._closing = True
+            closed = self._kernel.CloseHandle(self._duplicates[-1])
+            if not closed:
+                self._closing = False
                 raise SourceGuardError("cannot release an inherited-handle duplicate")
             self._duplicates.pop()
+            self._closing = False
 
     def __exit__(self, exc_type, exc, tb):
         self.close()
