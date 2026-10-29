@@ -45,17 +45,25 @@ custodian; the ledger cannot discover undisclosed copies.
 
 `looking_glass.agreement_phase_ledger.initialize_study_ledger` imports the
 already-used natural discovery claim and binding with independently supplied
-SHA-256 pins, checks the completed, reaped/drained owner receipt, and inventories
-the supplied quiescent natural and prior evidence paths. The known preflight
+SHA-256 pins. Independently pinned published audit and launcher-terminal
+receipts bind the completed, reaped/drained owner and its journal and
+content-addressed tensor inventory; their file hashes and tensor totals are
+checked against the supplied quiescent natural evidence. The known preflight
 payload must be present. Its `prior_unique_tensor_bytes` argument is a trusted
 audited subtotal: duplicate preflight copies count once logically, and all
 other previously retained unique tensor payloads must be included. The caller
 must supply every study-evidence path; this cooperative component cannot prove
-that its list is complete. Its conservative imported-natural check counts all
-natural evidence-file bytes against the natural logical share as an upper bound,
-which may reject an otherwise valid larger physical copy. File contents and
-sizes are checked again before any later claim; a changed inventory requires new
-review. No natural model forward is run by initialization.
+that its list is complete. The required `natural_unique_tensor_bytes` subtotal
+must cover every distinct retained natural tensor, including orphan evidence
+and uncompressed payloads inside archives; deduplicate only exact identical
+snapshots. It must be at least the supervisor's reported retained-tensor bytes
+and fit the 128 MiB logical share. That report is a lower bound, not proof that
+the caller's complete inventory contains no additional tensors. Natural
+evidence-file copies are counted separately against its 224 MiB physical
+share. File contents and sizes are checked again before any later claim; a
+changed inventory requires new review. No natural model forward is run by
+initialization. This revised record uses ledger schema v2; an incomplete or
+older ledger is not automatically upgraded or replaced.
 
 Each launcher calls `claim_phase(ledger_path, phase, output_path=attempt_dir)`
 once at its execution boundary. The output must not already exist, its parent

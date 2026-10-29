@@ -28,7 +28,7 @@ PHASE_LIMITS = MappingProxyType({
     'injection_discovery': (48 * _MIB, 128 * _MIB),
     'injection_heldout': (72 * _MIB, 192 * _MIB),
 })
-_SCHEMA = 'mlg-agreement-phase-ledger-v1'
+_SCHEMA = 'mlg-agreement-phase-ledger-v2'
 _MAX_FILES = 8192
 _MAX_INVENTORY = 512 * 1024
 _MAX_JSON = 4 * _MIB
@@ -174,6 +174,42 @@ def _phase_snapshot():
     return {phase: list(limits) for phase, limits in PHASE_LIMITS.items()}
 
 
+def _check_natural_audit(natural, owner_inventory, audit, binding, natural_files):
+    audit_source = _digest(binding.get('independent_natural_audit_source_sha256'), 'audit source digest')
+    if (audit.get('schema') != 'mlg-independent-natural-discovery-audit-v1'
+            or audit.get('status') != 'independent_saved_evidence_pass'
+            or audit.get('audit_source_sha256') != audit_source):
+        raise LedgerError('independent natural audit does not match the binding')
+    attempt = natural / 'owner' / 'attempt'
+    for name, owner_key, audit_key in (
+        ('started.json', 'started_sha256', 'journal_started_sha256'),
+        ('events.jsonl', 'events_sha256', 'journal_event_sha256'),
+        ('terminal.json', 'terminal_sha256', 'journal_terminal_sha256'),
+    ):
+        expected = _digest(owner_inventory.get(owner_key), owner_key)
+        record = natural_files.get(os.path.normcase(str(attempt / name)))
+        if audit.get(audit_key) != expected or record is None or record[1] != expected:
+            raise LedgerError('natural journal differs from the owner and independent audit')
+    hashes = owner_inventory.get('tensor_sha256')
+    if type(hashes) is not list or len(hashes) > _MAX_FILES:
+        raise LedgerError('invalid natural tensor inventory')
+    for value in hashes:
+        _digest(value, 'natural tensor digest')
+    if len(set(hashes)) != len(hashes):
+        raise LedgerError('duplicate natural tensor digest')
+    tensor_dir = os.path.normcase(str(attempt / 'tensors'))
+    actual = {p: record for p, record in natural_files.items()
+              if os.path.dirname(p) == tensor_dir and p.endswith('.f32le')}
+    wanted = {os.path.normcase(str(attempt / 'tensors' / (h + '.f32le'))) for h in hashes}
+    if set(actual) != wanted or any(actual[p][1] != Path(p).stem for p in actual):
+        raise LedgerError('natural tensor files differ from the owner inventory')
+    tensor_bytes = sum(record[0] for record in actual.values())
+    if (type(audit.get('tensor_count')) is not int or audit['tensor_count'] != len(hashes)
+            or type(audit.get('tensor_bytes')) is not int or audit['tensor_bytes'] != tensor_bytes
+            or owner_inventory.get('retained_tensor_bytes') != tensor_bytes):
+        raise LedgerError('natural tensor totals differ from the independent audit')
+
+
 def _connect(path):
     db = sqlite3.connect(str(path), timeout=30, isolation_level=None)
     try:
@@ -195,8 +231,9 @@ def _overlap(left: Path, right: Path) -> bool:
 
 def initialize_study_ledger(
     ledger_path, *, natural_claim_path, natural_binding_path, prior_paths,
-    prior_unique_tensor_bytes, expected_natural_claim_sha256,
-    expected_natural_binding_sha256, natural_extra_paths=(),
+    prior_unique_tensor_bytes, natural_unique_tensor_bytes, expected_natural_claim_sha256,
+    expected_natural_binding_sha256, natural_audit_path, expected_natural_audit_sha256,
+    expected_natural_terminal_sha256, natural_extra_paths=(),
 ):
     """Import the drained natural attempt and its explicit evidence inventory.
 
@@ -205,18 +242,25 @@ def initialize_study_ledger(
     verifies its completeness and the unique-tensor subtotal. The natural
     claim and binding are automatically included as prior physical files.
     ``natural_extra_paths`` lists copies/staging charged to natural's share.
+    ``natural_unique_tensor_bytes`` must include all unique retained tensors,
+    including orphan and uncompressed archive payloads; identical copies are
+    counted once. The caller verifies this subtotal independently.
     All paths must be absolute and quiescent. The ledger file is created once;
     an interrupted initialization is not automatically retried or replaced.
     """
     ledger = _path(ledger_path, existing=False)
     claim_path = _path(natural_claim_path, existing=True)
     binding_path = _path(natural_binding_path, existing=True)
+    audit_path = _path(natural_audit_path, existing=True)
     raw_claim, claim = _read_json(claim_path)
     raw_binding, binding = _read_json(binding_path)
+    raw_audit, audit = _read_json(audit_path)
     if hashlib.sha256(raw_claim).hexdigest() != _digest(expected_natural_claim_sha256, 'expected_natural_claim_sha256'):
         raise LedgerError('natural claim digest mismatch')
     if hashlib.sha256(raw_binding).hexdigest() != _digest(expected_natural_binding_sha256, 'expected_natural_binding_sha256'):
         raise LedgerError('natural binding digest mismatch')
+    if hashlib.sha256(raw_audit).hexdigest() != _digest(expected_natural_audit_sha256, 'expected_natural_audit_sha256'):
+        raise LedgerError('natural audit digest mismatch')
     if claim.get('schema') != 'mlg-natural-study-claim-v1':
         raise LedgerError('unknown natural claim')
     if claim.get('binding_sha256') != hashlib.sha256(raw_binding).hexdigest():
@@ -232,6 +276,8 @@ def initialize_study_ledger(
     if not natural.is_dir():
         raise LedgerError('natural output is not a directory')
     terminal_raw, terminal = _read_json(natural / 'launcher-terminal.json')
+    if hashlib.sha256(terminal_raw).hexdigest() != _digest(expected_natural_terminal_sha256, 'expected_natural_terminal_sha256'):
+        raise LedgerError('natural terminal digest mismatch')
     if (terminal.get('status') != 'evidence_complete' or terminal.get('child_started') is not True
             or terminal.get('cleanup_verified') is not True or terminal.get('owner_record') != 'owner/supervisor.json'):
         raise LedgerError('natural owner has not been verified complete')
@@ -242,25 +288,40 @@ def initialize_study_ledger(
             or owner['exit_code'] != 0 or any(owner.get(k) is not True for k in
                     ('child_reaped', 'job_drained', 'job_closed', 'cleanup_verified'))):
         raise LedgerError('natural owner is not drained and reaped')
+    owner_inventory = owner.get('inventory')
+    if type(owner_inventory) is not dict:
+        raise LedgerError('natural owner tensor subtotal is missing')
+    reported_unique = _nat(owner_inventory.get('retained_tensor_bytes'), 'owner retained_tensor_bytes')
+    natural_unique = _nat(natural_unique_tensor_bytes, 'natural_unique_tensor_bytes')
+    if natural_unique < reported_unique or natural_unique > PHASE_LIMITS['natural_discovery'][0]:
+        raise LedgerError('natural logical subtotal is outside its allowed bounds')
     prior_unique = _nat(prior_unique_tensor_bytes, 'prior_unique_tensor_bytes')
     if prior_unique < PREFLIGHT_BYTES or prior_unique + sum(x[0] for x in PHASE_LIMITS.values()) > STUDY_LOGICAL_LIMIT:
         raise LedgerError('prior logical evidence exceeds the available remainder')
     prior_roots = [claim_path, binding_path] + [_path(p, existing=True) for p in prior_paths]
-    natural_roots = [natural] + [_path(p, existing=True) for p in natural_extra_paths]
+    natural_roots = [natural, audit_path] + [_path(p, existing=True) for p in natural_extra_paths]
     if any(_overlap(ledger, p) for p in prior_roots + natural_roots):
         raise LedgerError('ledger path overlaps inventoried evidence')
     natural_files = _files(natural_roots)
     prior_files = _files(prior_roots)
+    for path, raw, inventory in (
+        (claim_path, raw_claim, prior_files), (binding_path, raw_binding, prior_files),
+        (audit_path, raw_audit, natural_files),
+        (natural / 'launcher-terminal.json', terminal_raw, natural_files),
+        (natural / 'owner' / 'supervisor.json', owner_raw, natural_files),
+    ):
+        entry = inventory.get(os.path.normcase(str(path)))
+        if entry != [len(raw), hashlib.sha256(raw).hexdigest()]:
+            raise LedgerError('pinned evidence changed during reconciliation')
+    _check_natural_audit(natural, owner_inventory, audit, binding, natural_files)
     if natural_files.keys() & prior_files.keys():
         raise LedgerError('natural and prior inventories overlap')
     if [PREFLIGHT_BYTES, PREFLIGHT_SHA256] not in prior_files.values():
         raise LedgerError('known preflight payload is absent')
     natural_disk = sum(v[0] for v in natural_files.values())
     prior_disk = sum(v[0] for v in prior_files.values())
-    # Counting every natural file as a possible unique payload is conservative;
-    # actual logical accounting remains the producer/auditor's responsibility.
-    if natural_disk > PHASE_LIMITS['natural_discovery'][0] or natural_disk > PHASE_LIMITS['natural_discovery'][1]:
-        raise LedgerError('natural evidence exceeds its conservative imported bound')
+    if natural_disk > PHASE_LIMITS['natural_discovery'][1]:
+        raise LedgerError('natural evidence exceeds its physical share')
     if prior_disk + LEDGER_DISK_RESERVE + sum(x[1] for x in PHASE_LIMITS.values()) > STUDY_DISK_LIMIT:
         raise LedgerError('prior physical evidence exceeds the available remainder')
     inventory = json.dumps({'natural': natural_files, 'prior': prior_files}, sort_keys=True, separators=(',', ':'))
@@ -269,8 +330,10 @@ def initialize_study_ledger(
     meta = json.dumps({
         'schema': _SCHEMA, 'natural_claim_sha256': hashlib.sha256(raw_claim).hexdigest(),
         'natural_binding_sha256': hashlib.sha256(raw_binding).hexdigest(),
+        'natural_audit_sha256': hashlib.sha256(raw_audit).hexdigest(),
         'natural_terminal_sha256': hashlib.sha256(terminal_raw).hexdigest(),
         'prior_unique_tensor_bytes': prior_unique, 'prior_physical_bytes': prior_disk,
+        'natural_unique_tensor_bytes': natural_unique, 'natural_reported_tensor_bytes': reported_unique,
         'natural_physical_bytes': natural_disk, 'ledger_disk_reserve_bytes': LEDGER_DISK_RESERVE,
         'phase_limits': _phase_snapshot(), 'study_logical_limit': STUDY_LOGICAL_LIMIT,
         'study_disk_limit': STUDY_DISK_LIMIT,
@@ -322,7 +385,10 @@ def claim_phase(ledger_path, phase, *, output_path) -> PhaseGrant:
             raise LedgerError('phase budget differs from the initialized ledger')
         prior_unique = _nat(meta.get('prior_unique_tensor_bytes'), 'prior_unique_tensor_bytes')
         prior_disk = _nat(meta.get('prior_physical_bytes'), 'prior_physical_bytes')
+        natural_unique = _nat(meta.get('natural_unique_tensor_bytes'), 'natural_unique_tensor_bytes')
+        reported_unique = _nat(meta.get('natural_reported_tensor_bytes'), 'natural_reported_tensor_bytes')
         if (prior_unique < PREFLIGHT_BYTES
+                or natural_unique < reported_unique or natural_unique > PHASE_LIMITS['natural_discovery'][0]
                 or prior_unique + sum(x[0] for x in PHASE_LIMITS.values()) > STUDY_LOGICAL_LIMIT
                 or prior_disk + LEDGER_DISK_RESERVE + sum(x[1] for x in PHASE_LIMITS.values()) > STUDY_DISK_LIMIT):
             raise LedgerError('ledger totals exceed the study limits')
@@ -335,6 +401,8 @@ def claim_phase(ledger_path, phase, *, output_path) -> PhaseGrant:
         if (sum(v[0] for v in inventory['prior'].values()) != prior_disk
                 or sum(v[0] for v in inventory['natural'].values()) != meta.get('natural_physical_bytes')):
             raise LedgerError('stored inventory totals differ')
+        if meta['natural_physical_bytes'] > PHASE_LIMITS['natural_discovery'][1]:
+            raise LedgerError('natural evidence exceeds its physical share')
         claims = db.execute('SELECT phase, output, logical, disk FROM claims').fetchall()
         if any(p not in PHASE_LIMITS or (logical, disk) != PHASE_LIMITS[p]
                for p, _, logical, disk in claims):
