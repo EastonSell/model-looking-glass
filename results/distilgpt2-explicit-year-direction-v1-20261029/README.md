@@ -100,8 +100,8 @@ Across the 24 pair/wording observations, the smallest final-minus-position
 was +0.312084. The rotated control was not uniformly inert: its high-direction
 signed effects were positive in all 24 observations, while its low-direction
 signed effects were negative in 18/24. The final-action `T` values ranged
-from -0.028629 to +0.004956. The criterion compares the control magnitude
-with the main effect; it does not assume the rotated control is a null.
+from -0.028629 to +0.004956. The criterion compares each signed control `S`
+with the signed main `S`; it does not assume the rotated control is a null.
 Self replacements had exact zero effect.
 
 The common dose was half the smallest of the three wording-specific natural
@@ -134,14 +134,15 @@ are preserved. The receipt is an operator-observed direct-process exit, not
 independent proof of execution or descendant-process custody. The cooperative
 CPU/network guard is not a native security boundary.
 
-The v21 inventory reserved all 48 inputs before the run. Its successor v22
-merged after the first observed study action, changed previously reserved
-statuses only, and kept the public input/prefix set unchanged; the v21 launch
-record is not a claim that v22 was observed before execution. A separate
-status-only v23 merged after the process exited and also preserved the input
-and prefix set. A voluntary trusted comparison against the existing natural
-protected split reported no complete-row-prefix collision; it does not
-establish absence of other hidden or pretraining exposures.
+The v21 inventory reserved all 48 inputs before the run. Live operator
+coordination reported v22 merged after the first observed study action. V22
+updated statuses and a prior-use annotation for previously reserved cases,
+while preserving the public input/prefix set; its timing is not independently
+timestamped execution proof. A separate status-only v23 was reported merged
+after the process exited and also preserved that set. A voluntary trusted
+comparison against the existing natural protected split reported no
+complete-row-prefix collision; it does not establish absence of other hidden
+or pretraining exposures.
 
 Two independent, model-free saved-byte replays reconstructed all 336 logits,
 scores, gates, action order, doses, planned/actual intervention bits and
