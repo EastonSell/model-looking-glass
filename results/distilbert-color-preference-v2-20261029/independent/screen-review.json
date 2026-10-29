@@ -1,0 +1,474 @@
+{
+  "candidate_eligible": {
+    "banana": false,
+    "lemon": false,
+    "strawberry": false
+  },
+  "journal_sha256": "deab8b0abb0a5a6df3ea754b4f8c45df042b8c9f47d73417e516eaa381c1140e",
+  "manifest_sha256": "f938cee4acab09d70f3d827e6172a62d273a5c621c35b6e3e47bd46303aa5a10",
+  "rows": [
+    {
+      "case_id": "banana-discovery",
+      "eligible": true,
+      "factual_minus_purple": 0.3154611587524414,
+      "factual_minus_purple_exact": {
+        "denominator": 1048576,
+        "numerator": 330785
+      },
+      "object": "banana",
+      "pair_probability_mass": 0.13279057833319727,
+      "role": "discovery",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -2.8822479780325536,
+          "logit": 10.89854621887207,
+          "probability": 0.05600871485005057,
+          "rank": 4
+        },
+        "factual": {
+          "id": 3756,
+          "log_probability": -2.566786819280112,
+          "logit": 11.214007377624512,
+          "probability": 0.07678186348314667,
+          "rank": 2
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -5.230119758428062,
+          "logit": 8.550674438476562,
+          "probability": 0.005352884211273883,
+          "rank": 30
+        }
+      },
+      "top_five_ids": [
+        14182,
+        3756,
+        17804,
+        6379,
+        24519
+      ],
+      "top_gap": 0.5017461776733398,
+      "top_ids": [
+        14182
+      ],
+      "top_log_probability": -2.0650406416067724,
+      "top_logit": 11.715753555297852,
+      "top_probability": 0.1268131365736323,
+      "top_representative": 14182,
+      "unique_top": 14182
+    },
+    {
+      "case_id": "banana-calibration-01",
+      "eligible": true,
+      "factual_minus_purple": 0.5116329193115234,
+      "factual_minus_purple_exact": {
+        "denominator": 524288,
+        "numerator": 268243
+      },
+      "object": "banana",
+      "pair_probability_mass": 0.20901269536619463,
+      "role": "calibration-01",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -2.546694174579905,
+          "logit": 11.211787223815918,
+          "probability": 0.07834021748503246,
+          "rank": 2
+        },
+        "factual": {
+          "id": 3756,
+          "log_probability": -2.0350612552683818,
+          "logit": 11.723420143127441,
+          "probability": 0.13067247788116218,
+          "rank": 1
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -2.871560469440745,
+          "logit": 10.886920928955078,
+          "probability": 0.056610518634484464,
+          "rank": 4
+        }
+      },
+      "top_five_ids": [
+        3756,
+        6379,
+        4589,
+        2630,
+        14182
+      ],
+      "top_gap": 0.5116329193115234,
+      "top_ids": [
+        3756
+      ],
+      "top_log_probability": -2.0350612552683818,
+      "top_logit": 11.723420143127441,
+      "top_probability": 0.13067247788116218,
+      "top_representative": 3756,
+      "unique_top": 3756
+    },
+    {
+      "case_id": "banana-calibration-02",
+      "eligible": false,
+      "factual_minus_purple": -0.6374244689941406,
+      "factual_minus_purple_exact": {
+        "denominator": 262144,
+        "numerator": -167097
+      },
+      "object": "banana",
+      "pair_probability_mass": 0.18497195495072627,
+      "role": "calibration-02",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -2.111937513584933,
+          "logit": 11.389079093933105,
+          "probability": 0.12100329364068194,
+          "rank": 1
+        },
+        "factual": {
+          "id": 3756,
+          "log_probability": -2.7493619825790736,
+          "logit": 10.751654624938965,
+          "probability": 0.06396866131004433,
+          "rank": 4
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -5.315966596836886,
+          "logit": 8.185050010681152,
+          "probability": 0.004912528025646185,
+          "rank": 24
+        }
+      },
+      "top_five_ids": [
+        6379,
+        4589,
+        5061,
+        3756,
+        14182
+      ],
+      "top_gap": 0.15771770477294922,
+      "top_ids": [
+        6379
+      ],
+      "top_log_probability": -2.111937513584933,
+      "top_logit": 11.389079093933105,
+      "top_probability": 0.12100329364068194,
+      "top_representative": 6379,
+      "unique_top": 6379
+    },
+    {
+      "case_id": "strawberry-discovery",
+      "eligible": false,
+      "factual_minus_purple": -1.5162506103515625,
+      "factual_minus_purple_exact": {
+        "denominator": 65536,
+        "numerator": -99369
+      },
+      "object": "strawberry",
+      "pair_probability_mass": 0.08675115804260619,
+      "role": "discovery",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -2.6431798886894406,
+          "logit": 11.242087364196777,
+          "probability": 0.0711347090719297,
+          "rank": 2
+        },
+        "factual": {
+          "id": 2417,
+          "log_probability": -4.159430499041003,
+          "logit": 9.725836753845215,
+          "probability": 0.015616448970676513,
+          "rank": 14
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -5.2001333188652215,
+          "logit": 8.685133934020996,
+          "probability": 0.005515829007675584,
+          "rank": 27
+        }
+      },
+      "top_five_ids": [
+        14182,
+        6379,
+        5061,
+        24519,
+        3756
+      ],
+      "top_gap": 0.8321037292480469,
+      "top_ids": [
+        14182
+      ],
+      "top_log_probability": -1.8110761594413938,
+      "top_logit": 12.074191093444824,
+      "top_probability": 0.16347811358976994,
+      "top_representative": 14182,
+      "unique_top": 14182
+    },
+    {
+      "case_id": "strawberry-calibration-01",
+      "eligible": false,
+      "factual_minus_purple": -1.0046195983886719,
+      "factual_minus_purple_exact": {
+        "denominator": 262144,
+        "numerator": -263355
+      },
+      "object": "strawberry",
+      "pair_probability_mass": 0.12133809168567493,
+      "role": "calibration-01",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -2.421195866177811,
+          "logit": 11.208799362182617,
+          "probability": 0.08881534266247328,
+          "rank": 2
+        },
+        "factual": {
+          "id": 2417,
+          "log_probability": -3.4258154645664827,
+          "logit": 10.204179763793945,
+          "probability": 0.03252274902320163,
+          "rank": 10
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -2.8248747602207795,
+          "logit": 10.805120468139648,
+          "probability": 0.05931608509767354,
+          "rank": 5
+        }
+      },
+      "top_five_ids": [
+        3756,
+        6379,
+        14182,
+        5061,
+        2630
+      ],
+      "top_gap": 0.25183963775634766,
+      "top_ids": [
+        3756
+      ],
+      "top_log_probability": -2.169356228421463,
+      "top_logit": 11.460638999938965,
+      "top_probability": 0.1142511448805779,
+      "top_representative": 3756,
+      "unique_top": 3756
+    },
+    {
+      "case_id": "strawberry-calibration-02",
+      "eligible": false,
+      "factual_minus_purple": -1.469651222229004,
+      "factual_minus_purple_exact": {
+        "denominator": 1048576,
+        "numerator": -1541041
+      },
+      "object": "strawberry",
+      "pair_probability_mass": 0.1514408736358875,
+      "role": "calibration-02",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -2.0945788003133754,
+          "logit": 11.32775592803955,
+          "probability": 0.12312209172045575,
+          "rank": 1
+        },
+        "factual": {
+          "id": 2417,
+          "log_probability": -3.5642300225423793,
+          "logit": 9.858104705810547,
+          "probability": 0.02831878191543179,
+          "rank": 11
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -5.22237974178066,
+          "logit": 8.199954986572266,
+          "probability": 0.005394476378573144,
+          "rank": 22
+        }
+      },
+      "top_five_ids": [
+        6379,
+        5061,
+        14182,
+        6949,
+        4589
+      ],
+      "top_gap": 0.008349418640136719,
+      "top_ids": [
+        6379
+      ],
+      "top_log_probability": -2.0945788003133754,
+      "top_logit": 11.32775592803955,
+      "top_probability": 0.12312209172045575,
+      "top_representative": 6379,
+      "unique_top": 6379
+    },
+    {
+      "case_id": "lemon-discovery",
+      "eligible": true,
+      "factual_minus_purple": 0.14653682708740234,
+      "factual_minus_purple_exact": {
+        "denominator": 1048576,
+        "numerator": 153655
+      },
+      "object": "lemon",
+      "pair_probability_mass": 0.11914265320645441,
+      "role": "discovery",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -2.896531063605783,
+          "logit": 10.900224685668945,
+          "probability": 0.055214423551632016,
+          "rank": 3
+        },
+        "factual": {
+          "id": 3756,
+          "log_probability": -2.7499942365183805,
+          "logit": 11.046761512756348,
+          "probability": 0.06392822965482238,
+          "rank": 2
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -5.015363651801584,
+          "logit": 8.781392097473145,
+          "probability": 0.006635218689198908,
+          "rank": 24
+        }
+      },
+      "top_five_ids": [
+        14182,
+        3756,
+        6379,
+        17804,
+        5061
+      ],
+      "top_gap": 0.5698137283325195,
+      "top_ids": [
+        14182
+      ],
+      "top_log_probability": -2.180180508185861,
+      "top_logit": 11.616575241088867,
+      "top_probability": 0.1130211275603439,
+      "top_representative": 14182,
+      "unique_top": 14182
+    },
+    {
+      "case_id": "lemon-calibration-01",
+      "eligible": true,
+      "factual_minus_purple": 0.5106849670410156,
+      "factual_minus_purple_exact": {
+        "denominator": 262144,
+        "numerator": 133873
+      },
+      "object": "lemon",
+      "pair_probability_mass": 0.2113646340445828,
+      "role": "calibration-01",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -2.53491185843638,
+          "logit": 10.879961013793945,
+          "probability": 0.0792687058245014,
+          "rank": 2
+        },
+        "factual": {
+          "id": 3756,
+          "log_probability": -2.0242268913953643,
+          "logit": 11.390645980834961,
+          "probability": 0.13209592822008143,
+          "rank": 1
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -2.7089497917859893,
+          "logit": 10.705923080444336,
+          "probability": 0.06660672092177419,
+          "rank": 4
+        }
+      },
+      "top_five_ids": [
+        3756,
+        6379,
+        4589,
+        2630,
+        5061
+      ],
+      "top_gap": 0.5106849670410156,
+      "top_ids": [
+        3756
+      ],
+      "top_log_probability": -2.0242268913953643,
+      "top_logit": 11.390645980834961,
+      "top_probability": 0.13209592822008143,
+      "top_representative": 3756,
+      "unique_top": 3756
+    },
+    {
+      "case_id": "lemon-calibration-02",
+      "eligible": false,
+      "factual_minus_purple": -0.5138044357299805,
+      "factual_minus_purple_exact": {
+        "denominator": 1048576,
+        "numerator": -538763
+      },
+      "object": "lemon",
+      "pair_probability_mass": 0.17050297686388546,
+      "role": "calibration-02",
+      "tokens": {
+        "counterfactual": {
+          "id": 6379,
+          "log_probability": -2.2378901371418256,
+          "logit": 11.14250659942627,
+          "probability": 0.106683354341461,
+          "rank": 1
+        },
+        "factual": {
+          "id": 3756,
+          "log_probability": -2.751694572871806,
+          "logit": 10.628702163696289,
+          "probability": 0.06381962252242444,
+          "rank": 4
+        },
+        "wrong_target": {
+          "id": 2630,
+          "log_probability": -5.060416115230204,
+          "logit": 8.31998062133789,
+          "probability": 0.006342919578248228,
+          "rank": 22
+        }
+      },
+      "top_five_ids": [
+        6379,
+        4589,
+        5061,
+        3756,
+        14182
+      ],
+      "top_gap": 0.040030479431152344,
+      "top_ids": [
+        6379
+      ],
+      "top_log_probability": -2.2378901371418256,
+      "top_logit": 11.14250659942627,
+      "top_probability": 0.106683354341461,
+      "top_representative": 6379,
+      "unique_top": 6379
+    }
+  ],
+  "scope": "Saved full-logit and input-record consistency only; execution, source, process identity and uncited history require separate evidence.",
+  "selected_object": null,
+  "selection_rule": "all three exact saved-f32 factual-minus-purple margins strictly exceed 1/10",
+  "status": "baseline-ineligible"
+}
