@@ -20,9 +20,13 @@ its absolute document, evidence and source-manifest paths plus the independently
 approved full profile ID. Current profiles are checked during preparation and
 again immediately before startup; the child independently reconstructs live
 runtime identity, the fixed token case and ordered stage seeds under its lease.
-A fixed-commitment owner, a supervisor with the reviewed launch-grant and child
-custody contract, and collector source must also be present in the selected
-checkout before launch. A native spawn interrupted before Python obtains a
+A fixed-commitment owner, reviewed worker/broker result and retirement custody,
+a supervisor with the reviewed launch-grant and child custody contract, and
+collector source must also be present in the selected checkout before launch.
+The collector compatibility marker identifies the custody-bound worker path;
+an older direct-worker collector cannot authorize the repaired service.
+The owner must export the completion-custody contract marker only after that
+worker/broker wiring has passed review. A native spawn interrupted before Python obtains a
 usable child handle remains uncertain and must retain the unsafe marker; the
 contract must prevent an ungranted child from doing GPU work without claiming
 that an unknown child has been reaped. This compatibility check does not prove
@@ -77,5 +81,5 @@ and `IPC.md` for these boundaries and the supervisor's quarantine behavior.
 CPU tests exercise the prepared command, identity and configuration, repeated
 preflight and cancellation gate. They do not establish a measured profile,
 successful CUDA execution, or a GPU service lifecycle. Actual execution stays
-gated until the matching collector, fixed-commitment owner and their independent
-reviews are complete.
+gated until the matching collector, fixed-commitment owner, result/retirement
+custody and their independent reviews are complete.

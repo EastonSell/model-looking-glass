@@ -58,11 +58,15 @@ The initial model is a small randomly initialized residual network with a contro
 
 The [synthetic causal v1 study](docs/CAUSAL_RESULTS_V1.md) records fixed predictions and tests clean-state patches on 16 public held-out inputs. Its selected injection-site patch and the single random draw, a final-state patch, produced the same measured scalar effects, illustrating why restoration alone does not identify a unique cause. One held-out vector was previously used during development, so the result is explicitly exploratory; the raw run and protocol clarification are preserved alongside the report.
 
+The proposed [synthetic v2 protocol](docs/CAUSAL_CONFIRMATION_V2.md) preserves its original, hash-bound wording. Its separately bound [resource clarification](docs/CAUSAL_CONFIRMATION_V2_RESOURCE_CLARIFICATION.md) supersedes the earlier 64 MiB evidence limit with a 1 GiB aggregate **host-disk** allowance; the current registry separately limits declared artifact payloads to 512 MiB and 128 names. These are storage limits, not GPU VRAM allowances. A complete v2 study has not yet been recorded.
+
 The [DistilBERT agreement pilot](results/bert-agreement-dev-v0-20261028/README.md) observed donor-directed shifts after subject-state patches on four public development examples. All four used plural distractors, so the finding is confounded and a balanced evaluation is needed before making a mechanism claim.
 
 The [DistilBERT GPU calibration](results/bert-gpu-calibration-v1-20261029/README.md) checks patch delivery and allocator cleanup on one previously exposed development pair. It is not a held-out evaluation or a GPU throughput benchmark.
 
 The [DistilGPT2 agreement preflight](results/distilgpt2-agreement-preflight-v1-20261028/README.md) found the grammatical verb preferred on all 16 fixed public development prompts; it establishes a small behavior to investigate, not a held-out or causal result.
+
+The [DistilGPT2 copying screen](results/distilgpt2-copying-dev-v1-20261028/README.md) found higher target log probability after repetition than after each of three first-block shuffles in eight public development families. The shuffles also change local transitions; the observed attention pattern proposes a head for intervention but does not establish a cause.
 
 A [targeted parameter-edit experiment](results/targeted-edit-cpu-v1-20261028/README.md) changed the intended answer preference but failed its preset locality thresholds on public probes. The negative result and a same-host replay are preserved; the study does not establish general capability preservation.
 

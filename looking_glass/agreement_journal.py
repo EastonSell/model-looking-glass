@@ -3,6 +3,9 @@
 This counts immutable retained payload bytes, not transient RAM, CUDA memory,
 allocator reserve, metadata size outside the separate bounds, or disk overhead.
 It does not itself decide whether a study is scientifically complete.
+The creating thread is retained and also holds a thread-local owner token;
+reused thread identifiers or stale dummy-thread objects do not transfer access.
+This cooperative same-process check is not a security boundary.
 """
 
 import hashlib
@@ -64,7 +67,10 @@ class AgreementJournal:
             raise ValueError('attempt needs an absolute path with an existing parent')
         directory.mkdir()
         self._directory = directory
-        self._owner = threading.get_ident()
+        self._owner = threading.current_thread()
+        self._owner_context = threading.local()
+        self._owner_token = object()
+        self._owner_context.token = self._owner_token
         self._max_total = max_total_bytes
         self._max_forward = max_forward_bytes
         self._max_events = max_events
@@ -84,7 +90,8 @@ class AgreementJournal:
         return self._retained
 
     def _check_owner(self):
-        if threading.get_ident() != self._owner:
+        if (threading.current_thread() is not self._owner
+                or getattr(self._owner_context, 'token', None) is not self._owner_token):
             raise JournalError('journal must stay on its creating thread')
         if self._finished:
             raise JournalError('attempt is already terminal')

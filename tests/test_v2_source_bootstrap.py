@@ -19,6 +19,37 @@ def _sha(data):
 
 
 class SourceBootstrapTests(unittest.TestCase):
+    def test_guarded_process_audit_hook_rejects_creation_events(self):
+        code = r'''
+import importlib.util,sys
+spec=importlib.util.spec_from_file_location('bootstrap',sys.argv[1]); module=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module); module._install_process_guard()
+for name in ('subprocess.Popen','_winapi.CreateProcess','os.system','os.spawn','os.posix_spawn',
+             'os.fork','os.forkpty','os.exec','os.startfile','os.startfile/2'):
+    try: sys.audit(name)
+    except module.BootstrapError: pass
+    else: raise AssertionError(f'process event {name} was not rejected')
+'''
+        result = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', code, str(BOOTSTRAP)],
+                                capture_output=True, text=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_guarded_process_audit_hook_detects_suppressed_installation(self):
+        code = r'''
+import importlib.util,sys
+def suppress(event,args):
+    if event=='sys.addaudithook': raise RuntimeError('suppress installation')
+sys.addaudithook(suppress)
+spec=importlib.util.spec_from_file_location('bootstrap',sys.argv[1]); module=importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+try: module._install_process_guard()
+except module.BootstrapError: pass
+else: raise AssertionError('suppressed hook was accepted')
+'''
+        result = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', code, str(BOOTSTRAP)],
+                                capture_output=True, text=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def fixture(self, root, initializer, child=b"VALUE = 41\n"):
         checkout = root / "checkout"
         package = checkout / "looking_glass"
@@ -179,7 +210,10 @@ class SourceBootstrapTests(unittest.TestCase):
     @unittest.skipUnless(os.name == "nt", "Windows inherited protection handles")
     def test_guarded_start_rejects_eof_and_partial_token_before_import(self):
         import msvcrt
-        token = b"model-looking-glass-development-start-v1\n"
+        import platform
+        token = b"model-looking-glass-development-start-v2\n"
+        observed = platform.uname()
+        platform_uname = [observed.system, observed.node, observed.release, observed.version, observed.machine]
         base_python = str(Path(sys.base_prefix) / "python.exe")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -198,8 +232,10 @@ class SourceBootstrapTests(unittest.TestCase):
                         "--sources", str(manifest), "--venv-root", str(venv),
                         "--dependency", str(dependency), "--prefix", str(prefix),
                         "--module", "looking_glass.child", "--require-start"]
-                valid = token + json.dumps({"guard_handles": [handle]}).encode()
-                for payload in (b"", token[:-1], token + b"x", token + b"{}", valid + b"x", valid):
+                valid = token + json.dumps({"guard_handles": [handle], "platform_uname": platform_uname}).encode()
+                wrong_platform = token + json.dumps({"guard_handles": [handle],
+                                                     "platform_uname": ['Windows','','','','wrong']}).encode()
+                for payload in (b"", token[:-1], token + b"x", token + b"{}", valid + b"x", wrong_platform, valid):
                     startup = subprocess.STARTUPINFO()
                     startup.lpAttributeList = {"handle_list": [handle]}
                     os.set_handle_inheritable(handle, True)
@@ -231,8 +267,9 @@ class SourceBootstrapTests(unittest.TestCase):
                     "--venv-root", str(venv), "--dependency", str(dependency),
                     "--prefix", str(prefix), "--module", "looking_glass.child", "--require-start"]
             for handles in ([], [99999999], [True], [1, 1]):
-                payload = (b"model-looking-glass-development-start-v1\n" +
-                           json.dumps({"guard_handles": handles}).encode())
+                payload = (b"model-looking-glass-development-start-v2\n" +
+                           json.dumps({"guard_handles": handles,
+                                       "platform_uname": ['Windows', '', '', '', 'AMD64']}).encode())
                 result = subprocess.run(args, input=payload,
                                         capture_output=True, cwd=checkout,
                                         env={**os.environ, "CUDA_VISIBLE_DEVICES": "-1"}, timeout=15)

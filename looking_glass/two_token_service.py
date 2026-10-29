@@ -24,8 +24,9 @@ from .trusted_service_profile import prepare_trusted_source
 
 
 _REQUIRED_OWNER_CONTRACT = "fixed-two-token-commitments-v1"
+_REQUIRED_COMPLETION_CONTRACT = "service-result-retirement-v1"
 _REQUIRED_SPAWN_CONTRACT = "gated-rooted-child-v1"
-_REQUIRED_COLLECTOR_CONTRACT = "two-token-worker-profile-v1"
+_REQUIRED_COLLECTOR_CONTRACT = "two-token-custody-worker-profile-v1"
 
 
 def _collector_contract_matches(path):
@@ -52,6 +53,7 @@ def _check_owner_contract(repo):
     supervisor = root / "looking_glass" / "supervisor.py"
     try:
         valid = (getattr(_owner_module, "FIXED_SERVICE_OWNER_CONTRACT", None) == _REQUIRED_OWNER_CONTRACT
+                 and getattr(_owner_module, "OWNER_COMPLETION_CUSTODY_CONTRACT", None) == _REQUIRED_COMPLETION_CONTRACT
                  and Path(_owner_module.__file__).resolve(strict=True) == owner.resolve(strict=True)
                  and getattr(_supervisor_module, "SUPERVISOR_LAUNCH_CUSTODY_CONTRACT", None) == _REQUIRED_SPAWN_CONTRACT
                  and Path(_supervisor_module.__file__).resolve(strict=True) == supervisor.resolve(strict=True)
@@ -59,7 +61,7 @@ def _check_owner_contract(repo):
     except (OSError, SyntaxError, TypeError, ValueError):
         valid = False
     if not valid:
-        raise RuntimeError("fixed service owner, launch-custody supervisor or worker profile collector is unavailable")
+        raise RuntimeError("fixed service owner, completion custody, launch-custody supervisor or worker profile collector is unavailable")
 
 
 class _PreparedService:

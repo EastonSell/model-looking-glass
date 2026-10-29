@@ -23,6 +23,21 @@ credential's principal belongs to that exact team. Sharing or disclosing team
 tokens undermines this identity boundary; loopback itself is not server
 authentication against hostile local processes.
 
+The bridge roots a server candidate and its trusted request factory before
+initialization. A failure after custody begins quarantines the bridge and keeps
+the candidate and original exception private for owner-process replacement.
+New connection reservations are rejected while initialization is incomplete;
+a recorded construction failure is itself a quarantine signal.
+`recover_server()` is a trusted-owner lookup for the same fully initialized
+server if its return to the owner was interrupted; it returns `None` while no
+server has been published and rejects quarantined state. The owner must retain
+the entire bridge, server candidate and factory graph until clean disposal or
+process replacement, including after a construction failure, and must
+serialize server creation, start and shutdown. The exact server constructor
+starts no listener or thread; `server.start()` is a separate lifecycle step.
+As with the other custody paths, arbitrary asynchronous Python interruptions can
+strand locks and require an external supervisor rather than a clean shutdown.
+
 The codec accepts exact CPU int64, detached, contiguous rank-two forward
 tensors with the IPC input names and compatible shapes. It checks the aggregate
 element limit before conversion to Python lists, and checks aggregate decoded

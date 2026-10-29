@@ -16,7 +16,7 @@ from uuid import uuid4
 import torch
 
 from .broker import Broker, BrokerUnavailable, Outcome, RequestHandle, RequestState
-from .broker_fair_handoff import BrokerFairHandoff
+from .broker_fair_handoff import BrokerFairHandoff, _failure_identity
 from .fair_adapter import ExperimentalFairAdapter, HandoffFailure
 from .host_budget import HostBudget
 from .ipc import IPCServer
@@ -255,6 +255,17 @@ class _Proxy:
         return self._invoke(self._owner._cancellation_requested)
 
 
+@dataclass
+class _ServerConstruction:
+    """Root a single server attempt and its trusted factory before initialization."""
+
+    server: IPCServer
+    request_factory: object
+    error: object = None
+    guard_error: object = None
+    classification_error: object = None
+
+
 class FairIPCBridge:
     """Single-owner fair dispatch with separately budgeted IPC custody."""
 
@@ -322,12 +333,17 @@ class FairIPCBridge:
         self._next_job = 1
         self._server_created = False
         self._server = None
+        self._server_construction = None
         self.broker_id = uuid4().hex
         self.custody_guardian = self
 
     @property
     def quarantined(self):
-        return (self._quarantined or self._adapter.indeterminate or
+        construction = self._server_construction
+        return (self._quarantined or
+                (construction is not None and
+                 (construction.error is not None or construction.guard_error is not None)) or
+                self._adapter.indeterminate or
                 self._target_broker.quarantined or
                 (self._server is not None and self._server.custody_quarantined))
 
@@ -407,6 +423,8 @@ class FairIPCBridge:
             self._check_locked()
             if not self._accepting:
                 raise BrokerUnavailable('connection custody is closed')
+            if self._server_construction is not None and self._server is None:
+                raise BrokerUnavailable('server initialization is incomplete')
             if key in self._records:
                 raise ValueError('custody key already registered')
             if len(self._records) >= self._max_connections:
@@ -799,24 +817,88 @@ class FairIPCBridge:
                 self._condition.notify_all()
 
     def make_server(self, *, io_timeout=3.0, job_timeout=60.0, request_factory=None):
+        # Reject known invalid values before taking custody of the factory.
+        for timeout in (io_timeout, job_timeout):
+            _validate_timeout(timeout)
+            if timeout == 0:
+                raise ValueError('server timeouts must be positive')
+        state = _ServerConstruction(object.__new__(IPCServer), request_factory)
+        try:
+            return self._make_server_guarded(state, io_timeout, job_timeout)
+        except BaseException as error:
+            if self._server_construction is not state:
+                raise
+            # An interruption in the first failure handler must not expose its
+            # original private context or leave admission enabled.
+            if state.error is None:
+                state.error = error
+            else:
+                state.guard_error = error
+            self._quarantined = True
+            try:
+                kind, _ = _failure_identity(error)
+                if kind == 0:
+                    kind, _ = _failure_identity(state.error)
+            except BaseException as classification_error:
+                state.classification_error = classification_error
+                kind = _failure_kind(error)
+                if kind == 0:
+                    kind = _failure_kind(state.error)
+                if kind == 0:
+                    kind = _failure_kind(classification_error)
+        _raise_public_failure(kind)
+
+    def _make_server_guarded(self, state, io_timeout, job_timeout):
+        try:
+            return self._make_server(state, io_timeout, job_timeout)
+        except BaseException as error:
+            if self._server_construction is not state:
+                raise
+            # Keep the original traceback private: it can own partially
+            # initialized state beyond the candidate server and factory.
+            state.error = error
+            self._quarantined = True
+            kind = _failure_kind(error)
+        _raise_public_failure(kind)
+
+    def _make_server(self, state, io_timeout, job_timeout):
         with self._condition:
             self._check_locked()
-            if self._server_created:
+            if not self._accepting:
+                raise BrokerUnavailable('connection custody is closed')
+            if self._server_created or self._server_construction is not None:
                 raise ValueError('only one server is supported per bridge epoch')
+            # Root before calling initialization, including a failure on its
+            # return boundary. A partially initialized server must never be
+            # used as the live server by the dispatcher.
+            self._server_construction = state
             self._server_created = True
-        server = IPCServer(self, team_ids=tuple(self._credentials), custody_guardian=self,
-                           request_factory=request_factory,
-                           custody_epoch=self._epoch, max_connections=self._max_connections,
-                           max_request_bytes=self._max_request_bytes, max_response_bytes=self._max_response_bytes,
-                           max_batch=self._codec.max_batch, max_tokens=self._codec.max_tokens,
-                           io_timeout=io_timeout, job_timeout=job_timeout)
-        self._server = server
-        return server
+        IPCServer.__init__(state.server, self, team_ids=tuple(self._credentials), custody_guardian=self,
+                           request_factory=state.request_factory, custody_epoch=self._epoch,
+                           max_connections=self._max_connections, max_request_bytes=self._max_request_bytes,
+                           max_response_bytes=self._max_response_bytes, max_batch=self._codec.max_batch,
+                           max_tokens=self._codec.max_tokens, io_timeout=io_timeout, job_timeout=job_timeout)
+        with self._condition:
+            self._check_locked()
+            if not self._accepting:
+                raise BrokerUnavailable('connection custody is closed')
+            self._server = state.server
+            self._condition.notify_all()
+        return state.server
+
+    def recover_server(self):
+        """Recover the initialized server after an interrupted owner return."""
+        with self._condition:
+            self._check_locked()
+            return self._server
 
     def close(self, timeout=3.0):
         _validate_timeout(timeout)
         deadline = time.monotonic() + timeout
         with self._condition:
+            # The candidate is rooted but is not yet safe to close or use.
+            if self._server_construction is not None and self._server is None:
+                return False
             self._accepting = False
             while self._records and not self.quarantined:
                 remaining = deadline - time.monotonic()

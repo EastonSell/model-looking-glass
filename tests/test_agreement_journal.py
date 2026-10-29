@@ -3,6 +3,8 @@ import hashlib
 import json
 from pathlib import Path
 import tempfile
+import threading
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -10,6 +12,56 @@ from looking_glass.agreement_journal import AgreementJournal, JournalError
 
 
 class AgreementJournalTests(unittest.TestCase):
+    def test_reused_thread_ident_or_dummy_object_cannot_inherit_owner(self):
+        from looking_glass import agreement_journal as module
+        for reuse_dummy_object in (False, True):
+            with self.subTest(reuse_dummy_object=reuse_dummy_object), tempfile.TemporaryDirectory() as temporary:
+                path = Path(temporary) / 'attempt'
+                shared_dummy = object()
+                current = (lambda: shared_dummy) if reuse_dummy_object else threading.current_thread
+                # Simulate the same recycled numeric ID in two sequential thread
+                # states. In the second case even current_thread() returns the
+                # same stale dummy object, as can occur for alien threads.
+                proxy = SimpleNamespace(get_ident=lambda: 47, current_thread=current, local=threading.local)
+                created, attempts = [], []
+
+                def create():
+                    try:
+                        journal = AgreementJournal(path, {'protocol': 'synthetic'})
+                        reference = journal.record({'kind': 'owner'}, {'x': ((1,), b'\0' * 4)})['x']
+                        assert journal.read_tensor(reference) == b'\0' * 4
+                        created.append((journal, reference))
+                    except BaseException as error:
+                        created.append(error)
+
+                def try_reused_identity():
+                    journal, reference = created[0]
+                    for operation in (lambda: journal.record({'kind': 'intruder'}, {}),
+                                      lambda: journal.read_tensor(reference),
+                                      lambda: journal.finish('complete', {})):
+                        try:
+                            operation()
+                        except BaseException as error:
+                            attempts.append(type(error))
+                        else:
+                            attempts.append(None)
+
+                with mock.patch.object(module, 'threading', proxy):
+                    first = threading.Thread(target=create)
+                    first.start()
+                    first.join(3)
+                    self.assertFalse(first.is_alive())
+                    self.assertEqual(len(created), 1)
+                    self.assertIsInstance(created[0], tuple)
+                    before = (path / 'events.jsonl').read_bytes()
+                    second = threading.Thread(target=try_reused_identity)
+                    second.start()
+                    second.join(3)
+                    self.assertFalse(second.is_alive())
+                self.assertEqual(attempts, [JournalError, JournalError, JournalError])
+                self.assertEqual((path / 'events.jsonl').read_bytes(), before)
+                self.assertFalse((path / 'terminal.json').exists())
+
     def test_unique_attempt_deduplicates_only_identical_tensor_bytes(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / 'attempt'

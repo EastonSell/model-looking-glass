@@ -79,6 +79,70 @@ def _analyze(data):
                         serial_outputs=left, grouped_outputs=right)
 
 
+def test_nominal_clock_screen_flags_short_intervals_without_changing_consistency():
+    report = _analyze(_pair())
+    assert report['measured_pair_consistent'] is True
+    screen = report['nominal_resolution_screen']
+    for mode in ('serial', 'grouped'):
+        result = screen[mode]
+        assert result['clock'] == 'perf_counter_ns'
+        assert result['clock_resolution_ns'] == 100
+        assert result['multiplier'] == 100 and result['threshold_ns'] == 10000
+        assert result['window']['below_threshold'] is True
+        assert result['attempt_to_return']['observed'] == result['attempt_to_return']['below_threshold'] == 2
+    assert screen['grouped']['synchronized_call']['observed'] == 1
+    assert screen['grouped']['synchronized_call']['below_threshold'] == 1
+
+
+def test_nominal_clock_screen_keeps_zero_short_and_exact_boundary_distinct():
+    from looking_glass.batched_throughput import _screen_intervals
+
+    result = _screen_intervals([('zero', 0), ('short', 9999), ('boundary', 10000)],
+                               threshold_ns=10000, possible=4)
+    assert result == {'observed': 3, 'not_observed': 1, 'below_threshold': 2,
+                      'zero_duration': 1, 'below_threshold_ids': ['short', 'zero']}
+    assert _screen_intervals([], threshold_ns=10000, possible=2) == {
+        'observed': 0, 'not_observed': 2, 'below_threshold': 0,
+        'zero_duration': 0, 'below_threshold_ids': []}
+
+
+def test_nominal_clock_screen_passes_only_intervals_at_least_threshold():
+    data = _pair()
+    for window in data[2:4]:
+        for field in ('start_ns', 'end_ns'):
+            window[field] *= 10000
+        for row in window['attempts']:
+            for field in ('attempt_ns', 'ready_ns', 'selected_ns', 'returned_ns',
+                          'cancellation_requested_ns', 'cancellation_decision_ns'):
+                if row[field] is not None:
+                    row[field] *= 10000
+        for call in window['calls']:
+            for field in ('launch_ns', 'finish_ns'):
+                if call[field] is not None:
+                    call[field] *= 10000
+    screen = _analyze(data)['nominal_resolution_screen']
+    for mode in ('serial', 'grouped'):
+        assert screen[mode]['window']['below_threshold'] is False
+        for field in ('attempt_to_return', 'ready_to_selection', 'selection_to_launch', 'synchronized_call'):
+            assert screen[mode][field]['below_threshold'] == 0
+
+
+def test_nominal_clock_screen_counts_unattempted_planned_jobs_as_unobserved():
+    data = _pair()
+    for window in data[2:4]:
+        window['attempts'] = []
+        window['calls'] = []
+    data[4].clear()
+    data[5].clear()
+    report = _analyze(data)
+    assert not report['measured_pair_consistent']
+    for screen in report['nominal_resolution_screen'].values():
+        assert (screen['planned_jobs'], screen['attempted_jobs'], screen['unattempted_jobs']) == (2, 0, 2)
+        for field in ('attempt_to_return', 'ready_to_selection', 'selection_to_launch'):
+            assert screen[field]['observed'] == 0 and screen[field]['not_observed'] == 2
+        assert screen['synchronized_call']['observed'] == 0
+
+
 def test_real_group_is_counted_and_one_ulp_difference_uses_tolerance():
     data = _pair()
     report = _analyze(data)

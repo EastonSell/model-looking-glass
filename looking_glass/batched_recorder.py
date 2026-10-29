@@ -44,7 +44,11 @@ def _copy_value(value, budget, depth=0):
         _charge(budget, 19)
         return value
     if type(value) is str:
-        if len(value) > 512 or any(0xD800 <= ord(char) <= 0xDFFF for char in value):
+        # ASCII cannot contain surrogate code points; use Python's cached
+        # ASCII check for the common identifiers and hashes, while retaining
+        # explicit validation of all non-ASCII strings.
+        if (len(value) > 512
+                or (not value.isascii() and any(0xD800 <= ord(char) <= 0xDFFF for char in value))):
             raise _InvalidEvent('event string is too long or not valid Unicode')
         # A code point takes at most 12 JSON bytes even when escaped as a
         # surrogate pair; the adapter uses the smaller UTF-8 representation.

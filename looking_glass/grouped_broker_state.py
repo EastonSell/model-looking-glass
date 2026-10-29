@@ -13,6 +13,7 @@ import torch
 
 from .microbatch import (BatchOutcome, BatchProfile, ForwardContract, RequestResult,
                          _check_limits, _validate_profile)
+from .grouped_observation import GroupedObservation
 
 
 class CohortUnavailable(RuntimeError):
@@ -81,7 +82,9 @@ class CohortState:
     exceptions and host/device reservations remain the coordinator's custody.
     """
 
-    def __init__(self, cohort_id, members, profile):
+    def __init__(self, cohort_id, members, profile, *, observation=None):
+        if observation is not None and type(observation) is not GroupedObservation:
+            raise ValueError('an exact trusted observation is required')
         if not _name(cohort_id) or type(members) is not tuple or not 2 <= len(members) <= 256:
             raise ValueError('a bounded, identified cohort of at least two members is required')
         if type(profile) is not BatchProfile or type(profile.contract) is not ForwardContract:
@@ -108,6 +111,8 @@ class CohortState:
         self._indices = {member.job_id: i for i, member in enumerate(members)}
         self._condition = Condition(Lock())
         self._state = _Open(False, 0)
+        self._observation = observation
+        self._published_ns = None
 
     def _index(self, job_id):
         if type(job_id) is not str or job_id not in self._indices:
@@ -239,6 +244,8 @@ class CohortState:
                          'cohort_cancelled_before_launch' if kind == 'prelaunch_cancel' else data)
                 publication = CohortPublication(self._cohort_id, old.launch_committed, error,
                                                 quarantine, tuple(completions))
+                if self._observation is not None:
+                    self._published_ns = self._observation._stamp()
                 self._state = publication
                 self._condition.notify_all()
         except BaseException:

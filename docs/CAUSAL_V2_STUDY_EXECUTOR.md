@@ -16,6 +16,12 @@ records before execution and rejects changes to them. Trace identifiers use
 the attempt-wide submission counter; plan source and base references use the
 corresponding retained trace ID and its `/logits` suffix. Input digests use
 the byte contract documented in `CAUSAL_V2_DEVELOPMENT_EXECUTOR.md`.
+Construction requires the backend settings snapshot destined for the
+pre-manifest. The callback compares it with the live settings at callback
+boundaries and immediately before and after each root call. At those same
+boundaries it requires the CPU-only device mask, no initialized CUDA runtime
+and the float32 default dtype. These cooperative checks cannot detect a
+transient change restored between observations.
 
 For each model and phase, two clean/repeat forwards are reused for each of 16
 inputs across nine cells. Each cell/input has one private target capture and
@@ -23,7 +29,10 @@ two active strengths of 16 forwards each. A successful complete schedule thus
 uses `2*16 + 9*16*(1 + 2*16) = 4,784` root forwards per model/phase, or
 57,408 across six models and two phases. The budget reserves each submission
 before preparing its model input or hooks, then records a root call immediately
-before calling the model. A failed or cancelled attempt is incomplete; the
+before calling the model. An asynchronous interruption between the counter
+increment and callable entry can conservatively overcount an attempted root;
+the failure record is not proof that every counted callable was entered. A
+failed or cancelled attempt is incomplete; the
 caller must preserve its counts and quarantine or discard the affected worker,
 model and budget as appropriate. Successfully encoded conditions have already
 been added to the cell evidence. If a condition fails during execution or

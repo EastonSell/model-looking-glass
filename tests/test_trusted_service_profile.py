@@ -31,6 +31,7 @@ def fake_runtime():
             'model_dtype': 'torch.float32', 'compute_dtype': 'torch.float32',
             'attention_backend': 'eager', 'model_mode': 'eval', 'grad_mode': 'inference',
             'autocast': 'disabled', 'use_cache': False, 'compiled': False,
+            'execution_path': 'looking_glass.resident_worker.ResidentWorker.execute',
             'allocator_fraction': '0.20'}
 
 

@@ -4,9 +4,10 @@
 from an explicit event set to the window schema in
 [`BATCHED_THROUGHPUT_V1.md`](BATCHED_THROUGHPUT_V1.md). It is not a recorder,
 broker hook, runner, device supervisor or evidence that a GPU forward happened.
-The grouped broker currently supplies no such observer hooks. A trusted driver
-must instrument the actual events, retain the original raw observations, and
-establish model/profile identity, event completeness and device safety.
+Experimental [grouped](GROUPED_OBSERVATION.md) and [serial](SERIAL_OBSERVATION.md)
+broker paths can supply some observations. A trusted driver must capture
+the remaining events, retain the original raw observations, and establish
+model/profile identity, event completeness and device safety.
 
 Pass the frozen protocol and independently retained protocol digest, a context
 and a list of ordinary JSON event dictionaries. The context contains `mode`

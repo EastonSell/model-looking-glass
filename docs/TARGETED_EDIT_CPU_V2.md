@@ -150,6 +150,25 @@ both control digests, realized norms, v1 identity checks, frozen manifest,
 checkpoint, runtime and cleanup observations. An independent reviewer fetches
 the published record before evaluation begins. Remote observation, local
 clocks and Git metadata do not by themselves prove execution chronology.
+For a complete development record, a child-authored owner identity is included
+in the terminal inventory. Only the parent assembles the supervision metadata
+and complete terminal after its supervisor returns the reaped child result.
+The metadata must match the child's run ID and PID, with a zero exit status,
+clean teardown, no timeout and an explicit reaped attestation. Failed, timed-out
+or unknown outcomes remain incomplete. These fields are attestations, not
+independent proof of model work or a system-wide isolation guarantee.
+V2 also records a separate buffer-state digest before and after every condition.
+It covers registered buffer names, dtype, shape, bytes and registration and
+persistence metadata, including nonpersistent attention buffers; it is not
+part of the historical v1 state hash. Object identity is checked in-process and
+is not represented by that digest. A fresh evaluation must reconstruct the
+same buffer-state digest before any new-case forward.
+Record calling-thread denormal probes before and after development scoring and
+control construction, as well as the per-forward probes.
+Record supplemental v2 runtime settings including matrix precision, CPU
+backend and deterministic controls, thread counts, autocast, inference mode,
+CUDA visibility and offline flags. The fresh evaluation process must match
+those settings. These additional fields were not recorded by v1.
 
 ## New public evaluation cases
 

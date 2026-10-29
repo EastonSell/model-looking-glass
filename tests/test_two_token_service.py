@@ -32,7 +32,7 @@ class ServicePreparationTests(unittest.TestCase):
         (self.package / "gpu_service.py").write_text("# fixed owner fixture\n")
         (self.package / "supervisor.py").write_text("# reaping supervisor fixture\n")
         (self.package / "trusted_profile_collector.py").write_text(
-            "TRUSTED_SERVICE_COLLECTOR_CONTRACT = 'two-token-worker-profile-v1'\n")
+            "TRUSTED_SERVICE_COLLECTOR_CONTRACT = 'two-token-custody-worker-profile-v1'\n")
         self.source = TrustedServiceSource(str(self.repo), str(self.cache), b"source", b"assets", ())
         self.profiles = tuple(ProfileFiles(self.root / f"profile-{index}",
                                            self.root / f"evidence-{index}",
@@ -42,6 +42,8 @@ class ServicePreparationTests(unittest.TestCase):
         self.registry_mock = patch.object(service, "_load_profile_registry", return_value=(None, None)).start()
         patch.object(service._owner_module, "FIXED_SERVICE_OWNER_CONTRACT",
                      service._REQUIRED_OWNER_CONTRACT, create=True).start()
+        patch.object(service._owner_module, "OWNER_COMPLETION_CUSTODY_CONTRACT",
+                     service._REQUIRED_COMPLETION_CONTRACT, create=True).start()
         patch.object(service._owner_module, "__file__", str(self.package / "gpu_service.py")).start()
         patch.object(service._supervisor_module, "SUPERVISOR_LAUNCH_CUSTODY_CONTRACT",
                      service._REQUIRED_SPAWN_CONTRACT, create=True).start()
@@ -117,9 +119,19 @@ class ServicePreparationTests(unittest.TestCase):
             with patch.object(service._owner_module, "FIXED_SERVICE_OWNER_CONTRACT", "old"):
                 with self.assertRaisesRegex(RuntimeError, "launch-custody supervisor"):
                     prepared.start()
+            with patch.object(service._owner_module, "OWNER_COMPLETION_CUSTODY_CONTRACT", None):
+                with self.assertRaisesRegex(RuntimeError, "completion custody"):
+                    prepared.start()
+            with patch.object(service._owner_module, "OWNER_COMPLETION_CUSTODY_CONTRACT", "old"):
+                with self.assertRaisesRegex(RuntimeError, "completion custody"):
+                    prepared.start()
             with patch.object(service._supervisor_module, "SUPERVISOR_LAUNCH_CUSTODY_CONTRACT", "old"):
                 with self.assertRaisesRegex(RuntimeError, "launch-custody supervisor"):
                     prepared.start()
+            (self.package / "trusted_profile_collector.py").write_text(
+                "TRUSTED_SERVICE_COLLECTOR_CONTRACT = 'two-token-worker-profile-v1'\n")
+            with self.assertRaisesRegex(RuntimeError, "worker profile collector"):
+                prepared.start()
             (self.package / "trusted_profile_collector.py").write_text(
                 "TRUSTED_SERVICE_COLLECTOR_CONTRACT = 'old'\n")
             with self.assertRaisesRegex(RuntimeError, "launch-custody supervisor"):

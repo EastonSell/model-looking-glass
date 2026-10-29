@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
+import platform
 import re
 import shutil
 import stat
@@ -29,12 +30,22 @@ class LaunchError(RuntimeError):
 
 _SCRIPTS = ("scripts/v2_source_launcher.py", "scripts/v2_source_bootstrap.py",
             "scripts/v2_source_guards.py")
-_TOKEN = b"model-looking-glass-development-start-v1\n"
+_TOKEN = b"model-looking-glass-development-start-v2\n"
 
 
 def _check_single_threaded():
     if threading.current_thread() is not threading.main_thread() or threading.active_count() != 1:
         raise LaunchError("launcher requires a dedicated Python process")
+
+
+def _parent_platform_observation():
+    """Observe platform in the supervisor before creating the child job."""
+    observed = platform.uname()
+    values = [observed.system, observed.node, observed.release, observed.version, observed.machine]
+    if (any(type(value) is not str or len(value) > 512 or (value and not value.isprintable())
+            for value in values) or values[0] != "Windows" or not values[4]):
+        raise LaunchError("invalid parent platform observation")
+    return values
 
 
 def _checked_path(value):
@@ -250,6 +261,7 @@ def run(checkout, venv, dependencies, work, module, timeout):
     executable = _check_startup(checkout, venv, dependencies, work)
     if module != "looking_glass.trace_schema" or not 1 <= timeout <= 30:
         raise LaunchError("invalid development diagnostic target or timeout")
+    parent_platform = _parent_platform_observation()
     revision = _revision(checkout)
     sources = _committed_sources(checkout, revision)
     before = _verify_sources(checkout, sources)
@@ -288,7 +300,8 @@ def run(checkout, venv, dependencies, work, module, timeout):
                                             creationflags=subprocess.DETACHED_PROCESS, cwd=work)
         quarantine.job.assign(quarantine.child)
         remote_handles = guards.duplicate_to_process(handles, quarantine.child)
-        frame = _TOKEN + json.dumps({"guard_handles": remote_handles}, separators=(",", ":")).encode("ascii")
+        frame = _TOKEN + json.dumps({"guard_handles": remote_handles, "platform_uname": parent_platform},
+                                    separators=(",", ":")).encode("ascii")
         if len(frame) > 262144:
             raise LaunchError("guarded start frame exceeds its bound")
         quarantine.child.stdin.write(frame)

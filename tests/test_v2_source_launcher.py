@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import platform
 import py_compile
 import shutil
 import subprocess
@@ -91,6 +92,57 @@ class V2SourceLauncherTests(unittest.TestCase):
             self.assertEqual(fixture[4].read_text(), "imported")
             self.assertEqual(list(fixture[3].iterdir()), [])
             self.assertNotIn(str(fixture[0]), result.stdout)
+
+    def test_guarded_torch_import_has_no_untracked_child_process(self):
+        torch_spec = importlib.util.find_spec('torch')
+        if torch_spec is None or not torch_spec.submodule_search_locations:
+            self.skipTest('torch is not installed')
+        site = Path(next(iter(torch_spec.submodule_search_locations))).parent.resolve()
+        venv = Path(sys.prefix).resolve()
+        if not site.is_relative_to(venv):
+            self.skipTest('torch is not installed under this interpreter venv')
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = self.fixture(Path(directory))
+            source = fixture[0] / 'looking_glass' / 'trace_schema.py'
+            observed = platform.uname()
+            values = [observed.system, observed.node, observed.release, observed.version, observed.machine]
+            source.write_text("import platform, torch\n"
+                              "u=platform.uname()\n"
+                              f"assert [u.system,u.node,u.release,u.version,u.machine] == {values!r}\n"
+                              "assert not torch.cuda.is_initialized()\n", encoding='utf-8')
+            subprocess.run(['git', '-C', str(fixture[0]), 'add', '--', 'looking_glass/trace_schema.py'],
+                           check=True, capture_output=True)
+            subprocess.run(['git', '-C', str(fixture[0]), 'commit', '-qm', 'torch import fixture'],
+                           check=True, capture_output=True)
+            args = self.args(fixture)
+            args[args.index('--venv-root') + 1] = str(venv)
+            args[args.index('--dependency') + 1] = str(site)
+            result = subprocess.run(args, capture_output=True, text=True, cwd=fixture[3],
+                                    env={**os.environ, 'CUDA_VISIBLE_DEVICES':'-1'}, timeout=45)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            self.assertTrue(report['child_reaped'])
+            self.assertFalse(report['study_ready'])
+            self.assertEqual(list(fixture[3].iterdir()), [])
+
+    def test_guarded_child_rejects_python_process_creation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture = self.fixture(root)
+            marker = root / 'unexpected-child.txt'
+            source = fixture[0] / 'looking_glass' / 'trace_schema.py'
+            payload = f"from pathlib import Path; Path({str(marker)!r}).touch()"
+            source.write_text("import subprocess,sys\n"
+                              f"subprocess.run([sys.executable, '-c', {payload!r}], check=True)\n", encoding='utf-8')
+            subprocess.run(['git', '-C', str(fixture[0]), 'add', '--', 'looking_glass/trace_schema.py'],
+                           check=True, capture_output=True)
+            subprocess.run(['git', '-C', str(fixture[0]), 'commit', '-qm', 'process refusal fixture'],
+                           check=True, capture_output=True)
+            result = self.run_launcher(fixture)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertTrue(json.loads(result.stderr)['child_reaped'])
+            self.assertFalse(marker.exists())
+            self.assertEqual(list(fixture[3].iterdir()), [])
 
     def test_dirty_source_and_missing_gpu_mask_reject_before_import(self):
         with tempfile.TemporaryDirectory() as directory:

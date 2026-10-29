@@ -22,6 +22,7 @@ from .causal_v2_executor import (_STUDY_CACHE_TOKEN, _check_hooks, _check_model,
                                  input_sha256)
 from .causal_v2_model_identity import state_sha256
 from .causal_v2_runtime import NumericPolicy
+from .causal_v2_runtime_preflight import inspect_backend_settings
 from .causal_v2_selection import DiscoveryCase, freeze_discovery
 from .model import TinyResidual
 
@@ -175,12 +176,14 @@ def _guarded(method):
         entered = False
         try:
             self._check_owner()
+            self._check_backend()
             if self._active:
                 raise StudyExecutionError("executor callback is already active")
             self._active = True
             entered = True
             result = method(self, *args, **kwargs)
             self._check_owner()
+            self._check_backend()
             return result
         except BaseException:
             self._failed = True
@@ -193,10 +196,15 @@ def _guarded(method):
 
 class StudyExecutor:
     """Single-threaded callback; a separate reviewed custodian owns phase gates."""
-    def __init__(self, numeric_policy):
+    def __init__(self, numeric_policy, *, backend_settings):
         if type(numeric_policy) is not NumericPolicy:
             raise StudyExecutionError("checked numeric policy is required")
         numeric_policy.verify()
+        backend_bytes = _bounded_json(backend_settings, 4096)
+        if backend_bytes != _bounded_json(inspect_backend_settings(), 4096):
+            raise StudyExecutionError("backend settings do not match the bound snapshot")
+        self._backend_bytes = backend_bytes
+        self._check_backend()
         self._policy = numeric_policy
         self._owner_pid, self._owner_thread = os.getpid(), threading.current_thread()
         self._order = tuple((phase, seed) for phase in ("discovery", "heldout") for seed in _MODEL_SEEDS)
@@ -209,6 +217,12 @@ class StudyExecutor:
         if (self._closed or self._failed or os.getpid() != self._owner_pid
                 or threading.current_thread() is not self._owner_thread):
             raise StudyExecutionError("executor is unavailable")
+
+    def _check_backend(self):
+        if (os.environ.get("CUDA_VISIBLE_DEVICES") != "-1" or torch.cuda.is_initialized()
+                or torch.get_default_dtype() != torch.float32
+                or _bounded_json(inspect_backend_settings(), 4096) != self._backend_bytes):
+            raise StudyExecutionError("backend settings changed")
 
     @_guarded
     def begin_model(self, phase, seed, expected_model_state_sha256, budget):
@@ -287,7 +301,7 @@ class StudyExecutor:
                 value = _tensor_from_values(values)
                 clean = _prepare_clean(self._model, value, budget, self._policy, budget_type=ForwardBudget,
                                        scope=_STUDY_CACHE_TOKEN, input_check=_study_input_check,
-                                       first_reserved=True)
+                                       first_reserved=True, backend_check=self._check_backend)
                 self._clean[index] = (value, clean)
             saved_value, clean = self._clean[index]
             if input_sha256(saved_value) != clean.input_sha256:
@@ -295,13 +309,14 @@ class StudyExecutor:
             budget.reserve()
             target = _prepare_target(self._model, saved_value, assignment["injection_node"], clean, budget,
                                      self._policy, scope=_STUDY_CACHE_TOKEN, input_check=_study_input_check,
-                                     first_reserved=True)
+                                     first_reserved=True, backend_check=self._check_backend)
             conditions = []
             for offset, strength in enumerate(_STRENGTHS):
                 budget.reserve()
                 result = _run_active(self._model, saved_value, assignment["injection_node"], strength,
                                      clean, target, budget, self._policy, scope=_STUDY_CACHE_TOKEN,
-                                     input_check=_study_input_check, first_reserved=True)
+                                     input_check=_study_input_check, first_reserved=True,
+                                     backend_check=self._check_backend)
                 condition = result["condition"]
                 clean_run, changed_run = result["clean_trace"][0].run_id, condition.perturbed_trace[0].run_id
                 references = {"clean_sparse_trace": clean_run, "perturbed_sparse_trace": changed_run,
@@ -364,6 +379,12 @@ class StudyExecutor:
             raise StudyExecutionError("executor callback is still active")
         if self._closed:
             return deepcopy(self._receipt)
+        if not self._failed:
+            try:
+                self._check_backend()
+            except BaseException:
+                self._failed = True
+                raise
         if self._model is not None:
             _check_hooks(self._model)
             self._clean.clear()

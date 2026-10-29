@@ -57,6 +57,12 @@ on the producer's documented provenance and trusted model/input binding.
    The sink must synchronously consume the bytes, return `None`, and retain
    no payload or deferred work. A copying or retaining sink is outside this
    contract and requires a separate owner and claim for every surviving copy.
+   This non-retention requirement also applies when the sink raises: no
+   exception attribute, exception-group child, traceback, callback object,
+   or other alias may retain the payload unless a separate owner had already
+   reserved a claim for it. The child can release its serialization claim as
+   part of failure cleanup, before any later supervisor attestation. Bridge
+   quarantine cannot retroactively account for an unclaimed retained copy.
 4. After a successful send, `ack_received(key)` records that payload's receipt.
    `complete()` returns a marker only once the manifest and every expected
    payload have been acknowledged. Each `ack_release(key)` is then a
@@ -108,10 +114,11 @@ is admitted, lost returns before the `sent` commit, and sink failures are
 ambiguous and quarantine the handoff. Invalid keys or states rejected before
 admission leave the live handoff usable. A lost return after the commit is
 recoverable using the exact-key state read above. The bridge keeps its
-metadata claim rooted, and local in-flight or uncertain copies remain
-charged. A child may release its own claim after it establishes that its local
-payload is disposed. A capacity failure before any manifest copy or transfer
-can be cleaned up with `abort_before_transfer(timeout=...)`.
+metadata claim rooted; bridge- and child-owned in-flight or uncertain copies
+remain charged under the trusted non-retaining sink contract. A child may
+release its own claim after it establishes that its local payload is disposed.
+A capacity failure before any manifest copy or transfer can be cleaned up
+with `abort_before_transfer(timeout=...)`.
 
 Cancellation is cooperative. `disconnect()` promptly sets a local signal,
 then signals the active child and underlying job outside the control lock.

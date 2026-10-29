@@ -20,7 +20,48 @@ class BootstrapError(RuntimeError):
     """An isolated source-loading check failed."""
 
 
-_START_TOKEN = b"model-looking-glass-development-start-v1\n"
+class _AuditHookCheck(Exception):
+    pass
+
+
+_START_TOKEN = b"model-looking-glass-development-start-v2\n"
+
+
+def _deny_process_creation(event, args):
+    if event == "mlg.v2_guarded_owner.audit_hook_check":
+        raise _AuditHookCheck("guarded owner audit hook is active")
+    if event in {"subprocess.Popen", "_winapi.CreateProcess", "os.system", "os.spawn", "os.posix_spawn",
+                 "os.fork", "os.forkpty", "os.exec",
+                 "os.startfile", "os.startfile/2"}:
+        raise BootstrapError("child process creation is unsupported inside the guarded job")
+
+
+def _install_process_guard():
+    # CPython can silently suppress an attempted hook installation if an
+    # existing audit hook raises RuntimeError. Confirm this hook is active.
+    sys.addaudithook(_deny_process_creation)
+    try:
+        sys.audit("mlg.v2_guarded_owner.audit_hook_check")
+    except _AuditHookCheck:
+        return
+    raise BootstrapError("guarded owner audit hook could not be verified")
+
+
+def _prime_parent_platform(values):
+    """Use the supervisor's actual platform observation without spawning cmd.exe."""
+    import platform
+    import socket
+    if (type(values) is not list or len(values) != 5
+            or any(type(value) is not str or len(value) > 512 or (value and not value.isprintable())
+                   for value in values)
+            or values[0] != "Windows" or not values[4] or platform._uname_cache is not None):
+        raise BootstrapError("invalid parent platform observation")
+    native = os.environ.get("PROCESSOR_ARCHITEW6432") or os.environ.get("PROCESSOR_ARCHITECTURE")
+    version = ".".join(str(part) for part in sys.getwindowsversion()[:3])
+    if (not native or native.lower() != values[4].lower() or values[1] != socket.gethostname()
+            or values[3] != version):
+        raise BootstrapError("parent platform observation differs from the child")
+    platform._uname_cache = platform.uname_result(*values)
 
 
 def _await_guarded_start():
@@ -34,7 +75,7 @@ def _await_guarded_start():
     if len(data) > 262144 or not data.startswith(_START_TOKEN):
         raise BootstrapError("launcher start channel was closed or invalid")
     frame = json.loads(data[len(_START_TOKEN):], object_pairs_hook=_unique_object)
-    if type(frame) is not dict or set(frame) != {"guard_handles"}:
+    if type(frame) is not dict or set(frame) != {"guard_handles", "platform_uname"}:
         raise BootstrapError("invalid launcher start frame")
     handles = frame["guard_handles"]
     if (os.name != "nt" or type(handles) is not list or not 0 < len(handles) <= 8193 or
@@ -54,6 +95,10 @@ def _await_guarded_start():
         os.set_handle_inheritable(handle, False)
         if os.get_handle_inheritable(handle):
             raise BootstrapError("an inherited protection handle remains inheritable")
+    _prime_parent_platform(frame["platform_uname"])
+    # Python audit hooks do not cover native child creation. The job's lifetime
+    # accounting still fails closed if a native process is created and missed.
+    _install_process_guard()
 
 
 def _within(path, root):
