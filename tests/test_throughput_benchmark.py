@@ -567,7 +567,10 @@ class ProtocolArtifactTests(unittest.TestCase):
                     ('cleanup.json', {'status': 'complete', 'broker_state': 'stopped',
                         'admission_status': 'development_unprofiled',
                         'memory_lease_released': True, 'owner_attested_clean': True,
-                        'cuda_allocator_after_cleanup': {'allocated_bytes': 0, 'reserved_bytes': 0}}),
+                        'cuda_allocator_after_cleanup': {'allocated_bytes': 0, 'reserved_bytes': 0,
+                            'pre_workspace_clear_allocated_bytes': 33554432,
+                            'pre_workspace_clear_reserved_bytes': 33554432,
+                            'workspace_clear_api': 'torch._C._cuda_clearCublasWorkspaces'}}),
                     ('run_status.json', {'status': 'complete', 'measurement_status': 'complete',
                                          'admission_status': 'development_unprofiled',
                                          'cleanup_status': 'complete', 'work_may_still_be_running': False})):
@@ -1468,6 +1471,7 @@ class SupervisedIdentityTests(unittest.TestCase):
             return bundle
         with patch.dict(os.environ, {'CUDA_VISIBLE_DEVICES': 'GPU-original'}), \
              patch.object(benchmark, '_pytorch_already_imported', return_value=False), \
+             patch.object(benchmark, '_cublas_workspace_clear', return_value=lambda: None), \
              patch('looking_glass.pretrained.load_distilgpt2', side_effect=load), \
              patch.object(benchmark, 'make_distilgpt2_workload', return_value=['job']), \
              patch.object(benchmark, 'workload_manifest', return_value=({'jobs': []}, 'digest')), \
@@ -1476,6 +1480,7 @@ class SupervisedIdentityTests(unittest.TestCase):
             self.assertEqual(os.environ['CUDA_VISIBLE_DEVICES'], 'GPU-original')
         self.assertEqual(seen, [''])
         self.assertIs(result['pytorch_cuda_initialized'], False)
+        self.assertEqual(result['cublas_workspace_clear_api'], 'torch._C._cuda_clearCublasWorkspaces')
         self.assertEqual(result['model_metadata'], {'id': 'fake', 'torch_version': '2.8',
                                                      'transformers_version': '4.57'})
         self.assertIs(type(result['model_metadata']['torch_version']), str)
@@ -1504,6 +1509,7 @@ class SupervisedIdentityTests(unittest.TestCase):
         from types import SimpleNamespace
         with patch.dict(os.environ, {'CUDA_VISIBLE_DEVICES': 'GPU-original'}), \
              patch.object(benchmark, '_pytorch_already_imported', return_value=False), \
+             patch.object(benchmark, '_cublas_workspace_clear', return_value=lambda: None), \
              patch.object(torch.cuda, 'is_initialized', side_effect=[False, True]), \
              patch('looking_glass.pretrained.load_distilgpt2', return_value=SimpleNamespace(metadata={})), \
              patch.object(benchmark, 'make_distilgpt2_workload', return_value=['job']), \
@@ -1646,15 +1652,125 @@ class SupervisedIdentityTests(unittest.TestCase):
 
     def test_cuda_allocator_must_be_empty_before_attestation(self):
         from types import SimpleNamespace
+        from unittest.mock import patch
+        events = []
+        allocated = iter((33554432, 0))
+        reserved = iter((33554432, 0))
+        cuda = SimpleNamespace(synchronize=lambda device: events.append('sync'),
+            empty_cache=lambda: events.append('empty_cache'),
+            memory_allocated=lambda device: next(allocated), memory_reserved=lambda device: next(reserved))
+        core = SimpleNamespace(_cuda_clearCublasWorkspaces=lambda: events.append('clear_workspaces'))
+        module = SimpleNamespace(cuda=cuda, _C=core, __version__='2.8.0+cu128', version=SimpleNamespace(cuda='12.8'))
+        with patch.object(benchmark, '_check_owner_before_cuda', side_effect=lambda session, lease: events.append('owner_check')):
+            result = benchmark._clear_cuda_allocator(module, 'cuda:0', owner_session=object(), device_lease=object())
+        self.assertEqual(events, ['owner_check', 'sync', 'empty_cache', 'owner_check',
+                                  'clear_workspaces', 'sync', 'empty_cache', 'owner_check'])
+        self.assertEqual(result, {'allocated_bytes': 0, 'reserved_bytes': 0,
+            'pre_workspace_clear_allocated_bytes': 33554432, 'pre_workspace_clear_reserved_bytes': 33554432,
+            'workspace_clear_api': 'torch._C._cuda_clearCublasWorkspaces'})
         for allocated, reserved in ((1, 1), (0, 4096), (-1, 0), (None, 0)):
             cuda = SimpleNamespace(synchronize=lambda device: None, empty_cache=lambda: None,
                 memory_allocated=lambda device: allocated, memory_reserved=lambda device: reserved)
-            with self.assertRaisesRegex(RuntimeError, 'allocations remain'):
-                benchmark._clear_cuda_allocator(SimpleNamespace(cuda=cuda), 'cuda:0')
+            module = SimpleNamespace(cuda=cuda, _C=core, __version__='2.8.0+cu128', version=SimpleNamespace(cuda='12.8'))
+            with patch.object(benchmark, '_check_owner_before_cuda'):
+                with self.assertRaisesRegex(RuntimeError, 'allocations|allocator counters'):
+                    benchmark._clear_cuda_allocator(module, 'cuda:0', owner_session=object(), device_lease=object())
+
+    def test_cuda_cleanup_rejects_missing_or_failing_workspace_clear(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
         cuda = SimpleNamespace(synchronize=lambda device: None, empty_cache=lambda: None,
             memory_allocated=lambda device: 0, memory_reserved=lambda device: 0)
-        self.assertEqual(benchmark._clear_cuda_allocator(SimpleNamespace(cuda=cuda), 'cuda:0'),
-                         {'allocated_bytes': 0, 'reserved_bytes': 0})
+        for core, version, runtime in ((SimpleNamespace(), '2.8.0+cu128', '12.8'),
+                (SimpleNamespace(_cuda_clearCublasWorkspaces=lambda: None), '2.9.0', '12.8'),
+                (SimpleNamespace(_cuda_clearCublasWorkspaces=lambda: None), '2.8.0+cu128', '12.7')):
+            with patch.object(benchmark, '_check_owner_before_cuda'):
+                with self.assertRaisesRegex(RuntimeError, 'workspace cleanup'):
+                    benchmark._clear_cuda_allocator(SimpleNamespace(cuda=cuda, _C=core, __version__=version,
+                                                    version=SimpleNamespace(cuda=runtime)),
+                        'cuda:0', owner_session=object(), device_lease=object())
+
+    def test_cuda_cleanup_preserves_counters_if_workspace_clear_fails(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        def fail():
+            raise RuntimeError('workspace clear failed')
+        cuda = SimpleNamespace(synchronize=lambda device: None, empty_cache=lambda: None,
+            memory_allocated=lambda device: 33554432, memory_reserved=lambda device: 33554432)
+        module = SimpleNamespace(cuda=cuda, _C=SimpleNamespace(_cuda_clearCublasWorkspaces=fail),
+                                 __version__='2.8.0+cu128', version=SimpleNamespace(cuda='12.8'))
+        diagnostics = {}
+        with patch.object(benchmark, '_check_owner_before_cuda'):
+            with self.assertRaisesRegex(RuntimeError, 'workspace clear failed'):
+                benchmark._clear_cuda_allocator(module, 'cuda:0', owner_session=object(),
+                                                device_lease=object(), diagnostics=diagnostics)
+        self.assertEqual(diagnostics, {'pre_workspace_clear_allocated_bytes': 33554432,
+            'pre_workspace_clear_reserved_bytes': 33554432,
+            'workspace_clear_api': 'torch._C._cuda_clearCublasWorkspaces'})
+
+    def test_cuda_cleanup_rechecks_owner_before_workspace_clear(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch, Mock
+        clear = Mock()
+        cuda = SimpleNamespace(synchronize=lambda device: None, empty_cache=lambda: None,
+            memory_allocated=lambda device: 0, memory_reserved=lambda device: 0)
+        module = SimpleNamespace(cuda=cuda, _C=SimpleNamespace(_cuda_clearCublasWorkspaces=clear),
+                                 __version__='2.8.0+cu128', version=SimpleNamespace(cuda='12.8'))
+        diagnostics = {}
+        with patch.object(benchmark, '_check_owner_before_cuda', side_effect=[None, RuntimeError('marker lost')]):
+            with self.assertRaisesRegex(RuntimeError, 'marker lost'):
+                benchmark._clear_cuda_allocator(module, 'cuda:0', owner_session=object(),
+                                                device_lease=object(), diagnostics=diagnostics)
+        clear.assert_not_called()
+        self.assertEqual(diagnostics['pre_workspace_clear_allocated_bytes'], 0)
+
+    def test_cuda_cleanup_keeps_diagnostics_serializable_for_invalid_counters(self):
+        import json
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        allocated = iter((33554432, object()))
+        reserved = iter((33554432, 0))
+        cuda = SimpleNamespace(synchronize=lambda device: None, empty_cache=lambda: None,
+            memory_allocated=lambda device: next(allocated), memory_reserved=lambda device: next(reserved))
+        module = SimpleNamespace(cuda=cuda, _C=SimpleNamespace(_cuda_clearCublasWorkspaces=lambda: None),
+                                 __version__='2.8.0+cu128', version=SimpleNamespace(cuda='12.8'))
+        diagnostics = {}
+        with patch.object(benchmark, '_check_owner_before_cuda'):
+            with self.assertRaisesRegex(RuntimeError, 'allocator counters'):
+                benchmark._clear_cuda_allocator(module, 'cuda:0', owner_session=object(),
+                                                device_lease=object(), diagnostics=diagnostics)
+        self.assertFalse(diagnostics['post_workspace_clear_counters_valid'])
+        self.assertEqual(diagnostics['pre_workspace_clear_allocated_bytes'], 33554432)
+        json.dumps(diagnostics, allow_nan=False)
+
+    def test_cuda_cleanup_failures_prevent_clean_attestation(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch, Mock
+        for case in ('post_clear_sync', 'workspace_clear', 'nonzero_after'):
+            events = []
+            def sync(device):
+                if case == 'post_clear_sync' and 'clear' in events:
+                    raise RuntimeError('post-clear sync failed')
+                events.append('sync')
+            def clear():
+                events.append('clear')
+                if case == 'workspace_clear':
+                    raise RuntimeError('workspace clear failed')
+            value = 1 if case == 'nonzero_after' else 0
+            cuda = SimpleNamespace(synchronize=sync, empty_cache=lambda: None,
+                memory_allocated=lambda device: value, memory_reserved=lambda device: value)
+            module = SimpleNamespace(cuda=cuda, _C=SimpleNamespace(_cuda_clearCublasWorkspaces=clear),
+                __version__='2.8.0+cu128', version=SimpleNamespace(cuda='12.8'))
+            session = SimpleNamespace(attest_clean=Mock())
+            diagnostics = {}
+            with self.subTest(case=case), patch.object(benchmark, '_check_owner_before_cuda'):
+                with self.assertRaises(RuntimeError):
+                    benchmark._clear_cuda_allocator(module, 'cuda:0', owner_session=session,
+                        device_lease=object(), diagnostics=diagnostics)
+                    benchmark._attest_owner(session, object(), runtime_verified=True, budget=None,
+                        synchronize=lambda: None)
+            session.attest_clean.assert_not_called()
+            self.assertIn('pre_workspace_clear_allocated_bytes', diagnostics)
 
     def test_fixed_workload_profiles_bind_actual_inputs_and_deduplicate_signatures(self):
         import torch
@@ -1679,6 +1795,7 @@ class SupervisedIdentityTests(unittest.TestCase):
 
     def test_supervised_driver_orders_binding_admission_drain_and_attestation(self):
         from contextlib import ExitStack
+        import json
         import tempfile
         from pathlib import Path
         from types import SimpleNamespace
@@ -1745,6 +1862,9 @@ class SupervisedIdentityTests(unittest.TestCase):
                 patch.object(benchmark, '_configure_cuda_environment', return_value={}),
                 patch.object(benchmark, '_claim_supervised_owner', side_effect=claim),
                 patch.object(benchmark, '_initialize_verified_cuda', side_effect=bind),
+                patch.object(benchmark, '_check_owner_before_cuda'),
+                patch.object(benchmark, '_cublas_workspace_clear',
+                             return_value=lambda: events.append('clear_workspaces')),
                 patch('looking_glass.pretrained.load_distilgpt2', return_value=bundle),
                 patch('looking_glass.resident_worker.ResidentWorker', Worker),
                 patch('looking_glass.budgeted_worker.DeviceAdmission', Admission),
@@ -1777,6 +1897,27 @@ class SupervisedIdentityTests(unittest.TestCase):
             self.assertLess(events.index('broker_drain'), events.index('release_memory'))
             self.assertLess(events.index('release_memory'), events.index(('attest', device_lease)))
             self.assertEqual(events[-1], ('attest', device_lease))
+
+            events.clear()
+            bundle.model = Model()
+            failed_output = Path(temp) / 'cleanup-failed'
+            def fail_clear():
+                raise RuntimeError('workspace clear failed')
+            with ExitStack() as stack:
+                for item in patches:
+                    stack.enter_context(item)
+                stack.enter_context(patch.object(benchmark, '_cublas_workspace_clear', return_value=fail_clear))
+                stack.enter_context(patch.object(torch.cuda, 'memory_allocated', return_value=33554432))
+                stack.enter_context(patch.object(torch.cuda, 'memory_reserved', return_value=33554432))
+                with self.assertRaisesRegex(RuntimeError, 'workspace clear failed'):
+                    benchmark.run_distilgpt2_benchmark(failed_output, cache_dir='unused',
+                        device='cuda:0', quick=True, development_unprofiled=True)
+            cleanup = json.loads((failed_output / 'cleanup.json').read_text())
+            self.assertEqual(cleanup['status'], 'failed')
+            self.assertEqual(cleanup['cuda_allocator_cleanup_diagnostics']['pre_workspace_clear_allocated_bytes'], 33554432)
+            self.assertEqual(cleanup['cuda_allocator_cleanup_diagnostics']['pre_workspace_clear_reserved_bytes'], 33554432)
+            self.assertEqual(json.loads((failed_output / 'run_status.json').read_text())['status'], 'cleanup_failed')
+            self.assertNotIn(('attest', device_lease), events)
 
     def test_failed_runtime_binding_never_starts_model_or_attests(self):
         import json
@@ -2091,7 +2232,7 @@ class SupervisedIdentityTests(unittest.TestCase):
         metadata = {'model_id': MODEL_ID, 'model_revision': REVISION,
             'tokenizer_id': MODEL_ID, 'tokenizer_revision': REVISION,
             'model_class': 'GPT2LMHeadModel', 'tokenizer_class': 'GPT2TokenizerFast',
-            'parameter_count': 81912576, 'torch_version': 'test', 'transformers_version': 'test',
+            'parameter_count': 81912576, 'torch_version': '2.8.0+cu128', 'transformers_version': 'test',
             'asset_sha256': {name: digest for name, (_, digest) in ASSETS.items()},
             'weights_sha256': ASSETS['model.safetensors'][1], 'device': 'cpu', 'dtype': 'float32',
             'attention_implementation': 'eager', 'use_cache': False}
@@ -2101,6 +2242,8 @@ class SupervisedIdentityTests(unittest.TestCase):
                 for team in ('team-a', 'team-b') for index in range(2)]
         preflight = {'model_metadata': metadata, 'manifest_jobs': jobs, 'public_prompts': list(prompts),
             'pytorch_cuda_initialized': False,
+            'torch_cuda_runtime': '12.8',
+            'cublas_workspace_clear_api': 'torch._C._cuda_clearCublasWorkspaces',
             'cuda_environment': benchmark._configure_cuda_environment({}),
             'source': {'source_commit': 'a' * 40, 'source_dirty': False,
                        'source_sha256': {name: 'b' * 64 for name in benchmark._SOURCE_FILES}}}

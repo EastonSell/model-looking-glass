@@ -176,6 +176,69 @@ class SourceBootstrapTests(unittest.TestCase):
             )
             self.assertNotEqual(result.returncode, 0)
 
+    @unittest.skipUnless(os.name == "nt", "Windows inherited protection handles")
+    def test_guarded_start_rejects_eof_and_partial_token_before_import(self):
+        import msvcrt
+        token = b"model-looking-glass-development-start-v1\n"
+        base_python = str(Path(sys.base_prefix) / "python.exe")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            guard_path = root / "guard.txt"
+            guard_path.write_bytes(b"guard")
+            marker = root / "project-imported.txt"
+            with guard_path.open("rb") as guard:
+                handle = msvcrt.get_osfhandle(guard.fileno())
+                initial = (f"import os\nfrom pathlib import Path\n"
+                           f"assert not os.get_handle_inheritable({handle})\n"
+                           f"Path({str(marker)!r}).write_text('imported')\n").encode()
+                fixture = self.fixture(root, initial)
+                checkout, _, manifest, venv, dependency, prefix = fixture
+                args = [base_python, "-I", "-S", "-B", "-X", f"pycache_prefix={prefix}",
+                        str(BOOTSTRAP), "--development-probe", "--checkout", str(checkout),
+                        "--sources", str(manifest), "--venv-root", str(venv),
+                        "--dependency", str(dependency), "--prefix", str(prefix),
+                        "--module", "looking_glass.child", "--require-start"]
+                valid = token + json.dumps({"guard_handles": [handle]}).encode()
+                for payload in (b"", token[:-1], token + b"x", token + b"{}", valid + b"x", valid):
+                    startup = subprocess.STARTUPINFO()
+                    startup.lpAttributeList = {"handle_list": [handle]}
+                    os.set_handle_inheritable(handle, True)
+                    try:
+                        child = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                                 stderr=subprocess.PIPE, startupinfo=startup,
+                                                 close_fds=True, cwd=checkout,
+                                                 env={**os.environ, "CUDA_VISIBLE_DEVICES": "-1"})
+                    finally:
+                        os.set_handle_inheritable(handle, False)
+                    out, err = child.communicate(input=payload, timeout=15)
+                    if payload == valid:
+                        self.assertEqual(child.returncode, 0, (out, err))
+                        self.assertEqual(marker.read_text(), "imported")
+                    else:
+                        self.assertNotEqual(child.returncode, 0, (out, err))
+                        self.assertFalse(marker.exists())
+
+    @unittest.skipUnless(os.name == "nt", "Windows inherited protection handles")
+    def test_guarded_start_requires_live_inherited_handles(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            marker = root / "project-imported.txt"
+            fixture = self.fixture(root, f"from pathlib import Path\nPath({str(marker)!r}).touch()\n".encode())
+            checkout, _, manifest, venv, dependency, prefix = fixture
+            args = [str(Path(sys.base_prefix) / "python.exe"), "-I", "-S", "-B", "-X",
+                    f"pycache_prefix={prefix}", str(BOOTSTRAP), "--development-probe",
+                    "--checkout", str(checkout), "--sources", str(manifest),
+                    "--venv-root", str(venv), "--dependency", str(dependency),
+                    "--prefix", str(prefix), "--module", "looking_glass.child", "--require-start"]
+            for handles in ([], [99999999], [True], [1, 1]):
+                payload = (b"model-looking-glass-development-start-v1\n" +
+                           json.dumps({"guard_handles": handles}).encode())
+                result = subprocess.run(args, input=payload,
+                                        capture_output=True, cwd=checkout,
+                                        env={**os.environ, "CUDA_VISIBLE_DEVICES": "-1"}, timeout=15)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(marker.exists())
+
     def test_explicit_venv_dependency_path_can_import_cpu_torch(self):
         spec = importlib.util.find_spec("torch")
         if spec is None or not spec.submodule_search_locations:

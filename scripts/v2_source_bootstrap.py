@@ -20,6 +20,42 @@ class BootstrapError(RuntimeError):
     """An isolated source-loading check failed."""
 
 
+_START_TOKEN = b"model-looking-glass-development-start-v1\n"
+
+
+def _await_guarded_start():
+    """Check inherited handles and wait for the launcher before project imports.
+
+    This is a cooperative start gate, not authentication of the launcher or
+    proof of file identities. The owner must assign the actual interpreter to
+    its job and validate its source protections before sending this token.
+    """
+    data = sys.stdin.buffer.read(262145)
+    if len(data) > 262144 or not data.startswith(_START_TOKEN):
+        raise BootstrapError("launcher start channel was closed or invalid")
+    frame = json.loads(data[len(_START_TOKEN):], object_pairs_hook=_unique_object)
+    if type(frame) is not dict or set(frame) != {"guard_handles"}:
+        raise BootstrapError("invalid launcher start frame")
+    handles = frame["guard_handles"]
+    if (os.name != "nt" or type(handles) is not list or not 0 < len(handles) <= 8193 or
+            any(type(handle) is not int or handle <= 0 for handle in handles) or
+            len(set(handles)) != len(handles)):
+        raise BootstrapError("invalid inherited protection handles")
+    import ctypes
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.GetHandleInformation.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD))
+    kernel.GetHandleInformation.restype = wintypes.BOOL
+    for handle in handles:
+        flags = wintypes.DWORD()
+        if not kernel.GetHandleInformation(handle, ctypes.byref(flags)):
+            raise BootstrapError("an inherited protection handle is unavailable")
+        # Keep the protection in this process, but do not leak it to children.
+        os.set_handle_inheritable(handle, False)
+        if os.get_handle_inheritable(handle):
+            raise BootstrapError("an inherited protection handle remains inheritable")
+
+
 def _within(path, root):
     return path == root or path.is_relative_to(root)
 
@@ -191,6 +227,7 @@ def main():
     parser.add_argument("--dependency", action="append", default=[])
     parser.add_argument("--prefix", required=True)
     parser.add_argument("--module", required=True)
+    parser.add_argument("--require-start", action="store_true")
     args = parser.parse_args()
     checkout = _checked_path(args.checkout)
     prefix_argument = Path(args.prefix)
@@ -199,6 +236,8 @@ def main():
     prefix = _checked_path(prefix_argument)
     venv = _checked_path(args.venv_root)
     _check_startup(checkout, prefix)
+    if args.require_start:
+        _await_guarded_start()
     manifest_path = _checked_path(args.sources)
     with manifest_path.open("rb") as stream:
         manifest_bytes = stream.read(2 * 1024 * 1024 + 1)
