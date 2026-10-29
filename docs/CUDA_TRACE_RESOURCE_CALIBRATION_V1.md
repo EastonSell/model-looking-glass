@@ -81,6 +81,14 @@ One input, device and process cannot establish a general resource bound. A
 full four-seed, 10-warmup/30-measured-round protocol needs its own reviewed
 calibration and schedule identity; quick evidence cannot silently authorize it.
 
+Use the same high-resolution monotonic clock for sample and activity-monitor
+timestamps, and persist its implementation and reported resolution. On the
+inspected Windows/Python 3.11 host, `time.monotonic_ns()` reports a 15.625 ms
+GetTickCount64 resolution; it cannot support trustworthy short latency spans.
+`time.perf_counter_ns()` uses QueryPerformanceCounter with a reported 0.1 µs
+resolution there. Never subtract timestamps from different clock domains; bind
+the actual clock policy to both calibration and subsequent benchmark source.
+
 ## Identity and admission
 
 The calibrated runner and later benchmark must use the same frozen source
