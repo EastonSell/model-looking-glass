@@ -1,8 +1,9 @@
-"""Development-only execution of one synthetic v2-style condition.
+"""Synthetic v2 execution kernel and its restricted development interface.
 
-Only the two already inventoried reviewer vectors with first coordinate +/-2
-are accepted. This module does not generate study cases, manage custody, seal
-predictions, execute held-out work, or authorize a study run.
+The public development helpers accept only the two already inventoried reviewer
+vectors with first coordinate +/-2. Private shared-kernel helpers also serve a
+separate trusted study callback; neither interface generates cases, manages
+custody, seals predictions, or authorizes a study run.
 """
 from contextlib import nullcontext
 from copy import deepcopy
@@ -38,8 +39,8 @@ class DevelopmentBudget:
         self.root_forwards = 0
 
     def reserve(self):
-        if self.submissions >= self.limit:
-            raise DevelopmentInvalid("development submission budget exhausted")
+        if self.submissions != self.root_forwards or self.submissions >= self.limit:
+            raise DevelopmentInvalid("development submission is pending or budget exhausted")
         self.submissions += 1
 
     def root(self):
@@ -49,6 +50,7 @@ class DevelopmentBudget:
 
 
 _CACHE_TOKEN = object()
+_STUDY_CACHE_TOKEN = object()
 
 
 @dataclass(frozen=True, eq=False)
@@ -182,13 +184,13 @@ def _validate_cached_tensor(value, shape, policy):
         raise DevelopmentInvalid("cached tensor is not finite")
 
 
-def _validate_clean(clean, model, x, budget, policy):
-    if (type(clean) is not DevelopmentClean or clean._token is not _CACHE_TOKEN or
+def _validate_clean(clean, model, x, budget, policy, *, scope=_CACHE_TOKEN, input_check=_check_input):
+    if (type(clean) is not DevelopmentClean or clean._token is not scope or
             clean._model is not model or clean._budget is not budget or clean._policy is not policy):
         raise DevelopmentInvalid("clean observation does not belong to this execution")
     policy.verify()
     _check_model(model)
-    _check_input(x, policy)
+    input_check(x, policy)
     _validate_cached_tensor(clean.clean_logits, (1, 2), policy)
     _validate_cached_tensor(clean.repeat_logits, (1, 2), policy)
     _require_equal(clean.clean_logits, clean.repeat_logits, "cached clean logits differ", policy)
@@ -205,8 +207,8 @@ def _validate_clean(clean, model, x, budget, policy):
     policy.verify()
 
 
-def _validate_target(target_capture, target, clean):
-    if (type(target_capture) is not DevelopmentTarget or target_capture._token is not _CACHE_TOKEN or
+def _validate_target(target_capture, target, clean, *, scope=_CACHE_TOKEN):
+    if (type(target_capture) is not DevelopmentTarget or target_capture._token is not scope or
             target_capture._clean is not clean or target_capture.target != target):
         raise DevelopmentInvalid("private target capture or its identity changed")
     _, path = _target_spec(target)
@@ -230,14 +232,19 @@ def _check_upstream(reference, candidate, block, policy):
                        "private upstream trace integrity failed", policy)
 
 
-def _forward(model, x, budget, policy, make_session=None, *, perturb=None):
-    budget.reserve()  # Counts even if checks, hook preparation or model work fail.
+def _forward(model, x, budget, policy, make_session=None, *, perturb=None, reserved=False):
+    if type(reserved) is not bool:
+        raise DevelopmentInvalid("invalid reservation state")
+    if not reserved:
+        budget.reserve()  # Counts even if checks, hook preparation or model work fail.
+    elif (budget.submissions != budget.root_forwards + 1 or getattr(budget, "_pending", True) is not True):
+        raise DevelopmentInvalid("forward has no pending reservation")
     _check_hooks(model)
     policy.verify()
     session = make_session() if make_session is not None else nullcontext()
     with session:
-        budget.root()
         with torch.no_grad():
+            budget.root()
             output = model(x, route=0, perturb=perturb).detach().clone()
     policy.verify()
     _check_hooks(model)
@@ -246,20 +253,20 @@ def _forward(model, x, budget, policy, make_session=None, *, perturb=None):
     return output, session
 
 
-def _trace(model, x, budget, policy, perturb=None):
-    run_id = f"development-{budget.submissions + 1:05d}"
+def _trace(model, x, budget, policy, perturb=None, *, reserved=False):
+    run_id = f"v2-observation-{budget.submissions if reserved else budget.submissions + 1:05d}"
     output, session = _forward(model, x, budget, policy,
         lambda: TraceSession(model, mode="direct", placement="sparse", run_id=run_id,
-                             max_events=4, max_tensor_bytes=128), perturb=perturb)
+                             max_events=4, max_tensor_bytes=128), perturb=perturb, reserved=reserved)
     if len(session.events) != 4 or session.tensor_bytes != 128:
         raise DevelopmentInvalid("incomplete sparse trace")
     return output, tuple(session.events)
 
 
-def _capture(model, x, path, budget, policy, perturb=None):
+def _capture(model, x, path, budget, policy, perturb=None, *, reserved=False):
     output, session = _forward(model, x, budget, policy,
         lambda: ActivationCapture(model, path, invocation=0, max_tensor_bytes=32, max_invocations=1),
-        perturb=perturb)
+        perturb=perturb, reserved=reserved)
     value = session.value
     if (tuple(value.shape) != (1, 8) or value.numel() * value.element_size() != 32 or
             not _equal(value, value, policy)):
@@ -298,6 +305,7 @@ def _check_plan_metadata(metadata, path, names, operations, source_capture, capt
 
 
 def _plan(model, x, site, kind, source, trace_value, budget, policy, perturb):
+    budget.reserve()  # Source snapshots and plan arguments are submission preparation.
     path = f"blocks.{site}.output_tap"
     base = {"module_path": path, "invocation": 0}
     owned = source.detach().clone() if source is not None else None
@@ -325,7 +333,7 @@ def _plan(model, x, site, kind, source, trace_value, budget, policy, perturb):
     output, plan = _forward(model, x, budget, policy,
         lambda: ActivationPlan(model, steps, max_tensor_bytes=32, max_capture_bytes=capture_bytes,
                                max_source_bytes=32, max_steps=len(steps), max_invocations=1),
-        perturb=perturb)
+        perturb=perturb, reserved=True)
     metadata = plan.metadata
     _check_plan_metadata(metadata, path, names, operations, source_reference, capture_bytes, source_bytes)
     captures = plan.captures
@@ -352,16 +360,16 @@ def _plan(model, x, site, kind, source, trace_value, budget, policy, perturb):
                     "base_identity": "clean" if kind == "reverse" else "perturbed"}
 
 
-def prepare_development_clean(model, x, budget, policy):
-    """Capture a reusable clean/repeat pair using two development forwards."""
+def _prepare_clean(model, x, budget, policy, *, budget_type, scope, input_check, first_reserved=False):
+    """Private shared kernel; the caller supplies its fixed input policy and budget type."""
     try:
-        if type(budget) is not DevelopmentBudget or type(policy) is not NumericPolicy:
+        if type(budget) is not budget_type or type(policy) is not NumericPolicy:
             raise DevelopmentInvalid("development budget and numeric policy are required")
         policy.verify()
         _check_model(model)
-        _check_input(x, policy)
+        input_check(x, policy)
         initial_input, initial_state = input_sha256(x), state_sha256(model)
-        clean, clean_trace = _trace(model, x, budget, policy)
+        clean, clean_trace = _trace(model, x, budget, policy, reserved=first_reserved)
         repeat, repeat_trace = _trace(model, x, budget, policy)
         _require_equal(clean, repeat, "repeated clean logits differ", policy)
         clean_pair = _compare(clean_trace, repeat_trace, policy)
@@ -371,13 +379,19 @@ def prepare_development_clean(model, x, budget, policy):
             raise DevelopmentInvalid("model or input changed during clean observation")
         result = DevelopmentClean(clean_trace, repeat_trace, clean, repeat, initial_input, initial_state,
                                   _snapshot_sha256(clean_trace, repeat_trace, clean, repeat),
-                                  model, budget, policy, _CACHE_TOKEN)
-        _validate_clean(result, model, x, budget, policy)
+                                  model, budget, policy, scope)
+        _validate_clean(result, model, x, budget, policy, scope=scope, input_check=input_check)
         return result
     except DevelopmentInvalid:
         raise
     except Exception as error:
         raise DevelopmentInvalid("development clean preparation failed") from error
+
+
+def prepare_development_clean(model, x, budget, policy):
+    """Capture a reusable clean/repeat pair using two development forwards."""
+    return _prepare_clean(model, x, budget, policy, budget_type=DevelopmentBudget,
+                          scope=_CACHE_TOKEN, input_check=_check_input)
 
 
 def _target_spec(target):
@@ -390,27 +404,32 @@ def _target_spec(target):
     return block, path
 
 
-def prepare_development_target(model, x, target, clean, budget, policy):
-    """Capture one private clean target for reuse across strengths."""
+def _prepare_target(model, x, target, clean, budget, policy, *, scope, input_check, first_reserved=False):
     try:
-        _validate_clean(clean, model, x, budget, policy)
+        _validate_clean(clean, model, x, budget, policy, scope=scope, input_check=input_check)
         _, path = _target_spec(target)
-        capture_logits, clean_target, clean_metadata = _capture(model, x, path, budget, policy)
+        capture_logits, clean_target, clean_metadata = _capture(model, x, path, budget, policy,
+                                                                reserved=first_reserved)
         _require_equal(capture_logits, clean.clean_logits, "clean target capture logits differ", policy)
-        _validate_clean(clean, model, x, budget, policy)
+        _validate_clean(clean, model, x, budget, policy, scope=scope, input_check=input_check)
         return DevelopmentTarget(target, clean_target, clean_metadata,
-                                 _target_sha256(target, clean_target, clean_metadata), clean, _CACHE_TOKEN)
+                                 _target_sha256(target, clean_target, clean_metadata), clean, scope)
     except DevelopmentInvalid:
         raise
     except Exception as error:
         raise DevelopmentInvalid("development target preparation failed") from error
 
 
-def run_development_active(model, x, target, strength, clean, target_capture, budget, policy):
-    """Execute the 16-forward development condition with validated reusable inputs."""
+def prepare_development_target(model, x, target, clean, budget, policy):
+    """Capture one private clean target for reuse across strengths."""
+    return _prepare_target(model, x, target, clean, budget, policy, scope=_CACHE_TOKEN, input_check=_check_input)
+
+
+def _run_active(model, x, target, strength, clean, target_capture, budget, policy, *, scope, input_check,
+                first_reserved=False):
     try:
-        _validate_clean(clean, model, x, budget, policy)
-        _validate_target(target_capture, target, clean)
+        _validate_clean(clean, model, x, budget, policy, scope=scope, input_check=input_check)
+        _validate_target(target_capture, target, clean, scope=scope)
         block, path = _target_spec(target)
         if type(strength) is not float or strength not in (.25, .75):
             raise DevelopmentInvalid("invalid development strength")
@@ -419,7 +438,7 @@ def run_development_active(model, x, target, strength, clean, target_capture, bu
         clean_target, clean_metadata = target_capture.value, target_capture.metadata
         delta = strength if x[0, 0].item() > 0 else -strength
         perturb = (target, delta)
-        changed, changed_trace = _trace(model, x, budget, policy, perturb)
+        changed, changed_trace = _trace(model, x, budget, policy, perturb, reserved=first_reserved)
         compared = _compare(clean_trace, changed_trace, policy)
         if compared["status"] == "upstream_difference":
             raise DevelopmentInvalid("upstream observation changed")
@@ -454,8 +473,8 @@ def run_development_active(model, x, target, strength, clean, target_capture, bu
         condition = DiscoveryCondition(strength, changed_trace, changed, tuple(results["forward"]),
                                        tuple(results["reverse"]), tuple(results["null"]), tuple(results["self"]),
                                        upstream, verification)
-        _validate_clean(clean, model, x, budget, policy)
-        _validate_target(target_capture, target, clean)
+        _validate_clean(clean, model, x, budget, policy, scope=scope, input_check=input_check)
+        _validate_target(target_capture, target, clean, scope=scope)
         return {"clean_trace": clean_trace, "repeat_trace": repeat_trace, "clean_logits": clean_logits,
                 "repeat_logits": repeat_logits, "condition": condition, "plans": plans,
                 "private_integrity": {"target": target, "clean_target_bits": _bits(clean_target),
@@ -468,6 +487,12 @@ def run_development_active(model, x, target, strength, clean, target_capture, bu
         raise
     except Exception as error:
         raise DevelopmentInvalid("development active condition failed") from error
+
+
+def run_development_active(model, x, target, strength, clean, target_capture, budget, policy):
+    """Execute the 16-forward development condition with validated reusable inputs."""
+    return _run_active(model, x, target, strength, clean, target_capture, budget, policy,
+                       scope=_CACHE_TOKEN, input_check=_check_input)
 
 
 def run_development_condition(model, x, target, strength, budget, policy):
