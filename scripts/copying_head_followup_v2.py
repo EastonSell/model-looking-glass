@@ -12,6 +12,8 @@ import traceback
 
 if __name__ == "__main__" and os.environ.get("CUDA_VISIBLE_DEVICES") != "-1":
     raise RuntimeError("set CUDA_VISIBLE_DEVICES=-1 before starting")
+if __name__ == "__main__" and "torch" in sys.modules:
+    raise RuntimeError("torch must not be imported before the CPU backend environment snapshot")
 
 CPU_ENV_NAMES = ("MKL_CBWR", "ATEN_CPU_CAPABILITY")
 CPU_ENV_AT_TORCH_IMPORT = {name: {"present": name in os.environ, "value": os.environ.get(name)}

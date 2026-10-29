@@ -3,6 +3,8 @@
 import copy
 import json
 import os
+import runpy
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -58,6 +60,12 @@ class SyntheticModel(torch.nn.Module):
 
 
 class FollowupRunnerTests(unittest.TestCase):
+    def test_main_rejects_torch_preimport_before_backend_snapshot(self):
+        self.assertIn("torch", sys.modules)
+        with patch.dict(os.environ, {"CUDA_VISIBLE_DEVICES": "-1"}):
+            with self.assertRaisesRegex(RuntimeError, "torch must not be imported"):
+                runpy.run_path(str(Path(followup.__file__)), run_name="__main__")
+
     def test_cpu_backend_environment_drift_is_rejected(self):
         absent = {name: {"present": False, "value": None} for name in followup.CPU_ENV_NAMES}
         with patch.object(followup, "CPU_ENV_AT_TORCH_IMPORT", absent), patch.dict(os.environ, {}, clear=True):
