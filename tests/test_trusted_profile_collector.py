@@ -48,6 +48,7 @@ def identity_and_samples():
         'cuda_runtime_version': '12.8', 'driver_version': '616.92', 'model_dtype': 'torch.float32',
         'compute_dtype': 'torch.float32', 'attention_backend': 'eager', 'model_mode': 'eval',
         'grad_mode': 'inference', 'autocast': 'disabled', 'use_cache': False, 'compiled': False,
+        'execution_path': 'looking_glass.resident_worker.ResidentWorker.execute',
         'allocator_fraction': '0.20'}
     keys = _make_workload_keys(hashlib.sha256(source).hexdigest(), runtime)
     identity = TrustedServiceIdentity(keys, source, canonical(runtime), canonical(assets))
