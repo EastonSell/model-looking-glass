@@ -1,0 +1,138 @@
+{
+  "checkpoint": {
+    "assets": {
+      "config.json": {
+        "sha256": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+        "size": 762
+      },
+      "generation_config.json": {
+        "sha256": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+        "size": 124
+      },
+      "merges.txt": {
+        "sha256": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+        "size": 456318
+      },
+      "model.safetensors": {
+        "sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+        "size": 352824413
+      },
+      "tokenizer.json": {
+        "sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+        "size": 1355256
+      },
+      "tokenizer_config.json": {
+        "sha256": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+        "size": 26
+      },
+      "vocab.json": {
+        "sha256": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783",
+        "size": 1042301
+      }
+    },
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "tokenizer_id": "distilbert/distilgpt2",
+    "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa"
+  },
+  "exit_code": 0,
+  "final_source_commit": "1a8f46e669ca4b17d9a8534bd93d786901f379db",
+  "finished_at_utc": "2026-10-29T01:31:31.723219+00:00",
+  "invocation": {
+    "cache_path_existed_before": true,
+    "cache_policy": "explicit local cache; download disabled",
+    "collector": "tools/bootstrap_pretrained_cpu_evidence.py",
+    "command": [
+      "python",
+      "-I",
+      "-B",
+      "-X",
+      "pycache_prefix=<private-empty>",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests",
+      "-p",
+      "test_bootstrap_pretrained_cpu.py",
+      "-v"
+    ],
+    "summary_enabled": true
+  },
+  "notes": "CPU correctness only; guarded calls apply after PyTorch import, not all native CUDA paths. The synthetic frame observation is not an upper bound, benchmark, or GPU profile.",
+  "observed": {
+    "case_sha256": "a137759c4f2a40c4da15d1a4625086e160edc75f161748db91b07d83dae751e4",
+    "guarded_cuda_and_network_calls": 0,
+    "imported_origins_checked": 1249,
+    "input_bytes": 16,
+    "output_bytes": 402056,
+    "repo_files_checked": 5,
+    "response_frame_bytes": 1929172,
+    "response_frame_limit_bytes": 4194304,
+    "source_commit": "1a8f46e669ca4b17d9a8534bd93d786901f379db",
+    "source_tree": "5bf981a71d43c26c79ec613cfb33657a1876e2a4",
+    "status": "passed",
+    "verified_assets": 7
+  },
+  "protocol": {
+    "case_sha256": "a137759c4f2a40c4da15d1a4625086e160edc75f161748db91b07d83dae751e4",
+    "input_dtype": "torch.int64",
+    "input_limit_bytes": 65536,
+    "input_shape": [
+      1,
+      2
+    ],
+    "output_dtype": "torch.float32",
+    "output_shape": [
+      1,
+      2,
+      50257
+    ],
+    "output_tensor_limit_bytes": 524288,
+    "response_frame_limit_bytes": 4194304
+  },
+  "purpose": "correctness",
+  "runtime": {
+    "base_python_sha256": "749a54c7896d14138d74c6e35f89cb4f8fb1c59d1dd6ddaeaa8107b2a8e0aba2",
+    "child_bytecode_writes_disabled_setting": true,
+    "child_direct_base_interpreter_setting": true,
+    "child_no_site_setting": true,
+    "child_no_user_site_setting": true,
+    "child_private_empty_pycache_setting": true,
+    "cuda_hidden_setting": true,
+    "device_setting": "cpu",
+    "offline_setting": true,
+    "outer_python_sha256": "605444b81575fbe41b84b57d3c83f7133ac472f5b3fc5f43160d2bec03fca3fb",
+    "packages": {
+      "huggingface_hub": "0.36.2",
+      "numpy": "2.4.6",
+      "safetensors": "0.8.0",
+      "tokenizers": "0.22.2",
+      "torch": "2.8.0+cu128",
+      "transformers": "4.57.3"
+    },
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.15",
+    "reference_intraop_threads_setting": 1,
+    "seed_setting": 17
+  },
+  "schema": "bootstrap-pretrained-cpu-evidence-v1",
+  "source_commit": "1a8f46e669ca4b17d9a8534bd93d786901f379db",
+  "source_files_sha256": {
+    "docs/BOOTSTRAP_CPU_PREFLIGHT.md": "be2c04312841b7bac26fd542936623fb6490c6d7704a0e42b5b20e1b36f4e531",
+    "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+    "looking_glass/ipc.py": "06bf22cad7ee20f75eef1edbf6a40034ba0cfbec3a01f8d80aa84492e6c6d1c0",
+    "looking_glass/pretrained.py": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da",
+    "looking_glass/resident_worker.py": "27efb9c6c1911fa5f15166cb4a724cbf8a3967f20d2ccea07467308dfc205f96",
+    "pyproject.toml": "d6f4b4211fbdbac80f1af25546a9d62b76f57c9bae8a572573bcf0d635e18a21",
+    "tests/test_bootstrap_pretrained_cpu.py": "541f781b1a8e8e34e824c840a9a706ddd0a52820ae7a5b7c9156851483659348",
+    "tools/bootstrap_pretrained_cpu_evidence.py": "200e69c7107673eca137d42a21b9f256417bfc554b30b0bd57e7b4808f273c91"
+  },
+  "source_tree": "5bf981a71d43c26c79ec613cfb33657a1876e2a4",
+  "source_unchanged": true,
+  "started_at_utc": "2026-10-29T01:31:03.117844+00:00",
+  "status": "passed",
+  "stderr_sha256": "f296e533ad2b5eecea5f763064169b95db2b40cf810fd07fc2954f7046fde4b8",
+  "stdout_sha256": "d7f2db16410341c8b9baafb547d820980cce8cd5b256a4d552b9022e4577a391",
+  "unittest_parent_pycache_empty_after": true
+}
