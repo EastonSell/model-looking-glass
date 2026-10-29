@@ -1,0 +1,46 @@
+{
+  "cases": {
+    "absent-cache": {
+      "files": {
+        "attempt.json": {
+          "publication_sha256": "86701858e3cea877381afe6ffbaa89700b8157fd499b273d18032cc98993446a",
+          "raw_sha256": "cc1cc63294b1e0c985d50085f197be5a2696a5756e494ef591b6831067cc3bff"
+        },
+        "failure.json": {
+          "publication_sha256": "564c3ad44856d2e10f264d8b90d4386d65608065bd6098cad1236eb6910b2f9f",
+          "raw_sha256": "899630fa0ba3b9dcb8ec583f74a091b3c25dab6f7423ff423a0c43d2b680628f"
+        }
+      },
+      "launcher_exit_code": 1
+    },
+    "independent-replay": {
+      "files": {
+        "attempt.json": {
+          "publication_sha256": "622eaa6a3f932170c7ea1bd800d5a31123b9a1723027940bf42afb4e32c509b7",
+          "raw_sha256": "087146900792b1a2269e72d8c65c6e8af40e45d5b7514a5abc51823be3c5e23d"
+        },
+        "result.json": {
+          "publication_sha256": "5fca352c7c9a3d1427094eac631175e2dfb5521db9c277bff8e1d8cae1ada574",
+          "raw_sha256": "5c0fc0b8508e281ce621c2227e46ac824d237b4fd45fa8b46621c6c36528c608"
+        }
+      },
+      "launcher_exit_code": 0
+    },
+    "pinned": {
+      "files": {
+        "attempt.json": {
+          "publication_sha256": "a0250e974c4e250aaae9bbb133d78bbec44542248de335001b0afb63848b68ca",
+          "raw_sha256": "2efe8d012a2a8f305dd6dcc8ac0b7c9e51bc00026537a9538d00b285fa3f314d"
+        },
+        "result.json": {
+          "publication_sha256": "8c5cb27f4606b9f9cd67783d2089f8e7b17eaaf36b54e7629bb5db1e64dd66dd",
+          "raw_sha256": "8e5594edf340646b20498106c698bc5a25e80048fa6b564c1e1af0dab74f6d91"
+        }
+      },
+      "launcher_exit_code": 0
+    }
+  },
+  "redaction": "Only local workspace and base-interpreter path prefixes were replaced by <workspace> and <python-base>; original records remain private.",
+  "schema": "distilgpt2-intervention-dev-publication-v1",
+  "source_commit": "3f8de5d7fb299e4878dbf75f86bb58f2249d6a37"
+}

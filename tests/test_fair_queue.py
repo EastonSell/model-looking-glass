@@ -1,4 +1,7 @@
 import unittest
+import gc
+import sys
+import weakref
 from collections import OrderedDict, deque
 from concurrent.futures import ThreadPoolExecutor
 from queue import Empty, Full
@@ -8,6 +11,70 @@ from looking_glass.fair_queue import FairTeamQueue
 
 
 class FairTeamQueueTests(unittest.TestCase):
+    def test_head_hint_does_not_remove_or_change_round_robin_order(self):
+        queue = FairTeamQueue(max_pending=4, max_pending_per_team=2)
+        with self.assertRaises(Empty):
+            queue.peek_head_id()
+        queue.put('a', 'a1', 'first')
+        queue.put('a', 'a2', 'second')
+        queue.put('b', 'b1', 'third')
+        head = queue.peek_head_id()
+        self.assertEqual(head, 'a1')
+        self.assertEqual(queue.peek_head_id(), head)
+        self.assertEqual(len(queue), 3)
+        self.assertEqual(queue.pop().job_id, 'a1')
+        self.assertEqual(queue.peek_head_id(), 'b1')
+        self.assertEqual([queue.pop().job_id, queue.pop().job_id], ['b1', 'a2'])
+
+    def test_head_hint_does_not_retain_cancelled_payload(self):
+        class Payload:
+            pass
+        queue = FairTeamQueue(max_pending=1, max_pending_per_team=1)
+        payload = Payload()
+        ref = weakref.ref(payload)
+        queue.put('a', 'a1', payload)
+        del payload
+        hint = queue.peek_head_id()
+        self.assertEqual(hint, 'a1')
+        self.assertTrue(queue.cancel('a1'))
+        gc.collect()
+        self.assertIsNone(ref())
+
+    def test_interrupted_head_hints_do_not_retain_shadowed_payloads(self):
+        class Payload:
+            pass
+        for method_name in ('peek_head_id', 'peek_compatibility'):
+            with self.subTest(method=method_name):
+                queue = FairTeamQueue(max_pending=2, max_pending_per_team=1)
+                first, second = Payload(), Payload()
+                refs = weakref.ref(first), weakref.ref(second)
+                key = b'x' * 32
+                queue.put('a', 'a1', first, compatibility_key=key)
+                queue.put('b', 'b1', second, compatibility_key=key)
+                del first, second
+                method = getattr(queue, method_name)
+                previous = sys.gettrace()
+                held = []
+                def trace(frame, event, arg):
+                    if event == 'return' and frame.f_code is method.__func__.__code__:
+                        raise KeyboardInterrupt
+                    return trace
+                try:
+                    sys.settrace(trace)
+                    try:
+                        method()
+                    except KeyboardInterrupt as exc:
+                        held.append(exc)
+                finally:
+                    sys.settrace(previous)
+                claim = queue.pop_compatible(key, claim_id='claim', allowed_sizes=(2,), max_per_team=1)
+                self.assertEqual(len(claim), 2)
+                self.assertTrue(queue.acknowledge_claim('claim'))
+                del claim
+                gc.collect()
+                self.assertTrue(held)
+                self.assertTrue(all(ref() is None for ref in refs))
+
     def test_teams_take_turns_and_keep_submission_order(self):
         queue = FairTeamQueue(max_pending=8, max_pending_per_team=4)
         queue.put('a', 'a1', 1)

@@ -92,10 +92,16 @@ exposed prefix, prompts may be semantically related without sharing tokens,
 and unknown historical forwards may be missing from this list. The function
 does not inspect model behavior, prove tokenizer identity or preserve a private
 seal. Its result explicitly says `known-rows-only` and `preseal_ready=False`;
-`require_preseal_readiness` fails closed because a separately reviewed,
-complete exposure audit and protocol binding have not been established. It
-must not be treated as a substitute for a trusted, procedural-blinding
-custodian or a secure same-account isolation boundary.
+`require_preseal_readiness` remains fail-closed because this check alone is not
+a seal authorization. `prepare_preseal_disclosure` can instead associate the
+checked inventory with a caller-supplied protocol SHA-256 after explicit
+acknowledgement that prior exposure history is unverified. Its result is a
+trusted-caller report, not proof that the protocol was reviewed, a fresh split
+was sampled, a manifest was committed, or execution is authorized. A separate
+reviewed study protocol may proceed with this bounded check and transparently
+disclose remaining exposure uncertainty; exhaustive proof of every historical
+model access is not an automatic prerequisite. Neither helper replaces a
+trusted, procedural-blinding custodian or provides same-account isolation.
 
 The existing v1 protocol and previous results remain unchanged. Before using a
 later inventory for actual discovery and held-out inputs, the custodian must

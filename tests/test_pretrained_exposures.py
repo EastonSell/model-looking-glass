@@ -69,6 +69,21 @@ class ExposureInventoryTests(unittest.TestCase):
         self.assertNotIn(str(discovery[0]), repr(result))
         with self.assertRaises(exposure.ExposureInventoryIncomplete):
             exposure.require_preseal_readiness(result)
+        with self.assertRaises(exposure.ExposureInventoryIncomplete):
+            exposure.prepare_preseal_disclosure(result, protocol_sha256="a" * 64)
+        disclosure = exposure.prepare_preseal_disclosure(
+            result, protocol_sha256="a" * 64, acknowledge_prior_exposure_uncertainty=True)
+        self.assertEqual(disclosure.protocol_sha256, "a" * 64)
+        self.assertEqual(disclosure.inventory_sha256, EXPECTED_DIGEST)
+        self.assertEqual(disclosure.candidates_per_split, 8)
+        self.assertEqual(disclosure.known_prefix_comparison, "trusted-caller-report")
+        self.assertEqual(disclosure.prior_exposure_history, "not-independently-certified-complete")
+        self.assertFalse(disclosure.sealed_manifest_verified)
+        self.assertFalse(disclosure.independent_review_verified)
+        self.assertFalse(disclosure.execution_authorized)
+        with self.assertRaises(ValueError):
+            exposure.prepare_preseal_disclosure(result, protocol_sha256="A" * 64,
+                                                  acknowledge_prior_exposure_uncertainty=True)
         discovery[0][0] = 9000
         self.assertEqual(result.candidate_count, 16)
 

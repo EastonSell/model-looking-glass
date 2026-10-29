@@ -8,6 +8,7 @@ tracebacks can retain private inputs and must stay inside the custodian.
 from dataclasses import dataclass, field
 import hashlib
 import json
+import re
 
 
 INVENTORY_VERSION = "distilgpt2-development-exposures-v1"
@@ -136,7 +137,7 @@ RECORDS = _OBSERVED + _RESERVED + _SYNTHETIC
 
 
 class ExposureInventoryIncomplete(ValueError):
-    """Known rows do not establish a complete development-exposure history."""
+    """The known-row check needs a scoped protocol and uncertainty disclosure."""
 
 
 @dataclass(frozen=True)
@@ -148,6 +149,20 @@ class KnownSplitCheck:
     scope: str = field(default="known-rows-only", init=False)
     complete_exposure_history_certified: bool = field(default=False, init=False)
     preseal_ready: bool = field(default=False, init=False)
+
+
+@dataclass(frozen=True)
+class PresealDisclosure:
+    inventory_version: str
+    inventory_sha256: str
+    protocol_sha256: str
+    candidates_per_split: int
+    forbidden_prefix_count: int
+    known_prefix_comparison: str = field(default="trusted-caller-report", init=False)
+    prior_exposure_history: str = field(default="not-independently-certified-complete", init=False)
+    sealed_manifest_verified: bool = field(default=False, init=False)
+    independent_review_verified: bool = field(default=False, init=False)
+    execution_authorized: bool = field(default=False, init=False)
 
 
 def inventory_payload():
@@ -225,8 +240,34 @@ def check_known_splits(discovery_token_ids, heldout_token_ids, *, expected_inven
     return KnownSplitCheck(INVENTORY_VERSION, expected_inventory_sha256, len(candidates), len(forbidden))
 
 
-def require_preseal_readiness(check):
-    """Fail closed until a separately reviewed complete exposure audit exists."""
-    if type(check) is not KnownSplitCheck or check.inventory_sha256 != inventory_digest():
+def _validate_known_check(check):
+    forbidden_count = len({record.token_ids[:length] for record in RECORDS
+                           for length in range(1, len(record.token_ids) + 1)})
+    if (type(check) is not KnownSplitCheck or check.inventory_version != INVENTORY_VERSION or
+            check.inventory_sha256 != inventory_digest() or check.candidate_count != 2 * SPLIT_SIZE or
+            check.forbidden_row_count != forbidden_count or check.scope != "known-rows-only" or
+            check.complete_exposure_history_certified is not False or check.preseal_ready is not False):
         raise ValueError("a matching known-split check is required")
-    raise ExposureInventoryIncomplete("known-row checking alone does not certify a complete exposure history")
+    return forbidden_count
+
+
+def require_preseal_readiness(check):
+    """This inventory check alone never authorizes a study seal."""
+    _validate_known_check(check)
+    raise ExposureInventoryIncomplete("known-row checking alone does not authorize a study seal")
+
+
+def prepare_preseal_disclosure(check, *, protocol_sha256, acknowledge_prior_exposure_uncertainty=False):
+    """Prepare a scoped report, not an attestation or execution authorization.
+
+    A trusted caller must check the actual protocol, make and verify a fresh
+    commitment, preserve the disclosure and obtain the separate review. The
+    caller-supplied protocol digest and known-split object are not authenticated.
+    """
+    forbidden_count = _validate_known_check(check)
+    if acknowledge_prior_exposure_uncertainty is not True:
+        raise ExposureInventoryIncomplete("prior exposure uncertainty must be explicitly disclosed")
+    if type(protocol_sha256) is not str or re.fullmatch(r"[0-9a-f]{64}", protocol_sha256) is None:
+        raise ValueError("a canonical protocol SHA-256 is required")
+    return PresealDisclosure(INVENTORY_VERSION, check.inventory_sha256, protocol_sha256,
+                             SPLIT_SIZE, forbidden_count)
