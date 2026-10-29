@@ -43,6 +43,9 @@ The direct-child observer creates a pending sentinel before spawning and
 removes it only after its successful exit receipt has been written and fsynced.
 The reader rejects a receipt whose sentinel remains. This is a cooperative
 publication boundary, not an observer-exit or power-loss durability guarantee.
+Use the receipt in its original controller directory: copying the receipt
+alone could omit a pending sentinel. The reader checks the recorded controller
+basename, which guards an accidental mismatch but does not authenticate custody.
 The observer records a successful exit only for a reaped child whose source,
 metadata and completion record remain consistent. A lost spawn
 handle or incomplete attempt does not justify a retry until the child state

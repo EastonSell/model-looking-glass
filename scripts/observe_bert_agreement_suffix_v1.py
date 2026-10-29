@@ -109,7 +109,8 @@ def observe(command, controller, attempt, commit, environment, timeout, repo, gi
             os.fsync(log.fileno())
     receipt = {"schema": "bert-agreement-suffix-direct-child-exit-v1", "status": "incomplete",
                "child_pid": process.pid if process else None, "exit_code": exit_code, "interrupted": interrupted,
-               "attempt_name": attempt.name, "source_commit": commit, "start_unix": start, "end_unix": time.time()}
+               "attempt_name": attempt.name, "controller_name": controller.name,
+               "source_commit": commit, "start_unix": start, "end_unix": time.time()}
     completed_path, metadata_path = attempt / "complete.json", attempt / "metadata.json"
     if (process is not None and exit_code == 0 and interrupted is None and completed_path.is_file()
             and metadata_path.is_file() and not (attempt / "failure.txt").exists()):

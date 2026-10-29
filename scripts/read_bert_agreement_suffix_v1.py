@@ -290,6 +290,7 @@ def replay(attempt, manifest, receipt, receipt_sha, complete_sha, expected_sourc
             or exit_record.get("status") != "complete" or exit_record.get("exit_code") != 0
             or type(exit_record.get("exit_code")) is not int or type(exit_record.get("child_pid")) is not int
             or exit_record.get("interrupted") is not None or exit_record.get("child_pid") != metadata.get("pid")
+            or type(exit_record.get("controller_name")) is not str or exit_record["controller_name"] != receipt.parent.name
             or exit_record.get("attempt_name") != attempt.name or exit_record.get("complete_sha256") != complete_sha
             or exit_record.get("metadata_sha256") != file_sha(metadata_path)
             or exit_record.get("source_commit") != metadata.get("source_commit")

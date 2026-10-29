@@ -84,7 +84,7 @@ def complete_fake_attempt(tmp_path, monkeypatch):
     receipt_path = tmp_path / "receipt.json"
     receipt = {"schema": "bert-agreement-suffix-direct-child-exit-v1", "status": "complete",
                "exit_code": 0, "interrupted": None, "child_pid": 123,
-               "attempt_name": root.name, "source_commit": commit,
+               "attempt_name": root.name, "controller_name": receipt_path.parent.name, "source_commit": commit,
                "complete_sha256": study.file_sha(root / "complete.json"),
                "metadata_sha256": study.file_sha(root / "metadata.json")}
     write_json(receipt_path, receipt)
