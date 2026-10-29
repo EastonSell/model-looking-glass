@@ -11,7 +11,7 @@ dependencies = ["torch>=2.6"]
 
 [project.optional-dependencies]
 transformer = ["transformers==4.57.3"]
-test = ["numpy>=1.26", "pytest>=8,<9"]
+test = ["numpy>=1.26", "pytest>=8,<9", "Pillow==11.3.0"]
 
 [tool.setuptools.packages.find]
 include = ["looking_glass*"]

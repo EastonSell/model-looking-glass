@@ -159,8 +159,9 @@ The [grouped-broker CPU development replay](results/grouped-broker-cpu-dev-v3/RE
 The recorded original experiment used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records that run's installed versions; it is not a cross-platform dependency lock. Later experiments record their own environments. To install the original run's PyTorch version in an isolated environment, use `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
 
 Install the test and transformer extras and use pytest to discover both
-`unittest` cases and pytest-style tests. Some checks require optional local
-model assets and will be skipped when those assets are unavailable. Set
+`unittest` cases and pytest-style tests. The test extra pins Pillow 11.3.0
+for the vision selectors' fixed polygon rasterization. Some checks require
+optional local model assets and will be skipped when those assets are unavailable. Set
 `CUDA_VISIBLE_DEVICES=-1` before testing to keep the run CPU-only.
 
 ```bash
