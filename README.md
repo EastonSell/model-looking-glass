@@ -76,6 +76,8 @@ Full activations can contain sensitive information. This synthetic benchmark sav
 - [Prespecified experiment](PROTOCOL.md)
 - [Protocol clarifications and run history](docs/PROTOCOL_NOTES.md)
 - [Independent review and corrections](REVIEW.md)
+- [Audit of the preserved CPU records and reproducibility limits](docs/REPRODUCIBILITY_AUDIT.md)
+- [Causal intervention literature and controls](docs/CAUSAL_LITERATURE.md)
 - [Verification status](evidence/STATUS.md)
 - [Design](docs/superpowers/specs/2026-10-28-runtime-probes-design.md)
 - [Implementation plan](docs/superpowers/plans/2026-10-28-runtime-probes.md)
