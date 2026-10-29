@@ -1,0 +1,11 @@
+{
+  "case_sha256": "5f3a2c850454e74da2bdc3819d492357f829994c126e1ac95d90ca3813b0643e",
+  "note": "Fabricated for no-model rehearsal only; not a launch-currentness observation.",
+  "operator_revision": "baff8872b35193bcaf767c9e260ad4820e36332e",
+  "operator_sha256": "ef42683a664dda450e82c69afedda34a8a34f2daf9f50f2db54f6c9d846f07e5",
+  "operator_version": "distilgpt2-development-exposures-v27",
+  "reconstructed_sha256": "ef42683a664dda450e82c69afedda34a8a34f2daf9f50f2db54f6c9d846f07e5",
+  "refreshed_utc": "2026-10-29T10:13:29.682784+00:00",
+  "schema": "agreement-subject-exposure-refresh-v1",
+  "status": "clear"
+}
