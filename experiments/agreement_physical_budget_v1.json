@@ -1,0 +1,35 @@
+{
+  "schema": "mlg-agreement-physical-budget-amendment-v1",
+  "status": "prospective storage-only revision after natural discovery",
+  "natural_claim_sha256": "65a7baaa955150e25376de34b7c044b078be240488c9c83626ec160e3c40d6cf",
+  "natural_binding_sha256": "23575704f3e55d741123d3c1024accfb15aa0a048a84ce415bc765573d913ba0",
+  "original_host_disk_allowance_bytes": 1073741824,
+  "host_disk_allowance_bytes": 2147483648,
+  "required_free_disk_bytes": 3221225472,
+  "study_limit_bytes": 536870912,
+  "phase_reservations_bytes": {
+    "natural_discovery": 134217728,
+    "natural_heldout": 167772160,
+    "injection_discovery": 50331648,
+    "injection_heldout": 75497472
+  },
+  "host_disk_phase_reservations_bytes": {
+    "natural_discovery": 536870912,
+    "natural_heldout": 234881024,
+    "injection_discovery": 134217728,
+    "injection_heldout": 201326592
+  },
+  "observation": {
+    "inventory_observed_utc": "2026-10-29T04:42:24Z",
+    "candidate_inventory_sha256": "80b1b5dc56e275c63f2902840fbce62cbe0b86bff4a6ed13035b3c699dee008c",
+    "candidate_inventory_custody": "Retained locally as work/agreement-ledger-inventory-candidate.json with generator work/agreement_ledger_inventory_candidate.py; local absolute paths are not published. The public aggregate alone cannot reconstruct the private path list.",
+    "natural_apparent_file_bytes": 321350312,
+    "natural_archive_checkout_copies": 24,
+    "prior_apparent_file_bytes": 224697899,
+    "preflight_checkout_copies": 67,
+    "free_disk_observed_utc": "2026-10-29T04:43:12Z",
+    "free_disk_bytes": 138885816320,
+    "scope": "Conservative candidate including known study originals, archive copies, staging, prior files and orphans; completeness and later copies require independent reconciliation. File lengths are not allocated-cluster measurements."
+  },
+  "limitations": "Host evidence-file and free-space limits only; not VRAM or peak host-memory limits. Original natural claim, binding, case choices, logical tensor caps, analyses, predictions and results remain unchanged. A fresh destination free-space check and complete inventory remain mandatory before each phase."
+}

@@ -70,25 +70,42 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
                             'journal_terminal_sha256': hashes['terminal.json']})
         self.budget = {
             'study_limit_bytes': ledger.STUDY_LOGICAL_LIMIT,
-            'host_disk_allowance_bytes': ledger.STUDY_DISK_LIMIT,
+            'host_disk_allowance_bytes': ledger.ORIGINAL_DISK_LIMIT,
             'prior_unique_tensor_bytes': len(payload),
-            'required_free_disk_bytes': ledger.STUDY_DISK_LIMIT,
+            'required_free_disk_bytes': ledger.ORIGINAL_DISK_LIMIT,
             'phase_reservations_bytes': {p: v[0] for p, v in ledger.PHASE_LIMITS.items()},
-            'host_disk_phase_reservations_bytes': {p: v[1] for p, v in ledger.PHASE_LIMITS.items()},
+            'host_disk_phase_reservations_bytes': dict(ledger.ORIGINAL_PHASE_DISK),
         }
         self.binding = self.root / 'binding.json'
         b = _write(self.binding, {'study_budget': self.budget, 'independent_natural_audit_source_sha256': self.audit_source_hash})
         self.claim = self.root / 'natural.claim'
         _write(self.claim, {'schema': 'mlg-natural-study-claim-v1', 'budget': self.budget,
                             'binding_sha256': hashlib.sha256(b).hexdigest(), 'output': str(self.out)})
+        self.amendment = self.root / 'physical-amendment.json'
+        self.write_amendment()
         self.db = self.root / 'study.sqlite3'
         self.args = {'natural_claim_path': self.claim, 'natural_binding_path': self.binding,
                      'prior_paths': (self.preflight,), 'natural_extra_paths': (self.extra,),
                      'prior_unique_tensor_bytes': len(payload), 'natural_unique_tensor_bytes': 1,
                      'natural_audit_path': self.audit, 'expected_natural_audit_sha256': hashlib.sha256(self.audit.read_bytes()).hexdigest(),
+                     'physical_amendment_path': self.amendment,
+                     'expected_physical_amendment_sha256': hashlib.sha256(self.amendment.read_bytes()).hexdigest(),
                      'expected_natural_terminal_sha256': hashlib.sha256((self.out / 'launcher-terminal.json').read_bytes()).hexdigest(),
                      'expected_natural_claim_sha256': hashlib.sha256(self.claim.read_bytes()).hexdigest(),
                      'expected_natural_binding_sha256': hashlib.sha256(self.binding.read_bytes()).hexdigest()}
+
+    def write_amendment(self):
+        _write(self.amendment, {
+            'schema': 'mlg-agreement-physical-budget-amendment-v1',
+            'natural_claim_sha256': hashlib.sha256(self.claim.read_bytes()).hexdigest(),
+            'natural_binding_sha256': hashlib.sha256(self.binding.read_bytes()).hexdigest(),
+            'original_host_disk_allowance_bytes': ledger.ORIGINAL_DISK_LIMIT,
+            'host_disk_allowance_bytes': ledger.STUDY_DISK_LIMIT,
+            'required_free_disk_bytes': ledger.REQUIRED_FREE_DISK_BYTES,
+            'study_limit_bytes': ledger.STUDY_LOGICAL_LIMIT,
+            'phase_reservations_bytes': {p: v[0] for p, v in ledger.PHASE_LIMITS.items()},
+            'host_disk_phase_reservations_bytes': {p: v[1] for p, v in ledger.PHASE_LIMITS.items()},
+        })
 
     def initialize(self):
         ledger.initialize_study_ledger(self.db, **self.args)
@@ -97,7 +114,11 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
         return ledger.claim_phase(self.db, phase, output_path=self.root / name)
 
     def test_import_exact_limits_physical_copies_and_unique_payload(self):
+        original_claim = self.claim.read_bytes()
+        original_binding = self.binding.read_bytes()
         self.initialize()
+        self.assertEqual(self.claim.read_bytes(), original_claim)
+        self.assertEqual(self.binding.read_bytes(), original_binding)
         with closing(sqlite3.connect(self.db)) as db:
             meta_text, inv_text = db.execute('SELECT data, inventory FROM meta').fetchone()
             claims = db.execute('SELECT phase, logical, disk FROM claims').fetchall()
@@ -106,6 +127,9 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
         self.assertEqual(meta['natural_physical_bytes'], sum(v[0] for v in inv['natural'].values()))
         self.assertEqual(meta['prior_physical_bytes'], sum(v[0] for v in inv['prior'].values()))
         self.assertEqual(meta['prior_unique_tensor_bytes'], len(self.preflight.read_bytes()))
+        self.assertEqual(meta['study_disk_limit'], 2 * 1024**3)
+        self.assertEqual(meta['required_free_disk_bytes'], 3 * 1024**3)
+        self.assertEqual(claims[0][2], 512 * 1024**2)
         self.assertIn(os.path.normcase(str(self.extra)), inv['natural'])
         self.assertIn(os.path.normcase(str(self.out / 'unreferenced.partial')), inv['natural'])
         grant = self.claim_phase()
@@ -179,6 +203,22 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
             self.initialize()
         self.assertFalse(self.db.exists())
 
+    def test_amendment_cannot_change_logical_shares_or_original_identity(self):
+        amendment = json.loads(self.amendment.read_text())
+        amendment['phase_reservations_bytes']['injection_discovery'] += 1
+        raw = _write(self.amendment, amendment)
+        self.args['expected_physical_amendment_sha256'] = hashlib.sha256(raw).hexdigest()
+        with self.assertRaises(ledger.LedgerError):
+            self.initialize()
+        self.write_amendment()
+        amendment = json.loads(self.amendment.read_text())
+        amendment['natural_binding_sha256'] = '0' * 64
+        raw = _write(self.amendment, amendment)
+        self.args['expected_physical_amendment_sha256'] = hashlib.sha256(raw).hexdigest()
+        with self.assertRaises(ledger.LedgerError):
+            self.initialize()
+        self.assertFalse(self.db.exists())
+
     def test_changed_natural_journal_or_tensor_fails_before_import(self):
         event = self.out / 'owner' / 'attempt' / 'events.jsonl'
         original = event.read_bytes()
@@ -242,8 +282,8 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
 
     def test_disk_is_rechecked_after_inventory_before_commit(self):
         self.initialize()
-        ample = type('D', (), {'free': ledger.STUDY_DISK_LIMIT + 1})()
-        low = type('D', (), {'free': ledger.STUDY_DISK_LIMIT - 1})()
+        ample = type('D', (), {'free': ledger.REQUIRED_FREE_DISK_BYTES + 1})()
+        low = type('D', (), {'free': ledger.REQUIRED_FREE_DISK_BYTES - 1})()
         with patch.object(ledger.shutil, 'disk_usage', side_effect=[ample, low]):
             with self.assertRaises(ledger.LedgerError):
                 self.claim_phase()
@@ -264,7 +304,7 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
         # the natural originals and copies exceed it physically but contain
         # one unique tensor, so check copies against the physical share.
         limits = dict(ledger.PHASE_LIMITS)
-        limits['natural_discovery'] = (1, 224 * 1024**2)
+        limits['natural_discovery'] = (1, 512 * 1024**2)
         with patch.object(ledger, 'PHASE_LIMITS', limits):
             self.budget['phase_reservations_bytes']['natural_discovery'] = 1
             binding_bytes = _write(self.binding, {'study_budget': self.budget, 'independent_natural_audit_source_sha256': self.audit_source_hash})
@@ -273,6 +313,8 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
                                               'output': str(self.out)})
             self.args['expected_natural_claim_sha256'] = hashlib.sha256(claim_bytes).hexdigest()
             self.args['expected_natural_binding_sha256'] = hashlib.sha256(binding_bytes).hexdigest()
+            self.write_amendment()
+            self.args['expected_physical_amendment_sha256'] = hashlib.sha256(self.amendment.read_bytes()).hexdigest()
             self.initialize()
             with closing(sqlite3.connect(self.db)) as db:
                 meta = json.loads(db.execute('SELECT data FROM meta').fetchone()[0])
@@ -307,13 +349,14 @@ class AgreementPhaseLedgerTests(unittest.TestCase):
 
     def test_old_ledger_schema_is_not_silently_upgraded(self):
         self.initialize()
-        with closing(sqlite3.connect(self.db)) as db:
-            meta = json.loads(db.execute('SELECT data FROM meta').fetchone()[0])
-            meta['schema'] = 'mlg-agreement-phase-ledger-v1'
-            db.execute('UPDATE meta SET data=? WHERE id=1', (json.dumps(meta),))
-            db.commit()
-        with self.assertRaises(ledger.LedgerError):
-            self.claim_phase()
+        for version in ('v1', 'v2'):
+            with closing(sqlite3.connect(self.db)) as db:
+                meta = json.loads(db.execute('SELECT data FROM meta').fetchone()[0])
+                meta['schema'] = 'mlg-agreement-phase-ledger-' + version
+                db.execute('UPDATE meta SET data=? WHERE id=1', (json.dumps(meta),))
+                db.commit()
+            with self.assertRaises(ledger.LedgerError):
+                self.claim_phase()
         with self.assertRaises(ledger.LedgerError):
             self.initialize()
 
