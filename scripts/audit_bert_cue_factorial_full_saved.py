@@ -73,6 +73,17 @@ def numeric_mode():
         raise RuntimeError('numeric mode must preserve subnormals and round f32 ties to even')
 
 
+def valid_cpu_environment(environment):
+    if type(environment) is not dict or set(environment) != {'MKL_CBWR', 'ATEN_CPU_CAPABILITY'}:
+        return False
+    for record in environment.values():
+        if (type(record) is not dict or set(record) != {'present', 'value'} or
+                type(record['present']) is not bool or
+                (type(record['value']) is not str if record['present'] else record['value'] is not None)):
+            return False
+    return True
+
+
 def sha(path):
     digest = hashlib.sha256()
     with path.open('rb') as stream:
@@ -398,6 +409,8 @@ def main():
                 sha(a.started) != a.expected_started_sha256):
             raise ValueError('started-record binding differs')
         started = json.loads(a.started.read_bytes())
+        if not valid_cpu_environment(started.get('cpu_environment')):
+            raise ValueError('recorded CPU environment structure differs')
         if any(started.get(k) != result.get(k) for k in
                ('source_commit', 'source_sha256', 'assets', 'versions', 'seed', 'cpu_environment')):
             raise ValueError('started/result metadata differs')
