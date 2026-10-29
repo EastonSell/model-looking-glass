@@ -106,7 +106,8 @@ and `5b708600dba78db9e4ee676650bc5e1f6b3269d52179a8e45d5d45fee55219bb`.
 The model-state SHA-256 was
 `6bc3ce8e2f3d6518d6cc69e5f983af0208eab3957fa216be26006d502e18e9c0`.
 
-[Evidence inventory](evidence-inventory.json) pins every exported file.
+[Evidence inventory](evidence-inventory.json) pins the exported evidence and
+replay files and the auditor source; it does not hash this README or itself.
 [events.jsonl.gz](events.jsonl.gz) decompresses exactly to the closed journal,
 SHA-256 `9f482a369742960e24273d595d33d2a5fdc8ba2dfc82f1d65f6046266301a3ca`;
 the gzip SHA-256 is
