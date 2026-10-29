@@ -691,7 +691,7 @@
     },
     "input_ids_equal_clean_embeds": true
   },
-  "interpretation": "Differences describe only selected observations after an artificial input edit. Testing a clean-state patch at an observed site does not establish the causal origin or a natural feature; the comparison-site patch is not assumed to be ineffective or matched in dose. In the example, replacing the only changed token's full layer-0 block output restores that whole block output by construction, so downstream restoration is a mechanics check rather than evidence of a unique location.",
+  "interpretation": "Differences describe only selected observations after an artificial input edit. Testing a clean-state patch at an observed site does not establish the causal origin or a natural feature; the comparison-site patch is not assumed to be ineffective or matched in dose. In the example, replacing the only changed token's full layer-0 block output restores that whole block output by construction, so downstream restoration is a mechanics check rather than evidence of a unique location. The original full comparison-site patch is distinct from the optional matched pair of partial clean-direction patches, when available. Equal raw L2 doses do not match module scales, directions, computation positions or sensitivities.",
   "interventions": {
     "status": "complete",
     "plan_limits": {
@@ -1345,8 +1345,9 @@
     "parameter_count": 81912576
   },
   "example_runtime": {
-    "example_source_sha256": "6d316d50d13ce8832ead7b1e0f2f7ad05827bcc15f3d4f1cf5f45044b39a6519",
-    "workflow_source_sha256": "78ee78047ecba90e3abb800199992f9869f7cc3d8fa89550f4a24a3d0d6ac1cd",
+    "example_source_sha256": "7a3a4b0254accb96857bc8754a3ca13d75e8c586f05d2c5c5a78ac62518324aa",
+    "workflow_source_sha256": "bdde955d42bb43a8da1f3e8a1da0657aad9082dea6cc99e082f9bf6d3b593bb5",
+    "source_hash_scope": "post-run file readback; not independent execution attestation",
     "torch_num_threads": 1,
     "torch_num_interop_threads": 12
   },

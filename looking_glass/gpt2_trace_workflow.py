@@ -247,7 +247,11 @@ def compare_known_corruption(model, input_ids, *, coordinate, amount, readout_to
                 "the only changed token's full layer-0 block output restores that whole "
                 "block output by construction, so downstream restoration is a mechanics "
                 "check rather than evidence of a unique location."
-            ),
+            ) + (" The original full comparison-site patch is distinct from the optional "
+                 "matched pair of partial clean-direction patches, when available. Equal "
+                 "raw L2 doses do not match module scales, directions, computation "
+                 "positions or sensitivities."
+                 if matched_control else ""),
         }
         if (comparison["status"] != "difference_observed"
                 or not any(item["module_path"] == target_path for item in candidates)):

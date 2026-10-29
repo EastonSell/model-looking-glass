@@ -50,6 +50,7 @@ def test_optional_matched_active_control_uses_actual_same_forward_doses():
     report = compare_known_corruption(model, torch.tensor([[3, 4]]), coordinate=0,
         amount=5.0, readout_token=5, matched_control=True)
     assert report["schema"] == "gpt2-known-corruption-workflow-v2"
+    assert "optional matched pair" in report["interpretation"]
     assert report["interventions"]["target_patch"]["measurement"]["max_absolute_logit_distance_to_clean"] == 0
     matched = report["interventions"]["matched_control"]
     assert matched["status"] == "complete"

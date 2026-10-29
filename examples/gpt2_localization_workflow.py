@@ -31,6 +31,7 @@ def main():
     report["example_runtime"] = {
         "example_source_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "workflow_source_sha256": hashlib.sha256(Path(gpt2_trace_workflow.__file__).read_bytes()).hexdigest(),
+        "source_hash_scope": "post-run file readback; not independent execution attestation",
         "torch_num_threads": torch.get_num_threads(),
         "torch_num_interop_threads": torch.get_num_interop_threads(),
     }

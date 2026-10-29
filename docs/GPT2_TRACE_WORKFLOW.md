@@ -26,7 +26,8 @@ verification, model revision and staging space. The example uses the public
 [matched-dose sample report](../examples/gpt2_matched_control_workflow.sample.json)
 from a cached CPU run is included; its numerical values can vary with the runtime.
 The [earlier unmatched sample](../examples/gpt2_localization_workflow.sample.json)
-remains available.
+remains available. The CLI's recorded source hashes are post-run file
+readbacks, not independent proof of the bytes that executed.
 
 The library function can also be called with a loaded model and another short
 input:
