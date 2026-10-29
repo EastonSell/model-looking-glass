@@ -96,7 +96,8 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
                         value = _tensor(output)
                         self.assertEqual(tuple(value.shape), (1, len(case.tokens), 8))
                         captured[site] = {"last": value[0, -1].clone(),
-                                          "subject": value[0, case.subject_index].clone()}
+                                          "subject": value[0, case.subject_index].clone(),
+                                          "whole": value.clone()}
 
                     handles.append(_module(model, site).register_forward_hook(capture))
                 try:
@@ -118,9 +119,11 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
                             self.assertEqual(type(output) is tuple, site[1] != "mlp")
                             value = _tensor(output)
                             saved["pre"] = _bits(value[0, -1])
+                            saved["whole_pre"] = _bits(value)
                             changed = value.clone()
                             changed[0, -1] = source
                             saved["post"] = _bits(changed[0, -1])
+                            saved["whole_post"] = _bits(changed)
                             return (changed,) + output[1:] if type(output) is tuple else changed
 
                         handle = _module(model, site).register_forward_hook(patch)
@@ -132,7 +135,8 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
                         self.assertEqual(saved["post"], _bits(source))
                         patches[(target.case_id, donor.case_id, site)] = {
                             "logits": _bits(logits[list(_CONTRAST)]),
-                            "pre": saved["pre"], "post": saved["post"], "donor": _bits(source)}
+                            "pre": saved["pre"], "post": saved["post"], "donor": _bits(source),
+                            "whole_pre": saved["whole_pre"], "whole_post": saved["whole_post"]}
                         if target == donor:
                             self.assertEqual(_bits(logits), _bits(clean[target.case_id]["logits"]))
                 for target in _CASES:
@@ -146,10 +150,14 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
                 for role in ("last", "subject"):
                     position = -1 if role == "last" else target.subject_index
                     source = clean[donor.case_id]["sites"][(5, "block")][role]
+                    saved = {}
 
                     def patch(_module, _args, output):
-                        changed = _tensor(output).clone()
+                        value = _tensor(output)
+                        saved["whole_pre"] = _bits(value)
+                        changed = value.clone()
                         changed[0, position] = source
+                        saved["whole_post"] = _bits(changed)
                         return (changed,) + output[1:] if type(output) is tuple else changed
 
                     handle = _module(model, (5, "block")).register_forward_hook(patch)
@@ -159,21 +167,46 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
                         handle.remove()
                     reference_id = donor.case_id if role == "last" else target.case_id
                     self.assertEqual(_bits(logits), _bits(clean[reference_id]["logits"]))
-                    controls[(target.case_id, donor.case_id, role)] = _bits(logits)
+                    controls[(target.case_id, donor.case_id, role)] = {
+                        "logits": _bits(logits), "whole_pre": saved["whole_pre"],
+                        "whole_post": saved["whole_post"]}
         self.assertTrue(all(not module._forward_hooks and not module._forward_pre_hooks
                             for module in model.modules()))
         return clean, patches, controls
 
     def check_step(self, step, case, layer, kind, role, index, action):
         path = f"transformer.h.{layer}" + ("" if kind == "block" else "." + kind)
-        position = case.subject_index if role == "subject" else len(case.tokens) - 1
+        position = (None if role is None else
+                    case.subject_index if role == "subject" else len(case.tokens) - 1)
+        batch = None if role is None else 0
+        selected_shape = [1, len(case.tokens), 8] if role is None else [8]
         self.assertEqual((step["order"], step["operation"], step["module_path"]),
                          (index, action, path))
         self.assertEqual(step["output_selector"], [0] if kind in ("attn", "block") else [])
         self.assertEqual((step["invocation"], step["forward_index"], step["batch_index"],
-                          step["token_index"]), (0, 0, 0, position))
+                          step["token_index"]), (0, 0, batch, position))
         self.assertEqual((step["output_shape"], step["selected_shape"], step["dtype"], step["device"]),
-                         ([1, len(case.tokens), 8], [8], "torch.float32", "cpu"))
+                         ([1, len(case.tokens), 8], selected_shape, "torch.float32", "cpu"))
+
+    def check_action_steps(self, steps, target, layer, component, role, action):
+        self.assertEqual([step["name"] for step in steps],
+                         ["whole_before", "before", "action", "after", "whole_after"])
+        for index, operation in enumerate(("capture", "capture", action, "capture", "capture")):
+            selection = None if index in (0, 4) else role
+            self.check_step(steps[index], target, layer, component, selection, index, operation)
+
+    def check_whole_witness(self, row, raw, target, role, expected_before, expected_after):
+        self.assertIs(row["event"]["untouched_output_bits_equal"], True)
+        before, after = raw(row, "whole_before"), raw(row, "whole_after")
+        self.assertEqual(before, expected_before)
+        self.assertEqual(after, expected_after)
+        for name in ("whole_before", "whole_after"):
+            self.assertEqual((row["tensors"][name]["shape"], row["tensors"][name]["dtype"]),
+                             ([1, len(target.tokens), 8], "float32-le"))
+        position = target.subject_index if role == "subject" else len(target.tokens) - 1
+        start, end = position * 8 * 4, (position + 1) * 8 * 4
+        self.assertEqual((before[:start], before[end:]), (after[:start], after[end:]))
+        self.assertEqual((before[start:end], after[start:end]), (raw(row, "before"), raw(row, "after")))
 
     def test_all_recorded_pairs_and_position_controls_match_manual_hooks(self):
         from looking_glass.agreement_journal import AgreementJournal
@@ -238,15 +271,13 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
                     self.assertNotIn(key, seen_patches)
                     seen_patches.add(key)
                     steps = event["plan_metadata"]["steps"]
-                    self.assertEqual(len(steps), 3)
-                    self.assertEqual([step["name"] for step in steps], ["before", "action", "after"])
-                    for index, action in enumerate(("capture", "patch", "capture")):
-                        self.check_step(steps[index], target, layer, component, "last", index, action)
-                    self.assertEqual(steps[1]["source_capture"], "before" if target == donor else None)
+                    self.check_action_steps(steps, target, layer, component, "last", "patch")
+                    self.assertEqual(steps[2]["source_capture"], "before" if target == donor else None)
                     reference = patches[key]
                     self.assertEqual(raw(row, "before"), reference["pre"])
                     self.assertEqual(raw(row, "after"), reference["post"])
                     self.assertEqual(reference["post"], reference["donor"])
+                    self.check_whole_witness(row, raw, target, "last", reference["whole_pre"], reference["whole_post"])
                     if target == donor:
                         full = raw(row, "last_logits")
                         logits = b"".join(full[4 * index:4 * index + 4] for index in _CONTRAST)
@@ -265,13 +296,11 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
                     self.assertEqual((event["site"]["module_path"], event["site"]["output_selector"],
                                       event["site"]["token_role"]), ("transformer.h.5", [0], role))
                     steps = event["plan_metadata"]["steps"]
-                    self.assertEqual(len(steps), 3)
-                    self.assertEqual([step["name"] for step in steps], ["before", "action", "after"])
-                    for index, action in enumerate(("capture", "patch", "capture")):
-                        self.check_step(steps[index], target, 5, "block", role, index, action)
+                    self.check_action_steps(steps, target, 5, "block", role, "patch")
                     self.assertEqual(raw(row, "before"), _bits(clean[target.case_id]["sites"][(5, "block")][role]))
                     self.assertEqual(raw(row, "after"), _bits(clean[donor.case_id]["sites"][(5, "block")][role]))
-                    self.assertEqual(raw(row, "last_logits"), controls[key])
+                    self.check_whole_witness(row, raw, target, role, controls[key]["whole_pre"], controls[key]["whole_post"])
+                    self.assertEqual(raw(row, "last_logits"), controls[key]["logits"])
                 elif kind == "null":
                     target = by_id[event["target"]]
                     self.assertNotIn(target.case_id, seen_null)
@@ -280,11 +309,11 @@ class AgreementCoordinateOracleTests(unittest.TestCase):
                     self.assertEqual((event["site"]["id"], event["site"]["token_role"],
                                       event["site"]["output_selector"]), ("1:attn:last", "last", [0]))
                     steps = event["plan_metadata"]["steps"]
-                    self.assertEqual([step["name"] for step in steps], ["before", "action", "after"])
-                    for index, action in enumerate(("capture", "null", "capture")):
-                        self.check_step(steps[index], target, 1, "attn", "last", index, action)
+                    self.check_action_steps(steps, target, 1, "attn", "last", "null")
                     self.assertEqual(raw(row, "before"), raw(row, "after"))
                     self.assertEqual(raw(row, "before"), _bits(clean[target.case_id]["sites"][(1, "attn")]["last"]))
+                    whole = _bits(clean[target.case_id]["sites"][(1, "attn")]["whole"])
+                    self.check_whole_witness(row, raw, target, "last", whole, whole)
                     self.assertEqual(raw(row, "last_logits"), _bits(clean[target.case_id]["logits"]))
                 elif kind == "clean_repeat":
                     case = by_id[event["case"]]
