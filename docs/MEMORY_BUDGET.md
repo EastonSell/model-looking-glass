@@ -97,6 +97,68 @@ is not an interprocess lock or a reservation against unrelated applications.
 Multiple independent budget instances for the same GPU can over-admit. A single
 trusted broker must own the budget and route compatible jobs through it.
 
+## Proposed resident-load handoff (not implemented)
+
+Keeping an entire completed model-load estimate active until eviction can be
+very pessimistic: the resident model is already reflected in process-reserved
+and device-free telemetry, yet its estimate is also subtracted. A future
+broker-controlled handoff could retire the *completed load's* estimate while
+retaining an explicit non-allocating residency lease until eviction. This is a
+proposal, not a supported API or evidence of greater usable capacity.
+
+With the existing notation, before handoff a load lease `L` is included in the
+outstanding estimates, along with other outstanding job estimates `C`:
+
+```
+process_reserved + C + L + R <= device_total
+device_free                  >= C + L + R
+```
+
+These are checks at admission, not invariants maintained against later external
+pressure. Every subsequent admission must resample and apply both checks,
+including when an active load has been overtaken by device pressure.
+
+After a verified handoff, live device and process measurements still include
+the resident model, but future admissions would use `C` instead of `C + L`.
+This is conservative only if no future allocation relies on that retired
+estimate; the same snapshot, fragmentation and external-pressure limitations
+still apply. The handoff must not infer ownership, completion or peak usage
+from telemetry alone.
+
+A safe integration would require all of the following:
+
+- A trusted loader owns the model and retains the device execution gate while
+  it completes and synchronizes load work, preventing competing worker
+  allocations during the transition. Sampling the budget lock alone cannot
+  prevent allocations outside that lock.
+- Telemetry is successfully sampled for the same device after synchronization;
+  errors or invalid samples leave the original commitment and lease unchanged.
+  GPU or host trace claims on the transitioning load lease prevent the
+  transition. The current `CudaMemorySnapshot` has no device identifier, so a
+  future implementation needs a device-bound telemetry contract or a trusted
+  factory; it cannot detect misbinding from those four values alone.
+- The one-way transition changes the lease into a non-allocating resident-owner
+  state: it cannot take new trace claims or finance subsequent work, and it
+  remains tracked until the model is evicted and its device use is complete.
+- Every later request obtains a separate lease whose trusted estimate includes
+  its activations, trace values, temporary workspace, first-forward or
+  shape-specific growth, generation caches and other lazy allocations.
+  Construction of a worker around an existing model does not establish this
+  loader boundary, and warmup cannot guarantee all later shapes allocate no
+  additional memory.
+- Tests exercise transition/release races, synchronization and telemetry
+  failures without counter changes, wrong-device telemetry, outstanding claims,
+  repeated transitions, rejected post-transition allocations, and correct
+  retirement on eviction. Integration tests must check the same invariants
+  against the actual broker's worker-lifetime protocol.
+
+PyTorch's [CUDA semantics](https://docs.pytorch.org/docs/stable/notes/cuda.html)
+explain asynchronous execution and its caching allocator; its
+[memory profiler documentation](https://docs.pytorch.org/docs/stable/torch_cuda_memory)
+notes that allocations outside PyTorch's allocator are not visible there.
+Those facts make synchronization and device-wide telemetry necessary but do not
+make either sufficient to prove an allocation forecast or model ownership.
+
 ## Minimal policy setup
 
 ```python
