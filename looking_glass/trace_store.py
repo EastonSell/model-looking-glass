@@ -100,11 +100,16 @@ class HostTraceStore:
         if self._entries.get(key) is not entry:
             raise RuntimeError("trace store reservation is not active")
         remaining_bytes = remaining_items = None
-        value = entry._value if transfer else None
+        value = None
         try:
+            # Pop the sole transfer reference at return time: otherwise an
+            # interruption at RETURN_VALUE can keep a local tensor alive through
+            # the traceback after the store claim was released. Construct the
+            # box inside this protected block so an interrupted setup clears it.
+            value = [entry._value] if transfer else None
             entry._state = "releasing"
             # Drop the store's reference while its claim still counts.
-            # On take(), value deliberately transfers it to the caller.
+            # On take(), the one-element box holds the transfer reference.
             entry._value = None
             # Disposal can invoke reentrant weakref callbacks that change the
             # totals, so calculate the remaining counts only afterwards.
@@ -114,7 +119,7 @@ class HostTraceStore:
             self._claimed_bytes = remaining_bytes
             self._claimed_items = remaining_items
             entry._state = state
-            return value
+            return value.pop() if transfer else None
         except BaseException:
             value = None
             entry._state = "releasing"

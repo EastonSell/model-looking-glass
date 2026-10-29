@@ -73,8 +73,12 @@ source tensors, metadata and Python objects, allocator rounding/reservations,
 temporary cloning workspace, and copies or payloads held by consumers after
 `read()` or `take()`. Consequently, concurrent reads or caller-retained outputs
 can exceed the store cap in total host memory. Exceptions or framework internals
-may also retain tensor references through tracebacks. Store bookkeeping is not an OS
-memory reservation and cannot prevent out-of-memory errors.
+may also retain tensor references through tracebacks. An interruption during or
+immediately after a `take()` or `read()` return can leave a buffer in an
+exception graph even when the caller did not receive the value. The store's
+internal `take()` return avoids retaining its own transfer local at that
+boundary, but cannot clear caller or framework frames. Store bookkeeping is not
+an OS memory reservation and cannot prevent out-of-memory errors.
 
 The shared broker must separately claim every live host and GPU buffer through
 its `MemoryLease` or another authoritative owner before allocation. In
@@ -82,7 +86,10 @@ particular, dispatcher source and store copy overlap during `put`; GPU and host
 copies may overlap during offload; each `read()` creates another caller-owned
 copy; and a `take()` transfers ownership beyond the store's claim. An
 appropriate claim must remain active until each consumer acknowledges
-disposal, even if the store usage is already zero. The current API neither
+disposal, even if the store usage is already zero. An ambiguous interrupted
+handoff requires the separate owner to remain charged until all retained
+payload and exception references are disposed or quarantined; cancellation or
+a timeout does not prove disposal. The current API neither
 creates nor transfers such claims automatically. Do not combine independent
 caps into a claim that total system memory is bounded.
 
