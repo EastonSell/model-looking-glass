@@ -73,7 +73,7 @@ def _observe_owned(model, input_ids, *, layer, token, mask_token, is_id, are_id,
         guarded(lambda: synchronize(stage))
 
     check_owner()
-    if type(model) is not DistilBertForMaskedLM or any(module.training for module in model.modules()):
+    if type(model) is not DistilBertForMaskedLM or any(module.training is not False for module in model.modules()):
         raise ValueError('expected an evaluation-mode DistilBERT masked language model')
     if _has_hooks(model):
         raise RuntimeError('preexisting model or global hooks are unsupported')
@@ -82,6 +82,8 @@ def _observe_owned(model, input_ids, *, layer, token, mask_token, is_id, are_id,
         raise ValueError('expected one CPU int64 input row of length ten')
     execution_device = torch.device(device)
     def check_configuration():
+        if any(module.training is not False for module in model.modules()):
+            raise RuntimeError('every model module must remain in evaluation mode')
         if (getattr(model.config, '_attn_implementation', None) != 'eager'
                 or any(type(block.attention) is not MultiHeadSelfAttention
                        for block in model.distilbert.transformer.layer)

@@ -227,6 +227,19 @@ class AdapterTests(unittest.TestCase):
             self.model.config._attn_implementation = prior
         self.assertFalse(any(m._forward_hooks or m._forward_pre_hooks for m in self.model.modules()))
 
+    def test_module_training_drift_is_rejected_after_forward(self):
+        original = self.model.forward
+        def forward(*args, **kwargs):
+            result = original(*args, **kwargs)
+            self.model.distilbert.transformer.layer[-1].train()
+            return result
+        try:
+            with patch.object(self.model, 'forward', side_effect=forward):
+                with self.assertRaisesRegex(RuntimeError, 'evaluation mode'):
+                    self.prototype(self.a, 2, 2)
+        finally:
+            self.model.eval()
+
 
 if __name__ == '__main__':
     unittest.main()
