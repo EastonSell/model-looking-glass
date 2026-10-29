@@ -7,6 +7,28 @@ and physical device, holds the shared device lease and memory/trace claims,
 and loads a model that has not previously performed a forward. The launcher
 requires an exact frozen revision and verified process and device ownership.
 
+The v2 controller uses a fixed 2,400-second supervisor deadline for one cold
+warmup and 13 actions. The earlier resource-only attempt reached the 900-second
+deadline after ten of fourteen callbacks; its first two took approximately 97
+and 78 seconds, and other CPU work overlapped. These observations do not predict
+completion or establish a worst-case runtime. A timed-out or partial attempt is
+not a profile. A later attempt requires a separately frozen source, confirmed
+process disposal and an assessed device marker before launch.
+
+If an attempt times out, preserve its complete private run directory, partial
+stages, supervisor result, marker and any recovery records. Establish that the
+launcher is quiescent and the exact child has been reaped and its Windows Job
+fully drained and closed; an uncertain spawn, member, handle or drain remains
+quarantined. Once quiescence is established, the documented supervisor recovery
+capability may resolve a retained child/Job record, but it never clears the
+marker. An independent operator must assess the saved failure and physical
+device state, acquire both existing cooperative controller and device locks,
+and document any explicit marker retirement without manufacturing a clean
+attestation. If that assessment or lock acquisition is inconclusive, retain
+the marker and do not retry. A later attempt uses a fresh run identity and
+separately reviewed frozen source; do not pool its partial observations with
+the timed-out attempt.
+
 Once those prerequisites are reviewed, the intended sampler accepts the exact
 `CudaAgreementCalibrator` and matching warm workload key. For the cold warmup
 and then the 13 fixed warm actions, it checks the owner, writes a private
