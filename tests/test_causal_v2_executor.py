@@ -19,6 +19,37 @@ def _isolated(code):
 
 
 class DevelopmentExecutorTests(unittest.TestCase):
+    def test_backend_change_around_forward_fails_and_keeps_counts(self):
+        code = r'''
+from unittest.mock import patch
+import torch
+from looking_glass.causal_v2_executor import DevelopmentBudget,_forward
+class Policy:
+    def verify(self): pass
+class Session:
+    def __init__(self, fail): self.fail=fail; self.clean=False; self.valid=True
+    def __enter__(self):
+        if self.fail=='before': self.valid=False
+        return self
+    def __exit__(self,*args): self.clean=True
+class Model:
+    def __init__(self, session): self.session=session
+    def __call__(self,*args,**kwargs):
+        if self.session.fail=='after': self.session.valid=False
+        return torch.zeros((1,2),device='cpu')
+for failure, roots in (('before',0), ('after',1)):
+    session=Session(failure); budget=DevelopmentBudget(3)
+    def check():
+        if not session.valid: raise RuntimeError('backend settings changed')
+    with patch('looking_glass.causal_v2_executor._check_hooks'):
+        try: _forward(Model(session),None,budget,Policy(),lambda:session,backend_check=check)
+        except RuntimeError: pass
+        else: raise AssertionError('backend change accepted')
+    assert budget.submissions==1 and budget.root_forwards==roots and session.clean
+'''
+        result = _isolated(code)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_missing_pre_reservation_rejects_before_hook_preparation(self):
         code = r'''
 from unittest.mock import patch

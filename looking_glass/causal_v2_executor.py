@@ -232,41 +232,52 @@ def _check_upstream(reference, candidate, block, policy):
                        "private upstream trace integrity failed", policy)
 
 
-def _forward(model, x, budget, policy, make_session=None, *, perturb=None, reserved=False):
+def _forward(model, x, budget, policy, make_session=None, *, perturb=None, reserved=False,
+             backend_check=None):
     if type(reserved) is not bool:
         raise DevelopmentInvalid("invalid reservation state")
     if not reserved:
         budget.reserve()  # Counts even if checks, hook preparation or model work fail.
     elif (budget.submissions != budget.root_forwards + 1 or getattr(budget, "_pending", True) is not True):
         raise DevelopmentInvalid("forward has no pending reservation")
+    if backend_check is not None:
+        backend_check()
     _check_hooks(model)
     policy.verify()
     session = make_session() if make_session is not None else nullcontext()
     with session:
         with torch.no_grad():
+            if backend_check is not None:
+                backend_check()
             budget.root()
-            output = model(x, route=0, perturb=perturb).detach().clone()
+            output = model(x, route=0, perturb=perturb)
+            if backend_check is not None:
+                backend_check()
+            output = output.detach().clone()
     policy.verify()
     _check_hooks(model)
+    if backend_check is not None:
+        backend_check()
     if tuple(output.shape) != (1, 2) or not _equal(output, output, policy):
         raise DevelopmentInvalid("invalid development logits")
     return output, session
 
 
-def _trace(model, x, budget, policy, perturb=None, *, reserved=False):
+def _trace(model, x, budget, policy, perturb=None, *, reserved=False, backend_check=None):
     run_id = f"v2-observation-{budget.submissions if reserved else budget.submissions + 1:05d}"
     output, session = _forward(model, x, budget, policy,
         lambda: TraceSession(model, mode="direct", placement="sparse", run_id=run_id,
-                             max_events=4, max_tensor_bytes=128), perturb=perturb, reserved=reserved)
+                             max_events=4, max_tensor_bytes=128), perturb=perturb, reserved=reserved,
+        backend_check=backend_check)
     if len(session.events) != 4 or session.tensor_bytes != 128:
         raise DevelopmentInvalid("incomplete sparse trace")
     return output, tuple(session.events)
 
 
-def _capture(model, x, path, budget, policy, perturb=None, *, reserved=False):
+def _capture(model, x, path, budget, policy, perturb=None, *, reserved=False, backend_check=None):
     output, session = _forward(model, x, budget, policy,
         lambda: ActivationCapture(model, path, invocation=0, max_tensor_bytes=32, max_invocations=1),
-        perturb=perturb, reserved=reserved)
+        perturb=perturb, reserved=reserved, backend_check=backend_check)
     value = session.value
     if (tuple(value.shape) != (1, 8) or value.numel() * value.element_size() != 32 or
             not _equal(value, value, policy)):
@@ -304,7 +315,7 @@ def _check_plan_metadata(metadata, path, names, operations, source_capture, capt
             raise DevelopmentInvalid("unexpected plan event metadata")
 
 
-def _plan(model, x, site, kind, source, trace_value, budget, policy, perturb):
+def _plan(model, x, site, kind, source, trace_value, budget, policy, perturb, *, backend_check=None):
     budget.reserve()  # Source snapshots and plan arguments are submission preparation.
     path = f"blocks.{site}.output_tap"
     base = {"module_path": path, "invocation": 0}
@@ -333,7 +344,7 @@ def _plan(model, x, site, kind, source, trace_value, budget, policy, perturb):
     output, plan = _forward(model, x, budget, policy,
         lambda: ActivationPlan(model, steps, max_tensor_bytes=32, max_capture_bytes=capture_bytes,
                                max_source_bytes=32, max_steps=len(steps), max_invocations=1),
-        perturb=perturb, reserved=True)
+        perturb=perturb, reserved=True, backend_check=backend_check)
     metadata = plan.metadata
     _check_plan_metadata(metadata, path, names, operations, source_reference, capture_bytes, source_bytes)
     captures = plan.captures
@@ -360,7 +371,8 @@ def _plan(model, x, site, kind, source, trace_value, budget, policy, perturb):
                     "base_identity": "clean" if kind == "reverse" else "perturbed"}
 
 
-def _prepare_clean(model, x, budget, policy, *, budget_type, scope, input_check, first_reserved=False):
+def _prepare_clean(model, x, budget, policy, *, budget_type, scope, input_check, first_reserved=False,
+                   backend_check=None):
     """Private shared kernel; the caller supplies its fixed input policy and budget type."""
     try:
         if type(budget) is not budget_type or type(policy) is not NumericPolicy:
@@ -369,8 +381,8 @@ def _prepare_clean(model, x, budget, policy, *, budget_type, scope, input_check,
         _check_model(model)
         input_check(x, policy)
         initial_input, initial_state = input_sha256(x), state_sha256(model)
-        clean, clean_trace = _trace(model, x, budget, policy, reserved=first_reserved)
-        repeat, repeat_trace = _trace(model, x, budget, policy)
+        clean, clean_trace = _trace(model, x, budget, policy, reserved=first_reserved, backend_check=backend_check)
+        repeat, repeat_trace = _trace(model, x, budget, policy, backend_check=backend_check)
         _require_equal(clean, repeat, "repeated clean logits differ", policy)
         clean_pair = _compare(clean_trace, repeat_trace, policy)
         if clean_pair["status"] != "no_difference_observed":
@@ -404,12 +416,13 @@ def _target_spec(target):
     return block, path
 
 
-def _prepare_target(model, x, target, clean, budget, policy, *, scope, input_check, first_reserved=False):
+def _prepare_target(model, x, target, clean, budget, policy, *, scope, input_check, first_reserved=False,
+                    backend_check=None):
     try:
         _validate_clean(clean, model, x, budget, policy, scope=scope, input_check=input_check)
         _, path = _target_spec(target)
         capture_logits, clean_target, clean_metadata = _capture(model, x, path, budget, policy,
-                                                                reserved=first_reserved)
+                                                                reserved=first_reserved, backend_check=backend_check)
         _require_equal(capture_logits, clean.clean_logits, "clean target capture logits differ", policy)
         _validate_clean(clean, model, x, budget, policy, scope=scope, input_check=input_check)
         return DevelopmentTarget(target, clean_target, clean_metadata,
@@ -426,7 +439,7 @@ def prepare_development_target(model, x, target, clean, budget, policy):
 
 
 def _run_active(model, x, target, strength, clean, target_capture, budget, policy, *, scope, input_check,
-                first_reserved=False):
+                first_reserved=False, backend_check=None):
     try:
         _validate_clean(clean, model, x, budget, policy, scope=scope, input_check=input_check)
         _validate_target(target_capture, target, clean, scope=scope)
@@ -438,12 +451,14 @@ def _run_active(model, x, target, strength, clean, target_capture, budget, polic
         clean_target, clean_metadata = target_capture.value, target_capture.metadata
         delta = strength if x[0, 0].item() > 0 else -strength
         perturb = (target, delta)
-        changed, changed_trace = _trace(model, x, budget, policy, perturb, reserved=first_reserved)
+        changed, changed_trace = _trace(model, x, budget, policy, perturb, reserved=first_reserved,
+                                        backend_check=backend_check)
         compared = _compare(clean_trace, changed_trace, policy)
         if compared["status"] == "upstream_difference":
             raise DevelopmentInvalid("upstream observation changed")
         _check_upstream(clean_trace, changed_trace, block, policy)
-        capture_logits, changed_target, changed_metadata = _capture(model, x, path, budget, policy, perturb)
+        capture_logits, changed_target, changed_metadata = _capture(model, x, path, budget, policy, perturb,
+                                                                      backend_check=backend_check)
         _require_equal(capture_logits, changed, "perturbed target capture logits differ", policy)
         expected = clean_target.clone()
         expected[0, 0] = expected[0, 0] + delta
@@ -458,17 +473,17 @@ def _run_active(model, x, target, strength, clean, target_capture, budget, polic
                           changed_trace[site].value if kind == "reverse" else None)
                 trace_value = changed_trace[site].value
                 output, evidence = _plan(model, x, site, kind, source, trace_value, budget, policy,
-                                         None if kind == "reverse" else perturb)
+                                         None if kind == "reverse" else perturb, backend_check=backend_check)
                 expected_logits = (clean_logits if site >= block else changed) if kind == "forward" else (
                     (changed if site >= block else clean_logits) if kind == "reverse" else changed)
                 _require_equal(output, expected_logits, "development control logits differ", policy)
                 results[kind].append(output)
                 plans.append(evidence)
         upstream, evidence = _plan(model, x, 0, "upstream", clean_trace[0].value,
-                                   changed_trace[0].value, budget, policy, perturb)
+                                   changed_trace[0].value, budget, policy, perturb, backend_check=backend_check)
         _require_equal(upstream, changed, "upstream control differs", policy)
         plans.append(evidence)
-        verification, _ = _forward(model, x, budget, policy)
+        verification, _ = _forward(model, x, budget, policy, backend_check=backend_check)
         _require_equal(verification, clean_logits, "post-hook clean logits differ", policy)
         condition = DiscoveryCondition(strength, changed_trace, changed, tuple(results["forward"]),
                                        tuple(results["reverse"]), tuple(results["null"]), tuple(results["self"]),
