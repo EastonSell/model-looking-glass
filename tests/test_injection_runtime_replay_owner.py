@@ -192,6 +192,12 @@ def test_supervisor_receipt_binds_exit_audit_command_and_logs(tmp_path):
                                            ['base', 'config'], verdict, validation_only=True)
     assert result['status'] == 'validated_no_model_forward'
     assert result['supervisor_sha256'] == hashlib.sha256(raw).hexdigest()
+    assert result['parent_pid'] == os.getpid()
+    assert type(result['parent_birth_100ns']) is int and result['parent_birth_100ns'] > 0
+    with pytest.raises(owner.ReplayOwnerError):
+        owner.check_supervisor_record(child, config, '1' * 64, '2' * 64, output,
+                                      ['base', 'config'], verdict, validation_only=True,
+                                      parent_identity=(True, 1))
     for key, bad in (('exit_code', False), ('postexit_active_processes', False),
                      ('child_pid', True), ('job_closed', False), ('command', ['other'])):
         changed = dict(verdict, **{key: bad})

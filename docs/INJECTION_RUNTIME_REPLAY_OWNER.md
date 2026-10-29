@@ -70,7 +70,10 @@ distinct bounded output and does not read the site custody or create a claim.
 `inspect_child_postcheck` checks the exact private postcheck, terminal and
 receipt hashes after clean child cleanup. `check_supervisor_record` binds the
 actual command, child PID, zero exit, Job drain/close, logs and postcheck to a
-private parent terminal. Both intentionally report the scientific replay as
+private parent terminal, including the owner's PID and Windows process birth
+time. The owner uses its current identity; an independent observer may supply
+the identity obtained from its retained process handle when reconstructing the
+expected terminal. Both intentionally report the scientific replay as
 pending. Neither establishes that the separately observed owner process has
 itself exited, that the protected source or row callbacks were truthful, nor
 that the numerical replay is correct.

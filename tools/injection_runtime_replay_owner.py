@@ -403,7 +403,24 @@ def inspect_child_postcheck(child, config, plan_sha256, child_sha256, *, validat
             'scientific_validation': 'not applicable' if validation_only else 'pending independent saved-evidence audit'}
 
 
-def check_supervisor_record(child, config, plan_sha256, child_sha256, output, command, verdict, *, validation_only):
+def _current_process_identity():
+    if os.name != 'nt':
+        raise ReplayOwnerError('the replay owner requires a Windows process identity')
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.GetCurrentProcess.argtypes = ()
+    kernel.GetCurrentProcess.restype = wintypes.HANDLE
+    kernel.GetProcessTimes.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.FILETIME),
+        ctypes.POINTER(wintypes.FILETIME), ctypes.POINTER(wintypes.FILETIME), ctypes.POINTER(wintypes.FILETIME))
+    kernel.GetProcessTimes.restype = wintypes.BOOL
+    created, exited, kernel_time, user_time = (wintypes.FILETIME() for _ in range(4))
+    if not kernel.GetProcessTimes(kernel.GetCurrentProcess(), ctypes.byref(created), ctypes.byref(exited),
+                                  ctypes.byref(kernel_time), ctypes.byref(user_time)):
+        raise ReplayOwnerError('the replay owner birth identity is unavailable')
+    return os.getpid(), (created.dwHighDateTime << 32) | created.dwLowDateTime
+
+
+def check_supervisor_record(child, config, plan_sha256, child_sha256, output, command, verdict, *,
+                            validation_only, parent_identity=None):
     """Bind clean child/Job cleanup and exact logs to the private postcheck.
 
     This observes only the child supervisor's own return. A separate observer
@@ -445,6 +462,11 @@ def check_supervisor_record(child, config, plan_sha256, child_sha256, output, co
         data = child._read(output / (name + '.txt'), 256 * 1024)
         if verdict.get(name + '_sha256') != hashlib.sha256(data).hexdigest():
             raise ReplayOwnerError('supervisor stream digest differs')
+    identity = _current_process_identity() if parent_identity is None else parent_identity
+    if (type(identity) is not tuple or len(identity) != 2 or type(identity[0]) is not int
+            or not 0 < identity[0] <= 0xffffffff or type(identity[1]) is not int
+            or not 0 < identity[1] < 2 ** 64):
+        raise ReplayOwnerError('replay parent process identity differs')
     return {'schema': 'mlg-injection-runtime-replay-parent-terminal-v1',
             'status': 'validated_no_model_forward' if validation_only else 'private_replay_pending_independent_audit',
             'plan_sha256': plan_sha256, 'child_source_sha256': child_sha256,
@@ -452,5 +474,6 @@ def check_supervisor_record(child, config, plan_sha256, child_sha256, output, co
             'command_sha256': hashlib.sha256(child._canonical(command)).hexdigest(),
             'supervisor_sha256': hashlib.sha256(raw).hexdigest(),
             'child_postcheck_sha256': audit['child_postcheck_sha256'],
+            'parent_pid': identity[0], 'parent_birth_100ns': identity[1],
             'cleanup_verified': True,
             'scientific_validation': 'not applicable' if validation_only else 'pending independent saved-evidence audit'}
