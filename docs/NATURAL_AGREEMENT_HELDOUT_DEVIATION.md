@@ -66,6 +66,18 @@ successful owner exit and resource accounting do not establish scientific
 success: an independent audit must recompute landing, controls and frozen
 scoring from retained bytes.
 
+Before the natural held-out claim, the source-bound owner performs a separate
+no-model validation using the same public inputs and current exposure snapshot.
+A distinct outer observer holds the published source leases, gates and reaps the
+validation parent, checks that its outer Job has no active member, verifies the
+inner supervisor's no-model receipt, and binds the parent process and exact
+configuration and receipt hashes in a private observation. The custodian and
+owner both recheck that observation. Validation creates no claim, nonce,
+held-out cases, model forward or scientific evidence. Its bounded directory,
+including the parent observation and any partials, shares the 16 MiB side-file
+reserve with preparation and owner artifacts; it is checked before the claim
+and again during preparation and execution.
+
 The preparation child runs under the separately reviewed Windows Job supervisor.
 The private supervisor receipt binds the exact isolated command, child PID,
 configuration digest, clean exit and reaping, job and log cleanup, and the
@@ -119,9 +131,12 @@ unknown exposure was inventoried.
 Start the observer with the direct base interpreter in isolated, no-site,
 no-bytecode mode and a fresh nonexistent absolute bytecode-cache prefix. Its
 `-c` source is the exact ASCII code below; pass the custody source path, the
-independently observed SHA-256 from the published operational binding, then
-`observe-prepare --config` and the private configuration path. It hashes those
-bytes before compiling or executing them. Hash agreement does not make a
+independently observed SHA-256 from the published operational binding, then run
+`observe-validation --config <private-config> --config-sha <sha256>` first.
+After its verified parent observation and the separately reviewed ledger and
+exposure gates, run `observe-prepare` with the same configuration and digest.
+The bootstrap hashes the source bytes before compiling or executing them.
+Hash agreement does not make a
 same-account operator adversary-resistant.
 
 ```python
