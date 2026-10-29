@@ -67,7 +67,11 @@ of the server's tracked acceptor and handler threads under this cooperative
 Python contract; the owner must still check the sticky authority/quarantine
 state after the join and establish broker, worker, device and external-alias
 disposal separately. Exceptions escaping the protected handler call are marked
-by its wrapper.
+by its wrapper. The acceptor binds its authority before entering the loop and
+retries the sticky signal in the exception path before retaining the failure.
+A single interrupted initial fault-handler lookup or signal therefore cannot
+defer that retry behind exception retention. Interruptions outside these protected paths
+still need process-level recovery.
 
 For an authority-bound server, each handler and the single acceptor have
 separate preallocated fault slots rooted before their threads start. On
