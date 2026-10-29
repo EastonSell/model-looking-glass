@@ -34,6 +34,7 @@ class _Config:
     profiles: tuple
     source_base_sha256: str
     asset_manifest_sha256: str
+    serving_memory_path: Path | None = None
 
 
 def _absolute(value, *, directory):
@@ -55,7 +56,9 @@ def _parse_config(data):
                            parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
         fields = {'schema', 'repo_root', 'cache_root', 'workspace_root', 'stop_path',
                   'teams', 'profiles', 'source_base_sha256', 'asset_manifest_sha256'}
-        if type(value) is not dict or set(value) != fields or value['schema'] != 'gpu-service-owner-v1':
+        if (type(value) is not dict or set(value) not in (fields, fields | {'observe_serving_memory'})
+                or value['schema'] != 'gpu-service-owner-v1'
+                or ('observe_serving_memory' in value and value['observe_serving_memory'] is not True)):
             raise ValueError('invalid owner configuration')
         repo = _absolute(value['repo_root'], directory=True)
         cache = _absolute(value['cache_root'], directory=True)
@@ -80,8 +83,9 @@ def _parse_config(data):
             profiles.append((*paths, item['approved_profile_id']))
         if len({item[3] for item in profiles}) != 3:
             raise ValueError('profile pins must be distinct')
+        memory_path = stop.parent / 'serving-memory.json' if value.get('observe_serving_memory') else None
         return _Config(repo, cache, workspace, stop, teams, tuple(profiles),
-                       value['source_base_sha256'], value['asset_manifest_sha256'])
+                       value['source_base_sha256'], value['asset_manifest_sha256'], memory_path)
     except (KeyError, TypeError, ValueError, UnicodeError, RecursionError, OSError):
         raise ValueError('invalid private service configuration') from None
 
@@ -187,7 +191,13 @@ def _owner(config):
     backend = CheckedBackend(session=session, device_lease=lease, cache_dir=config.cache_root,
         team_ids=config.teams, live_key_builder=live_keys,
         verify_loaded_model=lambda model: verify_trusted_cpu_model(source, model),
-        verify_device_model=verify_trusted_device_tie, shutdown_timeout=10)
+        verify_device_model=verify_trusted_device_tie, shutdown_timeout=10,
+        serving_memory_path=config.serving_memory_path,
+        serving_memory_binding=None if config.serving_memory_path is None else {
+            'source_base_sha256': config.source_base_sha256,
+            'asset_manifest_sha256': config.asset_manifest_sha256,
+            'profile_ids': list(pins), 'owner_pid': os.getpid(),
+            'device_uuid': identity.gpu_uuid})
     stop = Event()
     monitor, failed, _errors = _monitor_stop(config.stop_path, stop, on_failure=_mark_unsafe)
 
