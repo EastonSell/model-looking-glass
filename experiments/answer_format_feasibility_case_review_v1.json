@@ -1,0 +1,17 @@
+{
+  "amendment_sha256": "2530ea0517847731d9c82731a17d58d23504738cc3e85b52fe259fe9bf4ed330",
+  "auditor_sha256": "46f95e8bf455bc4c403064be7795824f40070ee3915c6e49bb65bc59e63a4ecd",
+  "internal_full_prompt_pairs_checked": 2016,
+  "permutations_independently_recomputed": true,
+  "prior_full_top_cases_sha256": "4057696ddef9e3b0d09db02f46e6454561a61ac1a07f8b8a13b92718944f4261",
+  "prior_screen_full_prompt_pairs_checked": 2304,
+  "prompt_count": 64,
+  "proposal_sha256": "cb1cfb9c4ab3c57dbcb78b778d01eaec50c0600caee2c9ee862ded14f2b8f38a",
+  "protocol_sha256": "f60b240f1303fbf6ca785d2197e10d182aa1d34e6818ff8ed3e2f30a70c9307d",
+  "schema": "independent-answer-format-case-review-v1",
+  "scope": "Tokenizer-only consistency, exact fixed wording and labels, internal/past-screen prompt relations. Semantic review is a separate human-readable finding. This does not validate the complete public inventory, private scope, runtime, source chronology or execution.",
+  "single_token_appended_boundaries_checked": 256,
+  "status": "passed",
+  "tokenizer_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+  "unique_suffix_group_count": 16
+}
