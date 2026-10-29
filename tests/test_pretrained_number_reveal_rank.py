@@ -4,7 +4,7 @@ import json
 import unittest
 
 from looking_glass import pretrained_number_selection as selection
-from test_pretrained_number_selection import fabricated_cases
+from tests.test_pretrained_number_selection import fabricated_cases
 
 
 class RevealRankTests(unittest.TestCase):
