@@ -9,7 +9,7 @@ import stat
 from types import ModuleType
 
 
-READER_SHA256 = '0bb87c168fcd464d0d2aa1c4fd4ed85b687d8991ba41c9c1132c0fe56a933fb9'
+READER_SHA256 = 'a342b41ead06c80a859133d4491b6045867fd19481f014b3005c566865dc116f'
 
 
 def load_reader(path):

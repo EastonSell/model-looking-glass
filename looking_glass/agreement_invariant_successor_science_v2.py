@@ -793,7 +793,7 @@ def audit_attempt(directory, cases, directions, science, *, expected_binding, ex
             or type(expected_events_sha256) is not str
             or re.fullmatch(r'[0-9a-f]{64}', expected_events_sha256) is None
             or type(expected_scope) is not str or not expected_scope or len(expected_scope) > 256
-            or (not allow_synthetic and expected_scope != 'public prospective agreement invariant-noun')):
+            or (not allow_synthetic and expected_scope != 'public prospective agreement invariant-noun successor v2')):
         raise ValueError('independent launch, source and event identities are required')
     root = Path(directory)
     if (not ordinary_directory(root)
