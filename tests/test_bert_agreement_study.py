@@ -396,6 +396,50 @@ print(json.dumps(result))
             self.assertEqual(cancellation['error_type'], 'KeyboardInterrupt')
             self.assertEqual(cancellation['previous_error_type'], 'OSError')
 
+    def test_owner_rejects_evaluation_before_loading_or_forwarding(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            code = r'''
+import sys
+from pathlib import Path
+from unittest.mock import patch
+import looking_glass.bert_agreement_study as study
+root = Path(sys.argv[1])
+with patch.object(study, '_require_bootstrap'), patch.object(study, '_require_checkout'), \
+     patch.object(study, '_checked_manifest') as checked:
+    status = study._owner_main(repo=root, cache=root, run_dir=root, commit='a'*40, git_exe='git',
+                               split='evaluation', family=None, run_id='f'*32)
+    assert status == 1
+    checked.assert_not_called()
+'''
+            completed = subprocess.run([sys.executable, '-c', code, str(root)],
+                                       capture_output=True, text=True, timeout=30)
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertEqual(json.loads((root/'owner-failure.json').read_text())['error_type'], 'RuntimeError')
+
+    def test_controller_rejects_evaluation_even_when_protocol_is_frozen(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            code = r'''
+import sys
+from pathlib import Path
+from unittest.mock import patch
+import looking_glass.bert_agreement_study as study
+root = Path(sys.argv[1])
+with patch.object(study, '_require_bootstrap'), patch('subprocess.Popen') as spawn:
+    try:
+        study.run_cpu_controller(repo=root, cache=root, output_dir=root/'attempt',
+                                 commit='a'*40, split='evaluation')
+    except RuntimeError as error:
+        assert 'custody' in str(error)
+    else: raise RuntimeError('evaluation was not blocked')
+    spawn.assert_not_called()
+'''
+            completed = subprocess.run([sys.executable, '-c', code, str(root)],
+                                       capture_output=True, text=True, timeout=30)
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertFalse((root/'attempt').exists())
+
     def test_controller_cancellation_during_failure_publication_propagates(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -556,6 +556,8 @@ def _owner_main(*, repo, cache, run_dir, commit, git_exe, split, family, run_id)
     try:
         _require_bootstrap()
         _require_checkout(repo)
+        if split == 'evaluation':
+            raise RuntimeError('evaluation requires reviewed child-process custody')
         if 'torch' in sys.modules or 'transformers' in sys.modules:
             raise RuntimeError('model dependencies were imported before owner checks')
         if split not in ('development', 'evaluation') or (split == 'development' and
@@ -655,6 +657,8 @@ def run_cpu_controller(*, repo, cache, output_dir, commit, split, family=None, t
     import shutil
 
     _require_bootstrap()
+    if split == 'evaluation':
+        raise RuntimeError('evaluation requires reviewed child-process custody')
     if 'torch' in sys.modules or 'transformers' in sys.modules:
         raise RuntimeError('the controller must start before model dependency import')
     if (split not in ('development', 'evaluation') or (split == 'development' and

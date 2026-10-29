@@ -52,7 +52,11 @@ denormal check does not attest every native thread. The interpreter, installed
 dependency contents, OS and absence of concurrent filesystem/model mutation
 are trusted; source hashes do not independently prove faithful execution.
 This protocol remains a draft; the owner refuses evaluation until the unique
-status line is frozen in a committed source revision.
+status line is frozen in a committed source revision. Evaluation is also
+hard-disabled in both controller and owner until the reviewed child-process
+custody mechanism is integrated. An interruption while starting a development
+owner may leave a child active without a recoverable handle; such an attempt is
+incomplete and any possible child must be resolved before retrying.
 
 ## Inputs and exposure
 
