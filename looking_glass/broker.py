@@ -99,14 +99,20 @@ class RequestHandle:
         job = None
         broker = self._broker
         with broker._condition:
+            if broker._fatal_cleanup_failure and self._outcome is None:
+                raise BrokerUnavailable('request status is unknown after broker cleanup failure')
             if self._state is RequestState.PENDING:
                 job = self._job  # Keep payload alive until after lock release.
-                if not broker._queue.cancel(self.job_id):
-                    raise RuntimeError('pending request missing from broker queue')
-                broker._release_slot_locked(self.team_id)
-                self._job = None
-                self._cancel.set()
-                broker._finish_locked(self, RequestState.CANCELLED)
+                try:
+                    if not broker._queue.cancel(self.job_id):
+                        raise RuntimeError('pending request missing from broker queue')
+                    self._cancel.set()
+                    broker._finish_locked(self, RequestState.CANCELLED)
+                    self._job = None
+                    broker._release_slot_locked(self.team_id)
+                except BaseException:
+                    broker._mark_cleanup_failed_locked()
+                    raise BrokerUnavailable('request cancellation cleanup failed') from None
                 accepted = True
             elif self._state is RequestState.RUNNING and not self._cancel.is_set():
                 self._cancel.set()
@@ -121,8 +127,11 @@ class RequestHandle:
         if timeout is not None and (isinstance(timeout, bool) or timeout < 0):
             raise ValueError('timeout must be nonnegative or None')
         with self._broker._condition:
-            if not self._broker._condition.wait_for(lambda: self._outcome is not None, timeout):
+            if not self._broker._condition.wait_for(
+                    lambda: self._outcome is not None or self._broker._fatal_cleanup_failure, timeout):
                 raise TimeoutError('request is still in flight')
+            if self._outcome is None:
+                raise BrokerUnavailable('request status is unknown after broker cleanup failure')
             return self._outcome
 
 
@@ -153,6 +162,7 @@ class Broker:
         self._running = None
         self._closed = False
         self._unavailable = None
+        self._fatal_cleanup_failure = False
         self._shutdown_error = None
         self._thread = Thread(target=self._run, name='looking-glass-worker', daemon=True)
         self._thread.start()
@@ -167,6 +177,12 @@ class Broker:
         """Whether this broker can currently accept requests."""
         with self._condition:
             return not self._closed and not self._unavailable and not self._worker.poisoned
+
+    @property
+    def failed(self):
+        """Whether a broker failure occurred, distinct from orderly closure."""
+        with self._condition:
+            return bool(self._unavailable or self._fatal_cleanup_failure)
 
     def submit(self, team_id, request):
         """Submit a supported request or raise QueueFull/BrokerUnavailable.
@@ -184,11 +200,15 @@ class Broker:
                 raise QueueFull('global pending-job limit reached')
             if self._team_slots.get(team_id, 0) >= self._max_pending_per_team:
                 raise QueueFull('team pending-job limit reached')
-            self._pending_slots += 1
-            self._team_slots[team_id] = self._team_slots.get(team_id, 0) + 1
-            self._preparing += 1
-            self._next_job_id += 1
-            handle = RequestHandle(self, self._next_job_id, team_id, submitted_ns)
+            next_pending = self._pending_slots + 1
+            next_team = self._team_slots.get(team_id, 0) + 1
+            next_preparing = self._preparing + 1
+            next_job_id = self._next_job_id + 1
+            handle = RequestHandle(self, next_job_id, team_id, submitted_ns)
+            self._team_slots[team_id] = next_team
+            self._pending_slots = next_pending
+            self._preparing = next_preparing
+            self._next_job_id = next_job_id
         # Preparation holds a bounded slot, but not the condition. A slow CPU
         # copy cannot prevent cancellation of a different running request.
         try:
@@ -204,10 +224,17 @@ class Broker:
             removed = []
             with self._condition:
                 self._preparing -= 1
-                self._release_slot_locked(team_id)
+                try:
+                    self._release_slot_locked(team_id)
+                except BaseException:
+                    self._mark_cleanup_failed_locked()
+                    raise BrokerUnavailable('snapshot cleanup failed; accounting is unknown') from None
                 if poisoned:
                     self._unavailable = 'worker failed while preparing request'
-                    removed = self._fail_pending_locked()
+                    try:
+                        removed = self._fail_pending_locked()
+                    except BaseException:
+                        self._mark_cleanup_failed_locked()
                 self._condition.notify_all()
             del removed
             raise
@@ -218,11 +245,22 @@ class Broker:
                 handle._request_id = request_id
                 handle._worker_request_id = worker_request_id
                 job = _Job(handle, snapshot)
-                self._queue.put(team_id, handle.job_id, job)
                 handle._job = job
                 handle._ready_ns = perf_counter_ns()
+                try:
+                    self._queue.put(team_id, handle.job_id, job)
+                except BaseException:
+                    # If queue publication itself fails, do not assume its
+                    # rollback completed under host-memory pressure.
+                    self._mark_cleanup_failed_locked()
+                    raise BrokerUnavailable('queue publication failed; accounting is unknown') from None
             except BaseException:
-                self._release_slot_locked(team_id)
+                if not self._fatal_cleanup_failure:
+                    try:
+                        self._release_slot_locked(team_id)
+                    except BaseException:
+                        self._mark_cleanup_failed_locked()
+                        raise BrokerUnavailable('preparation cleanup failed') from None
                 raise
             finally:
                 self._preparing -= 1
@@ -230,19 +268,32 @@ class Broker:
             return handle
 
     def _release_slot_locked(self, team_id):
-        self._pending_slots -= 1
-        self._team_slots[team_id] -= 1
-        if not self._team_slots[team_id]:
+        team_count = self._team_slots.get(team_id, 0)
+        if self._pending_slots <= 0 or team_count <= 0:
+            raise RuntimeError('invalid pending-slot accounting')
+        pending = self._pending_slots - 1
+        remaining = team_count - 1
+        if remaining:
+            self._team_slots[team_id] = remaining
+        else:
             del self._team_slots[team_id]
+        self._pending_slots = pending
+
+    def _mark_cleanup_failed_locked(self):
+        # Do not discard pending requests or decrement unverified reservations.
+        self._fatal_cleanup_failure = True
+        self._unavailable = 'broker cleanup failed; request status is unknown'
+        self._condition.notify_all()
 
     def _finish_locked(self, handle, state, result=None, error_type=None, error_message=None):
-        handle._state = state
-        handle._outcome = Outcome(
+        outcome = Outcome(
             broker_id=self.broker_id, job_id=handle.job_id, team_id=handle.team_id, request_id=handle.request_id,
             state=state, submitted_ns=handle.submitted_ns, ready_ns=handle._ready_ns,
             started_ns=handle._started_ns, finished_ns=perf_counter_ns(),
             result=result, error_type=error_type, error_message=error_message,
         )
+        handle._state = state
+        handle._outcome = outcome
         self._condition.notify_all()
 
     def _run(self):
@@ -253,12 +304,21 @@ class Broker:
             failure = _describe_exception(exc)
             with self._condition:
                 self._unavailable = 'worker owner failed unexpectedly'
-                if self._running is not None and self._running._outcome is None:
-                    self._finish_locked(self._running, RequestState.FAILED,
-                                        error_type=failure[0], error_message=failure[1])
-                self._running = None
-                removed = self._fail_pending_locked()
-                self._condition.notify_all()
+                try:
+                    if self._running is not None and self._running._outcome is None:
+                        self._finish_locked(self._running, RequestState.FAILED,
+                                            error_type=failure[0], error_message=failure[1])
+                        self._running._job = None
+                    self._running = None
+                    removed = self._fail_pending_locked()
+                except BaseException:
+                    self._mark_cleanup_failed_locked()
+                finally:
+                    # An unexpected owner failure can occur between dequeue,
+                    # accounting, and terminal publication. Even if draining
+                    # appears to work, do not claim the accounting is complete.
+                    self._mark_cleanup_failed_locked()
+                    self._condition.notify_all()
         finally:
             # A snapshot in progress may still use the worker. Never close it
             # until all accepted preparation reservations have been released.
@@ -279,13 +339,13 @@ class Broker:
                 if self._closed or self._unavailable:
                     return
                 item = self._queue.pop()
-                self._release_slot_locked(item.team_id)
                 job = item.payload
                 handle = job.handle
+                self._running = handle
+                self._release_slot_locked(item.team_id)
                 handle._job = None
                 handle._state = RequestState.RUNNING
                 handle._started_ns = perf_counter_ns()
-                self._running = handle
             result = None
             failure = None
             cancellation = False
@@ -332,12 +392,12 @@ class Broker:
         removed = []
         while len(self._queue):
             item = self._queue.pop()
-            self._release_slot_locked(item.team_id)
             removed.append(item)
             handle = item.payload.handle
-            handle._job = None
             self._finish_locked(handle, RequestState.FAILED,
                                 error_type='WorkerUnavailable', error_message=self._unavailable)
+            handle._job = None
+            self._release_slot_locked(item.team_id)
         return removed
 
     def close(self, *, wait=True, timeout=None):
@@ -349,23 +409,32 @@ class Broker:
         if wait and current_thread() is self._thread:
             raise RuntimeError('owner thread cannot join itself')
         removed = []
+        cleanup_failed = False
         with self._condition:
             self._closed = True
-            while len(self._queue):
-                item = self._queue.pop()
-                self._release_slot_locked(item.team_id)
-                removed.append(item)
-                handle = item.payload.handle
-                handle._job = None
-                handle._cancel.set()
-                self._finish_locked(handle, RequestState.CANCELLED)
+            try:
+                while len(self._queue) and not self._fatal_cleanup_failure:
+                    item = self._queue.pop()
+                    removed.append(item)
+                    handle = item.payload.handle
+                    handle._cancel.set()
+                    self._finish_locked(handle, RequestState.CANCELLED)
+                    handle._job = None
+                    self._release_slot_locked(item.team_id)
+            except BaseException:
+                self._mark_cleanup_failed_locked()
+                cleanup_failed = True
             if self._running is not None:
                 self._running._cancel.set()
             self._condition.notify_all()
         del removed
+        if cleanup_failed:
+            raise BrokerShutdownError('broker could not complete pending-request cleanup')
         if wait:
             self._thread.join(timeout)
         stopped = not self._thread.is_alive()
+        if self._fatal_cleanup_failure:
+            raise BrokerShutdownError('broker cleanup failed; request status and accounting are unknown')
         if stopped and self._shutdown_error is not None:
             raise BrokerShutdownError(f'worker close failed: {self._shutdown_error[0]}: {self._shutdown_error[1]}')
         return stopped
