@@ -1,0 +1,25 @@
+{
+  "controller_exit_code_observed": 1,
+  "controller_status": "quarantined",
+  "limitations": [
+    "resource-only pilot; no behavioral or held-out result",
+    "measurements and cooperative commitments are not worst-case memory bounds",
+    "CUDA context, native allocations and unrelated GPU processes are not bounded",
+    "the supervised Job does not attest unrelated or escaped processes",
+    "dependency and native files require a trusted, stable environment"
+  ],
+  "operator_observed_unsafe_marker_retained": true,
+  "owner_attestation_saved": false,
+  "owner_presence_after_exit": {
+    "owner_pid_listed": false,
+    "query": "ok"
+  },
+  "schema": "agreement-gpu-resource-incomplete-terminal-v1",
+  "source_commit": "ff03d3c9739c894b33839e907b633109dba2a7b3",
+  "source_protections_retained": true,
+  "supervisor": {
+    "clean": false,
+    "exit_code": 1,
+    "timed_out": true
+  }
+}
