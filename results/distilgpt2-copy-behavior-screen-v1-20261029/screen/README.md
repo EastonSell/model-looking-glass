@@ -1,0 +1,25 @@
+# Baseline-supported copying screen: 5 of 12 held-out families supported
+
+The fixed DistilGPT-2 CPU screen completed all 192 public prompts. **Five of the 12 held-out families passed the preregistered clean-behavior gate**, below the minimum of six for the primary intervention criterion. The primary comparison is therefore **ineligible**, even before dose checks. This is a baseline feasibility result; no head intervention was run in this phase, so it does not establish that an edit or ablation failed. The fixed protocol calls for descriptive interventions on all 12 held-out families whose dose plans are valid, including those that failed the baseline gate.
+
+A family passed only if both repeated prompts had their designated target as the unique full-vocabulary next-token top and each target's repeat log probability exceeded its corresponding three shuffles by at least 0.5 nats. Development families **1 and 3** passed (2/12); held-out families **2, 10, 12, 16 and 20** passed (5/12). Across both splits, the repeated target was the unique top in 26/48 rotation rows, with no repeated-row top ties. Four of the 144 repeat-minus-shuffle gaps were below 0.5 nats: one in development family 13 and three in development family 23, including one negative gap. All fixed failures remain in the [24-family table](families.csv) and [192-prompt table](cases.csv), with each gap, top ID, target probability and failure reason.
+
+The two rotations predict different target words, so their difference is not an isolated order effect. A target also appears in every shuffled first block. These are next-token scores for fixed public lists, not a multi-token generation test. The candidate groups were selected after prior published results and the held-out groups share their topics and templates with development; held out means distinct token groups from this study's development and earlier interventions, not unseen clean predictions or pretraining. The five supported held-out families are selected on this baseline and are not a random sample.
+
+## Evidence and limits
+
+The [frozen protocol](../../../docs/DISTILGPT2_COPY_BEHAVIOR_SCREEN_V1.md), [case construction](../../../docs/DISTILGPT2_COPY_BEHAVIOR_SCREEN_CASES_V1.md), [E: staging amendment](../../../docs/DISTILGPT2_COPY_BEHAVIOR_SCREEN_RESOURCE_AMENDMENT_V1.md), [runner](../../../docs/COPY_BEHAVIOR_SCREEN_RUNNER_V1.md), and [v41 public reservation](../../../docs/COPY_BEHAVIOR_SCREEN_EXPOSURE_V41.md) were published before the screen. The [run manifest](run-manifest.json), compressed [journal](attempt.jsonl.gz), [owner result](result.json.gz), and [independent saved-byte replay](independent-replay.json.gz) retain the closed record and all scored rows. The independent reader recomputed all 192 full-vocabulary rows and all family gates. A separate tokenizer-only comparison reproduced all 192 recorded top-token strings from their IDs. The [process projection](process-observation.json) records the reviewed source, the direct child exit 0/reaped, clean checkout, empty stderr, the earlier public-v41 observation and the operator's capacity reading; these are cooperative observations, not interpreter or clock attestation.
+
+The full 38,597,376-byte `screen.f32` matrix is published as [eight indexed, 24-row chunks](raw/index.json), in the exact fixed case order. Each chunk is little-endian float32 with 50,257 logits per row. The complete matrix SHA-256 is `7d54f4f40b9bcdf56dd6a34823ceb4da61098c0f2c6ed84c90396272bc7328aa`; the original also remains on E:. The [restore script](restore_run.py) verifies every chunk and reconstructs a new replayable run directory, including the uncompressed journal, manifest and result:
+
+```text
+python results/distilgpt2-copy-behavior-screen-v1-20261029/screen/restore_run.py --package results/distilgpt2-copy-behavior-screen-v1-20261029/screen --out <new-run-dir>
+```
+
+Run the [independent reader](../../../audits/copy_behavior_screen/saved_independent_audit.py) against that restored directory from the repository root:
+
+```text
+python -B audits/copy_behavior_screen/saved_independent_audit.py --run <closed-run-dir> --cases experiments/distilgpt2_copy_behavior_screen_cases_v1.json --manifest-sha256 4b920bd5f29b54c77914ec8fc402784ceb4b1219da386d900926727547442549 --journal-sha256 f5a7857dec21cdc21d855ed4c07686c8b976162e41beae8256c6ab4f0877ade0 --result-sha256 fcee5b994d9f8d70c0d9c35eae62da8827f5cb92008c9db709c8beb9a733aa99
+```
+
+The [table builder](build_tables.py) accepts the fixed case JSON and uncompressed result JSON, writing into a new output directory. The [hash index](sha256s.json) records package file hashes and the uncompressed evidence identities. Full-vocabulary effects after interventions remain unmeasured at this stage.

@@ -1,0 +1,54 @@
+{
+  "checkout_clean_after": true,
+  "checkout_head": "359ef3191e0fd31760f37fa9295f5c4a0860332a",
+  "exit_code": 0,
+  "exit_record_sha256": "3f5dedc7c312d8b763c2259e879d047d7f7e4ca3c4e6cbe4112ab6ac687295b7",
+  "operator_prelaunch_capacity_observation": {
+    "c_free_bytes": 2732019712,
+    "e_free_bytes": 385206214656,
+    "scope": "Point-in-time observation; the owner also checked its configured floors before loading.",
+    "timing": "Fresh PowerShell reading in the launch sequence; its exact timestamp was not recorded."
+  },
+  "prelaunch_public_inventory_observation": {
+    "inventory_version": 41,
+    "main_commit": "1746098ef175b9389e9557c5ef24272bf1bbe3ac",
+    "module_blob": "835da506bd91afc1c394628535c4427d2a606862",
+    "observer_reported_utc": "2026-10-29 13:06:28 UTC",
+    "scope": "Public directory snapshot only; no other-lane, protected or pretraining attestation."
+  },
+  "public_manifest_commit": "359ef3191e0fd31760f37fa9295f5c4a0860332a",
+  "reader_sha256": "2a8c2851cdf5d354b19a15cc84782da664260369bd53c50ff60e94c2a7e2c2b9",
+  "reaped": true,
+  "saved_attempt_files": [
+    {
+      "bytes": 94280,
+      "path": "attempt.jsonl",
+      "sha256": "f5a7857dec21cdc21d855ed4c07686c8b976162e41beae8256c6ab4f0877ade0"
+    },
+    {
+      "bytes": 1553,
+      "path": "manifest.json",
+      "sha256": "4b920bd5f29b54c77914ec8fc402784ceb4b1219da386d900926727547442549"
+    },
+    {
+      "bytes": 130275,
+      "path": "result.json",
+      "sha256": "fcee5b994d9f8d70c0d9c35eae62da8827f5cb92008c9db709c8beb9a733aa99"
+    },
+    {
+      "bytes": 38597376,
+      "path": "screen.f32",
+      "sha256": "7d54f4f40b9bcdf56dd6a34823ceb4da61098c0f2c6ed84c90396272bc7328aa"
+    }
+  ],
+  "schema": "copy-behavior-screen-process-projection-v1",
+  "scope": "Cooperative operator observations; not interpreter, clock, outside-process or exposure attestation.",
+  "spawn_return_unbound_uncertain": false,
+  "start_record_sha256": "741f1df03d6210cb35eee3b76c2d99847a65ba1ab1fbc2ec04f8020cb0349164",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256": "1d6c512a356988237fefcc8675f665c88575229744dc12063eb43a79d73f64e8",
+  "submitted_manifest_sha256": "b86df1d51e3ed2c7498c47401adb0a49fd73653a4f4fb0eebf33a0d3a9938924",
+  "timed_out": false,
+  "utc_clock_finished": "2026-10-29T13:09:13.091576+00:00",
+  "utc_clock_started": "2026-10-29T13:06:33.137587+00:00"
+}
