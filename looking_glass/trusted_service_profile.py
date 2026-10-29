@@ -31,7 +31,8 @@ FORWARD_CASE_SHA256 = canonical_fingerprint(FORWARD_CASE)
 LOAD_COMMITMENT = 2 * 1024 ** 3
 JOB_COMMITMENT = 512 * 1024 ** 2
 DIRECT_EXECUTION_PATH = 'looking_glass.resident_worker.ResidentWorker.execute'
-_FIXED_ENV = {'CUDA_DEVICE_ORDER': 'PCI_BUS_ID', 'PYTORCH_CUDA_ALLOC_CONF': 'backend:native',
+_FIXED_ENV = {'CUDA_DEVICE_ORDER': 'PCI_BUS_ID', 'CUDA_MODULE_LOADING': 'LAZY',
+              'PYTORCH_CUDA_ALLOC_CONF': 'backend:native',
               'CUBLAS_WORKSPACE_CONFIG': ':4096:8', 'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1',
               'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1', 'HF_HUB_DISABLE_TELEMETRY': '1'}
 _ABSENT_ENV = ('PYTORCH_ALLOC_CONF', 'PYTORCH_NO_CUDA_MEMORY_CACHING', 'CUDA_LAUNCH_BLOCKING')
@@ -144,6 +145,13 @@ def verify_trusted_device_tie(model, identity, owner_session, device_lease):
     return True
 
 
+def _runtime_environment_error(key, message):
+    """Keep only a bounded key name for private collector diagnostics."""
+    error = ValueError(message)
+    error._private_runtime_environment_key = key[:129]
+    return error
+
+
 def _checked_environment(device_uuid, cache_root):
     hf_home = os.environ.get('HF_HOME')
     if type(hf_home) is not str or not hf_home or type(cache_root) is not str or not cache_root:
@@ -162,11 +170,12 @@ def _checked_environment(device_uuid, cache_root):
     required = {'CUDA_VISIBLE_DEVICES': device_uuid, 'HF_HOME': str(resolved_home), **_FIXED_ENV}
     for key, value in required.items():
         if os.environ.get(key) != value:
-            raise ValueError(f'required runtime environment changed: {key}')
+            raise _runtime_environment_error(key, f'required runtime environment changed: {key}')
     for key in os.environ:
         upper = key.upper()
         if upper.startswith(_ENV_PREFIXES) and (key != upper or upper not in required):
-            raise ValueError('unreviewed CUDA, numerical or model-cache environment setting')
+            raise _runtime_environment_error(
+                key, 'unreviewed CUDA, numerical or model-cache environment setting')
     if any(name in os.environ for name in _ABSENT_ENV):
         raise ValueError('incompatible runtime environment is present')
     program_files = os.environ.get('PROGRAMFILES')

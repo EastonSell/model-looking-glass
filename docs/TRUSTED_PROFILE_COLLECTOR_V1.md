@@ -81,6 +81,12 @@ private. The retained-size limit is not a bound on the subprocess's temporary
 output allocation. Missing diagnostics do not establish the cause, and
 collection does not retry or clear quarantine.
 
+If the fixed runtime environment check rejects a key, the private failure
+record may include that key's name, bounded to 128 UTF-8 bytes, and a truncation
+flag. Values are not recorded by this diagnostic. It can recover the original
+key when a failed synchronization wraps the check; unavailable diagnostics do
+not identify the cause of an earlier attempt.
+
 CPU tests use fake device callbacks and a real CPU worker/IPC frame; they do
 not establish GPU behavior. The versioned protocol also records source and
 runtime identity, but does not authenticate all native dependencies or prove
