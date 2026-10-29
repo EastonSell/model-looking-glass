@@ -56,6 +56,7 @@ def test_interrupted_launcher_wait_attempts_stop_and_retains_one_shot_claim(tmp_
     monkeypatch.setattr(launcher, "_source_binding", lambda *_: {"source": "bound"})
     monkeypatch.setattr(launcher, "_committed_bytes", lambda *_: b"fixed")
     monkeypatch.setattr(launcher, "_fixed_inputs", lambda *_: [])
+    monkeypatch.setattr(launcher, "_require_isolated_entry", lambda: None)
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "-1")
     monkeypatch.setenv("HF_HUB_OFFLINE", "1")
     monkeypatch.setenv("TRANSFORMERS_OFFLINE", "1")
@@ -77,7 +78,11 @@ def test_interrupted_launcher_wait_attempts_stop_and_retains_one_shot_claim(tmp_
             raise OSError("synthetic termination failure")
         def kill(self):
             calls.append(("kill", None))
-    monkeypatch.setattr(launcher.subprocess, "Popen", lambda *_a, **_k: Child())
+    commands = []
+    def spawn(command, **_kwargs):
+        commands.append(command)
+        return Child()
+    monkeypatch.setattr(launcher.subprocess, "Popen", spawn)
     with pytest.raises(KeyboardInterrupt, match="caller interrupted"):
         launcher.launch(root=root, revision="a" * 40, cache_dir=cache, output_root=output, run_dir=run,
                         inventory_snapshot=inventory)
@@ -85,6 +90,8 @@ def test_interrupted_launcher_wait_attempts_stop_and_retains_one_shot_claim(tmp_
     assert receipt["child_start"] == "observed" and receipt["exit_code"] == 1
     assert receipt["launcher_error_type"] == "KeyboardInterrupt"
     assert ("terminate", None) in calls and ("wait", 5) in calls
+    assert commands[0][1:4] == ["-I", "-S", "-B"]
+    assert commands[0][6:8] == [str(root / "looking_glass" / "agreement_head_fresh_entry_v4.py"), "owner"]
     assert (output / "agreement-head-v4-1-fresh-context.claim.json").is_file()
     with pytest.raises(FileExistsError):
         launcher.launch(root=root, revision="a" * 40, cache_dir=cache, output_root=output, run_dir=output / "second-run",
@@ -105,6 +112,7 @@ def test_revised_launcher_checks_source_and_output_volumes_before_claim(tmp_path
     monkeypatch.setenv("HF_HUB_OFFLINE", "1")
     monkeypatch.setenv("TRANSFORMERS_OFFLINE", "1")
     monkeypatch.setenv("OMP_NUM_THREADS", "1")
+    monkeypatch.setattr(launcher, "_require_isolated_entry", lambda: None)
     monkeypatch.setattr(sys, "dont_write_bytecode", True)
     monkeypatch.setattr(sys, "pycache_prefix", str(output / "unused-prefix"))
     class Disk:
@@ -159,3 +167,20 @@ def test_fixed_case_selection_and_planned_reservation_must_agree(monkeypatch):
     monkeypatch.setattr(owner, "INVENTORY_SHA256", hashlib.sha256(duplicated).hexdigest())
     with pytest.raises(ValueError, match="identities repeat"):
         owner._fixed_inputs(case_raw, selection, duplicated)
+
+
+def test_isolated_entries_ignore_pythonpath_shadow_before_import(tmp_path):
+    shadow = tmp_path / "shadow"
+    shadow.mkdir()
+    marker = tmp_path / "shadow-executed"
+    (shadow / "json.py").write_text(f"open({str(marker)!r}, 'w').write('executed')\n", encoding="utf-8")
+    entry = Path(owner.__file__).with_name("agreement_head_fresh_entry_v4.py")
+    environment = dict(__import__("os").environ, PYTHONPATH=str(shadow), PYTHONDONTWRITEBYTECODE="1")
+    for role in ("launcher", "owner"):
+        result = subprocess.run([sys.executable, "-I", "-S", "-B", str(entry), role, "--help"],
+                                env=environment, capture_output=True, text=True, timeout=30)
+        assert result.returncode == 0 and "usage:" in result.stdout
+        assert not marker.exists()
+    result = subprocess.run([sys.executable, "-B", str(entry), "launcher", "--help"],
+                            env={**environment, "PYTHONPATH": ""}, capture_output=True, text=True, timeout=30)
+    assert result.returncode != 0 and "isolated -I -S -B entry" in result.stderr

@@ -62,3 +62,17 @@ def test_ineligible_fresh_head_stops_before_any_patch(tmp_path):
                    expected_width=16, expected_nheads=2, expected_vocab=64)
     assert replay["outcome"] == "dose_ineligible" and replay["evaluation"] is None
     assert (replay["candidate"], replay["comparator"]) == (0, 1)
+
+
+def test_fresh_accepts_deliverable_positive_doses_below_legacy_floor(tmp_path):
+    model, rows = _fixture()
+    with torch.no_grad():
+        model.transformer.h[3].attn.c_attn.weight[:, 32:48] *= 1e-4
+        model.transformer.h[3].attn.c_attn.bias[32:48] *= 1e-4
+    summary = run_fresh_context(model, rows, tmp_path / "small", candidate=1, comparator=0,
+                                present_ids=(1, 2), secondary_ids=None, metadata={"fixture": True})
+    assert all(0 < cell["requested_q"] < 2.0 ** -20
+               for head in summary["dose_plan"]["heads"] for cell in head["targets"])
+    replay = audit(tmp_path / "small", rows, phase="fresh_context", heads=(1, 0), present_ids=(1, 2),
+                   expected_width=16, expected_nheads=2, expected_vocab=64)
+    assert replay["forward_count"] == 128 and replay["evaluation"] == summary["evaluation"]

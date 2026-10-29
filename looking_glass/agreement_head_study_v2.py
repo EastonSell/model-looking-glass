@@ -45,9 +45,9 @@ def _distance(left, right):
     return result
 
 
-def _replacement(target, donor, q):
+def _replacement(target, donor, q, *, min_dose=MIN_DOSE):
     distance = _distance(target, donor)
-    if type(q) is not float or not math.isfinite(q) or q < MIN_DOSE or distance <= 0 or q > distance:
+    if type(q) is not float or not math.isfinite(q) or q <= 0 or q < min_dose or distance <= 0 or q > distance:
         raise ValueError("dose is nonfinite, too small, or would amplify the donor displacement")
     fraction = q / distance
     encoded = [f64_to_f32_bits(float(a + fraction * (b - a)))
@@ -81,7 +81,7 @@ def _slice(full, head, heads):
     return full[0, -1, head * width:(head + 1) * width]
 
 
-def _dose_plan(observations, heads, targets, nheads, *, opposite_xor=1):
+def _dose_plan(observations, heads, targets, nheads, *, opposite_xor=1, min_dose=MIN_DOSE):
     """Precompute every replacement before allowing any patch forward."""
     if type(opposite_xor) is not int or opposite_xor not in (1, 3):
         raise ValueError("invalid fixed donor mapping")
@@ -102,7 +102,7 @@ def _dose_plan(observations, heads, targets, nheads, *, opposite_xor=1):
                 donors.append({"kind": name, "donor": donor,
                                "distance": _distance(source, other), "realized_q": None})
             status = "eligible"
-            if q < MIN_DOSE:
+            if q <= 0 or q < min_dose:
                 status = "dose_below_floor"
             elif any(item["distance"] < q for item in donors):
                 status = "insufficient_donor_distance"
@@ -110,7 +110,7 @@ def _dose_plan(observations, heads, targets, nheads, *, opposite_xor=1):
                 try:
                     for item in donors:
                         other = _slice(observations[item["donor"]][0], head, nheads)
-                        replacement, distance, actual = _replacement(source, other, q)
+                        replacement, distance, actual = _replacement(source, other, q, min_dose=min_dose)
                         item["realized_q"] = actual
                         proposed[(head, target, item["kind"])] = (replacement, distance, actual)
                     if max(item["realized_q"] for item in donors) / min(
@@ -253,7 +253,8 @@ def _run(model, rows, directory, *, heads, present_ids, secondary_ids, metadata,
             observations.append((before, last))
         binary64_rounding_probe()
         targets = [i for i in range(16) if phase != "development" or i % 4 < 2]
-        plan, replacements = _dose_plan(observations, heads, targets, model.config.n_head, opposite_xor=opposite_xor)
+        plan, replacements = _dose_plan(observations, heads, targets, model.config.n_head, opposite_xor=opposite_xor,
+                                        min_dose=0.0 if phase == "fresh_context" else MIN_DOSE)
         binary64_rounding_probe()
         journal.record({"type": "dose_plan", **plan}, {})
         active = tuple(entry["head"] for entry in plan["heads"] if entry["eligible"])

@@ -232,7 +232,7 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
                 donors.append({"kind": name, "donor": donor,
                                "distance": _distance(source, selected(donor, head)), "realized_q": None})
             status = "eligible"
-            if q < 2.0 ** -20:
+            if q <= 0 or (phase != "fresh_context" and q < 2.0 ** -20):
                 status = "dose_below_floor"
             elif any(item["distance"] < q for item in donors):
                 status = "insufficient_donor_distance"

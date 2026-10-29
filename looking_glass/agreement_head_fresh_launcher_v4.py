@@ -11,10 +11,12 @@ import sys
 import time
 
 from .agreement_head_fresh_owner_v4 import (CASE_PATH, CASE_SHA256, SELECTION_PATH, SELECTION_SHA256,
-                                           _committed_bytes, _fixed_inputs, _source_binding, _write_new)
+                                           _committed_bytes, _fixed_inputs, _require_isolated_entry,
+                                           _source_binding, _write_new)
 
 
 def launch(*, root, revision, cache_dir, output_root, run_dir, inventory_snapshot):
+    _require_isolated_entry()
     root, cache_dir = Path(root).resolve(strict=True), Path(cache_dir).resolve(strict=True)
     output_root, run_dir = Path(output_root).resolve(strict=True), Path(run_dir)
     inventory_snapshot = Path(inventory_snapshot).resolve(strict=True)
@@ -40,8 +42,9 @@ def launch(*, root, revision, cache_dir, output_root, run_dir, inventory_snapsho
     run_dir.mkdir()
     attempt = run_dir / "attempt"
     child_prefix = run_dir / "child-pycache"
-    command = [sys.executable, "-B", "-X", f"pycache_prefix={child_prefix}", "-m",
-               "looking_glass.agreement_head_fresh_owner_v4", "--root", str(root), "--revision", revision,
+    command = [sys.executable, "-I", "-S", "-B", "-X", f"pycache_prefix={child_prefix}",
+               str(root / "looking_glass" / "agreement_head_fresh_entry_v4.py"), "owner",
+               "--root", str(root), "--revision", revision,
                "--cache-dir", str(cache_dir), "--attempt", str(attempt), "--inventory-snapshot", str(inventory_snapshot)]
     claim_sha = _write_new(claim, {"schema": "agreement-head-fresh-context-claim-v4-1", "source_commit": revision,
                                    "output_root": str(output_root), "run_dir": str(run_dir), "source_sha256": binding})

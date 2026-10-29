@@ -13,7 +13,8 @@ import sys
 
 SOURCE_FILES = (
     "docs/DISTILGPT2_AGREEMENT_HEADS_FRESH_CONTEXT_V4_1.md", "looking_glass/__init__.py",
-    "looking_glass/agreement_head_fresh_owner_v4.py", "looking_glass/agreement_head_fresh_launcher_v4.py",
+    "looking_glass/agreement_head_fresh_entry_v4.py", "looking_glass/agreement_head_fresh_owner_v4.py",
+    "looking_glass/agreement_head_fresh_launcher_v4.py",
     "looking_glass/agreement_head_study_v2.py", "looking_glass/agreement_head_audit_v2.py",
     "looking_glass/agreement_journal.py", "looking_glass/pretrained_exposures_v44.py",
     "looking_glass/agreement_preflight_v1.py", "looking_glass/copy_head_factorial.py",
@@ -85,6 +86,11 @@ def _write_new(path, payload):
     return hashlib.sha256(raw).hexdigest()
 
 
+def _require_isolated_entry():
+    if sys.flags.isolated != 1 or sys.flags.no_site != 1:
+        raise ValueError("requires the isolated -I -S entry")
+
+
 CASE_PATH = "experiments/distilgpt2_agreement_heads_fresh_context_v4_1_cases.json"
 CASE_SHA256 = "bfc93dbcf33f06c8266b0fabf351dfa9f17ab98d6501ca7380e2cd171bddc8b4"
 SELECTION_PATH = "results/distilgpt2-agreement-head-v2-development/selection.json"
@@ -137,6 +143,7 @@ def _fixed_inputs(case_raw, selection_raw, inventory_raw):
 
 
 def run_fresh_owner(*, root, revision, cache_dir, attempt, inventory_snapshot):
+    _require_isolated_entry()
     if (os.environ.get("CUDA_VISIBLE_DEVICES") != "-1" or os.environ.get("HF_HUB_OFFLINE") != "1"
             or os.environ.get("TRANSFORMERS_OFFLINE") != "1" or os.environ.get("OMP_NUM_THREADS") != "1"
             or sys.byteorder != "little" or not sys.dont_write_bytecode or not sys.pycache_prefix
