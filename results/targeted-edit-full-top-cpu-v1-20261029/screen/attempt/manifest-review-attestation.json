@@ -1,0 +1,1 @@
+{"reviewer": "/root/review_trace_budget", "manifest_sha256": "458c934bbe74ad01fd0d6abe6d4686aa1e47cbb993f4b76e04d451d07b3e56bb", "reviewed_commit": "4f963a53ab5a8aed26469b6e4189a28a98f53a7c", "observed_utc": "2026-10-29T09:54:45.193981+00:00", "timing_scope": "operator-recorded no-later-than bound after independent review; not authenticated time"}
