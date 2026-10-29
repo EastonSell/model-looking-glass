@@ -574,7 +574,7 @@ class NaturalAgreementRunner:
             if hasattr(primary_error, 'add_note'):
                 primary_error.add_note('Pending-forward evidence could not be saved: ' + type(error).__name__)
 
-    def run(self, cases):
+    def run(self, cases, *, mode='discovery', frozen_predictions=None, heldout_binding=None):
         if self._used:
             raise StudyFailure('a runner is single-use')
         self._used = True
@@ -582,6 +582,18 @@ class NaturalAgreementRunner:
                     'repeat': 0, 'final_clean': 0}
         try:
             self._cancel_check()
+            if mode not in ('discovery', 'heldout') or type(mode) is not str:
+                raise StudyFailure('invalid natural study mode')
+            if mode == 'discovery':
+                if frozen_predictions is not None or heldout_binding is not None:
+                    raise StudyFailure('discovery does not accept held-out predictions')
+                frozen = frozen_selection = None
+            else:
+                if self.expected_quartets != 4:
+                    raise StudyFailure('held-out evaluation requires four families')
+                from .agreement_heldout import frozen_selection as load_selection, validate_heldout_binding
+                frozen_selection, frozen = load_selection(frozen_predictions)
+                heldout_binding = validate_heldout_binding(heldout_binding)
             model = self.model
             metric_cases, metric_patches = [], []
             past_cases, past_patches, magnitudes = [], [], []
@@ -601,16 +613,23 @@ class NaturalAgreementRunner:
                 rng_before = torch.random.get_rng_state()
                 torch.random.default_generator.manual_seed(_RNG_SEED)
                 seeded_rng_sha256 = hashlib.sha256(torch.random.get_rng_state().numpy().tobytes()).hexdigest()
-                self.journal.record({'kind': 'run_contract', 'cpu_rng_seed': _RNG_SEED,
-                                     'seeded_cpu_rng_sha256': seeded_rng_sha256,
-                                     'cpu_threads': torch.get_num_threads(),
-                                     'deterministic_algorithms': torch.are_deterministic_algorithms_enabled(),
-                                     'cases': [{'case_id': case.case_id, 'quartet': case.quartet,
-                                                'lemma': case.lemma, 'number': case.number,
-                                                'input_ids': list(case.input_ids),
-                                                'attention_mask': [1] * len(case.input_ids),
-                                                'subject_index': case.subject_index} for case in cases],
-                                     'sites': list(_SITES)}, {})
+                contract = {'kind': 'run_contract', 'cpu_rng_seed': _RNG_SEED,
+                            'seeded_cpu_rng_sha256': seeded_rng_sha256,
+                            'cpu_threads': torch.get_num_threads(),
+                            'deterministic_algorithms': torch.are_deterministic_algorithms_enabled(),
+                            'cases': [{'case_id': case.case_id, 'quartet': case.quartet,
+                                       'lemma': case.lemma, 'number': case.number,
+                                       'input_ids': list(case.input_ids),
+                                       'attention_mask': [1] * len(case.input_ids),
+                                       'subject_index': case.subject_index} for case in cases],
+                            'sites': list(_SITES)}
+                if mode == 'heldout':
+                    contract['phase'] = 'heldout'
+                    contract['prediction_sha256'] = hashlib.sha256(frozen.prediction_bytes).hexdigest()
+                    contract['prediction_freeze_sha256'] = frozen.freeze.sha256
+                    contract['heldout_commitment'] = heldout_binding.commitment_sha256
+                    contract['exposure_inventory_sha256'] = heldout_binding.inventory_sha256
+                self.journal.record(contract, {})
                 for quartet in groups:
                     members = groups[quartet]
                     donors, clean_logits = {}, {}
@@ -628,15 +647,16 @@ class NaturalAgreementRunner:
                                              'number': case.number, 'clean_is': values[0], 'clean_are': values[1]})
                         past_cases.append({'id': case.case_id, 'quartet': quartet, 'lemma': case.lemma,
                                            'number': case.number, 'clean_is': values[2], 'clean_are': values[3]})
-                    for site in _CANDIDATES:
-                        for lemma in sorted({case.lemma for case in members}):
-                            singular = next(case for case in members if case.lemma == lemma and case.number == 'singular')
-                            plural = next(case for case in members if case.lemma == lemma and case.number == 'plural')
-                            left = self.journal.read_tensor(donors[(singular.case_id, site['id'])])
-                            right = self.journal.read_tensor(donors[(plural.case_id, site['id'])])
-                            magnitudes.append({'site': site['id'], 'quartet': quartet, 'lemma': lemma,
-                                               'singular': singular.case_id, 'plural': plural.case_id,
-                                               'l2': _vector_l2(left, right)})
+                    if mode == 'discovery':
+                        for site in _CANDIDATES:
+                            for lemma in sorted({case.lemma for case in members}):
+                                singular = next(case for case in members if case.lemma == lemma and case.number == 'singular')
+                                plural = next(case for case in members if case.lemma == lemma and case.number == 'plural')
+                                left = self.journal.read_tensor(donors[(singular.case_id, site['id'])])
+                                right = self.journal.read_tensor(donors[(plural.case_id, site['id'])])
+                                magnitudes.append({'site': site['id'], 'quartet': quartet, 'lemma': lemma,
+                                                   'singular': singular.case_id, 'plural': plural.case_id,
+                                                   'l2': _vector_l2(left, right)})
                     for case in members:
                         logits, captures, metadata = self._forward(case, _steps_for_capture(case))
                         checks = {'last_logits': compare_f32_le(self.journal.read_tensor(clean_logits[case.case_id]), logits)}
@@ -729,7 +749,22 @@ class NaturalAgreementRunner:
                 metrics = score_factorial(metric_cases, metric_patches,
                                           [site['id'] for site in _CANDIDATES],
                                           expected_quartets=self.expected_quartets)
-                selection = _discovery_selection(metrics, magnitudes, self.expected_quartets)
+                if mode == 'discovery':
+                    selection = _discovery_selection(metrics, magnitudes, self.expected_quartets)
+                else:
+                    from .agreement_heldout import score_heldout
+                    evaluation = score_heldout(metrics, frozen_selection)
+                    evaluation['prediction_sha256'] = hashlib.sha256(frozen.prediction_bytes).hexdigest()
+                    evaluation['prediction_freeze_sha256'] = frozen.freeze.sha256
+                    evaluation['heldout_commitment'] = heldout_binding.commitment_sha256
+                    evaluation['exposure_inventory_sha256'] = heldout_binding.inventory_sha256
+                    evaluation['clean_baseline'] = metrics['baseline']
+                    evaluation['clean_cases'] = []
+                    for case in metric_cases:
+                        margin = math.fsum((case['clean_is'], -case['clean_are']))
+                        weight = 1 if case['number'] == 'singular' else -1
+                        evaluation['clean_cases'].append({**case, 'clean_margin': margin,
+                                                          'correct': weight * margin > 0})
                 past_metrics = score_factorial(past_cases, past_patches,
                                                [site['id'] for site in _CANDIDATES],
                                                expected_quartets=self.expected_quartets)
@@ -754,8 +789,11 @@ class NaturalAgreementRunner:
                                              'metrics': site_result}, {})
                 result = {'status': 'complete', 'forwards': self._forwards, 'controls': controls,
                           'model_state_unchanged': True, 'model_state_sha256': initial_state,
-                          'cpu_rng_seed': _RNG_SEED, 'seeded_cpu_rng_sha256': seeded_rng_sha256,
-                          'selection': selection}
+                          'cpu_rng_seed': _RNG_SEED, 'seeded_cpu_rng_sha256': seeded_rng_sha256}
+                if mode == 'discovery':
+                    result['selection'] = selection
+                else:
+                    result['heldout_evaluation'] = evaluation
                 self.journal.record({'kind': 'summary', 'result': result}, {})
                 result['metrics'] = metrics
                 result['secondary_past_metrics'] = past_metrics
