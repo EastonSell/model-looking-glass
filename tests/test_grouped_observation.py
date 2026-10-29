@@ -6,6 +6,7 @@ from unittest.mock import patch
 import hashlib
 import inspect
 import sys
+from types import SimpleNamespace
 from time import perf_counter_ns
 
 from test_grouped_broker import fixture, receive, request
@@ -238,6 +239,53 @@ class GroupedObservationTests(unittest.TestCase):
         with patch('looking_glass.grouped_observation.perf_counter_ns', side_effect=KeyboardInterrupt):
             with self.assertRaises(KeyboardInterrupt):
                 observation._stamp()
+        self.assertFalse(observation.seal(producers_stopped=True)['events_complete'])
+
+    def test_interrupt_during_nested_observer_cleanup_is_not_swallowed(self):
+        from looking_glass.batched_recorder import BatchedEventRecorder
+        from looking_glass.grouped_observation import GroupedObservation
+
+        observation = GroupedObservation(BatchedEventRecorder())
+
+        def fail_emit():
+            raise RuntimeError('observer failed')
+
+        scope = SimpleNamespace(emit=fail_emit)
+
+        class StagedLocal:
+            def __init__(self):
+                self.reads = 0
+
+            @property
+            def forward(self):
+                self.reads += 1
+                if self.reads > 1:
+                    raise KeyboardInterrupt()
+                return scope
+
+            @forward.setter
+            def forward(self, value):
+                pass
+
+        with patch('looking_glass.grouped_observation._local', StagedLocal()):
+            with self.assertRaises(KeyboardInterrupt):
+                observation._finish_forward(scope)
+        self.assertFalse(observation.seal(producers_stopped=True)['events_complete'])
+
+    def test_repeated_cleanup_interrupt_still_latches_broker_and_retains_claims(self):
+        from looking_glass.grouped_observation import GroupedObservation, _ForwardScope
+
+        broker, model, host, observation, _ = observed_stack()
+        broker.submit('team-a', request('job-a', [1, 2, 3]))
+        broker.submit('team-b', request('job-b', [4, 5, 6]))
+        with patch.object(_ForwardScope, 'emit', side_effect=RuntimeError('observer failed')):
+            with patch.object(GroupedObservation, '_abandon_forward', side_effect=KeyboardInterrupt):
+                with self.assertRaises(KeyboardInterrupt):
+                    broker.run_once(1)
+        self.assertTrue(broker.quarantined)
+        self.assertIsNotNone(broker._failure)
+        self.assertGreater(host.snapshot().used_bytes, 0)
+        self.assertEqual(model.calls, [(2, 3)])
         self.assertFalse(observation.seal(producers_stopped=True)['events_complete'])
 
     def test_inflight_clock_interrupt_quarantines_and_never_invents_a_forward(self):

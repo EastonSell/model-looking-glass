@@ -159,8 +159,10 @@ class GroupedObservation:
             current = getattr(_local, 'forward', None)
             if current is scope or (scope is None and type(current) is _ForwardScope and current.owner is self):
                 _local.forward = None
-        except BaseException:
+        except BaseException as exc:
             self._fault()
+            if not isinstance(exc, Exception):
+                raise
 
     def seal(self, *, producers_stopped):
         """Return a detached report after every producer was stopped and joined."""

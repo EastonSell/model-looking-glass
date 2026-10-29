@@ -551,9 +551,16 @@ class GroupedBroker:
                 self._execute(claimed)
                 return True
             except BaseException as exc:
-                if self._observation is not None:
-                    self._observation._abandon_forward(None)
-                self._fail_closed(exc)
+                # Root and latch before optional observer cleanup.  A second
+                # interrupt in that cleanup must not skip broker quarantine.
+                self._fatal = self._quarantined = True
+                if self._failure is None:
+                    self._failure = exc
+                try:
+                    if self._observation is not None:
+                        self._observation._abandon_forward(None)
+                finally:
+                    self._fail_closed(exc)
                 failed = True
         finally:
             self._owner_lock.release()
