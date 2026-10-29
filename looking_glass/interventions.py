@@ -69,6 +69,7 @@ class _ActivationSession:
         self.max_invocations = max_invocations
         self._lifecycle_lock = Lock()
         self._used = False
+        self._entry_token = None
         self._entering = False
         self._entered = False
         self._closing = False
@@ -89,13 +90,15 @@ class _ActivationSession:
         self._metadata = None
 
     def __enter__(self):
-        with self._lifecycle_lock:
-            if self._used:
-                raise RuntimeError("activation sessions are single-use")
-            self._used = True
-            self._entering = True
-            self._owner_thread = current_thread()
+        token = object()
         try:
+            with self._lifecycle_lock:
+                if self._used:
+                    raise RuntimeError("activation sessions are single-use")
+                self._entry_token = token
+                self._entering = True
+                self._used = True
+                self._owner_thread = current_thread()
             try:
                 current_target = self.model.get_submodule(self.module_path)
             except AttributeError as error:
@@ -117,7 +120,15 @@ class _ActivationSession:
                     raise RuntimeError("activation session was invalidated during entry")
                 self._entered = True
                 self._entering = False
+            return self
         except BaseException as error:
+            with self._lifecycle_lock:
+                owns_entry = self._entry_token is token
+                if owns_entry:
+                    self._entering = True
+                    self._used = True
+            if not owns_entry:
+                raise
             try:
                 try:
                     self._cleanup()
@@ -126,8 +137,8 @@ class _ActivationSession:
             finally:
                 with self._lifecycle_lock:
                     self._entering = False
+                    self._entered = False
             raise
-        return self
 
     def _register(self, slot, register, hook, **kwargs):
         # PyTorch or a custom module can install a hook, then raise before
@@ -265,63 +276,108 @@ class _ActivationSession:
 
     def close(self):
         """Retry removal of known handles; indeterminate registration remains quarantined."""
-        with self._lifecycle_lock:
-            if not self._used:
-                raise RuntimeError("close is only available after session entry was attempted")
-            if self._entering or self._entered or self._closing:
-                raise RuntimeError("cannot close an active activation session")
-            self._closing = True
+        token = object()
         try:
+            with self._lifecycle_lock:
+                if not self._used:
+                    raise RuntimeError("close is only available after session entry was attempted")
+                if self._entering or self._entered or self._closing:
+                    raise RuntimeError("cannot close an active activation session")
+                self._closing = token
             self._cleanup()
         finally:
             with self._lifecycle_lock:
-                self._closing = False
+                if self._closing is token:
+                    self._closing = False
 
-    def __exit__(self, exc_type, exc, tb):
+    def abort(self):
+        """Discard an entered session after the owner has ensured quiescence.
+
+        This is recovery for an interrupted context-entry return, not a way to
+        cancel a running forward. Foreign callers invalidate but cannot release.
+        """
         with self._lifecycle_lock:
-            if self._closing:
-                if current_thread() is not self._owner_thread:
+            if current_thread() is not self._owner_thread:
+                if self._entering or self._entered or self._closing:
                     self._invalid = True
                     self._committed = False
-                raise RuntimeError("activation session cleanup is in progress")
-            if not self._entering and not self._entered:
-                raise RuntimeError("activation session is not in an active context")
-            if current_thread() is not self._owner_thread:
+                raise RuntimeError("only the owning thread can abort an activation session")
+            if not self._entered or self._entering or self._closing:
+                raise RuntimeError("no entered activation session to abort")
+            if self._in_forward:
                 self._invalid = True
-                raise RuntimeError("activation session must exit in its owning thread")
-            if self._entering:
-                raise RuntimeError("activation session is not in an active context")
-            self._entered = False
-            self._closing = True
+                self._committed = False
+                raise RuntimeError("cannot abort while a forward may be active")
+            self._invalid = True
+            self._committed = False
+        self.__exit__(RuntimeError, None, None)
+
+    def __exit__(self, exc_type, exc, tb):
+        token = object()
         verification_error = None
-        if exc_type is None:
-            try:
-                self._verify_model_tree()
-            except BaseException as error:
-                verification_error = error
+        preparation_error = None
         cleanup_error = None
+        success = False
         try:
-            self._cleanup()
+            with self._lifecycle_lock:
+                if self._closing:
+                    if current_thread() is not self._owner_thread:
+                        self._invalid = True
+                        self._committed = False
+                    raise RuntimeError("activation session cleanup is in progress")
+                if not self._entering and not self._entered:
+                    raise RuntimeError("activation session is not in an active context")
+                if current_thread() is not self._owner_thread:
+                    self._invalid = True
+                    raise RuntimeError("activation session must exit in its owning thread")
+                if self._entering:
+                    raise RuntimeError("activation session is not in an active context")
+                self._closing = token
+                self._entered = False
+            if exc_type is None:
+                try:
+                    self._verify_model_tree()
+                except BaseException as error:
+                    verification_error = error
         except BaseException as error:
-            cleanup_error = error
+            with self._lifecycle_lock:
+                owns_cleanup = self._closing is token
+            if not owns_cleanup:
+                raise
+            preparation_error = error
         finally:
             with self._lifecycle_lock:
-                success = (exc_type is None and verification_error is None
-                           and cleanup_error is None and not self._invalid
-                           and self._forward_count == 1 and self._completed
-                           and self._applied and not self._in_forward)
-                if success:
-                    self._committed = True
-                self._closing = False
+                owns_cleanup = self._closing is token
+            if owns_cleanup:
+                try:
+                    self._cleanup()
+                except BaseException as error:
+                    cleanup_error = error
+                finally:
+                    with self._lifecycle_lock:
+                        success = (exc_type is None and verification_error is None
+                                   and preparation_error is None and cleanup_error is None
+                                   and not self._invalid and self._forward_count == 1
+                                   and self._completed and self._applied and not self._in_forward)
+                        if success:
+                            self._committed = True
+                        self._entered = False
+                        self._closing = False
         if not success:
             self._discard()
             self._metadata = None
             if cleanup_error is not None:
                 if exc is not None:
                     raise exc.with_traceback(tb) from cleanup_error
+                if preparation_error is not None:
+                    raise preparation_error from cleanup_error
                 if verification_error is not None:
                     raise verification_error from cleanup_error
                 raise cleanup_error
+            if preparation_error is not None:
+                if exc is not None:
+                    raise exc.with_traceback(tb) from preparation_error
+                raise preparation_error
             if verification_error is not None:
                 raise verification_error
             if exc_type is None:
@@ -390,14 +446,20 @@ class ActivationIntervention(_ActivationSession):
         try:
             return super().__enter__()
         except BaseException:
-            self._source = None
+            self._clear_source_if_inactive()
             raise
 
     def __exit__(self, exc_type, exc, tb):
         try:
             return super().__exit__(exc_type, exc, tb)
         finally:
-            self._source = None
+            self._clear_source_if_inactive()
+
+    def _clear_source_if_inactive(self):
+        # A rejected nested or foreign call must not mutate the active owner.
+        with self._lifecycle_lock:
+            if not self._entering and not self._entered and not self._closing:
+                self._source = None
 
     def _apply(self, output, tensor, selected):
         if self._source is not None:
