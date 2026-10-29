@@ -227,10 +227,12 @@ def run(checkout, venv, dependencies, work, output, *, rehearsal, timeout):
             submissions, forwards = _verified_success(registry, output, revision, before)
             recorded_success = True
         quarantine.retry_cleanup()
-        return {"status": "rehearsal" if rehearsal else "terminal_verified", "source_revision": revision,
-                "submissions": submissions, "root_forwards": forwards, "child_reaped": True,
-                "study_ready": False if rehearsal else True, "evidence_root": str(output),
-                "verification_scope": "no_forward_rehearsal" if rehearsal else "terminals_counts_and_inventory"}
+        report = {"status": "rehearsal" if rehearsal else "terminal_verified", "source_revision": revision,
+                  "submissions": submissions, "root_forwards": forwards, "child_reaped": True,
+                  "evidence_root": str(output), "verification_scope":
+                  "no_forward_rehearsal" if rehearsal else "terminals_counts_and_inventory"}
+        report["study_ready" if rehearsal else "scientific_replay_verified"] = False
+        return report
     except BaseException as error:
         status = "cancelled" if isinstance(error, KeyboardInterrupt) else "failed"
         try:

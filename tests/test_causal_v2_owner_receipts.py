@@ -223,6 +223,9 @@ def test_owner_audits_only_after_job_drain_and_before_lease_release(fake_owner):
     report = _run_fake(fake_owner)
     assert fake_owner.events == ["drain", "audit", "release"]
     assert report["submissions"] == report["root_forwards"] == 57408
+    assert report["status"] == "terminal_verified"
+    assert report["scientific_replay_verified"] is False
+    assert "study_ready" not in report
     assert all(not lease.active for lease in fake_owner.leases)
 
 
