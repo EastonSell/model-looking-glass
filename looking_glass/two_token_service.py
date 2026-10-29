@@ -29,6 +29,51 @@ _REQUIRED_SPAWN_CONTRACT = "gated-rooted-child-v1"
 _REQUIRED_COLLECTOR_CONTRACT = "two-token-custody-worker-profile-v1"
 
 
+def _source_checkout():
+    return Path(__file__).resolve().parents[1]
+
+
+def _workspace_root(repo, requested):
+    """Bind this owner to the common physical-device lease namespace."""
+    repo, requested = Path(repo).resolve(strict=True), Path(requested)
+    if not requested.is_absolute():
+        raise ValueError("the workspace root must be absolute")
+    requested = requested.resolve(strict=True)
+    work_parents = [parent for parent in repo.parents if parent.name.casefold() == "work"]
+    if len(work_parents) > 1:
+        raise ValueError("checkout has an ambiguous nested work layout")
+    expected = work_parents[0].parent if work_parents else repo
+    if requested != expected or not (expected / "work").is_dir():
+        raise ValueError("workspace root does not match the shared checkout layout")
+    return expected
+
+
+def _require_workspace_spec(session, repo):
+    """Validate serialized identity and derived paths before acquiring a lease."""
+    from .supervisor import OwnerSession, _resolve_child_identity
+    if type(session) is not OwnerSession or type(session._identity_spec) is not dict:
+        raise RuntimeError("a serialized supervised physical identity is required")
+    spec = session._identity_spec
+    if type(spec.get("workspace_root")) is not str:
+        raise RuntimeError("the supervised workspace root is missing")
+    expected = _workspace_root(repo, spec["workspace_root"])
+    identity = _resolve_child_identity(spec, session.device_lease_path, session.marker_path)
+    if identity.workspace_root != expected:
+        raise RuntimeError("the supervised identity uses another workspace")
+
+
+def _require_workspace_binding(session, repo):
+    """Check the actual identity and serialized identity after acquisition."""
+    from .supervisor import OwnerSession, _identity_spec
+    if type(session) is not OwnerSession or type(session.identity) is not DeviceIdentity:
+        raise RuntimeError("a resolved supervised physical identity is required")
+    identity = session.identity
+    _workspace_root(repo, identity.workspace_root)
+    if type(session._identity_spec) is not dict or _identity_spec(identity) != session._identity_spec:
+        raise RuntimeError("the supervised physical identity changed")
+    DeviceIdentity.validate_paths(identity)
+
+
 def _collector_contract_matches(path):
     """Read a bounded literal from source without importing the collector."""
     with path.open("rb") as stream:
@@ -88,6 +133,9 @@ class _PreparedService:
         inspect the supervisor/unsafe marker to reconcile the outcome.
         """
         _check_owner_contract(self._repo)
+        if Path(self._repo).resolve(strict=True) != _source_checkout():
+            raise RuntimeError("service source checkout changed before launch")
+        _workspace_root(self._repo, self._identity.workspace_root)
         self._identity.validate_paths()
         if prepare_trusted_source(self._source.repo_root, self._source.cache_root) != self._source:
             raise RuntimeError("service source or checkpoint changed before launch")
@@ -152,9 +200,13 @@ def prepare_two_token_service(*, repo_root, cache_root, workspace_root,
         raise ValueError("three ordered approved profile files are required")
     if type(physical_uuids) is not tuple:
         raise ValueError("a trusted physical GPU inventory tuple is required")
+    repo = Path(repo_root)
+    if not repo.is_absolute() or repo.resolve(strict=True) != _source_checkout():
+        raise ValueError("service source checkout differs from this controller")
+    workspace = _workspace_root(repo, workspace_root)
     uuid = normalize_gpu_uuid(gpu_uuid)
     environment = {"CUDA_VISIBLE_DEVICES": uuid, "CUDA_DEVICE_ORDER": "PCI_BUS_ID"}
-    identity = resolve_device_identity(workspace_root, uuid, physical_uuids=physical_uuids,
+    identity = resolve_device_identity(workspace, uuid, physical_uuids=physical_uuids,
                                        environ=environment)
     if type(identity) is not DeviceIdentity:
         raise RuntimeError("canonical device identity is required")
