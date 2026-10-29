@@ -1,0 +1,1 @@
+{"cases_per_model":2,"configurations":[[1,"branch.0"],[2,"activation"],[3,"merge"]],"denormal_policy":"preserve","expected_forwards":202,"max_forwards":60000,"pilot_input_sha256":"024bdea3669683808302b953e7797afaa159d8d4719c574a3dc65e45bff74722","seeds":[49351],"status":"development-only","strengths":[0.25,0.75],"v2_planned_forwards":57408}
