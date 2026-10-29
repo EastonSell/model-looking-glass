@@ -75,6 +75,14 @@ not proof that an implementation obeys the contract. The target must:
    must bound their memory and retention, too. Apply the same cleanup to OOM,
    cancellation, worker poison, and shutdown.
 
+A concrete target can advertise `max_item_bytes`; the adapter rejects a larger
+configured item limit. A target that exposes `bind_waiting_queue(teams,
+max_item_bytes)` is called once at adapter construction with its canonical team
+set and item limit, after the adapter's own configuration has been validated.
+That trusted hook is where the target must reject a second adapter or a team
+configuration mismatch. The hook and marker do not themselves prove that an
+implementation reserves resources or prevents alternative submission paths.
+
 The adapter never acquires the broker condition while holding its own lock. The
 handoff target acquires the broker condition first, and `claim` then acquires
 the adapter and queue locks. A verifier is called outside those locks. Lock order

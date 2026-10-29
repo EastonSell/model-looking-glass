@@ -214,6 +214,12 @@ class BudgetedWorker:
         # Broker queries this while holding its condition; never acquire the gate.
         return self._closed or self.failed
 
+    @property
+    def max_input_bytes(self):
+        """Per-snapshot input-tensor limit; not an aggregate host-memory cap."""
+        self._check_available()
+        return self._binding[4]
+
     def _process_is_quarantined(self):
         try:
             return bool(self._worker.quarantined)
