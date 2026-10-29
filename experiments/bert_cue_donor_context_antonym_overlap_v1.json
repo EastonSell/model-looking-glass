@@ -1,0 +1,10 @@
+{
+  "candidate_rows": 32,
+  "candidate_sha256": "917bad800f72a9613e69d8feae3faf90ffbae5cc446bbeb3e2c8df1d03678dc9",
+  "hits": [],
+  "pairs_compared": 1760,
+  "prior_rows": 55,
+  "prior_sha256": "284fc9adc0cc3caa52ea5d122c1f08db50c8dda2d881297e2dcd1f2229cb6386",
+  "scope": "fixed planned antonym proposal; full and SEP-removed either-way prefixes only; no model, private or pretraining claim",
+  "status": "pass"
+}
