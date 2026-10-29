@@ -12,6 +12,23 @@ from executor import ControlFailure, execute_phase
 
 
 class ExecutorTests(unittest.TestCase):
+    def test_low_auxiliary_volume_stops_before_any_model_call(self):
+        config = GPT2Config(vocab_size=41, n_positions=16, n_embd=8, n_layer=6,
+                            n_head=2, use_cache=False, attn_pdrop=0,
+                            resid_pdrop=0, embd_pdrop=0)
+        config._attn_implementation = 'eager'
+        model = GPT2LMHeadModel(config).eval()
+        cases = [{'case_id': 'known-injection-01', 'split': 'discovery', 'token_ids': [1, 7]}]
+        with tempfile.TemporaryDirectory() as temp, patch.object(model, 'forward', wraps=model.forward) as forward:
+            auxiliary = Path(temp) / 'auxiliary-volume'
+            def usage(path):
+                return type('Usage', (), {'free': 0 if Path(path) == auxiliary else 10 ** 12})()
+            with patch('executor.shutil.disk_usage', side_effect=usage):
+                with self.assertRaisesRegex(ValueError, 'auxiliary volume'):
+                    execute_phase(model, cases, Path(temp) / 'run', phase='discovery', vocab_size=41,
+                                  minimum_free_bytes=0, additional_space_checks=((auxiliary, 1),))
+            self.assertEqual(forward.call_count, 0)
+
     def test_too_small_raw_cap_stops_before_any_model_call(self):
         config = GPT2Config(vocab_size=41, n_positions=16, n_embd=8, n_layer=6,
                             n_head=2, use_cache=False, attn_pdrop=0,

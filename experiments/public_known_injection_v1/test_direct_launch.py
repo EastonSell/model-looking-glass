@@ -10,12 +10,12 @@ class DirectLaunchTests(unittest.TestCase):
         files.update({f'known-injection-{i:02d}.f32': {} for i in range(1, 9)})
         receipt = {'phase': 'discovery', 'exit_code': 0, 'interrupted': False,
                    'prefix_empty_after': True, 'stderr': {'bytes': 0},
-                   'failure_file_present': False, 'run_files': files}
+                   'stage_empty_after': True, 'failure_file_present': False, 'run_files': files}
         summary = {'phase': 'discovery', 'cases': 8, 'completed_actions': 120,
                    'raw_bytes': 42, 'metadata_bytes': 42, 'status': 'complete'}
         self.assertTrue(assess_receipt(receipt, summary))
         for field, value in (('interrupted', True), ('prefix_empty_after', False),
-                             ('exit_code', 1), ('failure_file_present', True)):
+                             ('stage_empty_after', False), ('exit_code', 1), ('failure_file_present', True)):
             altered = dict(receipt, **{field: value})
             self.assertFalse(assess_receipt(altered, summary))
         self.assertFalse(assess_receipt(dict(receipt, stderr={'bytes': 1}), summary))
