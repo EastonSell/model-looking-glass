@@ -116,7 +116,7 @@ Full activations can contain sensitive information. This synthetic benchmark sav
 - [Machine and GPU inventory](docs/GPU_INVENTORY_V1.md)
 - [Supervised GPU memory pilot and recovery record](docs/GPU_ONESHOT_RESULTS_V2.md)
 - [Trace custody integration plan](docs/TRACE_CUSTODY_PLAN.md)
-- [Shared-model throughput protocol](docs/THROUGHPUT_PROTOCOL_V1.md) and its [CPU functionality record](results/throughput-cpu-smoke-v1-20261028/run_status.json)
+- [Shared-model throughput protocol](docs/THROUGHPUT_PROTOCOL_V1.md), its [CPU functionality record](results/throughput-cpu-smoke-v1-20261028/run_status.json), and the [quick GPU development comparison](results/throughput-gpu-quick-dev-v1-20261029/README.md)
 - [Verification status](evidence/STATUS.md)
 - [Design](docs/superpowers/specs/2026-10-28-runtime-probes-design.md)
 - [Implementation plan](docs/superpowers/plans/2026-10-28-runtime-probes.md)
