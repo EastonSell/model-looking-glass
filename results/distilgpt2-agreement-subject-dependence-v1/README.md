@@ -67,3 +67,5 @@ exit, synthetic prelaunch and observation records are included here; they are
 cooperative observations and do not establish a model result. The corrected
 source-first prelaunch builder and its stale-bytecode regression are included
 for inspection.
+
+[Study results and full evidence](RESULTS.md) are now available.

@@ -1,0 +1,20 @@
+{
+  "candidate_status": "complete_candidate",
+  "child_custody_sha256": "7a0c98bf3cc29d93fd215f8e663bd272b7a16158e46133730ec92b64b003712b",
+  "entry_result_sha256": "a32871c758987e500f71caf8c70de73954db029eb28a20f62d3e6ca56ab4dceb",
+  "journal_sha256": "f1e3acf77eff4dee33affa4ccda0b6b05add7bf3e14bdde07e96b2e9dcef234b",
+  "launch_boundary_sha256": "db870de2dab33bf5cccade39a41c407f65bdc034a09bb8c91b45969820831062",
+  "operator_observed_parent_exit_code": 0,
+  "post_launch_v28_observation_sha256": "074024fbaf0282a05842eececedad8d06c0d4b63179cacb3eeb6e724e6c4b42f",
+  "prelaunch_sha256": "da8cd8e61200837a5e602ae24cee3effe791c68a8358529784be688e18557bce",
+  "recorded_utc": "2026-10-29T10:34:38.769292+00:00",
+  "reported_forwards": 720,
+  "reported_journal_events": 721,
+  "schema": "agreement-subject-observer-exit-observation-v1",
+  "scope": "Cooperative operator observation of the parent exit and saved records; not authenticated execution or descendant drain. Independent scientific replay is pending.",
+  "source_revision": "cc4937690db8e0ea8532d3f89f14b6e95465ac65",
+  "supervisor_end_utc": "2026-10-29T10:34:06.275993+00:00",
+  "supervisor_sha256": "7e94cf9224b08a2995a1b03daa880b1d2bc0941c8308dd3ec2f6dd2468889233",
+  "supervisor_start_utc": "2026-10-29T10:30:15.211079+00:00",
+  "terminal_sha256": "a5a55613c1849f83da000b340aaec53995da479071fbc7aa436daca557017f74"
+}

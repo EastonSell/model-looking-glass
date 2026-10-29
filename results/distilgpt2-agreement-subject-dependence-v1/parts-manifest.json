@@ -1,0 +1,74 @@
+{
+  "archive_bytes": 104294509,
+  "archive_sha256": "14accf1935da546d76214c06436ec7a1d94896fa22201782587d37a20490d688",
+  "part_limit_bytes": 8388608,
+  "parts": [
+    {
+      "file": "study-attempt-v1.tar.gz.part-001",
+      "sha256": "72ba515c8f0cfa0c510910478240b2cb9f72b22ae24ef406ba88aa11f3df5068",
+      "size": 8388608
+    },
+    {
+      "file": "study-attempt-v1.tar.gz.part-002",
+      "sha256": "e978d5996fea946ebe7f56fbb4bd5a96cc42896cef06caf5de27066abb5a8dce",
+      "size": 8388608
+    },
+    {
+      "file": "study-attempt-v1.tar.gz.part-003",
+      "sha256": "d7cc13f808d5b5999fbc97ad9466622922ea1cdb3e2514e704c037c123dceaad",
+      "size": 8388608
+    },
+    {
+      "file": "study-attempt-v1.tar.gz.part-004",
+      "sha256": "214161e10ae779741a2d1863440d3cf9efebde90b584aedde4a09c9a821a17f4",
+      "size": 8388608
+    },
+    {
+      "file": "study-attempt-v1.tar.gz.part-005",
+      "sha256": "a8d09e33fd7717283bcbf7cb87e95a86e0a6512f065b111c5b1305c2123d70db",
+      "size": 8388608
+    },
+    {
+      "file": "study-attempt-v1.tar.gz.part-006",
+      "sha256": "aa8760d4f3065f40a94106f9ed9c691781fd55a4b0200664eb6c5e7d6e6ad4d4",
+      "size": 8388608
+    },
+    {
+      "file": "study-attempt-v1.tar.gz.part-007",
+      "sha256": "949feb0220918edb27ea6d5a327ed871d5e09300a3593414fb5f8ded6be8ab41",
+      "size": 8388608
+    },
+    {
+      "file": "study-attempt-v1.tar.gz.part-008",
+      "sha256": "50f7025f3b0d374008967c10bdfa82fd9e1ab19eae45c104258d9e8b3025c07e",
+      "size": 8388608
+    },
+    {
+      "file": "study-attempt-v1.tar.gz.part-009",
+      "sha256": "d38c1eb2be4118a0a54fca00f666bdf5acbaddb2d622e30f1270e819ff6a722d",
+      "size": 8388608
+    },
+    {
+      "file": "study-attempt-v1.tar.gz.part-010",
+      "sha256": "4c6485a17af1f01aca51687219b13ffe5a5d6e1a771879332ec4ec4e996051cc",
+      "size": 8388608
+    },
+    {
+      "file": "study-attempt-v1.tar.gz.part-011",
+      "sha256": "7c17853e0ed98b06a63351fe79d0d87b557e10668ed265adc73862e5e7b79275",
+      "size": 8388608
+    },
+    {
+      "file": "study-attempt-v1.tar.gz.part-012",
+      "sha256": "89098250c67ecef3011efe3d8ff98185379f6ff44ebcc52afc614bfc18286972",
+      "size": 8388608
+    },
+    {
+      "file": "study-attempt-v1.tar.gz.part-013",
+      "sha256": "30c1167f9095d5b7937e1e2cd314a6e715cba52249e94829ae3a94beb3b2c2c1",
+      "size": 3631213
+    }
+  ],
+  "reassembled_digest_and_bytes_equal": true,
+  "schema": "agreement-subject-split-archive-v1"
+}
