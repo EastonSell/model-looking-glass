@@ -1,4 +1,4 @@
-"""Reconstruct one BERT agreement family from its recorded CPU events.
+"""Reconstruct one BERT agreement family from recorded observation events.
 
 This validates internal evidence consistency, not whether a process executed
 the described model. Full mask logits are represented by hashes, not retained
@@ -33,10 +33,12 @@ def _same_fields(record, expected):
             and record.get(key) == value for key, value in expected.items()))
 
 
-def audit_family_events(manifest, records, *, split, family, mask_id, hidden_size):
-    """Validate the exact event schedule and reconstruct all case effects."""
+def audit_family_events(manifest, records, *, split, family, mask_id, hidden_size,
+                        expected_device='cpu'):
+    """Validate the event schedule against one predeclared device identity."""
     if (type(records) is not list or type(hidden_size) is not int
-            or not 1 <= hidden_size <= 4096):
+            or not 1 <= hidden_size <= 4096 or type(expected_device) is not str
+            or expected_device not in ('cpu', 'cuda:0')):
         raise ValueError('bounded records and hidden size are required')
     rows, targets, by_id = _family_rows(manifest, split, family, mask_id)
     cursor, count = 0, 0
@@ -95,7 +97,7 @@ def audit_family_events(manifest, records, *, split, family, mask_id, hidden_siz
                         'module_path': path, 'module_aliases': [path], 'call_site_known': False,
                         'forward_index': 0, 'invocation': 0, 'batch_index': 0, 'token_index': token,
                         'output_selector': [0], 'output_shape': [1, 10, hidden_size],
-                        'selected_shape': [hidden_size], 'dtype': 'torch.float32', 'device': 'cpu',
+                        'selected_shape': [hidden_size], 'dtype': 'torch.float32', 'device': expected_device,
                         'source_capture': 'before' if self_patch and index == 1 else None,
                         'preceding_same_site_actions': list(names[:index])}
             if not _same_fields(event, expected):
