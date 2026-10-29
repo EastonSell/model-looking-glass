@@ -12,7 +12,7 @@ from looking_glass.causal_experiment import run_experiment, select_sites
 from looking_glass import causal_experiment
 from looking_glass.model import TinyResidual
 from looking_glass.probes import TraceEvent
-from looking_glass.research_cases import HELDOUT_CASES, SyntheticCase
+from looking_glass.research_cases import HELDOUT_CASES, SYNTHETIC_CASES, SyntheticCase
 
 
 def _event(label, sequence, value):
@@ -234,8 +234,19 @@ class StudyTests(unittest.TestCase):
         cases = list(_test_cases())
         cases[-1] = SyntheticCase("renamed-heldout", "heldout", HELDOUT_CASES[0].values)
         with tempfile.TemporaryDirectory() as temp:
-            with self.assertRaisesRegex(ValueError, "reserved"):
-                run_experiment(Path(temp) / "leak", cases=cases, model_seed=17, random_seed=3)
+            with patch.object(TinyResidual, "forward", side_effect=AssertionError("reserved input was executed")):
+                with self.assertRaisesRegex(ValueError, "reserved"):
+                    run_experiment(Path(temp) / "leak", cases=cases, model_seed=17, random_seed=3)
+
+    def test_development_rejects_reserved_input_with_signed_zero_changed(self):
+        reserved = next(case for case in SYNTHETIC_CASES if 0.0 in case.values)
+        values = tuple(-0.0 if value == 0.0 else value for value in reserved.values)
+        cases = list(_test_cases())
+        cases[-1] = SyntheticCase("renamed-signed-zero", "heldout", values)
+        with tempfile.TemporaryDirectory() as temp:
+            with patch.object(TinyResidual, "forward", side_effect=AssertionError("reserved input was executed")):
+                with self.assertRaisesRegex(ValueError, "reserved"):
+                    run_experiment(Path(temp) / "leak", cases=cases, model_seed=17, random_seed=3)
 
     def test_no_observed_difference_is_not_a_candidate(self):
         clean = [_event("a", 0, [0.0])]
