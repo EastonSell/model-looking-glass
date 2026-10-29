@@ -35,6 +35,10 @@ def _file_sha(path):
 def observe(command, *, checkout, observation, run, environment, source_commit, probe=False):
     observation = Path(observation)
     observation.mkdir(parents=False, exist_ok=False)
+    temp = observation / 'temp'
+    temp.mkdir(exist_ok=False)
+    environment = dict(environment)
+    environment.update({'TEMP': str(temp), 'TMP': str(temp)})
     _record(observation / 'attempt.json', {'schema': 'vision-cls-controller-attempt-v1',
         'state': 'before_spawn', 'source_commit': source_commit, 'probe': probe, 'utc': _now(),
         'scope': 'direct retained process handle; not execution attestation'})

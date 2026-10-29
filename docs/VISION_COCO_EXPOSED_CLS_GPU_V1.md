@@ -85,7 +85,9 @@ GPU lease and sticky-marker supervisor, not a new general shared service. Bind
 the exact scientific runner, CUDA adapter, model assets, input/reference bytes,
 framework/runtime and protocol source before execution. Use one host thread,
 deterministic algorithms, native PyTorch allocator, disabled TF32 and autocast,
-and record actual GPU UUID, driver, device name/capability and dependency
+and a float32 default dtype. Check that every module remains in evaluation
+mode at the scientific boundaries; this is not a continuous state guarantee.
+Record actual GPU UUID, driver, device name/capability and dependency
 versions. Admit a 25%-of-device PyTorch cap plus 256 MiB commitment with the
 existing `max(1 GiB, 15% total)` free reserve, checked on fresh CUDA memory
 points under the lease. These are cooperative point checks, not a reservation
@@ -125,10 +127,15 @@ prove global device idleness or native destruction.
 
 At admission require at least 3 GiB free on the output volume: a 1 GiB bound
 for the planned attempt and its temporary evidence, plus 2 GiB remaining
-headroom. The 34 forward payloads are capped at 1 MiB each; controller logs
-and other dependency output are not subject to an operating-system quota and
-must be accounted for separately. This free-space point is not a reservation
-against other writers. Record per-stage process working set, peak working set
+headroom. Also require 1 GiB free on the canonical workspace volume for the
+lease, marker, existing assets and residual runtime writes. If these are the
+same volume, require at least 4 GiB there. Place controller temporary files,
+owner temporary files, Python bytecode, and Hugging Face and CUDA caches on
+the output volume; keep the source, existing checkpoint and physical lease in
+the workspace. Native runtime writes may still use other locations. The 34
+forward payloads are capped at 1 MiB each; controller logs and dependency
+output are not subject to an operating-system quota. These free-space points
+are not reservations against other writers. Record per-stage process working set, peak working set
 and private bytes alongside the GPU points; these do not establish a bound on
 total host memory. Saved evidence is closed before its roots are retired;
 without an explicit fsync it is not a power-loss durability claim.

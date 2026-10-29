@@ -60,7 +60,7 @@ def _measurement_with_stages(root, results, count):
         'host_trace_claim_bytes': owner.TRACE, 'torch': '2.8.0+cu128', 'cuda_build': '12.8',
         'transformers': '4.57.3', 'numpy': '2.4.6', 'device': 'cuda:0',
         'device_name': 'NVIDIA GeForce RTX 2070 SUPER', 'compute_capability': [7, 5],
-        'dtype': 'float32', 'attention': 'eager', 'inference_mode': True,
+        'dtype': 'float32', 'attention': 'eager', 'inference_mode': True, 'default_dtype': 'torch.float32',
         'binary64_rounding': 'nearest-even', 'denormals_preserved': True,
         'seed': 17, 'nvidia_total_bytes': total,
         'deterministic_algorithms': True, 'matmul_tf32': False, 'cudnn_tf32': False,
@@ -79,6 +79,37 @@ def test_owner_module_import_leaves_torch_absent_in_fresh_process():
     result = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', code, root],
                             env=dict(os.environ, CUDA_VISIBLE_DEVICES='-1'), capture_output=True, timeout=30)
     assert result.returncode == 0, result.stderr.decode(errors='replace')
+
+
+def test_two_volume_capacity_accounts_for_output_and_workspace():
+    assert owner._capacity_policy(3 * owner.GIB, owner.GIB, False) == 3 * owner.GIB
+    assert owner._capacity_policy(4 * owner.GIB, 4 * owner.GIB, True) == 4 * owner.GIB
+    for output, workspace, same in ((3 * owner.GIB - 1, owner.GIB, False),
+                                    (3 * owner.GIB, owner.GIB - 1, False),
+                                    (4 * owner.GIB - 1, 4 * owner.GIB - 1, True)):
+        with pytest.raises(RuntimeError, match='headroom'):
+            owner._capacity_policy(output, workspace, same)
+    for output, workspace, same in ((True, owner.GIB, False), (3 * owner.GIB, False, False),
+                                    (3 * owner.GIB, owner.GIB, 0)):
+        with pytest.raises(ValueError, match='observation'):
+            owner._capacity_policy(output, workspace, same)
+
+
+def test_runtime_temp_and_caches_must_be_inside_the_attempt(tmp_path, monkeypatch):
+    run = tmp_path / 'attempt'
+    run.mkdir()
+    for name in ('temp', 'hf-cache', 'cuda-cache'):
+        (run / name).mkdir()
+    for key, name in (('TEMP', 'temp'), ('TMP', 'temp'),
+                      ('HF_HOME', 'hf-cache'), ('CUDA_CACHE_PATH', 'cuda-cache')):
+        monkeypatch.setenv(key, str(run / name))
+    owner._validate_runtime_dirs(run)
+    monkeypatch.setenv('HF_HOME', str(tmp_path))
+    with pytest.raises(ValueError, match='temporary/cache'):
+        owner._validate_runtime_dirs(run)
+    monkeypatch.delenv('HF_HOME')
+    with pytest.raises(ValueError, match='temporary/cache'):
+        owner._validate_runtime_dirs(run)
 
 
 @pytest.mark.skipif(os.name != 'nt', reason='the fixed host uses the Windows CRT')
@@ -165,7 +196,7 @@ def test_diff_requires_complete_finite_logit_vectors():
         owner._diff(left, struct.pack('<1000f', *([float('nan')] + [1.5] * 999)))
 
 
-def _fake_device_setup(monkeypatch, *, fail_on=None, rounding_drift_on=None):
+def _fake_device_setup(monkeypatch, *, fail_on=None, rounding_drift_on=None, eval_drift_on=None):
     import transformers
     from looking_glass import vision_coco_cls_gpu_adapter as adapter_module
     from looking_glass import vision_coco_recognized_screen
@@ -196,6 +227,8 @@ def _fake_device_setup(monkeypatch, *, fail_on=None, rounding_drift_on=None):
             result = super().forward(*args, **kwargs)
             if self.forward_count == rounding_drift_on:
                 rounding['nearest'] = False
+            if self.forward_count == eval_drift_on:
+                self.vit.encoder.layer[0].train(True)
             return result
 
     def load(*_args, **_kwargs):
@@ -288,6 +321,25 @@ def test_rounding_drift_after_forward_preserves_bytes_and_stops(tmp_path, monkey
     assert refs[0]() is not None and owner._ROOT['pending'] and owner._ROOT['adapter'].failed
     assert (tmp_path / 'data' / 'forward-001.bin').is_file()
     assert not (tmp_path / 'data' / 'forward-001.json').exists()
+    assert owner._ROOT['budget'].active_leases() == (owner._ROOT['memory_lease'],)
+
+
+def test_eval_state_drift_after_forward_preserves_bytes_and_stops(tmp_path, monkeypatch):
+    calls, refs, reference, files = _fake_device_setup(monkeypatch, eval_drift_on=1)
+    with pytest.raises(RuntimeError, match='evaluation state changed'):
+        owner._measure(object(), object(), torch, tmp_path, reference, files, tmp_path)
+    assert calls.count('forward-1') == 1 and 'clear-workspace' not in calls
+    assert refs[0]() is not None and owner._ROOT['pending'] and owner._ROOT['adapter'].failed
+    assert (tmp_path / 'data' / 'forward-001.bin').is_file()
+    assert not (tmp_path / 'data' / 'forward-001.json').exists()
+
+
+def test_changed_default_dtype_rejects_before_model_load(tmp_path, monkeypatch):
+    calls, refs, reference, files = _fake_device_setup(monkeypatch)
+    monkeypatch.setattr(torch, 'get_default_dtype', lambda: torch.float64)
+    with pytest.raises(RuntimeError, match='numeric execution settings differ'):
+        owner._measure(object(), object(), torch, tmp_path, reference, files, tmp_path)
+    assert refs == [] and 'model-transfer' not in calls
     assert owner._ROOT['budget'].active_leases() == (owner._ROOT['memory_lease'],)
 
 

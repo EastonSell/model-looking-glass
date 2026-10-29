@@ -29,6 +29,22 @@ class FakeProcess:
         return 0
 
 
+def test_controller_temp_is_inside_observation_and_does_not_mutate_parent_env(tmp_path, monkeypatch):
+    process = FakeProcess()
+    observed = {}
+    def spawn(*_args, **kwargs):
+        observed.update(kwargs['env'])
+        return process
+    monkeypatch.setattr(observer.subprocess, 'Popen', spawn)
+    environment = {'TEMP': 'old', 'TMP': 'old', 'OTHER': 'retained'}
+    observation = tmp_path / 'observation'
+    assert observer.observe(['fake'], checkout=tmp_path, observation=observation, run=tmp_path / 'run',
+                            environment=environment, source_commit='a' * 40) == 0
+    assert observed['TEMP'] == observed['TMP'] == str(observation / 'temp')
+    assert (observation / 'temp').is_dir() and observed['OTHER'] == 'retained'
+    assert environment['TEMP'] == environment['TMP'] == 'old'
+
+
 def test_start_record_failure_still_waits_for_the_rooted_controller(tmp_path, monkeypatch):
     process = FakeProcess()
     monkeypatch.setattr(observer.subprocess, 'Popen', lambda *_a, **_k: process)

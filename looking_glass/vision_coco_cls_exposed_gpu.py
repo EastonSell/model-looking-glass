@@ -156,6 +156,11 @@ def _state_copy(value):
     return value.detach().cpu().contiguous()
 
 
+def _check_eval(model):
+    if any(type(module.training) is not bool or module.training for module in model.modules()):
+        raise RuntimeError('model evaluation state changed')
+
+
 def _state_digest(model, check=None):
     digest = hashlib.sha256()
     for name, value in sorted(model.state_dict().items()):
@@ -254,6 +259,7 @@ def _validate_stages(directory, measurement, count):
             or runtime.get('device') != 'cuda:0' or runtime.get('device_name') != 'NVIDIA GeForce RTX 2070 SUPER'
             or runtime.get('compute_capability') != [7, 5] or runtime.get('dtype') != 'float32'
             or runtime.get('attention') != 'eager' or runtime.get('inference_mode') is not True
+            or runtime.get('default_dtype') != 'torch.float32'
             or runtime.get('binary64_rounding') != 'nearest-even' or runtime.get('denormals_preserved') is not True
             or runtime.get('deterministic_algorithms') is not True or runtime.get('matmul_tf32') is not False
             or runtime.get('cudnn_tf32') is not False or runtime.get('cudnn_benchmark') is not False
@@ -460,6 +466,7 @@ def _measure(session, lease, torch, assets, reference, files, directory):
 
     torch.set_num_threads(1)
     torch.set_num_interop_threads(1)
+    torch.set_default_dtype(torch.float32)
     torch.random.default_generator.manual_seed(17)
     transaction(lambda: torch.cuda.manual_seed(17))
     torch.use_deterministic_algorithms(True)
@@ -477,15 +484,19 @@ def _measure(session, lease, torch, assets, reference, files, directory):
                 'cudnn_tf32': torch.backends.cudnn.allow_tf32, 'cudnn_benchmark': torch.backends.cudnn.benchmark,
                 'cudnn_deterministic': torch.backends.cudnn.deterministic,
                 'autocast_enabled': torch.is_autocast_enabled('cuda'),
+                'default_dtype': str(torch.get_default_dtype()),
                 'float32_matmul_precision': torch.get_float32_matmul_precision()}
     settings = numeric_settings()
     if (settings['threads'] != 1 or settings['interop_threads'] != 1
             or not settings['deterministic_algorithms'] or settings['matmul_tf32'] or settings['cudnn_tf32']
-            or settings['cudnn_benchmark'] or not settings['cudnn_deterministic'] or settings['autocast_enabled']):
+            or settings['cudnn_benchmark'] or not settings['cudnn_deterministic'] or settings['autocast_enabled']
+            or settings['default_dtype'] != 'torch.float32'):
         raise RuntimeError('numeric execution settings differ')
     def numeric_guard():
         check_rounding()
         check_denormals()
+        if _ROOT['model'] is not None:
+            _check_eval(_ROOT['model'])
         if numeric_settings() != settings:
             raise RuntimeError('numeric execution settings changed')
     runtime = {'torch': str(torch.__version__), 'cuda_build': torch.version.cuda,
@@ -505,6 +516,7 @@ def _measure(session, lease, torch, assets, reference, files, directory):
     if any(info.get(key) for key in ('missing_keys', 'unexpected_keys', 'mismatched_keys', 'error_msgs')):
         raise RuntimeError('checkpoint loaded incompletely')
     model.eval()
+    _check_eval(model)
     cfg = model.config
     if ((cfg.hidden_size, cfg.num_hidden_layers, cfg.num_labels, cfg.patch_size, cfg.image_size)
             != (192, 12, 1000, 16, 224) or cfg._attn_implementation != 'eager'
@@ -570,6 +582,20 @@ def _measure(session, lease, torch, assets, reference, files, directory):
             'cleanup_memory': cleanup, 'model_and_parameter_weakrefs_dead': True}
 
 
+def _validate_runtime_dirs(run_dir):
+    root = Path(run_dir).resolve(strict=True)
+    if not root.is_dir():
+        raise ValueError('attempt directory is unavailable')
+    for variable, name in (('TEMP', 'temp'), ('TMP', 'temp'),
+                           ('HF_HOME', 'hf-cache'), ('CUDA_CACHE_PATH', 'cuda-cache')):
+        value = os.environ.get(variable)
+        expected = root / name
+        if (not value or not Path(value).is_absolute() or not expected.is_dir()
+                or expected.resolve(strict=True) != expected
+                or Path(value).resolve(strict=True) != expected):
+            raise ValueError('runtime temporary/cache directory differs from the attempt')
+
+
 def owner_main(run_dir, assets, run_id, commit, git):
     try:
         if _ROOT['entered'] is not False:
@@ -584,6 +610,7 @@ def owner_main(run_dir, assets, run_id, commit, git):
         _ROOT['lease'] = lease
         _held(session, lease)
         _validate_workspace_binding(session)
+        _validate_runtime_dirs(run_dir)
         repo = Path(__file__).resolve().parents[1]
         if _source_identity(repo, git)[0] != commit:
             raise RuntimeError('child source identity differs')
@@ -646,7 +673,17 @@ def owner_main(run_dir, assets, run_id, commit, git):
         return 1
 
 
-def _capacity(path):
+def _capacity_policy(output_free, workspace_free, same_volume):
+    if (type(output_free) is not int or type(workspace_free) is not int or type(same_volume) is not bool
+            or output_free < 0 or workspace_free < 0):
+        raise ValueError('invalid output or workspace free-space observation')
+    output_required = 4 * GIB if same_volume else 3 * GIB
+    if output_free < output_required or workspace_free < GIB:
+        raise RuntimeError('insufficient output or workspace volume headroom')
+    return output_required
+
+
+def _capacity(path, workspace):
     import ctypes
     import shutil
     if sys.platform != 'win32':
@@ -662,9 +699,14 @@ def _capacity(path):
     if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
         raise OSError('host memory observation unavailable')
     disk_free = shutil.disk_usage(path).free
-    if disk_free < 3 * GIB or status.available_physical < 2 * GIB:
+    workspace_free = shutil.disk_usage(workspace).free
+    same_volume = os.stat(path).st_dev == os.stat(workspace).st_dev
+    output_required = _capacity_policy(disk_free, workspace_free, same_volume)
+    if status.available_physical < 2 * GIB:
         raise RuntimeError('insufficient host or output-volume headroom')
     return {'disk_free_bytes': disk_free, 'host_available_physical_bytes': status.available_physical,
+            'workspace_volume_free_bytes': workspace_free, 'same_volume': same_volume,
+            'output_required_bytes': output_required, 'workspace_residual_floor_bytes': GIB,
             'disk_attempt_bound_bytes': GIB, 'disk_remaining_headroom_bytes': 2 * GIB}
 
 
@@ -682,7 +724,7 @@ def controller_main(workspace_root, assets, reference_path, output, site, smi):
     program_files = os.environ.get('PROGRAMFILES')
     if not program_files or not Path(program_files).is_absolute() or not Path(program_files).is_dir():
         raise RuntimeError('controller telemetry environment is unavailable')
-    capacity = _capacity(destination.parent)
+    capacity = _capacity(destination.parent, root)
     git = os.environ['LOOKING_GLASS_VISION_GIT_EXE']
     commit, hashes = _source_identity(repo, git)
     if commit != os.environ['LOOKING_GLASS_VISION_SOURCE_COMMIT']:
@@ -696,14 +738,19 @@ def controller_main(workspace_root, assets, reference_path, output, site, smi):
     environment.update({'PATH': str(system_root / 'System32'), 'CUDA_VISIBLE_DEVICES': gpu_uuid,
         'CUDA_DEVICE_ORDER': 'PCI_BUS_ID', 'PYTORCH_CUDA_ALLOC_CONF': 'backend:native',
         'CUBLAS_WORKSPACE_CONFIG': ':4096:8', 'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
-        'HF_HUB_DISABLE_TELEMETRY': '1', 'HF_HOME': str(root / 'work' / 'hf-cache'),
+        'HF_HUB_DISABLE_TELEMETRY': '1',
         'PYTHONNOUSERSITE': '1', 'PYTHONDONTWRITEBYTECODE': '1', 'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1',
         'LOOKING_GLASS_VISION_REFERENCE': str(reference_path),
         'LOOKING_GLASS_VISION_SMI_TOTAL': str(before['total_bytes'])})
     identity = resolve_device_identity(root, gpu_uuid, physical_uuids=[gpu_uuid], environ=environment)
     # Repeat the point just before creating the bounded attempt; concurrent writers remain uncontrolled.
-    capacity = _capacity(destination.parent)
+    capacity = _capacity(destination.parent, root)
     destination.mkdir(exist_ok=False)
+    for name in ('temp', 'hf-cache', 'cuda-cache'):
+        (destination / name).mkdir(exist_ok=False)
+    environment.update({'TEMP': str(destination / 'temp'), 'TMP': str(destination / 'temp'),
+                        'HF_HOME': str(destination / 'hf-cache'),
+                        'CUDA_CACHE_PATH': str(destination / 'cuda-cache')})
     prefix = Path(tempfile.mkdtemp(prefix='pycache-', dir=destination))
     environment['PYTHONPYCACHEPREFIX'] = str(prefix)
     run_id = secrets.token_hex(16)
