@@ -215,6 +215,27 @@ class DiscoveryJournalTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self.journal.append(*self.pairs[1])
 
+    def test_abort_preserves_valid_maximum_raw_failure_record(self):
+        from looking_glass.pretrained_number_incomplete import encode_incomplete_forward, decode_incomplete_forward
+        from looking_glass.pretrained_number_injection import PrivateFailureEvidence
+        payload = b"x" * (1024 * 1024)
+        failure = PrivateFailureEvidence(None, "", "invalid", "Error", "message",
+                                         (("maximum", payload),), None, "private metadata")
+        encoded = encode_incomplete_forward(failure=failure)
+        self.assertGreater(len(encoded.data), 1024 * 1024)
+        self.journal.abort(phase="forward", partial_evidence=encoded.data)
+        scan = self.inspect(())
+        self.assertEqual(scan.tail, "partial")
+        self.assertEqual(decode_incomplete_forward(scan.partial_evidence).payloads["failure.captures.0.data"], payload)
+        self.assertEqual(self.journal.reservation().payload_bytes, len(encoded.data))
+
+    def test_abort_rejects_oversized_nonrecord_bytes(self):
+        with self.assertRaises(ValueError):
+            self.journal.abort(phase="forward", partial_evidence=b"x" * (1024 * 1024 + 1))
+        scan = self.inspect(())
+        self.assertEqual((scan.status, scan.tail), ("incomplete", "empty"))
+        self.assertTrue(scan.terminal_present)
+
     def test_bad_payload_budget_records_failure_without_writing_a_frame(self):
         tiny_path = Path(self.temp.name) / "tiny"
         journal = DiscoveryJournal(tiny_path, **self.binding, max_disk_bytes=10_000_000,

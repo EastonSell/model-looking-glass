@@ -43,6 +43,7 @@ def setup_binding(tmp_path, monkeypatch):
                 'looking_glass/pretrained_exposures_v2.py', 'looking_glass/pretrained_exposures_v3.py',
                 'looking_glass/pretrained_exposures_v4.py', 'looking_glass/pretrained_exposures_v5.py',
                 'looking_glass/pretrained_exposures_v6.py',
+                'looking_glass/pretrained_exposures_v7.py',
                 'looking_glass/agreement_preflight_v1.py', 'looking_glass/pretrained.py']
     sources = {name: 'a' * 64 for name in required}
     sources[launch.AUDITOR_PATH] = launch.AUDITOR
@@ -87,6 +88,12 @@ def test_prepare_binds_public_rows_without_loading_model(setup_binding):
                                                  'injection_discovery': 48 * 1024**2,
                                                  'injection_heldout': 72 * 1024**2}
     assert budget['unallocated_bytes'] == 105835456
+    assert budget['host_disk_allowance_bytes'] == 1024**3
+    assert budget['host_disk_phase_reservations_bytes'] == {'natural_discovery': 224 * 1024**2,
+                                                           'natural_heldout': 224 * 1024**2,
+                                                           'injection_discovery': 128 * 1024**2,
+                                                           'injection_heldout': 192 * 1024**2}
+    assert budget['host_disk_unallocated_bytes'] == 256 * 1024**2
     assert budget['coordination'].startswith('external single study owner')
 
 
@@ -256,6 +263,7 @@ def test_child_holds_its_own_source_lease_during_work(monkeypatch, tmp_path):
     monkeypatch.setattr(control, 'await_start', lambda: None)
     monkeypatch.setattr(launch, '_startup', lambda: None)
     monkeypatch.setattr(launch, '_configure_runtime', lambda: None)
+    monkeypatch.setattr(launch, '_install_owner_audit_hook', lambda: state.update({'hook_installed': True}))
     source = ('a' * 40, {'looking_glass/x.py': 'b' * 64})
     binding_path = tmp_path / 'binding'
     binding_path.write_bytes(launch._bytes({'source_commit': source[0], 'source_sha256': source[1]}))
@@ -265,7 +273,7 @@ def test_child_holds_its_own_source_lease_during_work(monkeypatch, tmp_path):
         assert state['held'] is True
     monkeypatch.setattr(launch, '_child_guarded', guarded)
     launch._child(tmp_path, binding_path, tmp_path, 'url')
-    assert state['held'] is False
+    assert state['held'] is False and state['hook_installed'] is True
 
 
 def test_started_journal_records_exact_runtime_binding(tmp_path):
@@ -413,6 +421,66 @@ def test_runtime_observation_does_not_reset_denormal_state(monkeypatch):
         assert int((tiny * 1.0).view(torch.int32).item()) == 0
     finally:
         torch.set_flush_denormal(False)
+
+
+def test_runtime_observation_does_not_spawn_shell(monkeypatch):
+    monkeypatch.setattr(launch, '_dependency_configuration', lambda: {})
+    monkeypatch.setattr(subprocess, 'Popen', lambda *args, **kwargs: pytest.fail('runtime spawned a subprocess'))
+    observed = launch._runtime()
+    assert observed['platform'] == 'Windows'
+    assert type(observed['windows_version']['build']) is int
+
+
+def test_owner_audit_hook_rejects_python_subprocess_creation(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    marker = tmp_path / 'subprocess-started'
+    code = ("import sys,subprocess; sys.path.insert(0,sys.argv[1]); "
+            "from tools.natural_agreement_cpu import _install_owner_audit_hook; _install_owner_audit_hook(); "
+            "\ntry: sys.audit('_winapi.CreateProcess', 'fabricated')"
+            "\nexcept RuntimeError as error: print('winapi '+str(error))"
+            "\ntry: subprocess.run([sys.executable,'-c',\"open(\"+repr(sys.argv[2])+\",'w').write('x')\"])"
+            "\nexcept RuntimeError as error: print(str(error))")
+    result = subprocess.run([sys._base_executable, '-I', '-S', '-B', '-c', code, str(root), str(marker)],
+                            capture_output=True, timeout=15)
+    assert result.returncode == 0, result.stderr.decode(errors='replace')
+    assert b'subprocess creation is prohibited' in result.stdout
+    assert b'winapi CPU owner subprocess creation is prohibited' in result.stdout
+    assert not marker.exists()
+    for event in ('_winapi.CreateProcess', 'os.system', 'os.spawn', 'os.posix_spawn', 'os.exec', 'os.fork',
+                  'os.forkpty', 'os.startfile', 'os.startfile/2'):
+        with pytest.raises(RuntimeError, match='subprocess creation is prohibited'):
+            launch._owner_audit_hook(event, ())
+
+
+def test_windows_platform_probe_and_torch_import_run_without_subprocess(tmp_path):
+    import os
+    root = Path(__file__).resolve().parents[1]
+    site = Path(sys.prefix) / 'Lib/site-packages'
+    env = os.environ.copy()
+    env.update({'MLG_NATURAL_SITE': str(site.resolve()), 'CUDA_VISIBLE_DEVICES': '-1', 'OMP_NUM_THREADS': '1'})
+    code = ("import sys,os; sys.path.append(os.environ['MLG_NATURAL_SITE']); sys.path.insert(0,sys.argv[1]); "
+            "from tools.natural_agreement_cpu import _install_owner_audit_hook,_configure_runtime; "
+            "_install_owner_audit_hook(); _configure_runtime(); import platform; "
+            "print(platform.platform()); print(platform.machine())")
+    result = subprocess.run([sys._base_executable, '-I', '-S', '-B', '-c', code, str(root)],
+                            env=env, capture_output=True, timeout=30)
+    assert result.returncode == 0, result.stderr.decode(errors='replace')
+    assert b'Windows-' in result.stdout
+
+
+def test_owner_detects_suppressed_audit_hook_installation():
+    root = Path(__file__).resolve().parents[1]
+    code = ("import sys; sys.path.insert(0,sys.argv[1]); "
+            "from tools.natural_agreement_cpu import _install_owner_audit_hook\n"
+            "def suppress(event,args):\n"
+            " if event == 'sys.addaudithook': raise RuntimeError('suppress installation')\n"
+            "sys.addaudithook(suppress)\n"
+            "try: _install_owner_audit_hook()\n"
+            "except RuntimeError as error: print(str(error))")
+    result = subprocess.run([sys._base_executable, '-I', '-S', '-B', '-c', code, str(root)],
+                            capture_output=True, timeout=15)
+    assert result.returncode == 0, result.stderr.decode(errors='replace')
+    assert b'audit hook could not be verified' in result.stdout
 
 
 def test_toy_runner_contract_is_accepted_by_runtime_controller(tmp_path):
