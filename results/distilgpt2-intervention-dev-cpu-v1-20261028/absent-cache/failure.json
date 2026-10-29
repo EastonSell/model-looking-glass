@@ -1,0 +1,53 @@
+{
+  "error_type": "CheckpointUnavailableError",
+  "finished_at_utc": "2026-10-29T01:52:19.906940+00:00",
+  "message": "Pinned checkpoint file config.json is unavailable in offline mode. Check the supplied cache or opt in to a download.",
+  "partial": {},
+  "phase": "offline_model_load",
+  "protocol": "distilgpt2-intervention-dev-v1",
+  "schema": "distilgpt2-intervention-dev-failure-v1",
+  "source": {
+    "commit": "3f8de5d7fb299e4878dbf75f86bb58f2249d6a37",
+    "files": {
+      "docs/DISTILGPT2_INTERVENTION_DEV_V1.md": {
+        "git_blob": "eca2b665288bedccda479e1d636a36aaefc2e084",
+        "sha256": "5e5bf39141568a30a8b16857a3b532f78f64dd8260c5f2a7e1e474ac9e81a28f"
+      },
+      "looking_glass/__init__.py": {
+        "git_blob": "77fbb616980042135d953f088b0eda05379d4a6a",
+        "sha256": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0"
+      },
+      "looking_glass/distilgpt2_intervention_dev.py": {
+        "git_blob": "a125750ff61771339153d7324e94c1df9bedbcf0",
+        "sha256": "43e25d8f05b3a2f32694f551fc3569457858f6d719b45fd9c477d89afb7dc985"
+      },
+      "looking_glass/intervention_plan.py": {
+        "git_blob": "da988bf4a566017c636c88c182c985865bfdc0e6",
+        "sha256": "4780f2da772bf497c51516b2e9caa0db637401a0da273c7dbb3feef92302b4fb"
+      },
+      "looking_glass/interventions.py": {
+        "git_blob": "931eaaadf0d032c814868dcbeae221cf73f79517",
+        "sha256": "71cbcf4776660d2dd883b82815f710b0c909228fd1762504f9e3f984f7f6c60f"
+      },
+      "looking_glass/model_ownership.py": {
+        "git_blob": "5d4c4a9883fe0d3ff365b1a87df75c7e0180c57c",
+        "sha256": "174069f031256a6ff538d21122c6a28fe7624adf86532fec57d232c455e79da1"
+      },
+      "looking_glass/pretrained.py": {
+        "git_blob": "1f7a4ae4aa00fb9458005b6becf85fc5b26653ef",
+        "sha256": "ef86be0af1fd548027d23c8de779ff8cc77a8e180a9cb05d0b10a919454752da"
+      },
+      "scripts/distilgpt2_intervention_dev_bootstrap.py": {
+        "git_blob": "b0817bb2e896ba10a99459dff7d287d809132072",
+        "sha256": "89314e8cf473c81eced1b2034d28cb15efbc5feb80cc2ef68c78954bc27e8389"
+      },
+      "tests/test_distilgpt2_intervention_dev.py": {
+        "git_blob": "46d9d63316b906a081927a6c70c03af9f8eb7bef",
+        "sha256": "d810b311cdcc4f0a5987bee51458f4f21f571d30b7df08f05ce66581c2791323"
+      }
+    },
+    "tree": "bd51b4da7e261c91414bd9872369c1e96a6a66bd"
+  },
+  "status": "failed",
+  "traceback": "Traceback (most recent call last):\n  File \"<workspace>\\work\\teams\\distilgpt2_intervention_dev\\looking_glass\\pretrained.py\", line 121, in load_distilgpt2\n    source = hf_hub_download(\n             ^^^^^^^^^^^^^^^^\n  File \"<workspace>\\work\\.venv\\Lib\\site-packages\\huggingface_hub\\utils\\_validators.py\", line 114, in _inner_fn\n    return fn(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^\n  File \"<workspace>\\work\\.venv\\Lib\\site-packages\\huggingface_hub\\file_download.py\", line 1014, in hf_hub_download\n    return _hf_hub_download_to_cache_dir(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<workspace>\\work\\.venv\\Lib\\site-packages\\huggingface_hub\\file_download.py\", line 1121, in _hf_hub_download_to_cache_dir\n    _raise_on_head_call_error(head_call_error, force_download, local_files_only)\n  File \"<workspace>\\work\\.venv\\Lib\\site-packages\\huggingface_hub\\file_download.py\", line 1653, in _raise_on_head_call_error\n    raise LocalEntryNotFoundError(\nhuggingface_hub.errors.LocalEntryNotFoundError: Cannot find the requested files in the disk cache and outgoing traffic has been disabled. To enable hf.co look-ups and downloads online, set 'local_files_only' to False.\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"<workspace>\\work\\teams\\distilgpt2_intervention_dev\\scripts\\distilgpt2_intervention_dev_bootstrap.py\", line 294, in main\n    bundle = pretrained.load_distilgpt2(cache_dir=str(cache), allow_download=False)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<workspace>\\work\\teams\\distilgpt2_intervention_dev\\looking_glass\\pretrained.py\", line 127, in load_distilgpt2\n    raise CheckpointUnavailableError(\nlooking_glass.pretrained.CheckpointUnavailableError: Pinned checkpoint file config.json is unavailable in offline mode. Check the supplied cache or opt in to a download.\n"
+}
