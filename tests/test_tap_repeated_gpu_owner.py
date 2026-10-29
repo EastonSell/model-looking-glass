@@ -1,4 +1,4 @@
-"""CPU-only tests for the disabled fixed owner orchestration."""
+"""CPU-only tests for the fixed owner orchestration."""
 
 import gc
 import hashlib
@@ -21,6 +21,7 @@ from looking_glass import tap_repeated_protocol as protocol
 def test_import_and_disabled_entry_do_not_load_torch_or_touch_device(tmp_path):
     source = ("import sys; from looking_glass import tap_repeated_gpu_owner as o; "
               "assert 'torch' not in sys.modules; "
+              "o._OWNER_ENABLED = False; "
               "assert o.owner_main('x','y','z','c','g') == 1; "
               "assert 'torch' not in sys.modules")
     env = dict(os.environ, CUDA_VISIBLE_DEVICES='-1')

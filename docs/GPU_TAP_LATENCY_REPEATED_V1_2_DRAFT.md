@@ -4,8 +4,9 @@ This is a new, unexecuted protocol identity,
 `gpu-tap-latency-repeated-v1.2`. It keeps the exact fixed input, checkpoint,
 capture selection, six warmups, 36 measured samples, paired order and activity
 screen from the v1/v1.1 proposal. It does not revise the earlier contaminated
-pilot or permit pooling any v1.1 diagnostic with v1.2. The runnable supervised
-owner and an actual GPU measurement are not yet available.
+pilot or permit pooling any v1.1 diagnostic with v1.2. The fixed supervised
+owner is enabled for one provisional session; no v1.2 GPU measurement has yet
+been reported. A multi-session aggregate requires separate coordination.
 
 The previous diagnostic placed hundreds of expensive physical-owner checks
 inside each tiny-model sample. A CPU-only supervised probe found this overhead
@@ -57,6 +58,13 @@ call stamp must lie inside it. The final owner/admission point check occurs
 after the snapshot and gate and immediately before that stamp. This bounds
 observation age but cannot eliminate a scheduler pause or an external memory
 change after any check.
+
+The private failure record may retain bounded exception class names from the
+component and the first rooted owner-operation failure, a fixed diagnostic
+step, and a postcheck timestamp if it was already returned. It does not retain
+exception messages or turn an incomplete sample into a result. These host-side
+diagnostic assignments occur after the primary wall interval and before the
+postcheck; they add work to the guarded interval for every mode.
 
 The clock-resolution screen, event/wall consistency check, postcheck ordering,
 source/identity binding, parent activity barriers, durable journal, retained

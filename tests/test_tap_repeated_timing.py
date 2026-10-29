@@ -12,6 +12,7 @@ from looking_glass import tap_repeated_owner as owner
 from looking_glass import tap_repeated_preflight as preflight
 from looking_glass import tap_repeated_lean as lean
 from looking_glass import tap_repeated_timing as timing
+from looking_glass import tap_repeated_gpu_owner as gpu_owner
 from looking_glass.tap_repeated_protocol import GIB
 
 
@@ -231,6 +232,60 @@ def test_lean_timing_uses_one_outer_guard_and_separate_wall_intervals(monkeypatc
     finally:
         torch.set_num_threads(threads)
         if was_enabled: gc.enable()
+
+
+@pytest.mark.parametrize(('failure', 'component_type', 'step'), [
+    ('deadline', 'ValueError', 'postcheck_time_validation'),
+    ('peak', 'RuntimeError', 'peak_allocated_query'),
+])
+def test_private_failure_reports_original_type_and_postcheck_context_without_messages(
+        monkeypatch, failure, component_type, step):
+    transformers = pytest.importorskip('transformers')
+    was_enabled, threads = gc.isenabled(), torch.get_num_threads()
+    gc.disable()
+    torch.set_num_threads(1)
+    try:
+        operations, _, _ = make_stack(monkeypatch)
+        config = transformers.GPT2Config(vocab_size=128, n_embd=16, n_layer=1, n_head=2, n_positions=8)
+        config._attn_implementation = 'eager'
+        operations.roots.model = transformers.GPT2LMHeadModel(config).eval()
+        operations.roots.input_ids = torch.tensor([[10, 11]], dtype=torch.int64)
+        operations.bind_session(0)
+        operations.require_disabled_gc()
+        runtime = Runtime(operations)
+        sample = timing._TimedSample(operations, runtime, session=0, clock_info=CLOCK)
+        first = preflight._FixedPreflight(sample)
+        first.prepare()
+        first.run(lambda lower, upper: None)
+        monkeypatch.setattr(lean, '_LEAN_ENABLED', True)
+        runner = lean._LeanTimedSample(sample)
+        start = 100_000_000_000
+        late = start + 300_000 + 2_000_000_001
+        sample.clock = iter((start, start + 100_000, start + 200_000,
+                             start + 300_000, late)).__next__
+        if failure == 'peak':
+            def invalid_peak():
+                raise ValueError('PRIVATE-PATH-AND-ERROR')
+            runtime.peak_allocated_bytes = invalid_peak
+        with pytest.raises(RuntimeError) as escaped:
+            runner.sample_mode('none')
+        custody = dict(gpu_owner._CUSTODY, stage='samples', operations=operations,
+                       lean=runner, journal=None)
+        monkeypatch.setattr(gpu_owner, '_CUSTODY', custody)
+        record = gpu_owner._failure_record(escaped.value)
+        assert record['private_error_types'] == {'component': component_type, 'operation_root': 'ValueError'}
+        assert record['partial']['diagnostic_step'] == step
+        if failure == 'deadline':
+            assert record['partial']['postcheck_completed_ns'] == late
+        else:
+            assert 'postcheck_completed_ns' not in record['partial']
+        assert 'PRIVATE' not in str(record)
+        assert operations.unsafe and runner.state == 'failed'
+        assert not torch.cuda.is_initialized()
+    finally:
+        torch.set_num_threads(threads)
+        if was_enabled:
+            gc.enable()
 
 
 def test_lean_postcheck_detects_loss_and_keeps_synchronized_results(monkeypatch):
