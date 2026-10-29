@@ -16,3 +16,5 @@
 /looking_glass/targeted_edit_france_baseline_audit_v2.py -text
 /tests/test_france_baseline_v2.py -text
 /tests/test_france_baseline_audit_v2.py -text
+/looking_glass/targeted_edit_france_baseline_once_v2.py -text
+/tests/test_france_baseline_once_v2.py -text
