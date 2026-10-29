@@ -1,0 +1,50 @@
+{
+  "manifest_sha256": "57a55d89097ab1b955eb4e6bab38d48a4108aa24608b96827f3d27830fc7bf8c",
+  "new_rows": 48,
+  "public_source_commit": "5027c049bfa9578c19f8e7f65831052578bb1b11",
+  "comparisons": [
+    {
+      "path": "experiments/bert_agreement_exposures_v6.json",
+      "sha256": "0d0b37539c30c8ff25ea5b1cfa95ecd4587f048434348a1c91ec010418553afb",
+      "rows": 160,
+      "exact_ids_and_mask_overlap": 0
+    },
+    {
+      "path": "experiments/bert_matched_public_cases_v1.json",
+      "sha256": "5b708600dba78db9e4ee676650bc5e1f6b3269d52179a8e45d5d45fee55219bb",
+      "rows": 64,
+      "exact_ids_and_mask_overlap": 0
+    },
+    {
+      "path": "experiments/bert_taste_public_exposures_v2.json",
+      "sha256": "a766d20778191280122a6b498b9bcb34907bfac761152ae7c3cf4df0fb9c5aa1",
+      "rows": 8,
+      "exact_ids_and_mask_overlap": 0
+    },
+    {
+      "path": "experiments/bert_taste_matched_dose_public_exposures_v2.json",
+      "sha256": "9b08e38927187c6f43d8659603e27e0f5397034e01143e665ab01a139a64e845",
+      "rows": 12,
+      "exact_ids_and_mask_overlap": 0
+    },
+    {
+      "path": "experiments/bert_taste_template_direction_public_exposures_v2.json",
+      "sha256": "bf4d67ca16519a133f263d2da4b7a270bcd7a259a7cab4b8e8c85a04baa4f424",
+      "rows": 24,
+      "exact_ids_and_mask_overlap": 0
+    },
+    {
+      "path": "experiments/bert_taste_propagation_public_exposures_v2.json",
+      "sha256": "7978b729aedb2b01b93c9c86e115d2f2d95cdb0e50480edb59db6d5bebb080bf",
+      "rows": 24,
+      "exact_ids_and_mask_overlap": 0
+    },
+    {
+      "path": "experiments/bert_negation_public_cases_v1.json",
+      "sha256": "4308e7977e36eb731948193cce27ffa399421bf1bd8bbdd4e42dfa7cc6f4a8ff",
+      "rows": 32,
+      "exact_ids_and_mask_overlap": 0
+    }
+  ],
+  "scope": "Exact full token IDs and masks against these selected public files only; no claim of complete prior history, protected split clearance, distributional independence or pretraining nonexposure."
+}
