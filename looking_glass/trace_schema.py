@@ -14,7 +14,7 @@ SCHEMA_VERSION = "1.0"
 def _text(name, value, *, optional=False):
     if optional and value is None:
         return
-    if not isinstance(value, str):
+    if type(value) is not str:
         raise TypeError(f"{name} must be a string" + (" or None" if optional else ""))
     if not value.strip():
         raise ValueError(f"{name} must not be empty or whitespace")
@@ -41,6 +41,8 @@ def _indices(name, value, *, optional=False):
 def _fields(name, value, expected):
     if type(value) is not dict:
         raise TypeError(f"{name} must be an object")
+    if any(type(key) is not str for key in value):
+        raise TypeError(f"{name} field names must be strings")
     missing = expected - value.keys()
     extra = value.keys() - expected
     if missing or extra:
@@ -92,6 +94,8 @@ class GenerationContext:
     use_cache: bool | None = None
 
     def __post_init__(self):
+        if type(self.stage) is not str:
+            raise TypeError("stage must be a string")
         if self.stage not in ("unknown", "forward", "prefill", "decode"):
             raise ValueError("stage must be unknown, forward, prefill, or decode")
         for name in ("generation_step", "cache_position", "cache_length_before",
@@ -138,9 +142,9 @@ class TraceEvent:
     saved_device: str | None = None
 
     def __post_init__(self):
-        if not isinstance(self.identity, RunIdentity):
+        if type(self.identity) is not RunIdentity:
             raise TypeError("identity must be a RunIdentity")
-        if not isinstance(self.generation, GenerationContext):
+        if type(self.generation) is not GenerationContext:
             raise TypeError("generation must be a GenerationContext")
         for name in ("sequence", "forward_index", "invocation"):
             _nonnegative(name, getattr(self, name))
@@ -193,7 +197,7 @@ class TraceEvent:
                     "layer_index", "output_path", "batch_positions", "token_positions", "batch_axis",
                     "token_axis", "generation", "saved_shape", "saved_dtype", "saved_device"}
         _fields("trace event", value, expected)
-        if value["schema_version"] != SCHEMA_VERSION or type(value["schema_version"]) is not str:
+        if type(value["schema_version"]) is not str or value["schema_version"] != SCHEMA_VERSION:
             raise ValueError(f"unsupported trace schema version: {value['schema_version']!r}")
         values = {key: item for key, item in value.items() if key != "schema_version"}
         values["identity"] = RunIdentity.from_dict(value["identity"])
@@ -237,7 +241,7 @@ def validate_trace(events: Iterable[TraceEvent]):
     """
     seen = set()
     for event in events:
-        if not isinstance(event, TraceEvent):
+        if type(event) is not TraceEvent:
             raise TypeError("trace members must be TraceEvent instances")
         key = (event.identity.run_id, event.sequence)
         if key in seen:
