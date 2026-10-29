@@ -14,7 +14,8 @@ The roadmap is a research plan, not a claim that its milestones are complete. Th
 - The [trace schema](docs/TRACE_SCHEMA.md) records execution coordinates separately from tensor values and hypotheses. Unknown coordinates remain unknown.
 - The [fair queue](docs/FAIR_QUEUE.md) rotates among admitted teams; it does not by itself guarantee admission fairness or equal GPU time.
 - The [memory budget](docs/MEMORY_BUDGET.md) tracks conservative leases and trace allowances. Estimates and logical byte counts are not peak-memory guarantees or proof of device enforcement.
-- The [resident worker](docs/RESIDENT_WORKER.md) and [broker](docs/BROKER.md) reuse one trusted model for queued forwards. Their current execution is serial; GPU-wide admission, supervised device ownership and concurrent device throughput require separate integration and validation.
+- The [resident worker](docs/RESIDENT_WORKER.md) and [broker](docs/BROKER.md) reuse one trusted model for queued forwards. Their current execution is serial; GPU-wide admission and concurrent device throughput require separate integration and validation.
+- The [device supervisor](docs/SUPERVISOR.md) coordinates a cooperative owner process, a device lease, and a sticky quarantine marker. It has CPU tests, but has not yet been integrated and validated as a shared GPU service.
 - The [local transport](docs/IPC.md) lets authenticated cooperating client processes submit bounded forwards over loopback. It does not by itself enforce GPU budgets or provide trace delivery.
 - The [experiment registry](docs/REGISTRY.md) records manifests, artifacts and terminal states. [Research cases](docs/RESEARCH_CASES.md), [localization](docs/LOCALIZATION.md), and [causal metrics](docs/CAUSAL_METRICS.md) support controlled evaluations; the public held-out cases are not a protected blind benchmark. [Transformer trace comparison](docs/TRANSFORMER_LOCALIZATION.md) requires independently verified pairing and execution context.
 
@@ -56,7 +57,9 @@ Python 3.10+ and PyTorch 2.6+ are required. Use the [official PyTorch installati
 
 The optional `transformer` extra pins Transformers 4.57.3: install it with `python -m pip install -e ".[transformer]"` after selecting the appropriate PyTorch build. The [DistilGPT2 loader](docs/PRETRAINED_MODEL.md) is offline by default; downloading the pinned checkpoint requires an explicit opt-in and cache directory. Its CPU smoke test checks loading and execution, not causal explanations or performance. The original CPU experiment does not require this extra or a checkpoint download.
 
-The recorded run used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records its installed version inventory; it is not a cross-platform dependency lock. Other versions allowed by the package metadata have not been validated here. For the tested CPU version, install into an isolated environment with `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
+The [recorded CPU shared-service checks](docs/PRETRAINED_SERVICE_SMOKE.md#recorded-cpu-checks) compare full DistilGPT2 logits for two clients against serial references with one model deserialization. They check correctness for the specified inputs and serial execution, not causal explanations or GPU performance.
+
+The recorded original experiment used Python 3.12.14 and PyTorch 2.15.0+cpu on Linux. [requirements-tested.txt](requirements-tested.txt) records its installed version inventory; it is not a cross-platform dependency lock. Other versions allowed by the package metadata have not been validated here. For the tested CPU version, install into an isolated environment with `python -m pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu`.
 
 ```bash
 python -m unittest discover -s tests -v
@@ -98,6 +101,7 @@ Full activations can contain sensitive information. This synthetic benchmark sav
 - [Causal intervention literature and controls](docs/CAUSAL_LITERATURE.md)
 - [Machine and GPU inventory](docs/GPU_INVENTORY_V1.md)
 - [Trace custody integration plan](docs/TRACE_CUSTODY_PLAN.md)
+- [Shared-model throughput protocol](docs/THROUGHPUT_PROTOCOL_V1.md) and its [CPU functionality record](results/throughput-cpu-smoke-v1-20261028/run_status.json)
 - [Verification status](evidence/STATUS.md)
 - [Design](docs/superpowers/specs/2026-10-28-runtime-probes-design.md)
 - [Implementation plan](docs/superpowers/plans/2026-10-28-runtime-probes.md)
