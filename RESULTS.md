@@ -2,7 +2,7 @@
 
 ## Bottom line
 
-Transparent taps provide useful, explicitly named observation points. In this experiment the isolated-gradient reporting channel reconstructed exactly the same vectors as direct capture, but was slower. There is **no measured information advantage** to that channel. Dense placement improves observation granularity at the cost of more events, retained values and latency.
+Transparent taps provide useful, explicitly named observation points. In this experiment the isolated-gradient and direct recordings compared equal under the recorded floating-point check, but the gradient channel was slower. There is **no measured information advantage** to that channel. Dense placement improves observation granularity at the cost of more events, retained values and latency.
 
 This is a small synthetic CPU experiment, **not a pretrained-model study, a Trojan detector or a safety guarantee**. The identity itself is standard autodiff; no novelty claim is made for hooks or that identity.
 
@@ -10,13 +10,20 @@ This is a small synthetic CPU experiment, **not a pretrained-model study, a Troj
 
 The final recorded run is [verified-cpu-v1](results/verified-cpu-v1/results.json), measured 19:18:39–19:18:45 UTC on 2026-10-28. Source hashes are included in its JSON. The measured implementation is local commit `68d17069a67afc2a23df28d72c9b3e9b64811b09`; publication may use a different commit because the GitHub connector publishes a content snapshot.
 
-- **48/48 training-transparency cases:** exact equality of outputs, scalar loss, input gradients, parameter gradients and state after one SGD update.
-- **16/16 channel comparisons:** exact equality across **51,200 recorded activation elements**.
+- **48/48 training-transparency cases:** tensor checks using `torch.equal` passed for outputs, scalar loss, input gradients, parameter gradients and state after one SGD update; matching absent parameter gradients were accepted.
+- **16/16 channel comparisons:** `torch.equal` passed across **51,200 recorded activation elements**.
 - **Identical-branch negative control:** equal outputs and activation streams, but distinct explicit branch labels. Vector contents alone do not identify unique execution history.
 - **192 perturbation trials:** dense and sparse each detected 96/96. Dense first reported the injected tap in 96/96; sparse first reported a later block output in 96/96.
 - **26/26 unit tests passed**, both normally and under `python -O`. Independent review includes separate execution, packaging verification, raw-CSV checks and correction evidence. See [REVIEW.md](REVIEW.md) and [verification status](evidence/STATUS.md).
 
 Perturbations were deliberately inserted immediately before known taps. Thus exact dense localization is an instrumentation sanity check, **not evidence that the method identifies arbitrary hidden bug causes**. The reported interval is the last equal / first unequal observation, not a causal explanation.
+
+**Later numerical qualification:** the run did not record denormal mode or save
+the activation and control tensor bits. A separate [CPU control](docs/GRADIENT_DENORMAL_V1.md)
+shows that under denormal flushing `torch.equal` can report equality when a
+gradient readout has lost subnormal bits. The original results and raw evidence
+are preserved; their checks do not establish bitwise equality or tell us whether
+that edge case occurred in the historical run.
 
 ## Latency and recorded values
 
