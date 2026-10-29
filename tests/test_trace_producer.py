@@ -1,12 +1,14 @@
 import concurrent.futures
-import dis
 import gc
 import inspect
 import sys
 import threading
 import unittest
+
 import weakref
 from unittest.mock import patch
+
+from opcode_support import offsets_at_line, run_opcode_trace
 
 from looking_glass.host_budget import (HostBudget, HostBudgetExceeded, HostBusy,
                                        HostRequest, HostRequestCancelled)
@@ -40,8 +42,7 @@ def interrupt_opcode(method, line_text, opname, call, *, occurrence=None):
         lines = [lines[occurrence]]
     if len(lines) != 1:
         raise AssertionError(f"expected one source line containing {line_text!r}")
-    matches = [inst.offset for inst in dis.get_instructions(method)
-               if inst.positions.lineno == lines[0] and inst.opname == opname]
+    matches = offsets_at_line(method, lines[0], opname)
     if len(matches) != 1:
         raise AssertionError(f"expected one {opname} at {line_text!r}: {matches}")
 
@@ -54,11 +55,7 @@ def interrupt_opcode(method, line_text, opname, call, *, occurrence=None):
             raise KeyboardInterrupt("injected interruption")
         return tracer
 
-    sys.settrace(tracer)
-    try:
-        call()
-    finally:
-        sys.settrace(None)
+    run_opcode_trace(tracer, call)
 
 
 class ProducerEnvelopeTests(unittest.TestCase):
