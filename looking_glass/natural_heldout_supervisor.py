@@ -179,7 +179,12 @@ def supervise_heldout(command, output, environment, *, audit_result, timeout=720
                     cancellation_requested |= isinstance(error, KeyboardInterrupt)
 
     cleanup_verified = bool(reaped and job_drained and job_closed and logs_complete)
+    child_pid = child.pid if child is not None else None
+    if child is not None and (type(child_pid) is not int or not 0 < child_pid <= 0xffffffff):
+        failure = (failure or 'child identity') + '; invalid child PID'
+        child_pid = None
     verdict = {'status': 'incomplete', 'exit_code': code, 'child_reaped': reaped,
+               'child_pid': child_pid,
                'job_drained': job_drained, 'job_closed': job_closed, 'logs_complete': logs_complete,
                'cleanup_verified': cleanup_verified, 'retry_safe': False,
                'cancellation_requested': cancellation_requested, 'quarantined': not cleanup_verified,
