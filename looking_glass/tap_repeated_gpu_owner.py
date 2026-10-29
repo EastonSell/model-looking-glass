@@ -1,4 +1,4 @@
-"""Fixed owner for one supervised v1.2 repeated-tap session.
+"""Fixed owner for one supervised v1.3 repeated-tap session.
 
 The source-bound bootstrap must verify this module and hard-exit after this
 entrypoint returns. No GPU launch is enabled by importing this module. The
@@ -17,7 +17,7 @@ import sys
 import time
 
 
-_OWNER_ENABLED = True
+_OWNER_ENABLED = False
 _PREFIX = 'LOOKING_GLASS_TAP_REPEATED_'
 _MAX_JOURNAL_BYTES = 8 * 1024 * 1024
 _MAX_ROW_BYTES = 128 * 1024

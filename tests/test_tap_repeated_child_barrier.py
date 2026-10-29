@@ -69,6 +69,29 @@ def test_child_gate_binds_actual_preflight_and_publishes_finished_once(tmp_path)
 
 @pytest.mark.skipif(os.name != 'nt' or sys.version_info[:3] != (3, 11, 15),
                     reason='requires the pinned Windows QPC runtime')
+def test_v13_child_accepts_the_observed_gate_delay_and_remains_single_use():
+    ready = _ready()
+    grant = _grant(ready)
+    barriers = child.ChildBarriers(ready)
+    barriers.accept_start(json.dumps(grant).encode(), observed_ns=9_250_000_000)
+    lower = grant['issued_ns'] + 268_292_800
+    barriers.authorize_preflight(lower, lower + 250_000_000)
+    with pytest.raises(RuntimeError):
+        barriers.authorize_preflight(lower, lower + 250_000_000)
+
+
+@pytest.mark.skipif(os.name != 'nt' or sys.version_info[:3] != (3, 11, 15),
+                    reason='requires the pinned Windows QPC runtime')
+def test_v13_child_rejects_a_grant_longer_than_one_second():
+    ready = _ready()
+    grant = _grant(ready)
+    grant['expires_ns'] = grant['issued_ns'] + 1_000_000_001
+    with pytest.raises(ValueError):
+        child.ChildBarriers(ready).accept_start(json.dumps(grant).encode(), observed_ns=9_250_000_000)
+
+
+@pytest.mark.skipif(os.name != 'nt' or sys.version_info[:3] != (3, 11, 15),
+                    reason='requires the pinned Windows QPC runtime')
 def test_child_gate_rejects_mismatched_identity_stale_interval_and_cleanup(tmp_path):
     ready = _ready()
     grant = _grant(ready)
