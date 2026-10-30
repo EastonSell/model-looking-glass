@@ -111,4 +111,13 @@ A preceding attempt on this same tree lost its executor session after 1,434 pass
 
 The seven screened-evaluation matrices were subsequently restored from the pinned original commit after download approval. All 28,143,920 bytes match their original Git blob hashes and the fixed phase-record SHA-256 specifications. The archive tool independently verified their pinned tree membership and on-disk bytes. The unchanged locality loader then validated all seven matrices and 140 row hashes. Its complete test module together with archive tooling tests passed **24 cases** offline; no scientific expectation, source pin or runtime guard changed.
 
-The active fixture set is now **15 original files / 46,799,138 bytes**. The remaining archive is **2,099 files / 2,783,713,274 bytes**. The earlier failing full-run record is preserved as historical evidence; a fresh complete default run remains pending at this checkpoint.
+The active fixture set is now **15 original files / 46,799,138 bytes**. The remaining archive is **2,099 files / 2,783,713,274 bytes**. The earlier failing full-run record is preserved as historical evidence; a fresh complete default run was pending at that checkpoint.
+
+
+### Successful complete default CPU rerun — 2026-10-30
+
+After restoring the exact archived matrices, a fresh single-process run on tree `6f8ccf604d867efc73cbaff547bd7d9c4ff936cf` completed with **8,145 passed, 285 skipped, zero failures** in **25 minutes 58.36 seconds**, exit status 0. Every one of the 8,430 selected node IDs reached terminal status; the source tree remained unchanged. The previously failing screened-locality anchor passed within this complete run. No scientific expectation or production guard was changed to achieve that result.
+
+The 285 skips remain **57 explicit experimental opcode exclusions plus 228 other prerequisites**. There were four warnings, no native crash, no model downloads, and no real GPU/Windows validation. Earlier native tracing crashes remain unexplained; avoiding those experimental injection mechanisms is not proof of their repair. The [final compact record](../results/maintenance-cpu-20261030/final-summary.json) binds the result to the exact tree, environment, restored-file hashes and checkpoint-log digest. The earlier failed run is retained separately, not rewritten as a success.
+
+The tested current tree contains **402,205,392 tracked bytes**, approximately **87.37% less** than the original tracked tree. The restored CPU evidence accounts for the change from the earlier 88.26% reduction. Git history and original positive/negative research evidence remain intact. No hosted CI checks are configured; this is the recorded local CPU validation, not a hosted-CI claim.

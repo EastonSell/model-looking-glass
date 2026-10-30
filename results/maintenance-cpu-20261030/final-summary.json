@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "date_utc": "2026-10-30",
+  "scope": "One complete serial default CPU pytest run after exact archived-fixture restoration",
+  "tested_tree": "6f8ccf604d867efc73cbaff547bd7d9c4ff936cf",
+  "published_equivalent_commit": "6e4b0e2836844a9d4d423ec3f5549e3564a86c2c",
+  "source_unchanged": true,
+  "collected": 8430,
+  "unique_terminal_nodes": 8430,
+  "counts": {
+    "passed": 8145,
+    "skipped": 285,
+    "failed": 0
+  },
+  "exit_status": 0,
+  "duration_seconds": 1558.36,
+  "warnings": 4,
+  "skip_breakdown": {
+    "experimental_opcode_exclusions": 57,
+    "other_platform_runtime_cache_or_opt_in_prerequisites": 228
+  },
+  "runtime": {
+    "python": "3.12.14",
+    "torch": "2.15.0+cpu",
+    "transformers": "4.57.3",
+    "pytest": "8.4.2",
+    "numpy": "2.5.4",
+    "Pillow": "11.3.0"
+  },
+  "conditions": {
+    "serial": true,
+    "cuda_hidden": true,
+    "cpu_threads": 1,
+    "hugging_face_offline": true,
+    "git_transports_forbidden": true,
+    "automatic_pytest_plugins_disabled": true,
+    "model_downloads": false
+  },
+  "pytest_arguments": [
+    "tests",
+    "-q",
+    "-ra",
+    "--tb=short",
+    "--continue-on-collection-errors",
+    "-p",
+    "no:cacheprovider"
+  ],
+  "previous_failed_run_record": "summary.json",
+  "previous_failed_node_now_passed": "tests/test_screened_locality_posthoc.py::test_published_rows_reproduce_the_known_locality_anchor",
+  "fixture_restoration": {
+    "source_commit": "3cbdec78134855532811a58a64e8dd5d4d457185",
+    "count": 7,
+    "total_bytes": 28143920,
+    "files": [
+      {
+        "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/matched.f32",
+        "blob_sha": "3265dd1361141f03dc50ee2ae89fc93ad0a7e876",
+        "size": 4020560,
+        "sha256": "319d0dfacb51c108bf247af9cf4a69f6e3e57aaafe36c7997f28106d14a2499d"
+      },
+      {
+        "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/nuisance.f32",
+        "blob_sha": "631c1020c250b766149ce056d3a2fc5e752a33d9",
+        "size": 4020560,
+        "sha256": "353e8be4347ecd270fccff56fedae3e0e591d0d26db4e445ccc40cd9d1c13d6d"
+      },
+      {
+        "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/opposite.f32",
+        "blob_sha": "8f5221c784bca53494cddf17e7c0f9189fd77269",
+        "size": 4020560,
+        "sha256": "e8fbab822c7218dbd9141280f7031613db69477ee93b8589c25e89d6c81d7ac9"
+      },
+      {
+        "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/original.f32",
+        "blob_sha": "c0a046c7bb43468b58fac82311e1b3f7ca5205f2",
+        "size": 4020560,
+        "sha256": "1915716986868f1896415a6f5af1cd6cffe81d60fe08a2eca7c422f85a937278"
+      },
+      {
+        "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/projected.f32",
+        "blob_sha": "070c3ad86deb740c4c641fe91072f7ebc35d010d",
+        "size": 4020560,
+        "sha256": "b5c4cb63399d37a9729d6497a228e3229bd93bd1f1b0478da050171322fdadc1"
+      },
+      {
+        "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/projected_random.f32",
+        "blob_sha": "bc94f6f43b7789fd7aeb0aa32ac0250d1f5d373d",
+        "size": 4020560,
+        "sha256": "c4335419d40c4e5ca5d98fd34278065e29fd0e20d907631797244f55232265dc"
+      },
+      {
+        "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/unprojected.f32",
+        "blob_sha": "7cdc19b68e7c4a3c881f8ecd077ecf550bd6e71a",
+        "size": 4020560,
+        "sha256": "0dedbc319075a87d5b641ba6220292926920543dfb2cbdb9917fbfcd10c08388"
+      }
+    ]
+  },
+  "checkout_size": {
+    "tested_tracked_bytes": 402205392,
+    "original_tracked_bytes": 3185650915,
+    "reduction_percent": 87.37,
+    "git_history_rewritten": false
+  },
+  "checkpoint_log_sha256": "5f502d3ed7c3893ca1b97c3740d948b7cc2420ab5e024c741e867d4b7a79b28b",
+  "raw_checkpoint_log_included": false,
+  "limitations": [
+    "57 original opcode-exception experiments were excluded explicitly, not passed.",
+    "228 other prerequisite skips are not validated behavior.",
+    "No real GPU, Windows, downloaded pretrained model, or historical pinned-runtime replay was established.",
+    "Earlier native tracing crashes remain unexplained; this default run completed without a native crash.",
+    "Restoring historical result bytes is not a new model experiment."
+  ]
+}
