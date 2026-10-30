@@ -1,10 +1,10 @@
 # Historical result payload archive
 
-This cleanup removes **2,106 large tensor/archive files (2,811,857,194 bytes)** from the active tree. It does **not** erase or rewrite Git history. Their original bytes remain in ancestor commit [`3cbdec78134855532811a58a64e8dd5d4d457185`](https://github.com/EastonSell/model-looking-glass/tree/3cbdec78134855532811a58a64e8dd5d4d457185).
+This cleanup removes **2,099 large tensor/archive files (2,783,713,274 bytes)** from the active tree. It does **not** erase or rewrite Git history. Their original bytes remain in ancestor commit [`3cbdec78134855532811a58a64e8dd5d4d457185`](https://github.com/EastonSell/model-looking-glass/tree/3cbdec78134855532811a58a64e8dd5d4d457185).
 
-[`results-manifest.json`](results-manifest.json) records every removed path, Git blob SHA-1, and byte size. Selection was by tensor/archive format (`.f32`, `.f64`, `.f64le`, `.bin`, `.zip`, `.gz`, `.gzchunk`, `.bundle`, and numbered multipart suffixes), not scientific outcome. These are **not necessarily redundant files**. Some compressed files contain decisions, logs or source bundles; those too remain available in the pinned archive. Uncompressed reports, JSON/CSV records, protocols, controls and failure records stay in the active tree. The initial CPU benchmark, denormal counterexample, and [eight compact records required by active CPU tests](CPU_TEST_FIXTURES.md) remain directly accessible.
+[`results-manifest.json`](results-manifest.json) records every removed path, Git blob SHA-1, and byte size. Selection was by tensor/archive format (`.f32`, `.f64`, `.f64le`, `.bin`, `.zip`, `.gz`, `.gzchunk`, `.bundle`, and numbered multipart suffixes), not scientific outcome. These are **not necessarily redundant files**. Some compressed files contain decisions, logs or source bundles; those too remain available in the pinned archive. Uncompressed reports, JSON/CSV records, protocols, controls and failure records stay in the active tree. The initial CPU benchmark, denormal counterexample, and [15 original records required by active CPU tests](CPU_TEST_FIXTURES.md) remain directly accessible.
 
-The removed payload is 89.1% of pre-cleanup `results/` bytes and about 88.3% of all pre-cleanup tracked bytes. This is a checkout-size reduction, not a promise that a full clone or server storage becomes smaller. No force push or history rewrite is needed.
+The removed payload is 88.2% of pre-cleanup `results/` bytes and about 87.4% of all pre-cleanup tracked bytes. This is a checkout-size reduction, not a promise that a full clone or server storage becomes smaller. No force push or history rewrite is needed.
 
 ## List and selectively restore
 

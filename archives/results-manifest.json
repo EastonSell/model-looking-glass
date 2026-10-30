@@ -2,8 +2,8 @@
   "base_commit": "3cbdec78134855532811a58a64e8dd5d4d457185",
   "repository": "EastonSell/model-looking-glass",
   "selection": "Historical results tensor/archive payloads, excluding compact records required by the active CPU tests; original bytes preserved in immutable Git history. This manifest does not claim semantic redundancy.",
-  "count": 2106,
-  "total_bytes": 2811857194,
+  "count": 2099,
+  "total_bytes": 2783713274,
   "files": [
     {
       "path": "results/answer-format-feasibility-cpu-v1-20261029/development/attempt/development/matrix.f32",
@@ -8189,41 +8189,6 @@
       "path": "results/targeted-edit-screened-matched-v1-20261029/development/candidate/output-factor.f32",
       "blob_sha": "add28f2cf8a279e81ee93b9e75c07cf3710a6f13",
       "size": 3072
-    },
-    {
-      "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/matched.f32",
-      "blob_sha": "3265dd1361141f03dc50ee2ae89fc93ad0a7e876",
-      "size": 4020560
-    },
-    {
-      "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/nuisance.f32",
-      "blob_sha": "631c1020c250b766149ce056d3a2fc5e752a33d9",
-      "size": 4020560
-    },
-    {
-      "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/opposite.f32",
-      "blob_sha": "8f5221c784bca53494cddf17e7c0f9189fd77269",
-      "size": 4020560
-    },
-    {
-      "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/original.f32",
-      "blob_sha": "c0a046c7bb43468b58fac82311e1b3f7ca5205f2",
-      "size": 4020560
-    },
-    {
-      "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/projected.f32",
-      "blob_sha": "070c3ad86deb740c4c641fe91072f7ebc35d010d",
-      "size": 4020560
-    },
-    {
-      "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/projected_random.f32",
-      "blob_sha": "bc94f6f43b7789fd7aeb0aa32ac0250d1f5d373d",
-      "size": 4020560
-    },
-    {
-      "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/unprojected.f32",
-      "blob_sha": "7cdc19b68e7c4a3c881f8ecd077ecf550bd6e71a",
-      "size": 4020560
     },
     {
       "path": "results/targeted-edit-screened-matched-v1-20261029/screen/screen/screen.f32",

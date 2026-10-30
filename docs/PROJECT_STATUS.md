@@ -32,7 +32,7 @@ Archival selection is based on payload format, **never on whether the outcome is
 
 ## Validation boundary
 
-Latest complete default CPU run: **8,144 passed, 285 skipped (57 experimental exclusions and 228 other prerequisites), one archived-fixture failure**. Seven screened-evaluation matrices remain absent; this is not an all-green result. See the [terminal validation record](../results/maintenance-cpu-20261030/summary.json) and [cleanup report](MAINTENANCE_2026-10-29.md#complete-default-cpu-result--2026-10-30).
+The first complete default CPU run recorded **8,144 passed, 285 skipped (57 experimental exclusions and 228 other prerequisites), one archived-fixture failure**. The seven missing screened-evaluation matrices have since been restored byte-for-byte; the affected locality and archive tests now pass all **24 cases**. A fresh complete rerun is pending, so the earlier run is not relabeled all-green. See its [terminal validation record](../results/maintenance-cpu-20261030/summary.json) and the [cleanup report](MAINTENANCE_2026-10-29.md#complete-default-cpu-result--2026-10-30).
 
 Use focused, named tests for the component being changed. A complete historical test run requires PyTorch, pytest, the pinned optional Transformers dependency, and selected original artifacts; some tests also have explicit environment prerequisites. No dependency skip is evidence that the skipped behavior works. [Current cleanup report](MAINTENANCE_2026-10-29.md) records actual executed and blocked checks.
 
