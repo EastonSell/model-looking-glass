@@ -1,7 +1,7 @@
 # Bounded CPU owner for the masked-color study
 
 This owner implements the [frozen protocol](DISTILBERT_COLOR_EDIT_TOP_V1.md)
-and [planned cases](DISTILBERT_COLOR_EDIT_CASES_V1.md). Its public source and
+and [planned cases](https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DISTILBERT_COLOR_EDIT_CASES_V1.md). Its public source and
 the exact cases require independent review before any pretrained forward.
 The single masked-token output is not a generated answer. The four target
 rephrasings use the same public object, and the 12 fixed locality rows are not

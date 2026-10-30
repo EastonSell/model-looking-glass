@@ -1,0 +1,1838 @@
+{
+  "schema": "model-looking-glass-documentation-archive-v1",
+  "repository": "EastonSell/model-looking-glass",
+  "base_commit": "f3d3e28980379640f7548541225ef40b017e5557",
+  "base_tree": "100c2139962c3a76836eb97859387f1b99fbd244",
+  "selection": "Historical explanatory manuals, incremental exposure summaries and superseded planning; no tracked non-Markdown path/basename/content-hash references and no frozen Markdown inbound destinations. Current core references, source-bound protocols and results remain. This is not a claim that archived code or findings are obsolete.",
+  "count": 203,
+  "total_bytes": 1023253,
+  "files": [
+    {
+      "path": "docs/AGREEMENT_DIRECTION_CPU_OWNER_V1.md",
+      "title": "Agreement-direction CPU owner",
+      "category": "historical-reference",
+      "blob_sha": "72eaa4b5f24c3b5b1dfcc55e7ea1a64e31c2ed7c",
+      "sha256": "804efde6311beaa883d550b4684dfb5de25967213add216ef6972bb42c723596",
+      "size": 4802,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_DIRECTION_CPU_OWNER_V1.md"
+    },
+    {
+      "path": "docs/AGREEMENT_DIRECTION_SCIENCE_REPLAY_V1.md",
+      "title": "Agreement-direction saved-byte scientific replay v1",
+      "category": "historical-reference",
+      "blob_sha": "03e5c37cd362efc7944871d82ac567b3b5bd5513",
+      "sha256": "628508d8ad4da03d2f30b47a99e331be3502122cb471aa10e6cf98a496469d72",
+      "size": 4233,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_DIRECTION_SCIENCE_REPLAY_V1.md"
+    },
+    {
+      "path": "docs/AGREEMENT_EXECUTION_GUARD.md",
+      "title": "Agreement execution configuration guard",
+      "category": "historical-reference",
+      "blob_sha": "470d8a24777940f4229adb347e44890f99d06308",
+      "sha256": "959b297bf97c7617990d5edc5ab25e4c6fada15d34f7909d68ef23892f3ca65a",
+      "size": 1502,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_EXECUTION_GUARD.md"
+    },
+    {
+      "path": "docs/AGREEMENT_HELDOUT_ADAPTER.md",
+      "title": "Natural agreement held-out adapter",
+      "category": "historical-reference",
+      "blob_sha": "5f35b394c3c770529e68657df481e75caf726e13",
+      "sha256": "49947bfc77a079287c5329b1b675cff0d67ec0ad2d1578be7b67fe667fbd53f8",
+      "size": 3912,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_HELDOUT_ADAPTER.md"
+    },
+    {
+      "path": "docs/AGREEMENT_INDEPENDENT_AUDIT.md",
+      "title": "Independent natural-agreement evidence audit",
+      "category": "historical-reference",
+      "blob_sha": "12e69296fc05de7d852cc473bc92a77d630ee275",
+      "sha256": "d52ed32b2ba0304c391789b610269c52f282276e9f532766e0c95868647a36b4",
+      "size": 2136,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_INDEPENDENT_AUDIT.md"
+    },
+    {
+      "path": "docs/AGREEMENT_INVARIANT_CPU_OWNER_V1.md",
+      "title": "Invariant-noun CPU owner",
+      "category": "historical-reference",
+      "blob_sha": "b0a03cece1c24ae3203dcea116870502fbcdb213",
+      "sha256": "162b3eeda4b89a325f315a14d3e40c3089c9a169e7a343db3536f6a8b0d1a0bf",
+      "size": 1335,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_INVARIANT_CPU_OWNER_V1.md"
+    },
+    {
+      "path": "docs/AGREEMENT_INVARIANT_SAVED_REPLAY_V1.md",
+      "title": "Invariant-noun saved-byte replay",
+      "category": "historical-reference",
+      "blob_sha": "7bd75c889daa52188b2042a08e57860d81554564",
+      "sha256": "41c0071ed0dc35ff2c84ad5921dd4c4b6dcd8fe33d166dbe1b77c29acb01b0a8",
+      "size": 2858,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_INVARIANT_SAVED_REPLAY_V1.md"
+    },
+    {
+      "path": "docs/AGREEMENT_INVARIANT_SUCCESSOR_SAVED_REPLAY_V2.md",
+      "title": "Invariant-noun successor saved-byte replay",
+      "category": "historical-reference",
+      "blob_sha": "8c320dccf6beff1b0517aaa124bf55f58bcadc72",
+      "sha256": "7171c10bd1f2004bc5e5e88d9297599d735371e31180913abf1fe521e360f6bf",
+      "size": 1882,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_INVARIANT_SUCCESSOR_SAVED_REPLAY_V2.md"
+    },
+    {
+      "path": "docs/AGREEMENT_NOUN_SUBSTITUTION_CPU_V1.md",
+      "title": "Noun-substitution CPU owner",
+      "category": "historical-reference",
+      "blob_sha": "bd99f563bdb691a6576227e667e59aebfe06c0db",
+      "sha256": "dc2f20ecb05ce64b864e22537cf59986aa85de8bd2b9d32740a5ef8c72c6e456",
+      "size": 3141,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_NOUN_SUBSTITUTION_CPU_V1.md"
+    },
+    {
+      "path": "docs/AGREEMENT_PATCH_RUNNER.md",
+      "title": "Natural agreement patch executor",
+      "category": "historical-reference",
+      "blob_sha": "c92b795d73eb7b7990bc18f61bf8ed832e56db2f",
+      "sha256": "b91751eb1a62e8a18be4d9b74401650e5d6e0e7d392695117b566c86bace5bd7",
+      "size": 4937,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_PATCH_RUNNER.md"
+    },
+    {
+      "path": "docs/AGREEMENT_PHASE_ACCOUNTING.md",
+      "title": "Agreement-study phase accounting",
+      "category": "historical-reference",
+      "blob_sha": "6ed16f0d09587843aedb277ef4c46273cdec3e47",
+      "sha256": "4fd40717efa7bcba34d62faa281a0309dbc2b555a18c307f6f6af25fadd773cb",
+      "size": 13928,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_PHASE_ACCOUNTING.md"
+    },
+    {
+      "path": "docs/AGREEMENT_SAVED_EVIDENCE_AUDIT_V1.md",
+      "title": "Agreement calibration saved-evidence audit v1",
+      "category": "historical-reference",
+      "blob_sha": "61d59e18c3c5a8ebf9f8a0cb7db6eb40365d0f33",
+      "sha256": "04ea567f41e733ad18b2b84d9dff530b83073efe017dc55d3c9a3401121e2451",
+      "size": 6767,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_SAVED_EVIDENCE_AUDIT_V1.md"
+    },
+    {
+      "path": "docs/AGREEMENT_SERVICE_RESOURCE_PLAN.md",
+      "title": "Proposed shared-service path for agreement experiments",
+      "category": "historical-reference",
+      "blob_sha": "d4b6b6439752bb41ecd5433fec53a9051cf2819a",
+      "sha256": "a377ec84deabd829dabe2cd5163d148fc98883045062a32b3b038415fe00ea76",
+      "size": 4016,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_SERVICE_RESOURCE_PLAN.md"
+    },
+    {
+      "path": "docs/AGREEMENT_SPLIT_GATE.md",
+      "title": "Cooperative agreement split ordering gate",
+      "category": "historical-reference",
+      "blob_sha": "97b668da362a8d3d285e4a28748993fd0e7f508b",
+      "sha256": "d0497462a1bec477a9a4f2e7b4849b2d09d54b5d88d15d6115ce184030763d35",
+      "size": 4393,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_SPLIT_GATE.md"
+    },
+    {
+      "path": "docs/AGREEMENT_SUBJECT_EXECUTOR_DRAFT.md",
+      "title": "Agreement subject-dependence CPU worker: development checkpoint",
+      "category": "historical-reference",
+      "blob_sha": "d3dd8c6e05c42cab07b1902c0a2d2722d6bba7c9",
+      "sha256": "dca41ae83428883609fb718041d1fe0ec733b80ad114df554b84ce44a5c26e90",
+      "size": 5478,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_SUBJECT_EXECUTOR_DRAFT.md"
+    },
+    {
+      "path": "docs/AGREEMENT_SUBSTITUTION_SCIENCE_V1.md",
+      "title": "Saved-byte replay for agreement noun substitution",
+      "category": "historical-reference",
+      "blob_sha": "70edd3aa81181e10235506fd30f9ec18cdfa781f",
+      "sha256": "c2a3a2333f1b74d4343a7203326e2e3b4df2d5c98e865f3039f05fac1354456b",
+      "size": 4137,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/AGREEMENT_SUBSTITUTION_SCIENCE_V1.md"
+    },
+    {
+      "path": "docs/BATCHED_EVENTS_V1.md",
+      "title": "Observed events for a batched load window",
+      "category": "historical-reference",
+      "blob_sha": "2cbaf4756d6e2408dbb714bed6ca5c4569a8b3bd",
+      "sha256": "7e2e17faf9464a790b8911be955cd5839516489dae2cc37fe6a9236f28d2fd74",
+      "size": 5214,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/BATCHED_EVENTS_V1.md"
+    },
+    {
+      "path": "docs/BATCHED_RECORDER_V1.md",
+      "title": "Bounded observations for a batched window",
+      "category": "historical-reference",
+      "blob_sha": "e7e12f7392ffb45e6c87cc386723642f2bd22e84",
+      "sha256": "67cb91f4102b65c683c1e3917f577d3d27299d92c5da9ae661bfda5866ae59af",
+      "size": 4418,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/BATCHED_RECORDER_V1.md"
+    },
+    {
+      "path": "docs/BATCHED_THROUGHPUT_V1.md",
+      "title": "Batched shared-model throughput: proposed protocol v1",
+      "category": "historical-reference",
+      "blob_sha": "f3fd0eb08dcdeaad24af5cadf6496a5a6929594a",
+      "sha256": "8f233d3956ef7010ab6dd0f27c6bd7313a666b47bf2a89c208f5d081f44ab459",
+      "size": 12878,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/BATCHED_THROUGHPUT_V1.md"
+    },
+    {
+      "path": "docs/BATCH_VALIDATION.md",
+      "title": "Sampled mixed-batch validation protocol v1",
+      "category": "historical-reference",
+      "blob_sha": "8558942a8aca7506214a977e4d6ac370d82189d0",
+      "sha256": "102d840e33857e9d6bc4017b0b6aac66e773e11c5647c6c84480746c66324e7c",
+      "size": 8508,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/BATCH_VALIDATION.md"
+    },
+    {
+      "path": "docs/BERT_AGREEMENT_CASES_V1.md",
+      "title": "Public DistilBERT agreement cases and development inventory v1",
+      "category": "historical-reference",
+      "blob_sha": "249a3d5d5b2eb37ba3664bcaf9474636d69a156b",
+      "sha256": "48214c9192a17c4a9d097ac1e6e5f02d48834d912f36a9c0bb7c06c10ed8bcdb",
+      "size": 4368,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/BERT_AGREEMENT_CASES_V1.md"
+    },
+    {
+      "path": "docs/BERT_AGREEMENT_EXPOSURES_V5.md",
+      "title": "DistilBERT agreement exposure status v5",
+      "category": "exposure-history",
+      "blob_sha": "bba45bbd90dce62b2a19cd0cf34e24dfd44af302",
+      "sha256": "d1371cdb7c7bfc19b8f0b95d73415497b129a35e53ce3fd92b680551cf95c0dc",
+      "size": 2091,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/BERT_AGREEMENT_EXPOSURES_V5.md"
+    },
+    {
+      "path": "docs/BERT_AGREEMENT_EXPOSURES_V6.md",
+      "title": "DistilBERT agreement exposure status v6",
+      "category": "exposure-history",
+      "blob_sha": "dfbcaa0d20c7d325a4841d71186fd02881d5da6f",
+      "sha256": "89093e176d1c1384fc50f421b518e1c6cf15650490d3dd39dcaee7166121a72c",
+      "size": 2403,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/BERT_AGREEMENT_EXPOSURES_V6.md"
+    },
+    {
+      "path": "docs/BERT_MATCHED_CASES_V1.md",
+      "title": "Public cases for the matched-magnitude BERT study",
+      "category": "historical-reference",
+      "blob_sha": "a34dab19564ddf45a7fa361acb0967036c23cf29",
+      "sha256": "0aa56d6a2378e468e797381f7f3fd1236f090d885858f8364c0d124b6181264c",
+      "size": 1876,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/BERT_MATCHED_CASES_V1.md"
+    },
+    {
+      "path": "docs/BERT_MATCHED_EVIDENCE_AUDIT.md",
+      "title": "Matched-magnitude saved-evidence audit",
+      "category": "historical-reference",
+      "blob_sha": "35682fc6eba207bd862b378fcc57ddd5d59496ab",
+      "sha256": "f1d390fb669595f3eb00466c04f2f4c91b8eb2ddbf9f3fb31f012816da732ada",
+      "size": 4730,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/BERT_MATCHED_EVIDENCE_AUDIT.md"
+    },
+    {
+      "path": "docs/BROKER.md",
+      "title": "In-process resident-worker broker",
+      "category": "historical-reference",
+      "blob_sha": "91d3d6b409b22e902852668902e93069784d1daa",
+      "sha256": "1bd2ea3f8d049b6d75a0bba8b74013ec4ce25a0b8f7f31d127e8a9cbeab1f555",
+      "size": 14323,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/BROKER.md"
+    },
+    {
+      "path": "docs/BROKERED_CPU_TRACE_IPC.md",
+      "title": "Broker-owned CPU trace IPC",
+      "category": "historical-reference",
+      "blob_sha": "c5b67e3b2c5ea6218b2fe2897b416af99496d834",
+      "sha256": "d1c1f65eedcfd1155aa4f24f80fd359d62698bc416748a3a1cb77bac8556ccaf",
+      "size": 7792,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/BROKERED_CPU_TRACE_IPC.md"
+    },
+    {
+      "path": "docs/BROKER_FAIR_HANDOFF.md",
+      "title": "Experimental in-process broker handoff",
+      "category": "historical-reference",
+      "blob_sha": "390d641a95297de7bd194852c48e7c2bac73d580",
+      "sha256": "a281224638a470b253310d6683d7382130caf6a9e99504c6473d26f28b4b1096",
+      "size": 8914,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/BROKER_FAIR_HANDOFF.md"
+    },
+    {
+      "path": "docs/CAUSAL_AUDIT_V1.md",
+      "title": "Auditing the saved synthetic causal v1 record",
+      "category": "historical-reference",
+      "blob_sha": "a332fc5409ec26a0c8d87ecdc28a33633600b3c4",
+      "sha256": "f57fc4867204458a5ef0ca6b223d98577a8cf16b5487550ad77e1a8faa7be9d8",
+      "size": 2981,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_AUDIT_V1.md"
+    },
+    {
+      "path": "docs/CAUSAL_RESULTS_V1.md",
+      "title": "Exploratory causal intervention study: v1",
+      "category": "historical-reference",
+      "blob_sha": "602b144e52fd41b0401a67f44e87d620d37f9fae",
+      "sha256": "2db834476664d8d835cec1c07b92a81139dfb6151b4c7cf8b7dc85b3857d7ed6",
+      "size": 6366,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_RESULTS_V1.md"
+    },
+    {
+      "path": "docs/CAUSAL_TRACE_V2.md",
+      "title": "V2 sparse trace pair validation",
+      "category": "historical-reference",
+      "blob_sha": "f20cb7cdc20977be8c12a52c886fa6bd1825a703",
+      "sha256": "c9d866fd4fd7ee9f3f48444f80163363880dd2bb1a1875aec370461960bd36e5",
+      "size": 3043,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_TRACE_V2.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_CUSTODIAN_RUN.md",
+      "title": "Synthetic v2 one-shot custodian draft",
+      "category": "historical-reference",
+      "blob_sha": "b51107c235ad1b5101f9b9c2fb3a91be25e0180c",
+      "sha256": "0819609bef37e06a1d8c43b992bfbe030a2f61328143e0f800720c5a3b25777a",
+      "size": 9471,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_CUSTODIAN_RUN.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_CUSTODY_HELPERS.md",
+      "title": "Synthetic v2 custody: pure evidence helpers",
+      "category": "historical-reference",
+      "blob_sha": "dccc32f8c98fdcbc93e2eb2a77a8ae4522b763a7",
+      "sha256": "be5a8a44ca934f7764dd3d3494e18f6c491b083c5ca27bd26de6547a3464289e",
+      "size": 2350,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_CUSTODY_HELPERS.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_DEVELOPMENT_EXECUTOR.md",
+      "title": "Development-only synthetic intervention executor",
+      "category": "historical-reference",
+      "blob_sha": "76b6de3ded12bba6e2d5a560f68502d3531ec063",
+      "sha256": "315639dd3c25fd37a454ad00900544ad9a139b698635d9b569e3361551afcb2b",
+      "size": 5051,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_DEVELOPMENT_EXECUTOR.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_EVIDENCE_ADAPTER.md",
+      "title": "Private synthetic-v2 cell evidence adapter",
+      "category": "historical-reference",
+      "blob_sha": "7f7ba6a6096b02a6f9c7df204e9f3deb905b9ac2",
+      "sha256": "462365b41f160046e260f3d255039f14aa3a0777459d29c5116617340a7a3f1a",
+      "size": 7450,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_EVIDENCE_ADAPTER.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_FREEZE.md",
+      "title": "Synthetic v2 freeze and prediction builders",
+      "category": "historical-reference",
+      "blob_sha": "7ab15d51cdc9bd43c067c861d3c735c7484f33d6",
+      "sha256": "2bac482f9653c52cd285aa4f3abc519a83a228a88be920206f379c2610650e77",
+      "size": 4489,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_FREEZE.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_PHASE_GATE_DEV.md",
+      "title": "Development-only phase-ordering exercise",
+      "category": "historical-reference",
+      "blob_sha": "6c6be7e444e1629e944d88864115ce54f7c0cad8",
+      "sha256": "c8d64d1ca5a72267c397625b103efd13eabf32886d797b2c92a596e6f2e7c78c",
+      "size": 2904,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_PHASE_GATE_DEV.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_PILOT_RESULTS.md",
+      "title": "Synthetic v2 development resource pilot: 202 forwards",
+      "category": "historical-reference",
+      "blob_sha": "9b60b560993467b9f431e723d26ca6a2e61d2e90",
+      "sha256": "67d7b7c1248979ecddd31ea48662c49ef2c3d92d5599ec9d55cf2ba789efebf9",
+      "size": 4360,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_PILOT_RESULTS.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_PREPARATION.md",
+      "title": "Synthetic v2 preparation helpers",
+      "category": "historical-reference",
+      "blob_sha": "364fe91a23c6cec73b193f985ae19495269cd8df",
+      "sha256": "0ff68b2413c06530b761ea0c5ee8dbe4e7f61d8d33efdd21a4298e2b9a71be07",
+      "size": 2029,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_PREPARATION.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_RUNNER_COMPONENTS.md",
+      "title": "Synthetic v2 runner components under development",
+      "category": "historical-reference",
+      "blob_sha": "2c27ab97f908f1ff5d8dfbabcdd6943eb14c4a78",
+      "sha256": "54ef25973708e118c2387553bf40c5dc0db6279576ab9d46f223814550c27bb0",
+      "size": 4454,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_RUNNER_COMPONENTS.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_RUNTIME_PREFLIGHT.md",
+      "title": "Synthetic v2 runtime and model preflight",
+      "category": "historical-reference",
+      "blob_sha": "e8c5942db799b5af3eb08506170857cfb0edf33e",
+      "sha256": "8a4a62d53c3c6c1663e899cbc1af8cdbaf12212e8911664b893aa53c5f5f293a",
+      "size": 2099,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_RUNTIME_PREFLIGHT.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_SCORING.md",
+      "title": "Synthetic-v2 held-out scoring",
+      "category": "historical-reference",
+      "blob_sha": "21cdb2fc8c10a278dfa59d7df79f1424193d250a",
+      "sha256": "fad5998396403240690059467b9c672895abf496d059626ff53b550f0330062e",
+      "size": 9151,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_SCORING.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_SEMANTIC_AUDIT.md",
+      "title": "Synthetic-v2 saved-data semantic audit",
+      "category": "historical-reference",
+      "blob_sha": "31f71469a3fe8f2c86496b9901abaff5d8ce639c",
+      "sha256": "6544d71f781e5f6d5e447e04e30734ed137d3efd7083c4f507af71a532df1579",
+      "size": 4464,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_SEMANTIC_AUDIT.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_SOURCE_DEVELOPMENT.md",
+      "title": "Development-only source and process probes",
+      "category": "historical-reference",
+      "blob_sha": "8e3dcef51c83e098e96224f71c5b01ad09f9fdae",
+      "sha256": "a111b77e805a38a40c31a4f527a52074a6cdc21268557b5c9fb03972ac7ac9ce",
+      "size": 7655,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_SOURCE_DEVELOPMENT.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_STUDY_ENTRY.md",
+      "title": "Synthetic v2 owner composition",
+      "category": "historical-reference",
+      "blob_sha": "d73c2df440e007982698903d895ce84a936ebe06",
+      "sha256": "5b187bece0a7a6c2e80f357d91d5f1e493eccb4eebedaf84ce5a3e1b80120e06",
+      "size": 4322,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_STUDY_ENTRY.md"
+    },
+    {
+      "path": "docs/CAUSAL_V2_STUDY_EXECUTOR.md",
+      "title": "Synthetic v2 model callback",
+      "category": "historical-reference",
+      "blob_sha": "0a0f279ec233a4c7a71f7a18b28afff74bcc8d27",
+      "sha256": "b4ed64bf12019e3262db0a5f4e03739430de48df417b312d2c1486f01c753620",
+      "size": 3931,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CAUSAL_V2_STUDY_EXECUTOR.md"
+    },
+    {
+      "path": "docs/CERTIFIED_BATCH_POLICY.md",
+      "title": "Sampled evidence gate for grouped execution",
+      "category": "historical-reference",
+      "blob_sha": "cc842832ae0138ab737fe4828e4365ee254ca8ce",
+      "sha256": "8c7f45f7fce214ee2834607e29087ddc1bb96355bd7f0b24399ceeb6123c6002",
+      "size": 4682,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CERTIFIED_BATCH_POLICY.md"
+    },
+    {
+      "path": "docs/COOPERATIVE_DISK_RESERVATIONS.md",
+      "title": "Cooperative disk reservations",
+      "category": "historical-reference",
+      "blob_sha": "ae0760a030a528ed6b049d7d70e7b256c8009082",
+      "sha256": "6b04e02bad033317d290b106c6d91b5a193420bcbd35b6f46f1178475f83ea8d",
+      "size": 6083,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/COOPERATIVE_DISK_RESERVATIONS.md"
+    },
+    {
+      "path": "docs/COPY_OUTPUT_DOSE_CASES_SCOPE_V1.md",
+      "title": "Projection-output-dose copying cases and public reservation",
+      "category": "historical-reference",
+      "blob_sha": "0058e635733106f1ed0f1e020f57c60f67540bb6",
+      "sha256": "99a5c5ae518f2a462115268efaa9f95ca6bd73ca221c26b490e58000e13f77ba",
+      "size": 1567,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/COPY_OUTPUT_DOSE_CASES_SCOPE_V1.md"
+    },
+    {
+      "path": "docs/COPY_PAIRS_DOSE_AUDIT.md",
+      "title": "Independent pairwise copying: preliminary saved-record replay",
+      "category": "historical-reference",
+      "blob_sha": "feb43414337a5cba719d875c284defcb484d7b51",
+      "sha256": "09e4f7a61d378d1de07ce8375d773fcc44493dc6bfad709000ab5ea397f64e92",
+      "size": 3809,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/COPY_PAIRS_DOSE_AUDIT.md"
+    },
+    {
+      "path": "docs/COPY_PAIRS_DOSE_EVIDENCE.md",
+      "title": "Pair/dose saved-evidence audit",
+      "category": "historical-reference",
+      "blob_sha": "4d07971e19b7893ff4c43f1c45aeca6378e5a388",
+      "sha256": "ac43dcab7ed5bcdf516e3967324c8cf93088e38c7c54869c23ae637c76a3667b",
+      "size": 2139,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/COPY_PAIRS_DOSE_EVIDENCE.md"
+    },
+    {
+      "path": "docs/CPU_SHARED_TRACE_SERVICE.md",
+      "title": "Serial shared CPU trace service",
+      "category": "historical-reference",
+      "blob_sha": "1dbd3815f45dfc18440bc455813a39341d5b7255",
+      "sha256": "9615d79d47cecfc1dfc6b789417f59ef9532a202b078ac8b0905c0bbee70c78d",
+      "size": 7952,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CPU_SHARED_TRACE_SERVICE.md"
+    },
+    {
+      "path": "docs/CPU_TRACE_OWNER.md",
+      "title": "Private CPU trace owner (prototype)",
+      "category": "historical-reference",
+      "blob_sha": "b285b5ac67389ca8e445a97fb9998a169242df52",
+      "sha256": "8676cff38919fe77438adf9e9f9b7be890587dfb5820d7f8dbfeec8258badda1",
+      "size": 9236,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CPU_TRACE_OWNER.md"
+    },
+    {
+      "path": "docs/CUDA_CLEANUP_V1.md",
+      "title": "Version-bound cuBLAS workspace cleanup",
+      "category": "historical-reference",
+      "blob_sha": "bee92ec209033480118fb75ca453fab642bfe640",
+      "sha256": "c43bbfd0bf20e5f293f3aa57a1edb3893ee4843562399cca9435b5b2b265e425",
+      "size": 1165,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CUDA_CLEANUP_V1.md"
+    },
+    {
+      "path": "docs/CUDA_TRACE_RESOURCE_CALIBRATION_V1.md",
+      "title": "Isolated CUDA trace resource calibration, proposal v1",
+      "category": "historical-reference",
+      "blob_sha": "44681f54c5322ec672219ba6b8fbf9ba897636b1",
+      "sha256": "8336734988e942a964230399adce42b1206349a37273d1bcfe7568dc088d2c6d",
+      "size": 19789,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/CUDA_TRACE_RESOURCE_CALIBRATION_V1.md"
+    },
+    {
+      "path": "docs/DEVICE_IDENTITY.md",
+      "title": "Canonical physical GPU identity",
+      "category": "historical-reference",
+      "blob_sha": "2d29003857b7c9749f6326979c1a442935a9fd58",
+      "sha256": "b2f2ee6feaae17375c2cd82bde3a3eb3517cd67e7796f7c123f4ae69b3639ea2",
+      "size": 5094,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DEVICE_IDENTITY.md"
+    },
+    {
+      "path": "docs/DEVICE_LEASE.md",
+      "title": "Cooperative GPU device lease",
+      "category": "historical-reference",
+      "blob_sha": "a76fda7deacf2b5513b2ca65a8cccb685883096d",
+      "sha256": "b5f4c47e24dbfde9e507f386e221ca9dd9c46457e847bad0eb3f96d59444d45a",
+      "size": 6315,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DEVICE_LEASE.md"
+    },
+    {
+      "path": "docs/DIRECT_CONCURRENT_CLIENTS.md",
+      "title": "Bounded concurrent clients for the direct owner",
+      "category": "historical-reference",
+      "blob_sha": "4b44d75dc47d306e9538860075e33ea055b02341",
+      "sha256": "9563bf23d95d3a9663024f7db2fec458c14b762b2c061a1106623490620baa87",
+      "size": 4672,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DIRECT_CONCURRENT_CLIENTS.md"
+    },
+    {
+      "path": "docs/DISTILBERT_COLOR_EDIT_CASES_V1.md",
+      "title": "DistilBERT masked-color cases: planned public inputs",
+      "category": "historical-reference",
+      "blob_sha": "3591806a48c161fdda575aa28c0c20a9677ebd8b",
+      "sha256": "99f938e3d94fd9cb9688c665c858fb34a9851fddfc8fdcb9f58fbd733f7ff5c7",
+      "size": 3283,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DISTILBERT_COLOR_EDIT_CASES_V1.md"
+    },
+    {
+      "path": "docs/DISTILGPT2_BATCH_CPU_AUDIT.md",
+      "title": "Auditing the DistilGPT-2 CPU batch evidence",
+      "category": "historical-reference",
+      "blob_sha": "b9120943b5d8172dc8322753d50cdce2ffb668c1",
+      "sha256": "dc17c2c79ad1c65a9254daf025dff76c74177a67c8201b61107696e625302df7",
+      "size": 3014,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DISTILGPT2_BATCH_CPU_AUDIT.md"
+    },
+    {
+      "path": "docs/DISTILGPT2_EXPOSURES_V25.md",
+      "title": "DistilGPT2 known exposure inventory v25",
+      "category": "exposure-history",
+      "blob_sha": "6e3e32488cee2fad7caa8d956ff9863bd703dd2f",
+      "sha256": "37e758a05ec89069e19905793eef68efd209c29c5d03b8f6ae3e5e42d6331590",
+      "size": 2536,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DISTILGPT2_EXPOSURES_V25.md"
+    },
+    {
+      "path": "docs/DISTILGPT2_EXPOSURES_V34.md",
+      "title": "DistilGPT-2 public development exposures: v34",
+      "category": "exposure-history",
+      "blob_sha": "dc4bba606ab6afdb5070ad14c2381cddd61256e9",
+      "sha256": "49854bd620f612564715d232759e02601707d975d8484efc9ca3862baeba1cd9",
+      "size": 1735,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DISTILGPT2_EXPOSURES_V34.md"
+    },
+    {
+      "path": "docs/DISTILGPT2_EXPOSURES_V40.md",
+      "title": "DistilGPT-2 public exposure inventory v40",
+      "category": "exposure-history",
+      "blob_sha": "b671f37f02d735cfd4e33e4edf3a2cbea7bd49e6",
+      "sha256": "caf325ee1b17cf62898e0be79bb9336a573263f65f94a7e344086326cbd00429",
+      "size": 1472,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DISTILGPT2_EXPOSURES_V40.md"
+    },
+    {
+      "path": "docs/DISTILGPT2_EXPOSURE_V26.md",
+      "title": "DistilGPT2 exposure inventory v26",
+      "category": "exposure-history",
+      "blob_sha": "a644be3a5927026e78bef4e0bf98501e9f883909",
+      "sha256": "feb5b76609778b41879391a3206616fbe0d5a7d26969e97260fa59d60c416cda",
+      "size": 1418,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DISTILGPT2_EXPOSURE_V26.md"
+    },
+    {
+      "path": "docs/DISTILGPT2_EXPOSURE_V27.md",
+      "title": "DistilGPT2 exposure inventory v27",
+      "category": "exposure-history",
+      "blob_sha": "ca9b699897b82920d6c64e092b97b6c0b1450ded",
+      "sha256": "5da68e712035eb391a0d58646d1943b59f8718028e99ab0da63d3868ff17e7d9",
+      "size": 1567,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DISTILGPT2_EXPOSURE_V27.md"
+    },
+    {
+      "path": "docs/DISTILGPT2_EXPOSURE_V28.md",
+      "title": "DistilGPT2 public exposure inventory v28",
+      "category": "exposure-history",
+      "blob_sha": "3d4430cdc678910824adf494acfca669ac14d7b0",
+      "sha256": "c64a906d302ceae64ffc0936e287f31ef324554db7573fbdea4c82021c0ffdd9",
+      "size": 1360,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DISTILGPT2_EXPOSURE_V28.md"
+    },
+    {
+      "path": "docs/DISTILGPT2_EXPOSURE_V29.md",
+      "title": "DistilGPT2 public exposure inventory v29",
+      "category": "exposure-history",
+      "blob_sha": "895751cec850830df5d6cbe261f6abf41c0ab5ce",
+      "sha256": "7a4ae84cc3ea705fff893d58335ccab99f725e344cf7b044174715a1e4dee34f",
+      "size": 1297,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DISTILGPT2_EXPOSURE_V29.md"
+    },
+    {
+      "path": "docs/DISTILGPT2_EXPOSURE_V32.md",
+      "title": "DistilGPT2 public exposure inventory v32",
+      "category": "exposure-history",
+      "blob_sha": "2cfcdf909e0cf1d4748d2566d7ddbc1094cdc1a1",
+      "sha256": "62c1bb4df3b3a0a61d964838e833d7775da455a386b961e80855f0314bdcd8f8",
+      "size": 1265,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DISTILGPT2_EXPOSURE_V32.md"
+    },
+    {
+      "path": "docs/DISTILGPT2_PAIRED_CONTINUATION_CASES_V1.md",
+      "title": "Paired continuation cases: tokenizer-only scope",
+      "category": "historical-reference",
+      "blob_sha": "ae0f1472bc22614a20be48968e0d0e90a7f33342",
+      "sha256": "26553080ec0271856911e2ea2654b57ad50d7a39b8a16e164d4ec053a19f733d",
+      "size": 1999,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/DISTILGPT2_PAIRED_CONTINUATION_CASES_V1.md"
+    },
+    {
+      "path": "docs/EFFICIENCY_PLAN.md",
+      "title": "Parallel teams and GPU efficiency",
+      "category": "superseded-planning",
+      "blob_sha": "61c68f90d7a4b28c0ec6c076e1811453142d6cd3",
+      "sha256": "22a0fcb8e5be6061a4bfc871f1b3161a39108d1f75391cb759ef759bb60448f5",
+      "size": 14728,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/EFFICIENCY_PLAN.md"
+    },
+    {
+      "path": "docs/FAIR_ADAPTER.md",
+      "title": "Experimental fair-admission adapter",
+      "category": "historical-reference",
+      "blob_sha": "915194af7e58312cc3c59d628966a81c67b23bc4",
+      "sha256": "47c049c83ea1132fc6303fbf9817d43bcd48c9e9f3cad804cc69116b3cea2876",
+      "size": 7441,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/FAIR_ADAPTER.md"
+    },
+    {
+      "path": "docs/FAIR_ADMISSION.md",
+      "title": "Bounded fair admission waiters",
+      "category": "historical-reference",
+      "blob_sha": "902f392df9f193ae3a01dea2999338eec47d0125",
+      "sha256": "25cfb513f1c153e1fa35886c5061e5bb8228fd7937ca4b89545a3c1e29fc3d39",
+      "size": 6457,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/FAIR_ADMISSION.md"
+    },
+    {
+      "path": "docs/FAIR_COHORT_QUEUE.md",
+      "title": "Atomic fair cohort selection",
+      "category": "historical-reference",
+      "blob_sha": "30b487ea3ae9d96ed04bed56f46f2ab06142567c",
+      "sha256": "9d356c114942cd4419b7e5162a568b363c183e2299339a6658d286810d88439f",
+      "size": 4810,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/FAIR_COHORT_QUEUE.md"
+    },
+    {
+      "path": "docs/FAIR_QUEUE.md",
+      "title": "Bounded team queue",
+      "category": "historical-reference",
+      "blob_sha": "e3cfa3ebced1a8ef0dc7f3dc87242a9b1ba34904",
+      "sha256": "8d6eb6a93d7fbb3b0f03b5b90fe38f06609e4fb1d4dfd7b8b7e457ecef374759",
+      "size": 4408,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/FAIR_QUEUE.md"
+    },
+    {
+      "path": "docs/FAIR_REGISTRATION_GUARD.md",
+      "title": "Recoverable fair-waiter registration",
+      "category": "historical-reference",
+      "blob_sha": "ce4c57a7ba71734da0704f71c42c2b566026716a",
+      "sha256": "21d4384094435d8602a290f1320ed498fd4d6cb87591330844cd660e23db6892",
+      "size": 3141,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/FAIR_REGISTRATION_GUARD.md"
+    },
+    {
+      "path": "docs/FAIR_SERVICE_LIFECYCLE.md",
+      "title": "Fair IPC service lifecycle (development seam)",
+      "category": "historical-reference",
+      "blob_sha": "78c744e1a8e10cbb715725e26419eb4fbe5a8fd9",
+      "sha256": "9ecfbea73213c9f3194d8e007c2cacceb5c9160ed7e882701cd85a2ff3406b08",
+      "size": 3882,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/FAIR_SERVICE_LIFECYCLE.md"
+    },
+    {
+      "path": "docs/FIXED_SERVICE_REQUEST.md",
+      "title": "Fixed service request pre-validation",
+      "category": "historical-reference",
+      "blob_sha": "49889f1ee2746dfe17bf423f971ff54c2170b8e3",
+      "sha256": "e6f6daceab0ac1bd27899c3d40bacb4f1ab50851f873a35c28b39933d4a14dd9",
+      "size": 1108,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/FIXED_SERVICE_REQUEST.md"
+    },
+    {
+      "path": "docs/FLAN_T5_EQUAL_LENGTH_REPRO_V1.md",
+      "title": "Equal-length tokenizer screening reproducibility",
+      "category": "historical-reference",
+      "blob_sha": "66a2b18213c34d6afcaced859453c0188c045410",
+      "sha256": "db50d5d210c88c71682c663cd6dc48330cc6b0982ea13735d80c2077fcf6b824",
+      "size": 1418,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/FLAN_T5_EQUAL_LENGTH_REPRO_V1.md"
+    },
+    {
+      "path": "docs/FLAN_T5_GPU_SAVED_RECORD_AUDIT_V1.md",
+      "title": "FLAN-T5 GPU smoke owner-record reader, v1",
+      "category": "historical-reference",
+      "blob_sha": "28b38f6d396b1d64a03785e089d331ec6fc335e8",
+      "sha256": "971511b82377f03e2fd267b2dbf3de93d56c057f33af095cccf21164fdb18dd4",
+      "size": 2275,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/FLAN_T5_GPU_SAVED_RECORD_AUDIT_V1.md"
+    },
+    {
+      "path": "docs/FLAN_T5_SENTIMENT_INDEPENDENT_READER_V1.md",
+      "title": "FLAN sentiment intervention: independent saved-record reader",
+      "category": "historical-reference",
+      "blob_sha": "69dfa1b372cc1e7fe83ead331950f3b8fcf90a5a",
+      "sha256": "3d918b568b86309171b337f5a24656bb60c58787d259a4c67470377e185ab2db",
+      "size": 4764,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/FLAN_T5_SENTIMENT_INDEPENDENT_READER_V1.md"
+    },
+    {
+      "path": "docs/FLAN_T5_WEIGHT_EDIT_CASE_SCOPE_V1.md",
+      "title": "FLAN-T5 input-row change: fixed case scope",
+      "category": "historical-reference",
+      "blob_sha": "aff3f5d2d49f676375b70e11141f9d147fbb9a44",
+      "sha256": "1d0363a62128f8cf1f6eef036f10dbb1bb9c273bb7416f721bf9f41704389e71",
+      "size": 2648,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/FLAN_T5_WEIGHT_EDIT_CASE_SCOPE_V1.md"
+    },
+    {
+      "path": "docs/FLAN_T5_WEIGHT_EDIT_V2_CACHE_SCOPE.md",
+      "title": "Clarification of parent and child cache checks",
+      "category": "historical-reference",
+      "blob_sha": "54d6dbc4c414f0f7260b6212189cc5708ba90642",
+      "sha256": "52b6b1cee40e65e90477419a75d481df808bdca4e554f4a2a341d5f6f51693d4",
+      "size": 795,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/FLAN_T5_WEIGHT_EDIT_V2_CACHE_SCOPE.md"
+    },
+    {
+      "path": "docs/FLAN_WEIGHT_EDIT_SAVED_READER.md",
+      "title": "Independent FLAN weight-edit saved-evidence reader",
+      "category": "historical-reference",
+      "blob_sha": "ca4483251b88cd91af36e21c3ad4e59d4142b12e",
+      "sha256": "fb0e46b8e8a95de64d874ad6b3481c9ada249b135ee22a04ca4a58cc06897374",
+      "size": 4457,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/FLAN_WEIGHT_EDIT_SAVED_READER.md"
+    },
+    {
+      "path": "docs/GPU_BOOTSTRAP.md",
+      "title": "GPU bootstrap: CPU-tested building blocks",
+      "category": "historical-reference",
+      "blob_sha": "7b46bd05f33fcd2ca69088f5a70c741515b46a7d",
+      "sha256": "6f9b002d7241ab170912618392d5816a4edf8d967dce50f732e6fc29f29c6221",
+      "size": 4675,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GPU_BOOTSTRAP.md"
+    },
+    {
+      "path": "docs/GPU_INVENTORY_V1.md",
+      "title": "GPU and machine inventory, v1",
+      "category": "historical-reference",
+      "blob_sha": "4e4e7c946e666de6354e419657275a8979c04ebe",
+      "sha256": "45737d7d66b811ca6dcc3f316e71ef61b226fe3ff118720547da36faf272b677",
+      "size": 4099,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GPU_INVENTORY_V1.md"
+    },
+    {
+      "path": "docs/GPU_OWNERSHIP_TESTS.md",
+      "title": "Supervised GPU ownership integration tests",
+      "category": "historical-reference",
+      "blob_sha": "e427807d97150a960347619ff0f6220c8f2e0911",
+      "sha256": "6477a2466a83658dfae33f7e662ca99bb989b2ed81446875dd7021ee923940a7",
+      "size": 2704,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GPU_OWNERSHIP_TESTS.md"
+    },
+    {
+      "path": "docs/GPU_SERVICE.md",
+      "title": "Supervised GPU service composition (in development)",
+      "category": "historical-reference",
+      "blob_sha": "6283b394d4888147caa55161ce1f32e936aefcf0",
+      "sha256": "f2d3d7d6317ff13e60656974aed32548b639ccb1c94dfaf6d2a34ce8259e1500",
+      "size": 17860,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GPU_SERVICE.md"
+    },
+    {
+      "path": "docs/GPU_SERVICE_CONTROL.md",
+      "title": "Supervised service control building blocks",
+      "category": "historical-reference",
+      "blob_sha": "3641bf7e642f0a7ffab05b0af166a2610528f467",
+      "sha256": "e5b4d4347b8fa0ca17a4d9cc0c61c971d78a10cecd7ce24145f7189cb3791f95",
+      "size": 3371,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GPU_SERVICE_CONTROL.md"
+    },
+    {
+      "path": "docs/GPU_SERVICE_PROCESS.md",
+      "title": "Fixed supervised service child",
+      "category": "historical-reference",
+      "blob_sha": "0d449bc14a96fd4a7eb54bd9fad0bd9871e28dd1",
+      "sha256": "848b7a913747e489d83b791af901463fa7fe56504f456cb2f0a353fcf97cc7fa",
+      "size": 3414,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GPU_SERVICE_PROCESS.md"
+    },
+    {
+      "path": "docs/GPU_TAP_DESKTOP_CONTEXT_AMENDMENT_V1.md",
+      "title": "GPU tap timing: prospective desktop-context amendment",
+      "category": "historical-reference",
+      "blob_sha": "752d0141c0853dee0aa2dec05ce53ec130e80b1c",
+      "sha256": "a6b52bb734f5710a9fe784f668737ff5f8587d82a1be8d569cf3c38a560f3c80",
+      "size": 6320,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GPU_TAP_DESKTOP_CONTEXT_AMENDMENT_V1.md"
+    },
+    {
+      "path": "docs/GPU_TAP_LATENCY_REPEATED_V1.md",
+      "title": "Repeated two-token GPU tap benchmark, proposed v1",
+      "category": "historical-reference",
+      "blob_sha": "565e8ae1a428c5dbd1495f00c62f004e4f78992d",
+      "sha256": "e5df23eae035b138818c63938f0b43536d5770e510ce51a6e9ba0ac6085e63f8",
+      "size": 14321,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GPU_TAP_LATENCY_REPEATED_V1.md"
+    },
+    {
+      "path": "docs/GPU_TAP_LATENCY_RESULTS.md",
+      "title": "Two-token GPU tap latency: exploratory observations",
+      "category": "historical-reference",
+      "blob_sha": "2b55cddfa10fff83f5cdd53ef4d49d2d1b874a0d",
+      "sha256": "a2eabf515f46530a71191fcea98a766c58dbfce956d9427375d23fba718593ae",
+      "size": 6514,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GPU_TAP_LATENCY_RESULTS.md"
+    },
+    {
+      "path": "docs/GPU_TAP_REPEATED_CPU_SCAFFOLD.md",
+      "title": "CPU-only scaffold for the repeated tap benchmark",
+      "category": "historical-reference",
+      "blob_sha": "44c1a8b4a82ebb08ce43d297c2a2841e8cee803c",
+      "sha256": "6ee4da14449e8c18caa43aeb52ddc15ef30dd4da7139542e20eb63a9d4b182d2",
+      "size": 7094,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GPU_TAP_REPEATED_CPU_SCAFFOLD.md"
+    },
+    {
+      "path": "docs/GPU_TAP_SAVED_TIMING_AUDIT.md",
+      "title": "Independent saved timing audit",
+      "category": "historical-reference",
+      "blob_sha": "308734ba3099ea80694d57c68bba192b60d6ace0",
+      "sha256": "315104257cd9313f7a9159fc12fd4bbf076b01b5b409f8871264cbe4cb3b31db",
+      "size": 2721,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GPU_TAP_SAVED_TIMING_AUDIT.md"
+    },
+    {
+      "path": "docs/GPU_TAP_SEPARATE_VOLUME_AMENDMENT_V1.md",
+      "title": "GPU tap timing: separate-volume operational amendment",
+      "category": "historical-reference",
+      "blob_sha": "f9d367726f2d06bb9bfa3ad48c60fbfb2cad784a",
+      "sha256": "64bb1b164509af904ffc617d38c6b4cb8c3918ffac793c4237a5ad51a4868054",
+      "size": 3013,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GPU_TAP_SEPARATE_VOLUME_AMENDMENT_V1.md"
+    },
+    {
+      "path": "docs/GROUPED_BROKER.md",
+      "title": "Experimental grouped broker",
+      "category": "historical-reference",
+      "blob_sha": "c7255994eb1e35d029d96d2e0a4352bb30b3d01f",
+      "sha256": "e2077803b707de971dfba2468f2a807f13b6ac0b677a8bf1a67aaa3a51c503f7",
+      "size": 8296,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GROUPED_BROKER.md"
+    },
+    {
+      "path": "docs/GROUPED_BROKER_STATE.md",
+      "title": "Cohort launch and publication state",
+      "category": "historical-reference",
+      "blob_sha": "83062ce46d7c61572a7a833620e5e4353f0def2d",
+      "sha256": "f8bfc71ec6d3b22d8c3dd0a237f30dd4809044ae9d88904e1d3ae50abb43dfda",
+      "size": 4803,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GROUPED_BROKER_STATE.md"
+    },
+    {
+      "path": "docs/GROUPED_OBSERVATION.md",
+      "title": "Grouped-broker event observations",
+      "category": "historical-reference",
+      "blob_sha": "765b2552bb66e5bc30cef65b85abe8e96ef807f2",
+      "sha256": "6a5c4f75904c78c4c8fb2c5f1e98707a2ff20ea317c90a2906a130e805d6154c",
+      "size": 5577,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GROUPED_OBSERVATION.md"
+    },
+    {
+      "path": "docs/GROUPED_WORKER.md",
+      "title": "Opt-in grouped resident execution",
+      "category": "historical-reference",
+      "blob_sha": "312b76239a98285d2e267b1aa3d9eb002f038925",
+      "sha256": "0ef1e11d35824662a574b8887216a387676ae70a532892b8f705daa6ae677d69",
+      "size": 4850,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GROUPED_WORKER.md"
+    },
+    {
+      "path": "docs/HOST_BUDGET.md",
+      "title": "Host-memory custody ledger",
+      "category": "historical-reference",
+      "blob_sha": "39b6400bc71d5509befb15fb29046b00a4919c78",
+      "sha256": "d3ecdf7ea5f38f07e14004847b28a010a39d3f9392299dcf290badefd5c69dbf",
+      "size": 8220,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/HOST_BUDGET.md"
+    },
+    {
+      "path": "docs/HOST_CLAIM_GUARD.md",
+      "title": "Recoverable host-claim reservation",
+      "category": "historical-reference",
+      "blob_sha": "9330f23e1d67030503fef8291a0a8b0f5fd1d7dd",
+      "sha256": "2a7752aa2f2b93a54e1d772c80e2f648cfc61e274a321afe1c5e55d14f9a9499",
+      "size": 3019,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/HOST_CLAIM_GUARD.md"
+    },
+    {
+      "path": "docs/INDEPENDENT_NATURAL_HELDOUT_AUDIT.md",
+      "title": "Independent natural-agreement held-out audit",
+      "category": "historical-reference",
+      "blob_sha": "96e8e2467f52671c2a43b3b8d2024707a4fb665d",
+      "sha256": "6c3052dcf1ce8efecc7584869576fe9730f3dde4241aef57389a8c321cffe51e",
+      "size": 3770,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/INDEPENDENT_NATURAL_HELDOUT_AUDIT.md"
+    },
+    {
+      "path": "docs/INJECTION_HELDOUT_INDEPENDENT_AUDIT.md",
+      "title": "Independent injection held-out saved-evidence audit",
+      "category": "historical-reference",
+      "blob_sha": "c1747b5c9a4eed80296ee0e74a865de3cf75aae2",
+      "sha256": "2e8a8c912b7e78cbae3cdee0e04c9c1b8c775993e42f961679b4d059b04cefd0",
+      "size": 4150,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/INJECTION_HELDOUT_INDEPENDENT_AUDIT.md"
+    },
+    {
+      "path": "docs/INJECTION_OUTER_OBSERVER.md",
+      "title": "Injection CPU supervisor exit observation",
+      "category": "historical-reference",
+      "blob_sha": "b8f156c949d1ed6c9eb2f4b20e4394cedbe2fa38",
+      "sha256": "a217b4bc508bcd5e00ee519832cd55cedd795b775b2b4d3742ea07c8b9be2272",
+      "size": 2732,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/INJECTION_OUTER_OBSERVER.md"
+    },
+    {
+      "path": "docs/INJECTION_PHASE_ACCOUNTING.md",
+      "title": "Injection phase-side accounting",
+      "category": "historical-reference",
+      "blob_sha": "bc9158488e4b3f9646cbd3df1d193e65ef25d9c8",
+      "sha256": "bbba4dc9d0f41344ae84860e535d497c8cf20aba000aa72c60dd9356eb51abc6",
+      "size": 1939,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/INJECTION_PHASE_ACCOUNTING.md"
+    },
+    {
+      "path": "docs/INJECTION_PRECLAIM_GUARD.md",
+      "title": "Read-only injection preclaim check",
+      "category": "historical-reference",
+      "blob_sha": "838a071f0f8da3960fb37cb6f20533fd1b5813cc",
+      "sha256": "c1570afc17845370f35ac1941deaebad330bf442434546ece37f6897a5d9af8b",
+      "size": 3026,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/INJECTION_PRECLAIM_GUARD.md"
+    },
+    {
+      "path": "docs/INJECTION_PREPARATION_BOOTSTRAP.md",
+      "title": "Injection preparation startup probe",
+      "category": "historical-reference",
+      "blob_sha": "714279487a710b79002d2b14a35f612a7377f653",
+      "sha256": "0208abf9fa75956d2b33bd4d9ba695b2fb89141b9d2c15d9e8b4ee4d1ede8c0f",
+      "size": 1464,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/INJECTION_PREPARATION_BOOTSTRAP.md"
+    },
+    {
+      "path": "docs/INJECTION_PREPARATION_HANDOFF.md",
+      "title": "Injection preparation handoff",
+      "category": "historical-reference",
+      "blob_sha": "e5291db3e546d699c760f54605c54e2e8671e9ef",
+      "sha256": "199d934e84033ac5c96ae5a7dbec427291a9164652775754a517c7d1f1dc65b3",
+      "size": 2009,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/INJECTION_PREPARATION_HANDOFF.md"
+    },
+    {
+      "path": "docs/INJECTION_QUALIFIED_RESULT.md",
+      "title": "Private injection result qualification",
+      "category": "historical-reference",
+      "blob_sha": "d894bf19ceed74fdcd7b6222141d7873548724c2",
+      "sha256": "9466d5eb7cdff6a5e40a899d5bc239bf1be1e6dab740153959c9450aa6557222",
+      "size": 1917,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/INJECTION_QUALIFIED_RESULT.md"
+    },
+    {
+      "path": "docs/INJECTION_RUNTIME_INDEPENDENT_AUDIT.md",
+      "title": "Independent injection runtime replay audit",
+      "category": "historical-reference",
+      "blob_sha": "ac5d090afa911238f7d963625162a923f98ef348",
+      "sha256": "c15d3e6f03082a33489469e205d08e91aa18c66f533a5ab7bd99422f63089332",
+      "size": 2759,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/INJECTION_RUNTIME_INDEPENDENT_AUDIT.md"
+    },
+    {
+      "path": "docs/INJECTION_RUNTIME_REPLAY_DRIVER.md",
+      "title": "Prospective injection replay validation driver",
+      "category": "historical-reference",
+      "blob_sha": "57d4bb9a333bcdb52c5c6ef1d06555dace0be649",
+      "sha256": "7cac96755e77253185199eaadd8ed38f02e00a43bf6969d3357e1f655ca5423f",
+      "size": 2882,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/INJECTION_RUNTIME_REPLAY_DRIVER.md"
+    },
+    {
+      "path": "docs/INJECTION_RUNTIME_REPLAY_OWNER.md",
+      "title": "Injection public-runtime replay process custody",
+      "category": "historical-reference",
+      "blob_sha": "d9e53e993cf208adfde19995a83b497e877d2ea3",
+      "sha256": "2d86a5daa28733fe7aa97396d89120d26b1a5416521e415c936b9714dcb03420",
+      "size": 5249,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/INJECTION_RUNTIME_REPLAY_OWNER.md"
+    },
+    {
+      "path": "docs/INJECTION_SPLIT_COMPARISON.md",
+      "title": "Injection and natural split comparison",
+      "category": "historical-reference",
+      "blob_sha": "2217100a4d51e16aaadb54885cca92db3b8437cd",
+      "sha256": "b9f76b08dcaec9e9c71f0118ca6e57de2eb651e79dfa71a6f62e5f54857657cd",
+      "size": 7444,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/INJECTION_SPLIT_COMPARISON.md"
+    },
+    {
+      "path": "docs/INJECTION_SPLIT_CUSTODY.md",
+      "title": "Injection-only held-out split custody component",
+      "category": "historical-reference",
+      "blob_sha": "b1c94bbef9f18c7f27b37d43f98862f063abeade",
+      "sha256": "58b5012bd431854706e776d69397dfb37fca398a3ad0bf60e34d0a9e4e2ba3bf",
+      "size": 10460,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/INJECTION_SPLIT_CUSTODY.md"
+    },
+    {
+      "path": "docs/INJECTION_VALIDATION_HOST.md",
+      "title": "No-model replay validation host",
+      "category": "historical-reference",
+      "blob_sha": "453b3e995e9a850e28731e65bd5c6c6cc8ca4d0d",
+      "sha256": "3099e1f8107a0e361bf9b893943d6ec882bba35d78e28ba5c4fb99b093a8e92b",
+      "size": 1561,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/INJECTION_VALIDATION_HOST.md"
+    },
+    {
+      "path": "docs/IPC.md",
+      "title": "Local broker transport, protocol version 1",
+      "category": "historical-reference",
+      "blob_sha": "9a2ee9fae131a2345ccdc756cdcea89cc78cb146",
+      "sha256": "f7bd2a053843b6498695d8242fc82aa3700b4ded7bae5775db47c80b7f9de96b",
+      "size": 12463,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/IPC.md"
+    },
+    {
+      "path": "docs/IPC_CANCEL_ACK_OBSERVATION.md",
+      "title": "Client-side cancellation acknowledgement observation",
+      "category": "historical-reference",
+      "blob_sha": "ab7cac431245148e50fc73284173230a2066ff2c",
+      "sha256": "74ebe34f08ae871c141ebf573b694c68337e5d622e9d50bcf486f98783cdde5f",
+      "size": 2707,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/IPC_CANCEL_ACK_OBSERVATION.md"
+    },
+    {
+      "path": "docs/IPC_CUSTODY_NOTIFICATION.md",
+      "title": "Experimental IPC custody notification",
+      "category": "historical-reference",
+      "blob_sha": "ee3f8e2e9d7245a1ba4404ded993c201717c7ed9",
+      "sha256": "bd9b7ac02b663c8ce996b758a374979d49a80f4b8e20363ee10cf356bced5810",
+      "size": 17897,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/IPC_CUSTODY_NOTIFICATION.md"
+    },
+    {
+      "path": "docs/IPC_FAIR_BRIDGE.md",
+      "title": "Experimental IPC fair-broker bridge",
+      "category": "historical-reference",
+      "blob_sha": "90fefdcc12fa8a6ebee2262b16d4de42f3716823",
+      "sha256": "ba8126cc4b3bc859ccef5e00aa2c11a54706a961d00b1158603e73f74bcafb3c",
+      "size": 11813,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/IPC_FAIR_BRIDGE.md"
+    },
+    {
+      "path": "docs/LEGACY_TRACE_OWNERSHIP.md",
+      "title": "Legacy trace ownership",
+      "category": "historical-reference",
+      "blob_sha": "004ce9c8758b1d7b653a38a961ad9e9bb2df674e",
+      "sha256": "dede1aad00ff6d27c14797836e257516b7ce7fa07eb1fe02ecbd2cc54c68f907",
+      "size": 5709,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/LEGACY_TRACE_OWNERSHIP.md"
+    },
+    {
+      "path": "docs/MEMORY_BUDGET.md",
+      "title": "Memory admission and trace accounting",
+      "category": "historical-reference",
+      "blob_sha": "88a800cc7b4abcad2944d6b8127ee8c6a1ca30e7",
+      "sha256": "4aed2405885063a8d884b2b5c8797ed910add40af06df1415ea971f8505f2c6d",
+      "size": 13291,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/MEMORY_BUDGET.md"
+    },
+    {
+      "path": "docs/MICROBATCH.md",
+      "title": "Compatible forward microbatch primitive",
+      "category": "historical-reference",
+      "blob_sha": "52cb663dbfaa9a5ee9e8d52769df32393034c8c8",
+      "sha256": "06ec7ddd1cb3eeb5b2f0284331ce8ec1c401be87a28742954bc3eac1d510b4c0",
+      "size": 14114,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/MICROBATCH.md"
+    },
+    {
+      "path": "docs/NATURAL_AGREEMENT_CPU_DISCOVERY.md",
+      "title": "Natural agreement: bounded CPU discovery",
+      "category": "historical-reference",
+      "blob_sha": "e30beff58803d289aea2d6276e88afceababf226",
+      "sha256": "dc0a359089687688b60917763103c7843cc61db8778ab6eb41d17ab00b6dbe0a",
+      "size": 8228,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/NATURAL_AGREEMENT_CPU_DISCOVERY.md"
+    },
+    {
+      "path": "docs/NATURAL_AGREEMENT_HELDOUT_CHILD.md",
+      "title": "Natural held-out child bootstrap",
+      "category": "historical-reference",
+      "blob_sha": "ab1e5b30d0ae06e7dca87bf8d3afc20cb0f400f6",
+      "sha256": "12ca3f5f358b93227d8740156d6149bb791a4c02b513fdebe71ff814b8688ba3",
+      "size": 3886,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/NATURAL_AGREEMENT_HELDOUT_CHILD.md"
+    },
+    {
+      "path": "docs/NATURAL_AGREEMENT_HELDOUT_SUPERVISOR.md",
+      "title": "Natural held-out CPU supervisor",
+      "category": "historical-reference",
+      "blob_sha": "c79d2cc34ad861ca639c65398adab5836f246c53",
+      "sha256": "71ad5fb205fe3db6d0ba66b4ae58c4a791211691c1404c7efa4fc32d33c51fcf",
+      "size": 2778,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/NATURAL_AGREEMENT_HELDOUT_SUPERVISOR.md"
+    },
+    {
+      "path": "docs/NATURAL_PREDICTION_FREEZE.md",
+      "title": "Natural discovery prediction freeze",
+      "category": "historical-reference",
+      "blob_sha": "d6e031517298e3c5799c3ad238295ccd5569f2b4",
+      "sha256": "2bd76b91980f9d6f6816c3eb25ceef97536010f54fe485528c85bd597a2af968",
+      "size": 5548,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/NATURAL_PREDICTION_FREEZE.md"
+    },
+    {
+      "path": "docs/NATURAL_PREDICTION_PUBLICATION.md",
+      "title": "Natural prediction publication handoff",
+      "category": "historical-reference",
+      "blob_sha": "92d04bb02d137b9382df4383c49128aaf51e4dd7",
+      "sha256": "06fa156689a095739ad27f754f581cb5c1c2d2a007f4864cdc8c8f84599f37cb",
+      "size": 6284,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/NATURAL_PREDICTION_PUBLICATION.md"
+    },
+    {
+      "path": "docs/NATURAL_SUCCESSOR_CUSTODY_COMPONENTS.md",
+      "title": "Natural successor custody components",
+      "category": "historical-reference",
+      "blob_sha": "7f907bcd220cf290d7bee366fb16b07d43dbf98c",
+      "sha256": "110c1531e4938cbd2b38a6637fea16e0bdb3afdb831e76e8278adc9b055f15c6",
+      "size": 3538,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/NATURAL_SUCCESSOR_CUSTODY_COMPONENTS.md"
+    },
+    {
+      "path": "docs/NATURAL_SUCCESSOR_SPLIT_COORDINATION_V1.md",
+      "title": "Natural successor split coordination, v1",
+      "category": "historical-reference",
+      "blob_sha": "12a802eaf3de222a071814d9b055ffeea232742c",
+      "sha256": "a1e218ec57e32f7560bbc5432852c80d22ea610f6171acadd345b3540e796799",
+      "size": 6867,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/NATURAL_SUCCESSOR_SPLIT_COORDINATION_V1.md"
+    },
+    {
+      "path": "docs/NUMBER_CPU_OUTER_V1.md",
+      "title": "CPU injection discovery outer owner v1",
+      "category": "historical-reference",
+      "blob_sha": "609f696938a42060f0935d5cfd034b721c812854",
+      "sha256": "198d762b01f63aa3d193fb3661a91dfbd5b50a2a9fc9d4c2a86b2f28f74c2c0f",
+      "size": 7452,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/NUMBER_CPU_OUTER_V1.md"
+    },
+    {
+      "path": "docs/PLAN_WORKER.md",
+      "title": "CPU plan-case prototype",
+      "category": "historical-reference",
+      "blob_sha": "acc4d06986e97ff452bd87617d61b28dbf165fb4",
+      "sha256": "b9999ebc42c94f99b39b868f41c553cf1a05a440984b4928e42c095af0882c0c",
+      "size": 10356,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PLAN_WORKER.md"
+    },
+    {
+      "path": "docs/PRETRAINED_CUSTODIAN_DEVELOPMENT.md",
+      "title": "Development-only injected-change custodian",
+      "category": "historical-reference",
+      "blob_sha": "bf0a2c3b756ec2549ca4d8a9ee02f40147c3ab71",
+      "sha256": "444347a22faf0b0dbea7d85414a9ac21448073435a288ffd14d118f2f369b570",
+      "size": 6396,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_CUSTODIAN_DEVELOPMENT.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURES_V10.md",
+      "title": "DistilGPT2 known public exposures: v10",
+      "category": "exposure-history",
+      "blob_sha": "c402852b5e280a723b2a7dc4b60735f55bd49518",
+      "sha256": "629c93fc2b1bd41235ce1f27d64bc26a669e05a1938f3b33ce8678e92c25d935",
+      "size": 2100,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURES_V10.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURES_V30.md",
+      "title": "DistilGPT-2 development exposures: v30 status reconciliation",
+      "category": "exposure-history",
+      "blob_sha": "cdc6bb4ee5dc931f8b19cf2f213f2bf808ff65dc",
+      "sha256": "4e2d57791294df2df7934c23382e75c64ff8562f2557033ccd3da101766e9823",
+      "size": 3280,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURES_V30.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURES_V31.md",
+      "title": "Public DistilGPT2 input reservations: v31",
+      "category": "exposure-history",
+      "blob_sha": "5de1c5c7e19f6811f9fb533a7d1817d80a2981fb",
+      "sha256": "0295894b994d8bba281456c28584094efe5a3123aae1455cd1b9d5bb9932dbad",
+      "size": 3162,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURES_V31.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURES_V42.md",
+      "title": "DistilGPT-2 development exposure inventory v42",
+      "category": "exposure-history",
+      "blob_sha": "9cffdd63bf7e4d070e62b301b41590c5c82f04ad",
+      "sha256": "ad5d91ca1fa8b7e663f41753e35ec6c98aaf0fb878643f33c4b3df0f823db972",
+      "size": 2618,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURES_V42.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V1.md",
+      "title": "Known DistilGPT2 development exposures: inventory v1",
+      "category": "exposure-history",
+      "blob_sha": "029a4b511bc4c12e936abc08e75ccb6ad594641d",
+      "sha256": "18e36bebee7164add5e61d98189dddc217163e6922b8bc2eb53ed11d7025ff0b",
+      "size": 7207,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V1.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V11.md",
+      "title": "DistilGPT2 development exposure inventory v11",
+      "category": "exposure-history",
+      "blob_sha": "fa047c0b876e8433ed0b060df97f8d8c3d81c657",
+      "sha256": "b980c1a078336323721dc1b53cda1404651caad264d74f82c10c1a3bcc5a4353",
+      "size": 2682,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V11.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V12.md",
+      "title": "DistilGPT2 development exposure inventory v12",
+      "category": "exposure-history",
+      "blob_sha": "3e23b10afaea8fa3e2b5a9e38552d6a37b68740f",
+      "sha256": "dabc1d323b7ed34bfece89c1c5c777d8a6fe7c7f741090be4ac511222402200b",
+      "size": 2475,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V12.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V13.md",
+      "title": "DistilGPT2 development exposure inventory v13",
+      "category": "exposure-history",
+      "blob_sha": "5299e36c25e72c4fde11793fbf3a8e54e4fc26c5",
+      "sha256": "992e1eaa8ce6951cbadfa6e640f08f99fbd4e719d2cdef6f1f4c685faa7628c8",
+      "size": 2883,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V13.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V14.md",
+      "title": "DistilGPT2 development exposure inventory v14",
+      "category": "exposure-history",
+      "blob_sha": "a41d8c5f0e0102881ecc3d40af6398b0e09dd211",
+      "sha256": "57cf4b0ee8d9188ad15683be4be6d35a0c0fe1a8534a06bbf0d2d85c73bee01e",
+      "size": 4428,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V14.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V15.md",
+      "title": "DistilGPT2 development exposure inventory v15",
+      "category": "exposure-history",
+      "blob_sha": "84258a468a00c38ed4a7329c30e482260c7fc569",
+      "sha256": "2a98995a19eb8f81f64eb33e54f70439847dbc1966ea1685be7774cffea8d74b",
+      "size": 3610,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V15.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V16.md",
+      "title": "DistilGPT2 development exposure inventory v16",
+      "category": "exposure-history",
+      "blob_sha": "8eaf54c8dfa73e90dd1d5e6e71e4ff50e32f269b",
+      "sha256": "51038487932626713e308a53eef65b720ace709dfe69aaeeeeb89205d85b4687",
+      "size": 2440,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V16.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V17.md",
+      "title": "DistilGPT2 development exposure inventory v17",
+      "category": "exposure-history",
+      "blob_sha": "084050633c6e6280e9154620411c586cae20ab01",
+      "sha256": "5c34bd8a3d17b7bf708518f4368c0ad2019387a94f11e23eef1303d62b284f0d",
+      "size": 2588,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V17.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V18.md",
+      "title": "DistilGPT2 development exposure inventory v18",
+      "category": "exposure-history",
+      "blob_sha": "24203e0eca046b23952533d1b8ad13e61db24b56",
+      "sha256": "0baaad95401e436ac300989035c003f87a3e83294750b534f9ac0fc01bec31e7",
+      "size": 3797,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V18.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V19.md",
+      "title": "DistilGPT2 development exposure inventory v19",
+      "category": "exposure-history",
+      "blob_sha": "08cdfbe65b7d58135dd12e6cd486e07987e18585",
+      "sha256": "460989f4d46c89935359f5ea4dab18353887e5168aa1ad00d0690310ef5b0342",
+      "size": 2402,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V19.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V2.md",
+      "title": "Known DistilGPT2 development exposures: inventory v2",
+      "category": "exposure-history",
+      "blob_sha": "a136cdebfafa6b11770a4b7d852b76386c8068e4",
+      "sha256": "d268863dd12f6f972dbfea4616d9334d8a637fdfffd606b3b446c0552cf47e43",
+      "size": 5054,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V2.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V20.md",
+      "title": "DistilGPT2 development exposure inventory v20",
+      "category": "exposure-history",
+      "blob_sha": "a42a231f8f9f53f173f1124b13b5663581e4aa5d",
+      "sha256": "1a558bd6bea76a7b8aec68ae15cde677ada8d8353013fa3a2123f294c763c7b5",
+      "size": 2718,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V20.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V21.md",
+      "title": "DistilGPT2 known exposure inventory v21",
+      "category": "exposure-history",
+      "blob_sha": "0acfe57aa1e47509f6e15e40fa43828332f7168e",
+      "sha256": "c30f5925fd8ee88534df77a883184dc1699daa908e05792f493c6012515d33f5",
+      "size": 2508,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V21.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V22.md",
+      "title": "DistilGPT2 known exposure inventory v22",
+      "category": "exposure-history",
+      "blob_sha": "31dba36975bab653cce8946364019884ee062fdb",
+      "sha256": "5659a443ec58c52046fc37edee93247dbbb8534b8acaaf8a83dddd1a06abe346",
+      "size": 2429,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V22.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V23.md",
+      "title": "DistilGPT2 known exposure inventory v23",
+      "category": "exposure-history",
+      "blob_sha": "d27a9dc236983a9479d388ccc45af4e8f3a19605",
+      "sha256": "7026dfbbe8f458aa13c536fefd8f2e5558f30c0b98aa992331af897acfa09645",
+      "size": 2224,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V23.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V24.md",
+      "title": "DistilGPT2 known exposure inventory v24",
+      "category": "exposure-history",
+      "blob_sha": "26c7e73cf7e1d50d5f7703ab0c8e8ff5ca304bb1",
+      "sha256": "77ba1606a3ec8ce6251dfe1372fb1110dac7e75f5ccd05cea02aaeaa9dae185d",
+      "size": 2117,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V24.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V3.md",
+      "title": "Known DistilGPT2 development exposures: inventory v3",
+      "category": "exposure-history",
+      "blob_sha": "812834c294fc5e550e4b53a3ac486874676c351e",
+      "sha256": "32889b59485c5e0b6ad371b813c054c92c3b8478112b4156d7419d1c3baf5e4a",
+      "size": 3656,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V3.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V4.md",
+      "title": "Known DistilGPT2 development exposures: inventory v4",
+      "category": "exposure-history",
+      "blob_sha": "b41fed3920a9e07663ffa718d5c74bfded4d4224",
+      "sha256": "d99c2fb5b0c53225d749969b2fa4a015c52378e899e00345a89527b78116fa3e",
+      "size": 2430,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V4.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V5.md",
+      "title": "Known DistilGPT2 development exposures: inventory v5",
+      "category": "exposure-history",
+      "blob_sha": "8be2b9a8f1ff8fbccc82f7f48041617f7e62ea6c",
+      "sha256": "eb7492b3a2998eebf4215d034cce24c7ebdf7d6111f203d29594a359a7ae045b",
+      "size": 2197,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V5.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V8.md",
+      "title": "Known DistilGPT2 development exposures: inventory v8",
+      "category": "exposure-history",
+      "blob_sha": "cfa4ba6985e6be25432a6249ee1627f9a5232637",
+      "sha256": "f95fb0a5528c97d05e9fb877230b1f492fd460ea20f4f54ec6670fc1c8ca0fe9",
+      "size": 3026,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V8.md"
+    },
+    {
+      "path": "docs/PRETRAINED_EXPOSURE_INVENTORY_V9.md",
+      "title": "Known DistilGPT2 development exposures: inventory v9",
+      "category": "exposure-history",
+      "blob_sha": "ff2b2040307f6b2290f70ab58fa6f7966f091d3b",
+      "sha256": "270d6514f27cfa543dfb170815cfe97e05d39cfa5f6c41fe1873b1b25c51fb71",
+      "size": 2586,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_EXPOSURE_INVENTORY_V9.md"
+    },
+    {
+      "path": "docs/PRETRAINED_INJECTION_PUBLIC_AUDIT.md",
+      "title": "Independent public injection-discovery audit",
+      "category": "historical-reference",
+      "blob_sha": "764d44ca4b94d15e85dc95de2e8f75d1153a56c8",
+      "sha256": "47d3f45a0cb8e515967612fa897d05a3f0c662e15d8efaa567dd9f878a731143",
+      "size": 3096,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_INJECTION_PUBLIC_AUDIT.md"
+    },
+    {
+      "path": "docs/PRETRAINED_NUMBER_COMMITMENTS.md",
+      "title": "DistilGPT2 number-study sampling and commitments",
+      "category": "historical-reference",
+      "blob_sha": "3aaf3845a4ea3bfe1b7972d0215262d8be25faf6",
+      "sha256": "b0831179089bce054477c2d751d7ce43360819832d8a298a8245da0f086abd0e",
+      "size": 4986,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_NUMBER_COMMITMENTS.md"
+    },
+    {
+      "path": "docs/PRETRAINED_NUMBER_DISCOVERY_SUPERVISOR.md",
+      "title": "Local CPU injection-discovery composition",
+      "category": "historical-reference",
+      "blob_sha": "b8ac5ef1286217b6021bbe61cc028a6540de0d75",
+      "sha256": "773a2ecaa0d8c7c2e2ff7796a46e5512b643c903f3eeff5a7553229243c6abf9",
+      "size": 4583,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_NUMBER_DISCOVERY_SUPERVISOR.md"
+    },
+    {
+      "path": "docs/PRETRAINED_NUMBER_INCOMPLETE_FORWARD.md",
+      "title": "Private incomplete-forward evidence",
+      "category": "historical-reference",
+      "blob_sha": "39dbecc32f3be97abc2c7fd13be307ca2fc1d2d8",
+      "sha256": "39e974b2e805934c589e8419eab3005d0ad3465cdbe8c3280039c710133409a9",
+      "size": 2770,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_NUMBER_INCOMPLETE_FORWARD.md"
+    },
+    {
+      "path": "docs/PRETRAINED_NUMBER_INJECTION_ADAPTER.md",
+      "title": "Known-injection executor-to-selector adapter",
+      "category": "historical-reference",
+      "blob_sha": "e6e990ad20bea3adc3cfca0c433f280e636ad77c",
+      "sha256": "79f194296d1ec0bc30d428bc82ce612a8a0bbcb35a7f24857f7774fd0f9a5d4b",
+      "size": 1554,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_NUMBER_INJECTION_ADAPTER.md"
+    },
+    {
+      "path": "docs/PRETRAINED_NUMBER_INJECTION_ARCHIVE.md",
+      "title": "Known-injection public discovery observations",
+      "category": "historical-reference",
+      "blob_sha": "d1a13af5a71ef4da9865cb7aa741ee387ca41d18",
+      "sha256": "7461e8959bdc1c16a838bc70d7483b4c7f646b9dc597220f4c5a7a17516bbcd1",
+      "size": 2311,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_NUMBER_INJECTION_ARCHIVE.md"
+    },
+    {
+      "path": "docs/PRETRAINED_NUMBER_INJECTION_CPU_LAUNCHER.md",
+      "title": "CPU number-injection discovery launcher",
+      "category": "historical-reference",
+      "blob_sha": "3c90f95452f63e57c4b3e4b47647044b965d7c2d",
+      "sha256": "3486819ffdbedcd7ce3d71a2f9c415bc85fd90ca01d5c93c99b16c859fbc3819",
+      "size": 9650,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_NUMBER_INJECTION_CPU_LAUNCHER.md"
+    },
+    {
+      "path": "docs/PRETRAINED_NUMBER_INJECTION_JOURNAL.md",
+      "title": "Private injection discovery journal",
+      "category": "historical-reference",
+      "blob_sha": "5a8df3e47281a246df929140dfabf59188511eb2",
+      "sha256": "5c4ef5e113c88e9e3ab02cfe6006291b6778f87196317853c13699f33c4a29df",
+      "size": 7561,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_NUMBER_INJECTION_JOURNAL.md"
+    },
+    {
+      "path": "docs/PRETRAINED_NUMBER_INJECTION_RUNNER.md",
+      "title": "Known-injection number-study primitives",
+      "category": "historical-reference",
+      "blob_sha": "d86d5b7d4d5621dfe9c4630dc35bd28608a189fb",
+      "sha256": "4f4e7d2bf34b18405fd0d7b0fefb121d8e553a8ebefe04dc28497821732922f6",
+      "size": 5582,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_NUMBER_INJECTION_RUNNER.md"
+    },
+    {
+      "path": "docs/PRETRAINED_NUMBER_INJECTION_SELECTION.md",
+      "title": "Site-blind injection scoring",
+      "category": "historical-reference",
+      "blob_sha": "aa64a0b96bdc476f71ba90fa9cbd10891862aa34",
+      "sha256": "d2b0de1f9b491321c06cdc0d060b91e515cb40f2065c9f37abb151b64f02623e",
+      "size": 8824,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_NUMBER_INJECTION_SELECTION.md"
+    },
+    {
+      "path": "docs/PRETRAINED_NUMBER_INJECTION_WITNESS.md",
+      "title": "Private known-injection forward witnesses",
+      "category": "historical-reference",
+      "blob_sha": "bbb42794304b9fa6bc6c2df447e384e693757b9e",
+      "sha256": "f8e728f153c0e99adb4379291d1d7e400b3a006b11b931f69c78fdd6d36715f5",
+      "size": 2948,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_NUMBER_INJECTION_WITNESS.md"
+    },
+    {
+      "path": "docs/PRETRAINED_REPLAY.md",
+      "title": "Replay of pretrained trace smoke v1",
+      "category": "historical-reference",
+      "blob_sha": "c045a1b8d61dd66821db81631ea7d53d253b2ab4",
+      "sha256": "68d5db3e9cbae9eb63c4d10df8a9bb71ef9bbc28bc6a4c4d2739ebafe63bc9e4",
+      "size": 5356,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_REPLAY.md"
+    },
+    {
+      "path": "docs/PRETRAINED_STUDY_DEVELOPMENT.md",
+      "title": "Development-only analysis for the pretrained causal protocol",
+      "category": "historical-reference",
+      "blob_sha": "e95fad4251c8f3bbd281557a54ac112da4bc0f4d",
+      "sha256": "51ab523075c5ccef9741cd41f6f317fadae57eb284f59ee32dc32677b4fafad3",
+      "size": 9505,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_STUDY_DEVELOPMENT.md"
+    },
+    {
+      "path": "docs/PRETRAINED_TRACE_INTERVENTION_EXAMPLE.md",
+      "title": "Trace and intervene on a pretrained GPT-2 model",
+      "category": "historical-reference",
+      "blob_sha": "673927dc4bed020aa2d169858e83bde94c32d73e",
+      "sha256": "d12c2890d719d0697cc1147f927a5a3263b19cf52c43dcfb7fced447efad0cd8",
+      "size": 3630,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRETRAINED_TRACE_INTERVENTION_EXAMPLE.md"
+    },
+    {
+      "path": "docs/PRIVATE_CAPTURE_JOURNAL.md",
+      "title": "Private CPU capture journal prototype",
+      "category": "historical-reference",
+      "blob_sha": "8a9c600efc10b89b09c7f935b34103fb0004907f",
+      "sha256": "b1c35a509af4364daa96c85c3e4217084d45bcb98d5b1260b87843e50043d05b",
+      "size": 8060,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRIVATE_CAPTURE_JOURNAL.md"
+    },
+    {
+      "path": "docs/PRODUCER_SLOT.md",
+      "title": "Producer adoption slot (prototype)",
+      "category": "historical-reference",
+      "blob_sha": "da50c68792df5ffffdbf457bc18660ddceae60a5",
+      "sha256": "e7784d7ecdcfbe341674f4fbfdc5e9da884d51320f5b2b970e638bc43ed973fb",
+      "size": 5116,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PRODUCER_SLOT.md"
+    },
+    {
+      "path": "docs/PUBLIC_DISTRACTOR_EXPOSURES_V38.md",
+      "title": "Public distractor-repair exposure reservation v38",
+      "category": "exposure-history",
+      "blob_sha": "4c5ece41cbb72bfb21c4e24ca1b3111d092afad8",
+      "sha256": "f8d06c3be13f24ab10263f019257720b88d9e0b5228416ff62fbb65bef459fb9",
+      "size": 2317,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/PUBLIC_DISTRACTOR_EXPOSURES_V38.md"
+    },
+    {
+      "path": "docs/RESOURCE_BOOTSTRAP_AUDIT.md",
+      "title": "Auditing private GPU resource-bootstrap v1 artifacts",
+      "category": "historical-reference",
+      "blob_sha": "4e401ccb6bdad70c67528f53b4d184f35478ce3f",
+      "sha256": "fcb2b5c07860e4c0bdf4335a09b2e22894bd2bd3a87a3c48995ce987dd2333e5",
+      "size": 4318,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/RESOURCE_BOOTSTRAP_AUDIT.md"
+    },
+    {
+      "path": "docs/SERIAL_OBSERVATION.md",
+      "title": "Serial-broker event observations",
+      "category": "historical-reference",
+      "blob_sha": "6121f13477713dcac771a6e5a096d5dd10c49db6",
+      "sha256": "cc385a517f43ff822767c4db137d47a46630dd0690e9baced7851f9c31040dd5",
+      "size": 5964,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/SERIAL_OBSERVATION.md"
+    },
+    {
+      "path": "docs/SERIAL_SERVICE_MEMORY_V1.md",
+      "title": "Optional serial service memory observation",
+      "category": "historical-reference",
+      "blob_sha": "9912ba8b5ceeeb99663bcd169ab159e53103a5bb",
+      "sha256": "72ef5ed41befe5f426570ba1b6674fd98b28b53973936de8fc37facc5585ce86",
+      "size": 3006,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/SERIAL_SERVICE_MEMORY_V1.md"
+    },
+    {
+      "path": "docs/SERIAL_SERVICE_THROUGHPUT_V1.md",
+      "title": "Fixed serial-service shared-load comparison: CPU rehearsal",
+      "category": "historical-reference",
+      "blob_sha": "9f3c85b3294d46166767caa65d36232a6a9c1716",
+      "sha256": "e25e14437205d430873a2d9a7ea916e5468bf13caa5a2a01ea7e457e86501912",
+      "size": 5240,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/SERIAL_SERVICE_THROUGHPUT_V1.md"
+    },
+    {
+      "path": "docs/SERVICE.md",
+      "title": "Local CPU model service",
+      "category": "historical-reference",
+      "blob_sha": "ca063cdbd6f4ebb41b232d247df870adafccdfd3",
+      "sha256": "9f275f93a1fb5bd3fee513cdaeed683df64b57404b6ad571d310d49e2905b713",
+      "size": 5912,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/SERVICE.md"
+    },
+    {
+      "path": "docs/SERVICE_SERIAL_OBSERVATION.md",
+      "title": "CPU observations for the fixed-workspace service path",
+      "category": "historical-reference",
+      "blob_sha": "fa36b1e3320e4c7bb4015cd9ad8ae310fe341eaa",
+      "sha256": "ac95d7e46f094f102fe53de56b725d2757aa00ec92f19347eba0744c07e30046",
+      "size": 5836,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/SERVICE_SERIAL_OBSERVATION.md"
+    },
+    {
+      "path": "docs/SUPERVISED_DIRECT_CONCURRENT.md",
+      "title": "Supervised direct two-client composition",
+      "category": "historical-reference",
+      "blob_sha": "693117e4ecbd77e99f8a003ac2f98b6eb47129c2",
+      "sha256": "facc7e2bd50413069c81e712572171a82dde7ba2097e7207a36af943280afe01",
+      "size": 9320,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/SUPERVISED_DIRECT_CONCURRENT.md"
+    },
+    {
+      "path": "docs/TARGETED_EDIT_CANDIDATE_V1_1.md",
+      "title": "Targeted-edit candidate maintenance entry point v1.1",
+      "category": "historical-reference",
+      "blob_sha": "6365958e91eb555b9197c289c38e5370c613e516",
+      "sha256": "1ac25df1bce44a4120a58cffc2642c66728c45c00cc5b7816433369c2259c611",
+      "size": 3322,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TARGETED_EDIT_CANDIDATE_V1_1.md"
+    },
+    {
+      "path": "docs/TARGETED_EDIT_PROJECTED_PUBLIC_CASES_V1.md",
+      "title": "Projected edit: public case reservation v1",
+      "category": "historical-reference",
+      "blob_sha": "16c61b4d29a7ec0cb24cacd174854415d56d8b04",
+      "sha256": "26173fd777ed2263da07fec62c9acde3aa17b21b45243b7c0e786ada7fc2a81b",
+      "size": 1805,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TARGETED_EDIT_PROJECTED_PUBLIC_CASES_V1.md"
+    },
+    {
+      "path": "docs/TARGETED_EDIT_V2_CPU_PROBE.md",
+      "title": "Targeted-edit v2 CPU runtime rehearsal",
+      "category": "historical-reference",
+      "blob_sha": "13e41ccb56fef3213744f4e5c8b29e3327223a2b",
+      "sha256": "880b9491aecc30923daaec5c35b1a935732f89242c0bdd0c9283c23763ec9c3a",
+      "size": 2842,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TARGETED_EDIT_V2_CPU_PROBE.md"
+    },
+    {
+      "path": "docs/THROUGHPUT_CPU_SMOKE_V1.md",
+      "title": "Shared-load CPU smoke, 2026-10-28",
+      "category": "historical-reference",
+      "blob_sha": "e72af97a7d82234a3ba6176d11894b3d7384824f",
+      "sha256": "51d286084a9a6357b17b1e43f8e15deef607b22a92febb9d5f4507232fe8b43a",
+      "size": 1724,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/THROUGHPUT_CPU_SMOKE_V1.md"
+    },
+    {
+      "path": "docs/TRACED_BROKER_WORKER.md",
+      "title": "Trace plan binding for a broker job",
+      "category": "historical-reference",
+      "blob_sha": "25e4c609e52400648a086aefbda79d03e9dd2283",
+      "sha256": "b9ee52e3d06f8f890ed6fbf23660d0a4a792f0e44ad8476229381defb5a276db",
+      "size": 5371,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TRACED_BROKER_WORKER.md"
+    },
+    {
+      "path": "docs/TRACED_WORKER.md",
+      "title": "CPU-only traced GPT-2 worker",
+      "category": "historical-reference",
+      "blob_sha": "da644ad3ca65b4cd867b432ecac249073261699f",
+      "sha256": "9c28faa7820822364c0b29add263010ec3c39a74bc4e6bb6187e25ff4c46140b",
+      "size": 5567,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TRACED_WORKER.md"
+    },
+    {
+      "path": "docs/TRACE_BATCH_HANDOFF.md",
+      "title": "Sealed CPU trace-batch handoff",
+      "category": "historical-reference",
+      "blob_sha": "4a662131f52489694b16129d084225ef9deed0d8",
+      "sha256": "78316fb95a9bfdfcf0fcc43b097eabf4ef9f90e2d7ffa83ea094f874e7edd84c",
+      "size": 9274,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TRACE_BATCH_HANDOFF.md"
+    },
+    {
+      "path": "docs/TRACE_BATCH_OWNER.md",
+      "title": "Private trace-batch custody prototype",
+      "category": "historical-reference",
+      "blob_sha": "967015abec4bdca2cc0d43c5ffc70b917ce947e9",
+      "sha256": "07427f7e8aeeaa627ef604aa9ce3ba71b1fb898d75651aa79a87c8379e106570",
+      "size": 9217,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TRACE_BATCH_OWNER.md"
+    },
+    {
+      "path": "docs/TRACE_CUSTODY_PLAN.md",
+      "title": "Proposed trace ownership and delivery contract",
+      "category": "historical-reference",
+      "blob_sha": "b25788e743b1129d8d83fe41b83d19af1da715ce",
+      "sha256": "acfd0c85e93a9eddfa2cd9f1609941c1df89d1bfee65e09cefdef5303ec116c3",
+      "size": 11706,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TRACE_CUSTODY_PLAN.md"
+    },
+    {
+      "path": "docs/TRACE_DELIVERY_GUARD.md",
+      "title": "Experimental delivery-slot adoption",
+      "category": "historical-reference",
+      "blob_sha": "aaa0010583fcd7f2c3c40782cb78cb921bdbd7a6",
+      "sha256": "6460cbb11b689b19087e21b1ad19b9eb71939c6e886b41b3f50428f7090fe0f7",
+      "size": 7378,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TRACE_DELIVERY_GUARD.md"
+    },
+    {
+      "path": "docs/TRACE_HANDOFF_RECOVERY.md",
+      "title": "Supervised recovery of a quarantined CPU handoff",
+      "category": "historical-reference",
+      "blob_sha": "41ade74ed01748c044b1ca6108a8972583eadc83",
+      "sha256": "49b577aa018632d1451b0994f42d030a8a23aa0a2f5df49836849e5e1857586a",
+      "size": 7463,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TRACE_HANDOFF_RECOVERY.md"
+    },
+    {
+      "path": "docs/TRACE_IPC_V2.md",
+      "title": "CPU trace IPC, protocol version 2",
+      "category": "historical-reference",
+      "blob_sha": "1ae2cb77e7b66cc083db01775fa5cbdedf173468",
+      "sha256": "43543b83631493e6dc0da7c6651535e44145ebc45cd4b1e5b043cf29aef03ae6",
+      "size": 8100,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TRACE_IPC_V2.md"
+    },
+    {
+      "path": "docs/TRACE_JOB_REGISTRY.md",
+      "title": "Recoverable trace-job receipts (prototype)",
+      "category": "historical-reference",
+      "blob_sha": "59c9abab5cdb3755bf247ad5df33c917ddad9409",
+      "sha256": "dd68f396a44dd091c5fa3e8c68513b765ebc1228df169d83502a4aa3d7498950",
+      "size": 7202,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TRACE_JOB_REGISTRY.md"
+    },
+    {
+      "path": "docs/TRACE_JOB_VALIDATION.md",
+      "title": "Complete CPU GPT-2 trace-job validation",
+      "category": "historical-reference",
+      "blob_sha": "66fd0e3bb8c36f8bff7c1bfa5b4a1eaab40e745c",
+      "sha256": "1efccc14b23c624424c10f6efd31e6ed08a07faf2b3a6b1438c5fedf578d47dd",
+      "size": 4900,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TRACE_JOB_VALIDATION.md"
+    },
+    {
+      "path": "docs/TRACE_PRODUCER.md",
+      "title": "Producer host-custody envelope (prototype)",
+      "category": "historical-reference",
+      "blob_sha": "119e3656771a9391ae56988f0ba37634770b42b8",
+      "sha256": "6944e6471fbc876e9baf41189e3fac21329659e67fb7f3c5b358e91882f339d5",
+      "size": 7286,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TRACE_PRODUCER.md"
+    },
+    {
+      "path": "docs/TRACE_TRANSPORT.md",
+      "title": "Experimental trace-delivery custody boundary",
+      "category": "historical-reference",
+      "blob_sha": "b65422fef12865de11adc945b8c09337c7147f2d",
+      "sha256": "204cf8f30780da49999450ab3aad20819c67eb22acb939ba1a730ebeca45ceb7",
+      "size": 11472,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TRACE_TRANSPORT.md"
+    },
+    {
+      "path": "docs/TRUSTED_PROFILE_COLLECTOR_V1.md",
+      "title": "Trusted-service resource collector, v1",
+      "category": "historical-reference",
+      "blob_sha": "47cd45316b32b1fed25b3fb0b83f71356393fbc4",
+      "sha256": "48baa3482a3f016488f7780f627e954e607c0772839cebaa06bfde5ab25e638f",
+      "size": 6145,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TRUSTED_PROFILE_COLLECTOR_V1.md"
+    },
+    {
+      "path": "docs/TRUSTED_SERVICE_LAUNCH.md",
+      "title": "Fixed launch settings for the two-token service pilot",
+      "category": "historical-reference",
+      "blob_sha": "ce4286bb809c40522581476db6b5d1ed4984d0be",
+      "sha256": "39aca0b2756ed1441ce00bd313c7a4d217f4985adee538323e26186188716c34",
+      "size": 3300,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TRUSTED_SERVICE_LAUNCH.md"
+    },
+    {
+      "path": "docs/TWO_TEAM_SERVICE_SMOKE.md",
+      "title": "Two-team supervised service smoke",
+      "category": "historical-reference",
+      "blob_sha": "628530136baefe9b23849b1435ce87df7fdcd76e",
+      "sha256": "cb19ef89872d89f753b4832e024a4c54093c2c4572d8e7a8805d74645b7fa8f1",
+      "size": 1955,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TWO_TEAM_SERVICE_SMOKE.md"
+    },
+    {
+      "path": "docs/TWO_TOKEN_SERVICE.md",
+      "title": "Preparing the fixed two-token supervised service",
+      "category": "historical-reference",
+      "blob_sha": "3ad40fff09fe34e6fcb5d14faadb7dd7899f17eb",
+      "sha256": "38e1b0adc7fe1ae2dc1ec30e3f71e3badac6dec55bb8739e82db877fc02d28a7",
+      "size": 5283,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/TWO_TOKEN_SERVICE.md"
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-28-runtime-probes.md",
+      "title": "Runtime Probes Implementation Plan",
+      "category": "superseded-planning",
+      "blob_sha": "61e012c2dbe03f3b24b129f6bdc6ec16a46e2dda",
+      "sha256": "ce7e8cb2c2d7325e73599306079ea2dff11f1d0e8242d1d37fbf701e03399f8b",
+      "size": 3260,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/superpowers/plans/2026-10-28-runtime-probes.md"
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-28-runtime-probes-design.md",
+      "title": "Model Looking Glass: initial research design",
+      "category": "superseded-planning",
+      "blob_sha": "44d32c4a7e8efc7da4c346c78f7855836ba21a52",
+      "sha256": "ea904b829758c389c7093fe7be80a83014148d51e0551721e51e77c6ae12e66d",
+      "size": 3736,
+      "url": "https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/superpowers/specs/2026-10-28-runtime-probes-design.md"
+    }
+  ]
+}

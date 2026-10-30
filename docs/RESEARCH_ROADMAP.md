@@ -1,116 +1,88 @@
-# Research roadmap
+# Research roadmap and execution efficiency
 
-Status: proposed research program, October 28, 2026. This expands the project's goals; it does not change the frozen [initial protocol](../PROTOCOL.md), measured [results](../RESULTS.md), or released API.
+Living plan, updated October 30, 2026. This is a direction for future work, not a release claim or authorization to launch experiments. Frozen protocols, source hashes and historical outcomes are unchanged. See [project scope](PROJECT_STATUS.md), [recorded validation](MAINTENANCE_2026-10-29.md), and the [original results](../RESULTS.md) for what exists and what has actually been checked.
 
-## The goal
+## Goal and measure of progress
 
-Build a causal debugger for neural networks: a system that helps researchers discover how a behavior is produced, test competing explanations, and make targeted changes with measured consequences.
+Build a **causal debugger for neural networks**: observe relevant computations, generate competing explanations, predict interventions on new inputs, and measure the benefits and collateral effects of targeted changes. The long-term scope includes different architectures, multimodal models, generation, training and distributed execution; each extension needs its own evidence.
 
-An investigator should eventually be able to give it a behavior of interest and receive:
+The decisive outcome is **accurate held-out intervention predictions and reproducible findings per unit of compute**, not tensor volume, agent count, GPU utilization or the plausibility of a visual explanation. An honest negative result or demonstrated inability to distinguish hypotheses is useful progress.
 
-1. A reproducible trace of relevant internal computations and execution metadata.
-2. Candidate mechanisms with explicit competing explanations and uncertainty.
-3. Predictions about what specified interventions will do on new inputs.
-4. Experiments that test those predictions against appropriate controls.
-5. A proposed change, its observed effect, and the capabilities it preserves or damages.
+Keep three things separate:
 
-The decisive outcome is **accurate intervention predictions on held-out cases**, not the number of tensors collected or the plausibility of a visual story. A useful system must also recognize when the available observations cannot distinguish explanations.
+- **Execution coordinates:** which instrumented operations ran, including layer, token, forward, branch and invocation identities where available.
+- **Measurements:** values or summaries with declared capture coverage, numerical fidelity and completion status.
+- **Causal hypotheses:** predictions about specified interventions and conditions, with alternatives and uncertainty.
 
-This direction is open to larger models, different architectures, multimodal representations, agents built around models, and learning dynamics. Hardware and finite experiments determine the next step, not the ultimate scope. Each expansion needs its own evidence.
+A value is not a route label: different branches can produce identical vectors. A gradient is sensitivity to an objective, not a complete causal explanation. Ablations can create off-distribution states. Direct capture is the observation baseline; retain an auxiliary-gradient channel only if it earns its additional cost for a demonstrated purpose. The [denormal counterexample](GRADIENT_DENORMAL_V1.md) makes raw-bit controls important when bitwise fidelity matters.
 
-## Scientific questions
+## Current starting point
 
-- **Observability:** What must be recorded to distinguish executions, recover relevant internal states, and localize a change?
-- **Information flow:** Which transformations preserve, mix, suppress or expose information about a task? How much of that conclusion survives a change of representation or measurement method?
-- **Mechanism discovery:** Can observed patterns generate useful intervention hypotheses more efficiently than simple baselines?
-- **Causal testing:** Can a proposed mechanism predict the sign, magnitude and context dependence of a controlled intervention's effect?
-- **Targeted change:** Can a localized activation intervention or parameter change produce a desired behavior while limiting unwanted changes on a separately held-out capability suite?
-- **Efficiency:** Which observation and experiment policies yield more independently validated findings per unit of GPU time, memory and human review?
+Use the existing [known-corruption and restoration workflow](GPT2_TRACE_WORKFLOW.md), [intervention plans](INTERVENTION_PLANS.md), [trace schema](TRACE_SCHEMA.md), [localization reference](LOCALIZATION.md) and [causal metrics](CAUSAL_METRICS.md), rather than rebuilding those components. The original localization API consumes original `TraceEvent` streams, not arbitrary transformer events; preserve coordinates through the appropriate model-specific comparison path.
 
-## A chain of evidence
+`TraceSession` is local, single-use and single-threaded. The documented eager GPT-2, DistilBERT, T5 and ViT adapters have model-specific limits; they do not establish universal architecture or compiled-model support. Capture allowances count recorded payloads, not total process RAM or VRAM.
 
-Keep three objects separate throughout the system:
+Broker, IPC, resident-worker and GPU scheduling components remain experimental infrastructure. The [grouped GPU development run](../results/grouped-gpu-resource-v3-20261029/README.md) reported fixed serial/two-row functional and resource observations, not shared-service throughput or a general memory-capacity bound. A complete default CPU test pass is not GPU performance evidence, and [experimental opcode probes](EXPERIMENTAL_OPCODE_TESTS.md) are not supported arbitrary-interruption guarantees.
 
-- **Execution graph:** which instrumented operations ran, with layer, token, invocation and branch identifiers.
-- **Measurements:** activation values, gradients for a specified objective, summaries, or reconstructed/compressed observations with an error contract.
-- **Causal hypotheses:** predictions about interventions under stated experimental conditions.
+## Current priorities
 
-A value is not a route label. Identical outputs from different branches defeat value-only provenance. A gradient is a local sensitivity to an objective, not a complete causal account. Ablating a component can also create an off-distribution state. These are reasons to design controls, not reasons to stop at observation.
+1. **Make the existing debugger workflow reproducible end to end.** Keep one usable path from a declared model/input and capture policy to controlled intervention comparisons, raw artifacts and a bounded conclusion. Report missing coordinates, truncation and unavailable values rather than presenting them as equality.
+2. **Test prospective predictions, not another inventory of effects.** Select a behavior and competing mechanisms on discovery inputs; freeze candidate sites, interventions, metrics and predictions before confirmation. Use independent held-out units, matched controls, task-level/no-instrumentation baselines and simple random or magnitude-ranked alternatives. Preserve ineligible baselines, locality failures and negative findings.
+3. **Measure observation value against cost.** Compare sparse, dense, random and adaptive placement at equal location and byte/time budgets. Report missed changes, localization interval width and coverage. A narrower first-observed interval is not proof of a unique cause.
+4. **Profile the exact GPU workload where execution is authorized.** Compare uninstrumented and instrumented runs, including capture validation, copies and required output handling. Reuse existing runners where suitable; require a new scheduler or service feature to solve a measured blocker, not merely create another preparation stage.
+5. **Expand only with acceptance evidence.** Add generation/cache coordinates, other architectures, compiled execution, training or multiple devices as distinct compatibility tracks. For targeted edits, require rollback/restoration checks and independently held-out collateral-behavior measurements, not only improvement on the target score.
 
-Candidate gate designs, direct hooks, isolated gradient readout, learned probes and compressed telemetry compete as instruments. No method gets privileged because it inspired the project. Keep a gradient channel only where it earns its cost in a defined setting. The current experiment finds no information advantage over direct capture.
+These priorities do not cap the research ambition or number of contributors. Independent work can proceed in parallel; dependent experiments need compatible inputs and evidence. No central approval queue or fixed team organization is prescribed here.
 
-## Milestones and acceptance evidence
+## Experiment records and efficient reuse
 
-Every milestone produces a versioned protocol, code, raw results, failure records and an independent reproduction. The following are research deliverables, not a promised schedule.
+Each run should record the hypothesis and alternatives; source/protocol versions; immutable model, tokenizer and data identities; input/case IDs; runtime, dtype, mode and RNG policy; intervention and capture policy; resource/work limits; completion criteria; and artifact destination. Distinguish pending, completed, failed, cancelled and incomplete runs. Keep raw observations and failures alongside summaries, so another investigator can reproduce the conclusion without unstated assumptions.
 
-### M1. Trustworthy observation on pretrained models
+Reuse an artifact only when the full experimental identity matches, including adapters, generation settings and relevant backend configuration. A matching prompt string is insufficient. Never substitute a clean-run activation for an edited or differently conditioned forward. Same-forward controls must actually use that forward. Private prompts and activations stay out of public artifacts by default.
 
-Add adapters for attention, MLP and residual boundaries; token positions, generation steps, cache state and repeated invocations. Define what each recorded value represents and where intervention hooks would act.
+Before adding concurrency, consider cheaper work: deduplicate genuinely identical runs; narrow explicit token/layer windows; compare coarse-to-fine taps with equal-budget baselines; use bounded offload; or selectively recompute reproducible states. Compression and sketches need error contracts or measured task-specific fidelity and exact controls. Unrecorded positions are not evidence that no change occurred. Freeze adaptive selection rules before held-out evaluation.
 
-Acceptance: instrumented and baseline runs agree under prespecified criteria for outputs, loss, relevant gradients and optimizer updates where training is tested. Require exact equality where the execution path permits it; specify and justify numerical tolerances before evaluation otherwise. Include exception cleanup, overflow, repeated modules, nonfinite values, trace truncation and replay tests. Start on a small model for fast falsification, then test additional families rather than generalizing from one architecture.
+## Memory and admission
 
-### M2. Recover execution and find changes efficiently
+Verify the actual device, available memory, driver/runtime, operating system and supported dtypes before execution. Profile the exact workload: weights, activations, generation caches, gradients/optimizer state where applicable, trace copies, temporary validation tensors, and allocator/runtime overhead. An old profile for a different input shape, capture mode or runtime is not a new workload's bound.
 
-Compare ID-only logs, sparse fixed taps, dense taps, random budget-matched placements, and adaptive placement. Include branching, reused modules, residual merges and generation.
+For a future admitted service, check both resident allocations plus conservative incremental work and reserve against the configured budget, **and** current device-wide free memory against additional allocations and reserve. These are estimates and a momentary observation, not an OOM guarantee. Measure device-wide free memory separately from process allocated/reserved memory; tensor-memory peaks are not the complete device footprint. Choose and record headroom from observed transients and other applications, not an unverified universal percentage.
 
-Acceptance: report route-label accuracy against independent execution ground truth, coverage and missing events, localization interval width, and a cost–accuracy frontier. Run both equal-location and equal-byte/time-budget comparisons. A small localization interval is not by itself an identified mechanism.
+Bound events, captured positions, tensor bytes, host RAM, pinned buffers, disk output, context length and elapsed work. `max_events` alone cannot bound bytes. A first estimate for one dense activation family is:
 
-### M3. Discover candidate mechanisms
+```text
+batch × captured_tokens × hidden_width × element_bytes × saved_layers
+```
 
-Combine traces with activation patching, structured ablation, feature-level probes and explicit alternative hypotheses. Use synthetic tasks with known internal mechanisms to validate discovery tooling, then pretrained-model behaviors with no claimed ground-truth mechanism.
+Additional tensor families, gradients, clones and transfer buffers add to that estimate. Host offload consumes bandwidth and memory; RAM is not interchangeable with VRAM. Keep ownership until device work and required transfers complete.
 
-Acceptance: beat simple alternatives on prespecified held-out intervention prediction metrics at a matched experiment budget. Compare against random locations, magnitude-ranked and gradient-ranked candidates, and a no-instrumentation task-level baseline where applicable. Include negative controls, null interventions and identical-vector/different-route cases. Candidate selection and threshold tuning use discovery data only.
+On exhaustion or uncertain cleanup, retain failure evidence, mark the run incomplete and recover only owned resources. Any retry is a new labeled run with its changed configuration recorded. Do not silently drop taps, reduce precision or shorten inputs and call the original run successful. If process state cannot be trusted, require verified process recovery rather than continuing allocations. Preserve completed artifacts and unrelated applications.
 
-### M4. Test explanations under intervention
+## Timing and useful concurrency
 
-Before seeing held-out outcomes, save each candidate's predicted effect, uncertainty, intervention location and values, task metric and evaluation set. Test multiple intervention strengths and contexts, including rescue/restoration controls and plausible replacement activations where available.
+GPU enqueue time is not end-to-end latency. Use synchronized wall-clock measurements and device events for explicitly defined spans; joins must cover measured work on every participating stream. Report queue wait, service time and total response time separately. If completion promises host-resident snapshots or written artifacts, include those operations. Keep raw repeated samples and runtime/configuration identifiers.
 
-Acceptance: quantify prediction error, sign accuracy, calibration and failure rates against baselines; report uncertainty at the independent prompt/task or seed unit, not by pretending correlated tokens are independent samples. Replicate across prompts and model seeds/checkpoints where available. Label necessity and sufficiency only relative to the tested intervention and task, and report interactions or redundant pathways.
+The original probe code converts a finite-value reduction to a Python boolean at value taps; on CUDA this host decision introduces synchronization. Measure validation, cloning, metadata, gradient readout and offload separately. An asynchronous alternative must retain a defined validation boundary and reject invalid traces, not omit checks to improve timings.
 
-### M5. Targeted behavioral changes
+Keep two protocols distinct:
 
-Compare localized runtime interventions and small parameter edits with broader alternatives. Optimize on development examples, then freeze the change before testing it on new target examples and unrelated capabilities.
+| Measurement | Required comparison |
+|---|---|
+| Isolated latency/memory | Reserve the measured workload, account for unrelated activity, warm up each cell, and randomize/interleave repeated baseline and instrumented runs. Prespecify how contaminated intervals are labeled or excluded; do not stop unrelated applications. |
+| Shared-workload throughput | Fix job mix, arrival rates, concurrency and budgets; compare with the same serial workload. Report successful work per second, response-time distribution, queue delay, fairness, failures and memory. This is not uncontended per-job latency. |
 
-Acceptance: show the tradeoff between target improvement and collateral changes, including regression tests, distribution shifts, reversibility and reproducibility. A successful edit on one behavior is evidence for that case, not a universal repair method.
+Reuse a resident checkpoint only with a verified compatible model/configuration identity. Prefer batching validated against a serial reference before assuming streams or additional workers will help. Queued requests are not simultaneous GPU execution; separate streams do not guarantee hardware overlap. Increase concurrency only when measured valid throughput justifies its latency and memory cost.
 
-### M6. Automated research and broader systems
+Do not overlap independent sessions on one mutable model by installing competing global hooks. Shared execution would need explicit per-request ownership and sample/token/invocation coordinates, including request-local cache, input, gradient and capture state. Test exceptions, cancellation, repeated modules, recomputation and cross-request leakage. An agent count is not a GPU job count.
 
-Let coordinated agents propose experiments, choose probes, challenge mechanisms and reproduce findings using a shared artifact registry. Extend to multimodal and distributed models, compiled execution and training trajectories in separate compatibility tracks.
+Parameter edits, optimizer steps, mode changes and global RNG mutation need isolated replicas or exclusive execution. Before reuse, restore/reload and verify weights, buffers, mode and relevant RNG/runtime state; discard an instance whose restoration is uncertain. Exclusivity does not undo an edit. Activation interventions also require proven request isolation, and auxiliary gradient-readout leaves must stay outside model optimizers.
 
-Acceptance: at fixed compute and review budgets, compare agent-guided research with scripted search and simpler heuristics. Measure independently reproduced findings, false discoveries, experiment waste and elapsed time. Audit selection bias: retain failed runs and hypotheses that were rejected. Require human-reviewable evidence rather than an agent consensus vote.
+## Acceptance and reasons to change direction
 
-## Parallel research teams
+- Observational modes must meet declared output/gradient invariance and fidelity criteria, including failure cleanup and bounded capture. Match tolerance to the scientific claim; exact-bit checks and numerical equality answer different questions.
+- A proposed mechanism must outperform stated alternatives on frozen held-out predictions. A targeted change must satisfy separate target and collateral-effect criteria; a successful patch alone is not an explanation.
+- If a channel adds no useful evidence at greater cost, prefer the cheaper channel. If intervention predictions fail, revise the mechanism rather than expanding its infrastructure.
+- If concurrency breaks correctness, isolate the incompatible workload. If it only worsens throughput, reduce concurrency according to measurements.
+- If an effect disappears under independent replay or held-out testing, preserve the failed hypothesis. Automated experiment selection must be compared with simpler search under matched compute and review budgets, including false discoveries and wasted runs.
 
-Organize by owned interfaces and falsifiable questions, not one uncontrolled copy of the whole project per agent. An environment that supports 50 or more agents can allocate them across these streams, with subteams for implementation, experiments and replication. The number below is a division of responsibility, not a cap on people or agents.
-
-| Stream | Owns | First useful deliverable |
-| --- | --- | --- |
-| Model adapters | Tensor meaning, token/cache coordinates, architecture compatibility | One pretrained-model trace adapter and replay tests |
-| Runtime and GPU | Broker, memory accounting, concurrency and timing | Profiled job admission with a serial reference |
-| Probe strategy | Placement, summaries, compression, capture budgets | Fixed/random/adaptive placement comparison |
-| Mechanism discovery | Hypothesis generation and interventions | Controlled discovery task with withheld interventions |
-| Behavioral change | Targeted edits and collateral metrics | Frozen edit evaluation and rollback artifact |
-| Falsification and reproduction | Independent checks and negative controls | Blind reproduction with discrepancy report |
-
-One integration owner maintains interface contracts and the experiment registry. Teams use separate branches/workspaces, publish small reviewable changes, and do not rewrite a shared working tree. An independent team must be able to reproduce an artifact without relying on the author's unstated assumptions.
-
-## The next implementation wave
-
-1. Specify the trace/event schema and immutable run manifest before separate adapters diverge.
-2. Build the CUDA timing and memory harness and a pretrained-model adapter in parallel.
-3. Build the GPU broker's scheduler and concurrency-isolation tests alongside an independent reviewer.
-4. Establish a serial pretrained-model correctness baseline before admitting shared-model concurrent workloads.
-5. Run a budget-matched placement experiment and one held-out intervention-prediction task.
-6. Publish the result and failure cases, then choose the next experiment using evidence rather than adding every proposed feature.
-
-The [efficiency plan](EFFICIENCY_PLAN.md) defines the proposed operating model. This document does not launch those teams, configure the user's computer, download models, or start new experiments.
-
-## What changes direction
-
-- If a reporting channel yields the same evidence at greater cost, prefer the cheaper channel unless another tested constraint changes the comparison.
-- If traces predict correlations but interventions fail, revise or reject the mechanism claim.
-- If compression destroys the signal needed for the task, increase fidelity or narrow the recording window and report the cost.
-- If concurrency harms correctness, isolate the incompatible job class; if it only harms throughput, reduce admitted concurrency using measurements.
-- If an apparent improvement disappears under independent replay or held-out testing, retain it as a failed hypothesis.
-
-The aim remains a practical, testable account of model behavior. The stages are checkpoints for progress toward that aim, not permanent limits on it.
+The next deliverable should answer a scientific or usability question with reproducible evidence. More scaffolding is justified only by a concrete missing capability on that path.

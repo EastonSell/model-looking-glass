@@ -4,6 +4,8 @@
 
 Start with **direct activation capture**, explicit execution coordinates, and controlled intervention comparisons. The auxiliary-gradient reporting channel is an experimental control: it adds no information to an activation already available to copy, costs more in the original CPU study, and can lose subnormal bits.
 
+**[Documentation: start here](docs/README.md)** · [Findings and limits](docs/PROJECT_STATUS.md#research-evidence) · [One living roadmap](docs/RESEARCH_ROADMAP.md)
+
 ## What to use
 
 | Task | Entry point | Scope |
@@ -12,7 +14,7 @@ Start with **direct activation capture**, explicit execution coordinates, and co
 | Capture, inject, or patch | [Intervention primitives](docs/INTERVENTION_PLANS.md) | Explicit sites and controls, exclusive model ownership, cleanup checks |
 | Record and compare traces | [Schema](docs/TRACE_SCHEMA.md), [store](looking_glass/trace_store.py), [localization](docs/LOCALIZATION.md) | Execution metadata and first observed differences, not inferred reasoning |
 | Evaluate changes | [Causal metrics](docs/CAUSAL_METRICS.md), [behavioral evaluation](docs/BEHAVIORAL_EDIT_EVALUATION.md) | Paired outcomes and locality observations; no broad capability guarantee |
-| Work with transformers | [GPT-2](docs/TRANSFORMER_TRACE.md), [DistilBERT](docs/DISTILBERT_TRACE.md), [T5](docs/FLAN_T5_TRACE.md), [ViT](docs/VIT_TRACE.md) | Documented eager-model adapters, not universal architecture support |
+| Work with transformers | [GPT-2 tutorial](docs/GPT2_TRACE_WORKFLOW.md), [DistilBERT](docs/DISTILBERT_TRACE.md), [T5](docs/FLAN_T5_TRACE.md), [ViT](docs/VIT_TRACE.md) | Documented eager-model adapters, not universal architecture support |
 
 See [project scope](docs/PROJECT_STATUS.md) for the boundary between reusable components, experimental infrastructure, and historical study runners. Retained code is not automatically a supported public API. The shared-service and GPU scheduling prototypes are **not** a validated general GPU service.
 
@@ -64,10 +66,12 @@ Large historical tensor/archive payloads are indexed in [`archives/results-manif
 
 [Ten duplicate historical auditors and a superseded three-script preparation workflow](archives/SOURCE_CONSOLIDATION.md) were removed from active entry points, with canonical copies or immutable historical source links retained.
 
+The [documentation consolidation](archives/README.md#historical-documentation) also replaces scattered historical manuals with a short reading path, one roadmap, a findings map and an experimental infrastructure reference.
+
 This reduces the **current checkout**, not Git history. No history is rewritten; a full clone still contains old objects. For a small new checkout:
 
 ```bash
 git clone --filter=blob:none --depth=1 https://github.com/EastonSell/model-looking-glass.git
 ```
 
-[Roadmap](docs/RESEARCH_ROADMAP.md) · [Original protocol](PROTOCOL.md) · [Mathematical limits](docs/MATHEMATICS.md)
+[Documentation](docs/README.md) · [Roadmap](docs/RESEARCH_ROADMAP.md) · [Original protocol](PROTOCOL.md) · [Mathematical limits](docs/MATHEMATICS.md)
