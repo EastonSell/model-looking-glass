@@ -32,6 +32,8 @@ Archival selection is based on payload format, **never on whether the outcome is
 
 ## Validation boundary
 
+Latest complete default CPU run: **8,144 passed, 285 skipped (57 experimental exclusions and 228 other prerequisites), one archived-fixture failure**. Seven screened-evaluation matrices remain absent; this is not an all-green result. See the [terminal validation record](../results/maintenance-cpu-20261030/summary.json) and [cleanup report](MAINTENANCE_2026-10-29.md#complete-default-cpu-result--2026-10-30).
+
 Use focused, named tests for the component being changed. A complete historical test run requires PyTorch, pytest, the pinned optional Transformers dependency, and selected original artifacts; some tests also have explicit environment prerequisites. No dependency skip is evidence that the skipped behavior works. [Current cleanup report](MAINTENANCE_2026-10-29.md) records actual executed and blocked checks.
 
 Historical exceptions injected from opcode trace callbacks are [explicitly experimental](EXPERIMENTAL_OPCODE_TESTS.md), because Python documents undefined interpreter behavior for that mechanism. They are not evidence of general safety at arbitrary bytecode boundaries. Supported ordinary callback-failure, cancellation, cleanup and custody controls remain in the default test suite; exact experimental cases require explicit isolated opt-in. Native experimental failures remain failures, not successes or ordinary prerequisite skips.
