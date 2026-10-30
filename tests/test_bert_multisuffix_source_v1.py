@@ -1,6 +1,6 @@
 """Exercise source binding using isolated, model-free subprocesses."""
 from pathlib import Path
-import os,shutil,subprocess,sys
+import os,shutil,subprocess,sys,sysconfig
 from scripts import bert_multisuffix_agreement_v1 as owner
 
 
@@ -19,7 +19,8 @@ def test_isolated_bootstrap_ignores_checkout_shadow_and_rejects_tree(tmp_path):
     commit=run_git('rev-parse','HEAD').stdout.strip()
     marker=tmp_path/'checkout-shadow-ran'
     (checkout/'numbers.py').write_text(f'from pathlib import Path\nPath({str(marker)!r}).write_text("shadow")\n',encoding='utf-8')
-    site=Path(sys.executable).resolve().parent.parent/'Lib'/'site-packages'
+    # Query the active interpreter's native venv scheme before isolated startup.
+    site=Path(sysconfig.get_path('purelib')).resolve(strict=True)
     base=Path(sys._base_executable).resolve()
     positive=tmp_path/'positive-prefix';positive.mkdir()
     code=f'import sys;sys.path.insert(0,{str(checkout)!r});sys.path.append({str(site)!r});import numbers'
@@ -33,7 +34,7 @@ def test_isolated_bootstrap_ignores_checkout_shadow_and_rejects_tree(tmp_path):
          '--model-dir',str(model),'--cases',str(checkout/owner.SOURCE_PATHS[-1]),
          '--output',str(tmp_path/'never-created'),'--device','cpu','--source-commit',commit]
     result=subprocess.run(cmd,capture_output=True,text=True,env=os.environ.copy(),timeout=90)
-    assert result.returncode!=0 and 'model snapshot has missing or additional assets' in result.stderr
+    assert result.returncode!=0 and 'model snapshot has missing or additional assets' in result.stderr, result.stderr
     assert not marker.exists() and not (tmp_path/'never-created').exists()
     tree=run_git('cat-file','-p',commit).stdout.splitlines()[0].split()[1]
     prefix2=tmp_path/'tree-prefix';prefix2.mkdir()

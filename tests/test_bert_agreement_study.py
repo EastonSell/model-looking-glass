@@ -460,11 +460,19 @@ with patch.object(study, '_require_bootstrap'), patch.object(study, '_require_ch
         import shutil
         import sysconfig
         from looking_glass.cpu_study_supervision import run_cpu_study
-        repo = Path(__file__).resolve().parent.parent
-        workspace = repo.parent.parent
-        with tempfile.TemporaryDirectory(prefix='bert-cpu-custody-test-', dir=workspace) as directory:
+        source_repo = Path(__file__).resolve().parent.parent
+        # The invoking checkout need not live in a shared work/ layout, nor
+        # have writable ancestors. Run unchanged bootstrap sources from an
+        # isolated fixture using the test runner's configured temporary root.
+        with tempfile.TemporaryDirectory(prefix='bert-cpu-custody-test-') as directory:
             root = Path(directory).resolve(strict=True)
-            self.assertTrue(root.is_relative_to(workspace.resolve(strict=True)))
+            repo = root / 'work' / 'checkout'
+            (repo / 'scripts').mkdir(parents=True)
+            (repo / 'looking_glass').mkdir()
+            shutil.copyfile(source_repo / 'scripts' / 'bert_agreement_bootstrap.py',
+                            repo / 'scripts' / 'bert_agreement_bootstrap.py')
+            for source in (source_repo / 'looking_glass').glob('*.py'):
+                shutil.copyfile(source, repo / 'looking_glass' / source.name)
             custody, attempt, prefix, cwd, direct_attempt, direct_prefix = (
                 root/name for name in ('custody', 'attempt', 'prefix', 'cwd', 'direct-attempt', 'direct-prefix'))
             for path in (custody, attempt, prefix, cwd, direct_attempt, direct_prefix): path.mkdir()

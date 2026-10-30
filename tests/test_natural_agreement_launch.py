@@ -9,6 +9,7 @@ import py_compile
 import shutil
 import subprocess
 import sys
+import sysconfig
 from types import SimpleNamespace
 
 import pytest
@@ -424,6 +425,10 @@ def test_runtime_observation_does_not_reset_denormal_state(monkeypatch):
 
 
 def test_runtime_observation_does_not_spawn_shell(monkeypatch):
+    # Isolate the no-subprocess contract with a fabricated Windows API result.
+    monkeypatch.setattr(sys, 'getwindowsversion', lambda: SimpleNamespace(
+        major=10, minor=0, build=19045, platform=2, service_pack='',
+        platform_version=(10, 0, 19045)), raising=False)
     monkeypatch.setattr(launch, '_dependency_configuration', lambda: {})
     monkeypatch.setattr(subprocess, 'Popen', lambda *args, **kwargs: pytest.fail('runtime spawned a subprocess'))
     observed = launch._runtime()
@@ -452,10 +457,11 @@ def test_owner_audit_hook_rejects_python_subprocess_creation(tmp_path):
             launch._owner_audit_hook(event, ())
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows-specific platform probe")
 def test_windows_platform_probe_and_torch_import_run_without_subprocess(tmp_path):
     import os
     root = Path(__file__).resolve().parents[1]
-    site = Path(sys.prefix) / 'Lib/site-packages'
+    site = Path(sysconfig.get_path('purelib'))
     env = os.environ.copy()
     env.update({'MLG_NATURAL_SITE': str(site.resolve()), 'CUDA_VISIBLE_DEVICES': '-1', 'OMP_NUM_THREADS': '1'})
     code = ("import sys,os; sys.path.append(os.environ['MLG_NATURAL_SITE']); sys.path.insert(0,sys.argv[1]); "
@@ -537,10 +543,11 @@ def test_isolated_launcher_does_not_import_sourceless_checkout_root_module(tmp_p
     assert not marker.exists()
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="pinned Windows runtime integration")
 def test_documented_direct_base_bootstrap_checks_runtime_without_model(tmp_path):
     import os
     root = Path(__file__).resolve().parents[1]
-    site = Path(sys.prefix) / 'Lib/site-packages'
+    site = Path(sysconfig.get_path('purelib'))
     env = os.environ.copy()
     env.update({'MLG_NATURAL_SITE': str(site.resolve()), 'CUDA_VISIBLE_DEVICES': '-1', 'OMP_NUM_THREADS': '1'})
     command = [sys._base_executable, '-I', '-S', '-B', '-X', f'pycache_prefix={tmp_path / "unused-cache"}',
@@ -554,10 +561,11 @@ def test_documented_direct_base_bootstrap_checks_runtime_without_model(tmp_path)
     assert info['dependencies']['site_packages_sha256'] == hashlib.sha256(str(site.resolve()).encode('utf-8')).hexdigest()
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="pinned Windows runtime integration")
 def test_supervised_direct_base_bootstrap_reaps_without_model(tmp_path):
     import os
     root = Path(__file__).resolve().parents[1]
-    site = Path(sys.prefix) / 'Lib/site-packages'
+    site = Path(sysconfig.get_path('purelib'))
     env = os.environ.copy()
     env.update({'MLG_NATURAL_SITE': str(site.resolve()), 'CUDA_VISIBLE_DEVICES': '-1', 'OMP_NUM_THREADS': '1'})
     command = [sys._base_executable, '-I', '-S', '-B', '-X', f'pycache_prefix={tmp_path / "unused-cache"}',

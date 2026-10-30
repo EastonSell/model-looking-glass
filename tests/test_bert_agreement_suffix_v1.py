@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import sysconfig
 from types import SimpleNamespace
 
 import numpy as np
@@ -322,7 +323,7 @@ def test_isolated_source_bootstrap_ignores_checkout_shadow_with_positive_control
     commit = git_run("rev-parse", "HEAD").stdout.strip()
     marker = tmp_path / "checkout-shadow-ran"
     (checkout / "numbers.py").write_text(f"from pathlib import Path\nPath({str(marker)!r}).write_text('shadow')\n", encoding="utf-8")
-    site = Path(sys.executable).resolve().parent.parent / "Lib" / "site-packages"
+    site = Path(sysconfig.get_path("purelib")).resolve(strict=True)
     base = Path(sys._base_executable).resolve()
     positive_prefix = tmp_path / "positive-cache"
     positive_prefix.mkdir()

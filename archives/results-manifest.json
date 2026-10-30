@@ -1,9 +1,9 @@
 {
   "base_commit": "3cbdec78134855532811a58a64e8dd5d4d457185",
   "repository": "EastonSell/model-looking-glass",
-  "selection": "Results tensor/archive payloads; original bytes preserved in immutable Git history. This manifest does not claim semantic redundancy.",
-  "count": 2114,
-  "total_bytes": 2830512412,
+  "selection": "Historical results tensor/archive payloads, excluding compact records required by the active CPU tests; original bytes preserved in immutable Git history. This manifest does not claim semantic redundancy.",
+  "count": 2109,
+  "total_bytes": 2818199058,
   "files": [
     {
       "path": "results/answer-format-feasibility-cpu-v1-20261029/development/attempt/development/matrix.f32",
@@ -14,16 +14,6 @@
       "path": "results/answer-format-feasibility-cpu-v1-20261029/heldout/attempt/heldout/matrix.f32",
       "blob_sha": "367abc591a570b980680ab5f45435c81b9e7300a",
       "size": 6432896
-    },
-    {
-      "path": "results/bert-agreement-cpu-evaluation-v1-20261029/evidence/events.jsonl.gz",
-      "blob_sha": "fc6a4344223d80120000cdebade34134941b796c",
-      "size": 3642930
-    },
-    {
-      "path": "results/bert-agreement-dev-v1-20261028/attempt-01/events.jsonl.gz",
-      "blob_sha": "fa3f4781c9b8ef7da8d2f8979cb8ff8dbb5323a3",
-      "size": 455929
     },
     {
       "path": "results/bert-cue-context-signed-cpu-v1-20261029/bert-cue-context-signed-score-tv-subset-91f9960e.jsonl.gz",
@@ -64,11 +54,6 @@
       "path": "results/bert-matched-dose-v1-20261029/controller-stdout.txt.gz",
       "blob_sha": "e985856db9f79a53fe2f7a1d7bb834c25212b22d",
       "size": 80518
-    },
-    {
-      "path": "results/bert-matched-dose-v1-20261029/events.jsonl.gz",
-      "blob_sha": "4eebcd7664cfbc684579d1acdfeb8adf262851b2",
-      "size": 2384683
     },
     {
       "path": "results/bert-multisuffix-agreement-cpu-v1-20261029/saved-replay.json.gz",
@@ -334,11 +319,6 @@
       "path": "results/distilgpt2-agreement-noun-substitution-study-v1/parts/study-attempt-v1.tar.gz.part-009",
       "blob_sha": "441eceeb90592b9c8d1a3b44f88cf1e610242a1e",
       "size": 3436876
-    },
-    {
-      "path": "results/distilgpt2-agreement-preflight-v1-20261028/run/last_logits.f32",
-      "blob_sha": "8a04d5defa30071f0ea2b3e094e0956537143f91",
-      "size": 3216448
     },
     {
       "path": "results/distilgpt2-agreement-subject-dependence-v1/exposure-v27.canonical.json.gz",
@@ -7523,11 +7503,6 @@
     {
       "path": "results/targeted-edit-cpu-v1-20261028/reference/gradient.f32",
       "blob_sha": "3c0caeadc3c8f2232d6e9c2df9f189a899c63733",
-      "size": 2613364
-    },
-    {
-      "path": "results/targeted-edit-cpu-v1-20261028/reference/original.f32",
-      "blob_sha": "2e0217f9a04fd6e9db1d96434c478cc130a3c4dc",
       "size": 2613364
     },
     {

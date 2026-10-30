@@ -10,10 +10,10 @@ Base snapshot: `3cbdec78134855532811a58a64e8dd5d4d457185`. This is a bounded cle
 - Updated 49 direct Markdown links in 31 files to immutable historical payload URLs, preserving report prose. Compressed decision records are explicitly identified as archived, not misrepresented as remaining readable in the current tree.
 - Consolidated 10 byte-identical standalone historical auditors into their retained result-local copies (228,814 duplicate source bytes), after reverse-reference and blob-identity checks. See [canonical mapping](../archives/SOURCE_CONSOLIDATION.md).
 - Retired the three-script original v4 case-preparation/comparison workflow, explicitly superseded before forwarding by corrected v4.1. Preserved original protocol/receipts and immutable source links; retained v4.1 successors.
-- Fixed `TraceSession` capacity/sequence bookkeeping to use a private cumulative event count: removing public-list entries cannot reset session sequence IDs or replenish capture allowance. Caller-inserted entries are explicitly caller-owned. Added focused regressions and qualified the auxiliary-gradient fidelity docstring. Runtime PyTorch tests remain blocked as stated below.
+- Fixed `TraceSession` capacity/sequence bookkeeping to use a private cumulative event count: removing public-list entries cannot reset session sequence IDs or replenish capture allowance. Caller-inserted entries are explicitly caller-owned. Added focused regressions and qualified the auxiliary-gradient fidelity docstring. The original dependency blocker and later actual PyTorch validation are recorded below.
 - Distinguished reusable observation/intervention components from experimental service infrastructure and historical reproduction code; source retirement requires dependency-aware review rather than indiscriminate deletion.
 
-## Executed checks in this environment
+## Initial checks (2026-10-29; before approved dependency installation)
 
 | Check | Outcome |
 |---|---|
@@ -26,10 +26,23 @@ Base snapshot: `3cbdec78134855532811a58a64e8dd5d4d457185`. This is a bounded cle
 | Event-count regression | The actual ID-only bookkeeping method, isolated with a tensor-metadata stub, reproduced the old allowance bypass/duplicate sequence and rejected it after the patch. This is not a PyTorch hook/integration test. |
 | Real archive restoration | Float32 payload, gzip JSON and ZIP restored and verified against hashes/sizes; gzip parsed as JSON and ZIP member integrity passed. A separate 2,613,364-byte float32 artifact also restored and verified. |
 
-## Blocked or not established
+## Initial limitations (2026-10-29)
 
-The current executor has no PyTorch, pytest or Transformers. No packages were installed during this cleanup. The attempted `test_probes.py` run fails at import with `ModuleNotFoundError: torch`; `test_behavioral_edit_evaluation.py` is blocked by missing pytest. These are **not passing tests**. The two dependency skips above likewise do not validate their skipped behavior.
+At the initial cleanup checkpoint, the executor had no PyTorch, pytest or Transformers. No packages were installed during that initial pass. The attempted `test_probes.py` run fails at import with `ModuleNotFoundError: torch`; `test_behavioral_edit_evaluation.py` is blocked by missing pytest. These are **not passing tests**. The two dependency skips above likewise do not validate their skipped behavior.
 
 The complete historical suite, GPU behavior, pretrained models, saved-study auditors requiring full archived datasets, and cross-version/platform support have **not** been revalidated by this pass. Restoration integrity is not a replay of the science. Existing study reports keep their original scope and dates.
 
 Source consolidation removed verified duplicates, not entire coupled study families: retained historical launchers and test fixtures are not thereby supported public APIs. Do not interpret this audit as a claim that all remaining components have passed runtime validation.
+
+## CPU validation continuation — 2026-10-30
+
+After explicit approval, installed official CPU PyTorch and project testing extras in an isolated environment. This checkpoint uses Python 3.12.14, Torch 2.15.0+cpu, Transformers 4.57.3 and pytest 8.4.2. The dependency environment is outside the checkout so source-isolation checks can enforce separate dependency and source roots. `pip check` passed. Tests run offline, with CUDA hidden and CPU threads bounded; no pretrained model downloads or historical GPU runs were performed.
+
+- Actual probe/ownership/archive focused run: **78 passed**.
+- Portable isolated-entry, invariant collection, historical-metadata unit guards and journal-before-tensor validation: **65 passed** in one combined run.
+- Causal compatibility, BERT workspace/ledger/parser guards, archive tool and historical-auditor boundary: **188 passed, 4 skipped** in one combined run. The skips explicitly require the removed named-tensor API, Python 3.11 historical reconstruction, Windows junction behavior, or historical Torch 2.8.0+cu128. They are not validated behavior.
+- Native dependency-site and fabricated-owner bootstrap fixtures: **50 passed, 4 explicit Windows integration skips** in one combined run. Cross-platform shadow/hash/no-subprocess guards remain exercised.
+- Fixed ordinary-checkout test fixtures rather than weakening workspace, version, disk-space, isolation or scientific source pins. A Torch API compatibility fix preserves named-tensor rejection on builds with that API.
+- Restored **five original compact test evidence fixtures (12,313,354 bytes)** with their exact historical blob hashes; see [retained fixtures](../archives/CPU_TEST_FIXTURES.md). The current archive is **2,109 files / 2,818,199,058 bytes**. The original 2,114-file archival checkpoint above is historical.
+
+The first two broad-suite diagnostics were interrupted after identifying environment and fixture prerequisites; neither is a completed passing run. A complete fixed-snapshot CPU-suite result remains pending at this checkpoint. Mocked runtime metadata tests are guard/state-machine coverage, not evidence that the old CUDA/Python/Windows runtime was reproduced. No hosted CI run is configured at this checkpoint.
