@@ -31,9 +31,13 @@ SUPERVISOR_SHA256 = "2ffc6adc91d51b3b6b91db587ad011d11eb72efc8d1eb614d0868fc1cff
 
 
 def inventory_payload():
-    if v10.inventory_digest() != PREDECESSOR_SHA256:
+    predecessor = v10.inventory_payload()
+    canonical = json.dumps(predecessor, sort_keys=True, separators=(",", ":"),
+                           ensure_ascii=True, allow_nan=False).encode("utf-8")
+    if (v10.INVENTORY_SHA256 != PREDECESSOR_SHA256
+            or hashlib.sha256(canonical).hexdigest() != PREDECESSOR_SHA256):
         raise ValueError("predecessor exposure inventory does not match")
-    payload = copy.deepcopy(v10.inventory_payload())
+    payload = copy.deepcopy(predecessor)
     payload["version"] = INVENTORY_VERSION
     payload["predecessor"] = {"version": v10.INVENTORY_VERSION, "sha256": PREDECESSOR_SHA256}
     payload["update"] = {"observed_public_copying_followup_rows": 32}

@@ -23,11 +23,17 @@ PUBLIC_BROKER_CHECK = tuple((50256, number, number + 100, number + 200)
 
 
 def inventory_payload():
-    if v4.inventory_digest() != PREDECESSOR_SHA256:
+    predecessor = v4.inventory_payload()
+    canonical = json.dumps(predecessor, sort_keys=True, separators=(",", ":"),
+                           ensure_ascii=True, allow_nan=False).encode("utf-8")
+    if (v4.INVENTORY_SHA256 != PREDECESSOR_SHA256
+            or hashlib.sha256(canonical).hexdigest() != PREDECESSOR_SHA256):
         raise ValueError("predecessor exposure inventory does not match")
     rows = list(PUBLIC_BROKER_CHECK)
-    predecessor_forbidden = v4._forbidden_rows()
-    predecessor_full = {tuple(record["token_ids"]) for record in v4.inventory_payload()["records"]}
+    predecessor_forbidden = {tuple(record["token_ids"][:length])
+                             for record in predecessor["records"]
+                             for length in range(1, len(record["token_ids"]) + 1)}
+    predecessor_full = {tuple(record["token_ids"]) for record in predecessor["records"]}
     if len(rows) != 4 or len(set(rows)) != 4 or any(row in predecessor_forbidden for row in rows):
         raise ValueError("public broker reservations do not match their expected split")
     if any(row[:len(old)] == old for row in rows for old in predecessor_full):
@@ -35,7 +41,7 @@ def inventory_payload():
     if any(left[:len(right)] == right or right[:len(left)] == left
            for i, left in enumerate(rows) for right in rows[i + 1:]):
         raise ValueError("public broker reservations contain a full-row prefix relation")
-    payload = copy.deepcopy(v4.inventory_payload())
+    payload = copy.deepcopy(predecessor)
     payload["version"] = INVENTORY_VERSION
     payload["predecessor"] = {"version": v4.INVENTORY_VERSION, "sha256": PREDECESSOR_SHA256}
     payload["update"] = {"planned_public_broker_check_rows": 4, "model_forward_asserted": False}

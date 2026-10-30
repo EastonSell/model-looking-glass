@@ -66,3 +66,15 @@ The remaining-case diagnostic uncovered a shared synthetic-fixture problem: Wind
 Fresh scoped checks (overlapping groups, **not additive suite totals**): injection observer group 35 passed / 4 Windows skips with empty post-suite quarantine; controller/receipt group 49 passed / 11 Windows skips; custody/query plus downstream journal/supervisor group 151 passed / 10 Windows skips; query followed by owner-completion group 83 passed / 1 Windows skip. Fresh number-injection and multiprocessing checks passed all 51 cases without changing their production code. Owner-completion alone passed 64 cases after nonvacuous return/UNPACK fault-injection setup was corrected for Python 3.12.
 
 An unguarded local diagnostic launcher also broke multiprocessing spawn; this was external test tooling, not repository behavior. It was corrected and its spawn-import guard verified. These interrupted diagnostics are not a final all-suite pass. The final source-pinned CPU suite remains pending, with terminal-case checkpoints to distinguish completed cases from interrupted ones.
+
+### Single-snapshot exposure validation
+
+A later all-tests attempt reached 5,526 passing cases and 153 prerequisite skips before historical Git access was interrupted; it produced no terminal suite result. Five exposure-evidence tests require historical commits absent from the shallow checkout. Missing Git history is not a failed scientific hash, and the incomplete run is not an all-suite pass. Subsequent offline runs explicitly forbid Git transports as well as lazy fetching.
+
+The v3–v14 exposure inventory constructors redundantly reconstructed predecessors for digest, payload and prefix checks. They now build each immediate predecessor once, verify that exact object's canonical digest and expected pin, and derive the copied payload/prefix sets from it. There is no shared mutable cache. Historical inventory constants, scientific records and source-bound evidence hashes are unchanged; changed implementation source hashes do not establish historical runtime replay equivalence.
+
+New regressions cover all 45 canonical inventory versions, one predecessor construction, deep-copy isolation, payload tampering despite a separate valid digest claim, and wrong predecessor constants. Synthetic downstream-prefix/identity fixtures now coherently pin their intentionally modified payload, so those independent guards still execute rather than failing at the earlier digest check. Independent review found no blocking issue.
+
+An illustrative single local CPU measurement of v14 construction was 30.585 seconds before and 0.0244 seconds after, with the same 279 records and SHA-256 `236e4ab86b006998cbf39096edf78222cc8506c3f2b81d5e7ae70b2a32b30d86`. This is one timing per revision, not a statistical or model-inference benchmark. Complete post-change validation remains pending below.
+
+Integrated constructor, canonical-pin and modified guard tests: **103 passed, zero skips**, with Git protocols forbidden. This focused result does not validate the missing historical commits or substitute for a final complete CPU-suite result.

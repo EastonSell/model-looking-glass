@@ -46,9 +46,13 @@ PUBLIC_EVALUATION_ROWS = tuple(
 
 
 def inventory_payload():
-    if v6.inventory_digest() != PREDECESSOR_SHA256:
+    predecessor = v6.inventory_payload()
+    canonical = json.dumps(predecessor, sort_keys=True, separators=(",", ":"),
+                           ensure_ascii=True, allow_nan=False).encode("utf-8")
+    if (v6.INVENTORY_SHA256 != PREDECESSOR_SHA256
+            or hashlib.sha256(canonical).hexdigest() != PREDECESSOR_SHA256):
         raise ValueError("predecessor exposure inventory does not match")
-    payload = copy.deepcopy(v6.inventory_payload())
+    payload = copy.deepcopy(predecessor)
     payload["version"] = INVENTORY_VERSION
     payload["predecessor"] = {"version": v6.INVENTORY_VERSION, "sha256": PREDECESSOR_SHA256}
     payload["update"] = {"observed_public_copying_rows": 32, "planned_public_copying_evaluation_rows": 32}
@@ -75,7 +79,8 @@ def inventory_payload():
     if len(evaluation_tokens) != 48 or len(set(evaluation_tokens)) != 48 or set(evaluation_tokens) & screen_tokens:
         raise ValueError("public copying evaluation token groups are not disjoint from the screen")
     old_full = {tuple(row["token_ids"]) for row in payload["records"]}
-    old_forbidden = v6._forbidden_rows()
+    old_forbidden = {tuple(row["token_ids"][:length]) for row in predecessor["records"]
+                     for length in range(1, len(row["token_ids"]) + 1)}
     if len(rows) != 32 or len(set(rows)) != 32 or any(row in old_forbidden for row in rows):
         raise ValueError("public copying evaluation reservations do not match their expected split")
     if any(row[:len(old)] == old for row in rows for old in old_full):

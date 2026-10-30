@@ -217,9 +217,13 @@ class ExposureV14Tests(unittest.TestCase):
         old = copy.deepcopy(v13.inventory_payload())
         row = next(row for row in old['records'] if row['record_id'] == v14.INJECTION_RECORD_IDS[0])
         row['token_ids'][1] += 1
+        # Coherent synthetic pin reaches the downstream record-identity guard.
+        synthetic_digest = hashlib.sha256(json.dumps(old, sort_keys=True, separators=(",", ":"),
+            ensure_ascii=True, allow_nan=False).encode("utf-8")).hexdigest()
         with mock.patch.object(v13, 'inventory_payload', return_value=old), \
-                mock.patch.object(v13, 'inventory_digest', return_value=v13.INVENTORY_SHA256):
-            with self.assertRaises(ValueError):
+                mock.patch.object(v13, "INVENTORY_SHA256", synthetic_digest), \
+                mock.patch.object(v14, "PREDECESSOR_SHA256", synthetic_digest):
+            with self.assertRaisesRegex(ValueError, "prior agreement discovery identity"):
                 v14.inventory_payload()
         with mock.patch.object(v13, 'INVENTORY_SHA256', '0' * 64):
             with self.assertRaises(ValueError):
