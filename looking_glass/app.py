@@ -22,7 +22,8 @@ STATIC = Path(__file__).parent / "app_static"
 
 class AppState:
     def __init__(self, *, runtime=None, export_root="looking-glass-runs", models_dir=None,
-                 max_model_bytes=2 * 1024**3, max_trace_bytes=512 * 1024**2):
+                 max_model_bytes=2 * 1024**3, max_trace_bytes=512 * 1024**2,
+                 max_vram_bytes=64 * 1024**3):
         if runtime is None:
             # Application mode is explicitly local-only, even if user shell settings differ.
             os.environ["HF_HUB_OFFLINE"] = "1"
@@ -35,6 +36,9 @@ class AppState:
         self.lock = threading.Lock()
         self.models_dir = None if models_dir is None else Path(models_dir).expanduser().resolve()
         self.max_trace_bytes = max_trace_bytes
+        if type(max_vram_bytes) is not int or not 1 <= max_vram_bytes <= 64 * 1024**3:
+            raise ValueError("max_vram_bytes must be a positive integer <= 64 GiB")
+        self.max_vram_bytes = max_vram_bytes
         self.token = secrets.token_hex(32)
 
     def status(self):
@@ -44,14 +48,22 @@ class AppState:
                 if path.is_dir() and (path / "config.json").is_file():
                     models.append({"name": path.name, "path": str(path)})
         return {"model": self.runtime.info(), "run": self.store.summary(), "models": models,
-                "limits": {"max_trace_bytes": self.max_trace_bytes, "max_image_bytes": MAX_IMAGE},
+                **self.runtime.capabilities(),
+                "limits": {"max_trace_bytes": self.max_trace_bytes, "max_image_bytes": MAX_IMAGE,
+                           "max_vram_bytes": self.max_vram_bytes},
                 "privacy": "Local RAM only until Save; exports contain inputs, outputs and activations."}
 
     def post(self, action, data):
         if not isinstance(data, dict): raise ValueError("Expected a JSON object")
         if action == "inspect": return self.runtime.inspect(_text(data, "path", 4096))
         if action == "load":
-            answer = self.runtime.load(_text(data, "path", 4096))
+            budget = data.get("max_vram_bytes", min(2 * 1024**3, self.max_vram_bytes))
+            if type(budget) is not int or not 1 <= budget <= self.max_vram_bytes:
+                raise ValueError("GPU allowance exceeds the server limit or is invalid")
+            device = data.get("device", "auto")
+            if type(device) is not str or not 1 <= len(device) <= 32:
+                raise ValueError("device must be auto, cpu or cuda:N")
+            answer = self.runtime.load(_text(data, "path", 4096), device=device, max_vram_bytes=budget)
             self.store.clear()
             return answer
         if action == "run":
@@ -184,21 +196,23 @@ def create_server(state, port=0):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Local CPU model query and full supported-boundary activation inspector")
+    parser = argparse.ArgumentParser(description="Local CUDA/CPU model query and full supported-boundary activation inspector")
     parser.add_argument("--port", type=int, default=0, help="Loopback port; zero chooses a free port")
     parser.add_argument("--no-browser", action="store_true")
     parser.add_argument("--models-dir", type=Path, help="Optional explicit directory whose immediate checkpoint subfolders appear in settings")
     parser.add_argument("--export-dir", type=Path, default=Path.cwd() / "looking-glass-runs")
     parser.add_argument("--max-model-mib", type=int, default=2048, help="Parameter-storage preflight cap, not peak RAM")
+    parser.add_argument("--max-vram-mib", type=int, default=65536, help="Maximum selectable CUDA allocator allowance; not all GPU/driver memory")
     parser.add_argument("--max-trace-mib", type=int, default=512, help="Saved tensor payload cap, not peak RAM")
     args = parser.parse_args(argv)
-    if not 0 <= args.port <= 65535 or not 1 <= args.max_model_mib <= 16384 or not 1 <= args.max_trace_mib <= 512:
+    if not 0 <= args.port <= 65535 or not 1 <= args.max_model_mib <= 16384 or not 1 <= args.max_trace_mib <= 512 or not 1 <= args.max_vram_mib <= 65536:
         parser.error("Invalid port or memory allowance")
     state = AppState(export_root=args.export_dir, models_dir=args.models_dir,
-                     max_model_bytes=args.max_model_mib * 1024**2, max_trace_bytes=args.max_trace_mib * 1024**2)
+                     max_model_bytes=args.max_model_mib * 1024**2, max_trace_bytes=args.max_trace_mib * 1024**2,
+                     max_vram_bytes=args.max_vram_mib * 1024**2)
     server = create_server(state, args.port)
     url = f"http://127.0.0.1:{server.server_address[1]}/"
-    print(f"Model Looking Glass: {url}\nCPU only; local checkpoints; captures stay in RAM until Save.\nPress Ctrl+C here to stop.", flush=True)
+    print(f"Model Looking Glass: {url}\nCUDA/CPU selection in Settings; local checkpoints; captures stay in CPU RAM until Save.\nPress Ctrl+C here to stop.", flush=True)
     if not args.no_browser: webbrowser.open(url)
     try: server.serve_forever(poll_interval=0.25)
     except KeyboardInterrupt: pass

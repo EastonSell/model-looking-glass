@@ -1,9 +1,10 @@
-"""Local-only CPU inference for the application, through existing trace adapters.
+"""Local-only CPU/CUDA inference through the existing trace adapters.
 
 No downloads, executable checkpoint code, pickle weights, training, weight edits,
 or hidden capture thinning. The app owns one model exclusively while it runs.
 """
 from dataclasses import dataclass
+from contextlib import contextmanager
 from pathlib import Path
 import copy
 import io
@@ -27,6 +28,104 @@ DEFAULTS = {"targets": "auto", "layers": None, "max_new_tokens": 8,
             "max_trace_bytes": 128 * 1024 * 1024,
             "max_tensor_bytes": 64 * 1024 * 1024,
             "max_logits_bytes": 128 * 1024 * 1024}
+
+
+CUDA_FAMILIES = ("gpt2", "t5")
+DEFAULT_VRAM_BYTES = 2 * 1024**3
+
+
+class CudaStateError(RuntimeError):
+    """CUDA state/cleanup cannot be represented as a ready owner."""
+
+
+def _cuda_snapshot(device):
+    try:
+        free, total = torch.cuda.mem_get_info(device)
+        allocated = torch.cuda.memory_allocated(device)
+        reserved = torch.cuda.memory_reserved(device)
+    except Exception as error:
+        raise CudaStateError("CUDA memory telemetry failed; restart the local app") from error
+    if (any(type(x) is not int or x < 0 for x in (free, total, allocated, reserved))
+            or total <= 0 or free > total or allocated > reserved or reserved > total):
+        raise CudaStateError("CUDA memory telemetry is inconsistent; restart the local app")
+    return {"free_bytes": free, "total_bytes": total,
+            "allocated_bytes": allocated, "reserved_bytes": reserved}
+
+
+def _cuda_admit(device, incremental_bytes, limit_bytes):
+    snapshot = _cuda_snapshot(device)
+    reserve = max(256 * 1024**2, math.ceil(snapshot["total_bytes"] * 0.10))
+    reusable_cache = snapshot["reserved_bytes"] - snapshot["allocated_bytes"]
+    if (snapshot["allocated_bytes"] + incremental_bytes > limit_bytes
+            or snapshot["free_bytes"] + reusable_cache < incremental_bytes + reserve):
+        raise ValueError("CUDA workload estimate exceeds the configured allocator allowance or available VRAM/headroom; reduce model/input/output/capture size or explicitly raise the allowance")
+    return {**snapshot, "estimated_incremental_bytes": incremental_bytes,
+            "headroom_bytes": reserve, "potentially_reusable_allocator_cache_bytes": reusable_cache,
+            "note": "Sequential telemetry and visible-tensor estimates; cached blocks may be reusable but fragmentation can still cause OOM. Not a bound on all kernel/driver/library allocations."}
+
+
+@contextmanager
+def _cuda_operation(device, limit_bytes):
+    """Scoped caching-allocator ceiling for the app's exclusive CUDA owner.
+
+    Restores the previous ceiling, never loosens a stricter previous setting.
+    Other same-process CUDA work must not run concurrently with this app owner.
+    """
+    getter = getattr(torch.cuda, "get_per_process_memory_fraction", None)
+    setter = getattr(torch.cuda, "set_per_process_memory_fraction", None)
+    if not callable(getter) or not callable(setter):
+        raise ValueError("this CUDA app requires PyTorch allocator fraction get/set APIs")
+    before = _cuda_snapshot(device)
+    try:
+        previous = getter(device)
+        allocator_total = torch.cuda.get_device_properties(device).total_memory
+    except Exception as error:
+        raise CudaStateError("cannot read CUDA allocator policy; restart the local app") from error
+    if type(previous) not in (int, float) or not math.isfinite(previous) or not 0 <= previous <= 1:
+        raise CudaStateError("invalid CUDA allocator policy; restart the local app")
+    if type(allocator_total) is not int or allocator_total <= 0:
+        raise CudaStateError("invalid CUDA allocator device capacity; restart the local app")
+    effective = min(previous, limit_bytes / allocator_total)
+    effective_bytes = min(limit_bytes, int(effective * allocator_total))
+    if before["reserved_bytes"] > effective_bytes:
+        raise ValueError("existing CUDA reservation exceeds the requested or previously stricter allocator ceiling")
+    report = {"device": str(device), "requested_limit_bytes": limit_bytes,
+              "previous_allocator_fraction": previous, "effective_allocator_fraction": effective,
+              "effective_limit_bytes": effective_bytes, "allocator_total_bytes": allocator_total, "before": before,
+              "scope": "PyTorch caching allocator only; excludes driver/library allocations and other processes. Peaks include resident model and existing allocator memory."}
+    attempted = False
+    primary = None
+    try:
+        attempted = True
+        try:
+            setter(effective, device)
+            torch.cuda.reset_peak_memory_stats(device)
+        except BaseException as error:
+            raise CudaStateError("CUDA allocator setup failed; restart the local app") from error
+        yield report
+        try:
+            torch.cuda.synchronize(device)
+            report["after"] = _cuda_snapshot(device)
+            report["peak_allocated_bytes"] = int(torch.cuda.max_memory_allocated(device))
+            report["peak_reserved_bytes"] = int(torch.cuda.max_memory_reserved(device))
+        except BaseException as error:
+            raise CudaStateError("CUDA completion or peak telemetry failed; restart the local app") from error
+        if (report["after"]["reserved_bytes"] > effective_bytes
+                or report["peak_reserved_bytes"] > effective_bytes):
+            raise CudaStateError("observed CUDA allocator reservation exceeded its allowance; restart the local app")
+        report["synchronized"] = True
+    except BaseException as error:
+        primary = error
+        raise
+    finally:
+        if attempted:
+            try:
+                setter(previous, device)
+            except BaseException as error:
+                failure = CudaStateError("CUDA allocator policy restoration failed; restart the local app")
+                if primary is not None and hasattr(failure, "add_note"):
+                    failure.add_note(f"Original failure: {type(primary).__name__}")
+                raise failure from error
 
 
 def _unique(pairs):
@@ -122,11 +221,18 @@ def _capture(record, forward, sequence):
     if hasattr(record, "token_kind"):
         metadata["image_coordinate"] = {name: getattr(record, name) for name in
             ("token_kind", "patch_row", "patch_column", "processed_pixel_box_xyxy")}
-    return AppCapture(record.value, metadata)
+    value = record.value
+    if value.device.type != "cpu":
+        metadata["app_offloaded_from_device"] = str(value.device)
+        value = value.to(device="cpu", non_blocking=False)
+        metadata["saved_device"] = "cpu"
+        metadata["saved_dtype"] = str(value.dtype)
+        metadata["saved_shape"] = list(value.shape)
+    return AppCapture(value, metadata)
 
 
 class LocalModelRuntime:
-    """Exclusive CPU float32 model owner. Results live in caller-owned RAM only."""
+    """Exclusive float32 CPU/CUDA owner. Published captures reside in CPU RAM."""
 
     def __init__(self, *, max_model_bytes=2 * 1024**3):
         self.max_model_bytes = _positive(max_model_bytes, "max_model_bytes")
@@ -134,6 +240,9 @@ class LocalModelRuntime:
         self._info = None
         self._lock = threading.Lock()
         self._quarantined = False
+        self._device = torch.device("cpu")
+        self._vram_limit = None
+        self._active_cuda_limit = None
 
     @staticmethod
     def inspect(path):
@@ -191,27 +300,114 @@ class LocalModelRuntime:
                 raise ValueError("custom tokenizer or processor code is unsupported")
         return {"path": str(root), "family": family, "architecture": spec["architecture"],
                 "task": spec["task"], "targets": list(spec["targets"]),
+                "supported_devices": ["cpu", "cuda"] if family in CUDA_FAMILIES else ["cpu"],
                 "weight_files": filenames, "checkpoint_file_bytes": file_bytes,
                 "estimated_float32_weight_bytes": total,
                 "memory_note": "Weight storage estimate only, not peak RAM; activations, logits, loading copies and Python overhead are additional.",
                 "config": config}
 
+    @staticmethod
+    def capabilities():
+        devices = [{"id": "cpu", "name": "CPU", "available": True}]
+        available = False
+        reason = "Installed PyTorch has no CUDA support; install a CUDA build for GPU execution."
+        if torch.version.cuda is not None:
+            reason = "CUDA PyTorch is installed, but no available CUDA device/driver was detected."
+            try:
+                if torch.cuda.is_available():
+                    for index in range(torch.cuda.device_count()):
+                        ident = f"cuda:{index}"
+                        snapshot = _cuda_snapshot(torch.device(ident))
+                        props = torch.cuda.get_device_properties(index)
+                        devices.append({"id": ident, "name": str(props.name), "available": True,
+                                        "total_bytes": snapshot["total_bytes"], "free_bytes": snapshot["free_bytes"]})
+                    available = len(devices) > 1
+                    if available:
+                        reason = "CUDA available; GPT-2 and T5 adapters support GPU execution, with CPU capture offload."
+            except Exception:
+                devices = devices[:1]
+                reason = "CUDA initialization or telemetry failed; check the installed driver/build before selecting CUDA."
+        return {"devices": devices, "cuda": {"available": available, "reason": reason},
+                "supported_cuda_families": list(CUDA_FAMILIES)}
+
+    @staticmethod
+    def _select_device(requested, family):
+        if type(requested) is not str:
+            raise ValueError("device must be auto, cpu, or cuda:N")
+        if requested == "cpu":
+            return torch.device("cpu"), "CPU explicitly selected."
+        if requested == "auto" and family not in CUDA_FAMILIES:
+            return torch.device("cpu"), "Auto selected CPU because this model adapter is CPU-only."
+        capabilities = LocalModelRuntime.capabilities()
+        if requested == "auto":
+            if capabilities["cuda"]["available"]:
+                return torch.device(capabilities["devices"][1]["id"]), "Auto selected an available CUDA device for this supported adapter."
+            return torch.device("cpu"), "Auto selected CPU: " + capabilities["cuda"]["reason"]
+        if requested == "cuda":
+            requested = "cuda:0"
+        parts = requested.split(":")
+        if len(parts) != 2 or parts[0] != "cuda" or not parts[1].isdigit():
+            raise ValueError("device must be auto, cpu, or cuda:N")
+        if family not in CUDA_FAMILIES:
+            raise ValueError("this adapter is CPU-only; select CPU explicitly or choose a GPT-2/T5 checkpoint for CUDA")
+        normalized = f"cuda:{int(parts[1])}"
+        if not any(item["id"] == normalized and item["available"] for item in capabilities["devices"]):
+            raise ValueError("requested CUDA device is unavailable; no silent CPU fallback. " + capabilities["cuda"]["reason"])
+        return torch.device(normalized), "CUDA explicitly selected; no fallback after a CUDA failure."
+
+    @staticmethod
+    def _numerics():
+        return {"dtype": "float32", "torch_version": str(torch.__version__),
+                "cuda_runtime": torch.version.cuda,
+                "float32_matmul_precision": torch.get_float32_matmul_precision(),
+                "cuda_matmul_allow_tf32": bool(torch.backends.cuda.matmul.allow_tf32),
+                "cudnn_allow_tf32": bool(torch.backends.cudnn.allow_tf32),
+                "note": "Existing backend numerical settings are observed, not changed. CPU/CUDA outputs need not match bitwise; captured values are direct clones/offloads, not rounding gates."}
+
     def info(self):
         return None if self._info is None else copy.deepcopy(self._info)
 
+    def _quarantine(self):
+        self._quarantined = True
+        if self._info is not None:
+            self._info["state"] = "quarantined"
+
+    def _retire_current(self):
+        if self._quarantined:
+            raise RuntimeError("model owner is quarantined; restart the local app")
+        if self.model is not None and self._device.type == "cuda":
+            try:
+                torch.cuda.synchronize(self._device)
+            except BaseException:
+                self._quarantine()
+                raise
+        if self._info is not None:
+            self._info["state"] = "unloading"
+        self.model = self.tokenizer = self.processor = None
+        if self._device.type == "cuda":
+            try:
+                # Only unused allocator cache is released; live storage is not freed.
+                with torch.cuda.device(self._device):
+                    torch.cuda.empty_cache()
+            except BaseException:
+                self._quarantine()
+                raise
+        self._info = None
+        self._device = torch.device("cpu")
+        self._vram_limit = None
+
     def unload(self):
         with self._lock:
-            if self._quarantined:
-                raise RuntimeError("model owner is quarantined after a failed forward; restart the local app")
-            self.model = self.tokenizer = self.processor = None
-            self._info = None
+            self._retire_current()
 
-    def load(self, path):
+    def load(self, path, device="auto", max_vram_bytes=DEFAULT_VRAM_BYTES):
         import transformers
         with self._lock:
             if self._quarantined:
-                raise RuntimeError("model owner is quarantined after a failed forward; restart the local app")
+                raise RuntimeError("model owner is quarantined; restart the local app")
             inspected = self.inspect(path)
+            selected, reason = self._select_device(device, inspected["family"])
+            _positive(max_vram_bytes, "max_vram_bytes", 64 * 1024**3)
             if inspected["estimated_float32_weight_bytes"] > self.max_model_bytes:
                 raise ValueError("checkpoint float32 weight estimate exceeds model byte limit")
             spec = FAMILIES[inspected["family"]]
@@ -224,9 +420,10 @@ class LocalModelRuntime:
             del shell
             if estimated > self.max_model_bytes:
                 raise ValueError("configuration parameter storage exceeds model byte limit")
-            # Discard old model before allocating another. Failed load leaves no model.
-            self.model = self.tokenizer = self.processor = None
-            self._info = None
+            self._retire_current()
+            load_admission = None
+            if selected.type == "cuda":
+                load_admission = _cuda_admit(selected, max(estimated, inspected["estimated_float32_weight_bytes"]), max_vram_bytes)
             model, report = model_class.from_pretrained(
                 inspected["path"], config=config, local_files_only=True,
                 use_safetensors=True, trust_remote_code=False,
@@ -250,18 +447,37 @@ class LocalModelRuntime:
                 if not tokenizer.is_fast:
                     raise ValueError("a local fast tokenizer is required")
             self.model, self.tokenizer, self.processor = model, tokenizer, processor
+            self._device = selected
+            self._vram_limit = max_vram_bytes if selected.type == "cuda" else None
             family = inspected["family"]
             if family == "gpt2": depths = {"transformer": len(model.transformer.h)}
             elif family == "distilbert": depths = {"encoder": len(model.distilbert.transformer.layer)}
             elif family == "t5": depths = {"encoder": len(model.encoder.block), "decoder": len(model.decoder.block)}
             else: depths = {"encoder": len(model.vit.encoder.layer)}
             self._info = {key: value for key, value in inspected.items() if key != "config"}
-            self._info.update(device="cpu", dtype="float32", state="ready", stack_layers=depths,
+            self._info.update(device=str(selected), requested_device=device,
+                              device_selection_reason=reason, dtype="float32", state="loading", stack_layers=depths,
+                              capture_device="cpu", max_vram_bytes=self._vram_limit, execution_numerics=self._numerics(),
                               identity_note="Local directory and configuration labels, not a cryptographic checkpoint fingerprint or execution attestation.",
                               config_summary={key: value for key, value in model.config.to_dict().items() if key in ("model_type", "architectures", "vocab_size", "n_positions", "n_embd", "n_layer", "n_head", "dim", "hidden_dim", "n_layers", "n_heads", "max_position_embeddings", "d_model", "d_ff", "num_layers", "num_decoder_layers", "num_heads", "hidden_size", "intermediate_size", "num_hidden_layers", "num_attention_heads", "image_size", "patch_size", "num_channels", "num_labels")},
                               layers=list(range(max(depths.values()))),
                               parameter_bytes=sum(p.numel() * p.element_size() for p in model.parameters()),
+                              registered_buffer_bytes=sum(b.numel() * b.element_size() for b in model.buffers()),
                               capture_scope="All supported adapter boundaries, not every operation/neuron or proof of complete interpretability.")
+            if selected.type == "cuda":
+                try:
+                    with _cuda_operation(selected, max_vram_bytes) as telemetry:
+                        load_admission = _cuda_admit(selected,
+                            max(estimated, inspected["estimated_float32_weight_bytes"], self._info["parameter_bytes"])
+                            + self._info["registered_buffer_bytes"], telemetry["effective_limit_bytes"])
+                        model.to(device=selected, dtype=torch.float32)
+                    self._info["gpu_memory"] = {**telemetry, "admission": load_admission, "operation": "model load"}
+                except BaseException:
+                    self._quarantine()
+                    raise
+            else:
+                self._info["gpu_memory"] = None
+            self._info["state"] = "ready"
             return self.info()
 
     def _image_geometry(self):
@@ -334,23 +550,32 @@ class LocalModelRuntime:
             events = len(layers) * len(roles) * steps
             values = len(layers) * len(roles) * sum(length + i for i in range(steps)) * config.n_embd
             boundary = (length + steps - 1) * config.n_embd * 4
+            gpu_capture = boundary
+            context = length + steps - 1
+            workspace = 3 * config.n_head * context * context * 4 + 4 * context * (config.n_inner or 4 * config.n_embd) * 4
         elif family == "distilbert":
             events = len(layers) * len(roles) * length
             values = events * config.dim
             boundary = length * config.dim * 4
+            gpu_capture, workspace = 0, 0
         elif family == "t5":
             enc = sum(x < len(self.model.encoder.block) for x in layers)
             dec = sum(x < len(self.model.decoder.block) for x in layers)
             events = len(roles) * (enc * length * steps + dec * steps * (steps + 1) // 2)
             values = events * config.d_model
             boundary = max(length, steps) * config.d_model * 4
+            gpu_capture = len(roles) * (enc * length + dec * steps) * config.d_model * 4
+            workspace = 3 * config.num_heads * (length * length + steps * steps + length * steps) * 4 + 4 * max(length, steps) * config.d_ff * 4
         else:
             events = len(layers) * len(roles) * image_tokens
             values = len(layers) * image_tokens * sum(config.intermediate_size if r == "intermediate" else config.hidden_size for r in roles)
             boundary = image_tokens * max(config.hidden_size, config.intermediate_size) * 4
+            gpu_capture, workspace = 0, 0
         estimate = {"capture_events_upper_bound": events, "capture_bytes_upper_bound": values * 4,
                     "largest_selected_boundary_bytes": boundary,
-                    "note": "Exact for requested full-length forwards; generation may stop early at EOS. Excludes model/logits, temporary copies and Python metadata; not a peak RAM guarantee."}
+                    "estimated_gpu_capture_transient_bytes": gpu_capture,
+                    "estimated_visible_workspace_bytes": workspace,
+                    "note": "Capture event/byte totals cover requested full-length forwards; EOS may stop earlier. GPU workspace/transient numbers are planning estimates, not exact peaks or guaranteed bounds. Model/logits, temporary copies, Python metadata and external allocations are additional."}
         if events > opts["max_events"] or values * 4 > opts["max_trace_bytes"]:
             raise ValueError(f"full requested capture exceeds budget: up to {events} events / {values * 4} bytes; select fewer hooks, shorter input/output, or explicitly raise limits")
         if boundary > opts["max_tensor_bytes"]:
@@ -364,7 +589,23 @@ class LocalModelRuntime:
             if self.model is None:
                 raise ValueError("load a supported local model first")
             opts = self._settings(settings)
-            return self._run(prompt, opts, image_bytes)
+            self._info["execution_numerics"] = self._numerics()
+            if self._device.type != "cuda":
+                return self._run(prompt, opts, image_bytes)
+            try:
+                with _cuda_operation(self._device, self._vram_limit) as telemetry:
+                    self._active_cuda_limit = telemetry["effective_limit_bytes"]
+                    result = self._run(prompt, opts, image_bytes)
+                telemetry["operation"] = "query and complete CPU capture offload"
+                self._info["gpu_memory"] = telemetry
+                result["gpu_memory"] = copy.deepcopy(telemetry)
+                result["model"] = self.info()
+                return result
+            except CudaStateError:
+                self._quarantine()
+                raise
+            finally:
+                self._active_cuda_limit = None
 
     def _run(self, prompt, opts, image_bytes):
         from .transformer_trace import GPT2TraceSession
@@ -418,7 +659,18 @@ class LocalModelRuntime:
             raise ValueError("T5 checkpoint needs a valid decoder_start_token_id")
         decoder = torch.tensor([[start]], dtype=torch.int64) if family == "t5" else None
         stop_reason, answer = "length", ""
+        if self._device.type == "cuda":
+            logits_bytes = (ids.shape[1] + total_steps - 1 if family == "gpt2" else total_steps) * model.config.vocab_size * 4
+            incremental = (estimate["estimated_gpu_capture_transient_bytes"] + estimate["estimated_visible_workspace_bytes"]
+                           + 4 * estimate["largest_selected_boundary_bytes"] + logits_bytes
+                           + (ids.numel() + total_steps) * 16)
+            estimate["cuda_admission"] = _cuda_admit(self._device, incremental, self._active_cuda_limit)
         try:
+            if self._device.type == "cuda":
+                ids = ids.to(self._device)
+                masks = masks.to(self._device)
+                if decoder is not None:
+                    decoder = decoder.to(self._device)
             for forward in range(total_steps):
                 budget = {"max_events": opts["max_events"] - len(captures),
                           "max_trace_bytes": opts["max_trace_bytes"] - used_bytes}
@@ -446,7 +698,7 @@ class LocalModelRuntime:
                         decoder_input_ids=decoder, decoder_attention_mask=torch.ones_like(decoder),
                         points=points, run_id=ident, **budget,
                         max_tensor_bytes=opts["max_tensor_bytes"], max_input_tokens=opts["max_input_tokens"] + opts["max_new_tokens"],
-                        max_logits_bytes=opts["max_logits_bytes"], synchronous_cpu=True)
+                        max_logits_bytes=opts["max_logits_bytes"], synchronous_cpu=self._device.type == "cpu")
                 else:
                     points = [ViTTracePoint(layer, role, 0, token) for layer in opts["layers"]
                               for role in opts["targets"] for token in range(count)]
@@ -474,10 +726,10 @@ class LocalModelRuntime:
                     del logits  # A last-row view otherwise retains the previous full logits allocation.
                     generated.append(next_id)
                     if family == "gpt2":
-                        ids = torch.cat((ids, torch.tensor([[next_id]], dtype=torch.int64)), dim=1)
+                        ids = torch.cat((ids, torch.tensor([[next_id]], dtype=torch.int64, device=self._device)), dim=1)
                         masks = torch.ones_like(ids)
                     else:
-                        decoder = torch.cat((decoder, torch.tensor([[next_id]], dtype=torch.int64)), dim=1)
+                        decoder = torch.cat((decoder, torch.tensor([[next_id]], dtype=torch.int64, device=self._device)), dim=1)
                     steps.append(step)
                     eos = model.config.eos_token_id
                     if next_id in (eos if isinstance(eos, list) else [eos]):
@@ -501,7 +753,9 @@ class LocalModelRuntime:
                     answer = step["classes"][0]["label"]
                     stop_reason = "single image-classification forward"
                     steps.append(step)
-                del output, records
+                del output, records, record
+                if family in ("distilbert", "vit"):
+                    del result
             if family in ("gpt2", "t5"):
                 answer = self.tokenizer.decode(generated, skip_special_tokens=True)
             return {"answer": answer, "task": self._info["task"], "events": captures,
@@ -520,6 +774,5 @@ class LocalModelRuntime:
             captures.clear()
             # Do not assert that an adapter exception proved cleanup. Retain the
             # owner and refuse reuse/replacement until the app process restarts.
-            self._quarantined = True
-            self._info["state"] = "quarantined"
+            self._quarantine()
             raise

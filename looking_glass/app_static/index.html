@@ -24,9 +24,15 @@
       <input id="model-path" type="text" autocomplete="off" spellcheck="false" placeholder="/path/to/local/checkpoint" list="model-choices">
       <datalist id="model-choices"></datalist>
       <p class="hint">Use a Hugging Face folder with config, tokenizer or image processor, and safetensors weights. No model downloads or custom checkpoint code.</p>
+      <label for="execution-device">Execution device</label>
+      <select id="execution-device"><option value="auto">Auto — prefer CUDA for supported families</option><option value="cpu">CPU</option></select>
+      <div class="device-summary"><p id="device-status" class="hint" aria-live="polite">Checking actual device availability…</p><button id="refresh-devices" class="quiet" type="button">Refresh availability</button></div>
+      <label for="vram-mib">GPU model / work allowance · MiB</label>
+      <input id="vram-mib" type="number" min="1" max="65536" value="2048">
+      <p id="vram-help" class="hint">CUDA preflight and synchronized checks accompany a scoped PyTorch caching-allocator cap. A stricter existing cap is preserved and restored afterward. This is not a total-VRAM guarantee: driver/context and non-PyTorch allocations are outside it. Full captured vectors are copied to CPU RAM. CPU execution ignores this allowance.</p>
       <div class="button-row"><button id="inspect-button" class="secondary" type="button">Inspect folder</button><button id="load-button" type="button">Load model</button></div>
       <div id="model-info" class="info-box" aria-live="polite">No model loaded.</div>
-      <p class="hint">CPU float32 · GPT-2, DistilBERT masked language models, T5, and ViT image classifiers. Other architectures are not supported by this interface.</p>
+      <p class="hint">Float32: GPT-2 and T5 support CPU or one CUDA GPU. Auto uses CUDA for GPT-2/T5 when available and CPU for DistilBERT masked language models or ViT image classifiers, with the device-selection reason recorded. No half-precision, multi-GPU sharding, GGUF, or custom-model support.</p>
     </section>
     <section aria-labelledby="open-heading">
       <h2 id="open-heading">Reopen a saved capture</h2>
@@ -39,7 +45,7 @@
       <h2 id="capture-heading">Capture settings</h2>
       <label for="capture-mode">Hook selection</label>
       <select id="capture-mode"><option value="auto">Auto — all supported observation points</option><option value="custom">Custom — choose points and layers</option></select>
-      <p class="hint">Auto copies full vectors at supported module outputs, not every internal operation or neuron. Hooks affect this runtime session, not the checkpoint.</p>
+      <p class="hint">Auto uses direct forward hooks to copy full vectors at supported module outputs, not every operation or neuron. Rounding-based or gradient gates are separate experiments, not this capture mode. Hooks affect this runtime session, not the checkpoint.</p>
       <div id="custom-capture" hidden>
         <fieldset><legend>Module outputs</legend><div id="target-options" class="checklist"></div></fieldset>
         <label for="layers">Layer indices <span class="muted">(zero-based)</span></label>
@@ -50,9 +56,9 @@
         <div><label for="max-input">Input token limit</label><input id="max-input" type="number" min="1" max="4096" value="256"></div>
         <div><label for="max-output">New token limit</label><input id="max-output" type="number" min="1" max="128" value="8"></div>
         <div><label for="max-events">Event limit</label><input id="max-events" type="number" min="1" max="100000" value="10000"></div>
-        <div><label for="trace-mib">Trace budget · MiB</label><input id="trace-mib" type="number" min="1" max="512" value="128"></div>
+        <div><label for="trace-mib">CPU capture RAM · MiB</label><input id="trace-mib" type="number" min="1" max="512" value="128"></div>
       </div>
-      <p class="hint">Limits reject oversized work; they do not silently truncate captures. The trace budget counts retained tensor bytes, not model weights or peak process memory. Full uncached generation repeats work at each step.</p>
+      <p class="hint">Limits reject oversized work; they do not silently truncate captures. The CPU capture budget counts retained tensor bytes, not GPU model memory, model weights, temporary copy buffers, or peak process RAM. Full uncached generation repeats work at each step.</p>
     </section>
     <section class="privacy-note"><h2>Nothing saved automatically</h2><p>Prompts, outputs, and captures stay in this local process unless you choose <strong>Save capture</strong>. Approximate viewing does not discard the original vectors. Clearing a run releases the app’s references; it is not secure memory erasure.</p></section>
   </aside>

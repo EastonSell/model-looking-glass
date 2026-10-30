@@ -14,7 +14,8 @@ class FakeRuntime:
     def __init__(self): self.loaded = None
     def info(self): return self.loaded
     def inspect(self, path): return {"path": path, "family": "gpt2"}
-    def load(self, path): self.loaded = {"name": path, "family": "gpt2", "targets": ["block"], "layers": 1}; return self.loaded
+    def capabilities(self): return {"devices": [{"id": "cpu", "name": "CPU", "available": True}], "cuda": {"available": False}}
+    def load(self, path, **kwargs): self.loaded = {"name": path, "family": "gpt2", "targets": ["block"], "layers": 1}; return self.loaded
     def run(self, prompt, settings, image_bytes=None):
         if prompt == "fail": raise RuntimeError("synthetic failure")
         event = SimpleNamespace(value=torch.ones(1, 2, 4), metadata=lambda: {"module_path": "block.0"})
@@ -97,7 +98,7 @@ def test_actual_local_checkpoint_through_http_and_reopen(tmp_path, family):
     httpd = create_server(state); thread = threading.Thread(target=httpd.serve_forever, daemon=True); thread.start()
     endpoint = (state, httpd)
     try:
-        assert call(endpoint, "/api/load", "POST", {"path": str(checkpoint)})[0] == 200
+        assert call(endpoint, "/api/load", "POST", {"path": str(checkpoint), "device": "cpu"})[0] == 200
         request = {"prompt": "hello [MASK]" if family == "distilbert" else "hello world", "settings": {"max_new_tokens": 2}}
         if family == "vit": request["image_base64"] = base64.b64encode(image_bytes()).decode()
         code, body, _ = call(endpoint, "/api/run", "POST", request)
@@ -112,3 +113,46 @@ def test_actual_local_checkpoint_through_http_and_reopen(tmp_path, family):
         assert json.loads(call(endpoint, "/api/tensor?event=0&vector=0&limit=4096")[1]) == raw
     finally:
         httpd.shutdown(); thread.join(5); httpd.server_close()
+
+
+def test_device_inventory_and_load_options_are_explicit(server):
+    state = server[0]
+    state.runtime.capabilities = lambda: {"devices": [{"id": "cpu", "name": "CPU", "available": True}], "cuda": {"available": False, "reason": "CPU-only fixture"}, "supported_cuda_families": ["gpt2", "t5"]}
+    received = []
+    def load(path, **kwargs):
+        received.append((path, kwargs)); return {"family": "gpt2", "device": kwargs["device"]}
+    state.runtime.load = load
+    body = json.loads(call(server)[1])
+    assert body["cuda"]["available"] is False and body["devices"][0]["id"] == "cpu"
+    response = call(server, "/api/load", "POST", {"path": "local", "device": "cuda:1", "max_vram_bytes": 2**30})
+    assert response[0] == 200
+    assert received == [("local", {"device": "cuda:1", "max_vram_bytes": 2**30})]
+    for budget in (0, True, 2**50, "100"):
+        assert call(server, "/api/load", "POST", {"path": "local", "max_vram_bytes": budget})[0] == 400
+    assert len(received) == 1
+
+
+def test_cuda_unavailable_is_not_a_successful_cpu_load(tmp_path, monkeypatch):
+    from test_app_runtime import local_checkpoint
+    from looking_glass.app_runtime import LocalModelRuntime
+    checkpoint = tmp_path / "model"; local_checkpoint(checkpoint, "gpt2")
+    runtime = LocalModelRuntime()
+    monkeypatch.setattr(LocalModelRuntime, "capabilities", staticmethod(lambda: {
+        "devices": [{"id": "cpu", "name": "CPU", "available": True}],
+        "cuda": {"available": False, "reason": "Synthetic unavailable device"},
+        "supported_cuda_families": ["gpt2", "t5"]}))
+    state = AppState(runtime=runtime, export_root=tmp_path / "exports")
+    with pytest.raises(ValueError, match="unavailable"):
+        state.post("load", {"path": str(checkpoint), "device": "cuda:0"})
+    assert runtime.info() is None and state.store.summary() is None
+    info = state.post("load", {"path": str(checkpoint), "device": "cpu"})
+    assert info["device"] == "cpu"
+
+
+def test_lowered_gpu_server_allowance_defaults_apply_to_cpu_request(tmp_path):
+    received = []
+    fake = FakeRuntime()
+    fake.load = lambda path, **kwargs: received.append(kwargs) or {"device": kwargs["device"]}
+    state = AppState(runtime=fake, export_root=tmp_path, max_vram_bytes=512 * 1024**2)
+    state.post("load", {"path": "model", "device": "cpu"})
+    assert received == [{"device": "cpu", "max_vram_bytes": 512 * 1024**2}]

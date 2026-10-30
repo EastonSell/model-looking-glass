@@ -12,9 +12,9 @@ Start with **direct activation capture**, explicit execution coordinates, and co
 python install.py
 ```
 
-With Python 3.11+, from a trusted clone, this creates an isolated environment and opens a local settings page. Select a compatible **local safetensors checkpoint**, enter a prompt (or a ViT image), and capture every supported boundary or choose specific hooks. Full vectors stay **in RAM by default**; inspect raw values/bits, optionally view approximate grouped coordinates, and explicitly save/reopen lossless traces. Hooks do not alter checkpoint files.
+With Python 3.11+, from a trusted clone, this creates an isolated environment and opens a local settings page. Linux/Windows default to the official CUDA 13.2 PyTorch build (requires a compatible NVIDIA GPU/driver); use `python install.py --backend cpu` without CUDA. The installer never installs a driver. Select a compatible **local safetensors checkpoint**, enter a prompt (or a ViT image), and capture every supported boundary or choose specific hooks. Full vectors stay **in RAM by default**; inspect raw values/bits, optionally view approximate grouped coordinates, and explicitly save/reopen lossless traces. Hooks do not alter checkpoint files.
 
-This first app supports **CPU GPT-2, DistilBERT masked LM, T5 and ViT classification**, not arbitrary open checkpoints or every internal operation. Grouped views are not semantic explanations. [Installation, compatibility, memory limits and privacy](docs/LOCAL_APP.md).
+The workbench has a **CUDA-first GPT-2/T5 path**, with CPU fallback; DistilBERT masked LM and ViT classification currently remain CPU-only. Choose Auto or an explicit device in Settings. CUDA implementation is hardware-gated and has **not been executed on a GPU in the current validation environment**. This is not arbitrary-checkpoint or every-operation support. Grouped views are not semantic explanations. [Installation, compatibility, memory limits and privacy](docs/LOCAL_APP.md).
 
 ## What to use
 
