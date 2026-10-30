@@ -179,7 +179,7 @@ def test_isolated_entries_ignore_pythonpath_shadow_before_import(tmp_path):
     for role in ("launcher", "owner"):
         result = subprocess.run([sys.executable, "-I", "-S", "-B", str(entry), role, "--help"],
                                 env=environment, capture_output=True, text=True, timeout=30)
-        assert result.returncode == 0 and "usage:" in result.stdout
+        assert result.returncode == 0 and "usage:" in result.stdout, result.stderr
         assert not marker.exists()
     result = subprocess.run([sys.executable, "-B", str(entry), "launcher", "--help"],
                             env={**environment, "PYTHONPATH": ""}, capture_output=True, text=True, timeout=30)

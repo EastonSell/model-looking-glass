@@ -97,10 +97,11 @@ def require_same(actual, expected, message):
 
 
 def load_evidence(root, attempt):
+    # Reject a changed journal before reading any direction or capture tensors.
+    raw = saved.pinned_file(attempt / 'events.jsonl', JOURNAL_SHA256, limit=8 * 1024 * 1024)
     cases, directions = saved.load_frozen_inputs(
         root / 'experiments/distilgpt2_agreement_direction_cases_v1.json',
         root / 'results/distilgpt2-agreement-direction-training-v1')
-    raw = saved.pinned_file(attempt / 'events.jsonl', JOURNAL_SHA256, limit=8 * 1024 * 1024)
     records = [saved.strict_json(line) for line in raw.splitlines()]
     science.validate_journal_layout(records, cases)
     saved.validate_recorded_runtime(records[0]['event'])

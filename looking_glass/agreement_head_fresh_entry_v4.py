@@ -7,6 +7,7 @@ not a sandbox or an attestation of the installed dependencies.
 
 import runpy
 import sys
+import sysconfig
 from pathlib import Path
 
 
@@ -16,14 +17,22 @@ def main():
     if len(sys.argv) < 2 or sys.argv[1] not in ("launcher", "owner"):
         raise ValueError("choose the fixed launcher or owner entry")
     root = Path(__file__).resolve(strict=True).parents[1]
-    executable = Path(sys.executable).resolve(strict=True)
-    site = (executable.parents[1] / "Lib" / "site-packages").resolve(strict=True)
-    if not site.is_dir() or root == site:
+    # Keep the invocation path: POSIX venv executables commonly symlink to the
+    # base interpreter, and -S on older Python leaves sys.prefix at that base.
+    executable = Path(sys.executable).absolute()
+    venv = executable.parent.parent.resolve(strict=True)
+    if not (venv / "pyvenv.cfg").is_file():
+        raise RuntimeError("the interpreter's virtual environment is unavailable")
+    paths = sysconfig.get_paths(vars={"base": str(venv), "platbase": str(venv)})
+    sites = tuple(dict.fromkeys(Path(paths[key]).resolve(strict=True)
+                               for key in ("purelib", "platlib")))
+    if any(not site.is_dir() or site == root or not site.is_relative_to(venv)
+           for site in sites):
         raise RuntimeError("the interpreter's virtual-environment site is unavailable")
     # Isolated/no-site startup places the interpreter's standard library first.
     # Do not run .pth files or inherit PYTHONPATH, the current directory, or the
     # user site; append only the trusted venv packages and this checkout.
-    sys.path.extend((str(site), str(root)))
+    sys.path.extend((*map(str, sites), str(root)))
     role = sys.argv[1]
     sys.argv = [sys.argv[0], *sys.argv[2:]]
     module = ("looking_glass.agreement_head_fresh_launcher_v4" if role == "launcher" else
