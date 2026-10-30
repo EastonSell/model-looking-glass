@@ -403,6 +403,9 @@ def test_supervised_controller_roots_guards_and_fails_closed(monkeypatch, tmp_pa
         'failure': None, 'diagnostic_failure': None})
     monkeypatch.setattr(api, '_check_bootstrap', lambda repo: None)
     monkeypatch.setattr(api, '_require_pristine_dependencies', lambda: None)
+    # Simulate the pinned controller runtime; no actual GPU owner is launched.
+    monkeypatch.setattr(api, 'sys', SimpleNamespace(version_info=(3, 11, 15),
+                                                   _base_executable=sys._base_executable))
     def create_attempt(*args):
         attempt.mkdir()
         return attempt
@@ -522,3 +525,28 @@ def test_supervised_controller_roots_guards_and_fails_closed(monkeypatch, tmp_pa
             assert not (attempt / 'controller-final.json').exists()
         if mode == 'interrupted':
             assert result['error_type'] == 'KeyboardInterrupt' and api._CUSTODY['failure'] is failure
+
+
+def test_unsupported_controller_runtime_is_rejected_before_attempt(monkeypatch, tmp_path):
+    from looking_glass import flan_t5_device_controller as api
+    workspace, assets, site = (tmp_path / name for name in ('workspace', 'assets', 'site'))
+    for path in (workspace, assets, site):
+        path.mkdir()
+    git, smi = tmp_path / 'git.exe', tmp_path / 'nvidia-smi.exe'
+    git.write_bytes(b'synthetic git')
+    smi.write_bytes(b'synthetic inventory')
+    monkeypatch.setenv('LOOKING_GLASS_FLAN_T5_BOOTSTRAP_SITE', str(site))
+    monkeypatch.setattr(api, 'GPU_SMOKE_ENABLED', True)
+    custody = {'entered': False, 'may_have_started': False, 'failure': None}
+    monkeypatch.setattr(api, '_CUSTODY', custody)
+    monkeypatch.setattr(api, '_check_bootstrap', lambda repo: None)
+    monkeypatch.setattr(api, '_require_pristine_dependencies', lambda: None)
+    monkeypatch.setattr(api, 'sys', SimpleNamespace(version_info=(3, 12, 0)))
+    monkeypatch.setattr(api, '_new_attempt', lambda *args: pytest.fail('attempt created'))
+    monkeypatch.setattr(api, 'run_supervised', lambda *args, **kwargs: pytest.fail('owner launched'))
+    result = api.run_controller(workspace_root=workspace, run_dir=tmp_path / 'attempt',
+        asset_dir=assets, site_packages=site, git_executable=git, smi=smi, source_commit='b' * 40)
+    assert result['status'] == 'incomplete' and result['may_have_started'] is False
+    assert result['error_type'] == 'RuntimeError'
+    assert str(custody['failure']) == 'controller interpreter version differs from the pinned runtime'
+    assert not (tmp_path / 'attempt').exists()

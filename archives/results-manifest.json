@@ -2,8 +2,8 @@
   "base_commit": "3cbdec78134855532811a58a64e8dd5d4d457185",
   "repository": "EastonSell/model-looking-glass",
   "selection": "Historical results tensor/archive payloads, excluding compact records required by the active CPU tests; original bytes preserved in immutable Git history. This manifest does not claim semantic redundancy.",
-  "count": 2109,
-  "total_bytes": 2818199058,
+  "count": 2108,
+  "total_bytes": 2817083922,
   "files": [
     {
       "path": "results/answer-format-feasibility-cpu-v1-20261029/development/attempt/development/matrix.f32",
@@ -1344,11 +1344,6 @@
       "path": "results/distilgpt2-copy-head-pairs-dose-v1-20261028/stdout.bin",
       "blob_sha": "6462e2f17c9b8748bb9fd058c0716be616b96aef",
       "size": 104550
-    },
-    {
-      "path": "results/distilgpt2-copying-dev-v1-20261028/run/attentions.f32",
-      "blob_sha": "6e819e1767fbf8294e99d9387bce368e34b6b5ee",
-      "size": 1115136
     },
     {
       "path": "results/distilgpt2-copying-dev-v1-20261028/run/last_logits.f32",

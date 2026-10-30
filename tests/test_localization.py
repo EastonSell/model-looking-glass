@@ -163,18 +163,25 @@ class LocalizationTests(unittest.TestCase):
         self.assertEqual(compare(events, events, atol=1 << 100)["status"],
                          "no_difference_observed")
 
-    def test_named_and_lazy_negative_views_are_unavailable(self):
-        tensor = torch.tensor([1.])
+    def test_lazy_negative_views_are_unavailable(self):
+        unsupported = torch.tensor([1.])._neg_view()
+        item = TraceEvent("run", "a", 0, 0, tuple(unsupported.shape),
+                          str(unsupported.dtype), "cpu", unsupported)
+        result = compare([item], [item])
+        self.assertEqual(result["status"], "inconclusive")
+        self.assertEqual(result["coverage"]["unavailable"], 1)
+
+    @unittest.skipUnless(hasattr(torch.Tensor, "refine_names"),
+                         "this PyTorch build has no named-tensor API")
+    def test_named_tensors_are_unavailable_when_supported(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
-            named = tensor.refine_names("features")
-        for unsupported in (named, tensor._neg_view()):
-            item = TraceEvent("run", "a", 0, 0, tuple(unsupported.shape),
-                              str(unsupported.dtype), "cpu", unsupported)
-            with self.subTest(unsupported=unsupported):
-                result = compare([item], [item])
-                self.assertEqual(result["status"], "inconclusive")
-                self.assertEqual(result["coverage"]["unavailable"], 1)
+            unsupported = torch.tensor([1.]).refine_names("features")
+        item = TraceEvent("run", "a", 0, 0, tuple(unsupported.shape),
+                          str(unsupported.dtype), "cpu", unsupported)
+        result = compare([item], [item])
+        self.assertEqual(result["status"], "inconclusive")
+        self.assertEqual(result["coverage"]["unavailable"], 1)
 
     def test_scalar_and_inference_mode_snapshots_can_be_compared(self):
         with torch.inference_mode():

@@ -43,6 +43,18 @@ After explicit approval, installed official CPU PyTorch and project testing extr
 - Causal compatibility, BERT workspace/ledger/parser guards, archive tool and historical-auditor boundary: **188 passed, 4 skipped** in one combined run. The skips explicitly require the removed named-tensor API, Python 3.11 historical reconstruction, Windows junction behavior, or historical Torch 2.8.0+cu128. They are not validated behavior.
 - Native dependency-site and fabricated-owner bootstrap fixtures: **50 passed, 4 explicit Windows integration skips** in one combined run. Cross-platform shadow/hash/no-subprocess guards remain exercised.
 - Fixed ordinary-checkout test fixtures rather than weakening workspace, version, disk-space, isolation or scientific source pins. A Torch API compatibility fix preserves named-tensor rejection on builds with that API.
-- Restored **five original compact test evidence fixtures (12,313,354 bytes)** with their exact historical blob hashes; see [retained fixtures](../archives/CPU_TEST_FIXTURES.md). The current archive is **2,109 files / 2,818,199,058 bytes**. The original 2,114-file archival checkpoint above is historical.
+- Restored **six original compact test evidence fixtures (13,428,490 bytes)** with their exact historical blob hashes; see [retained fixtures](../archives/CPU_TEST_FIXTURES.md). The current archive is **2,108 files / 2,817,083,922 bytes**. The original 2,114-file archival checkpoint above is historical.
 
 The first two broad-suite diagnostics were interrupted after identifying environment and fixture prerequisites; neither is a completed passing run. A complete fixed-snapshot CPU-suite result remains pending at this checkpoint. Mocked runtime metadata tests are guard/state-machine coverage, not evidence that the old CUDA/Python/Windows runtime was reproduced. No hosted CI run is configured at this checkpoint.
+
+### Additional compatibility findings
+
+A later fixed-snapshot diagnostic was externally interrupted at approximately 45%; its log recorded 46 failed cases and 37 skips, without a terminal suite result. It is not a completed or passing run. Targeted fixes subsequently validated:
+
+- Further Torch named-API compatibility: 114 passed / 1 API prerequisite skip.
+- Actual return-opcode fault injection on Python 3.12 and synthetic GPU workspace fixtures: 175 passed / 8 pre-existing platform/cache/opt-in skips. No production GPU guards changed.
+- Strict dependency-site admission now recognizes both virtualenv and standard-library venv metadata, preserving exact base/version/implementation and no-system-site checks. Complete sentiment-owner module: 74 passed; committed-source multitoken-operator module: 6 passed.
+- Synthetic FLAN controller/runtime and output-directory fixtures: 38 passed / 2 existing skips. Synthetic empty-selection/runtime rejection: 11 passed / 1 Windows junction skip.
+- Restored the original 1,115,136-byte attention fixture needed by two saved-head-selection tests; both related modules: 14 passed.
+
+These scoped results do not substitute for the still-pending complete CPU-suite result or a real historical GPU run.

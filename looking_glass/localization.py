@@ -150,7 +150,7 @@ def _payload(event):
         return None, "value is missing or is not a tensor"
     if value.layout != torch.strided or value.is_nested or value.device.type not in ("cpu", "cuda"):
         return None, "only dense strided CPU or CUDA values are supported"
-    if value.is_neg() or value.is_conj() or any(name is not None for name in value.names):
+    if value.is_neg() or value.is_conj() or any(name is not None for name in getattr(value, "names", ())):
         return None, "named tensors and lazy negative or conjugate views are unsupported"
     if value.dtype not in _FORMATS:
         return None, "value dtype is not a supported floating type"

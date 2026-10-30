@@ -98,7 +98,7 @@ def _validate_result(result, points, max_bytes):
             return None, f"record {index} has inconsistent CLS or patch-grid coordinates"
         if (type(value) is not torch.Tensor or value.device.type != "cpu" or value.dtype != torch.float32
                 or value.layout != torch.strided or value.is_nested or value.is_neg() or value.is_conj()
-                or any(name is not None for name in value.names) or tuple(value.shape) != (width,)):
+                or any(name is not None for name in getattr(value, "names", ())) or tuple(value.shape) != (width,)):
             return None, f"record {index} has an invalid saved vector"
         total += value.numel() * value.element_size()
         if total > max_bytes:

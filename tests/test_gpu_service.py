@@ -1167,7 +1167,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
                 if event == 'call':
                     frame.f_trace_opcodes = True
                     offsets[frame.f_code] = {item.offset for item in dis.get_instructions(frame.f_code)
-                                             if item.opname == 'RETURN_VALUE'}
+                                             if item.opname in {'RETURN_VALUE', 'RETURN_CONST'}}
                 elif (event == 'opcode' and frame.f_lasti in offsets.get(frame.f_code, ())
                       and frame.f_locals['startup_terminal'][0] and not fired):
                     fired.append(True)

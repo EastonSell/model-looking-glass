@@ -150,7 +150,8 @@ def test_output_volume_rejects_a_junction_to_the_c_drive(tmp_path):
         os.rmdir(junction)
 
 
-def test_empty_selection_writes_no_model_outcome_before_checkpoint_loading(tmp_path, monkeypatch):
+@pytest.mark.parametrize("recorded_python", ["3.11.15", "unsupported-test-runtime"])
+def test_empty_selection_preserves_runtime_gate_and_no_model_outcome(tmp_path, monkeypatch, recorded_python):
     import torch
     import transformers
     import looking_glass.flan_t5_feasibility as feasibility
@@ -172,6 +173,8 @@ def test_empty_selection_writes_no_model_outcome_before_checkpoint_loading(tmp_p
     for key, value in {"CUDA_VISIBLE_DEVICES": "-1", "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1",
                        "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1", "MKL_CBWR": "COMPATIBLE"}.items():
         monkeypatch.setenv(key, value)
+    # Synthetic no-selection path: do not claim historical Gaussian replay.
+    monkeypatch.setattr(owner.platform, "python_version", lambda: recorded_python)
     monkeypatch.setattr(owner, "source_snapshot", lambda *a, **k: {"revision": revision})
     monkeypatch.setattr(owner, "verify_binding", lambda *a, **k: {"source_revision": revision})
     monkeypatch.setattr(feasibility, "verify_assets", lambda path: {"files": {}})
@@ -183,6 +186,11 @@ def test_empty_selection_writes_no_model_outcome_before_checkpoint_loading(tmp_p
     monkeypatch.setattr(transformers.AutoTokenizer, "from_pretrained", lambda *a, **k: fake)
     monkeypatch.setattr(transformers.T5ForConditionalGeneration, "from_pretrained",
                         lambda *a, **k: pytest.fail("checkpoint must not load"))
+    if recorded_python != "3.11.15":
+        with pytest.raises(ValueError, match="fixed Gaussian runtime differs"):
+            owner.run(args)
+        assert not (attempt / "child").exists()
+        return
     result = owner.run(args)
     assert result["status"] == "no-selected-groups" and result["model_loaded"] is False
     assert not (attempt / "child").exists()
