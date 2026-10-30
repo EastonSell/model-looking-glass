@@ -9,7 +9,11 @@ description = "Reproducible neural-network observation and causal experiments"
 requires-python = ">=3.10"
 dependencies = ["torch>=2.6"]
 
+[project.scripts]
+model-looking-glass = "looking_glass.app:main"
+
 [project.optional-dependencies]
+app = ["torch==2.15.0", "transformers==4.57.3", "safetensors>=0.4.3", "numpy>=1.26", "Pillow==11.3.0"]
 transformer = ["transformers==4.57.3"]
 test = ["numpy>=1.26", "pytest>=8,<9", "Pillow==11.3.0"]
 
@@ -17,4 +21,4 @@ test = ["numpy>=1.26", "pytest>=8,<9", "Pillow==11.3.0"]
 include = ["looking_glass*"]
 
 [tool.setuptools.package-data]
-looking_glass = ["PROTOCOL.md"]
+looking_glass = ["PROTOCOL.md", "app_static/*.html", "app_static/*.js", "app_static/*.css"]

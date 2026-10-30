@@ -6,3 +6,6 @@ results/local/
 build/
 *.egg-info/
 dist/
+
+# Local workbench exports can contain private prompts and activations.
+looking-glass-runs/

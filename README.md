@@ -6,6 +6,16 @@ Start with **direct activation capture**, explicit execution coordinates, and co
 
 **[Documentation: start here](docs/README.md)** · [Findings and limits](docs/PROJECT_STATUS.md#research-evidence) · [One living roadmap](docs/RESEARCH_ROADMAP.md)
 
+## Try the local workbench
+
+```bash
+python install.py
+```
+
+With Python 3.11+, from a trusted clone, this creates an isolated environment and opens a local settings page. Select a compatible **local safetensors checkpoint**, enter a prompt (or a ViT image), and capture every supported boundary or choose specific hooks. Full vectors stay **in RAM by default**; inspect raw values/bits, optionally view approximate grouped coordinates, and explicitly save/reopen lossless traces. Hooks do not alter checkpoint files.
+
+This first app supports **CPU GPT-2, DistilBERT masked LM, T5 and ViT classification**, not arbitrary open checkpoints or every internal operation. Grouped views are not semantic explanations. [Installation, compatibility, memory limits and privacy](docs/LOCAL_APP.md).
+
 ## What to use
 
 | Task | Entry point | Scope |

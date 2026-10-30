@@ -4,6 +4,8 @@ Use the short path below. Most remaining files in this directory are **frozen st
 
 ## Start here
 
+For interactive use, start with the [local model workbench](LOCAL_APP.md): settings, local checkpoint queries, full RAM captures and explicit save/reopen.
+
 1. [Repository quick start](../README.md#quick-start): direct capture without downloading a model.
 2. [Known-corruption → localization → restoration tutorial](GPT2_TRACE_WORKFLOW.md): one end-to-end CPU workflow using an explicitly cached checkpoint.
 3. [Findings, support scope and limits](PROJECT_STATUS.md): what the research actually supports, with representative positive and negative evidence.
