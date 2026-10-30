@@ -2,7 +2,6 @@ import threading
 import time
 import unittest
 import inspect
-import dis
 import io
 import json
 import subprocess
@@ -271,16 +270,13 @@ class OwnerTests(unittest.TestCase):
     def test_startup_return_failure_marks_before_delegating_blocked_thread_hook(self):
         from looking_glass import service
         marked, hook_entered, release, ready = (threading.Event() for _ in range(4))
-        fired, results, offsets = [], [], {}
+        fired, results = [], []
         previous_trace, previous_hook = threading.gettrace(), threading.excepthook
 
+        # Trace the return boundary directly: CPython may use RETURN_CONST.
         def trace(frame, event, _arg):
             if frame.f_code.co_name == 'startup':
-                if event == 'call':
-                    frame.f_trace_opcodes = True
-                    offsets[frame.f_code] = {item.offset for item in dis.get_instructions(frame.f_code)
-                                             if item.opname == 'RETURN_VALUE'}
-                elif (event == 'opcode' and frame.f_lasti in offsets.get(frame.f_code, ())
+                if (event == 'return'
                       and frame.f_locals.get('startup_terminal', [False])[0] and not fired):
                     fired.append(True)
                     raise KeyboardInterrupt('injected startup target return')
@@ -517,16 +513,12 @@ class OwnerTests(unittest.TestCase):
         self.assertTrue(all(event == 'unsafe' for event in events))
 
     def _interrupted_terminal_return(self, name, marker):
-        interrupted, offsets = [], {}
+        interrupted = []
         previous = threading.gettrace()
 
         def trace(frame, event, _arg):
             if frame.f_code.co_name == name:
-                if event == 'call':
-                    frame.f_trace_opcodes = True
-                    offsets[frame.f_code] = {instruction.offset for instruction in dis.get_instructions(frame.f_code)
-                                             if instruction.opname == 'RETURN_VALUE'}
-                elif (event == 'opcode' and frame.f_lasti in offsets.get(frame.f_code, ())
+                if (event == 'return'
                       and frame.f_locals.get(marker, [False])[0] and not interrupted):
                     interrupted.append(True)
                     raise KeyboardInterrupt('injected terminal return interruption')

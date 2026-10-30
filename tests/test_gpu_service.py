@@ -1215,7 +1215,13 @@ class ConcreteBackendContractTests(unittest.TestCase):
                 except BrokerShutdownError:
                     broker._thread.join(5)
 
-    def test_lifecycle_hook_retains_target_failure_when_capture_is_interrupted(self):
+    def test_lifecycle_hook_retains_target_failure_when_capture_entry_is_interrupted(self):
+        self._assert_lifecycle_hook_retains_target_failure("entry")
+
+    def test_lifecycle_hook_retains_target_failure_when_capture_unpack_is_interrupted(self):
+        self._assert_lifecycle_hook_retains_target_failure("unpack")
+
+    def _assert_lifecycle_hook_retains_target_failure(self, boundary):
         import torch
         from looking_glass import service
         from looking_glass.owner_completion import OwnerCompletionAuthority
@@ -1227,7 +1233,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
         unpack = {item.offset for item in dis.get_instructions(code) if item.opname == 'UNPACK_SEQUENCE'}
         self.assertTrue(unpack)
         previous_trace = threading.gettrace()
-        for boundary in ('entry', 'unpack'):
+        for boundary in (boundary,):
             with self.subTest(boundary=boundary):
                 authority = OwnerCompletionAuthority()
                 slot = service._ServiceLifecycleCustody(authority).startup

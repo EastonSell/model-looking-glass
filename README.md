@@ -46,7 +46,9 @@ python -m looking_glass.experiment --output results/local/my-run
 python -m unittest discover -s tests -p 'test_archive_results.py' -v
 ```
 
-The complete historical suite has additional dependencies and archived fixtures. Do not treat a focused pass, missing-dependency skip, or unrun test as a full-suite pass. See [this cleanup's validation](docs/MAINTENANCE_2026-10-29.md).
+The complete historical suite has additional dependencies and archived fixtures. The default `python -m pytest tests` run explicitly excludes 57 historical opcode-exception experiments: Python documents that their injection mechanism can cause undefined interpreter behavior. Their exact cases and assertions are preserved behind explicit, per-case process-isolated opt-in. See [test boundaries and controls](docs/EXPERIMENTAL_OPCODE_TESTS.md).
+
+Do not treat a focused pass, prerequisite skip, excluded experiment, or unrun test as validated behavior. See [this cleanup's actual results](docs/MAINTENANCE_2026-10-29.md).
 
 ## What the research supports
 
