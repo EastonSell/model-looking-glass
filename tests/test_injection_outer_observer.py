@@ -1,4 +1,5 @@
 """Real synthetic child processes only; no model, site or study split."""
+from contextlib import ExitStack, contextmanager
 import hashlib
 import importlib
 import inspect
@@ -47,10 +48,56 @@ class FakeJob:
         self.closed = True
 
 
+def close_synthetic_posix_process(process):
+    """POSIX test bookkeeping only: no Windows handle/Job attestation."""
+    if process.poll() is None or process.returncode is None:
+        raise AssertionError('synthetic child must be reaped before handle bookkeeping')
+    for stream in (process.stdin, process.stdout, process.stderr):
+        if stream is not None and not stream.closed:
+            stream.close()
+
+
+@contextmanager
+def synthetic_observer_context():
+    """Own only fake-Job test custody; never discard an unknown quarantine."""
+    if outer._QUARANTINED:
+        raise AssertionError('test began with unverified process custody')
+    adapter = (mock.patch.object(outer, '_close_process_handle', close_synthetic_posix_process)
+               if os.name != 'nt' else mock.patch.object(outer, '_close_process_handle', outer._close_process_handle))
+    with adapter:
+        try:
+            yield
+        finally:
+            remaining = list(outer._QUARANTINED)
+            for state in remaining:
+                job, process = state.get('job'), state.get('process')
+                if not isinstance(job, FakeJob):
+                    raise AssertionError('refusing to clear non-test Job custody')
+                if process is not None:
+                    if process.poll() is None:
+                        process.kill()
+                    process.wait(timeout=10)
+                    if process.returncode is None:
+                        raise AssertionError('synthetic child could not be reaped')
+                    outer._close_process_handle(process)
+                # Deliberately bypass fault-injecting subclass cleanup only at
+                # test teardown, after observing this direct child's real exit.
+                FakeJob.terminate_and_wait(job)
+                if FakeJob._accounting(job).active_processes != 0:
+                    raise AssertionError('synthetic Job did not drain')
+                FakeJob.close(job)
+                outer._QUARANTINED.remove(state)
+            if remaining:
+                raise AssertionError('test left synthetic process custody unresolved (recovered at teardown)')
+
+
 class OuterObserverTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
+        stack = ExitStack()
+        self.addCleanup(stack.close)  # Recover owned children before deleting their directory.
+        stack.enter_context(synthetic_observer_context())
         self.root = Path(self.tmp.name)
         self.config = self.root / 'config.json'
         self.config.write_bytes(b'{"config":"fabricated"}')

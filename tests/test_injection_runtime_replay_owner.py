@@ -168,6 +168,8 @@ def test_private_replay_postcheck_binds_exact_terminal_and_receipt_bytes(tmp_pat
 
 
 def test_supervisor_receipt_binds_exit_audit_command_and_logs(tmp_path):
+    # Receipt validation uses declared fixture identity, not a native OS probe.
+    parent_identity = (os.getpid(), 123456789)
     config = {'postcheck_file': str(tmp_path / 'child-postcheck.json'), 'attempt_dir': str(tmp_path / 'attempt')}
     post = {'schema': 'mlg-injection-runtime-replay-child-postcheck-v1',
             'status': 'validated_no_model_forward', 'plan_sha256': '1' * 64,
@@ -189,11 +191,11 @@ def test_supervisor_receipt_binds_exit_audit_command_and_logs(tmp_path):
     raw = child._canonical(verdict)
     (output / 'supervisor.json').write_bytes(raw)
     result = owner.check_supervisor_record(child, config, '1' * 64, '2' * 64, output,
-                                           ['base', 'config'], verdict, validation_only=True)
+                                           ['base', 'config'], verdict, validation_only=True,
+                                           parent_identity=parent_identity)
     assert result['status'] == 'validated_no_model_forward'
     assert result['supervisor_sha256'] == hashlib.sha256(raw).hexdigest()
-    assert result['parent_pid'] == os.getpid()
-    assert type(result['parent_birth_100ns']) is int and result['parent_birth_100ns'] > 0
+    assert (result['parent_pid'], result['parent_birth_100ns']) == parent_identity
     with pytest.raises(owner.ReplayOwnerError):
         owner.check_supervisor_record(child, config, '1' * 64, '2' * 64, output,
                                       ['base', 'config'], verdict, validation_only=True,
@@ -204,14 +206,16 @@ def test_supervisor_receipt_binds_exit_audit_command_and_logs(tmp_path):
         (output / 'supervisor.json').write_bytes(child._canonical(changed))
         with pytest.raises(owner.ReplayOwnerError):
             owner.check_supervisor_record(child, config, '1' * 64, '2' * 64, output,
-                                          ['base', 'config'], changed, validation_only=True)
+                                          ['base', 'config'], changed, validation_only=True,
+                                          parent_identity=parent_identity)
     oversized = b'x' * (256 * 1024 + 1)
     (output / 'stdout.txt').write_bytes(oversized)
     changed = dict(verdict, stdout_sha256=hashlib.sha256(oversized).hexdigest())
     (output / 'supervisor.json').write_bytes(child._canonical(changed))
     with pytest.raises((owner.ReplayOwnerError, ValueError)):
         owner.check_supervisor_record(child, config, '1' * 64, '2' * 64, output,
-                                      ['base', 'config'], changed, validation_only=True)
+                                      ['base', 'config'], changed, validation_only=True,
+                                          parent_identity=parent_identity)
 
 
 def test_supervisor_inventory_rejects_extra_entries_before_loading(tmp_path):

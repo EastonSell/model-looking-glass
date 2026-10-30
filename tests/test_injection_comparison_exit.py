@@ -26,6 +26,12 @@ comparison = load(here.parent / 'tools' / 'injection_split_comparison.py', '_com
 outer_fixtures = load(here / 'test_injection_outer_observer.py', '_comparison_exit_outer_fixtures')
 
 
+@pytest.fixture(autouse=True)
+def isolated_synthetic_outer_custody():
+    with outer_fixtures.synthetic_observer_context():
+        yield
+
+
 def sha(raw):
     return hashlib.sha256(raw).hexdigest()
 

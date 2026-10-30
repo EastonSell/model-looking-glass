@@ -147,14 +147,10 @@ class OwnerCompletionTests(unittest.TestCase):
         from looking_glass import broker as broker_module
         failure = KeyboardInterrupt('owner return interrupted')
         fired = threading.Event()
-        return_offsets = [instruction.offset for instruction in dis.get_instructions(Broker._run)
-                          if instruction.opname == 'RETURN_VALUE']
-        self.assertTrue(return_offsets)
+        # Use the return event: opcode events can be absent on Python 3.12.
         def trace(frame, event, arg):
             if frame.f_code is Broker._run.__code__:
-                if event == 'call':
-                    frame.f_trace_opcodes = True
-                elif event == 'opcode' and frame.f_lasti == return_offsets[0] and not fired.is_set():
+                if event == 'return' and not fired.is_set():
                     fired.set()
                     raise failure
             return trace
@@ -163,8 +159,9 @@ class OwnerCompletionTests(unittest.TestCase):
             threading.settrace(trace)
             try:
                 model, _, budget, load, workspace, authority, _, broker, _ = make_owner()
-            finally:
+            except BaseException:
                 threading.settrace(previous)
+                raise
             try:
                 with self.assertRaises(BrokerShutdownError):
                     broker.close(timeout=5)
@@ -178,18 +175,15 @@ class OwnerCompletionTests(unittest.TestCase):
             finally:
                 model.release.set()
                 broker._thread.join(5)
+                threading.settrace(previous)
 
     def test_bound_broker_stays_registered_after_owner_thread_is_joined(self):
         from looking_glass import broker as broker_module
         at_return, resume = threading.Event(), threading.Event()
-        return_offsets = [instruction.offset for instruction in dis.get_instructions(Broker._run)
-                          if instruction.opname == 'RETURN_VALUE']
-        self.assertTrue(return_offsets)
+        # Use the return event: opcode events can be absent on Python 3.12.
         def trace(frame, event, arg):
             if frame.f_code is Broker._run.__code__:
-                if event == 'call':
-                    frame.f_trace_opcodes = True
-                elif event == 'opcode' and frame.f_lasti == return_offsets[0]:
+                if event == 'return':
                     at_return.set()
                     if not resume.wait(5):
                         raise RuntimeError('owner return gate timed out')
@@ -198,8 +192,9 @@ class OwnerCompletionTests(unittest.TestCase):
         threading.settrace(trace)
         try:
             model, _, _, _, _, authority, _, broker, _ = make_owner()
-        finally:
+        except BaseException:
             threading.settrace(previous)
+            raise
         try:
             broker.close(wait=False)
             self.assertTrue(at_return.wait(5))
@@ -208,7 +203,10 @@ class OwnerCompletionTests(unittest.TestCase):
             self.assertFalse(authority.unsafe)
         finally:
             resume.set()
-        self.assertTrue(broker.close(timeout=5))
+            try:
+                self.assertTrue(broker.close(timeout=5))
+            finally:
+                threading.settrace(previous)
         self.assertIn(broker, broker_module._owner_registry)
 
     def test_interrupted_bound_close_keeps_process_owner_root(self):
@@ -386,6 +384,11 @@ class OwnerCompletionTests(unittest.TestCase):
                     raise KeyboardInterrupt('exception unpack interrupted')
             return trace
         previous = sys.gettrace()
+        # Python 3.12 enables opcode tracing only when a frame has opted in
+        # before settrace(); opting in solely inside the call event is too late.
+        trace_frame = sys._getframe()
+        previous_opcodes = trace_frame.f_trace_opcodes
+        trace_frame.f_trace_opcodes = True
         try:
             try:
                 fail_with_partial()
@@ -397,6 +400,8 @@ class OwnerCompletionTests(unittest.TestCase):
                     pass
         finally:
             sys.settrace(previous)
+            trace_frame.f_trace_opcodes = previous_opcodes
+            del trace_frame
             model.release.set()
         self.assertEqual(fired, [True])
         self.assertTrue(authority.unsafe)

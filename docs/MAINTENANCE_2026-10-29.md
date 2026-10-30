@@ -58,3 +58,11 @@ A later fixed-snapshot diagnostic was externally interrupted at approximately 45
 - Restored the original 1,115,136-byte attention fixture needed by two saved-head-selection tests; both related modules: 14 passed.
 
 These scoped results do not substitute for the still-pending complete CPU-suite result or a real historical GPU run.
+
+### Test-isolation continuation
+
+The remaining-case diagnostic uncovered a shared synthetic-fixture problem: Windows-only lease admission failed on Linux, correctly retained quarantine, and therefore retained the source-bound module namespace. Downstream tests then held different class identities. Production quarantine and exact-type checks were not weakened. Synthetic tests now label simulated OS/Job records explicitly, verify lease closure and module-object restoration, and keep actual Windows integrations separately prerequisite-gated.
+
+Fresh scoped checks (overlapping groups, **not additive suite totals**): injection observer group 35 passed / 4 Windows skips with empty post-suite quarantine; controller/receipt group 49 passed / 11 Windows skips; custody/query plus downstream journal/supervisor group 151 passed / 10 Windows skips; query followed by owner-completion group 83 passed / 1 Windows skip. Fresh number-injection and multiprocessing checks passed all 51 cases without changing their production code. Owner-completion alone passed 64 cases after nonvacuous return/UNPACK fault-injection setup was corrected for Python 3.12.
+
+An unguarded local diagnostic launcher also broke multiprocessing spawn; this was external test tooling, not repository behavior. It was corrected and its spawn-import guard verified. These interrupted diagnostics are not a final all-suite pass. The final source-pinned CPU suite remains pending, with terminal-case checkpoints to distinguish completed cases from interrupted ones.
