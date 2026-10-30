@@ -1,6 +1,6 @@
 # Retained CPU test evidence fixtures
 
-Six original, byte-identical records were restored to the active tree after CPU testing identified real fixture dependencies. They total 13,428,490 bytes; keeping them avoids network-dependent tests, blanket skips, or fabricated replacements. These are prior observations, not new model runs. Their original Git blobs at `3cbdec78134855532811a58a64e8dd5d4d457185` are unchanged.
+Eight original, byte-identical records were restored to the active tree after CPU testing identified real fixture dependencies. They total 18,655,218 bytes; keeping them avoids network-dependent tests, blanket skips, or fabricated replacements. These are prior observations, not new model runs. Their original Git blobs at `3cbdec78134855532811a58a64e8dd5d4d457185` are unchanged.
 
 | Retained path | Bytes | Original Git blob |
 |---|---:|---|
@@ -10,7 +10,9 @@ Six original, byte-identical records were restored to the active tree after CPU 
 | [results/targeted-edit-cpu-v1-20261028/reference/original.f32](../results/targeted-edit-cpu-v1-20261028/reference/original.f32) | 2,613,364 | `2e0217f9a04fd6e9db1d96434c478cc130a3c4dc` |
 | [results/distilgpt2-agreement-preflight-v1-20261028/run/last_logits.f32](../results/distilgpt2-agreement-preflight-v1-20261028/run/last_logits.f32) | 3,216,448 | `8a04d5defa30071f0ea2b3e094e0956537143f91` |
 | [results/distilgpt2-copying-dev-v1-20261028/run/attentions.f32](../results/distilgpt2-copying-dev-v1-20261028/run/attentions.f32) | 1,115,136 | `6e819e1767fbf8294e99d9387bce368e34b6b5ee` |
+| [results/targeted-edit-cpu-v1-20261028/reference/gradient.f32](../results/targeted-edit-cpu-v1-20261028/reference/gradient.f32) | 2,613,364 | `3c0caeadc3c8f2232d6e9c2df9f189a899c63733` |
+| [results/targeted-edit-cpu-v1-20261028/reference/random.f32](../results/targeted-edit-cpu-v1-20261028/reference/random.f32) | 2,613,364 | `2ee23408aea389c8da61e2ca944201a9560a96ef` |
 
-The compressed BERT journals support saved-record parser, profile and evidence tests. The DistilGPT2 logits supply the public binding/mutation-guard fixture. The copying attention tensor supports recomputation of the published discovery head ranking and its follow-up binding. The targeted-edit float32 reference supplies an original logit row to the synthetic targeted-edit handoff integration. Their return does not imply that the historical model or pinned CUDA/Python environment was rerun. Tests requiring that exact runtime remain explicitly constrained.
+The compressed BERT journals support saved-record parser, profile and evidence tests. The DistilGPT2 logits supply the public binding/mutation-guard fixture. The copying attention tensor supports recomputation of the published discovery head ranking and its follow-up binding. The targeted-edit float32 references supply original, gradient-edit and random-edit logits to the synthetic handoff and numerical-normalization checks. Their return does not imply that the historical model or pinned CUDA/Python environment was rerun. Tests requiring that exact runtime remain explicitly constrained.
 
-The remaining archive has 2,108 files / 2,817,083,922 bytes. Its manifest excludes these retained fixtures.
+The remaining archive has 2,106 files / 2,811,857,194 bytes. Its manifest excludes these retained fixtures.

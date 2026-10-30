@@ -84,14 +84,21 @@ cache = sys.argv[2]
 def stop_before_native(): raise RuntimeError('stopped before CUDA')
 with patch.dict(os.environ, environment, clear=True):
     before = profile._checked_environment(uuid, cache)
-    with patch.object(torch.cuda, 'is_initialized', return_value=False), \
-         patch.object(torch.cuda, '_is_in_bad_fork', return_value=False), \
-         patch.object(torch.cuda, '_cudart', object()), \
-         patch.object(torch._C, '_cuda_init', side_effect=stop_before_native) as native:
+    if not hasattr(torch._C, '_cuda_getDeviceCount'):
+        # A CPU build must reject CUDA, not pretend it reached a native CUDA sentinel.
         try: torch.cuda._lazy_init()
-        except RuntimeError as error: assert str(error) == 'stopped before CUDA'
-        else: raise AssertionError('native sentinel not reached')
-        assert native.call_count == 1
+        except AssertionError as error: assert 'not compiled with CUDA' in str(error)
+        else: raise AssertionError('CPU-only build unexpectedly initialized CUDA')
+        assert not torch.cuda.is_initialized()
+    else:
+        with patch.object(torch.cuda, 'is_initialized', return_value=False), \
+             patch.object(torch.cuda, '_is_in_bad_fork', return_value=False), \
+             patch.object(torch.cuda, '_cudart', object()), \
+             patch.object(torch._C, '_cuda_init', side_effect=stop_before_native) as native:
+            try: torch.cuda._lazy_init()
+            except RuntimeError as error: assert str(error) == 'stopped before CUDA'
+            else: raise AssertionError('native sentinel not reached')
+            assert native.call_count == 1
     assert profile._checked_environment(uuid, cache) == before
     assert os.environ['CUDA_MODULE_LOADING'] == 'LAZY'
 '''

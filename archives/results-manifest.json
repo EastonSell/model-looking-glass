@@ -2,8 +2,8 @@
   "base_commit": "3cbdec78134855532811a58a64e8dd5d4d457185",
   "repository": "EastonSell/model-looking-glass",
   "selection": "Historical results tensor/archive payloads, excluding compact records required by the active CPU tests; original bytes preserved in immutable Git history. This manifest does not claim semantic redundancy.",
-  "count": 2108,
-  "total_bytes": 2817083922,
+  "count": 2106,
+  "total_bytes": 2811857194,
   "files": [
     {
       "path": "results/answer-format-feasibility-cpu-v1-20261029/development/attempt/development/matrix.f32",
@@ -7494,16 +7494,6 @@
       "path": "results/synthetic-causal-v2-20261029/public-evidence.zip",
       "blob_sha": "54ee58e445cd36ada75647fcb976f935663334ef",
       "size": 1162946
-    },
-    {
-      "path": "results/targeted-edit-cpu-v1-20261028/reference/gradient.f32",
-      "blob_sha": "3c0caeadc3c8f2232d6e9c2df9f189a899c63733",
-      "size": 2613364
-    },
-    {
-      "path": "results/targeted-edit-cpu-v1-20261028/reference/random.f32",
-      "blob_sha": "2ee23408aea389c8da61e2ca944201a9560a96ef",
-      "size": 2613364
     },
     {
       "path": "results/targeted-edit-cpu-v1-20261028/replay/gradient.f32",

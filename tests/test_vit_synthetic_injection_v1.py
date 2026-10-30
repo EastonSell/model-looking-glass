@@ -42,7 +42,12 @@ def test_injection_and_later_capture_are_bounded_and_one_site():
     expected = before.clone()
     expected[0, 3, 7] += 4
     assert torch.equal(after.view(torch.int32), expected.view(torch.int32))
-    assert pair["injected"]["injection_l2"] == 4
+    # A float32 addition need not realize exactly the requested real-valued
+    # dose. Verify the recorded norm against the actual single changed value.
+    realized = abs(float(after[0, 3, 7]) - float(before[0, 3, 7]))
+    assert pair["injected"]["injection_l2"] == realized
+    rounding_bound = torch.finfo(before.dtype).eps * max(4.0, abs(float(expected[0, 3, 7])))
+    assert abs(realized - 4.0) <= rounding_bound
     assert pair["comparison"]["status"] == "compared"
     assert len(pair["comparison"]["comparisons"]) == 5
     assert not any(m._forward_pre_hooks or m._forward_hooks for m in model.modules())

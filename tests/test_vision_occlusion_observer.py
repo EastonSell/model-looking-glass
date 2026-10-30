@@ -37,6 +37,7 @@ def test_model_and_hub_caches_are_placed_with_phase_temporary_files(tmp_path):
     assert 'TRANSFORMERS_CACHE' not in child and 'PYTORCH_TRANSFORMERS_CACHE' not in child
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="requires distinct Windows drive semantics")
 def test_owner_rejects_caches_or_bytecode_on_source_volume(tmp_path):
     from tools.observe_vision_coco_occlusion import cache_environment
     from tools.run_vision_coco_occlusion import validate_cache_placement
@@ -56,6 +57,22 @@ def test_owner_rejects_caches_or_bytecode_on_source_volume(tmp_path):
         validate_cache_placement(tmp_path / 'run', prefix, source, {**env, 'TMPDIR': str(source)})
     with pytest.raises(ValueError, match='cache volume'):
         validate_cache_placement(tmp_path / 'run', prefix, source, {**env, 'TRANSFORMERS_CACHE': str(source)})
+
+
+
+def test_owner_rejects_cache_placement_on_same_drive(tmp_path):
+    from tools.observe_vision_coco_occlusion import cache_environment
+    from tools.run_vision_coco_occlusion import validate_cache_placement
+
+    temporary = tmp_path / "temporary"
+    temporary.mkdir()
+    bytecode = tmp_path / "bytecode"
+    bytecode.mkdir()
+    # The guard deliberately requires distinct Windows volumes. On POSIX,
+    # all native Path.drive values are empty and must not accidentally pass.
+    with pytest.raises(ValueError, match="cache volume"):
+        validate_cache_placement(tmp_path / "run", bytecode, tmp_path / "source",
+                                 cache_environment(temporary))
 
 
 def test_supervisor_waits_for_real_direct_process_and_reports_failure(tmp_path):
