@@ -366,7 +366,7 @@ class LocalModelRuntime:
                  "vocab.json", "merges.txt", "vocab.txt", "spiece.model", "tokenizer.model",
                  "sentencepiece.bpe.model", "preprocessor_config.json", "chat_template.jinja"}
         tokenizer_config = _json(root / "tokenizer_config.json") if (root / "tokenizer_config.json").exists() else {}
-        allowed_classes = {"llama": {"LlamaTokenizer", "LlamaTokenizerFast"}, "gpt2": {"GPT2Tokenizer", "GPT2TokenizerFast"},
+        allowed_classes = {"llama": {"LlamaTokenizer", "LlamaTokenizerFast", "GPT2Tokenizer", "GPT2TokenizerFast"}, "gpt2": {"GPT2Tokenizer", "GPT2TokenizerFast"},
             "distilbert": {"DistilBertTokenizer", "DistilBertTokenizerFast", "BertTokenizer", "BertTokenizerFast"},
             "t5": {"T5Tokenizer", "T5TokenizerFast"}, "vit": set()}
         for metadata in (tokenizer_config, inspected["config"]):

@@ -200,3 +200,32 @@ def test_static_llama3_tied_sharded_local_checkpoint(tmp_path):
     assert result['model']['config_summary']['rope_scaling']==scaling
     assert hashes=={file.name:hashlib.sha256(file.read_bytes()).hexdigest() for file in path.iterdir() if file.is_file()}
     runtime.unload()
+
+
+def test_llama_accepts_bounded_builtin_gpt2_bpe_input_assets(tmp_path):
+    from tokenizers import Tokenizer
+    from tokenizers.models import BPE
+    from tokenizers.pre_tokenizers import ByteLevel
+    from tokenizers.decoders import ByteLevel as ByteLevelDecoder
+    from transformers import GPT2TokenizerFast
+    path=tmp_path/'llama-gpt2-assets';path.mkdir()
+    config=LlamaConfig(vocab_size=257,hidden_size=8,intermediate_size=16,num_hidden_layers=1,
+        num_attention_heads=2,num_key_value_heads=1,max_position_embeddings=32,eos_token_id=None)
+    config._attn_implementation='eager'
+    LlamaForCausalLM(config).eval().save_pretrained(path,safe_serialization=True)
+    vocab={token:index for index,token in enumerate(sorted(ByteLevel.alphabet()))}
+    vocab['<|endoftext|>']=256
+    base=Tokenizer(BPE(vocab=vocab,merges=[]));base.pre_tokenizer=ByteLevel(add_prefix_space=False)
+    base.decoder=ByteLevelDecoder()
+    tok=GPT2TokenizerFast(tokenizer_object=base,bos_token='<|endoftext|>',eos_token='<|endoftext|>',unk_token='<|endoftext|>')
+    tok.save_pretrained(path)
+    runtime=LocalModelRuntime()
+    info=runtime.inspect(str(path))
+    assert info['input_summary']['class']=='GPT2TokenizerFast'
+    runtime.load(str(path),device='cpu')
+    assert runtime.run('Hi',{'max_new_tokens':1})['coverage']['captured_events']==3
+    runtime.unload()
+    metadata=path/'tokenizer_config.json';data=json.loads(metadata.read_text())
+    data['tokenizer_class']='WhisperTokenizerFast';metadata.write_text(json.dumps(data))
+    with pytest.raises(ValueError,match='unsupported tokenizer class'):
+        runtime.inspect(str(path))
