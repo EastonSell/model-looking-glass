@@ -72,6 +72,33 @@ def test_real_http_run_browse_save_reopen(server):
     assert call(server, "/api/open", "POST", {"path": saved["path"]})[0] == 200
 
 
+
+@pytest.mark.parametrize("failure", ["missing", "corrupt"])
+def test_failed_open_preserves_current_capture_revision_and_values(server, tmp_path, failure):
+    from pathlib import Path
+    status, body, _ = call(server, "/api/run", "POST", {"prompt": "keep this capture", "settings": {}})
+    assert status == 200
+    original = json.loads(body); capture = original["capture_id"]
+    url = f"/api/tensor?event=0&vector=1&capture_id={capture}"
+    raw = json.loads(call(server, url)[1])
+    path = tmp_path / "missing-export"
+    if failure == "corrupt":
+        saved = json.loads(call(server, "/api/save", "POST", {"name": "corrupt", "capture_id": capture})[1])
+        path = Path(saved["path"])
+        manifest_path = path / "manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest["tensor_sha256"] = "0" * 64
+        manifest_path.write_text(json.dumps(manifest))
+    code, body, _ = call(server, "/api/open", "POST", {"path": str(path)})
+    assert code == 400 and "error" in json.loads(body)
+    assert json.loads(call(server)[1])["run"] == original
+    assert json.loads(call(server, url)[1]) == raw
+    saved = json.loads(call(server, "/api/save", "POST", {"name": "still-here", "capture_id": capture})[1])
+    code, body, _ = call(server, "/api/open", "POST", {"path": saved["path"]})
+    assert code == 200 and json.loads(body)["capture_id"] != capture
+    assert call(server, url)[0] == 400  # Successful replacement, unlike failed Open, retires old reads.
+
+
 def test_failed_run_drops_stale_result(server):
     assert call(server, "/api/run", "POST", {"prompt": "ok", "settings": {}})[0] == 200
     assert call(server, "/api/run", "POST", {"prompt": "fail", "settings": {}})[0] == 500
