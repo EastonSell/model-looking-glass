@@ -26,3 +26,16 @@
 
 .event-source-filters { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: end; }
 @media(max-width: 850px) { .event-source-filters { grid-template-columns: 1fr 1fr; } }
+
+/* Native progressive disclosure keeps the primary path compact without hiding data. */
+.options { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px; }
+.options > summary { cursor: pointer; font-size: 12px; font-weight: 650; padding: 5px 0; color: var(--text); }
+.options[open] > summary { margin-bottom: 10px; }
+.options > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 2px; }
+.settings section { margin-top: 16px; padding-top: 16px; }
+.settings section > .options { border-top: 0; margin-top: 0; padding-top: 0; }
+.settings .section-heading h1 { font-size: 23px; }
+.demo-onboarding { padding: 10px; margin-block: 10px 14px; }
+.privacy-note p { margin-block: 8px; }
+.intervention-editor { padding-top: 10px; margin-top: 18px; }
+#vector-coordinate { background: var(--sidebar); }

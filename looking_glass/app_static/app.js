@@ -7,6 +7,7 @@
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
   const bytes = (value) => { const n = Number(value); if (!Number.isFinite(n)) return '—'; return n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KiB` : `${(n / 1048576).toFixed(2)} MiB`; };
+  function revealOptions(id) { $(id).open = true; }
   function notice(message, error = false) { $('notice').textContent = message; $('notice').hidden = !message; $('notice').classList.toggle('error', error); }
   async function api(path, body) {
     if (body === undefined && /^(events|vectors|tensor)\?/.test(path) && state.run?.capture_id) path += `&capture_id=${encodeURIComponent(state.run.capture_id)}`;
@@ -90,12 +91,12 @@
   }
   function loadSettings() {
     const device = $('execution-device').value;
-    if (device !== 'auto' && device !== 'cpu' && !state.devices.some((item) => item.id === device && item.available !== false)) throw new Error('The selected CUDA device is unavailable. Choose an available device; no CPU fallback was performed.');
+    if (device !== 'auto' && device !== 'cpu' && !state.devices.some((item) => item.id === device && item.available !== false)) { revealOptions('model-options'); throw new Error('The selected CUDA device is unavailable. Choose an available device; no CPU fallback was performed.'); }
     return device === 'cpu' ? {device} : {device, max_vram_bytes: intField('vram-mib') * 1048576};
   }
   function intField(id) {
     const field = $(id), value = Number(field.value);
-    if (!Number.isSafeInteger(value) || value < Number(field.min) || value > Number(field.max)) throw new Error(`${field.labels[0].textContent} must be a whole number from ${field.min} to ${field.max}.`);
+    if (!Number.isSafeInteger(value) || value < Number(field.min) || value > Number(field.max)) { revealOptions(id === 'vram-mib' ? 'model-options' : id === 'intervention-feature' ? 'intervention-options' : 'capture-options'); throw new Error(`${field.labels[0].textContent} must be a whole number from ${field.min} to ${field.max}.`); }
     return value;
   }
   function settings() {
@@ -103,18 +104,19 @@
     let layers = null;
     if (custom && $('layers').value.trim()) {
       const terms = $('layers').value.split(',').map((s) => s.trim());
-      if (terms.some((s) => !/^\d+$/.test(s))) throw new Error('Layer indices must be comma-separated, nonnegative whole numbers.');
+      if (terms.some((s) => !/^\d+$/.test(s))) { revealOptions('capture-options'); throw new Error('Layer indices must be comma-separated, nonnegative whole numbers.'); }
       layers = terms.map(Number);
-      if (layers.some((n) => !Number.isSafeInteger(n)) || new Set(layers).size !== layers.length) throw new Error('Layer indices must be distinct, safe integers.');
+      if (layers.some((n) => !Number.isSafeInteger(n)) || new Set(layers).size !== layers.length) { revealOptions('capture-options'); throw new Error('Layer indices must be distinct, safe integers.'); }
     }
     const targets = custom ? Array.from(document.querySelectorAll('#target-options input:checked'), (el) => el.value) : 'auto';
-    if (custom && !targets.length) throw new Error('Select at least one observation point.');
+    if (custom && !targets.length) { revealOptions('capture-options'); throw new Error('Select at least one observation point.'); }
     return {targets, layers, max_new_tokens: intField('max-output'), max_input_tokens: intField('max-input'), max_events: intField('max-events'), max_trace_bytes: intField('trace-mib') * 1048576};
   }
   function invalidateInspection() {
     $('inspection-panel').hidden = true; $('inspection-checks').replaceChildren(); $('inspection-details').textContent = ''; $('inspection-status').textContent = ''; $('inspection-path').textContent = ''; $('inspection-summary').textContent = ''; $('inspection-memory').textContent = '';
   }
   function showInspection(info, path) {
+    revealOptions('model-options');
     $('inspection-panel').hidden = false; $('inspection-path').textContent = `Inspected folder: ${info.path || path}`;
     const checks = info.inspection || {}; $('inspection-checks').replaceChildren();
     for (const [key,label] of [['metadata_checked','Configuration'],['weight_headers_checked','Safetensors headers'],['input_assets_loadable','Local tokenizer / image processor']]) {
@@ -142,11 +144,11 @@
     syncButtons();
   }
   function clearView() {
-    clearExperiment(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
-    $('imported-comparison').hidden = true; clearDistribution('imported'); $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.'; syncButtons();
+    clearExperiment(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
+    $('imported-control-warning').hidden = true; $('imported-comparison').hidden = true; clearDistribution('imported'); $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.'; syncButtons();
   }
   function showRun(run) {
-    state.run = run; $('imported-comparison').hidden = run.run_kind !== 'intervention_comparison'; if (run.run_kind === 'intervention_comparison') renderDistribution('imported', run.experiment || {}); else clearDistribution('imported'); $('result-panel').hidden = false; $('trace-panel').hidden = false; $('answer').textContent = display(run.answer ?? 'No textual output.'); $('task-badge').textContent = run.task || 'Observed run';
+    state.run = run; $('imported-comparison').hidden = run.run_kind !== 'intervention_comparison'; if (run.run_kind === 'intervention_comparison') { renderDistribution('imported', run.experiment || {}); controlWarning('imported-control-warning', run.experiment || {}, run.model); } else clearDistribution('imported'); $('result-panel').hidden = false; $('trace-panel').hidden = false; $('answer').textContent = display(run.answer ?? 'No textual output.'); $('task-badge').textContent = run.task || 'Observed run';
     const captureModel = run.model; $('demo-capture-warning').hidden = !isDemo(captureModel); $('capture-model').textContent = captureModel ? `Capture model: ${captureModel.name || captureModel.family || captureModel.architecture || 'recorded model'}${captureModel.device ? ' on ' + captureModel.device : ''} — independent of the model currently loaded above.` : 'Model identity was not recorded in this capture.';
     $('capture-info').textContent = display({model: captureModel || null, settings: run.settings || null});
     $('run-metrics').replaceChildren();
@@ -210,7 +212,7 @@
     $('vector-coordinate').textContent = 'Coordinate unavailable until this vector request succeeds.';
     $('value-page').textContent = 'Values unavailable until this request succeeds.'; state.valueTotal = 0;
     const vector = Number($('vector-index').value);
-    if (!Number.isSafeInteger(vector) || vector < 0 || vector > Number($('vector-index').max)) throw new Error('Choose a vector index in the displayed range.');
+    if (!Number.isSafeInteger(vector) || vector < 0 || vector > Number($('vector-index').max)) { revealOptions('vector-options'); throw new Error('Choose a vector index in the displayed range.'); }
     if (vector !== state.vector) state.valueOffset = 0; state.vector = vector;
     const view = $('vector-view').value;
     const result = await api(`tensor?event=${state.event.index}&vector=${vector}&offset=${state.valueOffset}&limit=${valuePageSize}&view=${view}`);
@@ -274,6 +276,7 @@
     }); $('bin-plot').append(svg);
   }
   async function browse(path, root) {
+    revealOptions('model-options');
     const result = await api('browse-models', root ? {path, root} : {path}); state.browse = result;
     $('folder-browser').hidden = false; $('browse-path').value = result.path;
     $('browse-status').textContent = `Root: ${result.root}${result.truncated ? ' · Folder list truncated; enter a known subfolder path to navigate further.' : ''}`;
@@ -309,7 +312,7 @@
     state.witnessRequest++; state.witnessTotal = 0; $('witness-body').replaceChildren(); $('witness-coordinate').textContent = ''; $('witness-page').textContent = ''; $('witness-status').textContent = '';
   }
   function clearExperiment() {
-    clearDistribution('experiment'); $('demo-experiment-warning').hidden = true; state.experiment = null; state.witnessOffset = 0; clearWitness(); $('experiment-panel').hidden = true; $('experiment-token-body').replaceChildren(); $('experiment-details').textContent = ''; $('experiment-outcome').textContent = ''; $('experiment-controls').textContent = ''; $('experiment-metrics').textContent = ''; $('experiment-startup-status').textContent = ''; $('experiment-save-status').textContent = 'Optional export includes private fixed input, metadata and full witness tensors. Original capture is separate.';
+    $('experiment-control-warning').hidden = true; $('experiment-control-warning').textContent = ''; clearDistribution('experiment'); $('demo-experiment-warning').hidden = true; state.experiment = null; state.witnessOffset = 0; clearWitness(); $('experiment-panel').hidden = true; $('experiment-token-body').replaceChildren(); $('experiment-details').textContent = ''; $('experiment-outcome').textContent = ''; $('experiment-controls').textContent = ''; $('experiment-metrics').textContent = ''; $('experiment-startup-status').textContent = ''; $('experiment-save-status').textContent = 'Optional export includes private fixed input, metadata and full witness tensors. Original capture is separate.';
   }
   function clearDistribution(prefix) {
     $(`${prefix}-distribution-body`).replaceChildren(); $(`${prefix}-distribution-note`).textContent = ''; $(`${prefix}-distribution-table`).hidden = true; $(`${prefix}-token-body`).replaceChildren();
@@ -331,9 +334,20 @@
     for (const item of d.rows) { const row=document.createElement('tr'); cell(row,`${item.text_unavailable ? 'text unavailable' : JSON.stringify(item.text)} · ${item.token_id}${item.text_truncated ? ' · text truncated' : ''}`); cell(row,percent(item.baseline_probability)); cell(row,percent(item.intervention_probability)); cell(row,percent(item.probability_delta,true)); $(`${prefix}-distribution-body`).append(row); }
     $(`${prefix}-distribution-table`).hidden = false;
   }
+  function controlWarning(id, experiment, model) {
+    const controls = experiment.controls || {}, entries = Object.entries(controls);
+    const required = ['null_full_logits_bitwise_equal', 'restoration_full_logits_bitwise_equal', 'source_vector_bitwise_equal', 'other_token_positions_at_selected_site_bitwise_equal'];
+    if (['add', 'replace'].includes(experiment.operation)) required.push('other_features_at_selected_vector_bitwise_equal');
+    if (model?.family === 'llama') required.push('static_rotary_state_unchanged', 'fixed_input_ids_mask_unchanged');
+    const failed = entries.some(([, value]) => value === false), incomplete = !['zero', 'add', 'replace'].includes(experiment.operation) || required.some((key) => controls[key] !== true) || entries.some(([, value]) => value !== true);
+    $(id).hidden = !incomplete;
+    $(id).textContent = failed ? 'A recorded control check FAILED. Do not treat this comparison as validated; inspect the controls and exact metadata.' : incomplete ? 'Control validation is incomplete or unavailable. Inspect the exact metadata before relying on this comparison.' : '';
+    return incomplete;
+  }
   function showExperiment(summary) {
     $('demo-experiment-warning').hidden = !isDemo(summary.model); state.experiment = summary; const e = summary.experiment || {}, c = e.comparison || {}; $('experiment-panel').hidden = false;
     $('experiment-outcome').textContent = c.selected_vector_changed === false ? 'No-op: the selected vector did not change. Do not interpret this as evidence about the effect of changing it.' : c.selected_vector_changed === true ? `Selected vector changed. Baseline next-token ID ${c.baseline_next_token_id ?? '?'} → edited ID ${c.intervention_next_token_id ?? '?'}. This is one fixed-input comparison, not a generated continuation or explanation.` : 'Comparison returned without a verified selected-vector change flag; inspect the complete metadata.';
+    if (controlWarning('experiment-control-warning', e, summary.model)) revealOptions('comparison-checks');
     const controls = Object.entries(e.controls || {}); $('experiment-controls').textContent = controls.length ? 'Recorded controls: ' + controls.map(([key,value]) => `${key}: ${value === true ? 'passed' : value === false ? 'FAILED' : display(value)}`).join(' · ') : 'No control results recorded.';
     $('experiment-metrics').textContent = `Full-logits max |Δ|: ${number(c.full_logits_max_abs_delta)} · full-logits L2 Δ: ${number(c.full_logits_l2_delta)} · last-position max |Δ|: ${number(c.last_position_max_abs_delta)}`;
     $('experiment-details').textContent = display(summary); renderDistribution('experiment', e);
@@ -347,7 +361,7 @@
       state.witnessTotal=Number(result.vector_width ?? result.total ?? 0); $('witness-coordinate').textContent=coordinateLabel(result.coordinate,0);
       (result.values || []).forEach((value,i)=>{const row=document.createElement('tr');cell(row,Number(result.offset ?? state.witnessOffset)+i);cell(row,number(value));cell(row,result.raw_bits?.[i] ?? '—');$('witness-body').append(row);});
       $('witness-page').textContent=`${state.witnessOffset}–${Math.max(state.witnessOffset,state.witnessOffset+(result.values || []).length-1)} of ${state.witnessTotal} features (zero-based)`; $('witness-status').textContent='Exact retained witness; independent of original capture values.';
-    } catch(error) {if(request===state.witnessRequest) $('witness-status').textContent=`Witness unavailable: ${error.message || String(error)}. The comparison summary remains available.`;}
+    } catch(error) {if(request===state.witnessRequest) { revealOptions('witness-options'); $('witness-status').textContent=`Witness unavailable: ${error.message || String(error)}. The comparison summary remains available.`; }}
     syncButtons();
   }
   async function restoreExperimentOptional() {
@@ -357,7 +371,7 @@
   async function refreshSavedOptional() {
     try { await refreshSaved(); }
     catch (error) {
-      state.saved = []; $('saved-runs').replaceChildren();
+      revealOptions('saved-options'); state.saved = []; $('saved-runs').replaceChildren();
       $('saved-status').textContent = `Saved-capture catalog unavailable: ${error.message || String(error)}. This does not discard a RAM capture or undo a completed save. Refresh the catalog to retry, or enter a known export path.`;
     }
   }
@@ -375,7 +389,7 @@
   $('inspect-button').addEventListener('click', () => action('Checking local configuration, weight headers and input assets…', async () => {
     const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); invalidateInspection();
     try { showInspection(await api('inspect', {path}), path); }
-    catch(error) { $('inspection-panel').hidden=false; $('inspection-path').textContent=`Requested folder: ${path}`; $('inspection-status').textContent=`Inspection failed: ${error.message || String(error)}. Check the complete local snapshot: config.json, matching safetensors and matching tokenizer or processor assets. No download was started.`; throw error; }
+    catch(error) { revealOptions('model-options'); $('inspection-panel').hidden=false; $('inspection-path').textContent=`Requested folder: ${path}`; $('inspection-status').textContent=`Inspection failed: ${error.message || String(error)}. Check the complete local snapshot: config.json, matching safetensors and matching tokenizer or processor assets. No download was started.`; throw error; }
   }));
   $('demo-button').addEventListener('click', () => action('Building the tiny untrained CPU demo in RAM…', async () => {
     const result = await api('demo', {}); clearView(); setModel(result.model);
@@ -391,8 +405,9 @@
   $('clear-button').addEventListener('click', () => action('Clearing captured results…', async () => { await api('clear', {}); clearView(); $('prompt').value = ''; state.imageRequest++; state.image = null; $('image-file').value = ''; $('image-description').textContent = 'Select a local PNG, JPEG, or WebP. It is sent only to this local app.'; }));
   function scheduleEventSearch() {
     clearTimeout(state.searchTimer); state.eventRequest++; state.valueRequest++;
+    $('source-options-summary').textContent = ['Exact source filters', $('source-token').value ? 'position ' + $('source-token').value : '', $('source-forward').value ? 'forward ' + $('source-forward').value : '', $('source-stack').value].filter(Boolean).join(' · ');
     resetVectorPicker(); state.eventQuery = $('event-filter').value.trim(); state.eventOffset = 0; state.event = null; state.events = []; state.eventTotal = 0; $('event-body').replaceChildren(); $('event-page').textContent = 'Updating filters…'; $('event-total').textContent = 'Filtering…'; $('vector-panel').hidden = true; syncButtons();
-    const revision = state.eventRequest; const search = async () => { if (!state.run || revision !== state.eventRequest) return; if (state.busy) { state.searchTimer = setTimeout(search, 250); return; } try { await loadEvents(); } catch (error) { if (revision + 1 === state.eventRequest) { state.filterError = true; notice(error.message || String(error), true); $('event-page').textContent = 'Filter results unavailable. Adjust or clear filters to retry.'; } } }; state.searchTimer = setTimeout(search, 250);
+    const revision = state.eventRequest; const search = async () => { if (!state.run || revision !== state.eventRequest) return; if (state.busy) { state.searchTimer = setTimeout(search, 250); return; } try { await loadEvents(); } catch (error) { if (revision + 1 === state.eventRequest) { state.filterError = true; revealOptions('source-options'); notice(error.message || String(error), true); $('event-page').textContent = 'Filter results unavailable. Adjust or clear filters to retry.'; } } }; state.searchTimer = setTimeout(search, 250);
   }
   $('event-filter').addEventListener('input', scheduleEventSearch);
   $('source-token').addEventListener('input', scheduleEventSearch);
@@ -413,7 +428,7 @@
     const operation=$('intervention-operation').value;
     if(!['zero','add','replace'].includes(operation)) throw new Error('Choose Zero, Add or Set.');
     const body={capture_id:state.run.capture_id,event:state.event.index,vector:state.vector,operation};
-    if(operation!=='zero'){body.feature_index=intField('intervention-feature');const input=$('intervention-value').value.trim();if(!input || !Number.isFinite(Number(input)))throw new Error('Enter an explicit finite numeric value for the feature edit.');body.value=Number(input);}
+    if(operation!=='zero'){body.feature_index=intField('intervention-feature');const input=$('intervention-value').value.trim();if(!input || !Number.isFinite(Number(input))){revealOptions('intervention-options');throw new Error('Enter an explicit finite numeric value for the feature edit.');}body.value=Number(input);}
     clearExperiment();const summary=await api('intervene',body);showExperiment(summary);$('witness-phase').value='0';await loadWitness();
   }));
   $('witness-phase').addEventListener('change',()=>{state.witnessOffset=0;return loadWitness();});
