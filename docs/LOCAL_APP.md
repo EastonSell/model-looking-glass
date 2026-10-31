@@ -1,6 +1,6 @@
 # Local model workbench
 
-Clone, install, open the settings page, select an existing local checkpoint, then query it and inspect the captured vectors. **No checkpoint is downloaded by the app, and no prompt or activation is saved until you explicitly choose Save.** Hooks instrument the loaded runtime; they do not edit checkpoint files.
+Clone, install, open the settings page, then try the built-in tiny demo or select an existing local checkpoint. Query it and inspect the captured vectors. **No checkpoint is downloaded by the app, and no prompt or activation is saved until you explicitly choose Save.** Hooks instrument the loaded runtime; they do not edit checkpoint files.
 
 ## Install and start
 
@@ -17,6 +17,14 @@ The installer creates this checkout's `.venv`, installs PyTorch 2.15.0 and appli
 Later, start with `.venv/bin/python -m looking_glass.app` (Windows: `.venv\Scripts\python.exe -m looking_glass.app`). An already prepared environment can instead install `python -m pip install -e ".[app]"` and run `model-looking-glass`. Choose the matching PyTorch build first using its [official installation guidance](https://pytorch.org/get-started/locally/). An existing CPU-only `.venv` can be explicitly changed with `python install.py --reuse-venv --backend cuda`; build-local version pins ensure pip does not silently retain the CPU build. This is a package change, not a driver installation.
 
 Options include `--no-browser`, `--port`, `--models-dir /explicit/model/folder`, and `--export-dir /chosen/export/folder`. `--models-dir` sets an explicit browsing root and lists immediate checkpoint candidates. Without it, enter a local folder and choose Browse to set the root, or paste a checkpoint path directly. The browser stays inside that root, does not scan home automatically, and never loads weights while listing folders. A `config.json` marks only a candidate; Inspect/Load still validates compatibility. Large folders are bounded and show a truncation notice. The server binds only to `127.0.0.1`, chooses a free port by default, and prints its URL. Keep the terminal running. Stop with Ctrl+C; a long active forward may need to finish first. This is a trusted single-user local tool, not a public service.
+
+## First capture without a checkpoint
+
+Choose **Load tiny demo** to construct a fixed, tiny GPT-2 and byte-level tokenizer entirely in CPU RAM. No weights, tokenizer files or temporary checkpoint are written or downloaded. It is **random and untrained**: its output is not a useful answer or evidence of learned language, semantic features, model quality or GPU performance. The demo always uses CPU, independently of your local-checkpoint device selection.
+
+Loading it replaces the loaded model and retained capture/comparison after success, so explicitly save anything you want first. The demo starts with auto hooks and short token limits; memory/event allowances and your checkpoint path/device preferences are unchanged. A suggested prompt fills only an empty prompt field; choose **Run** yourself. Then select an event and source position to inspect full values/bits, or try a controlled activation edit. The ordinary resource limits, exact capture and export paths still apply. The tiny model has a 128-position context window; byte-level tokens make ordinary text longer in tokens than a trained tokenizer would.
+
+The demo's provenance, seed/configuration and untrained warning stay attached to captures and comparisons, including saved/reopened exports. A saved capture is not a saved model. Loading a fresh demo creates a new live-model binding; old or reopened captures cannot authorize edits to it. To use your own model afterward, load a supported local folder normally. Nothing about this demo broadens checkpoint compatibility.
 
 ## Checkpoint compatibility
 
@@ -105,7 +113,7 @@ This executor has no visible NVIDIA device and a CPU-only PyTorch build. CUDA po
 python -m pytest tests/test_app_cuda.py -q -ra
 ```
 
-The focused app/adapter suite completed with **444 passed and 4 real-CUDA prerequisite skips** on the CPU executor; the UI DOM contract covered 118 mocked authenticated requests, including source-position paging, controlled interventions, stale cross-tab reads/saves, catalog failures, unload and failed tensor reads. Real loopback HTTP tests also exercised all three intervention operations, separate witness export/reopen and original-capture preservation. Independent local four-family roundtrips preserved all 105 inspected vectors’ raw bits and navigation coordinates after unloading the model and reopening an export. An independently installed wheel also passed the CPU capabilities/server/static-asset smoke check. These are focused checks, not a rerun of the entire historical research suite.
+The focused app/adapter suite completed with **457 passed and 4 real-CUDA prerequisite skips** on the CPU executor; the UI DOM contract covered 133 mocked authenticated requests, including demo onboarding, source-position paging, controlled interventions, stale cross-tab reads/saves, catalog failures, unload and failed tensor reads. Real loopback HTTP tests also exercised all three intervention operations, separate witness export/reopen and original-capture preservation. Independent local four-family roundtrips preserved all 105 inspected vectors’ raw bits and navigation coordinates after unloading the model and reopening an export. An independently installed wheel also passed authenticated demo loading/query, token-coordinate and static-asset checks. Demo tests verify no checkpoint writes/downloads, RNG preservation, and synthetic provenance through capture, intervention and export/reopen. These are focused checks, not a rerun of the entire historical research suite.
 
 A prerequisite skip is not a pass. No GPU speedup, VRAM measurement, rounding-gate fidelity, or pretrained-model quality has been established by this release's CPU-only validation.
 

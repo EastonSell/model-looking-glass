@@ -135,6 +135,13 @@ class AppState:
             finally: self._live_binding = None
             return self.status()
         if action == "inspect": return self.runtime.inspect(_text(data, "path", 4096))
+        if action == "demo":
+            if data:
+                raise ValueError("The tiny demo takes no configuration; it is a fixed untrained CPU model")
+            answer = self.runtime.load_demo()
+            # Only a successful replacement retires the retained source/comparison.
+            self.store.clear(); self._clear_experiment(); self._live_binding = None; self._capture_id = None
+            return {"model": answer, "run": None}
         if action == "load":
             budget = data.get("max_vram_bytes", min(2 * 1024**3, self.max_vram_bytes))
             if type(budget) is not int or not 1 <= budget <= self.max_vram_bytes:
@@ -295,7 +302,7 @@ def create_server(state, port=0):
         def do_POST(self):
             if not self._allowed(api=True): return
             path = urlsplit(self.path).path
-            if path not in {"/api/inspect", "/api/load", "/api/unload", "/api/browse-models", "/api/run", "/api/intervene", "/api/save", "/api/save-experiment", "/api/open", "/api/clear"}:
+            if path not in {"/api/inspect", "/api/load", "/api/demo", "/api/unload", "/api/browse-models", "/api/run", "/api/intervene", "/api/save", "/api/save-experiment", "/api/open", "/api/clear"}:
                 self._send(404, {"error": "Not found"}); return
             if self.headers.get("Transfer-Encoding") or len(self.headers.get_all("Content-Length", [])) != 1:
                 self._send(400, {"error": "A single bounded Content-Length is required"}); return

@@ -23,6 +23,7 @@
     $('run-button').textContent = state.run ? 'Replace capture →' : 'Run & capture →';
     $('replace-warning').hidden = !state.run;
     $('run-button').disabled = state.busy || !state.model || state.model.state === 'quarantined';
+    $('demo-button').disabled = state.busy || state.model?.state === 'quarantined';
     $('load-button').disabled = state.busy || state.model?.state === 'quarantined';
     $('unload-button').disabled = state.busy || !state.model || state.model.state === 'quarantined';
     $('browse-parent').disabled = state.busy || !state.browse?.parent;
@@ -109,10 +110,11 @@
     if (custom && !targets.length) throw new Error('Select at least one observation point.');
     return {targets, layers, max_new_tokens: intField('max-output'), max_input_tokens: intField('max-input'), max_events: intField('max-events'), max_trace_bytes: intField('trace-mib') * 1048576};
   }
+  const isDemo = (info) => info?.provenance?.kind === 'synthetic_untrained_demo';
   function setModel(info) {
     const prior = state.model, selectedTargets = new Set(Array.from(document.querySelectorAll('#target-options input:checked'), (input) => input.value));
     const preserveTargets = prior && info && prior.path === info.path && prior.family === info.family;
-    state.model = info; $('model-badge').textContent = info ? (info.state === 'quarantined' ? 'Quarantined · restart app' : `Loaded: ${info.name || info.family || 'model'}${info.device ? ' · ' + info.device : ''}`) : 'No model loaded';
+    state.model = info; $('demo-model-warning').hidden = !isDemo(info); $('model-badge').textContent = info ? (info.state === 'quarantined' ? 'Quarantined · restart app' : `${isDemo(info) ? 'Untrained CPU demo' : 'Loaded'}: ${info.name || info.family || 'model'}${info.device ? ' · ' + info.device : ''}`) : 'No model loaded';
     $('model-info').textContent = info ? display(info) : 'No model loaded.';
     $('target-options').replaceChildren();
     const targets = info?.targets || ['attn', 'mlp', 'block'];
@@ -124,11 +126,11 @@
   }
   function clearView() {
     clearExperiment(); resetVectorPicker(); clearTimeout(state.searchTimer); state.eventQuery = ''; $('event-filter').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
-    $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.'; syncButtons();
+    $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.'; syncButtons();
   }
   function showRun(run) {
     state.run = run; $('result-panel').hidden = false; $('trace-panel').hidden = false; $('answer').textContent = display(run.answer ?? 'No textual output.'); $('task-badge').textContent = run.task || 'Observed run';
-    const captureModel = run.model; $('capture-model').textContent = captureModel ? `Capture model: ${captureModel.name || captureModel.family || captureModel.architecture || 'recorded model'}${captureModel.device ? ' on ' + captureModel.device : ''} — independent of the model currently loaded above.` : 'Model identity was not recorded in this capture.';
+    const captureModel = run.model; $('demo-capture-warning').hidden = !isDemo(captureModel); $('capture-model').textContent = captureModel ? `Capture model: ${captureModel.name || captureModel.family || captureModel.architecture || 'recorded model'}${captureModel.device ? ' on ' + captureModel.device : ''} — independent of the model currently loaded above.` : 'Model identity was not recorded in this capture.';
     $('capture-info').textContent = display({model: captureModel || null, settings: run.settings || null});
     $('run-metrics').replaceChildren();
     for (const [value, label] of [[run.event_count ?? '—', 'captured observations'], [bytes(run.total_bytes), 'CPU RAM tensor payload'], [Array.isArray(run.steps) ? run.steps.length : '—', 'explicit forward steps']]) { const box = document.createElement('div'), strong = document.createElement('strong'), span = document.createElement('span'); box.className = 'metric'; strong.textContent = String(value); span.textContent = label; box.append(strong, span); $('run-metrics').append(box); }
@@ -266,10 +268,10 @@
     state.witnessRequest++; state.witnessTotal = 0; $('witness-body').replaceChildren(); $('witness-coordinate').textContent = ''; $('witness-page').textContent = ''; $('witness-status').textContent = '';
   }
   function clearExperiment() {
-    state.experiment = null; state.witnessOffset = 0; clearWitness(); $('experiment-panel').hidden = true; $('experiment-token-body').replaceChildren(); $('experiment-details').textContent = ''; $('experiment-outcome').textContent = ''; $('experiment-controls').textContent = ''; $('experiment-metrics').textContent = ''; $('experiment-startup-status').textContent = ''; $('experiment-save-status').textContent = 'Optional export includes private fixed input, metadata and full witness tensors. Original capture is separate.';
+    $('demo-experiment-warning').hidden = true; state.experiment = null; state.witnessOffset = 0; clearWitness(); $('experiment-panel').hidden = true; $('experiment-token-body').replaceChildren(); $('experiment-details').textContent = ''; $('experiment-outcome').textContent = ''; $('experiment-controls').textContent = ''; $('experiment-metrics').textContent = ''; $('experiment-startup-status').textContent = ''; $('experiment-save-status').textContent = 'Optional export includes private fixed input, metadata and full witness tensors. Original capture is separate.';
   }
   function showExperiment(summary) {
-    state.experiment = summary; const e = summary.experiment || {}, c = e.comparison || {}; $('experiment-panel').hidden = false;
+    $('demo-experiment-warning').hidden = !isDemo(summary.model); state.experiment = summary; const e = summary.experiment || {}, c = e.comparison || {}; $('experiment-panel').hidden = false;
     $('experiment-outcome').textContent = c.selected_vector_changed === false ? 'No-op: the selected vector did not change. Do not interpret this as evidence about the effect of changing it.' : c.selected_vector_changed === true ? `Selected vector changed. Baseline next-token ID ${c.baseline_next_token_id ?? '?'} → edited ID ${c.intervention_next_token_id ?? '?'}. This is one fixed-input comparison, not a generated continuation or explanation.` : 'Comparison returned without a verified selected-vector change flag; inspect the complete metadata.';
     const controls = Object.entries(e.controls || {}); $('experiment-controls').textContent = controls.length ? 'Recorded controls: ' + controls.map(([key,value]) => `${key}: ${value === true ? 'passed' : value === false ? 'FAILED' : display(value)}`).join(' · ') : 'No control results recorded.';
     $('experiment-metrics').textContent = `Full-logits max |Δ|: ${number(c.full_logits_max_abs_delta)} · full-logits L2 Δ: ${number(c.full_logits_l2_delta)} · last-position max |Δ|: ${number(c.last_position_max_abs_delta)}`;
@@ -311,6 +313,12 @@
   $('refresh-devices').addEventListener('click', () => action('Checking actual device availability…', async () => { const current = await api('status'); setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
   $('capture-mode').addEventListener('change', () => { $('custom-capture').hidden = $('capture-mode').value !== 'custom'; });
   $('inspect-button').addEventListener('click', () => action('Inspecting local checkpoint metadata…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const info = await api('inspect', {path}); $('model-info').textContent = `Inspection only — not loaded.\n${display(info)}`; }));
+  $('demo-button').addEventListener('click', () => action('Building the tiny untrained CPU demo in RAM…', async () => {
+    const result = await api('demo', {}); clearView(); setModel(result.model);
+    $('capture-mode').value = 'auto'; $('custom-capture').hidden = true; $('layers').value = '';
+    for (const [id, maximum] of [['max-output', 8], ['max-input', 120]]) { const current = Number($(id).value); $(id).value = String(Number.isSafeInteger(current) && current >= Number($(id).min) ? Math.min(current, maximum) : maximum); }
+    if (!$('prompt').value.trim()) $('prompt').value = 'Hello, tiny model!';
+  }));
   $('load-button').addEventListener('click', () => action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); clearView(); setModel(null); const info = await api('load', {path, ...execution}); setModel(info); }));
   $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); clearView(); showRun(await api('open', {path})); await loadEvents(); $('saved-status').textContent = 'Selected capture opened and validated. Other listed exports remain unverified.'; }));
   $('run-button').addEventListener('click', () => action('Running model and capturing supported outputs…', async () => { const options = settings(), prompt = $('prompt').value; const vision = String(state.model?.family || '').toLowerCase().includes('vit'); if (vision && !state.image) throw new Error('Choose an image first.'); if (!vision && !prompt.trim()) throw new Error('Enter a prompt first.'); clearView(); const body = {prompt, settings: options}; if (vision) body.image_base64 = state.image; showRun(await api('run', body)); await loadEvents(); }));

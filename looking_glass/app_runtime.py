@@ -449,6 +449,65 @@ class LocalModelRuntime:
         with self._lock:
             self._retire_current()
 
+    def load_demo(self):
+        """Create an explicitly untrained CPU model/tokenizer entirely in RAM."""
+        from transformers import GPT2Config, GPT2LMHeadModel, PreTrainedTokenizerFast
+        from tokenizers import Tokenizer, decoders, models, pre_tokenizers
+        with self._lock:
+            if self._quarantined:
+                raise RuntimeError("model owner is quarantined; restart the local app")
+            seed = 123
+            config = GPT2Config(vocab_size=259, n_positions=128, n_ctx=128, n_embd=16,
+                               n_layer=2, n_head=2, bos_token_id=1, eos_token_id=None,
+                               pad_token_id=0, resid_pdrop=0., embd_pdrop=0., attn_pdrop=0.)
+            config._attn_implementation = "eager"
+            # Meta allocation and real initialization both preserve the caller's
+            # CPU RNG. Do not seed or initialize CUDA generators for this demo.
+            with torch.random.fork_rng(devices=[]), torch.device("meta"):
+                shell = GPT2LMHeadModel(config)
+            estimated = sum(p.numel() * 4 for p in shell.parameters())
+            buffer_bytes = sum(b.numel() * (4 if b.is_floating_point() else b.element_size()) for b in shell.buffers())
+            del shell
+            if estimated + buffer_bytes > self.max_model_bytes:
+                raise ValueError("synthetic demo model and buffers exceed model byte limit")
+            self._retire_current()
+            warning = "Synthetic untrained random weights: useful for learning capture/intervention controls, not learned-language quality or meaningful semantic explanations."
+            self._info = {"family": "gpt2", "architecture": "GPT2LMHeadModel", "path": None,
+                "task": "text-generation", "device": "cpu", "requested_device": "cpu", "dtype": "float32",
+                "state": "loading", "targets": list(FAMILIES["gpt2"]["targets"]), "supported_devices": ["cpu"],
+                "device_selection_reason": "Synthetic onboarding demo always runs on CPU.",
+                "capture_device": "cpu", "max_vram_bytes": None, "gpu_memory": None,
+                "execution_numerics": self._numerics(), "stack_layers": {"transformer": 2}, "layers": [0, 1],
+                "config_summary": {"model_type": "gpt2", "vocab_size": 259, "n_positions": 128,
+                                   "n_embd": 16, "n_layer": 2, "n_head": 2},
+                "estimated_float32_weight_bytes": estimated, "parameter_bytes": estimated,
+                "registered_buffer_bytes": buffer_bytes, "warning": warning,
+                "provenance": {"kind": "synthetic_untrained_demo", "seed": seed,
+                    "config": config.to_dict(),
+                    "tokenizer": "In-memory byte-level BPE: 256 UTF-8 byte symbols plus PAD/BOS/UNK, no merges. Arbitrary Unicode input uses multiple byte tokens; individual decoded bytes may display replacement characters. 128-position model context."},
+                "identity_note": "Synthetic seeded model, not a downloaded checkpoint or cryptographic execution attestation. Reproducibility is scoped to the same software/numerical environment.",
+                "capture_scope": "All supported adapter boundaries, not every operation/neuron or proof of complete interpretability."}
+            try:
+                with torch.random.fork_rng(devices=[]), torch.device("cpu"):
+                    torch.random.default_generator.manual_seed(seed)
+                    self.model = GPT2LMHeadModel(config).to(dtype=torch.float32).eval()
+                self.model.requires_grad_(False)
+                vocab = {"[PAD]": 0, "[BOS]": 1, "[UNK]": 2}
+                vocab.update({symbol: index + 3 for index, symbol in enumerate(sorted(pre_tokenizers.ByteLevel.alphabet()))})
+                backend = Tokenizer(models.BPE(vocab=vocab, merges=[], unk_token="[UNK]"))
+                backend.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=True)
+                backend.decoder = decoders.ByteLevel()
+                self.tokenizer = PreTrainedTokenizerFast(tokenizer_object=backend, pad_token="[PAD]",
+                    bos_token="[BOS]", unk_token="[UNK]", model_max_length=128,
+                    clean_up_tokenization_spaces=False)
+                self.processor = None
+                self._info["state"] = "ready"
+                self._capture_binding = object()
+                return self.info()
+            except BaseException:
+                self._quarantine()
+                raise
+
     def load(self, path, device="auto", max_vram_bytes=DEFAULT_VRAM_BYTES):
         import transformers
         with self._lock:
@@ -838,6 +897,7 @@ class LocalModelRuntime:
                 answer = self.tokenizer.decode(generated, skip_special_tokens=True)
             token_labels, token_labels_note = _token_labels(self.tokenizer, steps)
             return {"answer": answer, "task": self._info["task"], "events": captures,
+                    "warning": self._info.get("warning"),
                     "token_labels": token_labels, "token_labels_note": token_labels_note,
                     "model": self.info(), "settings": {**opts, "targets": list(opts["targets"]), "layers": list(opts["layers"])},
                     "prompt": prompt if family != "vit" else None,

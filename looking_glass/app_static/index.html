@@ -20,6 +20,7 @@
     <p class="muted">Open a supported local checkpoint, ask a question, and inspect the vectors captured during its forward passes.</p>
     <section aria-labelledby="model-heading">
       <h2 id="model-heading">Checkpoint</h2>
+      <div class="demo-onboarding"><strong>No checkpoint yet?</strong><button id="demo-button" type="button">Load tiny CPU demo</button><p class="hint">An untrained, random GPT-2 built in RAM. No model download or files. Try capture and controlled edits—not useful answers or GPU validation. Starts with auto hooks and short token limits; memory allowances unchanged.</p><p class="hint">Loading a model or demo replaces the current model, RAM capture and comparison. Save captures you want to keep first. Nothing runs automatically.</p></div>
       <label for="model-path">Local checkpoint folder</label>
       <input id="model-path" type="text" autocomplete="off" spellcheck="false" placeholder="/path/to/local/checkpoint" list="model-choices">
       <datalist id="model-choices"></datalist>
@@ -42,6 +43,7 @@
       <div class="button-row"><button id="inspect-button" class="secondary" type="button">Inspect folder</button><button id="load-button" type="button">Load model</button></div>
       <button id="unload-button" class="quiet" type="button" disabled>Unload model · keep capture</button>
       <p class="hint">Unload releases the model owner separately from capture RAM. Your retained vectors remain inspectable; device memory release is subject to runtime cleanup.</p>
+      <p id="demo-model-warning" class="approximation" hidden>Untrained random CPU demo: output is synthetic, not useful model answers. This is not GPU validation.</p>
       <div id="model-info" class="info-box" aria-live="polite">No model loaded.</div>
       <p class="hint">Float32: GPT-2 and T5 support CPU or one CUDA GPU. Auto uses CUDA for GPT-2/T5 when available and CPU for DistilBERT masked language models or ViT image classifiers, with the device-selection reason recorded. No half-precision, multi-GPU sharding, GGUF, or custom-model support.</p>
     </section>
@@ -88,6 +90,7 @@
     </section>
     <section id="result-panel" class="panel" aria-labelledby="result-heading" hidden>
       <div class="panel-heading"><div><span class="eyebrow">03 / RESULT</span><h2 id="result-heading">Model output</h2></div><span id="task-badge" class="pill"></span></div>
+      <p id="demo-capture-warning" class="approximation" hidden>This capture came from the untrained random CPU demo. Outputs are synthetic and not useful answers or GPU validation.</p>
       <p id="capture-model" class="hint"></p>
       <pre id="answer" class="answer"></pre>
       <details><summary>Capture model identity and settings</summary><pre id="capture-info" class="detail-json"></pre></details>
@@ -126,6 +129,7 @@
     </section>
     <section id="experiment-panel" class="panel" aria-labelledby="experiment-heading" hidden>
       <div class="panel-heading"><h2 id="experiment-heading">Fixed-input comparison</h2><span class="pill">Separate from original capture</span></div>
+      <p id="demo-experiment-warning" class="approximation" hidden>This comparison uses an untrained random CPU demo. It exercises the workflow, not useful model behavior or GPU validation.</p>
       <p id="experiment-outcome" class="info-box"></p><p id="experiment-controls" class="hint"></p><p id="experiment-metrics" class="hint"></p>
       <p class="hint">Paired columns rank each trial’s top next-token logits independently. These are logits, not probabilities. Identical next-token IDs alone do not mean all logits were unchanged.</p>
       <div class="table-scroll"><table><thead><tr><th>Rank</th><th>Baseline token · ID</th><th>Logit</th><th>Edited token · ID</th><th>Logit</th></tr></thead><tbody id="experiment-token-body"></tbody></table></div>

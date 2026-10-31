@@ -15,3 +15,7 @@
 
 .intervention-editor { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 20px; }
 #experiment-metrics, #experiment-controls { overflow-wrap: anywhere; }
+
+.demo-onboarding { padding: 12px; margin-block: 12px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--accent-soft); }
+.demo-onboarding strong { display: block; margin-bottom: 8px; }
+.demo-onboarding button { width: 100%; }
