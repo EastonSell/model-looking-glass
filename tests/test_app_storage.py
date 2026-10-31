@@ -634,3 +634,77 @@ def test_request_input_context_is_bounded_by_steps_not_events(tmp_path):
         assert coordinate["token_id"] == (2 if index % 2 == 0 else 9)
     assert len(context["steps_lookup"]) == 1
     assert len(context["token_ids"]) == 2
+
+
+def test_raw_and_reduced_subnormal_display_ftz_on_off_in_fresh_process():
+    import subprocess
+    import sys
+    code = '''
+import hashlib, math, torch
+from types import SimpleNamespace
+from looking_glass.app_storage import TraceStore
+bits = torch.tensor([1, 2, -2147483647, 0, -2147483648, 3], dtype=torch.int32)
+value = bits.view(torch.float32)
+original_hash = hashlib.sha256(bits.numpy().tobytes()).hexdigest()
+store = TraceStore("/tmp/looking-glass-ftz-no-export")
+store.publish({"events": [SimpleNamespace(value=value, metadata=lambda: {})]})
+results = []
+for mode in (False, True):
+    if not torch.set_flush_denormal(mode): raise SystemExit(77)
+    raw = store.tensor(0, limit=6)
+    reduced = store.tensor(0, limit=3, view="reduced")
+    tiny = 2.0 ** -149
+    assert raw["values"] == [tiny, 2*tiny, -tiny, 0.0, -0.0, 3*tiny]
+    assert math.copysign(1.0, raw["values"][4]) == -1
+    assert [item["mean"] for item in reduced["bins"]] == [1.5*tiny, -0.5*tiny, 1.5*tiny]
+    assert [item["min"] for item in reduced["bins"]] == [tiny, -tiny, -0.0]
+    assert [item["max"] for item in reduced["bins"]] == [2*tiny, 0.0, 3*tiny]
+    assert reduced["approximate"] is True
+    assert store.tensor(0, offset=6)["values"] == []
+    assert hashlib.sha256(value.view(torch.int32).numpy().tobytes()).hexdigest() == original_hash
+    if mode: assert value.double().tolist()[0] == 0.0, "display changed FTZ mode"
+    results.append((raw, reduced))
+assert results[0] == results[1]
+'''
+    child = subprocess.run([sys.executable,"-B","-c",code],capture_output=True,text=True,timeout=30)
+    if child.returncode == 77: pytest.skip("FTZ mode unavailable on this CPU")
+    assert child.returncode == 0, child.stdout + child.stderr
+
+
+def test_display_decoder_bounded_pages_once_small_rows_and_large_chunks(tmp_path,monkeypatch):
+    import looking_glass.agreement_numeric as numeric
+    original=numeric.decode_f32_le; sizes=[]
+    def checked(raw):
+        sizes.append(len(raw)); assert len(raw) <= 1024*1024
+        return original(raw)
+    monkeypatch.setattr(numeric,"decode_f32_le",checked)
+    store=TraceStore(tmp_path)
+    store.publish(result(torch.arange(4096,dtype=torch.float32)))
+    store.tensor(0,limit=256,view="reduced")
+    assert sizes == [4096*4]  # Decode the common row once, not once per bin.
+    width=262145; value=torch.arange(width,dtype=torch.float32); before=value.view(torch.int32).clone()
+    store.publish(result(value)); sizes.clear()
+    grouped=store.tensor(0,limit=1,view="reduced")
+    assert sizes == [1024*1024,4]
+    assert grouped["bins"] == [dict(start=0,end=width,mean=(width-1)/2,min=0.,max=float(width-1))]
+    assert grouped["approximate"] is True and "chunk" in grouped["reduction"].lower()
+    assert torch.equal(value.view(torch.int32),before)
+    sizes.clear(); raw=store.tensor(0,offset=width-2,limit=4096)
+    assert sizes == [8] and raw["values"] == [float(width-2),float(width-1)]
+
+
+def test_large_reduced_row_reuses_one_bounded_decoded_chunk_across_bins(tmp_path,monkeypatch):
+    import looking_glass.agreement_numeric as numeric
+    original=numeric.decode_f32_le; sizes=[]
+    def checked(raw):
+        sizes.append(len(raw)); assert len(raw) <= 1024*1024
+        return original(raw)
+    monkeypatch.setattr(numeric,"decode_f32_le",checked)
+    width=300000; store=TraceStore(tmp_path)
+    store.publish(result(torch.arange(width,dtype=torch.float32)))
+    grouped=store.tensor(0,limit=256,view="reduced")
+    assert sizes == [1024*1024,(width-262144)*4]
+    assert len(grouped["bins"]) == 256
+    for index,item in enumerate(grouped["bins"]):
+        start,end=index*width//256,(index+1)*width//256
+        assert item == dict(start=start,end=end,mean=(start+end-1)/2,min=float(start),max=float(end-1))

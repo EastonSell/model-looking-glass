@@ -111,6 +111,7 @@ def test_advanced_workflows_are_named_closed_disclosures_not_removed():
         "intervention-options": ("intervention-operation", "intervention-feature", "intervene-button"),
         "comparison-checks": ("experiment-controls", "experiment-metrics"),
         "witness-options": ("witness-phase", "witness-body", "witness-prev", "witness-next"),
+        "reference-options": ("pin-reference", "inspect-reference", "compare-reference", "clear-reference"),
     }
     for identifier, controls in groups.items():
         assert identifier in ids, f"missing progressive disclosure: {identifier}"
@@ -128,4 +129,11 @@ def test_failed_control_notice_is_not_hidden_inside_details():
         warning = ids[identifier]
         assert warning.attrs.get("role") in {"alert", "status"}
         assert not any(node.tag == "details" for node in warning.ancestors())
+
+
+def test_reference_disclosure_remains_reachable_without_a_capture():
+    group = page().ids["reference-options"]
+    assert not any("hidden" in node.attrs or node.attrs.get("id") in
+                   {"result-panel", "trace-panel", "vector-panel", "experiment-panel"}
+                   for node in group.ancestors())
 

@@ -452,8 +452,36 @@ class TraceStore:
         return {"coordinate": _json_copy(coordinate), "step": _json_copy(step),
                 "model": _json_copy(model), "reference_value": reference}
 
+    def reference_source(self, event, vector, *, max_bytes):
+        """Preflight one retained vector and metadata before any tensor clone.
+
+        The server separately enforces a private live binding; imported metadata
+        is not authority to pin or compare with a currently loaded model.
+        """
+        from .app_reference import MAX_VECTOR_BYTES, _bounded_metadata_copy
+        _integer(max_bytes, "max_bytes", 1, MAX_VECTOR_BYTES)
+        if self._run is None: raise ValueError("No completed trace is loaded")
+        _integer(event, "event", 0, len(self._values) - 1)
+        _integer(vector, "vector", 0, self._events[event]["vector_count"] - 1)
+        if self._values[event].shape[-1] * 4 > max_bytes:
+            raise ValueError("Reference vector exceeds byte limit")
+        coordinate = self._coordinate(event, vector)
+        if coordinate["status"] != "known": raise ValueError("Reference requires a known coordinate")
+        metadata = self._events[event]["metadata"]
+        matches = [step for step in self._run["steps"]
+                   if step["app_forward_index"] == coordinate["app_forward_index"]
+                   and step.get("run_id") == metadata["identity"]["run_id"]]
+        if len(matches) != 1: raise ValueError("Reference requires one retained forward step")
+        snapshot = _bounded_metadata_copy(dict(coordinate=coordinate, step=matches[0],
+            model=self._run.get("model"), metadata=metadata, prompt=self._run.get("prompt")))
+        source = self.intervention_source(event, vector)
+        source.update(metadata=snapshot["metadata"], prompt=snapshot["prompt"])
+        return source
+
     def tensor(self, event, vector=0, offset=0, limit=256, view="raw"):
         import torch
+        from .app_reference import MAX_VECTOR_BYTES, ReferenceVector
+        decode = ReferenceVector._decoded
         if self._run is None: raise ValueError("No completed trace is loaded")
         _integer(event, "event", 0, len(self._values) - 1)
         value = self._values[event]; width = value.shape[-1]
@@ -466,15 +494,45 @@ class TraceStore:
                   "coordinate": self._coordinate(event, vector)}
         if view == "raw":
             segment = row[offset:offset + limit]
-            result.update(values=segment.tolist(), raw_bits=[f"0x{x & 0xffffffff:08x}" for x in segment.view(torch.int32).tolist()])
+            result.update(values=decode(segment).tolist(), raw_bits=[f"0x{x & 0xffffffff:08x}" for x in segment.view(torch.int32).tolist()])
         else:
             if offset != 0: raise ValueError("Grouped views start at offset zero")
             count = min(limit, 256, width); bins = []
+            chunk_width = MAX_VECTOR_BYTES // 4
+            # Decode ordinary rows once. Larger rows never acquire a full float64
+            # copy: one request-local chunk is reused across successive bins.
+            decoded = decode(row) if width <= chunk_width else None
+            chunk = None
+            chunk_start = chunk_end = 0
             for i in range(count):
                 start, end = i * width // count, (i + 1) * width // count
-                part = row[start:end].double()
-                bins.append(dict(start=start, end=end, mean=part.mean().item(), min=part.min().item(), max=part.max().item()))
-            result.update(bins=bins, reduction="Contiguous coordinate means/ranges; not semantic concepts. Full original values remain in RAM.")
+                if decoded is not None:
+                    part = decoded[start:end]
+                    mean, low, high = part.mean().item(), part.min().item(), part.max().item()
+                else:
+                    total, low, high = 0.0, None, None
+                    cursor = start
+                    while cursor < end:
+                        if chunk is None or cursor >= chunk_end:
+                            # No surviving part view keeps the prior chunk alive.
+                            chunk = None
+                            chunk_start = cursor
+                            chunk_end = min(chunk_start + chunk_width, width)
+                            chunk = decode(row[chunk_start:chunk_end])
+                        stop = min(end, chunk_end)
+                        part = chunk[cursor - chunk_start:stop - chunk_start]
+                        total += part.sum().item()
+                        part_low, part_high = part.min().item(), part.max().item()
+                        low = part_low if low is None else min(low, part_low)
+                        high = part_high if high is None else max(high, part_high)
+                        del part
+                        cursor = stop
+                    mean = total / (end - start)
+                bins.append(dict(start=start, end=end, mean=mean, min=low, max=high))
+            note = "Contiguous coordinate means/ranges; not semantic concepts. Full original values remain in RAM."
+            if decoded is None:
+                note += " Large-row means use bounded float64 chunk sums; summation rounding may differ from a whole-row reduction."
+            result.update(bins=bins, reduction=note)
         return result
 
     def save(self, name):

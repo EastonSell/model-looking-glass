@@ -2,7 +2,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const token = document.querySelector('meta[name="mlg-token"]').content;
-  const state = {coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
+  const state = {reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
   const pageSize = 100, valuePageSize = 256;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
@@ -22,6 +22,14 @@
   function syncButtons() {
     ['intervention-operation', 'intervention-feature', 'intervention-value', 'witness-phase', 'experiment-save-name', 'vector-picker', 'browse-button', 'browse-go', 'browse-parent', 'browse-select', 'browse-path', 'saved-runs', 'refresh-saved', 'inspect-button', 'load-button', 'model-path', 'execution-device', 'vram-mib', 'refresh-devices', 'open-button', 'open-path', 'vector-index', 'vector-view', 'capture-mode', 'layers', 'max-input', 'max-output', 'max-events', 'trace-mib', 'prompt', 'image-file'].forEach((id) => { $(id).disabled = state.busy; });
     $('clear-event-filters').disabled = state.busy || !state.run;
+    $('reference-selection-status').textContent = referenceSelectionReady() ? 'The selected live vector is eligible to keep. Comparison also requires the same model owner and module site.' : state.run?.reference_reason || 'Select and read a known vector in a supported live GPT-2 or standard Llama capture. Imported or unknown-source captures are read-only.';
+    $('pin-reference').disabled = state.busy || !referenceSelectionReady();
+    $('compare-reference').disabled = state.busy || !referenceSelectionReady() || !state.referenceFresh || !state.reference?.ready_for_compare;
+    $('inspect-reference').disabled = state.busy || !state.reference;
+    $('clear-reference').disabled = state.busy || !state.reference;
+    $('refresh-reference').disabled = state.busy;
+    $('reference-prev').disabled = state.busy || state.referenceOffset === 0 || !state.referenceMode;
+    $('reference-next').disabled = state.busy || !state.referenceMode || state.referenceOffset + valuePageSize >= state.referenceTotal;
     $('run-button').textContent = state.run ? 'Replace capture →' : 'Run & capture →';
     $('replace-warning').hidden = !state.run;
     $('run-button').disabled = state.busy || !state.model || state.model.state === 'quarantined';
@@ -55,7 +63,7 @@
     state.busy = true; syncButtons(); notice(message); $('run-status').textContent = message;
     try { await callback(); if (state.model?.state === 'quarantined') { notice('Model owner quarantined. Stop and restart the app before loading or running a model again. Saved captures can still be inspected.', true); $('run-status').textContent = 'Quarantined — restart the app to recover.'; } else { notice(''); $('run-status').textContent = 'Ready.'; } }
     catch (error) {
-      try { const current = await api('status'); if (state.run) { const same = current.run?.capture_id && current.run.capture_id === state.run.capture_id; state.run.intervention_available = !!(same && current.run.intervention_available); state.run.intervention_reason = same ? current.run.intervention_reason : 'The displayed capture is no longer bound to the current server revision; reopen or make a fresh capture.'; } setModel(current.model); applyLimits(current.limits); applyDevices(current); } catch (_) { /* Preserve the original failure if status is unavailable. */ }
+      try { const current = await api('status'); if (state.run) { const same = current.run?.capture_id && current.run.capture_id === state.run.capture_id; state.run.intervention_available = !!(same && current.run.intervention_available); state.run.intervention_reason = same ? current.run.intervention_reason : 'The displayed capture is no longer bound to the current server revision; reopen or make a fresh capture.'; state.run.reference_available = !!(same && current.run.reference_available); state.run.reference_reason = same ? current.run.reference_reason : 'The displayed capture revision is no longer current.'; } setModel(current.model); applyLimits(current.limits); applyDevices(current); } catch (_) { /* Preserve the original failure if status is unavailable. */ }
       const quarantined = state.model?.state === 'quarantined';
       notice((error.message || String(error)) + (quarantined ? ' This model owner is quarantined. Stop and restart the app before loading or running a model again.' : ''), true);
       $('run-status').textContent = quarantined ? 'Quarantined — restart the app to recover.' : 'Stopped. See the message above.';
@@ -67,6 +75,7 @@
     if (Number.isSafeInteger(limits?.max_trace_bytes) && limits.max_trace_bytes >= 1048576) { const max = Math.floor(limits.max_trace_bytes / 1048576); $('trace-mib').max = String(max); if (Number($('trace-mib').value) > max) $('trace-mib').value = String(max); }
   }
   function applyDevices(status) {
+    if (Object.hasOwn(status, 'reference')) setReference(status.reference);
     $('model-discovery-warning').textContent = status.model_discovery_warning ? `Model folder discovery unavailable: ${status.model_discovery_warning}` : '';
     $('model-discovery-warning').hidden = !status.model_discovery_warning;
     state.devices = Array.isArray(status.devices) ? status.devices : [];
@@ -205,7 +214,7 @@
   }
   async function loadVector() {
     if (!state.event) return;
-    const request = ++state.valueRequest; state.coordinate = null; syncButtons();
+    invalidateReferenceView(); const request = ++state.valueRequest; state.coordinate = null; syncButtons();
     // Never display the preceding tensor beneath a newly selected coordinate.
     $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren();
     $('raw-values').hidden = true; $('reduced-values').hidden = true; $('reduction-note').hidden = true;
@@ -232,7 +241,7 @@
     syncButtons();
   }
   function resetVectorPicker() {
-    state.coordinate = null; state.vectorListRequest++; state.vectorListOffset = 0; state.vectorListTotal = 0; state.vectorOptions = [];
+    invalidateReferenceView(); state.coordinate = null; state.vectorListRequest++; state.vectorListOffset = 0; state.vectorListTotal = 0; state.vectorOptions = [];
     $('vector-picker').replaceChildren(); $('vectors-page').textContent = ''; $('vector-list-status').textContent = '';
     $('vector-coordinate').textContent = 'Coordinate unavailable until a vector is read.';
   }
@@ -297,6 +306,47 @@
     for (const run of state.saved) { const option = document.createElement('option'); option.value = run.path; option.disabled = run.status !== 'complete_unverified'; option.textContent = `${run.name} · ${run.status === 'complete_unverified' ? 'not yet verified' : 'incomplete'} · ${bytes(run.tensor_file_bytes)}`; $('saved-runs').append(option); }
     $('saved-runs').value = state.saved.some((run) => run.path === selected && run.status === 'complete_unverified') ? selected : '';
     $('saved-status').textContent = `${state.saved.length} listed capture folders${result.truncated ? ' · list truncated' : ''}. Listing does not verify tensor integrity; Open validates the selected capture. Incomplete exports cannot be opened from this list.`;
+  }
+  function referenceSelectionReady() {
+    return !!(state.run?.reference_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && ['gpt2','llama'].includes(state.model?.family) && state.model.state !== 'quarantined' && state.event && state.coordinate?.status === 'known' && Number($('vector-index').value) === state.vector);
+  }
+  function invalidateReferenceView() {
+    state.referenceRequest++; state.referenceMode = null; state.referenceOffset = 0; state.referenceTotal = 0;
+    $('reference-values-panel').hidden = true; $('reference-value-body').replaceChildren(); $('reference-bit-body').replaceChildren(); $('reference-pair-label').textContent = ''; $('reference-metrics').textContent = ''; $('reference-details').textContent = ''; $('reference-page').textContent = ''; $('reference-read-status').textContent = '';
+  }
+  function setReference(reference) {
+    if ((reference?.reference_id || null) !== (state.reference?.reference_id || null)) invalidateReferenceView();
+    state.reference = reference; state.referenceFresh = true;
+    $('reference-summary').textContent = reference ? `Reference vector · pinned${reference.coordinate?.token_position != null ? ' at source position ' + reference.coordinate.token_position : ''}` : 'Reference vector · empty';
+    $('reference-identity').textContent = reference ? `${reference.model?.name || reference.model?.family || 'Recorded model'} · ${coordinateLabel(reference.coordinate, 'pinned')} · ${bytes(reference.total_bytes)} retained` : 'No reference is pinned. Select a known vector in a live capture, then keep it here.';
+    $('reference-status').textContent = reference ? (reference.ready_for_compare ? 'Reference retained. Comparison still requires a compatible selected live vector; the server checks model and module identity.' : reference.reason || 'Reference retained for inspection; current model/capture is not compatible for comparison.') : '';
+    $('reference-source-details').textContent = reference ? display(reference) : ''; syncButtons();
+  }
+  async function refreshReferenceOptional() {
+    try { setReference(await api('reference')); }
+    catch(error) { state.referenceFresh = false; revealOptions('reference-options'); $('reference-status').textContent = `Reference status unavailable: ${error.message || String(error)}. The last known pin is retained here; refresh before comparing.`; syncButtons(); }
+  }
+  async function readReference(mode, offset = 0) {
+    if (!state.reference) return;
+    if (mode === 'compare' && (!referenceSelectionReady() || !state.referenceFresh || !state.reference.ready_for_compare)) { revealOptions('reference-options'); $('reference-status').textContent = state.run?.reference_reason || state.reference.reason || 'Choose a compatible known vector in a current live capture before comparing.'; return; }
+    const referenceId = state.reference.reference_id, captureId = state.run?.capture_id, event = state.event?.index, vector = state.vector;
+    invalidateReferenceView(); const request = state.referenceRequest; state.referenceMode = mode; state.referenceOffset = offset;
+    $('reference-values-panel').hidden = false; $('reference-read-status').textContent = 'Reading retained feature coordinates…';
+    try {
+      const path = mode === 'compare' ? `compare-vector?reference_id=${encodeURIComponent(referenceId)}&capture_id=${encodeURIComponent(captureId)}&event=${event}&vector=${vector}&offset=${offset}&limit=${valuePageSize}` : `reference-tensor?reference_id=${encodeURIComponent(referenceId)}&offset=${offset}&limit=${valuePageSize}`;
+      const result = await api(path);
+      if (request !== state.referenceRequest || state.reference?.reference_id !== referenceId || (mode === 'compare' && (state.run?.capture_id !== captureId || state.event?.index !== event || state.vector !== vector))) return;
+      if (result.reference_id !== referenceId || (mode === 'compare' && result.capture_id !== captureId)) throw new Error('Reference response revisions do not match the selected reference and capture.');
+      const left = mode === 'compare' ? result.reference_values || [] : result.values || [], right = result.current_values || [], leftBits = mode === 'compare' ? result.reference_raw_bits || [] : result.raw_bits || [], rightBits = result.current_raw_bits || [];
+      state.referenceTotal = Number(result.total || 0);
+      left.forEach((value,i) => { const row=document.createElement('tr'); cell(row,Number(result.offset ?? offset)+i); cell(row,number(value)); cell(row,mode==='compare'?number(right[i]):'—'); cell(row,mode==='compare'?number(result.deltas?.[i]):'—'); $('reference-value-body').append(row); const bits=document.createElement('tr'); cell(bits,Number(result.offset ?? offset)+i); cell(bits,leftBits[i] ?? '—'); cell(bits,mode==='compare'?(rightBits[i] ?? '—'):'—'); $('reference-bit-body').append(bits); });
+      $('reference-pair-label').textContent = mode === 'compare' ? `Reference: ${coordinateLabel(result.reference?.coordinate,'pinned')}
+Current: ${coordinateLabel(result.current?.coordinate,vector)}
+Same feature coordinates—not token alignment. Inputs and source positions may differ.` : coordinateLabel(result.coordinate,'pinned');
+      if (mode === 'compare') { const m=result.metrics || {}; $('reference-metrics').textContent=`Full-vector max |Δ| ${number(m.max_abs_delta)} · L1 ${number(m.l1)} · L2 ${number(m.l2)} · cosine ${m.cosine == null ? 'unavailable: ' + (m.cosine_reason || 'zero or undefined norm') : number(m.cosine)}. Raw-bit changes ${number(m.raw_bit_changed_count)}; numeric nonzero deltas ${number(m.numeric_nonzero_count)} (signed zero can differ only in bits). These are numerical diagnostics, not semantic similarity or explanations.`; }
+      $('reference-details').textContent=display(result); $('reference-page').textContent=`${offset}–${Math.max(offset,offset+left.length-1)} of ${state.referenceTotal} features (zero-based)`; $('reference-read-status').textContent=mode==='compare'?'Reference/current values retained; deltas computed in float64 by the server.':'Exact reference values; no current capture is required.';
+    } catch(error) { if(request===state.referenceRequest) { $('reference-value-body').replaceChildren(); $('reference-bit-body').replaceChildren(); $('reference-pair-label').textContent=''; $('reference-metrics').textContent=''; $('reference-details').textContent=''; state.referenceTotal=0; revealOptions('reference-options'); $('reference-read-status').textContent=`Reference read unavailable: ${error.message || String(error)}. No previous values are shown under this request.`; } }
+    syncButtons();
   }
   function interventionReady() {
     return !!(state.run?.intervention_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && ['gpt2', 'llama'].includes(state.model?.family) && state.model.state !== 'quarantined' && state.event && Number($('vector-index').value) === state.vector && state.coordinate?.status === 'known');
@@ -395,14 +445,14 @@
     const result = await api('demo', {}); clearView(); setModel(result.model);
     $('capture-mode').value = 'auto'; $('custom-capture').hidden = true; $('layers').value = '';
     for (const [id, maximum] of [['max-output', 8], ['max-input', 120]]) { const current = Number($(id).value); $(id).value = String(Number.isSafeInteger(current) && current >= Number($(id).min) ? Math.min(current, maximum) : maximum); }
-    if (!$('prompt').value.trim()) $('prompt').value = 'Hello, tiny model!';
+    if (!$('prompt').value.trim()) $('prompt').value = 'Hello, tiny model!'; await refreshReferenceOptional();
   }));
-  $('load-button').addEventListener('click', () => action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); const info = await api('load', {path, ...execution}); clearView(); setModel(info); }));
-  $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); const opened = await api('open', {path}); clearView(); showRun(opened); await loadEvents(); $('saved-status').textContent = 'Selected capture opened and validated. Other listed exports remain unverified.'; }));
-  $('run-button').addEventListener('click', () => action('Running model and capturing supported outputs…', async () => { const options = settings(), prompt = $('prompt').value; const vision = String(state.model?.family || '').toLowerCase().includes('vit'); if (vision && !state.image) throw new Error('Choose an image first.'); if (!vision && !prompt.trim()) throw new Error('Enter a prompt first.'); clearView(); const body = {prompt, settings: options}; if (vision) body.image_base64 = state.image; showRun(await api('run', body)); await loadEvents(); }));
+  $('load-button').addEventListener('click', () => action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); const info = await api('load', {path, ...execution}); clearView(); setModel(info); await refreshReferenceOptional(); }));
+  $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); const opened = await api('open', {path}); clearView(); showRun(opened); await loadEvents(); $('saved-status').textContent = 'Selected capture opened and validated. Other listed exports remain unverified.'; await refreshReferenceOptional(); }));
+  $('run-button').addEventListener('click', () => action('Running model and capturing supported outputs…', async () => { const options = settings(), prompt = $('prompt').value; const vision = String(state.model?.family || '').toLowerCase().includes('vit'); if (vision && !state.image) throw new Error('Choose an image first.'); if (!vision && !prompt.trim()) throw new Error('Enter a prompt first.'); clearView(); const body = {prompt, settings: options}; if (vision) body.image_base64 = state.image; showRun(await api('run', body)); await loadEvents(); await refreshReferenceOptional(); }));
   $('image-file').addEventListener('change', async () => { const request = ++state.imageRequest; state.image = null; const file = $('image-file').files[0]; if (!file) return; if (file.size > 4 * 1048576) { $('image-file').value = ''; notice('Choose an image no larger than 4 MiB.', true); return; } try { const result = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('Could not read this image.')); reader.readAsDataURL(file); }); if (request !== state.imageRequest) return; state.image = String(result).split(',')[1]; $('image-description').textContent = `${file.name} · ${bytes(file.size)} · held in this browser until Clear captured run or page close.`; } catch (error) { notice(error.message, true); } });
   $('save-button').addEventListener('click', () => action('Saving the complete capture…', async () => { const name = $('save-name').value.trim(); if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(name)) throw new Error('Use a save name of 1–64 letters, numbers, underscores, or hyphens, starting with a letter or number.'); $('save-status').textContent = 'No new export confirmed for this save attempt.'; const result = await api('save', {name, capture_id: state.run.capture_id}); $('save-status').textContent = `Saved explicitly: ${result.path || display(result)}. This export contains full capture data; keep it private when inputs are private.`; await refreshSavedOptional(); }));
-  $('clear-button').addEventListener('click', () => action('Clearing captured results…', async () => { await api('clear', {}); clearView(); $('prompt').value = ''; state.imageRequest++; state.image = null; $('image-file').value = ''; $('image-description').textContent = 'Select a local PNG, JPEG, or WebP. It is sent only to this local app.'; }));
+  $('clear-button').addEventListener('click', () => action('Clearing captured results…', async () => { await api('clear', {}); clearView(); $('prompt').value = ''; state.imageRequest++; state.image = null; $('image-file').value = ''; $('image-description').textContent = 'Select a local PNG, JPEG, or WebP. It is sent only to this local app.'; await refreshReferenceOptional(); }));
   function scheduleEventSearch() {
     clearTimeout(state.searchTimer); state.eventRequest++; state.valueRequest++;
     $('source-options-summary').textContent = ['Exact source filters', $('source-token').value ? 'position ' + $('source-token').value : '', $('source-forward').value ? 'forward ' + $('source-forward').value : '', $('source-stack').value].filter(Boolean).join(' · ');
@@ -422,6 +472,13 @@
   $('vectors-page-prev').addEventListener('click', () => action('Reading source-position picker…', async () => { state.vectorListOffset = Math.max(0, state.vectorListOffset - 100); await loadVectorList(); }));
   $('vectors-page-next').addEventListener('click', () => action('Reading source-position picker…', async () => { state.vectorListOffset += 100; await loadVectorList(); }));
   $('vector-index').addEventListener('input', syncButtons);
+  $('pin-reference').addEventListener('click',()=>action('Keeping the selected vector as a RAM reference…',async()=>{if(!referenceSelectionReady())throw new Error(state.run?.reference_reason || 'Select a known vector in a supported live capture.');const summary=await api('pin-reference',{capture_id:state.run.capture_id,event:state.event.index,vector:state.vector,expected_reference_id:state.reference?.reference_id ?? null});setReference(summary);revealOptions('reference-options');}));
+  $('clear-reference').addEventListener('click',()=>action('Clearing only the pinned reference…',async()=>{if(!state.reference)return;const result=await api('clear-reference',{reference_id:state.reference.reference_id});if(Object.hasOwn(result,'reference'))setReference(result.reference);else await refreshReferenceOptional();}));
+  $('refresh-reference').addEventListener('click',()=>action('Refreshing reference status…',refreshReferenceOptional));
+  $('inspect-reference').addEventListener('click',()=>{if(state.busy)return;return readReference('inspect');});
+  $('compare-reference').addEventListener('click',()=>{if(state.busy)return;return readReference('compare');});
+  $('reference-prev').addEventListener('click',()=>{if(state.busy||!state.referenceMode)return;return readReference(state.referenceMode,Math.max(0,state.referenceOffset-valuePageSize));});
+  $('reference-next').addEventListener('click',()=>{if(state.busy||!state.referenceMode)return;return readReference(state.referenceMode,state.referenceOffset+valuePageSize);});
   $('intervention-operation').addEventListener('change',()=>{$('intervention-feature-fields').hidden=$('intervention-operation').value==='zero';});
   $('intervene-button').addEventListener('click',()=>action('Replaying fixed input and checking controls…',async()=>{
     if(!interventionReady()) throw new Error(interventionReason());
@@ -439,5 +496,5 @@
   $('vector-view').addEventListener('change', () => action('Changing display view…', async () => { state.valueOffset = 0; await loadVector(); }));
   $('values-prev').addEventListener('click', () => action('Reading previous coordinates…', async () => { state.valueOffset = Math.max(0, state.valueOffset - valuePageSize); await loadVector(); }));
   $('values-next').addEventListener('click', () => action('Reading next coordinates…', async () => { state.valueOffset += valuePageSize; await loadVector(); }));
-  action('Connecting to your local session…', async () => { const result = await api('status'); setModel(result.model); applyLimits(result.limits); applyDevices(result); for (const item of result.models || []) { const option = document.createElement('option'); option.value = typeof item === 'string' ? item : item.path; option.label = typeof item === 'string' ? item : item.name || item.path; $('model-choices').append(option); } if (result.run) { showRun(result.run); await loadEvents(); } await refreshSavedOptional(); await restoreExperimentOptional(); });
+  action('Connecting to your local session…', async () => { const result = await api('status'); setModel(result.model); applyLimits(result.limits); applyDevices(result); for (const item of result.models || []) { const option = document.createElement('option'); option.value = typeof item === 'string' ? item : item.path; option.label = typeof item === 'string' ? item : item.name || item.path; $('model-choices').append(option); } if (result.run) { showRun(result.run); await loadEvents(); } await refreshSavedOptional(); await restoreExperimentOptional(); await refreshReferenceOptional(); });
 })();

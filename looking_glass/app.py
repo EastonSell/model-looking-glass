@@ -14,6 +14,7 @@ from urllib.parse import parse_qs, urlsplit
 import webbrowser
 
 from .app_storage import TraceStore
+from .app_reference import ReferenceVector
 
 MAX_BODY = 8 * 1024 * 1024
 MAX_IMAGE = 4 * 1024 * 1024
@@ -34,6 +35,9 @@ class AppState:
         self.runtime = runtime
         self.store = TraceStore(export_root, max_bytes=max_trace_bytes)
         self.experiment_store = TraceStore(export_root, max_bytes=max_trace_bytes)
+        self.reference = ReferenceVector()
+        self._reference_binding = None
+        self._reference_id = None
         self._live_binding = None  # Process-local capability; never accepted from JSON/export.
         self._capture_id = None
         self._experiment_id = None
@@ -56,6 +60,7 @@ class AppState:
                 discovery_warning = "Configured model folder is unavailable. Runtime and captures are unchanged; use an accessible model folder."
         return {"model": self.runtime.info(), "run": self._run_summary(), "models": models,
                 "experiment": self._experiment_summary(),
+                "reference": self._reference_summary(),
                 "model_discovery_warning": discovery_warning,
                 **self.runtime.capabilities(),
                 "limits": {"max_trace_bytes": self.max_trace_bytes, "max_image_bytes": MAX_IMAGE,
@@ -89,7 +94,41 @@ class AppState:
         if summary is not None:
             summary["intervention_available"], summary["intervention_reason"] = self._intervention_status()
             summary["capture_id"] = self._capture_id
+            summary["reference_available"], summary["reference_reason"] = self._intervention_status()
         return summary
+
+    def _reference_summary(self):
+        summary = self.reference.summary()
+        if summary is None:
+            return None
+        ready, reason = self._intervention_status()
+        binding = getattr(self.runtime, "capture_binding", lambda: None)()
+        if ready and (self._reference_binding is None or binding is not self._reference_binding):
+            ready, reason = False, "Reference belongs to another loaded model instance; it remains readable but cannot be compared."
+        if ready:
+            reason = "Same live model instance; Compare also checks the selected module, width and numerical settings. No automatic token alignment."
+        return {**summary, "reference_id": self._reference_id, "ready_for_compare": ready, "reason": reason}
+
+    def _require_reference_id(self, reference_id):
+        if type(reference_id) is not str or reference_id != self._reference_id:
+            raise ValueError("Reference selection is stale; refresh before reading or clearing it")
+
+    def _require_capture_id(self, capture_id):
+        if type(capture_id) is not str or capture_id != self._capture_id:
+            raise ValueError("Capture selection is stale; refresh before selecting a vector")
+
+    def reference_tensor(self, reference_id, offset=0, limit=256):
+        self._require_reference_id(reference_id)
+        return {**self.reference.tensor(offset, limit), "reference_id": self._reference_id}
+
+    def compare_reference(self, reference_id, capture_id, event, vector, offset=0, limit=256):
+        self._require_reference_id(reference_id)
+        self._require_capture_id(capture_id)
+        summary = self._reference_summary()
+        if summary is None or not summary["ready_for_compare"]:
+            raise ValueError(summary["reason"] if summary else "Keep a live reference vector first")
+        source = self.store.reference_source(event, vector, max_bytes=self.reference.max_bytes)
+        return {**self.reference.compare(source, offset, limit), "reference_id": reference_id, "capture_id": capture_id}
 
     def browse_models(self, data):
         requested = _text(data, "path", 4096, empty=True).strip()
@@ -129,6 +168,25 @@ class AppState:
 
     def post(self, action, data):
         if not isinstance(data, dict): raise ValueError("Expected a JSON object")
+        if action == "pin-reference":
+            self._require_capture_id(data.get("capture_id"))
+            if data.get("expected_reference_id") != self._reference_id:
+                raise ValueError("Reference selection is stale; refresh before replacing the retained vector")
+            available, reason = self._intervention_status()
+            if not available: raise ValueError(reason)
+            retained = self.store.summary()["total_bytes"] + (self.experiment_store.summary() or {}).get("total_bytes", 0)
+            remaining = self.max_trace_bytes - retained
+            if remaining <= 0: raise ValueError("No remaining trace allowance for a reference vector")
+            source = self.store.reference_source(data.get("event"), data.get("vector"), max_bytes=min(remaining, self.reference.max_bytes))
+            reference_id = secrets.token_hex(16)
+            self.reference.pin(source)
+            self._reference_binding = self._live_binding
+            self._reference_id = reference_id
+            return self._reference_summary()
+        if action == "clear-reference":
+            self._require_reference_id(data.get("reference_id"))
+            self.reference.clear(); self._reference_id = None; self._reference_binding = None
+            return self.status()
         if action == "browse-models": return self.browse_models(data)
         if action == "unload":
             try: self.runtime.unload()
@@ -158,6 +216,9 @@ class AppState:
             budget = settings.get("max_trace_bytes", 128 * 1024**2)
             if type(budget) is not int or not 1 <= budget <= self.max_trace_bytes:
                 raise ValueError("Trace allowance exceeds the server limit")
+            remaining = self.max_trace_bytes - self.reference.total_bytes
+            if budget > remaining:
+                raise ValueError("Requested capture allowance plus retained reference exceeds the server budget; lower the capture allowance or clear the reference")
             image = None
             if data.get("image_base64"):
                 encoded = data["image_base64"]
@@ -168,7 +229,12 @@ class AppState:
             # A failed query leaves no previous trace masquerading as the new answer.
             self.store.clear(); self._clear_experiment(); self._live_binding = None; self._capture_id = None
             result = self.runtime.run(_text(data, "prompt", 100000, empty=True), settings, image_bytes=image)
-            self.store.publish(result)
+            previous_limit = self.store.max_bytes
+            try:
+                self.store.max_bytes = min(budget, remaining)
+                self.store.publish(result)
+            finally:
+                self.store.max_bytes = previous_limit
             self._capture_id = secrets.token_hex(16)
             self._live_binding = getattr(self.runtime, "capture_binding", lambda: None)()
             return self._run_summary()
@@ -181,7 +247,7 @@ class AppState:
             operation = data.get("operation")
             if operation not in ("zero", "add", "replace"):
                 raise ValueError("Choose zero, add one feature, or replace one feature")
-            remaining = min(128 * 1024**2, self.max_trace_bytes - self.store.summary()["total_bytes"])
+            remaining = min(128 * 1024**2, self.max_trace_bytes - self.store.summary()["total_bytes"] - self.reference.total_bytes)
             if remaining <= 0: raise ValueError("No remaining trace budget for a separate experiment")
             source = self.store.intervention_source(data.get("event"), data.get("vector"))
             result = self.runtime.intervene_fixed_forward(self._live_binding, source, operation,
@@ -204,7 +270,14 @@ class AppState:
                 raise ValueError("Comparison selection is stale; refresh before saving")
             return self.experiment_store.save(_text(data, "name", 64))
         if action == "open":
-            self.store.open(_text(data, "path", 4096))
+            remaining = self.max_trace_bytes - self.reference.total_bytes
+            if remaining <= 0: raise ValueError("Clear the retained reference to free capture allowance")
+            previous_limit = self.store.max_bytes
+            try:
+                self.store.max_bytes = remaining
+                self.store.open(_text(data, "path", 4096))
+            finally:
+                self.store.max_bytes = previous_limit
             self._clear_experiment(); self._live_binding = None
             self._capture_id = secrets.token_hex(16)
             return self._run_summary()
@@ -287,6 +360,9 @@ def create_server(state, port=0):
                         if query.get("experiment_id", [None])[0] is None or query["experiment_id"][0] != state._experiment_id:
                             raise ValueError("Comparison selection is stale; refresh before reading witnesses")
                     if path == "/api/status": answer = state.status()
+                    elif path == "/api/reference": answer = state._reference_summary()
+                    elif path == "/api/reference-tensor": answer = state.reference_tensor(query.get("reference_id", [None])[0], number("offset", 0), number("limit", 256))
+                    elif path == "/api/compare-vector": answer = state.compare_reference(query.get("reference_id", [None])[0], query.get("capture_id", [None])[0], number("event", 0), number("vector", 0), number("offset", 0), number("limit", 256))
                     elif path == "/api/saved": answer = state.store.saved_runs()
                     elif path == "/api/experiment": answer = state._experiment_summary()
                     elif path == "/api/experiment-events": answer = state.experiment_store.events(number("offset", 0), number("limit", 100))
@@ -306,7 +382,7 @@ def create_server(state, port=0):
         def do_POST(self):
             if not self._allowed(api=True): return
             path = urlsplit(self.path).path
-            if path not in {"/api/inspect", "/api/load", "/api/demo", "/api/unload", "/api/browse-models", "/api/run", "/api/intervene", "/api/save", "/api/save-experiment", "/api/open", "/api/clear"}:
+            if path not in {"/api/inspect", "/api/load", "/api/demo", "/api/unload", "/api/browse-models", "/api/run", "/api/intervene", "/api/save", "/api/save-experiment", "/api/open", "/api/clear", "/api/pin-reference", "/api/clear-reference"}:
                 self._send(404, {"error": "Not found"}); return
             if self.headers.get("Transfer-Encoding") or len(self.headers.get_all("Content-Length", [])) != 1:
                 self._send(400, {"error": "A single bounded Content-Length is required"}); return
@@ -357,7 +433,8 @@ def main(argv=None):
     except KeyboardInterrupt: pass
     finally:
         server.server_close()
-        with state.lock: state.store.clear()
+        with state.lock:
+            state.store.clear(); state.experiment_store.clear(); state.reference.clear()
     return 0
 
 

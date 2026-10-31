@@ -39,3 +39,6 @@
 .privacy-note p { margin-block: 8px; }
 .intervention-editor { padding-top: 10px; margin-top: 18px; }
 #vector-coordinate { background: var(--sidebar); }
+
+.reference-options { margin: 0 0 23px; padding: 12px 0; }
+.reference-actions { flex-wrap: wrap; }
