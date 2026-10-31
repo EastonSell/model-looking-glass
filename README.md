@@ -18,6 +18,8 @@ The workbench has **CUDA-first paths for GPT-2, T5, DistilBERT, ViT and standard
 
 **Inspect folder** checks local input assets before loading weights and keeps inspection separate from the loaded model. Missing tokenizer/processor files are diagnosed before replacing your live model; a failed load leaves the retained capture readable.
 
+**Optional [Layer map](docs/LOCAL_APP.md#optional-layer-map):** click a recorded module to open its exact vectors. The diagram shows captured boundaries, not invented neuron connections or semantic explanations.
+
 **No checkpoint yet?** Choose **Load tiny demo**, then Run. This builds an untrained miniature GPT-2 entirely in CPU RAM—no download or checkpoint files—so you can learn capture navigation and controlled edits immediately. Its random output is not useful language or GPU validation.
 
 ## What to use

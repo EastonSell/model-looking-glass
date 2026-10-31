@@ -148,6 +148,91 @@ class TraceStore:
             total += 1
         return {"events": _json_copy(page), "total": total, "total_all": len(self._events)}
 
+    def layer_map(self, forward=0, offset=0, limit=12):
+        """Page recorded boundary groups, not inferred topology or tensor statistics.
+
+        Only vector zero is grounded for each event. Representatives are first
+        captured events, not aligned token samples across sites. Invalid or
+        unsupported provenance stays available in the ordinary event table.
+        """
+        if self._run is None: raise ValueError("No completed trace is loaded")
+        _integer(forward, "forward"); _integer(offset, "offset", 0, len(self._events))
+        _integer(limit, "limit", 1, 50)
+        groups, context = {}, {}
+        selected = known = unmapped = other = missing = 0
+        family = self._run.get("model", {}).get("family") if type(self._run.get("model")) is dict else None
+        for event in self._events:
+            metadata = event["metadata"]
+            recorded_forward = metadata.get("app_forward_index")
+            if type(recorded_forward) is not int or recorded_forward < 0:
+                missing += 1
+                continue
+            if recorded_forward != forward:
+                other += 1
+                continue
+            selected += 1
+            coordinate = self._coordinate(event["index"], 0, _context=context)
+            if coordinate["status"] != "known":
+                unmapped += 1
+                continue
+            layer, stack, path = coordinate["layer_index"], coordinate["stack"], coordinate["module_path"]
+            # Match actual supported boundary roles AND selectors. GPT2's
+            # adapter records a tensor or tuple-first result; preserve those
+            # variants as separate nodes, never silently merge them.
+            if family == "gpt2":
+                prefix = f"transformer.h.{layer}"
+                specs = {prefix: ("block", ((), (0,))), prefix + ".attn": ("attn", ((), (0,))), prefix + ".mlp": ("mlp", ((), (0,)))}
+            elif family == "distilbert":
+                prefix = f"distilbert.transformer.layer.{layer}"
+                specs = {prefix: ("block", ((0,),)), prefix + ".attention": ("attention", ((0,),)), prefix + ".ffn": ("ffn", ((),))}
+            elif family == "llama":
+                prefix = f"model.layers.{layer}"
+                specs = {prefix: ("llama_block", ((),)), prefix + ".self_attn": ("llama_attention", ((0,),)), prefix + ".mlp": ("llama_mlp", ((),))}
+            elif family == "vit":
+                prefix = f"vit.encoder.layer.{layer}"
+                specs = {prefix: ("vit_block", ((),)), prefix + ".attention": ("vit_attention", ((),)), prefix + ".intermediate": ("vit_intermediate", ((),))}
+            elif family == "t5":
+                prefix = f"{stack}.block.{layer}"
+                specs = {prefix: (f"t5_{stack}_block_output", ((0,),)),
+                         prefix + ".layer.0": (f"t5_{stack}_self_attention_residual", ((0,),)),
+                         prefix + (".layer.1" if stack == "encoder" else ".layer.2"): (f"t5_{stack}_feed_forward_residual", ((),))}
+            else:
+                specs = {}
+            spec, selector, kind = specs.get(path), metadata.get("output_path"), metadata.get("module_kind")
+            if (spec is None or kind != spec[0] or type(selector) is not list
+                    or len(selector) > 1 or any(type(part) is not int for part in selector)
+                    or tuple(selector) not in spec[1]):
+                unmapped += 1
+                continue
+            known += 1
+            nodes = groups.setdefault((stack, layer), {})
+            key = (path, kind, tuple(selector))
+            if key not in nodes:
+                count = event["vector_count"]
+                summary = {"status": "multiple" if count > 1 else "known", "vector_count": count,
+                           "coordinate": None if count > 1 else coordinate,
+                           "reason": "Multiple source vectors; open this event to choose a position" if count > 1 else coordinate["reason"]}
+                nodes[key] = dict(module_path=path, module_kind=kind, output_path=selector,
+                                  event_count=0, vector_count=0, tensor_bytes=0,
+                                  representative_event={**event, "source_summary": summary, "matched_vector_index": 0})
+            node = nodes[key]
+            node["event_count"] += 1
+            node["vector_count"] += event["vector_count"]
+            node["tensor_bytes"] += event["tensor_bytes"]
+        _integer(offset, "offset", 0, len(groups))
+        order = {"input": 0, "encoder": 1, "decoder": 2, "image": 3}
+        keys = sorted(groups, key=lambda key: (order[key[0]], key[1]))
+        layers = [{"stack": stack, "layer_index": layer,
+                   "nodes": [node for _, node in sorted(groups[(stack, layer)].items())]}
+                  for stack, layer in keys[offset:offset + limit]]
+        return _json_copy(dict(selected_forward=forward, offset=offset, limit=limit, total_layers=len(groups),
+                               total_all_events=len(self._events), selected_forward_events=selected,
+                               known_events=known, unmapped_events=unmapped, other_forward_events=other,
+                               missing_forward_events=missing, layers=layers,
+                               scope_note="Recorded capture boundaries only, not complete model topology or attention weights. "
+                               "Each node opens its first capture at vector zero; representatives are not token-aligned across nodes. "
+                               "Unmapped captures remain inspectable in the event table."))
+
     def saved_runs(self):
         """Read-only immediate-child catalog; completion is NOT integrity verification.
 

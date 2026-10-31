@@ -137,3 +137,27 @@ def test_reference_disclosure_remains_reachable_without_a_capture():
                    {"result-panel", "trace-panel", "vector-panel", "experiment-panel"}
                    for node in group.ancestors())
 
+
+
+def test_layer_map_is_optional_grounded_navigation():
+    ids = page().ids
+    group = ids["layer-map-options"]
+    assert group.tag == "details" and "open" not in group.attrs
+    assert ids["trace-panel"] in list(group.ancestors())
+    for name in ("layer-map-forward", "layer-map-load", "layer-map-prev", "layer-map-next", "layer-map-body", "layer-map-status"):
+        assert group in list(ids[name].ancestors())
+    assert "not a neuron" in group.text
+    assert "first captured vector" in group.text
+    assert ids["layer-map-status"].attrs.get("role") == "status"
+
+
+def test_layer_map_cards_wrap_long_paths_without_primary_button_fill():
+    import re
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    rule = re.search(r"\.layer-map-node\s*\{([^}]+)\}", css).group(1)
+    for declaration in ("white-space: normal", "min-width: 0", "overflow-wrap: anywhere", "flex: 1 1 12rem", "max-width: 100%", "background: var(--accent-soft)", "color: var(--text)", "border-color: var(--line)"):
+        assert declaration in rule, declaration
+
+
+def test_map_focus_target_is_programmatic_not_an_extra_tab_stop():
+    assert page().ids["vector-heading"].attrs.get("tabindex") == "-1"

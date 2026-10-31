@@ -112,6 +112,14 @@
       <div class="panel-heading"><div><span class="eyebrow">04 / INSPECT</span><h2 id="trace-heading">Captured observations</h2></div><span id="event-total" class="pill"></span></div>
       <p class="muted">Choose an observation, then a vector within it. Coordinates identify an execution location—not a word’s meaning or an explanation of the model’s reasoning.</p>
       <label class="sr-only" for="event-filter">Search all captured observations</label><input id="event-filter" type="search" placeholder="Search all observations by module, layer, or forward…" autocomplete="off">
+      <details id="layer-map-options" class="options">
+        <summary>Layer map</summary>
+        <p class="hint">Captured module sites, not a neuron graph, model topology, or causal explanation. Independent of table filters. A module button opens its first captured vector; use the source picker to choose another position. Unknown observations remain available in the exact table.</p>
+        <div class="row layer-map-toolbar"><label for="layer-map-forward">Map forward</label><input id="layer-map-forward" type="number" min="0" step="1" value="0"><button id="layer-map-load" type="button">Load / refresh</button></div>
+        <p id="layer-map-status" class="hint" role="status">Open or refresh to list captured sites. No tensor values are read to build the map.</p>
+        <div id="layer-map-body" class="layer-map"></div>
+        <div class="row"><button id="layer-map-prev" type="button" disabled>Previous layers</button><span id="layer-map-page" class="hint"></span><button id="layer-map-next" type="button" disabled>Next layers</button></div>
+      </details>
       <details id="source-options" class="options"><summary id="source-options-summary">Exact source filters</summary>
       <div class="event-source-filters"><div><label for="source-token">Token / image-token position</label><input id="source-token" type="number" min="0" step="1" placeholder="All positions"></div><div><label for="source-forward">Forward index</label><input id="source-forward" type="number" min="0" step="1" placeholder="All forwards"></div><div><label for="source-stack">Source stack</label><select id="source-stack"><option value="">All stacks</option><option value="input">Input</option><option value="encoder">Encoder</option><option value="decoder">Decoder</option><option value="image">Image</option></select></div><button id="clear-event-filters" class="quiet" type="button">Clear all filters</button></div>
       <p class="hint">Exact source positions are zero-based. For ViT, image-token 0 is CLS and patches start at 1 in row-major order; these are processed-image positions. T5 decoder position 0 is the decoder start token. Source filters exclude unknown coordinates; clear filters to reveal them. The search box matches module metadata, not tokenizer text. Filtering changes the view only—not captures or exports.</p>
@@ -119,7 +127,7 @@
       <div class="table-scroll"><table class="event-table"><thead><tr><th>Event</th><th>Module / observation point</th><th>Forward</th><th>Source position</th><th>Shape</th><th>Bytes</th></tr></thead><tbody id="event-body"></tbody></table></div>
       <div class="pager"><button id="events-prev" class="quiet" type="button">← Previous events</button><span id="event-page" class="hint"></span><button id="events-next" class="quiet" type="button">Next events →</button></div>
       <div id="vector-panel" class="vector-panel" hidden>
-        <div class="panel-heading"><h3 id="vector-heading">Vector values</h3><span id="dtype-badge" class="pill"></span></div>
+        <div class="panel-heading"><h3 id="vector-heading" tabindex="-1">Vector values</h3><span id="dtype-badge" class="pill"></span></div>
         <label for="vector-picker">Source position · flat vector index</label><select id="vector-picker"><option value="">Choose a source position…</option></select>
         <div class="pager"><button id="vectors-page-prev" class="quiet" type="button">← Picker page</button><span id="vectors-page" class="hint"></span><button id="vectors-page-next" class="quiet" type="button">Picker page →</button></div>
         <p id="vector-list-status" class="hint" aria-live="polite"></p>

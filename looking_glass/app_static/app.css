@@ -42,3 +42,14 @@
 
 .reference-options { margin: 0 0 23px; padding: 12px 0; }
 .reference-actions { flex-wrap: wrap; }
+
+/* Optional captured-site map: no implied graph edges or model topology. */
+.layer-map { display: grid; gap: 1rem; margin-block: .75rem; }
+.layer-map-stack { min-width: 0; }
+.layer-map-stack h4 { margin: .25rem 0 .5rem; }
+.layer-map-row { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: .65rem; align-items: start; padding: .65rem 0; border-top: 1px solid var(--line); }
+.layer-map-nodes { display: flex; flex-wrap: wrap; gap: .5rem; min-width: 0; }
+.layer-map-node { text-align: left; white-space: normal; min-width: 0; flex: 1 1 12rem; max-width: 100%; overflow-wrap: anywhere; background: var(--accent-soft); color: var(--text); border-color: var(--line); }
+.layer-map-node small { display: block; font-weight: normal; }
+.layer-map-toolbar input { max-width: 7rem; }
+@media (max-width: 540px) { .layer-map-row { grid-template-columns: 1fr; gap: .35rem; } }

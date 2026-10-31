@@ -2,7 +2,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const token = document.querySelector('meta[name="mlg-token"]').content;
-  const state = {reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
+  const state = {mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
   const pageSize = 100, valuePageSize = 256;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
@@ -10,7 +10,7 @@
   function revealOptions(id) { $(id).open = true; }
   function notice(message, error = false) { $('notice').textContent = message; $('notice').hidden = !message; $('notice').classList.toggle('error', error); }
   async function api(path, body) {
-    if (body === undefined && /^(events|vectors|tensor)\?/.test(path) && state.run?.capture_id) path += `&capture_id=${encodeURIComponent(state.run.capture_id)}`;
+    if (body === undefined && /^(events|vectors|tensor|layer-map)\?/.test(path) && state.run?.capture_id) path += `&capture_id=${encodeURIComponent(state.run.capture_id)}`;
     const options = {headers: {'X-MLG-Token': token}, credentials: 'same-origin', cache: 'no-store'};
     if (body !== undefined) { options.method = 'POST'; options.headers['Content-Type'] = 'application/json'; options.body = JSON.stringify(body); }
     const response = await fetch(`/api/${path}`, options);
@@ -21,6 +21,9 @@
   }
   function syncButtons() {
     ['intervention-operation', 'intervention-feature', 'intervention-value', 'witness-phase', 'experiment-save-name', 'vector-picker', 'browse-button', 'browse-go', 'browse-parent', 'browse-select', 'browse-path', 'saved-runs', 'refresh-saved', 'inspect-button', 'load-button', 'model-path', 'execution-device', 'vram-mib', 'refresh-devices', 'open-button', 'open-path', 'vector-index', 'vector-view', 'capture-mode', 'layers', 'max-input', 'max-output', 'max-events', 'trace-mib', 'prompt', 'image-file'].forEach((id) => { $(id).disabled = state.busy; });
+    $('layer-map-load').disabled = state.busy || !state.run; $('layer-map-forward').disabled = state.busy || !state.run;
+    $('layer-map-prev').disabled = state.busy || !state.run || state.mapOffset === 0; $('layer-map-next').disabled = state.busy || !state.run || state.mapOffset + 12 >= state.mapTotal;
+    document.querySelectorAll('#layer-map-body button').forEach((button) => { button.disabled = state.busy; });
     $('clear-event-filters').disabled = state.busy || !state.run;
     $('reference-selection-status').textContent = referenceSelectionReady() ? 'The selected live vector is eligible to keep. Comparison also requires the same model owner and module site.' : state.run?.reference_reason || 'Select and read a known vector in a supported live GPT-2 or standard Llama capture. Imported or unknown-source captures are read-only.';
     $('pin-reference').disabled = state.busy || !referenceSelectionReady();
@@ -153,6 +156,7 @@
     syncButtons();
   }
   function clearView() {
+    clearLayerMap();
     clearExperiment(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
     $('imported-control-warning').hidden = true; $('imported-comparison').hidden = true; clearDistribution('imported'); $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.'; syncButtons();
   }
@@ -185,6 +189,50 @@
     if (stack && !['input','encoder','decoder','image'].includes(stack)) throw new Error('Choose a supported source stack or All stacks.');
     if (stack) query += `&stack=${encodeURIComponent(stack)}`;
     return query;
+  }
+  function clearLayerMap() {
+    state.mapRequest++; state.mapOffset = 0; state.mapTotal = 0; state.mapForward = 0; state.mapCapture = null;
+    $('layer-map-forward').value = '0'; $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = '';
+    $('layer-map-status').textContent = 'Open or refresh to list captured sites. No tensor values are read to build the map.';
+  }
+  async function loadLayerMap(offset = 0) {
+    if (state.busy || !state.run?.capture_id) return;
+    const raw = $('layer-map-forward').value.trim();
+    if (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw))) { $('layer-map-status').textContent = 'Choose a nonnegative safe whole forward number.'; return; }
+    const forward = Number(raw), capture = state.run.capture_id, request = ++state.mapRequest;
+    state.mapTotal = 0; state.mapCapture = null; $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = ''; $('layer-map-status').textContent = 'Reading captured-site metadata…'; syncButtons();
+    try {
+      const result = await api(`layer-map?forward=${forward}&offset=${offset}&limit=12`);
+      if (request !== state.mapRequest || capture !== state.run?.capture_id) return;
+      if (result.capture_id !== capture || result.selected_forward !== forward) throw new Error('Layer map revision or forward does not match this capture; refresh instead of guessing.');
+      state.mapCapture = capture; state.mapForward = forward; state.mapOffset = offset; state.mapTotal = result.total_layers;
+      const groups = new Map();
+      for (const layer of result.layers || []) {
+        let group = groups.get(layer.stack);
+        if (!group) { group = document.createElement('section'); group.className = 'layer-map-stack'; const heading = document.createElement('h4'); heading.textContent = `${layer.stack} stack`; group.append(heading); groups.set(layer.stack, group); $('layer-map-body').append(group); }
+        const row = document.createElement('div'); row.className = 'layer-map-row'; const label = document.createElement('strong'); label.textContent = `Layer ${layer.layer_index}`; row.append(label); const nodes = document.createElement('div'); nodes.className = 'layer-map-nodes'; row.append(nodes); group.append(row);
+        for (const node of layer.nodes || []) {
+          const button = document.createElement('button'); button.type = 'button'; button.className = 'layer-map-node';
+          button.textContent = `${node.module_kind} · ${node.module_path}`;
+          const counts = document.createElement('small'); counts.textContent = `${node.event_count} captured events · ${node.vector_count} vectors · ${bytes(node.tensor_bytes)} · output ${JSON.stringify(node.output_path)}`; button.append(counts);
+          button.addEventListener('click', () => {
+            if (state.busy || request !== state.mapRequest || capture !== state.run?.capture_id || state.mapCapture !== capture || forward !== state.mapForward) return;
+            return action('Reading the first captured vector at this module site…', async () => {
+              const selected = node.representative_event, vector = selected.matched_vector_index ?? 0;
+              await chooseEvent(selected);
+              if (request !== state.mapRequest || capture !== state.run?.capture_id || state.event?.index !== selected.index || state.vector !== vector || Number($('vector-index').value) !== vector) return;
+              $('vector-heading').focus({preventScroll: true}); $('vector-panel').scrollIntoView({block: 'start'});
+            });
+          });
+          nodes.append(button);
+        }
+      }
+      $('layer-map-status').textContent = `Map forward ${forward}: ${result.known_events} mapped + ${result.unmapped_events} unmapped of ${result.selected_forward_events} events. ${result.other_forward_events} events on other forwards; ${result.missing_forward_events} lack a forward; ${result.total_all_events} total. Unmapped observations remain in the exact table. First captured vectors only, not automatic token alignment.`;
+      $('layer-map-page').textContent = state.mapTotal ? `${offset + 1}–${Math.min(offset + 12, state.mapTotal)} of ${state.mapTotal} captured layers` : 'No mapped layers for this forward.';
+    } catch (error) {
+      if (request !== state.mapRequest || capture !== state.run?.capture_id) return;
+      state.mapCapture = null; state.mapTotal = 0; $('layer-map-body').replaceChildren(); $('layer-map-status').textContent = `Layer map unavailable: ${error.message || error}. The exact event table remains available.`;
+    } finally { if (request === state.mapRequest) syncButtons(); }
   }
   function renderEvents() {
     const filter = state.eventQuery || $('source-token').value || $('source-forward').value || $('source-stack').value; $('event-body').replaceChildren(); let shown = 0;
@@ -449,8 +497,13 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   }));
   $('load-button').addEventListener('click', () => action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); const info = await api('load', {path, ...execution}); clearView(); setModel(info); await refreshReferenceOptional(); }));
   $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); const opened = await api('open', {path}); clearView(); showRun(opened); await loadEvents(); $('saved-status').textContent = 'Selected capture opened and validated. Other listed exports remain unverified.'; await refreshReferenceOptional(); }));
+  $('layer-map-options').addEventListener('toggle', () => { if ($('layer-map-options').open && !state.mapCapture) return loadLayerMap(); });
+  $('layer-map-forward').addEventListener('input', () => { state.mapRequest++; state.mapCapture = null; state.mapTotal = 0; state.mapOffset = 0; $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = ''; $('layer-map-status').textContent = 'Forward changed. Load / refresh to list its captured sites.'; syncButtons(); });
+  $('layer-map-load').addEventListener('click', () => loadLayerMap());
+  $('layer-map-prev').addEventListener('click', () => loadLayerMap(Math.max(0, state.mapOffset - 12)));
+  $('layer-map-next').addEventListener('click', () => loadLayerMap(state.mapOffset + 12));
   $('run-button').addEventListener('click', () => action('Running model and capturing supported outputs…', async () => { const options = settings(), prompt = $('prompt').value; const vision = String(state.model?.family || '').toLowerCase().includes('vit'); if (vision && !state.image) throw new Error('Choose an image first.'); if (!vision && !prompt.trim()) throw new Error('Enter a prompt first.'); // Cancel old read generations without discarding a capture the server may preserve on preflight rejection.
-    clearTimeout(state.searchTimer); state.eventRequest++; state.valueRequest++; state.vectorListRequest++; state.witnessRequest++; state.referenceRequest++;
+    clearTimeout(state.searchTimer); state.eventRequest++; state.valueRequest++; state.vectorListRequest++; state.witnessRequest++; state.referenceRequest++; state.mapRequest++;
     const body = {prompt, settings: options}; if (vision) body.image_base64 = state.image;
     let result;
     try { result = await api('run', body); } catch (error) { error.reconcileRun = true; throw error; }

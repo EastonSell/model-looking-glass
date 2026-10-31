@@ -114,6 +114,20 @@ Browsing reuses shared forward-input validation **only within one read request**
 
 Auto means every supported **module boundary**, not every mathematical operation, neuron state, attention probability, or internal node. T5 cross-attention is not a separate capture role in the current adapter. GPT-2/T5/Llama use explicit uncached generation forwards: later steps recompute the growing prefix, and repeated token vectors belong to distinct forwards. Attention/MLP/block changes are observations, not a proof of a unique causal mechanism or complete interpretability.
 
+## Optional layer map
+
+Open **Layer map** under Captured observations for a compact, clickable overview of recorded module outputs. It stays closed by default. Choose a **forward index** and page through stack/layer rows; each button shows the actual module path, recorded output selector, capture count, vector count and tensor bytes. Only captured sites are shown—not uncaptured layers inferred from a model configuration.
+
+Selecting a module opens its **first captured event at vector zero** in the existing exact-value viewer. Use the source-position picker to choose another token or image patch. Representatives are not automatically token-aligned across sites, and this map is independent of the table's search/source filters. Supported fresh GPT-2/Llama selections can use the same reference comparison and controlled-edit tools; the map does not broaden their eligibility. Saved captures can be mapped without a loaded model, but do not acquire live edit authority.
+
+This is a **recorded-boundary diagram**, not a neuron graph, attention visualization, semantic projection or causal explanation. Spacing, grouping and colors are presentation only; no connections or activation magnitudes are inferred. It reads metadata, not tensor statistics, and preserves every original value. Invalid or unsupported provenance is counted as unmapped and remains available in the exact event table. Explicit forward/count labels distinguish other-forward and missing-forward events. Native disclosure controls and module buttons provide standard keyboard interaction; actual browser/screen-reader rendering is not yet validated.
+
+The installed-wheel CPU verification on the pinned SmolLM2 checkpoint mapped **30 layers / 90 observed module sites per forward** across two captured forwards. All **180 representative vectors × 576 features** had exact retained bits, before and after Save/Unload/Clear/Open; hashes of every retained tensor, model parameters/buffers and checkpoint files were unchanged. A mapped live Llama selection also used the existing reference comparison without changing eligibility. See the [record and reproducible offline check](../results/local-app-smollm2-135m-cpu-20261031/layer_map.json). This verifies metadata-to-payload navigation—not visual rendering or semantic interpretation.
+
+```bash
+python results/local-app-smollm2-135m-cpu-20261031/verify_layer_map.py --checkpoint ./models/smollm2-135m --output ./layer-map-check.json
+```
+
 ## Try a controlled activation intervention
 
 With a **fresh live GPT-2 or supported standard Llama capture** and a known selected vector, use the intervention panel to **zero that vector**, **add to one feature**, or **set one feature**. These are temporary runtime operations, never checkpoint/weight edits. Imported captures, another model load, unknown coordinates, and other architectures are read-only for this workflow. Reloading the same path does not restore the private live-model binding; make a fresh capture. Stale selections from another browser tab are rejected.
@@ -217,7 +231,7 @@ python -m pytest tests/test_app_runtime.py tests/test_app_cuda.py \
   tests/test_app_llama.py tests/test_app_llama_storage.py tests/test_app_llama_http.py \
   tests/test_app_llama_interventions.py tests/test_app_intervention_probabilities.py \
   tests/test_app_layout.py tests/test_app_reference.py tests/test_app_reference_http.py \
-  tests/test_app_repeat_runs.py -q
+  tests/test_app_repeat_runs.py tests/test_app_layer_map.py tests/test_app_layer_map_http.py -q
 # Optional developer-only DOM/API contract check (Node.js; no browser install):
 node tests/app_ui_contract.cjs
 ```
@@ -226,7 +240,7 @@ The application dependency set is verified here on Linux, Python 3.12.14 and CPU
 
 Tests use tiny locally generated checkpoints and synthetic tensors; they do not establish behavior for every pretrained model. The broader research suite and experimental opcode boundaries remain separate; see the [documentation guide](README.md).
 
-The DOM contract check exercises mocked requests, not rendering. Six static HTML checks verify balanced markup, unique IDs, input/ARIA labels, native named disclosure summaries, default-closed advanced groups and visible core actions/critical notices. Disclosure regressions cover active filters, validation that reveals the relevant controls, and missing or failed comparison checks that remain visible. These are structural and simulated-interaction checks, not a browser keyboard or screen-reader certification. Real loopback HTTP and tiny local-model roundtrips were exercised separately. Chromium visual testing was blocked by this execution environment, so no browser-rendering or cross-platform visual validation is claimed.
+The DOM contract check exercises mocked requests, not rendering. Nine static HTML/CSS checks verify balanced markup, unique IDs, input/ARIA labels, native named disclosure summaries, default-closed advanced groups, visible core actions/critical notices, wrapping map cards and a programmatic (not extra tab-stop) vector heading. Disclosure regressions cover active filters, validation that reveals the relevant controls, and missing or failed comparison checks that remain visible. These are structural and simulated-interaction checks, not a browser keyboard or screen-reader certification. Real loopback HTTP and tiny local-model roundtrips were exercised separately. Chromium visual testing was blocked by this execution environment, so no browser-rendering or cross-platform visual validation is claimed.
 
 ### CUDA validation boundary
 
@@ -236,7 +250,7 @@ This executor has no visible NVIDIA device and a CPU-only PyTorch build. CUDA po
 python -m pytest tests/test_app_cuda.py tests/test_app_llama.py tests/test_app_llama_interventions.py tests/test_app_reference_http.py -q -ra
 ```
 
-The focused app/adapter suite completed with **949 passed and 12 real-CUDA prerequisite skips** on the CPU executor. The UI DOM contract covered **414 mocked authenticated requests**, including failed Run reconciliation, late/stale responses, preserved preflight-rejected captures, failed loads/opens, demo onboarding and controlled interventions. Real loopback HTTP tests exercised all five families and saved-capture roundtrips. A freshly built wheel installed into a separate test directory passed **14 additional selected tests**: five-family HTTP roundtrips and the new repeated-run module; import origins and all packaged UI asset bytes were verified. The Llama HTTP cases checked all 126 vectors across synthetic multi-head, grouped-query and static-Llama-3-RoPE models, including BOS-token alignment and save/reopen.
+The focused app/adapter suite completed with **988 passed and 12 real-CUDA prerequisite skips** on the CPU executor. The UI DOM contract covered **443 mocked authenticated requests**, including optional map pagination, exact-site selection, keyboard focus targeting, stale/failed map responses, failed Run reconciliation, preserved preflight-rejected captures, demo onboarding and controlled interventions. Real loopback HTTP tests exercised all five families and saved-capture roundtrips. A freshly built wheel installed into a separate test directory passed **36 additional selected tests** for metadata-only layer maps and five-family HTTP navigation/save/reopen; import origins and all packaged UI asset bytes were verified. The Llama HTTP cases checked all 126 vectors across synthetic multi-head, grouped-query and static-Llama-3-RoPE models, including BOS-token alignment and save/reopen.
 
 The focused suite also retains exact static-RoPE/full-logit controls, tied sharded BF16-storage conversion, demo RNG/no-write checks, installer validation/error tests, CPU encoder/ViT comparisons and intervention workflows. These checks do not establish pretrained quality or GPU behavior. Testing dependencies were restored into a fresh isolated Linux environment from official PyTorch/PyPI sources; installer tests themselves do not constitute a fresh end-user app installation. The latest bare `pytest` attempt in this fresh sparse checkout stopped with **17 collection errors**: 14 duplicate-basename import mismatches in historical experiment/study copies and three missing historical fixture/source errors. The earlier checkout recorded 47 collection errors; those counts describe different checkout coverage, not repaired historical tests. This is **not an all-repository pass**.
 
