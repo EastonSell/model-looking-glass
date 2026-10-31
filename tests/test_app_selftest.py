@@ -54,7 +54,7 @@ def test_stage_failure_stops_remaining_family_and_removes_temporary_directory(mo
     assert "/private/path" not in json.dumps(report)
 
 
-def test_synthetic_success_requires_both_families_and_selected_budget(monkeypatch):
+def test_synthetic_success_requires_all_three_families_and_selected_budget(monkeypatch):
     _synthetic_prerequisite(monkeypatch)
     calls = []
     def synthetic(root, family, device, budget, stages):
@@ -63,10 +63,10 @@ def test_synthetic_success_requires_both_families_and_selected_budget(monkeypatc
                        "test_only": "synthetic ledger; not GPU execution"} for stage in subject.EXPECTED_STAGES)
     monkeypatch.setattr(subject, "_family", synthetic)
     assert subject.run_selftest(max_vram_mib=512)["status"] == "passed"
-    assert calls == [(family, "cuda:0", 512 * 1024**2) for family in ("gpt2", "t5")]
+    assert calls == [(family, "cuda:0", 512 * 1024**2) for family in ("gpt2", "t5", "distilbert")]
 
 
-@pytest.mark.parametrize("family", ["gpt2", "t5"])
+@pytest.mark.parametrize("family", ["gpt2", "t5", "distilbert"])
 def test_synthetic_local_assets_are_safe_and_deterministic(tmp_path, family):
     from looking_glass.app_runtime import LocalModelRuntime
     one, two = tmp_path / "one", tmp_path / "two"
@@ -77,7 +77,10 @@ def test_synthetic_local_assets_are_safe_and_deterministic(tmp_path, family):
     assert not list(one.glob("*.bin"))
     runtime = LocalModelRuntime()
     runtime.load(str(one), device="cpu")
-    assert runtime.run("hello world", {"max_new_tokens": 2})["coverage"]["forward_count"] == 2
+    prompt = "hello [MASK]" if family == "distilbert" else "hello world"
+    result = runtime.run(prompt, {"max_new_tokens": 2})
+    assert result["model"]["family"] == family
+    assert result["coverage"]["forward_count"] == (1 if family == "distilbert" else 2)
     runtime.unload()
 
 
@@ -93,7 +96,7 @@ def test_real_cuda_end_to_end_selftest():
     report = subject.run_selftest()
     if report["status"] == "skipped": pytest.skip(report["reason"])
     assert report["status"] == "passed", report
-    assert len(report["stages"]) == 10
+    assert len(report["stages"]) == 15
     assert all(stage["status"] == "passed" for stage in report["stages"])
 
 

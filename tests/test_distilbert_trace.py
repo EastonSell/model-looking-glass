@@ -150,3 +150,73 @@ def test_compiling_context_is_rejected_before_forward(monkeypatch):
     monkeypatch.setattr(torch.compiler, "is_compiling", lambda: True)
     with pytest.raises(RuntimeError, match="compiled"):
         trace_distilbert_masked_lm(model, ids, mask, run_id="a")
+
+
+def test_explicit_device_optin_preserves_cpu_contract_and_logits():
+    model = tiny_model(); ids = torch.tensor([[1, 2, 3]]); mask = torch.ones_like(ids)
+    original = trace_distilbert_masked_lm(model, ids, mask, run_id="cpu-default")
+    optin = trace_distilbert_masked_lm(model, ids, mask, run_id="cpu-optin", synchronous_cpu=False)
+    assert optin.encoder_context is not None
+    assert torch.equal(original.output.logits.view(torch.int32), optin.output.logits.view(torch.int32))
+
+
+def test_device_contract_rejects_flag_and_wrong_floating_buffer_dtype():
+    model = tiny_model(); ids = torch.tensor([[1, 2]]); mask = torch.ones_like(ids)
+    with pytest.raises(ValueError, match="boolean"):
+        trace_distilbert_masked_lm(model, ids, mask, run_id="bad", synchronous_cpu=0)
+    model.register_buffer("wrong_float", torch.ones(1, dtype=torch.float64))
+    with pytest.raises(ValueError, match="buffers"):
+        trace_distilbert_masked_lm(model, ids, mask, run_id="bad", synchronous_cpu=False)
+
+
+@pytest.mark.parametrize("kind", ["dtype", "shape", "device", "nonfinite"])
+def test_returned_logits_are_validated(kind, monkeypatch):
+    model = tiny_model(); ids = torch.tensor([[1, 2]]); mask = torch.ones_like(ids)
+    original = model.forward
+    def changed(*args, **kwargs):
+        result = original(*args, **kwargs)
+        if kind == "dtype": result.logits = result.logits.double()
+        elif kind == "shape": result.logits = result.logits[:, :1]
+        elif kind == "device": result.logits = result.logits.to("meta")
+        else: result.logits.fill_(float("nan"))
+        return result
+    monkeypatch.setattr(model, "forward", changed)
+    with pytest.raises(RuntimeError, match="logits"):
+        trace_distilbert_masked_lm(model, ids, mask, run_id="bad")
+    assert all(not m._forward_hooks and not m._forward_pre_hooks for m in model.modules())
+
+
+def test_same_device_input_and_buffer_guards_before_forward(monkeypatch):
+    model = tiny_model(); ids = torch.tensor([[1, 2]]); mask = torch.ones_like(ids)
+    monkeypatch.setattr(model, "forward", lambda *a, **k: pytest.fail("must reject before forward"))
+    with pytest.raises(ValueError, match="same-device"):
+        trace_distilbert_masked_lm(model, ids.to("meta"), mask, run_id="mixed", synchronous_cpu=False)
+    model.register_buffer("wrong_device", torch.empty(1, device="meta"))
+    with pytest.raises(ValueError, match="buffers"):
+        trace_distilbert_masked_lm(model, ids, mask, run_id="mixed", synchronous_cpu=False)
+
+
+def test_optin_checks_selected_device_autocast(monkeypatch):
+    model = tiny_model(); ids = torch.tensor([[1, 2]]); mask = torch.ones_like(ids)
+    calls = []
+    def active(device): calls.append(device); return True
+    monkeypatch.setattr(torch, "is_autocast_enabled", active)
+    with pytest.raises(ValueError, match="autocast"):
+        trace_distilbert_masked_lm(model, ids, mask, run_id="mixed", synchronous_cpu=False)
+    assert calls == ["cpu"]
+
+
+def test_integer_buffers_remain_valid_in_explicit_device_mode():
+    model = tiny_model(); model.register_buffer("integer_metadata", torch.tensor([1, 2], dtype=torch.int64))
+    ids = torch.tensor([[1, 2]]); mask = torch.ones_like(ids)
+    result = trace_distilbert_masked_lm(model, ids, mask, run_id="integer", synchronous_cpu=False)
+    assert result.encoder_context is not None and result.output.logits.device.type == "cpu"
+
+
+def test_optin_does_not_relax_existing_hook_guard():
+    model = tiny_model(); ids = torch.tensor([[1, 2]]); mask = torch.ones_like(ids)
+    handle = model.register_forward_hook(lambda *args: pytest.fail("hook must not execute"))
+    try:
+        with pytest.raises(ValueError, match="hooks"):
+            trace_distilbert_masked_lm(model, ids, mask, run_id="hook", synchronous_cpu=False)
+    finally: handle.remove()

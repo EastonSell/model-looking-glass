@@ -399,11 +399,12 @@ def test_device_selection_is_family_aware_and_explicit_cuda_never_falls_back(mon
         "cuda": {"available": True, "reason": "synthetic device inventory"}}))
     device, reason = LocalModelRuntime._select_device("auto", "gpt2")
     assert str(device) == "cuda:0" and "Auto selected" in reason
-    for family in ("distilbert", "vit"):
+    for family in ("vit",):
         device, reason = LocalModelRuntime._select_device("auto", family)
         assert str(device) == "cpu" and "CPU-only" in reason
         with pytest.raises(ValueError, match="CPU-only"):
             LocalModelRuntime._select_device("cuda:0", family)
+    assert str(LocalModelRuntime._select_device("auto", "distilbert")[0]) == "cuda:0"
     for invalid in ("cuda:99", "mps", "cuda:../../x", 0):
         with pytest.raises(ValueError): LocalModelRuntime._select_device(invalid, "gpt2")
     monkeypatch.setattr(LocalModelRuntime, "capabilities", staticmethod(lambda: {
@@ -587,3 +588,24 @@ def test_token_labels_do_not_modify_capture_bits(tmp_path, monkeypatch):
     assert with_labels["generated_token_ids"] == without_labels["generated_token_ids"]
     for left, right in zip(with_labels["events"], without_labels["events"]):
         assert torch.equal(left.value.view(torch.int32), right.value.view(torch.int32))
+
+
+def test_distilbert_cuda_planning_includes_all_vectors_and_full_length_logits(tmp_path, monkeypatch):
+    import looking_glass.app_runtime as module
+    path = tmp_path / "model"; local_checkpoint(path, "distilbert")
+    runtime = LocalModelRuntime(); runtime.load(str(path), device="cpu")
+    opts = runtime._settings({"max_new_tokens": 1})
+    estimate = runtime._estimate(opts, 3, 1)
+    assert estimate["estimated_gpu_capture_transient_bytes"] == 2 * 3 * 3 * 8 * 4
+    runtime._device = torch.device("cuda:0")
+    runtime._active_cuda_limit = 1024**3
+    seen = []
+    def admission(device, incremental, limit):
+        seen.append(incremental)
+        raise ValueError("synthetic admission stop before any CUDA tensors")
+    monkeypatch.setattr(module, "_cuda_admit", admission)
+    with pytest.raises(ValueError, match="synthetic admission"):
+        runtime._run("hello world [MASK]", opts, None)
+    expected = (estimate["estimated_gpu_capture_transient_bytes"] + estimate["estimated_visible_workspace_bytes"]
+        + 4 * estimate["largest_selected_boundary_bytes"] + 3 * 16 * 4 + (3 + 1) * 16 + 3 * 16)
+    assert seen == [expected]

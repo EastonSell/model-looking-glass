@@ -76,7 +76,7 @@ DEFAULTS = {"targets": "auto", "layers": None, "max_new_tokens": 8,
             "max_logits_bytes": 128 * 1024 * 1024}
 
 
-CUDA_FAMILIES = ("gpt2", "t5")
+CUDA_FAMILIES = ("gpt2", "t5", "distilbert")
 DEFAULT_VRAM_BYTES = 2 * 1024**3
 
 
@@ -505,7 +505,7 @@ class LocalModelRuntime:
         if len(parts) != 2 or parts[0] != "cuda" or not parts[1].isdigit():
             raise ValueError("device must be auto, cpu, or cuda:N")
         if family not in CUDA_FAMILIES:
-            raise ValueError("this adapter is CPU-only; select CPU explicitly or choose a GPT-2/T5 checkpoint for CUDA")
+            raise ValueError("this adapter is CPU-only; select CPU explicitly or choose a GPT-2/T5/DistilBERT checkpoint for CUDA")
         normalized = f"cuda:{int(parts[1])}"
         if not any(item["id"] == normalized and item["available"] for item in capabilities["devices"]):
             raise ValueError("requested CUDA device is unavailable; no silent CPU fallback. " + capabilities["cuda"]["reason"])
@@ -764,7 +764,8 @@ class LocalModelRuntime:
             events = len(layers) * len(roles) * length
             values = events * config.dim
             boundary = length * config.dim * 4
-            gpu_capture, workspace = 0, 0
+            gpu_capture = values * 4
+            workspace = 3 * config.n_heads * length * length * 4 + 4 * length * config.hidden_dim * 4
         elif family == "t5":
             enc = sum(x < len(self.model.encoder.block) for x in layers)
             dec = sum(x < len(self.model.decoder.block) for x in layers)
@@ -894,10 +895,12 @@ class LocalModelRuntime:
         decoder = torch.tensor([[start]], dtype=torch.int64) if family == "t5" else None
         stop_reason, answer = "length", ""
         if self._device.type == "cuda":
-            logits_bytes = (ids.shape[1] + total_steps - 1 if family == "gpt2" else total_steps) * model.config.vocab_size * 4
+            logits_bytes = logits_tokens * model.config.vocab_size * 4
             incremental = (estimate["estimated_gpu_capture_transient_bytes"] + estimate["estimated_visible_workspace_bytes"]
                            + 4 * estimate["largest_selected_boundary_bytes"] + logits_bytes
-                           + (ids.numel() + total_steps) * 16)
+                           + (ids.numel() + total_steps) * 16
+                           + (ids.numel() * 16 if family == "distilbert" else 0))
+            estimate["cuda_logits_bytes"] = logits_bytes
             estimate["cuda_admission"] = _cuda_admit(self._device, incremental, self._active_cuda_limit)
         try:
             if self._device.type == "cuda":
@@ -921,7 +924,7 @@ class LocalModelRuntime:
                     result = trace_distilbert_masked_lm(model, ids, masks, run_id=ident,
                         layers=opts["layers"], modules=opts["targets"], samples=(0,),
                         tokens=tuple(range(ids.shape[1])), **budget,
-                        max_tensor_bytes=opts["max_tensor_bytes"])
+                        max_tensor_bytes=opts["max_tensor_bytes"], synchronous_cpu=self._device.type == "cpu")
                     output, records = result.output, result.events
                 elif family == "t5":
                     points = [T5TracePoint(stack, layer, role, 0, token)

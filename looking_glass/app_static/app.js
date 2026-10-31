@@ -84,7 +84,7 @@
     const available = state.devices.filter((device) => /^cuda:\d+$/.test(device.id || '') && device.available !== false);
     const lines = available.map((device) => `${device.id}: ${device.name || 'CUDA GPU'} · ${bytes(device.free_bytes)} free / ${bytes(device.total_bytes)} total at last check`);
     if (!lines.length) lines.push(`CUDA unavailable${state.cuda?.reason ? ': ' + state.cuda.reason : ' or not reported'}. Auto will use CPU; an explicit CUDA choice will not fall back.`);
-    else lines.push('Auto prefers available CUDA for GPT-2/T5 and uses CPU for other supported families, with its reason recorded. An explicit CUDA failure will not silently switch to CPU.');
+    else lines.push('Auto prefers available CUDA for GPT-2/T5/DistilBERT and uses CPU for ViT, with its reason recorded. An explicit CUDA failure will not silently switch to CPU.');
     $('device-status').textContent = lines.join('\n'); syncButtons();
   }
   function loadSettings() {

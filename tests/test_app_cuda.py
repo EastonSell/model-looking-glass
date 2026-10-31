@@ -1,7 +1,7 @@
 """Actual CUDA integration checks: never replaced by CPU or mocked GPU execution.
 
 Requires a CUDA PyTorch build, a working NVIDIA GPU and adequate free headroom.
-The ordinary CPU environment explicitly skips these two device integrations.
+The ordinary CPU environment explicitly skips these three device integrations.
 """
 import json
 import math
@@ -94,3 +94,77 @@ def test_real_cuda_same_device_capture_offload_and_export_roundtrip(tmp_path, fa
         for handle in handles: handle.remove()
         if runtime.info() is not None and runtime.info()["state"] == "ready":
             runtime.unload()
+
+
+def test_real_distilbert_cuda_full_logits_captures_offload_and_export(tmp_path):
+    from looking_glass.app_runtime import _cuda_operation
+    from looking_glass.distilbert_trace import trace_distilbert_masked_lm
+    from collections import Counter
+    device = torch.device("cuda:0")
+    free, total = torch.cuda.mem_get_info(device)
+    if free < max(256 * 1024**2, math.ceil(total * 0.10)) + 64 * 1024**2:
+        pytest.skip("real GPU lacks required free-memory/headroom prerequisite")
+    path = tmp_path / "distilbert"; local_checkpoint(path, "distilbert")
+    runtime = LocalModelRuntime()
+    previous = torch.cuda.get_per_process_memory_fraction(device)
+    runtime.load(str(path), device=str(device), max_vram_bytes=1024**3)
+    handles, expected = [], {}
+    try:
+        with _cuda_operation(device, 1024**3), torch.inference_mode():
+            encoded = runtime.tokenizer("hello [MASK]", return_tensors="pt")
+            ids, mask = encoded["input_ids"].to(device), encoded["attention_mask"].to(device)
+            with pytest.raises(ValueError, match="CPU required by default"):
+                trace_distilbert_masked_lm(runtime.model, ids, mask, run_id="default-rejects-cuda")
+            baseline = runtime.model(input_ids=ids, attention_mask=mask).logits.cpu()
+            for layer in range(2):
+                for role in ("attention", "ffn", "block"):
+                    name = f"distilbert.transformer.layer.{layer}" + ("" if role == "block" else f".{role}")
+                    def save(_module, _args, output, name=name):
+                        expected[name] = (output[0] if type(output) is tuple else output).detach().cpu().clone()
+                    handles.append(runtime.model.get_submodule(name).register_forward_hook(save))
+            hooked = runtime.model(input_ids=ids, attention_mask=mask).logits.cpu()
+            assert torch.equal(baseline.view(torch.int32), hooked.view(torch.int32))
+            for handle in handles: handle.remove()
+            handles.clear()
+            traced = trace_distilbert_masked_lm(runtime.model, ids, mask, run_id="cuda-check",
+                layers=(0, 1), tokens=tuple(range(ids.shape[1])), synchronous_cpu=False)
+            assert traced.encoder_context is None
+            assert traced.output.logits.device == device
+            assert torch.equal(baseline.view(torch.int32), traced.output.logits.cpu().view(torch.int32))
+            assert len(traced.events) == 2 * 3 * ids.shape[1]
+            assert Counter((x.event.module_path, x.event.batch_positions, x.event.token_positions) for x in traced.events) == Counter(
+                (name, (0,), (token,)) for name in expected for token in range(ids.shape[1]))
+            for observation in traced.events:
+                event = observation.event
+                wanted = expected[event.module_path][event.batch_positions[0], event.token_positions[0]]
+                assert observation.value.device == device and event.device == str(device)
+                assert torch.equal(observation.value[0, 0].cpu().view(torch.int32), wanted.view(torch.int32))
+            del traced, hooked
+        result = runtime.run("hello [MASK]", {})
+        assert result["gpu_memory"]["synchronized"] and runtime.info()["device"] == str(device)
+        assert result["estimates"]["cuda_logits_bytes"] == ids.shape[1] * runtime.model.config.vocab_size * 4
+        assert len(result["events"]) == len(expected) * ids.shape[1]
+        assert Counter((x.metadata()["module_path"], tuple(x.metadata()["batch_positions"]), tuple(x.metadata()["token_positions"])) for x in result["events"]) == Counter(
+            (name, (0,), (token,)) for name in expected for token in range(ids.shape[1]))
+        wanted_predictions = [(position, int(baseline[0, position].argmax())) for position in range(ids.shape[1])
+                              if int(ids[0, position]) == runtime.tokenizer.mask_token_id]
+        assert [(x["position"], x["token_id"]) for x in result["steps"][0]["mask_predictions"]] == wanted_predictions
+        for capture in result["events"]:
+            meta = capture.metadata()
+            assert meta["device"] == str(device) and meta["saved_device"] == "cpu" and meta["app_offloaded_from_device"] == str(device)
+            wanted = expected[meta["module_path"]][meta["batch_positions"][0], meta["token_positions"][0]]
+            assert torch.equal(capture.value[0, 0].view(torch.int32), wanted.view(torch.int32))
+        store = TraceStore(tmp_path / "exports"); store.publish(result)
+        bits = [store.tensor(i)["raw_bits"] for i in range(len(result["events"]))]
+        saved = store.save("distilbert-cuda"); store.clear(); store.open(saved["path"])
+        assert bits == [store.tensor(i)["raw_bits"] for i in range(len(bits))]
+        again = runtime.run("hello [MASK]", {})
+        assert [(x["position"], x["token_id"]) for x in again["steps"][0]["mask_predictions"]] == wanted_predictions
+        assert again["gpu_memory"]["synchronized"]
+        assert torch.cuda.get_per_process_memory_fraction(device) == previous
+        assert all(not m._forward_hooks and not m._forward_pre_hooks for m in runtime.model.modules())
+    finally:
+        for handle in handles: handle.remove()
+        if runtime.info() and runtime.info()["state"] == "ready":
+            runtime.unload()
+            assert torch.cuda.get_per_process_memory_fraction(device) == previous
