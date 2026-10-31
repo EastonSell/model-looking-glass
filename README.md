@@ -8,11 +8,18 @@ Start with **direct activation capture**, explicit execution coordinates, and co
 
 ## Try the local workbench
 
-```bash
-python install.py
+**Download:** choose **Source code (zip)** from a [release](https://github.com/EastonSell/model-looking-glass/releases), then **Extract All**. This is Python source, not an executable; Git is not required. Open a terminal in the extracted folder containing `install.py`. You need Python **3.11+** and internet for the initial package installation.
+
+```powershell
+# Windows: install once (CPU demo works without an NVIDIA GPU)
+py -3 install.py --backend cpu
 ```
 
-With Python 3.11+, from a trusted clone, this creates an isolated environment and opens a local settings page. Linux/Windows default to the official CUDA 13.2 PyTorch build (requires a compatible NVIDIA GPU/driver); use `python install.py --backend cpu` without CUDA. The installer never installs a driver. Browse an explicitly chosen model folder or paste a compatible **local safetensors checkpoint** path, enter a prompt (or a ViT image), and capture every supported boundary or choose specific hooks. Full vectors stay **in RAM by default**; navigate recorded token/patch positions and raw values/bits, optionally view approximate grouped coordinates, filter events by exact token/patch position, forward and stack, and explicitly save/reopen lossless traces from the saved-run picker. Unload the model without losing the capture. A fresh live GPT-2 or supported standard Llama capture also supports controlled fixed-input activation experiments, kept separate from the original trace. Hooks do not alter checkpoint files.
+On macOS/Linux use `python3 install.py --backend cpu`. For a compatible NVIDIA GPU/driver, choose `--backend cuda` instead when installing. Omitting `--backend` defaults to CUDA 13.2 on Linux/Windows; no driver or model checkpoint is installed. Keep the terminal open, choose **Load tiny demo → Run & capture**, then expand **Layer map** to explore exact vectors. The demo is untrained, not a useful language model.
+
+**Start again without reinstalling:** on latest main, run `py -3 start.py` (Windows) or `python3 start.py` (macOS/Linux). It only uses this folder's existing `.venv`; it never installs packages or changes CPU/CUDA builds. Keep the extracted folder in place. **The published layer-map preview predates `start.py`**: if the file is absent, run `.\.venv\Scripts\python.exe -m looking_glass.app` on Windows or `./.venv/bin/python -m looking_glass.app` on macOS/Linux. [Installation and troubleshooting](docs/LOCAL_APP.md#install-and-start).
+
+Browse an explicitly chosen model folder or paste a compatible **local safetensors checkpoint** path, enter a prompt (or a ViT image), and capture every supported boundary or choose specific hooks. Full vectors stay **in RAM by default**; navigate recorded token/patch positions and raw values/bits, optionally view approximate grouped coordinates, filter events by exact token/patch position, forward and stack, and explicitly save/reopen lossless traces from the saved-run picker. Unload the model without losing the capture. A fresh live GPT-2 or supported standard Llama capture also supports controlled fixed-input activation experiments, kept separate from the original trace. Hooks do not alter checkpoint files.
 
 The workbench has **CUDA-first paths for GPT-2, T5, DistilBERT, ViT and standard Llama (default or static Llama 3 RoPE)**, with CPU fallback. Choose Auto or an explicit device in Settings. CUDA implementation is hardware-gated and has **not been executed on a GPU in the current validation environment**. Llama support is plain completion through exact `LlamaForCausalLM`, not all Llama-like architectures or automatic chat templating. This is not arbitrary-checkpoint or every-operation support. Grouped views are not semantic explanations. Validate a GPU locally with `python -m looking_glass.app_selftest`; it reports passed/failed/skipped checks using tiny synthetic models, without downloads or your checkpoints. [Installation, compatibility, memory limits and privacy](docs/LOCAL_APP.md). [Verified pretrained CPU example](docs/LOCAL_APP.md#verified-pretrained-example-smollm2-135m-cpu).
 

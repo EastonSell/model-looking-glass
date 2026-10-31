@@ -1,22 +1,60 @@
 # Local model workbench
 
-Clone, install, open the settings page, then try the built-in tiny demo or select an existing local checkpoint. Query it and inspect the captured vectors. **No checkpoint is downloaded by the app, and no prompt or activation is saved until you explicitly choose Save.** Hooks instrument the loaded runtime; they do not edit checkpoint files.
+Download and extract a source ZIP (or clone), install, open the settings page, then try the built-in tiny demo or select an existing local checkpoint. Query it and inspect the captured vectors. **No checkpoint is downloaded by the app, and no prompt or activation is saved until you explicitly choose Save.** Hooks instrument the loaded runtime; they do not edit checkpoint files.
 
 The main interface keeps **model → prompt → capture → exact vector inspection** in view. Named expandable sections hold setup/device details, saved captures, capture limits, source filters, optional edits and comparison witnesses. They start closed and use native HTML disclosure controls; expanding them does not run a model or change capture settings. Full values, raw bits, metadata and export capabilities remain available. Model state, errors, synthetic-demo warnings and replacement warnings are not tucked into these sections. This is progressive disclosure, not reduced capture fidelity.
 
 ## Install and start
 
-From a trusted clone with Python 3.11 or newer:
+### First installation: source ZIP or clone
+
+Use Python **3.11 or newer**. A GitHub release's **Source code (zip)** is source, not a standalone app or Windows executable. Download it, choose **Extract All**, and open a terminal in the extracted folder containing `install.py`; do not run it inside the ZIP. No Git is needed for this route. Keep the folder in its final location: the installer creates a local `.venv` and an editable package installation that are not portable after moving the folder.
+
+Windows PowerShell/Terminal:
+
+```powershell
+py -3 install.py --backend cpu
+```
+
+If `py` is unavailable but a supported Python is installed as `python`, use `python install.py --backend cpu`. If neither command exists, install supported Python first; this script does not install Python. On macOS/Linux use `python3 install.py --backend cpu`. For a compatible NVIDIA system, select `--backend cuda` for the initial installation instead. The CPU route is sufficient to try **Load tiny demo → Run & capture → Layer map**.
+
+Alternatively, with Git installed:
 
 ```bash
 git clone --filter=blob:none --depth=1 https://github.com/EastonSell/model-looking-glass.git
 cd model-looking-glass
-python install.py
+python install.py --backend cpu
 ```
 
 The installer creates this checkout's `.venv`, installs PyTorch 2.15.0 and application dependencies from official PyTorch/PyPI sources, and opens a loopback browser page. On Linux/Windows the default is **CUDA 13.2** (`torch==2.15.0+cu132`, from the [official wheel index](https://download.pytorch.org/whl/cu132/torch/)); this requires a compatible NVIDIA GPU and driver. It does not install or modify drivers. For a CPU-only system use `python install.py --backend cpu` (the default on macOS). The CPU build was exercised here; the CUDA build and hardware path were not. CUDA-capable PyTorch by itself does not establish a working GPU. Installing a Python project executes its packaging code; inspect a clone before trusting it. It does not install system services, configure credentials, or fetch models. Use `python install.py --dry-run` to inspect its commands, or `--no-launch` to install without opening a browser. An existing `.venv` requires explicit `--reuse-venv`; it is never silently replaced.
 
-Later, start with `.venv/bin/python -m looking_glass.app` (Windows: `.venv\Scripts\python.exe -m looking_glass.app`). An already prepared environment can instead install `python -m pip install -e ".[app]"` and run `model-looking-glass`. Choose the matching PyTorch build first using its [official installation guidance](https://pytorch.org/get-started/locally/). An existing CPU-only `.venv` can be explicitly changed with `python install.py --reuse-venv --backend cuda`; build-local version pins ensure pip does not silently retain the CPU build. This is a package change, not a driver installation.
+### Open again without reinstalling
+
+On latest main, from that same folder:
+
+```powershell
+# Windows
+py -3 start.py
+```
+
+```bash
+# macOS/Linux
+python3 start.py
+```
+
+`start.py` validates and uses only this folder's existing `.venv`. It does not create an environment, invoke pip, download anything, switch CPU/CUDA builds, or repair files. It rejects a missing, redirected, incompatible or moved environment and an installed app pointing to another checkout. The target interpreter runs in isolated mode so ambient `PYTHONPATH` does not redirect the application. A launch failure is reported as a launch failure, not a request to silently reinstall.
+
+**Release compatibility:** `workbench-preview-2026-10-31-layer-map` and earlier releases do not contain this launcher; their tags remain unchanged. If `start.py` is absent, use the existing direct command:
+
+```powershell
+.\.venv\Scripts\python.exe -m looking_glass.app
+```
+
+On macOS/Linux the equivalent is `./.venv/bin/python -m looking_glass.app`. Do not rerun the installer just to open the app. A prepared custom environment can also use `model-looking-glass` after installing the package with `python -m pip install -e ".[app]"`; `start.py` intentionally targets the installer-created local `.venv`, not arbitrary activated environments.
+
+Pass app options after `--`, for example `py -3 start.py -- --no-browser --port 8765` or `python3 start.py -- --models-dir /explicit/model/folder`. `python start.py --dry-run` prints the command without executing the environment or starting a server. These launch options do not change installed packages.
+
+For an intentional package change, an existing CPU-only `.venv` can be explicitly changed with `python install.py --reuse-venv --backend cuda`; build-local version pins ensure pip does not silently retain the CPU build. Choose a compatible PyTorch build using its [official installation guidance](https://pytorch.org/get-started/locally/). This is not a driver installation or a necessary step for ordinary relaunch.
 
 Options include `--no-browser`, `--port`, `--models-dir /explicit/model/folder`, and `--export-dir /chosen/export/folder`. `--models-dir` sets an explicit browsing root and lists immediate checkpoint candidates. Without it, enter a local folder and choose Browse to set the root, or paste a checkpoint path directly. The browser stays inside that root, does not scan home automatically, and never loads weights while listing folders. A `config.json` marks only a candidate; Inspect/Load still validates compatibility. Large folders are bounded and show a truncation notice. The server binds only to `127.0.0.1`, chooses a free port by default, and prints its URL. Keep the terminal running. Stop with Ctrl+C; a long active forward may need to finish first. This is a trusted single-user local tool, not a public service.
 
@@ -220,7 +258,7 @@ The server uses a fresh session token, same-origin/Host checks and no remote ass
 ```bash
 python -m pytest tests/test_app_runtime.py tests/test_app_cuda.py \
   tests/test_app_selftest.py tests/test_app_storage.py \
-  tests/test_app_http.py tests/test_app_install.py tests/test_app_interventions.py \
+  tests/test_app_http.py tests/test_app_install.py tests/test_app_launcher.py tests/test_app_interventions.py \
   tests/test_app_intervention_http.py tests/test_app_demo.py tests/test_app_demo_http.py \
   tests/test_app_input_preflight.py tests/test_app_setup_http.py tests/test_transformer_trace.py \
   tests/test_distilbert_trace.py tests/test_flan_t5_trace.py tests/test_vit_trace.py \
@@ -236,7 +274,9 @@ python -m pytest tests/test_app_runtime.py tests/test_app_cuda.py \
 node tests/app_ui_contract.cjs
 ```
 
-The application dependency set is verified here on Linux, Python 3.12.14 and CPU PyTorch 2.15.0; other operating systems/interpreter combinations were not runtime-tested. The core library’s older Python 3.10 declaration is separate from this app’s Python 3.11+ dependency requirement.
+The application dependency set was verified for the layer-map snapshot on Linux, Python 3.12.14 and CPU PyTorch 2.15.0; other operating systems/interpreter combinations were not runtime-tested. The core library’s older Python 3.10 declaration is separate from this app’s Python 3.11+ dependency requirement.
+
+The subsequent no-reinstall launcher change was checked separately: **45 launcher/installer/static-layout tests passed**, with **443 mocked UI requests** still passing. Launcher subprocess tests use real standard-library virtual environments and explicitly synthetic app/dependency modules, without package installation or network. They cover paths with spaces, editable-source identity, isolated imports, missing/broken environments, missing dependencies, failure exit codes and no automatic repair. This does **not** establish a fresh ML dependency installation, actual browser startup, Windows execution or GPU behavior. A bare `pytest` attempt in the newly restored, dependency-light sparse checkout stopped during collection (363 errors, chiefly unavailable PyTorch/NumPy and omitted historical scripts/tools); this is not a new all-repository pass or evidence that those tests ran.
 
 Tests use tiny locally generated checkpoints and synthetic tensors; they do not establish behavior for every pretrained model. The broader research suite and experimental opcode boundaries remain separate; see the [documentation guide](README.md).
 
@@ -244,7 +284,7 @@ The DOM contract check exercises mocked requests, not rendering. Nine static HTM
 
 ### CUDA validation boundary
 
-This executor has no visible NVIDIA device and a CPU-only PyTorch build. CUDA policy tests use explicit synthetic API responses; they are **not GPU execution results**. Hardware-gated tests in `tests/test_app_cuda.py`, `tests/test_app_llama.py`, `tests/test_app_llama_interventions.py` and `tests/test_app_reference_http.py` exercise tiny local GPT-2/T5/DistilBERT/ViT/Llama models, same-device boundary-bit/selected-token comparisons and CPU-offload/save checks when real CUDA is available. Run them in the CUDA environment, without hiding the device:
+The layer-map validation executor had no visible NVIDIA device and used a CPU-only PyTorch build. CUDA policy tests use explicit synthetic API responses; they are **not GPU execution results**. Hardware-gated tests in `tests/test_app_cuda.py`, `tests/test_app_llama.py`, `tests/test_app_llama_interventions.py` and `tests/test_app_reference_http.py` exercise tiny local GPT-2/T5/DistilBERT/ViT/Llama models, same-device boundary-bit/selected-token comparisons and CPU-offload/save checks when real CUDA is available. Run them in the CUDA environment, without hiding the device:
 
 ```bash
 python -m pytest tests/test_app_cuda.py tests/test_app_llama.py tests/test_app_llama_interventions.py tests/test_app_reference_http.py -q -ra
