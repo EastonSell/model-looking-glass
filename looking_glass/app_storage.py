@@ -416,7 +416,7 @@ class TraceStore:
                             for index in range(offset, min(offset + limit, count))], "total": count}
 
     def intervention_source(self, event, vector):
-        """Copy one grounded GPT2 source for a privately bound runtime experiment.
+        """Copy one grounded GPT2/Llama source for a privately bound runtime experiment.
 
         This validates retained data, not live-model authority. The server must
         separately require its private live-capture binding; JSON is not a binding.
@@ -428,8 +428,8 @@ class TraceStore:
         coordinate = self._coordinate(event, vector)
         model = self._run.get("model")
         if (coordinate["status"] != "known" or type(model) is not dict
-                or model.get("family") != "gpt2"):
-            raise ValueError("Intervention source requires a known GPT2 coordinate")
+                or model.get("family") not in ("gpt2", "llama")):
+            raise ValueError("Intervention source requires a known GPT2 or Llama coordinate")
         metadata = self._events[event]["metadata"]
         matches = [step for step in self._run["steps"]
                    if step["app_forward_index"] == coordinate["app_forward_index"]

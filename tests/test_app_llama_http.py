@@ -60,7 +60,7 @@ def test_llama_local_fast_tokenizer_capture_coordinates_filter_and_reopen(tmp_pa
         assert report["model"]["config_summary"]["rope_scaling"] == rope_scaling
         assert report["steps"][0]["input_token_ids"] == [1, 3, 4]
         assert report["steps"][1]["input_token_ids"] == [1, 3, 4, report["steps"][0]["selected_token_id"]]
-        assert report["event_count"] == 12 and not report["intervention_available"]
+        assert report["event_count"] == 12 and report["intervention_available"]
         capture = report["capture_id"]
         rows = request("/api/events?capture_id=" + capture)["events"]
         original = []

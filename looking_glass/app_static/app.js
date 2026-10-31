@@ -296,14 +296,14 @@
     $('saved-status').textContent = `${state.saved.length} listed capture folders${result.truncated ? ' · list truncated' : ''}. Listing does not verify tensor integrity; Open validates the selected capture. Incomplete exports cannot be opened from this list.`;
   }
   function interventionReady() {
-    return !!(state.run?.intervention_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && state.model?.family === 'gpt2' && state.model.state !== 'quarantined' && state.event && Number($('vector-index').value) === state.vector && state.coordinate?.status === 'known');
+    return !!(state.run?.intervention_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && ['gpt2', 'llama'].includes(state.model?.family) && state.model.state !== 'quarantined' && state.event && Number($('vector-index').value) === state.vector && state.coordinate?.status === 'known');
   }
   function interventionReason() {
-    if (!state.model || state.model.state === 'quarantined') return 'Load a ready live GPT-2 model to replay. Unload or quarantine disables new edits; saved comparisons remain inspectable.';
-    if (state.model.family !== 'gpt2') return 'Fixed-input interventions support live GPT-2 only. Other model captures remain inspectable but cannot be edited here.';
-    if (!state.run?.intervention_available || state.run.run_kind === 'intervention_comparison') return state.run?.intervention_reason || 'This capture is read-only for intervention; make a fresh supported live GPT-2 capture.';
+    if (!state.model || state.model.state === 'quarantined') return 'Load a ready live GPT-2 or supported standard Llama model to replay. Unload or quarantine disables new edits; saved comparisons remain inspectable.';
+    if (!['gpt2', 'llama'].includes(state.model.family)) return 'Fixed-input interventions support live GPT-2 or supported standard Llama only. Other model captures remain inspectable but cannot be edited here.';
+    if (!state.run?.intervention_available || state.run.run_kind === 'intervention_comparison') return state.run?.intervention_reason || 'This capture is read-only for intervention; make a fresh supported live GPT-2 or standard Llama capture.';
     if (state.coordinate?.status !== 'known' || Number($('vector-index').value) !== state.vector) return 'Read a vector with validated source coordinates first. Unknown source mappings cannot be edited.';
-    return 'A current live GPT-2 capture identifier is required.';
+    return 'A current live GPT-2 or supported standard Llama capture identifier is required.';
   }
   function clearWitness() {
     state.witnessRequest++; state.witnessTotal = 0; $('witness-body').replaceChildren(); $('witness-coordinate').textContent = ''; $('witness-page').textContent = ''; $('witness-status').textContent = '';

@@ -47,8 +47,14 @@ def test_llama_recorded_coordinates_filter_reordered_vectors_and_roundtrip(tmp_p
     assert reopened.vectors(0) == vectors
     assert [reopened.tensor(0, vector) for vector in range(3)] == expected
     assert expected[0]["raw_bits"] == ["0x00000000", "0x80000000", "0x00000001", "0x3f800000"]
-    with pytest.raises(ValueError, match="known GPT2"):
-        reopened.intervention_source(0, 0)
+    source = reopened.intervention_source(0, 0)
+    assert source["coordinate"] == expected[0]["coordinate"]
+    assert source["step"]["input_token_ids"] == [10, 11, 12, 13]
+    assert torch.equal(source["reference_value"].view(torch.int32), torch.tensor([0, -2147483648, 1, 1065353216], dtype=torch.int32))
+    # Extraction validates recorded data only; server private binding separately
+    # rejects imported captures as live intervention authority.
+    source["reference_value"].zero_()
+    assert reopened.tensor(0, 0) == expected[0]
 
 
 @pytest.mark.parametrize("mutation", ["foreign_path", "wrong_layer", "extra_suffix", "wrong_layout", "wrong_axes", "wrong_forward", "duplicate_forward", "wrong_run_id", "bad_ids", "short_ids", "duplicate_positions", "boolean_position", "batch", "unknown_family"])
@@ -73,7 +79,7 @@ def test_llama_conflicting_recorded_provenance_stays_unknown(tmp_path, mutation)
     assert store.events()["events"][0]["source_summary"]["status"] == "unknown"
     assert store.events(token_position=3, stack="input")["total"] == 0
     assert store.events(q="2")["total"] == 1
-    with pytest.raises(ValueError, match="known GPT2"):
+    with pytest.raises(ValueError, match="known GPT2 or Llama"):
         store.intervention_source(0, 0)
 
 

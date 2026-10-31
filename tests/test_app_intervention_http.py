@@ -112,14 +112,20 @@ def test_stale_capture_revision_rejects_before_runtime(experiment_state):
     assert state.runtime.calls==0
 
 
+@pytest.mark.parametrize('family', ['gpt2', 'llama'])
 @pytest.mark.parametrize('operation', ['zero', 'add', 'replace'])
-def test_real_http_fixed_forward_experiment_and_saved_witnesses(tmp_path, operation):
+def test_real_http_fixed_forward_experiment_and_saved_witnesses(tmp_path, operation, family):
     import json, threading
     from looking_glass.app import create_server
     from looking_glass.app_runtime import LocalModelRuntime
     from test_app_runtime import local_checkpoint
     from test_app_http import call
-    checkpoint=tmp_path/'checkpoint';local_checkpoint(checkpoint,'gpt2')
+    checkpoint=tmp_path/'checkpoint'
+    if family == 'llama':
+        from test_app_llama_http import llama_checkpoint, LLAMA3_SCALING
+        llama_checkpoint(checkpoint, 2, LLAMA3_SCALING)
+    else:
+        local_checkpoint(checkpoint, 'gpt2')
     state=AppState(runtime=LocalModelRuntime(),export_root=tmp_path/'exports')
     httpd=create_server(state);thread=threading.Thread(target=httpd.serve_forever,daemon=True);thread.start()
     endpoint=(state,httpd)

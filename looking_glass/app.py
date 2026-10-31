@@ -73,12 +73,12 @@ class AppState:
 
     def _intervention_status(self):
         if self.store.summary() is None:
-            return False, "Run a fresh GPT-2 capture first."
+            return False, "Run a fresh GPT-2 or supported standard Llama capture first."
         model = self.runtime.info()
         if model is None or model.get("state") == "quarantined":
             return False, "A ready live model is required; unloading or quarantine disables experiments."
-        if model.get("family") != "gpt2":
-            return False, "Fixed-forward experiments currently support GPT-2 only."
+        if model.get("family") not in ("gpt2", "llama"):
+            return False, "Fixed-forward experiments support GPT-2 and standard Llama only."
         binding = getattr(self.runtime, "capture_binding", lambda: None)()
         if self._live_binding is None or binding is not self._live_binding:
             return False, "Run a fresh live capture from this model; imported or reloaded captures are read-only."

@@ -58,7 +58,7 @@ Load repeats input preparation before retiring the current owner or loading new 
 
 **This is not support for every open checkpoint.** Qwen, Gemma, Mistral, multimodal/Llama-derived architectures with different implementations, arbitrary heads, GGUF, remote-code models, quantized weights, multi-GPU dispatch, FP16/BF16 execution, KV-cache generation and training are not implemented here. Weights are loaded for float32 evaluation on one selected device. Compatibility remains bounded by the existing eager adapters; an architecture name alone is not proof that a customized checkpoint will work.
 
-Llama support is deliberately bounded to the installed Transformers 4.57.3 standard eager `LlamaForCausalLM` with `model_type="llama"` and `pretraining_tp=1`. Ordinary RoPE (`rope_scaling` absent or null) and the exact static `rope_type="llama3"` frequency transformation are supported. Standard multi-head and grouped-query attention are checked against actual projection dimensions. Linear, dynamic, YaRN, LongRoPE, partial rotary dimensions and custom implementations remain rejected rather than silently changed. Use matching local fast-tokenizer assets (`LlamaTokenizerFast`, standard GPT-2 BPE or compatible fast JSON assets); no SentencePiece conversion dependencies, weights or chat templates are downloaded. The prompt is supplied as raw text: an instruction-tuned checkpoint may need its own correctly formatted prompt. The app does **not** apply its chat template automatically, and Llama captures do **not** enable the GPT-2-only intervention panel.
+Llama support is deliberately bounded to the installed Transformers 4.57.3 standard eager `LlamaForCausalLM` with `model_type="llama"` and `pretraining_tp=1`. Ordinary RoPE (`rope_scaling` absent or null) and the exact static `rope_type="llama3"` frequency transformation are supported. Standard multi-head and grouped-query attention are checked against actual projection dimensions. Linear, dynamic, YaRN, LongRoPE, partial rotary dimensions and custom implementations remain rejected rather than silently changed. Use matching local fast-tokenizer assets (`LlamaTokenizerFast`, standard GPT-2 BPE or compatible fast JSON assets); no SentencePiece conversion dependencies, weights or chat templates are downloaded. The prompt is supplied as raw text: an instruction-tuned checkpoint may need its own correctly formatted prompt. The app does **not** apply its chat template automatically, and only fresh privately bound captures enable the fixed-prefix intervention panel described below.
 
 For static Llama 3 RoPE, the configuration must contain exactly `rope_type`, `factor`, `low_freq_factor`, `high_freq_factor` and `original_max_position_embeddings`. Factors must be finite (`factor >= 1`, `0 < low_freq_factor < high_freq_factor`); the original context length must be a positive integer below `max_position_embeddings`. The adapter checks the standard initializer and unchanged rotary-buffer bits across each forward. It uses the [pinned Transformers implementation](https://github.com/huggingface/transformers/blob/v4.57.3/src/transformers/modeling_rope_utils.py#L453-L515), not a replacement approximation. A large configured context is not a promise it will fit: uncached prefix work, full logits and every selected vector still count against the app limits.
 
@@ -74,14 +74,14 @@ To reproduce, explicitly obtain that revision's files into a local folder; this 
 
 ```bash
 hf download HuggingFaceTB/SmolLM2-135M README.md config.json generation_config.json merges.txt model.safetensors special_tokens_map.json tokenizer.json tokenizer_config.json vocab.json --revision 93efa2f097d58c2a74874c7e644dbc9b0cee75a2 --local-dir ./models/smollm2-135m
-python -m looking_glass.app --models-root ./models
+python -m looking_glass.app --models-dir ./models
 ```
 
-Select the checkpoint folder and CPU, then query a short prompt. The two offline verification scripts accept that folder and verify exact asset hashes before loading:
+Select the checkpoint folder and CPU, then query a short prompt. The original transparency scripts and record are preserved unchanged as historical evidence. To replay both against their original behavior, use implementation commit `0d1dc22ed82c2c4b965f754eba8409cea996bcc1` (for example, in a separate checkout) as `--implementation-root`; the old workbench script explicitly expects that version's then-read-only Llama workflow:
 
 ```bash
-python results/local-app-smollm2-135m-cpu-20261031/verify_capture.py --checkpoint ./models/smollm2-135m
-python results/local-app-smollm2-135m-cpu-20261031/verify_workbench.py --checkpoint ./models/smollm2-135m --export-root ./local-verification-export
+python results/local-app-smollm2-135m-cpu-20261031/verify_capture.py --checkpoint ./models/smollm2-135m --implementation-root /path/to/original-checkout
+python results/local-app-smollm2-135m-cpu-20261031/verify_workbench.py --checkpoint ./models/smollm2-135m --implementation-root /path/to/original-checkout --export-root ./local-verification-export
 ```
 
 The export directory must be new. These are short CPU transparency/round-trip checks—not GPU validation, a quality benchmark, full-context testing or proof that every Llama checkpoint works. Wall times in the record are observations, not performance claims. No checkpoint weights or raw activation payloads are included in the repository.
@@ -114,13 +114,32 @@ Auto means every supported **module boundary**, not every mathematical operation
 
 ## Try a controlled activation intervention
 
-With a **fresh live GPT-2 capture** and a known selected vector, use the intervention panel to **zero that vector**, **add to one feature**, or **set one feature**. These are temporary runtime operations, never checkpoint/weight edits. Imported captures, another model load, unknown coordinates, and other architectures are read-only for this workflow. Reloading the same path does not restore the private live-model binding; make a fresh capture. Stale selections from another browser tab are rejected.
+With a **fresh live GPT-2 or supported standard Llama capture** and a known selected vector, use the intervention panel to **zero that vector**, **add to one feature**, or **set one feature**. These are temporary runtime operations, never checkpoint/weight edits. Imported captures, another model load, unknown coordinates, and other architectures are read-only for this workflow. Reloading the same path does not restore the private live-model binding; make a fresh capture. Stale selections from another browser tab are rejected.
 
-The experiment replays exactly one recorded input prefix and its attention mask, not the whole generated continuation. It runs an unhooked baseline, a same-site null control, the treatment, and an unhooked restoration. The null/restoration full logits must match the baseline bitwise; the fresh selected source must match the original capture. Other positions at the selected boundary must remain unchanged, and single-feature edits must preserve the other feature bits. A failed control publishes no successful comparison. This establishes a bounded same-input intervention comparison, **not** a model explanation, backdoor detector, general repair, or comparison between diverged generations.
+The experiment replays exactly one recorded input prefix and its attention mask, not the whole generated continuation. It runs an unhooked baseline, a same-site null control, the treatment, and an unhooked restoration. The null/restoration full logits must match the baseline bitwise; the fresh selected source must match the original capture. Other positions at the selected boundary must remain unchanged, and single-feature edits must preserve the other feature bits. Llama additionally checks static rotary-buffer/configuration identity and bits, unchanged exact input IDs/mask, full same-device logits and absence of a KV cache on every trial. A failed control publishes no successful comparison. This establishes a bounded same-input intervention comparison, **not** a model explanation, backdoor detector, general repair, or comparison between diverged generations.
 
 The original RAM capture stays intact. The separate panel shows baseline/treatment next-token choices, full-logit change metrics, explicit no-op results, and four full selected-vector witnesses (null before/after and treatment before/after), with exact value/bit pagination. It is **not a full-model post-intervention trace**; full logits are compared but only metrics/top candidates are retained in the report. Choose **Save experiment** to export this separate result; the original Save still saves the original capture. Reopening a comparison permits inspection, not another live intervention; expand its run details to read the saved controls and metrics.
 
-Experiments currently allow a fixed prefix of at most 64 tokens and at most 16 MiB of full logits. Their conservative logical-memory plan must fit both a 128 MiB additional allowance and the server’s remaining trace budget after the original capture. Limits reject requests before forwarding; they are not peak-memory guarantees. CPU execution is tested on tiny local checkpoints. CUDA uses the existing allocator/synchronization safeguards but remains hardware-unverified here. No permission to install a driver, download a model, or edit a checkpoint is implied.
+Experiments currently allow a fixed prefix of at most 64 tokens and at most 16 MiB of full logits. Their conservative logical-memory plan must fit both a 128 MiB additional allowance and the server’s remaining trace budget after the original capture. Limits reject requests before forwarding; they are not peak-memory guarantees. CPU execution is tested on tiny local checkpoints and the pinned pretrained SmolLM2 example below. CUDA uses the existing allocator/synchronization safeguards but remains hardware-unverified here. No permission to install a driver, download a model, or edit a checkpoint is implied.
+
+### A real fixed-prefix example
+
+On the pinned SmolLM2-135M CPU checkpoint, the prompt **“Gravity is”** produced three input tokens. At zero-based layer 15 and the final input token, these explicit edits matched separate direct-hook calculations for the retained vector bits and full-logit change metrics:
+
+| Edit | Maximum absolute logit change |
+|---|---:|
+| Zero the attention-output vector | 1.646668 |
+| Add 1 to MLP-output feature 0 | 0.038273 |
+| Set block-output feature 0 to 0 | 0.193721 |
+| Add 0 to attention-output feature 0 | 0 (bitwise no-op) |
+
+The next-token choice stayed **` the` (ID 260)** in every case. Changed activations/logits do not necessarily change the selected token. All null/restoration controls passed; original capture/weight hashes, rotary bits and checkpoint files stayed unchanged. All 16 witness vectors survived export/reopen exactly. This is one short, specified comparison—not a semantic explanation or evidence about other inputs. [Exact current intervention record](../results/local-app-smollm2-135m-cpu-20261031/interventions.json).
+
+With the already-downloaded pinned assets, reproduce the current workflow offline (the export directory must be new):
+
+```bash
+python results/local-app-smollm2-135m-cpu-20261031/verify_interventions.py --checkpoint ./models/smollm2-135m --export-root ./local-intervention-export
+```
 
 ## Memory, failures and privacy
 
@@ -151,7 +170,8 @@ python -m pytest tests/test_app_runtime.py tests/test_app_cuda.py \
   tests/test_model_ownership.py tests/test_encoder_forward.py \
   tests/test_distilbert_intervention_workflow.py tests/test_vit_trace_comparison.py \
   tests/test_vit_intervention_workflow.py tests/test_llama_trace.py \
-  tests/test_app_llama.py tests/test_app_llama_storage.py tests/test_app_llama_http.py -q
+  tests/test_app_llama.py tests/test_app_llama_storage.py tests/test_app_llama_http.py \
+  tests/test_app_llama_interventions.py -q
 # Optional developer-only DOM/API contract check (Node.js; no browser install):
 node tests/app_ui_contract.cjs
 ```
@@ -164,13 +184,13 @@ The DOM contract check exercises mocked requests, not rendering. Real loopback H
 
 ### CUDA validation boundary
 
-This executor has no visible NVIDIA device and a CPU-only PyTorch build. CUDA policy tests use explicit synthetic API responses; they are **not GPU execution results**. Hardware-gated tests in `tests/test_app_cuda.py` and `tests/test_app_llama.py` exercise tiny local GPT-2/T5/DistilBERT/ViT/Llama models, same-device boundary-bit/selected-token comparisons and CPU-offload/save checks when real CUDA is available. Run them in the CUDA environment, without hiding the device:
+This executor has no visible NVIDIA device and a CPU-only PyTorch build. CUDA policy tests use explicit synthetic API responses; they are **not GPU execution results**. Hardware-gated tests in `tests/test_app_cuda.py`, `tests/test_app_llama.py` and `tests/test_app_llama_interventions.py` exercise tiny local GPT-2/T5/DistilBERT/ViT/Llama models, same-device boundary-bit/selected-token comparisons and CPU-offload/save checks when real CUDA is available. Run them in the CUDA environment, without hiding the device:
 
 ```bash
-python -m pytest tests/test_app_cuda.py tests/test_app_llama.py -q -ra
+python -m pytest tests/test_app_cuda.py tests/test_app_llama.py tests/test_app_llama_interventions.py -q -ra
 ```
 
-The focused app/adapter suite completed with **772 passed and 8 real-CUDA prerequisite skips** on the CPU executor. The UI DOM contract covered 202 mocked authenticated requests, including exact source filters, stable matched-vector navigation, stale responses, failed loads/opens, uncertain Open responses, demo onboarding and controlled interventions. Real loopback HTTP tests exercised all five families, source filtering through save/reopen, separate intervention witnesses and original-capture preservation. A freshly built wheel installed into a separate test directory also passed authenticated five-family source-filter/pagination checks: all 30 selected vectors retained their exact values, bits, indices and coordinates after unloading and reopening, with the new UI assets present. The Llama HTTP tests separately checked every vector across synthetic multi-head, grouped-query and static-Llama-3-RoPE models (126 vectors total), including BOS-token alignment and save/reopen. Static RoPE tests cross the original context length and return to a shorter prefix while checking unchanged frequency bits and exact full logits/captures. A tiny tied, sharded BF16-stored checkpoint also loads into float32 with exact conversion, tied-weight identity and unchanged source files. Those focused checks use synthetic checkpoints and do not establish pretrained quality or GPU behavior. The separately recorded real pretrained CPU check above covers one actual checkpoint. Demo tests cover no checkpoint writes/downloads, RNG preservation and synthetic provenance; installer tests use real interpreter/config inspection plus simulated install failures, without fresh dependency downloads. CPU encoder/ViT comparisons and DistilBERT/ViT intervention workflows remain included. The last default historical-suite attempt stopped during collection at 47 missing historical source/fixture errors in this sparse checkout; that attempt was not repeated for the subsequent UI-only Open fix, and this is not an all-repository pass.
+The focused app/adapter suite completed with **875 passed and 10 real-CUDA prerequisite skips** on the CPU executor. The UI DOM contract covered 226 mocked authenticated requests, including exact source filters, stable matched-vector navigation, stale responses, failed loads/opens, uncertain Open responses, demo onboarding and controlled interventions. Real loopback HTTP tests exercised all five families, source filtering through save/reopen, separate intervention witnesses and original-capture preservation. A freshly built wheel installed into a separate test directory also passed authenticated five-family source-filter/pagination checks: all 30 selected vectors retained their exact values, bits, indices and coordinates after unloading and reopening, with the new UI assets present. The Llama HTTP tests separately checked every vector across synthetic multi-head, grouped-query and static-Llama-3-RoPE models (126 vectors total), including BOS-token alignment and save/reopen. Static RoPE tests cross the original context length and return to a shorter prefix while checking unchanged frequency bits and exact full logits/captures. A tiny tied, sharded BF16-stored checkpoint also loads into float32 with exact conversion, tied-weight identity and unchanged source files. Those focused checks use synthetic checkpoints and do not establish pretrained quality or GPU behavior. The separately recorded real pretrained CPU check above covers one actual checkpoint. Demo tests cover no checkpoint writes/downloads, RNG preservation and synthetic provenance; installer tests use real interpreter/config inspection plus simulated install failures, without fresh dependency downloads. CPU encoder/ViT comparisons and DistilBERT/ViT intervention workflows remain included. The default historical-suite attempt again stopped during collection at the same 47 missing historical source/fixture errors in this sparse checkout; this is not an all-repository pass.
 
 An additional real loopback check opened the previously verified SmolLM2 CPU export, attempted both a missing directory and a corrupt tensor digest, and verified that all 360 retained tensor hashes (1,620 vectors) and the capture revision remained unchanged. Save and a valid Open still worked afterward; this exercised retained pretrained data, not a new model execution.
 

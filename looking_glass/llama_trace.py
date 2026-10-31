@@ -54,16 +54,8 @@ def validate_llama_config(config):
         raise ValueError('tensor-parallel pretraining layouts are unsupported')
 
 
-def trace_llama_causal_lm(model, input_ids, attention_mask, *, run_id,
-        layers=(0,), modules=('attention', 'mlp', 'block'), max_events=128,
-        max_trace_bytes=16*1024**2, max_tensor_bytes=16*1024**2,
-        max_input_bytes=1024**2, max_logits_bytes=64*1024**2, synchronous_cpu=True):
-    """One full uncached float32 forward; CPU default, explicit single-CUDA opt-in.
-
-    Each selected boundary retains its entire [batch, token, hidden] output.
-    Limits are logical payload bounds, not peak process/device-memory bounds.
-    Caller owns CUDA failure recovery; no completed result escapes failed cleanup.
-    """
+def validate_llama_model(model, *, synchronous_cpu=True):
+    """Shared exact model/device/rotary contract; no hooks, forward or allocation of weights."""
     from transformers.models.llama.modeling_llama import (LlamaForCausalLM, LlamaModel,
         LlamaDecoderLayer, LlamaAttention, LlamaMLP, LlamaRMSNorm, LlamaRotaryEmbedding)
     if type(model) is not LlamaForCausalLM or model.config.model_type != 'llama':
@@ -135,6 +127,51 @@ def trace_llama_causal_lm(model, input_ids, attention_mask, *, run_id,
                 or tuple(layer.mlp.down_proj.weight.shape) != (h, model.config.intermediate_size)
                 or any(tuple(p.weight.shape) != (model.config.intermediate_size, h) for p in (layer.mlp.gate_proj, layer.mlp.up_proj))):
             raise ValueError('standard Llama decoder/head geometry required')
+    return device
+
+
+def _rotary_state(model):
+    rotary = model.model.rotary_emb
+    return (rotary.rope_type, rotary.attention_scaling, rotary.max_seq_len_cached,
+        rotary.original_max_seq_len, model.config.rope_theta, model.config.max_position_embeddings,
+        model.config.head_dim, getattr(model.config, "partial_rotary_factor", 1.0),
+        copy.deepcopy(model.config.rope_scaling))
+
+
+def snapshot_llama_rotary(model):
+    """Small bounded static-state witness, after validate_llama_model succeeds."""
+    rotary = model.model.rotary_emb
+    buffer = rotary.inv_freq
+    return (rotary, buffer, buffer.detach().view(torch.int32).to('cpu', non_blocking=False).clone(),
+            rotary.rope_init_fn, model.config, buffer.device, _rotary_state(model))
+
+
+def check_llama_rotary(model, snapshot):
+    """Fail if a static buffer, implementation, identity or config changed."""
+    rotary, buffer, bits, initializer, config, device, state = snapshot
+    current = model.model.rotary_emb
+    if (current is not rotary or current.inv_freq is not buffer or current.rope_init_fn is not initializer
+            or model.config is not config or current.config is not config
+            or type(current.inv_freq) is not torch.Tensor or current.inv_freq.device != device
+            or current.inv_freq.dtype != torch.float32 or tuple(current.inv_freq.shape) != tuple(bits.shape)
+            or not torch.equal(current.inv_freq.detach().view(torch.int32).to('cpu', non_blocking=False), bits)
+            or _rotary_state(model) != state):
+        raise RuntimeError('static rotary buffer or configuration changed during forward')
+
+
+def trace_llama_causal_lm(model, input_ids, attention_mask, *, run_id,
+        layers=(0,), modules=('attention', 'mlp', 'block'), max_events=128,
+        max_trace_bytes=16*1024**2, max_tensor_bytes=16*1024**2,
+        max_input_bytes=1024**2, max_logits_bytes=64*1024**2, synchronous_cpu=True):
+    """One full uncached float32 forward; CPU default, explicit single-CUDA opt-in.
+
+    Each selected boundary retains its entire [batch, token, hidden] output.
+    Limits are logical payload bounds, not peak process/device-memory bounds.
+    Caller owns CUDA failure recovery; no completed result escapes failed cleanup.
+    """
+    device = validate_llama_model(model, synchronous_cpu=synchronous_cpu)
+    core = model.model
+    h, vocab, head_dim = model.config.hidden_size, model.config.vocab_size, model.config.head_dim
     for name, value in [('max_events', max_events), ('max_trace_bytes', max_trace_bytes),
             ('max_tensor_bytes', max_tensor_bytes), ('max_input_bytes', max_input_bytes), ('max_logits_bytes', max_logits_bytes)]:
         if type(value) is not int or value <= 0: raise ValueError(f'{name} must be positive integer')
@@ -164,14 +201,7 @@ def trace_llama_causal_lm(model, input_ids, attention_mask, *, run_id,
         raise ValueError('input/logit byte budget exceeded')
     ids, mask = input_ids.detach().clone(), attention_mask.detach().clone()
     before_ids, before_mask = ids.clone(), mask.clone()
-    # Only the small rotary buffer is copied, never model parameters. CPU integer
-    # encodings avoid numerical recomputation or a CPU/GPU equivalence claim.
-    rotary_buffer = rotary.inv_freq
-    rotary_bits = rotary_buffer.detach().view(torch.int32).to('cpu', non_blocking=False).clone()
-    rotary_state = (rotary.rope_type, rotary.attention_scaling, rotary.max_seq_len_cached,
-        rotary.original_max_seq_len, model.config.rope_theta, model.config.max_position_embeddings,
-        model.config.head_dim, getattr(model.config, "partial_rotary_factor", 1.0),
-        copy.deepcopy(model.config.rope_scaling))
+    rotary_snapshot = snapshot_llama_rotary(model)
     aliases = {}
     for path, module in model.named_modules(remove_duplicate=False):
         aliases.setdefault(id(module), []).append(path)
@@ -190,15 +220,7 @@ def trace_llama_causal_lm(model, input_ids, attention_mask, *, run_id,
         output = model(input_ids=ids, attention_mask=mask, use_cache=False,
             past_key_values=None, logits_to_keep=0, output_attentions=False, output_hidden_states=False, return_dict=True)
         if device.type == 'cuda': torch.cuda.synchronize(device)
-    if (rotary.inv_freq is not rotary_buffer or rotary.rope_init_fn is not expected_init
-            or rotary.config is not model.config or rotary.inv_freq.device != device
-            or rotary.inv_freq.dtype != torch.float32 or tuple(rotary.inv_freq.shape) != (head_dim // 2,)
-            or not torch.equal(rotary.inv_freq.detach().view(torch.int32).to('cpu', non_blocking=False), rotary_bits)
-            or (rotary.rope_type, rotary.attention_scaling, rotary.max_seq_len_cached,
-                rotary.original_max_seq_len, model.config.rope_theta, model.config.max_position_embeddings,
-                model.config.head_dim, getattr(model.config, "partial_rotary_factor", 1.0),
-                model.config.rope_scaling) != rotary_state):
-        raise RuntimeError('static rotary buffer or configuration changed during forward')
+    check_llama_rotary(model, rotary_snapshot)
     if not torch.equal(ids, before_ids) or not torch.equal(mask, before_mask):
         raise RuntimeError('private input IDs/mask mutated')
     if (type(output.logits) is not torch.Tensor or output.logits.device != device
