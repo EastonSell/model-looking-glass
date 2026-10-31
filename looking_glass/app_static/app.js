@@ -143,10 +143,10 @@
   }
   function clearView() {
     clearExperiment(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
-    $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.'; syncButtons();
+    $('imported-comparison').hidden = true; clearDistribution('imported'); $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.'; syncButtons();
   }
   function showRun(run) {
-    state.run = run; $('result-panel').hidden = false; $('trace-panel').hidden = false; $('answer').textContent = display(run.answer ?? 'No textual output.'); $('task-badge').textContent = run.task || 'Observed run';
+    state.run = run; $('imported-comparison').hidden = run.run_kind !== 'intervention_comparison'; if (run.run_kind === 'intervention_comparison') renderDistribution('imported', run.experiment || {}); else clearDistribution('imported'); $('result-panel').hidden = false; $('trace-panel').hidden = false; $('answer').textContent = display(run.answer ?? 'No textual output.'); $('task-badge').textContent = run.task || 'Observed run';
     const captureModel = run.model; $('demo-capture-warning').hidden = !isDemo(captureModel); $('capture-model').textContent = captureModel ? `Capture model: ${captureModel.name || captureModel.family || captureModel.architecture || 'recorded model'}${captureModel.device ? ' on ' + captureModel.device : ''} — independent of the model currently loaded above.` : 'Model identity was not recorded in this capture.';
     $('capture-info').textContent = display({model: captureModel || null, settings: run.settings || null});
     $('run-metrics').replaceChildren();
@@ -309,16 +309,34 @@
     state.witnessRequest++; state.witnessTotal = 0; $('witness-body').replaceChildren(); $('witness-coordinate').textContent = ''; $('witness-page').textContent = ''; $('witness-status').textContent = '';
   }
   function clearExperiment() {
-    $('demo-experiment-warning').hidden = true; state.experiment = null; state.witnessOffset = 0; clearWitness(); $('experiment-panel').hidden = true; $('experiment-token-body').replaceChildren(); $('experiment-details').textContent = ''; $('experiment-outcome').textContent = ''; $('experiment-controls').textContent = ''; $('experiment-metrics').textContent = ''; $('experiment-startup-status').textContent = ''; $('experiment-save-status').textContent = 'Optional export includes private fixed input, metadata and full witness tensors. Original capture is separate.';
+    clearDistribution('experiment'); $('demo-experiment-warning').hidden = true; state.experiment = null; state.witnessOffset = 0; clearWitness(); $('experiment-panel').hidden = true; $('experiment-token-body').replaceChildren(); $('experiment-details').textContent = ''; $('experiment-outcome').textContent = ''; $('experiment-controls').textContent = ''; $('experiment-metrics').textContent = ''; $('experiment-startup-status').textContent = ''; $('experiment-save-status').textContent = 'Optional export includes private fixed input, metadata and full witness tensors. Original capture is separate.';
+  }
+  function clearDistribution(prefix) {
+    $(`${prefix}-distribution-body`).replaceChildren(); $(`${prefix}-distribution-note`).textContent = ''; $(`${prefix}-distribution-table`).hidden = true; $(`${prefix}-token-body`).replaceChildren();
+  }
+  function renderDistribution(prefix, experiment) {
+    clearDistribution(prefix);
+    const d = experiment.next_token_distribution;
+    const finite = (value) => typeof value === 'number' && Number.isFinite(value);
+    const usable = d && d.normalization === 'full vocabulary' && d.computation_dtype === 'float64' && Number.isSafeInteger(d.vocabulary_size) && d.vocabulary_size > 0 && Number.isSafeInteger(d.readout_position) && d.readout_position >= 0 && (experiment.readout_position === undefined || experiment.readout_position === d.readout_position) && Array.isArray(d.rows) && d.rows.length > 0 && d.rows.length <= 10 && d.rows.every((row) => row !== null && typeof row === 'object' && !Array.isArray(row)) && new Set(d.rows.map((row) => row.token_id)).size === d.rows.length && d.rows.every((row) => Number.isSafeInteger(row.token_id) && row.token_id >= 0 && row.token_id < d.vocabulary_size && typeof row.text === 'string' && ['baseline_logit','intervention_logit','baseline_log_probability','intervention_log_probability','baseline_probability','intervention_probability','probability_delta'].every((key) => finite(row[key])) && row.baseline_probability >= 0 && row.baseline_probability <= 1 && row.intervention_probability >= 0 && row.intervention_probability <= 1 && Math.abs(row.probability_delta) <= 1 && Math.abs(row.probability_delta - (row.intervention_probability - row.baseline_probability)) <= 8 * Number.EPSILON && ['baseline_rank','intervention_rank'].every((key) => Number.isSafeInteger(row[key]) && row[key] >= 1 && row[key] <= d.vocabulary_size));
+    $(`${prefix}-legacy`).hidden = !!usable;
+    if (!usable) {
+      $(`${prefix}-distribution-note`).textContent = 'Probability unavailable: this record lacks compatible full-vocabulary normalized metadata. Legacy ranked logits are shown below; no probabilities are inferred or normalized from a top-token list.';
+      const before = experiment.baseline_top_next_tokens || [], after = experiment.intervention_top_next_tokens || [];
+      for (let i=0; i < Math.max(before.length, after.length); i++) { const row=document.createElement('tr'); cell(row,i+1); cell(row,before[i] ? `${JSON.stringify(before[i].text)} · ${before[i].token_id}` : '—'); cell(row,number(before[i]?.logit)); cell(row,after[i] ? `${JSON.stringify(after[i].text)} · ${after[i].token_id}` : '—'); cell(row,number(after[i]?.logit)); $(`${prefix}-token-body`).append(row); }
+      return;
+    }
+    $(`${prefix}-distribution-note`).textContent = `Full-vocabulary normalized probabilities (${d.vocabulary_size} tokens). Only the top-5 union is shown; these rows need not sum to 100%.`;
+    const percent = (value, signed = false) => `${signed && value > 0 ? '+' : ''}${Number((value * 100).toPrecision(6))}`;
+    for (const item of d.rows) { const row=document.createElement('tr'); cell(row,`${item.text_unavailable ? 'text unavailable' : JSON.stringify(item.text)} · ${item.token_id}${item.text_truncated ? ' · text truncated' : ''}`); cell(row,percent(item.baseline_probability)); cell(row,percent(item.intervention_probability)); cell(row,percent(item.probability_delta,true)); $(`${prefix}-distribution-body`).append(row); }
+    $(`${prefix}-distribution-table`).hidden = false;
   }
   function showExperiment(summary) {
     $('demo-experiment-warning').hidden = !isDemo(summary.model); state.experiment = summary; const e = summary.experiment || {}, c = e.comparison || {}; $('experiment-panel').hidden = false;
     $('experiment-outcome').textContent = c.selected_vector_changed === false ? 'No-op: the selected vector did not change. Do not interpret this as evidence about the effect of changing it.' : c.selected_vector_changed === true ? `Selected vector changed. Baseline next-token ID ${c.baseline_next_token_id ?? '?'} → edited ID ${c.intervention_next_token_id ?? '?'}. This is one fixed-input comparison, not a generated continuation or explanation.` : 'Comparison returned without a verified selected-vector change flag; inspect the complete metadata.';
     const controls = Object.entries(e.controls || {}); $('experiment-controls').textContent = controls.length ? 'Recorded controls: ' + controls.map(([key,value]) => `${key}: ${value === true ? 'passed' : value === false ? 'FAILED' : display(value)}`).join(' · ') : 'No control results recorded.';
     $('experiment-metrics').textContent = `Full-logits max |Δ|: ${number(c.full_logits_max_abs_delta)} · full-logits L2 Δ: ${number(c.full_logits_l2_delta)} · last-position max |Δ|: ${number(c.last_position_max_abs_delta)}`;
-    $('experiment-details').textContent = display(summary); $('experiment-token-body').replaceChildren();
-    const before = e.baseline_top_next_tokens || [], after = e.intervention_top_next_tokens || [];
-    for (let i=0; i < Math.max(before.length, after.length); i++) { const row=document.createElement('tr'); cell(row,i+1); cell(row,before[i] ? `${JSON.stringify(before[i].text)} · ${before[i].token_id}` : '—'); cell(row,number(before[i]?.logit)); cell(row,after[i] ? `${JSON.stringify(after[i].text)} · ${after[i].token_id}` : '—'); cell(row,number(after[i]?.logit)); $('experiment-token-body').append(row); }
+    $('experiment-details').textContent = display(summary); renderDistribution('experiment', e);
     syncButtons();
   }
   async function loadWitness() {

@@ -24,6 +24,73 @@ def same_bits(a, b):
             and torch.equal(a.contiguous().view(torch.int32), b.contiguous().view(torch.int32)))
 
 
+DISTRIBUTION_BYTES_PER_TOKEN = 256
+DISTRIBUTION_FIXED_BYTES = 64 * 1024  # At most 10 bounded Unicode labels + row metadata.
+
+
+def _distribution_workspace_bytes(vocabulary_size):
+    # Two f64 input/logprob/prob vectors, differences, finite checks, stable
+    # sorts/indices/ranks and workspace. Planning allowance, not a peak-RAM cap.
+    return DISTRIBUTION_BYTES_PER_TOKEN * vocabulary_size + DISTRIBUTION_FIXED_BYTES
+
+
+@torch.no_grad()
+def _next_token_distribution(baseline, intervention, tokenizer):
+    """Aligned full-vocabulary float64 readout, never top-k renormalization."""
+    require(type(baseline) is torch.Tensor and type(intervention) is torch.Tensor
+            and baseline.dtype == intervention.dtype == torch.float32
+            and baseline.device.type == intervention.device.type == "cpu"
+            and baseline.layout == intervention.layout == torch.strided
+            and baseline.ndim == intervention.ndim == 3 and baseline.shape == intervention.shape
+            and baseline.shape[0] == 1 and baseline.shape[1] > 0 and baseline.shape[2] > 0,
+            "distribution requires aligned nonempty CPU float32 full logits")
+    first, second = baseline[0, -1], intervention[0, -1]
+    require(bool(torch.isfinite(first).all()) and bool(torch.isfinite(second).all()),
+            "distribution logits must be finite")
+    vocab = first.numel()
+    first64, second64 = first.double(), second.double()
+    log_first, log_second = first64.log_softmax(dim=0), second64.log_softmax(dim=0)
+    prob_first, prob_second = log_first.exp(), log_second.exp()
+    require(bool(torch.isfinite(log_first).all()) and bool(torch.isfinite(log_second).all()),
+            "distribution produced nonfinite log probabilities")
+    # Input positions are ascending token IDs. A stable descending sort therefore
+    # gives exact deterministic ID-ascending ties, without perturbing any logits.
+    order_first = torch.argsort(first64, descending=True, stable=True)
+    order_second = torch.argsort(second64, descending=True, stable=True)
+    ranks_first, ranks_second = torch.empty_like(order_first), torch.empty_like(order_second)
+    ordinal = torch.arange(1, vocab + 1, dtype=torch.int64)
+    ranks_first[order_first], ranks_second[order_second] = ordinal, ordinal
+    selected = list(dict.fromkeys(order_first[:5].tolist() + order_second[:5].tolist()))
+    rows = []
+    for token in selected:
+        unavailable = truncated = False
+        try:
+            text = tokenizer.decode([token])
+            if type(text) is not str: raise ValueError("token label is not text")
+            truncated = len(text) > 512
+            text = text[:512]
+        except Exception as error:
+            if isinstance(error, (MemoryError, torch.OutOfMemoryError)) or (
+                    isinstance(error, RuntimeError) and "out of memory" in str(error).lower()):
+                raise
+            text, unavailable = "", True
+        p, q = float(prob_first[token]), float(prob_second[token])
+        rows.append(dict(token_id=token, text=text, text_truncated=truncated, text_unavailable=unavailable,
+            baseline_logit=float(first[token]), intervention_logit=float(second[token]),
+            baseline_log_probability=float(log_first[token]), intervention_log_probability=float(log_second[token]),
+            baseline_probability=p, intervention_probability=q, probability_delta=q-p,
+            baseline_rank=int(ranks_first[token]), intervention_rank=int(ranks_second[token])))
+    total_variation = float((prob_second - prob_first).abs().sum() * .5)
+    require(math.isfinite(total_variation) and 0 <= total_variation <= 1 + 1e-12,
+            "invalid total-variation result")
+    return dict(normalization="full vocabulary", computation_dtype="float64", vocabulary_size=vocab,
+        readout_position=baseline.shape[1]-1, total_variation=min(1., total_variation), rows=rows,
+        rank_definition="1-based descending full-vocabulary logits; ascending token ID breaks exact ties",
+        selection="Union of deterministic baseline top 5 followed by unseen intervention top 5; at most 10 rows. Legacy top lists may order tied logits differently.",
+        label_max_characters=512,
+        scope="Next-token model distribution only, not truth, confidence, calibration, semantic meaning or causal explanation. Float64 probabilities can underflow to zero; finite log probabilities are retained. Total variation is full-vocabulary, bounded for floating-point roundoff. Captured tensor bits are unchanged.")
+
+
 def validate_request(runtime, source, operation, feature, value, maximum):
     require(type(maximum) is int and 0 < maximum <= 512 * 1024**2, "paired experiment requires positive bounded memory allowance")
     from transformers import GPT2LMHeadModel, LlamaForCausalLM
@@ -107,7 +174,8 @@ def validate_request(runtime, source, operation, feature, value, maximum):
             + 6 * len(ids) * config.intermediate_size * 4
             + 4 * len(ids) * ((config.num_attention_heads + 2 * config.num_key_value_heads) * config.head_dim + width) * 4
             + config.head_dim * 2 + len(ids) * 48)
-    planned = 10 * logits_bytes + 12 * full_bytes + 16 * width * 4 + workspace
+    planned = (10 * logits_bytes + 12 * full_bytes + 16 * width * 4 + workspace
+               + _distribution_workspace_bytes(config.vocab_size))
     require(type(maximum) is int and 0 < maximum <= 512 * 1024**2 and planned <= maximum, "paired experiment exceeds logical memory allowance")
     return dict(family=family, coordinate=copy.deepcopy(coordinate), step=copy.deepcopy(step), reference=reference.clone(),
                 path=path, layer=layer, token=token, ids=list(ids), mask=list(mask), operation=operation,
@@ -264,6 +332,7 @@ def execute(runtime, request):
                 **({"static_rotary_state_unchanged": True, "fixed_input_ids_mask_unchanged": True} if family == "llama" else {}),
                 "source_vector_bitwise_equal": True, "other_token_positions_at_selected_site_bitwise_equal": True,
                 **({"other_features_at_selected_vector_bitwise_equal": True} if request["operation"] != "zero" else {})},
+            "next_token_distribution": _next_token_distribution(baseline, treatment, runtime.tokenizer),
             "full_logits": {"shape": list(baseline.shape), "bitwise_equal": same_bits(baseline, treatment),
                 "max_absolute_change": float(difference.abs().max()), "l2_change": float(difference.norm())},
             "comparison": {"full_logits_max_abs_delta": float(difference.abs().max()),

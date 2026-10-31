@@ -143,6 +143,12 @@ def test_real_http_fixed_forward_experiment_and_saved_witnesses(tmp_path, operat
         comparison=json.loads(body);assert comparison['run_kind']=='intervention_comparison'
         assert comparison['event_count']==4 and comparison['experiment']['operation']==operation
         assert all(comparison['experiment']['controls'].values())
+        distribution=comparison['experiment']['next_token_distribution']
+        assert distribution['normalization']=='full vocabulary' and distribution['computation_dtype']=='float64'
+        assert distribution['readout_position']==comparison['experiment']['readout_position']
+        assert 0 <= distribution['total_variation'] <= 1
+        rows=distribution['rows'];assert 1 <= len(rows) <= 10 and len({row['token_id'] for row in rows})==len(rows)
+        assert all(0 <= row['baseline_probability'] <= 1 and 0 <= row['intervention_probability'] <= 1 for row in rows)
         assert json.loads(call(endpoint,'/api/tensor?event=0&vector=0&limit=4096')[1])==original
         assert json.loads(call(endpoint,'/api/experiment')[1])==comparison
         assert call(endpoint,'/api/experiment',token=False)[0]==403
@@ -165,6 +171,7 @@ def test_real_http_fixed_forward_experiment_and_saved_witnesses(tmp_path, operat
         assert json.loads(call(endpoint,'/api/tensor?event=0&vector=0&limit=4096')[1])==original
         code,body,_=call(endpoint,'/api/open','POST',{'path':saved['path']})
         assert code==200 and not json.loads(body)['intervention_available']
+        assert json.loads(body)['experiment']==comparison['experiment']
         for index in range(4):assert json.loads(call(endpoint,f'/api/tensor?event={index}&limit=4096')[1])==witnesses[index]
         assert call(endpoint,'/api/intervene','POST',request)[0]==400
     finally:

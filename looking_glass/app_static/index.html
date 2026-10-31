@@ -97,7 +97,11 @@
       <details><summary>Capture model identity and settings</summary><pre id="capture-info" class="detail-json"></pre></details>
       <div id="run-metrics" class="metrics"></div>
       <p id="coverage" class="hint"></p>
-      <details><summary>Forward steps and capture coverage</summary><pre id="run-details" class="detail-json"></pre></details>
+      <section id="imported-comparison" hidden><h3>Saved comparison · read-only</h3><p class="hint">Recorded comparison metadata from this opened capture. This section does not create a live comparison or enable comparison actions.</p><p id="imported-distribution-note" class="hint"></p>
+      <p class="hint">Model probabilities are diagnostics—not confidence or correctness. Δ = edited − baseline in percentage points. A matching selected token does not mean the distribution stayed unchanged. Display is rounded; exact ranks, logits and log-probabilities remain in metadata.</p>
+      <div id="imported-distribution-table" class="table-scroll" hidden><table><thead><tr><th>Token · ID</th><th>Baseline %</th><th>Edited %</th><th>Δ percentage points</th></tr></thead><tbody id="imported-distribution-body"></tbody></table></div><div id="imported-legacy"><p class="hint">Paired columns rank each trial’s top next-token logits independently. These are logits, not probabilities. Identical next-token IDs alone do not mean all logits were unchanged.</p>
+      <div class="table-scroll"><table><thead><tr><th>Rank</th><th>Baseline token · ID</th><th>Logit</th><th>Edited token · ID</th><th>Logit</th></tr></thead><tbody id="imported-token-body"></tbody></table></div></div></section>
+      <details><summary>Exact run metadata, forward steps and capture coverage</summary><pre id="run-details" class="detail-json"></pre></details>
       <div class="save-row"><label for="save-name">Save a complete capture</label><div class="button-row"><input id="save-name" type="text" placeholder="my-capture" value="my-capture" autocomplete="off"><button id="save-button" class="secondary" type="button">Save capture</button><button id="clear-button" class="quiet" type="button">Clear captured run</button></div><p id="save-status" class="hint">Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.</p></div>
     </section>
     <section id="trace-panel" class="panel" aria-labelledby="trace-heading" hidden>
@@ -134,9 +138,12 @@
       <div class="panel-heading"><h2 id="experiment-heading">Fixed-input comparison</h2><span class="pill">Separate from original capture</span></div>
       <p id="demo-experiment-warning" class="approximation" hidden>This comparison uses an untrained random CPU demo. It exercises the workflow, not useful model behavior or GPU validation.</p>
       <p id="experiment-outcome" class="info-box"></p><p id="experiment-controls" class="hint"></p><p id="experiment-metrics" class="hint"></p>
-      <p class="hint">Paired columns rank each trial’s top next-token logits independently. These are logits, not probabilities. Identical next-token IDs alone do not mean all logits were unchanged.</p>
-      <div class="table-scroll"><table><thead><tr><th>Rank</th><th>Baseline token · ID</th><th>Logit</th><th>Edited token · ID</th><th>Logit</th></tr></thead><tbody id="experiment-token-body"></tbody></table></div>
-      <details><summary>Complete comparison metadata and controls</summary><pre id="experiment-details" class="detail-json"></pre></details>
+      <p id="experiment-distribution-note" class="hint"></p>
+      <p class="hint">Model probabilities are diagnostics—not confidence or correctness. Δ = edited − baseline in percentage points. A matching selected token does not mean the distribution stayed unchanged. Display is rounded; exact ranks, logits and log-probabilities remain in metadata.</p>
+      <div id="experiment-distribution-table" class="table-scroll" hidden><table><thead><tr><th>Token · ID</th><th>Baseline %</th><th>Edited %</th><th>Δ percentage points</th></tr></thead><tbody id="experiment-distribution-body"></tbody></table></div>
+<div id="experiment-legacy"><p class="hint">Paired columns rank each trial’s top next-token logits independently. These are logits, not probabilities. Identical next-token IDs alone do not mean all logits were unchanged.</p>
+      <div class="table-scroll"><table><thead><tr><th>Rank</th><th>Baseline token · ID</th><th>Logit</th><th>Edited token · ID</th><th>Logit</th></tr></thead><tbody id="experiment-token-body"></tbody></table></div></div>
+      <details><summary>Exact comparison metadata: ranks, logits, log-probabilities and controls</summary><pre id="experiment-details" class="detail-json"></pre></details>
       <label for="witness-phase">Exact selected-vector witness</label><select id="witness-phase"><option value="0">Null control · before</option><option value="1">Null control · after</option><option value="2">Intervention · before</option><option value="3">Intervention · after</option></select><p id="witness-status" class="hint" aria-live="polite"></p><p id="witness-coordinate" class="hint"></p>
       <div class="table-scroll"><table><thead><tr><th>Feature</th><th>Exact value</th><th>Raw bits</th></tr></thead><tbody id="witness-body"></tbody></table></div>
       <div class="pager"><button id="witness-prev" class="quiet" type="button">← Previous values</button><span id="witness-page" class="hint"></span><button id="witness-next" class="quiet" type="button">Next values →</button></div>
