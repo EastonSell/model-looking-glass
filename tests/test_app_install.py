@@ -76,3 +76,10 @@ def test_cpu_backend_dry_run_and_unknown_backend(tmp_path):
     assert result.returncode == 0 and "/whl/cpu" in result.stdout
     bad = subprocess.run([sys.executable, str(script), "--backend", "arbitrary-url"], capture_output=True, text=True)
     assert bad.returncode != 0 and not (tmp_path / ".venv").exists()
+
+
+def test_gpu_check_entrypoint_and_installer_hint():
+    project = (ROOT / "pyproject.toml").read_text()
+    assert 'model-looking-glass-gpu-check = "looking_glass.app_selftest:main"' in project
+    out = subprocess.run([sys.executable, str(ROOT / "install.py"), "--dry-run", "--backend", "cpu"], capture_output=True, text=True, check=True)
+    assert "looking_glass.app_selftest" in out.stdout

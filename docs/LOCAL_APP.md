@@ -16,7 +16,7 @@ The installer creates this checkout's `.venv`, installs PyTorch 2.15.0 and appli
 
 Later, start with `.venv/bin/python -m looking_glass.app` (Windows: `.venv\Scripts\python.exe -m looking_glass.app`). An already prepared environment can instead install `python -m pip install -e ".[app]"` and run `model-looking-glass`. Choose the matching PyTorch build first using its [official installation guidance](https://pytorch.org/get-started/locally/). An existing CPU-only `.venv` can be explicitly changed with `python install.py --reuse-venv --backend cuda`; build-local version pins ensure pip does not silently retain the CPU build. This is a package change, not a driver installation.
 
-Options include `--no-browser`, `--port`, `--models-dir /explicit/model/folder`, and `--export-dir /chosen/export/folder`. `--models-dir` lists only immediate checkpoint subdirectories; otherwise enter an explicit checkpoint directory in settings. The server binds only to `127.0.0.1`, chooses a free port by default, and prints its URL. Keep the terminal running. Stop with Ctrl+C; a long active forward may need to finish first. This is a trusted single-user local tool, not a public service.
+Options include `--no-browser`, `--port`, `--models-dir /explicit/model/folder`, and `--export-dir /chosen/export/folder`. `--models-dir` sets an explicit browsing root and lists immediate checkpoint candidates. Without it, enter a local folder and choose Browse to set the root, or paste a checkpoint path directly. The browser stays inside that root, does not scan home automatically, and never loads weights while listing folders. A `config.json` marks only a candidate; Inspect/Load still validates compatibility. Large folders are bounded and show a truncation notice. The server binds only to `127.0.0.1`, chooses a free port by default, and prints its URL. Keep the terminal running. Stop with Ctrl+C; a long active forward may need to finish first. This is a trusted single-user local tool, not a public service.
 
 ## Checkpoint compatibility
 
@@ -41,10 +41,10 @@ GPU captures are moved synchronously to CPU RAM without dtype reduction. GPT-2 o
 
 ## Full capture and readable inspection
 
-1. Inspect the local model, select Auto/CPU/CUDA and the GPU allowance, then load it. Choose **Auto: all supported points**, or explicitly select roles and layers.
+1. Browse an explicitly chosen local folder or paste a checkpoint path. Inspect the model, select Auto/CPU/CUDA and the GPU allowance, then load it. Choose **Auto: all supported points**, or explicitly select roles and layers.
 2. Set input/output-token limits and capture byte/event allowances. Prompt truncation is rejected, never silently performed.
 3. Enter a prompt or image and run. A successful trace is exposed only after every selected capture and adapter cleanup completes. The run records its own model label/settings, input IDs and forward-step coordinates, independently of later model selections.
-4. Select an event, then a vector/token and coordinate page. The raw table includes float32 values and hexadecimal bits, preserving distinctions such as signed zero. Pagination is presentation only: all captured values remain in RAM.
+4. Search across the entire capture by module path/kind, layer or forward index, then select an event and a vector/token and coordinate page. Search pagination retains the original event identities; it does not filter or discard stored tensors. The raw table includes float32 values and hexadecimal bits, preserving distinctions such as signed zero. Pagination is presentation only: all captured values remain in RAM.
 5. Optionally switch to **grouped coordinates**. This displays contiguous coordinate means and ranges; it is an explicitly approximate display, **not semantic concepts or inferred reasoning**. It does not replace, compress, or discard the original tensors.
 
 Auto means every supported **module boundary**, not every mathematical operation, neuron state, attention probability, or internal node. T5 cross-attention is not a separate capture role in the current adapter. GPT-2/T5 use explicit uncached generation forwards: later steps recompute the growing prefix, and repeated token vectors belong to distinct forwards. Attention/MLP/block changes are observations, not a proof of a unique causal mechanism or complete interpretability.
@@ -57,16 +57,19 @@ The model default preflight cap is 2 GiB of parameter storage. Neither that nor 
 
 The allocator ceiling only covers PyTorch's CUDA caching allocator, **not all driver/library/context memory or other processes**. Free memory is an observation, not a reservation. Estimates cannot bound every kernel workspace, and GPU/CPU allocation can still fail. The app does not call `empty_cache` as proof that live work was safely freed. There is no asynchronous cancellation or general resource-isolation guarantee.
 
+**Starting a new query replaces the previous RAM capture**, including when the new query later fails. The page warns before replacement; it does not show a confirmation dialog. Save first if you want to retain a run. Loading another model also clears the current capture. **Unload model** releases the resident model without clearing the current capture, which remains inspectable/saveable. Clear releases the capture separately.
+
 A failure publishes no partial trace as complete. If execution leaves model ownership uncertain, the app marks it quarantined and requires a process restart rather than pretending cleanup succeeded. Ordinary validation errors before forwarding can be corrected without a restart.
 
-Save writes a **new**, named directory under the export root, containing `tensors.safetensors`, `manifest.json` and a completion status. Existing directories are never overwritten. Exports include text prompts/token IDs, answers, image-coordinate metadata and full captured activations; treat them as potentially sensitive. The default export directory is Git-ignored. Open saved trace verifies file inventory, shapes, byte limits and the tensor digest, then loads original values into RAM. Checksums detect changed bytes relative to the manifest; they do not authenticate a model or establish execution provenance. Model paths are labels, not cryptographic weight attestations. The checkpoint and original uploaded image are not copied into the trace export; keep them separately if needed for replay.
+Save writes a **new**, named directory under the export root, containing `tensors.safetensors`, `manifest.json` and a completion status. Existing directories are never overwritten. Exports include text prompts/token IDs, answers, image-coordinate metadata and full captured activations; treat them as potentially sensitive. The default export directory is Git-ignored. The saved-run picker lists only immediate folders under the export root. It labels apparently complete entries **unverified** and incomplete entries unavailable; listing never reads the tensor payload or proves integrity. It is a bounded convenience for a trusted local filesystem, not protection against a hostile concurrent filesystem writer. You can also paste an export path. Open saved trace verifies file inventory, shapes, byte limits and the tensor digest, then loads original values into RAM. Checksums detect changed bytes relative to the manifest; they do not authenticate a model or establish execution provenance. Model paths are labels, not cryptographic weight attestations. The checkpoint and original uploaded image are not copied into the trace export; keep them separately if needed for replay.
 
 The server uses a fresh session token, same-origin/Host checks and no remote assets or telemetry. These are browser boundary safeguards, not protection from hostile code already running as the same local user. Do not proxy it to the internet or share its session page.
 
 ## Verification
 
 ```bash
-python -m pytest tests/test_app_runtime.py tests/test_app_storage.py \
+python -m pytest tests/test_app_runtime.py tests/test_app_cuda.py \
+  tests/test_app_selftest.py tests/test_app_storage.py \
   tests/test_app_http.py tests/test_app_install.py -q
 # Optional developer-only DOM/API contract check (Node.js; no browser install):
 node tests/app_ui_contract.cjs
@@ -86,6 +89,22 @@ This executor has no visible NVIDIA device and a CPU-only PyTorch build. CUDA po
 python -m pytest tests/test_app_cuda.py -q -ra
 ```
 
-The focused app/adapter suite completed with **223 passed and 2 real-CUDA prerequisite skips** on the CPU executor; the UI DOM contract covered 23 mocked authenticated requests. An independently installed wheel also passed the CPU capabilities/server/static-asset smoke check. These are focused checks, not a rerun of the entire historical research suite.
+The focused app/adapter suite completed with **265 passed and 3 real-CUDA prerequisite skips** on the CPU executor; the UI DOM contract covered 50 mocked authenticated requests, including catalog failures, stale-search responses, unload and failed tensor reads. An independently installed wheel also passed the CPU capabilities/server/static-asset smoke check. These are focused checks, not a rerun of the entire historical research suite.
 
 A prerequisite skip is not a pass. No GPU speedup, VRAM measurement, rounding-gate fidelity, or pretrained-model quality has been established by this release's CPU-only validation.
+
+### Run the standalone GPU check
+
+In the installed app environment:
+
+```bash
+python -m looking_glass.app_selftest --device cuda:0 --max-vram-mib 1024
+# The installed console entry point is equivalent:
+model-looking-glass-gpu-check --device cuda:0 --max-vram-mib 1024
+```
+
+This is an explicit, bounded diagnostic, not a background test when the app starts. It creates tiny deterministic synthetic GPT-2/T5 checkpoints in a temporary directory, uses only local dependencies, and never reads a user checkpoint or downloads a model. It checks actual device placement, same-device baseline versus traced full-logit bits, selected boundary bits, CPU offload, temporary export/reopen, repeated runs, hook cleanup and allocator-policy restoration. A failure stops further device work when ownership is uncertain rather than reporting recovery as success.
+
+Standard output contains a JSON report with overall and per-stage **passed**, **failed**, or **skipped** states. Exit codes are **0 = passed, 1 = failed, 2 = skipped/prerequisite unavailable**. An unavailable CUDA device/build is skipped, never a CPU substitute or GPU pass. Device memory allowance covers the scoped PyTorch allocator only, with the same external-memory limitations described above. Temporary diagnostic checkpoints/traces are not your model data; the command does not persist a report unless you explicitly redirect its output.
+
+A passing check validates only these tiny synthetic workloads on that machine and runtime. It does not establish arbitrary-checkpoint compatibility, performance improvements, rounding-gate behavior, or hostile-code isolation. The larger hardware-gated pytest checks remain available separately.

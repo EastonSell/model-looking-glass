@@ -46,6 +46,7 @@ def main(argv=None):
         print("Create isolated environment:", env)
         for command in commands: print(subprocess.list2cmdline(command))
         print("Launch:", executable, "-m looking_glass.app")
+        print("Optional GPU validation:", executable, "-m looking_glass.app_selftest")
         return 0
     if env.is_symlink(): parser.error("Refusing a symlinked .venv")
     if env.exists() and not args.reuse_venv:
@@ -54,6 +55,7 @@ def main(argv=None):
     if not (env / "pyvenv.cfg").is_file() or not executable.is_file(): parser.error("Existing .venv is not a usable Python environment")
     print(f"Installing {args.backend.upper()} dependencies; no drivers or model checkpoints will be downloaded.", flush=True)
     for command in commands: subprocess.run(command, cwd=ROOT, check=True)
+    print("Optional GPU validation (local synthetic models only):", executable, "-m looking_glass.app_selftest", flush=True)
     if not args.no_launch: return subprocess.call([str(executable), "-m", "looking_glass.app"], cwd=ROOT)
     print("Installed. Run:", executable, "-m looking_glass.app")
     return 0

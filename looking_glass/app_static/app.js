@@ -2,7 +2,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const token = document.querySelector('meta[name="mlg-token"]').content;
-  const state = {devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
+  const state = {browse: null, saved: [], searchTimer: null, eventQuery: '', eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
   const pageSize = 100, valuePageSize = 256;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
@@ -18,9 +18,14 @@
     return data;
   }
   function syncButtons() {
-    ['inspect-button', 'load-button', 'model-path', 'execution-device', 'vram-mib', 'refresh-devices', 'open-button', 'open-path', 'vector-index', 'vector-view', 'capture-mode', 'layers', 'max-input', 'max-output', 'max-events', 'trace-mib', 'prompt', 'image-file'].forEach((id) => { $(id).disabled = state.busy; });
+    ['browse-button', 'browse-go', 'browse-parent', 'browse-select', 'browse-path', 'saved-runs', 'refresh-saved', 'inspect-button', 'load-button', 'model-path', 'execution-device', 'vram-mib', 'refresh-devices', 'open-button', 'open-path', 'vector-index', 'vector-view', 'capture-mode', 'layers', 'max-input', 'max-output', 'max-events', 'trace-mib', 'prompt', 'image-file'].forEach((id) => { $(id).disabled = state.busy; });
+    $('run-button').textContent = state.run ? 'Replace capture →' : 'Run & capture →';
+    $('replace-warning').hidden = !state.run;
     $('run-button').disabled = state.busy || !state.model || state.model.state === 'quarantined';
     $('load-button').disabled = state.busy || state.model?.state === 'quarantined';
+    $('unload-button').disabled = state.busy || !state.model || state.model.state === 'quarantined';
+    $('browse-parent').disabled = state.busy || !state.browse?.parent;
+    document.querySelectorAll('#folder-list button').forEach((button) => { button.disabled = state.busy; });
     $('vram-mib').disabled = state.busy || $('execution-device').value === 'cpu';
     $('save-button').disabled = state.busy || !state.run;
     $('clear-button').disabled = state.busy || !state.run;
@@ -49,6 +54,8 @@
     if (Number.isSafeInteger(limits?.max_trace_bytes) && limits.max_trace_bytes >= 1048576) { const max = Math.floor(limits.max_trace_bytes / 1048576); $('trace-mib').max = String(max); if (Number($('trace-mib').value) > max) $('trace-mib').value = String(max); }
   }
   function applyDevices(status) {
+    $('model-discovery-warning').textContent = status.model_discovery_warning ? `Model folder discovery unavailable: ${status.model_discovery_warning}` : '';
+    $('model-discovery-warning').hidden = !status.model_discovery_warning;
     state.devices = Array.isArray(status.devices) ? status.devices : [];
     state.cuda = status.cuda || null;
     const select = $('execution-device'), selected = select.value || 'auto';
@@ -106,7 +113,7 @@
     syncButtons();
   }
   function clearView() {
-    state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
+    clearTimeout(state.searchTimer); state.eventQuery = ''; $('event-filter').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
     $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.'; syncButtons();
   }
   function showRun(run) {
@@ -121,20 +128,19 @@
   function cell(row, value) { const td = document.createElement('td'); td.textContent = String(value ?? '—'); row.append(td); return td; }
   function eventName(event) { return event.metadata?.module_path || event.module_path || event.metadata?.site?.module_path || `Observation ${event.index}`; }
   function renderEvents() {
-    const filter = $('event-filter').value.toLowerCase(); $('event-body').replaceChildren(); let shown = 0;
+    const filter = state.eventQuery; $('event-body').replaceChildren(); let shown = 0;
     for (const event of state.events) {
       const meta = event.metadata || {}; const forward = meta.app_forward_index ?? meta.forward_index ?? event.forward_index ?? '—';
-      if (filter && !`${event.index} ${eventName(event)} ${forward} ${meta.layer_index ?? ''}`.toLowerCase().includes(filter)) continue;
       shown++; const row = document.createElement('tr'); row.classList.toggle('selected', event.index === state.event?.index); cell(row, event.index); const nameCell = document.createElement('td'), button = document.createElement('button'); button.type = 'button'; button.textContent = eventName(event); button.disabled = state.busy; button.addEventListener('click', () => action('Reading selected observation…', () => chooseEvent(event))); nameCell.append(button); row.append(nameCell); cell(row, forward); cell(row, (event.shape || meta.saved_shape || meta.shape || []).join(' × ')); cell(row, bytes(event.tensor_bytes)); $('event-body').append(row);
     }
-    if (!shown) { const row = document.createElement('tr'); const td = cell(row, 'No observations match this page filter.'); td.colSpan = 5; $('event-body').append(row); }
-    $('event-total').textContent = `${state.eventTotal} observations`;
-    $('event-page').textContent = state.eventTotal ? `${state.eventOffset + 1}–${Math.min(state.eventOffset + state.events.length, state.eventTotal)} of ${state.eventTotal}${filter ? ` · ${shown} shown` : ''}` : 'No observations'; syncButtons();
+    if (!shown) { const row = document.createElement('tr'); const td = cell(row, 'No observations match this search.'); td.colSpan = 5; $('event-body').append(row); }
+    $('event-total').textContent = `${state.eventTotal} matching / ${state.eventTotalAll} total observations`;
+    $('event-page').textContent = state.eventTotal ? `${state.eventOffset + 1}–${Math.min(state.eventOffset + state.events.length, state.eventTotal)} of ${state.eventTotal}${filter ? ' · filtered across all captures' : ''}` : 'No observations'; syncButtons();
   }
   async function loadEvents() {
-    const request = ++state.eventRequest; const result = await api(`events?offset=${state.eventOffset}&limit=${pageSize}`);
+    const request = ++state.eventRequest; const result = await api(`events?offset=${state.eventOffset}&limit=${pageSize}&q=${encodeURIComponent(state.eventQuery)}`);
     if (request !== state.eventRequest) return;
-    state.events = result.events || []; state.eventTotal = Number(result.total || 0); renderEvents();
+    state.events = result.events || []; state.eventTotal = Number(result.total || 0); state.eventTotalAll = Number(result.total_all ?? result.total ?? 0); renderEvents();
     if (!state.event && state.events.length) await chooseEvent(state.events[0]);
   }
   async function chooseEvent(event) {
@@ -145,10 +151,15 @@
   }
   async function loadVector() {
     if (!state.event) return;
+    const request = ++state.valueRequest;
+    // Never display the preceding tensor beneath a newly selected coordinate.
+    $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren();
+    $('raw-values').hidden = true; $('reduced-values').hidden = true; $('reduction-note').hidden = true;
+    $('value-page').textContent = 'Values unavailable until this request succeeds.'; state.valueTotal = 0;
     const vector = Number($('vector-index').value);
     if (!Number.isSafeInteger(vector) || vector < 0 || vector > Number($('vector-index').max)) throw new Error('Choose a vector index in the displayed range.');
     if (vector !== state.vector) state.valueOffset = 0; state.vector = vector;
-    const view = $('vector-view').value, request = ++state.valueRequest;
+    const view = $('vector-view').value;
     const result = await api(`tensor?event=${state.event.index}&vector=${vector}&offset=${state.valueOffset}&limit=${valuePageSize}&view=${view}`);
     if (request !== state.valueRequest) return;
     $('reduction-note').hidden = view !== 'reduced'; $('raw-values').hidden = view !== 'raw'; $('reduced-values').hidden = view !== 'reduced';
@@ -171,22 +182,62 @@
       const title = document.createElementNS(ns, 'title'); title.textContent = `Features ${bin.start}–${bin.end}: mean ${number(bin.mean)}`; rect.append(title); svg.append(rect);
     }); $('bin-plot').append(svg);
   }
+  async function browse(path, root) {
+    const result = await api('browse-models', root ? {path, root} : {path}); state.browse = result;
+    $('folder-browser').hidden = false; $('browse-path').value = result.path;
+    $('browse-status').textContent = `Root: ${result.root}${result.truncated ? ' · Folder list truncated; enter a known subfolder path to navigate further.' : ''}`;
+    $('folder-list').replaceChildren();
+    for (const folder of result.folders || []) {
+      const row = document.createElement('div'), enter = document.createElement('button'); row.className = 'folder-row';
+      enter.type = 'button'; enter.className = 'quiet'; enter.textContent = folder.name + (folder.is_checkpoint ? ' · checkpoint candidate' : ' /');
+      enter.addEventListener('click', () => action('Browsing local folders…', () => browse(folder.path, result.root))); row.append(enter);
+      if (folder.is_checkpoint) { const use = document.createElement('button'); use.type = 'button'; use.className = 'secondary'; use.textContent = 'Use checkpoint'; use.addEventListener('click', () => { if (!state.busy) { $('model-path').value = folder.path; $('browse-status').textContent = 'Checkpoint path selected. Inspect or Load explicitly when ready.'; } }); row.append(use); }
+      $('folder-list').append(row);
+    }
+    if (!(result.folders || []).length) $('folder-list').textContent = 'No visible subfolders.';
+    syncButtons();
+  }
+  async function refreshSaved() {
+    const result = await api('saved'), selected = $('saved-runs').value; state.saved = result.runs || []; $('saved-runs').replaceChildren();
+    const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = 'Choose a saved capture…'; $('saved-runs').append(placeholder);
+    for (const run of state.saved) { const option = document.createElement('option'); option.value = run.path; option.disabled = run.status !== 'complete_unverified'; option.textContent = `${run.name} · ${run.status === 'complete_unverified' ? 'not yet verified' : 'incomplete'} · ${bytes(run.tensor_file_bytes)}`; $('saved-runs').append(option); }
+    $('saved-runs').value = state.saved.some((run) => run.path === selected && run.status === 'complete_unverified') ? selected : '';
+    $('saved-status').textContent = `${state.saved.length} listed capture folders${result.truncated ? ' · list truncated' : ''}. Listing does not verify tensor integrity; Open validates the selected capture. Incomplete exports cannot be opened from this list.`;
+  }
+  async function refreshSavedOptional() {
+    try { await refreshSaved(); }
+    catch (error) {
+      state.saved = []; $('saved-runs').replaceChildren();
+      $('saved-status').textContent = `Saved-capture catalog unavailable: ${error.message || String(error)}. This does not discard a RAM capture or undo a completed save. Refresh the catalog to retry, or enter a known export path.`;
+    }
+  }
+  $('browse-button').addEventListener('click', () => action('Browsing local folders…', () => browse($('model-path').value.trim())));
+  $('browse-go').addEventListener('click', () => action('Browsing local folders…', () => browse($('browse-path').value.trim(), state.browse?.root)));
+  $('browse-parent').addEventListener('click', () => action('Browsing parent folder…', async () => { if (state.browse?.parent) await browse(state.browse.parent, state.browse.root); }));
+  $('browse-select').addEventListener('click', () => { if (!state.busy && state.browse) { $('model-path').value = state.browse.path; $('browse-status').textContent = 'Folder path selected. Inspect or Load explicitly when ready.'; } });
+  $('refresh-saved').addEventListener('click', () => action('Listing saved captures…', refreshSaved));
+  $('saved-runs').addEventListener('change', () => { const run = state.saved.find((item) => item.path === $('saved-runs').value && item.status === 'complete_unverified'); if (run) $('open-path').value = run.path; });
+  $('unload-button').addEventListener('click', () => action('Releasing the model owner; keeping captured vectors…', async () => { await api('unload', {}); const current = await api('status'); setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
   $('execution-device').addEventListener('change', syncButtons);
   $('refresh-devices').addEventListener('click', () => action('Checking actual device availability…', async () => { const current = await api('status'); setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
   $('capture-mode').addEventListener('change', () => { $('custom-capture').hidden = $('capture-mode').value !== 'custom'; });
   $('inspect-button').addEventListener('click', () => action('Inspecting local checkpoint metadata…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const info = await api('inspect', {path}); $('model-info').textContent = `Inspection only — not loaded.\n${display(info)}`; }));
   $('load-button').addEventListener('click', () => action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); clearView(); setModel(null); const info = await api('load', {path, ...execution}); setModel(info); }));
-  $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); clearView(); showRun(await api('open', {path})); await loadEvents(); }));
+  $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); clearView(); showRun(await api('open', {path})); await loadEvents(); $('saved-status').textContent = 'Selected capture opened and validated. Other listed exports remain unverified.'; }));
   $('run-button').addEventListener('click', () => action('Running model and capturing supported outputs…', async () => { const options = settings(), prompt = $('prompt').value; const vision = String(state.model?.family || '').toLowerCase().includes('vit'); if (vision && !state.image) throw new Error('Choose an image first.'); if (!vision && !prompt.trim()) throw new Error('Enter a prompt first.'); clearView(); const body = {prompt, settings: options}; if (vision) body.image_base64 = state.image; showRun(await api('run', body)); await loadEvents(); }));
   $('image-file').addEventListener('change', async () => { const request = ++state.imageRequest; state.image = null; const file = $('image-file').files[0]; if (!file) return; if (file.size > 4 * 1048576) { $('image-file').value = ''; notice('Choose an image no larger than 4 MiB.', true); return; } try { const result = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('Could not read this image.')); reader.readAsDataURL(file); }); if (request !== state.imageRequest) return; state.image = String(result).split(',')[1]; $('image-description').textContent = `${file.name} · ${bytes(file.size)} · held in this browser until Clear captured run or page close.`; } catch (error) { notice(error.message, true); } });
-  $('save-button').addEventListener('click', () => action('Saving the complete capture…', async () => { const name = $('save-name').value.trim(); if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(name)) throw new Error('Use a save name of 1–64 letters, numbers, underscores, or hyphens, starting with a letter or number.'); const result = await api('save', {name}); $('save-status').textContent = `Saved explicitly: ${result.path || display(result)}. This export contains full capture data; keep it private when inputs are private.`; }));
+  $('save-button').addEventListener('click', () => action('Saving the complete capture…', async () => { const name = $('save-name').value.trim(); if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(name)) throw new Error('Use a save name of 1–64 letters, numbers, underscores, or hyphens, starting with a letter or number.'); const result = await api('save', {name}); $('save-status').textContent = `Saved explicitly: ${result.path || display(result)}. This export contains full capture data; keep it private when inputs are private.`; await refreshSavedOptional(); }));
   $('clear-button').addEventListener('click', () => action('Clearing captured results…', async () => { await api('clear', {}); clearView(); $('prompt').value = ''; state.imageRequest++; state.image = null; $('image-file').value = ''; $('image-description').textContent = 'Select a local PNG, JPEG, or WebP. It is sent only to this local app.'; }));
-  $('event-filter').addEventListener('input', renderEvents);
+  $('event-filter').addEventListener('input', () => {
+    clearTimeout(state.searchTimer); state.eventRequest++; state.valueRequest++;
+    state.eventQuery = $('event-filter').value.trim(); state.eventOffset = 0; state.event = null; $('vector-panel').hidden = true;
+    const revision = state.eventRequest; const search = async () => { if (!state.run || revision !== state.eventRequest) return; if (state.busy) { state.searchTimer = setTimeout(search, 250); return; } try { await loadEvents(); } catch (error) { if (revision + 1 === state.eventRequest) notice(error.message || String(error), true); } }; state.searchTimer = setTimeout(search, 250);
+  });
   $('events-prev').addEventListener('click', () => action('Loading previous observations…', async () => { state.eventOffset = Math.max(0, state.eventOffset - pageSize); await loadEvents(); }));
   $('events-next').addEventListener('click', () => action('Loading next observations…', async () => { state.eventOffset += pageSize; await loadEvents(); }));
   $('view-vector').addEventListener('click', () => action('Reading retained vector…', loadVector));
   $('vector-view').addEventListener('change', () => action('Changing display view…', async () => { state.valueOffset = 0; await loadVector(); }));
   $('values-prev').addEventListener('click', () => action('Reading previous coordinates…', async () => { state.valueOffset = Math.max(0, state.valueOffset - valuePageSize); await loadVector(); }));
   $('values-next').addEventListener('click', () => action('Reading next coordinates…', async () => { state.valueOffset += valuePageSize; await loadVector(); }));
-  action('Connecting to your local session…', async () => { const result = await api('status'); setModel(result.model); applyLimits(result.limits); applyDevices(result); for (const item of result.models || []) { const option = document.createElement('option'); option.value = typeof item === 'string' ? item : item.path; option.label = typeof item === 'string' ? item : item.name || item.path; $('model-choices').append(option); } if (result.run) { showRun(result.run); await loadEvents(); } });
+  action('Connecting to your local session…', async () => { const result = await api('status'); setModel(result.model); applyLimits(result.limits); applyDevices(result); for (const item of result.models || []) { const option = document.createElement('option'); option.value = typeof item === 'string' ? item : item.path; option.label = typeof item === 'string' ? item : item.name || item.path; $('model-choices').append(option); } if (result.run) { showRun(result.run); await loadEvents(); } await refreshSavedOptional(); });
 })();

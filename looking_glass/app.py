@@ -42,19 +42,63 @@ class AppState:
         self.token = secrets.token_hex(32)
 
     def status(self):
-        models = []
-        if self.models_dir is not None and self.models_dir.is_dir():
-            for path in sorted(self.models_dir.iterdir())[:200]:
-                if path.is_dir() and (path / "config.json").is_file():
-                    models.append({"name": path.name, "path": str(path)})
+        models, discovery_warning = [], None
+        if self.models_dir is not None:
+            try:
+                for folder in self.browse_models({"path": str(self.models_dir)})["folders"]:
+                    if folder["is_checkpoint"]:
+                        models.append({"name": folder["name"], "path": folder["path"]})
+            except (OSError, ValueError):
+                discovery_warning = "Configured model folder is unavailable. Runtime and captures are unchanged; use an accessible model folder."
         return {"model": self.runtime.info(), "run": self.store.summary(), "models": models,
+                "model_discovery_warning": discovery_warning,
                 **self.runtime.capabilities(),
                 "limits": {"max_trace_bytes": self.max_trace_bytes, "max_image_bytes": MAX_IMAGE,
                            "max_vram_bytes": self.max_vram_bytes},
                 "privacy": "Local RAM only until Save; exports contain inputs, outputs and activations."}
 
+    def browse_models(self, data):
+        requested = _text(data, "path", 4096, empty=True).strip()
+        root_text = _text(data, "root", 4096, empty=True).strip()
+        if self.models_dir is not None:
+            root = self.models_dir.resolve(strict=True)
+        else:
+            if not (root_text or requested):
+                raise ValueError("Choose an explicit model folder, or start with --models-dir; no home/filesystem scan is automatic")
+            root = Path(root_text or requested).expanduser().resolve(strict=True)
+        path = Path(requested).expanduser().resolve(strict=True) if requested else root
+        if not root.is_dir() or not path.is_dir():
+            raise ValueError("Model browser needs a directory")
+        if not path.is_relative_to(root):
+            raise ValueError("Requested folder is outside the chosen model root")
+        folders, truncated = [], False
+        # Bounded discovery only: no recursive scan or model/weight parsing.
+        with os.scandir(path) as entries:
+            for index, entry in enumerate(entries):
+                if index == 500:
+                    truncated = True; break
+                if entry.name.startswith(".") or entry.is_symlink() or not entry.is_dir(follow_symlinks=False):
+                    continue
+                try: child = Path(entry.path).resolve(strict=True)
+                except FileNotFoundError: continue
+                if not child.is_relative_to(root):
+                    continue
+                config = child / "config.json"
+                folders.append({"name": entry.name, "path": str(child),
+                                "is_checkpoint": not config.is_symlink() and config.is_file()})
+        folders.sort(key=lambda row: (row["name"].casefold(), row["name"]))
+        if len(folders) > 200:
+            folders = folders[:200]; truncated = True
+        return {"root": str(root), "path": str(path),
+                "parent": None if path == root else str(path.parent),
+                "folders": folders, "truncated": truncated}
+
     def post(self, action, data):
         if not isinstance(data, dict): raise ValueError("Expected a JSON object")
+        if action == "browse-models": return self.browse_models(data)
+        if action == "unload":
+            self.runtime.unload()
+            return self.status()
         if action == "inspect": return self.runtime.inspect(_text(data, "path", 4096))
         if action == "load":
             budget = data.get("max_vram_bytes", min(2 * 1024**3, self.max_vram_bytes))
@@ -156,7 +200,8 @@ def create_server(state, port=0):
                 def number(key, default): return int(query.get(key, [str(default)])[0])
                 with state.lock:
                     if path == "/api/status": answer = state.status()
-                    elif path == "/api/events": answer = state.store.events(number("offset", 0), number("limit", 100))
+                    elif path == "/api/saved": answer = state.store.saved_runs()
+                    elif path == "/api/events": answer = state.store.events(number("offset", 0), number("limit", 100), query.get("q", [""])[0])
                     elif path == "/api/tensor": answer = state.store.tensor(number("event", 0), number("vector", 0), number("offset", 0), number("limit", 256), query.get("view", ["raw"])[0])
                     else:
                         self._send(404, {"error": "Not found"}); return
@@ -167,7 +212,7 @@ def create_server(state, port=0):
         def do_POST(self):
             if not self._allowed(api=True): return
             path = urlsplit(self.path).path
-            if path not in {"/api/inspect", "/api/load", "/api/run", "/api/save", "/api/open", "/api/clear"}:
+            if path not in {"/api/inspect", "/api/load", "/api/unload", "/api/browse-models", "/api/run", "/api/save", "/api/open", "/api/clear"}:
                 self._send(404, {"error": "Not found"}); return
             if self.headers.get("Transfer-Encoding") or len(self.headers.get_all("Content-Length", [])) != 1:
                 self._send(400, {"error": "A single bounded Content-Length is required"}); return

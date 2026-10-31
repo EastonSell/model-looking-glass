@@ -87,3 +87,149 @@ def test_clear_drops_run_without_writing(tmp_path):
     assert store.summary() is None
     with pytest.raises(ValueError): store.events()
     assert list(tmp_path.iterdir()) == []
+
+
+def test_global_search_preserves_capture_indices_and_ignores_private_data(tmp_path):
+    store = TraceStore(tmp_path)
+    captures = []
+    for i in range(305):
+        metadata = dict(module_path=f"layers.{i}", module_kind="Attention Block" if i in (202, 304) else "MLP", layer_index=i, app_forward_index=7, forward_index=9, prompt="private needle")
+        captures.append(SimpleNamespace(value=torch.ones(1), metadata=lambda m=metadata: m))
+    store.publish(dict(events=captures, prompt="private needle"))
+    page = store.events(1, 1, "  ATTENTION\t Block ")
+    assert [event["index"] for event in page["events"]] == [304]
+    assert page["total"] == 2 and page["total_all"] == 305
+    assert store.events(q="private needle")["total"] == 0
+    assert store.events(q="304")["events"][0]["index"] == 304
+    assert store.events(q="7")["total"] == 305
+    assert store.events(q="9")["total"] == 305
+    assert store.events(limit=200, q=" \n ")["total"] == 305
+    assert len(store.events(limit=200)["events"]) == 200
+
+
+@pytest.mark.parametrize("kwargs", [dict(q=None), dict(q=3), dict(q="x" * 257), dict(offset=-1), dict(limit=201), dict(limit=0)])
+def test_event_search_bounds(tmp_path, kwargs):
+    store = TraceStore(tmp_path); store.publish(result())
+    with pytest.raises(ValueError): store.events(**kwargs)
+
+
+def make_catalog_run(root, name, status='{"status":"complete"}'):
+    run = root / name; run.mkdir(parents=True)
+    (run / "status.json").write_text(status)
+    (run / "manifest.json").write_text("not read or validated by catalog")
+    (run / "tensors.safetensors").write_bytes(b"not hashed")
+    return run
+
+
+def test_saved_runs_read_only_nonexistent_and_unverified(tmp_path, monkeypatch):
+    root = tmp_path / "exports"; store = TraceStore(root)
+    assert store.saved_runs() == {"runs": [], "truncated": False}
+    assert not root.exists()
+    run = make_catalog_run(root, "one")
+    before = {p: p.read_bytes() for p in run.iterdir()}
+    import looking_glass.app_storage as storage
+    monkeypatch.setattr(storage, "_digest", lambda _: pytest.fail("catalog must not hash tensors"))
+    assert store.saved_runs() == {"runs": [dict(name="one", path=str(run), status="complete_unverified", tensor_file_bytes=10)], "truncated": False}
+    assert {p: p.read_bytes() for p in run.iterdir()} == before
+
+
+def test_catalog_symlinks_partial_invalid_and_no_recursion(tmp_path):
+    root = tmp_path / "exports"; root.mkdir()
+    outside = make_catalog_run(tmp_path, "private")
+    (root / "linked").symlink_to(outside, target_is_directory=True)
+    for name, status in (("bad", "invalid"), ("partial", '{"status":"incomplete"}'), ("large", ' ' * 1025)):
+        make_catalog_run(root, name, status)
+    run = make_catalog_run(root, "symlink_file")
+    (run / "tensors.safetensors").unlink()
+    (run / "tensors.safetensors").symlink_to(outside / "tensors.safetensors")
+    make_catalog_run(root / "partial", "nested")
+    rows = TraceStore(root).saved_runs()["runs"]
+    assert [r["name"] for r in rows] == ["bad", "large", "partial", "symlink_file"]
+    assert all(r["status"] == "incomplete" for r in rows)
+    assert rows[-1]["tensor_file_bytes"] is None
+    assert all(Path(r["path"]).parent == root for r in rows)
+
+
+def test_catalog_bounded_deterministic_and_invalid_root(tmp_path):
+    for i in reversed(range(205)): (tmp_path / f"run_{i:03}").mkdir()
+    catalog = TraceStore(tmp_path).saved_runs()
+    assert catalog["truncated"] is True
+    assert [r["name"] for r in catalog["runs"]] == [f"run_{i:03}" for i in range(200)]
+    invalid = tmp_path / "not_directory"; invalid.write_text("x")
+    with pytest.raises(OSError): TraceStore(invalid).saved_runs()
+
+
+def test_catalog_refuses_replaced_root_symlink(tmp_path):
+    root = tmp_path / "exports"; root.mkdir(); store = TraceStore(root)
+    root.rmdir(); root.symlink_to(make_catalog_run(tmp_path, "outside"), target_is_directory=True)
+    with pytest.raises(OSError): store.saved_runs()
+
+
+def test_catalog_permission_error_is_not_empty_success(tmp_path, monkeypatch):
+    import looking_glass.app_storage as storage
+    store = TraceStore(tmp_path)
+    original = storage.os.open
+    def denied(path, flags, **kwargs):
+        if path == store.export_root: raise PermissionError("Export root is not readable")
+        return original(path, flags, **kwargs)
+    monkeypatch.setattr(storage.os, "open", denied)
+    with pytest.raises(PermissionError, match="not readable"): store.saved_runs()
+
+
+def test_catalog_never_reads_manifest_or_tensor_and_does_not_verify_integrity(tmp_path, monkeypatch):
+    import looking_glass.app_storage as storage
+    run = make_catalog_run(tmp_path, "one")
+    with (run / "manifest.json").open("wb") as stream: stream.truncate(64 * 1024 * 1024)
+    original = storage.os.open
+    def guarded(path, flags, **kwargs):
+        assert str(path) not in ("manifest.json", "tensors.safetensors")
+        return original(path, flags, **kwargs)
+    monkeypatch.setattr(storage.os, "open", guarded)
+    def no_path_read(*args, **kwargs): pytest.fail("catalog must not use unbounded Path reads")
+    monkeypatch.setattr(Path, "read_text", no_path_read)
+    monkeypatch.setattr(Path, "read_bytes", no_path_read)
+    assert TraceStore(tmp_path).saved_runs()["runs"][0]["status"] == "complete_unverified"
+
+
+def test_catalog_bounds_enumeration_even_when_entries_are_not_directories(tmp_path, monkeypatch):
+    import looking_glass.app_storage as storage
+    for i in range(510): (tmp_path / f"file_{i}").touch()
+    original = storage.os.scandir
+    seen = []
+    class CountingScan:
+        def __init__(self, fd): self.iterator = original(fd)
+        def __enter__(self): return self
+        def __exit__(self, *args): self.iterator.close()
+        def __iter__(self): return self
+        def __next__(self):
+            item = next(self.iterator); seen.append(item.name); return item
+    monkeypatch.setattr(storage.os, "scandir", CountingScan)
+    assert TraceStore(tmp_path).saved_runs() == {"runs": [], "truncated": True}
+    assert len(seen) == 501
+
+
+def test_portable_catalog_same_bounded_read_only_contract(tmp_path, monkeypatch):
+    import looking_glass.app_storage as storage
+    root = tmp_path / "exports"; store = TraceStore(root)
+    monkeypatch.delattr(storage.os, "O_NOFOLLOW")
+    assert store.saved_runs() == {"runs": [], "truncated": False}
+    assert not root.exists()
+    make_catalog_run(root, "complete")
+    make_catalog_run(root, "invalid", "bad json")
+    outside = make_catalog_run(tmp_path, "outside")
+    (root / "linked").symlink_to(outside, target_is_directory=True)
+    linked_file = make_catalog_run(root, "linked_file")
+    (linked_file / "status.json").unlink()
+    (linked_file / "status.json").symlink_to(outside / "status.json")
+    rows = store.saved_runs()["runs"]
+    assert [(r["name"], r["status"]) for r in rows] == [("complete", "complete_unverified"), ("invalid", "incomplete"), ("linked_file", "incomplete")]
+    for i in range(510): (root / f"noise_{i}").touch()
+    assert store.saved_runs()["truncated"] is True
+
+
+def test_portable_catalog_rejects_replaced_root(tmp_path, monkeypatch):
+    import looking_glass.app_storage as storage
+    root = tmp_path / "root"; root.mkdir(); store = TraceStore(root)
+    root.rmdir(); root.symlink_to(tmp_path, target_is_directory=True)
+    monkeypatch.delattr(storage.os, "O_NOFOLLOW")
+    with pytest.raises(ValueError, match="ordinary directory"): store.saved_runs()

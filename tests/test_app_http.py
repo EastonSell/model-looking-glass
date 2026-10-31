@@ -156,3 +156,82 @@ def test_lowered_gpu_server_allowance_defaults_apply_to_cpu_request(tmp_path):
     state = AppState(runtime=fake, export_root=tmp_path, max_vram_bytes=512 * 1024**2)
     state.post("load", {"path": "model", "device": "cpu"})
     assert received == [{"device": "cpu", "max_vram_bytes": 512 * 1024**2}]
+
+
+def test_model_browser_explicit_root_containment_and_no_implicit_home(tmp_path):
+    root = tmp_path / "models"; root.mkdir()
+    child = root / "checkpoint"; child.mkdir(); (child / "config.json").write_text('{}')
+    (root / "other.txt").write_text('not read')
+    outside = tmp_path / "outside"; outside.mkdir()
+    (root / "escape").symlink_to(outside, target_is_directory=True)
+    state = AppState(runtime=FakeRuntime(), export_root=tmp_path / "exports")
+    with pytest.raises(ValueError, match="explicit"):
+        state.post("browse-models", {"path": ""})
+    result = state.post("browse-models", {"path": str(root)})
+    assert result["root"] == result["path"] == str(root) and result["parent"] is None
+    assert result["folders"] == [{"name": "checkpoint", "path": str(child), "is_checkpoint": True}]
+    nested = state.post("browse-models", {"path": str(child), "root": str(root)})
+    assert nested["parent"] == str(root)
+    with pytest.raises(ValueError, match="root"):
+        state.post("browse-models", {"path": str(outside), "root": str(root)})
+    restricted = AppState(runtime=FakeRuntime(), export_root=tmp_path / "exports", models_dir=root)
+    assert restricted.post("browse-models", {"path": ""})["root"] == str(root)
+    with pytest.raises(ValueError, match="root"):
+        restricted.post("browse-models", {"path": str(outside), "root": str(outside)})
+    assert not (tmp_path / "exports").exists()
+
+
+def test_browse_and_saved_routes_require_auth_and_unload_retains_trace(server, tmp_path):
+    state = server[0]
+    # Model discovery and exported captures have separate roots in this scenario.
+    state.store.export_root = tmp_path / "exports"
+    state.runtime.unload = lambda: setattr(state.runtime, "loaded", None)
+    assert call(server, "/api/load", "POST", {"path": "model"})[0] == 200
+    assert call(server, "/api/run", "POST", {"prompt": "capture", "settings": {}})[0] == 200
+    before = state.store.summary()
+    assert call(server, "/api/unload", "POST", {})[0] == 200
+    assert state.store.summary() == before and state.runtime.info() is None
+    root=tmp_path / "models"; root.mkdir()
+    assert call(server, "/api/browse-models", "POST", {"path": str(root)}, token=False)[0] == 403
+    assert call(server, "/api/browse-models", "POST", {"path": str(root)})[0] == 200
+    assert call(server, "/api/saved", token=False)[0] == 403
+    assert json.loads(call(server, "/api/saved")[1])["runs"] == []
+    assert call(server, "/api/save", "POST", {"name": "catalog-item"})[0] == 200
+    runs=json.loads(call(server, "/api/saved")[1])["runs"]
+    assert runs[0]["name"] == "catalog-item" and runs[0]["status"] == "complete_unverified"
+    result=json.loads(call(server, "/api/events?q=BLOCK.0")[1])
+    assert result["total"] == result["total_all"] == 1
+    assert json.loads(call(server, "/api/events?q=unmatched")[1])["total"] == 0
+
+
+def test_failed_unload_keeps_capture_and_visible_runtime_state(server):
+    state=server[0]
+    assert call(server, "/api/load", "POST", {"path": "model"})[0] == 200
+    assert call(server, "/api/run", "POST", {"prompt": "capture", "settings": {}})[0] == 200
+    before=state.store.summary()
+    def failure():
+        state.runtime.loaded["state"]="quarantined"
+        raise RuntimeError("cleanup uncertain; restart")
+    state.runtime.unload=failure
+    assert call(server, "/api/unload", "POST", {})[0] == 500
+    assert state.store.summary() == before and state.runtime.info()["state"] == "quarantined"
+
+
+def test_optional_discovery_failure_does_not_hide_runtime_status(tmp_path, monkeypatch):
+    state=AppState(runtime=FakeRuntime(), export_root=tmp_path / "exports", models_dir=tmp_path / "missing")
+    assert state.status()["model_discovery_warning"]
+    def denied(data): raise PermissionError("synthetic denied directory")
+    monkeypatch.setattr(state,"browse_models",denied)
+    status=state.status()
+    assert status["model"] is None and status["models"] == [] and status["cuda"]["available"] is False
+    assert status["model_discovery_warning"]
+
+
+def test_model_browser_listing_is_bounded_and_does_not_read_config(tmp_path):
+    root=tmp_path / "models"; root.mkdir()
+    for index in range(205):
+        path=root / f"model-{index:03}"; path.mkdir(); (path / "config.json").write_bytes(b'invalid JSON is only a candidate')
+    state=AppState(runtime=FakeRuntime(),export_root=tmp_path / "exports")
+    result=state.post("browse-models",{"path":str(root)})
+    assert len(result["folders"]) == 200 and result["truncated"]
+    assert all(row["is_checkpoint"] for row in result["folders"])

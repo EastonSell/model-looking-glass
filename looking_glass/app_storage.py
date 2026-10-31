@@ -6,8 +6,12 @@ No pickle or executable checkpoint metadata is used for reopening a trace.
 from __future__ import annotations
 
 import hashlib
+import heapq
+from itertools import islice
 import json
 import math
+import os
+import stat
 from pathlib import Path
 import re
 from types import SimpleNamespace
@@ -77,10 +81,140 @@ class TraceStore:
     def summary(self):
         return None if self._run is None else _json_copy(self._run)
 
-    def events(self, offset=0, limit=100):
+    def events(self, offset=0, limit=100, q=""):
+        """Search allowlisted capture metadata globally, then paginate stable indices."""
         if self._run is None: raise ValueError("No completed trace is loaded")
         _integer(offset, "offset", 0, len(self._events)); _integer(limit, "limit", 1, 200)
-        return {"events": _json_copy(self._events[offset:offset + limit]), "total": len(self._events)}
+        if type(q) is not str or len(q) > 256:
+            raise ValueError("q must be a string of at most 256 characters")
+        query = " ".join(q.split()).casefold()
+        fields = ("module_path", "module_kind", "layer_index", "app_forward_index", "forward_index")
+        page, total = [], 0
+        for event in self._events:
+            # Never stringify arbitrary metadata containers or search prompts/tensors.
+            searchable = [" ".join(str(event["metadata"][key]).split()).casefold()
+                          for key in fields if type(event["metadata"].get(key)) in (str, int)]
+            if query and not any(query in value for value in searchable):
+                continue
+            if offset <= total < offset + limit:
+                page.append(event)
+            total += 1
+        return {"events": _json_copy(page), "total": total, "total_all": len(self._events)}
+
+    def saved_runs(self):
+        """Read-only immediate-child catalog; completion is NOT integrity verification.
+
+        At most 500 root entries are considered (plus one truncation lookahead),
+        then up to 200 candidate directories are inspected in lexical order. A
+        truncated result is a bounded subset, not a full inventory. Manifests and
+        payloads are never read. Descriptor-relative, no-follow access is POSIX-only.
+        """
+        if os.name != "posix" or not all(hasattr(os, key) for key in ("O_DIRECTORY", "O_NOFOLLOW")):
+            return self._saved_runs_portable()
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        try:
+            root_fd = os.open(self.export_root, flags)
+        except FileNotFoundError:
+            return {"runs": [], "truncated": False}
+        try:
+            with os.scandir(root_fd) as entries:
+                names = heapq.nsmallest(201, (entry.name for entry in islice(entries, 500)
+                                            if entry.is_dir(follow_symlinks=False)))
+                enumeration_truncated = next(entries, None) is not None
+            runs = []
+            for name in names[:200]:
+                try:
+                    run_fd = os.open(name, flags, dir_fd=root_fd)
+                except FileNotFoundError:
+                    continue  # A concurrently removed export is no longer a saved run.
+                try:
+                    files = {}
+                    for filename in ("manifest.json", "tensors.safetensors", "status.json"):
+                        try:
+                            info = os.stat(filename, dir_fd=run_fd, follow_symlinks=False)
+                        except FileNotFoundError:
+                            continue
+                        if stat.S_ISREG(info.st_mode):
+                            files[filename] = info.st_size
+                    complete = False
+                    if (len(files) == 3 and files["status.json"] <= 1024):
+                        try:
+                            status_fd = os.open("status.json", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                                                dir_fd=run_fd)
+                            with os.fdopen(status_fd, "rb") as source:
+                                info = os.fstat(source.fileno())
+                                if stat.S_ISREG(info.st_mode) and info.st_size <= 1024:
+                                    complete = json.loads(source.read(1024)) == {"status": "complete"}
+                        except (FileNotFoundError, ValueError, UnicodeError):
+                            pass
+                    runs.append({"name": name, "path": str(self.export_root / name),
+                                 "status": "complete_unverified" if complete else "incomplete",
+                                 "tensor_file_bytes": files.get("tensors.safetensors")})
+                finally:
+                    os.close(run_fd)
+            return {"runs": runs, "truncated": enumeration_truncated or len(names) > 200}
+        finally:
+            os.close(root_fd)
+
+    def _saved_runs_portable(self):
+        """Trusted single-user fallback, not hostile-filesystem race isolation.
+
+        Reject detected links/junctions and changed identities, but platforms
+        without descriptor-relative no-follow access cannot close every race.
+        """
+        def identity(info):
+            return (info.st_dev, info.st_ino, info.st_mode)
+
+        def ordinary_directory(path):
+            info = path.lstat()
+            if (not stat.S_ISDIR(info.st_mode) or path.is_symlink()
+                    or (hasattr(path, "is_junction") and path.is_junction())):
+                raise ValueError("Saved-run catalog requires an ordinary directory, not a link")
+            return identity(info)
+
+        try:
+            root_identity = ordinary_directory(self.export_root)
+        except FileNotFoundError:
+            return {"runs": [], "truncated": False}
+        with os.scandir(self.export_root) as entries:
+            names = heapq.nsmallest(201, (entry.name for entry in islice(entries, 500)
+                                        if entry.is_dir(follow_symlinks=False)))
+            enumeration_truncated = next(entries, None) is not None
+        runs = []
+        for name in names[:200]:
+            path = self.export_root / name
+            try:
+                run_identity = ordinary_directory(path)
+            except FileNotFoundError:
+                continue
+            files = {}
+            for filename in ("manifest.json", "tensors.safetensors", "status.json"):
+                try:
+                    info = (path / filename).lstat()
+                except FileNotFoundError:
+                    continue
+                if stat.S_ISREG(info.st_mode):
+                    files[filename] = info
+            complete = False
+            if len(files) == 3 and files["status.json"].st_size <= 1024:
+                try:
+                    with (path / "status.json").open("rb") as source:
+                        current = os.fstat(source.fileno())
+                        if identity(current) != identity(files["status.json"]):
+                            raise ValueError("Saved-run status changed during catalog scan")
+                        if stat.S_ISREG(current.st_mode) and current.st_size <= 1024:
+                            complete = json.loads(source.read(1024)) == {"status": "complete"}
+                except (FileNotFoundError, ValueError, UnicodeError):
+                    pass
+            if ordinary_directory(path) != run_identity or ordinary_directory(self.export_root) != root_identity:
+                raise ValueError("Saved-run directory changed during catalog scan")
+            tensor = files.get("tensors.safetensors")
+            runs.append({"name": name, "path": str(path),
+                         "status": "complete_unverified" if complete else "incomplete",
+                         "tensor_file_bytes": tensor.st_size if tensor is not None else None})
+        if ordinary_directory(self.export_root) != root_identity:
+            raise ValueError("Saved-run directory changed during catalog scan")
+        return {"runs": runs, "truncated": enumeration_truncated or len(names) > 200}
 
     def tensor(self, event, vector=0, offset=0, limit=256, view="raw"):
         import torch

@@ -11,6 +11,7 @@ dependencies = ["torch>=2.6"]
 
 [project.scripts]
 model-looking-glass = "looking_glass.app:main"
+model-looking-glass-gpu-check = "looking_glass.app_selftest:main"
 
 [project.optional-dependencies]
 app = ["torch==2.15.0", "transformers==4.57.3", "safetensors>=0.4.3", "numpy>=1.26", "Pillow==11.3.0"]
