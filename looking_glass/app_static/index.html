@@ -32,7 +32,7 @@
         <p id="browse-status" class="hint" aria-live="polite"></p><div id="folder-list" class="folder-list"></div>
         <p class="hint">Read-only folder navigation. Without a server-configured models folder, first enter a local root in the checkpoint field and choose Browse folders; navigation stays within that root. Selecting a checkpoint fills its path; it does not load or download a model.</p>
       </div>
-      <p class="hint">Use a Hugging Face folder with config, tokenizer or image processor, and safetensors weights. No model downloads or custom checkpoint code.</p>
+      <p class="hint">Choose a local Hugging Face folder containing config.json, matching safetensors weights, and the matching fast tokenizer or image processor assets. For a Hugging Face cache, choose snapshots/&lt;revision&gt;, not a repository ID or cache parent. No automatic downloads or custom checkpoint code.</p>
       <label for="execution-device">Execution device</label>
       <select id="execution-device"><option value="auto">Auto — prefer CUDA for supported families</option><option value="cpu">CPU</option></select>
       <div class="device-summary"><p id="device-status" class="hint" aria-live="polite">Checking actual device availability…</p><button id="refresh-devices" class="quiet" type="button">Refresh availability</button></div>
@@ -41,11 +41,12 @@
       <input id="vram-mib" type="number" min="1" max="65536" value="2048">
       <p id="vram-help" class="hint">CUDA preflight and synchronized checks accompany a scoped PyTorch caching-allocator cap. A stricter existing cap is preserved and restored afterward. This is not a total-VRAM guarantee: driver/context and non-PyTorch allocations are outside it. Full captured vectors are copied to CPU RAM. CPU execution ignores this allowance.</p>
       <div class="button-row"><button id="inspect-button" class="secondary" type="button">Inspect folder</button><button id="load-button" type="button">Load model</button></div>
+      <section id="inspection-panel" class="inspection-panel" aria-labelledby="inspection-heading" hidden><h3 id="inspection-heading">Folder inspection · not the loaded model</h3><p id="inspection-path" class="hint"></p><p id="inspection-status" class="hint" aria-live="polite"></p><ul id="inspection-checks" class="inspection-checks"></ul><p id="inspection-summary" class="hint"></p><p id="inspection-memory" class="hint"></p><p class="hint">Inspection does not load model weights or test device inference. A readable header is not proof of a successful model load.</p><details><summary>Exact inspection record</summary><pre id="inspection-details" class="detail-json"></pre></details></section>
       <button id="unload-button" class="quiet" type="button" disabled>Unload model · keep capture</button>
       <p class="hint">Unload releases the model owner separately from capture RAM. Your retained vectors remain inspectable; device memory release is subject to runtime cleanup.</p>
       <p id="demo-model-warning" class="approximation" hidden>Untrained random CPU demo: output is synthetic, not useful model answers. This is not GPU validation.</p>
       <div id="model-info" class="info-box" aria-live="polite">No model loaded.</div>
-      <p class="hint">Float32: GPT-2 and T5 support CPU or one CUDA GPU. Auto uses CUDA for GPT-2/T5 when available and CPU for DistilBERT masked language models or ViT image classifiers, with the device-selection reason recorded. No half-precision, multi-GPU sharding, GGUF, or custom-model support.</p>
+      <p class="hint">Float32: GPT-2 and T5 support CPU or one CUDA GPU. Auto uses CUDA for GPT-2/T5 when available and CPU for DistilBERT masked language models or ViT image classifiers, with the device-selection reason recorded. No half-precision, multi-GPU sharding, Llama-family, GGUF, or custom-model support.</p>
     </section>
     <section aria-labelledby="open-heading">
       <h2 id="open-heading">Reopen a saved capture</h2>

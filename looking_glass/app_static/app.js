@@ -53,7 +53,7 @@
     state.busy = true; syncButtons(); notice(message); $('run-status').textContent = message;
     try { await callback(); if (state.model?.state === 'quarantined') { notice('Model owner quarantined. Stop and restart the app before loading or running a model again. Saved captures can still be inspected.', true); $('run-status').textContent = 'Quarantined — restart the app to recover.'; } else { notice(''); $('run-status').textContent = 'Ready.'; } }
     catch (error) {
-      try { const current = await api('status'); setModel(current.model); applyLimits(current.limits); applyDevices(current); } catch (_) { /* Preserve the original failure if status is unavailable. */ }
+      try { const current = await api('status'); if (state.run) { const same = current.run?.capture_id && current.run.capture_id === state.run.capture_id; state.run.intervention_available = !!(same && current.run.intervention_available); state.run.intervention_reason = same ? current.run.intervention_reason : 'The displayed capture is no longer bound to the current server revision; reopen or make a fresh capture.'; } setModel(current.model); applyLimits(current.limits); applyDevices(current); } catch (_) { /* Preserve the original failure if status is unavailable. */ }
       const quarantined = state.model?.state === 'quarantined';
       notice((error.message || String(error)) + (quarantined ? ' This model owner is quarantined. Stop and restart the app before loading or running a model again.' : ''), true);
       $('run-status').textContent = quarantined ? 'Quarantined — restart the app to recover.' : 'Stopped. See the message above.';
@@ -109,6 +109,22 @@
     const targets = custom ? Array.from(document.querySelectorAll('#target-options input:checked'), (el) => el.value) : 'auto';
     if (custom && !targets.length) throw new Error('Select at least one observation point.');
     return {targets, layers, max_new_tokens: intField('max-output'), max_input_tokens: intField('max-input'), max_events: intField('max-events'), max_trace_bytes: intField('trace-mib') * 1048576};
+  }
+  function invalidateInspection() {
+    $('inspection-panel').hidden = true; $('inspection-checks').replaceChildren(); $('inspection-details').textContent = ''; $('inspection-status').textContent = ''; $('inspection-path').textContent = ''; $('inspection-summary').textContent = ''; $('inspection-memory').textContent = '';
+  }
+  function showInspection(info, path) {
+    $('inspection-panel').hidden = false; $('inspection-path').textContent = `Inspected folder: ${info.path || path}`;
+    const checks = info.inspection || {}; $('inspection-checks').replaceChildren();
+    for (const [key,label] of [['metadata_checked','Configuration'],['weight_headers_checked','Safetensors headers'],['input_assets_loadable','Local tokenizer / image processor']]) {
+      const row=document.createElement('li');row.textContent=`${label}: ${checks[key] === true ? 'checked' : checks[key] === false ? 'not verified' : 'unknown — server did not report this check'}`;$('inspection-checks').append(row);
+    }
+    $('inspection-status').textContent = checks.note || 'Inspection only. See individual check results; missing results are not passes.';
+    const input = info.input_summary || {}; const inputLabel = `${input.class || 'class not reported'}${Number.isSafeInteger(input.vocabulary_entries) ? ` · ${input.vocabulary_entries} tokenizer vocabulary entries` : ''}${input.image_size ? ` · image size ${display(input.image_size)}` : ''}`;
+    const task = info.task || input.kind || 'not reported', devices = Array.isArray(info.supported_devices) ? info.supported_devices.join(', ') : 'not reported';
+    $('inspection-summary').textContent = `Family: ${info.family || 'not reported'} · task/input: ${task} · supported devices: ${devices}. Input assets: ${inputLabel}. Weights loaded: ${checks.weights_loaded === false ? 'no' : checks.weights_loaded === true ? 'reported yes — inspect exact record' : 'not reported'}. Device inference tested: ${checks.inference_tested === false ? 'no' : checks.inference_tested === true ? 'reported yes — inspect exact record' : 'not reported'}.`;
+    $('inspection-memory').textContent = `Estimated float32 weight storage: ${Number.isSafeInteger(info.estimated_float32_weight_bytes) ? bytes(info.estimated_float32_weight_bytes) : 'not reported'}. This is not peak RAM or VRAM; loading, inference and captures need additional memory.`;
+    $('inspection-details').textContent = display(info);
   }
   const isDemo = (info) => info?.provenance?.kind === 'synthetic_untrained_demo';
   function setModel(info) {
@@ -242,7 +258,7 @@
       const row = document.createElement('div'), enter = document.createElement('button'); row.className = 'folder-row';
       enter.type = 'button'; enter.className = 'quiet'; enter.textContent = folder.name + (folder.is_checkpoint ? ' · checkpoint candidate' : ' /');
       enter.addEventListener('click', () => action('Browsing local folders…', () => browse(folder.path, result.root))); row.append(enter);
-      if (folder.is_checkpoint) { const use = document.createElement('button'); use.type = 'button'; use.className = 'secondary'; use.textContent = 'Use checkpoint'; use.addEventListener('click', () => { if (!state.busy) { $('model-path').value = folder.path; $('browse-status').textContent = 'Checkpoint path selected. Inspect or Load explicitly when ready.'; } }); row.append(use); }
+      if (folder.is_checkpoint) { const use = document.createElement('button'); use.type = 'button'; use.className = 'secondary'; use.textContent = 'Use checkpoint'; use.addEventListener('click', () => { if (!state.busy) { $('model-path').value = folder.path; invalidateInspection(); $('browse-status').textContent = 'Checkpoint path selected. Inspect or Load explicitly when ready.'; } }); row.append(use); }
       $('folder-list').append(row);
     }
     if (!(result.folders || []).length) $('folder-list').textContent = 'No visible subfolders.';
@@ -305,21 +321,26 @@
   $('browse-button').addEventListener('click', () => action('Browsing local folders…', () => browse($('model-path').value.trim())));
   $('browse-go').addEventListener('click', () => action('Browsing local folders…', () => browse($('browse-path').value.trim(), state.browse?.root)));
   $('browse-parent').addEventListener('click', () => action('Browsing parent folder…', async () => { if (state.browse?.parent) await browse(state.browse.parent, state.browse.root); }));
-  $('browse-select').addEventListener('click', () => { if (!state.busy && state.browse) { $('model-path').value = state.browse.path; $('browse-status').textContent = 'Folder path selected. Inspect or Load explicitly when ready.'; } });
+  $('browse-select').addEventListener('click', () => { if (!state.busy && state.browse) { $('model-path').value = state.browse.path; invalidateInspection(); $('browse-status').textContent = 'Folder path selected. Inspect or Load explicitly when ready.'; } });
   $('refresh-saved').addEventListener('click', () => action('Listing saved captures…', refreshSaved));
   $('saved-runs').addEventListener('change', () => { const run = state.saved.find((item) => item.path === $('saved-runs').value && item.status === 'complete_unverified'); if (run) $('open-path').value = run.path; });
   $('unload-button').addEventListener('click', () => action('Releasing the model owner; keeping captured vectors…', async () => { await api('unload', {}); const current = await api('status'); setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
   $('execution-device').addEventListener('change', syncButtons);
   $('refresh-devices').addEventListener('click', () => action('Checking actual device availability…', async () => { const current = await api('status'); setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
   $('capture-mode').addEventListener('change', () => { $('custom-capture').hidden = $('capture-mode').value !== 'custom'; });
-  $('inspect-button').addEventListener('click', () => action('Inspecting local checkpoint metadata…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const info = await api('inspect', {path}); $('model-info').textContent = `Inspection only — not loaded.\n${display(info)}`; }));
+  $('model-path').addEventListener('input', invalidateInspection);
+  $('inspect-button').addEventListener('click', () => action('Checking local configuration, weight headers and input assets…', async () => {
+    const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); invalidateInspection();
+    try { showInspection(await api('inspect', {path}), path); }
+    catch(error) { $('inspection-panel').hidden=false; $('inspection-path').textContent=`Requested folder: ${path}`; $('inspection-status').textContent=`Inspection failed: ${error.message || String(error)}. Check the complete local snapshot: config.json, matching safetensors and matching tokenizer or processor assets. No download was started.`; throw error; }
+  }));
   $('demo-button').addEventListener('click', () => action('Building the tiny untrained CPU demo in RAM…', async () => {
     const result = await api('demo', {}); clearView(); setModel(result.model);
     $('capture-mode').value = 'auto'; $('custom-capture').hidden = true; $('layers').value = '';
     for (const [id, maximum] of [['max-output', 8], ['max-input', 120]]) { const current = Number($(id).value); $(id).value = String(Number.isSafeInteger(current) && current >= Number($(id).min) ? Math.min(current, maximum) : maximum); }
     if (!$('prompt').value.trim()) $('prompt').value = 'Hello, tiny model!';
   }));
-  $('load-button').addEventListener('click', () => action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); clearView(); setModel(null); const info = await api('load', {path, ...execution}); setModel(info); }));
+  $('load-button').addEventListener('click', () => action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); const info = await api('load', {path, ...execution}); clearView(); setModel(info); }));
   $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); clearView(); showRun(await api('open', {path})); await loadEvents(); $('saved-status').textContent = 'Selected capture opened and validated. Other listed exports remain unverified.'; }));
   $('run-button').addEventListener('click', () => action('Running model and capturing supported outputs…', async () => { const options = settings(), prompt = $('prompt').value; const vision = String(state.model?.family || '').toLowerCase().includes('vit'); if (vision && !state.image) throw new Error('Choose an image first.'); if (!vision && !prompt.trim()) throw new Error('Enter a prompt first.'); clearView(); const body = {prompt, settings: options}; if (vision) body.image_base64 = state.image; showRun(await api('run', body)); await loadEvents(); }));
   $('image-file').addEventListener('change', async () => { const request = ++state.imageRequest; state.image = null; const file = $('image-file').files[0]; if (!file) return; if (file.size > 4 * 1048576) { $('image-file').value = ''; notice('Choose an image no larger than 4 MiB.', true); return; } try { const result = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('Could not read this image.')); reader.readAsDataURL(file); }); if (request !== state.imageRequest) return; state.image = String(result).split(',')[1]; $('image-description').textContent = `${file.name} · ${bytes(file.size)} · held in this browser until Clear captured run or page close.`; } catch (error) { notice(error.message, true); } });

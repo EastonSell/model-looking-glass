@@ -16,6 +16,8 @@ With Python 3.11+, from a trusted clone, this creates an isolated environment an
 
 The workbench has a **CUDA-first GPT-2/T5 path**, with CPU fallback; DistilBERT masked LM and ViT classification currently remain CPU-only. Choose Auto or an explicit device in Settings. CUDA implementation is hardware-gated and has **not been executed on a GPU in the current validation environment**. This is not arbitrary-checkpoint or every-operation support. Grouped views are not semantic explanations. Validate a GPU locally with `python -m looking_glass.app_selftest`; it reports passed/failed/skipped checks using tiny synthetic models, without downloads or your checkpoints. [Installation, compatibility, memory limits and privacy](docs/LOCAL_APP.md).
 
+**Inspect folder** checks local input assets before loading weights and keeps inspection separate from the loaded model. Missing tokenizer/processor files are diagnosed before replacing your live model; a failed load leaves the retained capture readable.
+
 **No checkpoint yet?** Choose **Load tiny demo**, then Run. This builds an untrained miniature GPT-2 entirely in CPU RAM—no download or checkpoint files—so you can learn capture navigation and controlled edits immediately. Its random output is not useful language or GPU validation.
 
 ## What to use

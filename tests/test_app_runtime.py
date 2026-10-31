@@ -281,7 +281,7 @@ def test_loader_never_enables_downloads_pickle_or_remote_code(tmp_path, monkeypa
     monkeypatch.setattr(GPT2LMHeadModel, "from_pretrained", checked_model)
     monkeypatch.setattr(transformers.AutoTokenizer, "from_pretrained", checked_tokenizer)
     LocalModelRuntime().load(str(path), device="cpu")
-    assert calls == ["model", "tokenizer"]
+    assert calls == ["tokenizer", "model"]
 
 
 def test_nested_target_values_are_validation_errors(tmp_path):

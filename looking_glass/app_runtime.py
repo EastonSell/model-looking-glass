@@ -292,7 +292,7 @@ class LocalModelRuntime:
         self._active_cuda_limit = None
 
     @staticmethod
-    def inspect(path):
+    def _inspect_files(path):
         if type(path) is not str or not path.strip():
             raise ValueError("select an explicit local checkpoint directory")
         root = Path(path).expanduser().resolve(strict=True)
@@ -352,6 +352,115 @@ class LocalModelRuntime:
                 "estimated_float32_weight_bytes": total,
                 "memory_note": "Weight storage estimate only, not peak RAM; activations, logits, loading copies and Python overhead are additional.",
                 "config": config}
+
+    @staticmethod
+    def _prepare_inputs(inspected):
+        """Bound and load local tokenizer/processor once, without model weights."""
+        import transformers
+        root, family = Path(inspected["path"]), inspected["family"]
+        known = {"tokenizer_config.json", "tokenizer.json", "special_tokens_map.json", "added_tokens.json",
+                 "vocab.json", "merges.txt", "vocab.txt", "spiece.model", "tokenizer.model",
+                 "sentencepiece.bpe.model", "preprocessor_config.json", "chat_template.jinja"}
+        tokenizer_config = _json(root / "tokenizer_config.json") if (root / "tokenizer_config.json").exists() else {}
+        allowed_classes = {"gpt2": {"GPT2Tokenizer", "GPT2TokenizerFast"},
+            "distilbert": {"DistilBertTokenizer", "DistilBertTokenizerFast", "BertTokenizer", "BertTokenizerFast"},
+            "t5": {"T5Tokenizer", "T5TokenizerFast"}, "vit": set()}
+        for metadata in (tokenizer_config, inspected["config"]):
+            named_class = metadata.get("tokenizer_class")
+            if named_class is not None and (type(named_class) is not str or named_class not in allowed_classes[family] | {"PreTrainedTokenizerFast"}):
+                raise ValueError("input assets name an unsupported tokenizer class for this model family")
+        for key, value in tokenizer_config.items():
+            if (key.endswith(("_file", "_files")) and value is not None
+                    and key not in ("tokenizer_file", "vocab_file", "merges_file", "fast_tokenizer_files")):
+                raise ValueError("unsupported tokenizer input file override")
+        checked_paths = {}
+        for key in ("tokenizer_file", "vocab_file", "merges_file"):
+            value = tokenizer_config.get(key)
+            if value is not None:
+                if type(value) is not str or Path(value).name != value or "/" in value or "\\" in value:
+                    raise ValueError("input assets must use bounded files in the selected checkpoint folder")
+                known.add(value)
+                checked_paths[key] = str(root / value)
+        alternatives = tokenizer_config.get("fast_tokenizer_files", [])
+        if type(alternatives) is not list or len(alternatives) > 32:
+            raise ValueError("invalid bounded fast tokenizer file list")
+        for name in alternatives:
+            if type(name) is not str or Path(name).name != name or "/" in name or "\\" in name:
+                raise ValueError("fast tokenizer files must be local filenames")
+            known.add(name)
+        files = [root / name for name in known if (root / name).exists()]
+        template_dir = root / "chat_templates"
+        if template_dir.exists():
+            if not template_dir.is_dir():
+                raise ValueError("tokenizer chat_templates must be a directory")
+            entries = []
+            for entry in template_dir.iterdir():
+                entries.append(entry)
+                if len(entries) > 64:
+                    raise ValueError("too many tokenizer template assets")
+            files.extend(entries)
+        total = 0
+        for file in files:
+            if not file.is_file(): raise ValueError("input assets must be ordinary local files")
+            size = file.stat().st_size
+            limit = 64 * 1024**2 if file.suffix not in (".jinja",) and file.name not in ("tokenizer_config.json", "preprocessor_config.json", "special_tokens_map.json", "added_tokens.json") else 1024**2
+            if size > limit: raise ValueError(f"input asset {file.name} exceeds its byte limit")
+            total += size
+        if total > 128 * 1024**2:
+            raise ValueError("aggregate tokenizer/processor input assets exceed 128 MiB")
+        config = getattr(transformers, FAMILIES[family]["config"]).from_dict(inspected["config"])
+        try:
+            if family == "vit":
+                processor = transformers.ViTImageProcessor.from_pretrained(str(root), local_files_only=True)
+                size = config.image_size
+                dimensions = (size, size) if type(size) is int else tuple(size)
+                if (len(dimensions) != 2 or any(type(x) is not int or x <= 0 for x in dimensions)
+                        or config.num_channels != 3 or type(processor.do_resize) is not bool
+                        or processor.size != {"height": dimensions[0], "width": dimensions[1]}
+                        or any(x > 4096 for x in dimensions) or 3 * dimensions[0] * dimensions[1] * 4 > 16 * 1024**2):
+                    raise ValueError("ViT requires matching bounded RGB model/processor dimensions (processed input <=16 MiB)")
+                return None, processor, {"kind": "image_processor", "class": type(processor).__name__,
+                    "image_size": list(dimensions), "asset_bytes": total}
+            tokenizer = transformers.AutoTokenizer.from_pretrained(str(root), local_files_only=True,
+                trust_remote_code=False, use_fast=True, **checked_paths)
+            if not tokenizer.is_fast:
+                raise ValueError("matching fast tokenizer required")
+            vocabulary = tokenizer.get_vocab()
+            if (type(vocabulary) is not dict or not vocabulary or len(vocabulary) > 2_000_000
+                    or any(type(i) is not int or not 0 <= i < config.vocab_size for i in vocabulary.values())):
+                raise ValueError("tokenizer IDs must lie within the model vocabulary; matching size alone is insufficient")
+            if any(type(i) is not int or not 0 <= i < config.vocab_size for i in tokenizer.all_special_ids):
+                raise ValueError("tokenizer special IDs exceed model vocabulary")
+            if family == "distilbert" and (type(tokenizer.mask_token_id) is not int
+                    or tokenizer.mask_token_id not in vocabulary.values()):
+                raise ValueError("DistilBERT masked LM requires a valid mask token ID")
+            if family == "t5" and (type(config.decoder_start_token_id) is not int
+                    or not 0 <= config.decoder_start_token_id < config.vocab_size):
+                raise ValueError("T5 requires a valid decoder start token ID")
+            return tokenizer, None, {"kind": "fast_tokenizer", "class": type(tokenizer).__name__,
+                "vocabulary_entries": len(vocabulary), "maximum_token_id": max(vocabulary.values()),
+                "model_vocabulary_size": config.vocab_size, "asset_bytes": total}
+        except Exception as error:
+            if isinstance(error, (MemoryError, torch.OutOfMemoryError)) or (isinstance(error, RuntimeError) and "out of memory" in str(error).lower()) or (isinstance(error, OSError) and error.errno == 12):
+                raise
+            if family == "vit":
+                raise ValueError("Local image input assets are not loadable: provide matching bounded RGB preprocessor_config.json in the checkpoint folder. " + (str(error) if type(error) is ValueError else "Processor parsing failed.")) from error
+            raise ValueError("Local tokenizer input assets are not loadable: provide matching fast tokenizer assets in the same folder (tokenizer.json or a supported vocabulary/merges layout). Model token IDs, mask/start tokens must match. Conversion dependencies are not installed automatically.") from error
+
+    @staticmethod
+    def _inspection_result(inspected, summary):
+        inspected["input_summary"] = summary
+        inspected["inspection"] = {"metadata_checked": True, "weight_headers_checked": True,
+            "input_assets_loadable": True, "weights_loaded": False, "inference_tested": False,
+            "input_asset_limits_note": "Input file byte limits are not parsed-tokenizer RAM or peak-memory guarantees.",
+            "note": "Local metadata, bounded weight headers and input assets checked; full weights, model construction, inference correctness and tokenizer semantic correspondence are not attested."}
+        return inspected
+
+    @staticmethod
+    def inspect(path):
+        inspected = LocalModelRuntime._inspect_files(path)
+        _, _, summary = LocalModelRuntime._prepare_inputs(inspected)
+        return LocalModelRuntime._inspection_result(inspected, summary)
 
     @staticmethod
     def capabilities():
@@ -513,11 +622,13 @@ class LocalModelRuntime:
         with self._lock:
             if self._quarantined:
                 raise RuntimeError("model owner is quarantined; restart the local app")
-            inspected = self.inspect(path)
+            inspected = self._inspect_files(path)
             selected, reason = self._select_device(device, inspected["family"])
             _positive(max_vram_bytes, "max_vram_bytes", 64 * 1024**3)
             if inspected["estimated_float32_weight_bytes"] > self.max_model_bytes:
                 raise ValueError("checkpoint float32 weight estimate exceeds model byte limit")
+            tokenizer, processor, input_summary = self._prepare_inputs(inspected)
+            self._inspection_result(inspected, input_summary)
             spec = FAMILIES[inspected["family"]]
             config = getattr(transformers, spec["config"]).from_dict(inspected["config"])
             config._attn_implementation = "eager"
@@ -541,19 +652,6 @@ class LocalModelRuntime:
                 raise ValueError("checkpoint tensors do not exactly match the supported architecture/head")
             model = model.to(device="cpu", dtype=torch.float32).eval()
             model.requires_grad_(False)
-            tokenizer = processor = None
-            if inspected["family"] == "vit":
-                processor = transformers.ViTImageProcessor.from_pretrained(inspected["path"], local_files_only=True)
-                size = processor.size
-                if (type(size) is not dict or set(size) != {"height", "width"}
-                        or any(type(x) is not int or not 0 < x <= 4096 for x in size.values())):
-                    raise ValueError("ViT image processor requires bounded explicit height and width <= 4096")
-            else:
-                tokenizer = transformers.AutoTokenizer.from_pretrained(
-                    inspected["path"], local_files_only=True, trust_remote_code=False,
-                    use_fast=True)
-                if not tokenizer.is_fast:
-                    raise ValueError("a local fast tokenizer is required")
             self.model, self.tokenizer, self.processor = model, tokenizer, processor
             self._device = selected
             self._vram_limit = max_vram_bytes if selected.type == "cuda" else None
