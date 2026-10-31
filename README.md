@@ -25,7 +25,7 @@ The workbench has **CUDA-first paths for GPT-2, T5, DistilBERT, ViT and standard
 
 **Inspect folder** checks local input assets before loading weights and keeps inspection separate from the loaded model. Missing tokenizer/processor files are diagnosed before replacing your live model; a failed load leaves the retained capture readable.
 
-**[Visual explorer and token readout](docs/LOCAL_APP.md#reading-tokens-and-model-output):** choose a recorded forward, read its input tokens and actual model output candidates, then click a captured module to inspect the corresponding vector. Decoded token text is shown alongside IDs and source positions; exact feature values remain available in details. Layer sheets show captured boundaries—not invented neuron connections or words decoded from hidden-state numbers.
+**[Visual explorer and token readout](docs/LOCAL_APP.md#reading-tokens-and-model-output):** choose a recorded forward, read its input tokens and actual model output candidates, then click a captured module to inspect its recorded representative vector. The map is independent of token filters; use the source-position picker to choose another token. Decoded token text is shown alongside IDs and source positions; exact feature values remain available in details. Layer sheets show captured boundaries—not invented neuron connections or words decoded from hidden-state numbers.
 
 **No checkpoint yet?** Choose **Load tiny demo**, then Run. This builds an untrained miniature GPT-2 entirely in CPU RAM—no download or checkpoint files—so you can learn capture navigation and controlled edits immediately. Its random output is not useful language or GPU validation.
 
