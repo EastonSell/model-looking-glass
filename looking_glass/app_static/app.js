@@ -2,7 +2,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const token = document.querySelector('meta[name="mlg-token"]').content;
-  const state = {mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
+  const state = {outputGeneration: 0, outputStep: 0, tokenOffset: 0, tokenTotal: 0, mapAutoCapture: null, mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
   const pageSize = 100, valuePageSize = 256;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
@@ -20,6 +20,11 @@
     return data;
   }
   function syncButtons() {
+    const stepCount = Array.isArray(state.run?.steps) ? state.run.steps.length : 0;
+    $('output-step').disabled = state.busy || !stepCount; $('input-token-stack').disabled = state.busy || !stepCount;
+    $('output-prev').disabled = state.busy || state.outputStep === 0; $('output-next').disabled = state.busy || state.outputStep + 1 >= stepCount;
+    $('input-tokens-prev').disabled = state.busy || state.tokenOffset === 0; $('input-tokens-next').disabled = state.busy || state.tokenOffset + 48 >= state.tokenTotal;
+    document.querySelectorAll('#input-token-strip button').forEach(button => { button.disabled = state.busy || button.dataset?.unavailable === 'true'; });
     ['intervention-operation', 'intervention-feature', 'intervention-value', 'witness-phase', 'experiment-save-name', 'vector-picker', 'browse-button', 'browse-go', 'browse-parent', 'browse-select', 'browse-path', 'saved-runs', 'refresh-saved', 'inspect-button', 'load-button', 'model-path', 'execution-device', 'vram-mib', 'refresh-devices', 'open-button', 'open-path', 'vector-index', 'vector-view', 'capture-mode', 'layers', 'max-input', 'max-output', 'max-events', 'trace-mib', 'prompt', 'image-file'].forEach((id) => { $(id).disabled = state.busy; });
     $('layer-map-load').disabled = state.busy || !state.run; $('layer-map-forward').disabled = state.busy || !state.run;
     $('layer-map-prev').disabled = state.busy || !state.run || state.mapOffset === 0; $('layer-map-next').disabled = state.busy || !state.run || state.mapOffset + 12 >= state.mapTotal;
@@ -63,15 +68,15 @@
   }
   async function action(message, callback) {
     if (state.busy) return;
-    state.busy = true; syncButtons(); notice(message); $('run-status').textContent = message;
-    try { await callback(); if (state.model?.state === 'quarantined') { notice('Model owner quarantined. Stop and restart the app before loading or running a model again. Saved captures can still be inspected.', true); $('run-status').textContent = 'Quarantined — restart the app to recover.'; } else { notice(''); $('run-status').textContent = 'Ready.'; } }
+    let completed = false; state.busy = true; syncButtons(); notice(message); $('run-status').textContent = message;
+    try { await callback(); completed = true; if (state.model?.state === 'quarantined') { notice('Model owner quarantined. Stop and restart the app before loading or running a model again. Saved captures can still be inspected.', true); $('run-status').textContent = 'Quarantined — restart the app to recover.'; } else { notice(''); $('run-status').textContent = 'Ready.'; } }
     catch (error) {
       try { const current = await api('status'); if (error.reconcileRun && (!state.run?.capture_id || current.run?.capture_id !== state.run.capture_id)) clearView(); if (error.reconcileRun && state.experiment && Object.hasOwn(current, 'experiment') && current.experiment?.experiment_id !== state.experiment.experiment_id) clearExperiment(); if (state.run) { const same = current.run?.capture_id && current.run.capture_id === state.run.capture_id; state.run.intervention_available = !!(same && current.run.intervention_available); state.run.intervention_reason = same ? current.run.intervention_reason : 'The displayed capture is no longer bound to the current server revision; reopen or make a fresh capture.'; state.run.reference_available = !!(same && current.run.reference_available); state.run.reference_reason = same ? current.run.reference_reason : 'The displayed capture revision is no longer current.'; } setModel(current.model); applyLimits(current.limits); applyDevices(current); } catch (_) { if (error.reconcileRun) { clearView(); error.message += ' The Run outcome could not be verified; previous capture values are hidden. Refresh or reopen a saved capture before continuing.'; } /* Preserve the original failure if status is unavailable. */ }
       const quarantined = state.model?.state === 'quarantined';
       notice((error.message || String(error)) + (quarantined ? ' This model owner is quarantined. Stop and restart the app before loading or running a model again.' : ''), true);
       $('run-status').textContent = quarantined ? 'Quarantined — restart the app to recover.' : 'Stopped. See the message above.';
     }
-    finally { state.busy = false; syncButtons(); }
+    finally { state.busy = false; syncButtons(); if (completed && state.run?.capture_id && $('layer-map-options').open && state.mapAutoCapture !== state.run.capture_id) { state.mapAutoCapture = state.run.capture_id; await loadLayerMap(); } }
   }
   function applyLimits(limits) {
     if (Number.isSafeInteger(limits?.max_vram_bytes) && limits.max_vram_bytes >= 1048576) { const max = Math.floor(limits.max_vram_bytes / 1048576); $('vram-mib').max = String(max); if (Number($('vram-mib').value) > max) $('vram-mib').value = String(max); }
@@ -156,18 +161,88 @@
     syncButtons();
   }
   function clearView() {
+    state.outputGeneration++; state.outputStep = 0; state.tokenOffset = 0; state.tokenTotal = 0;
+    $('output-readout').replaceChildren(); $('input-token-strip').replaceChildren(); $('output-note').textContent = ''; $('input-token-note').textContent = ''; $('input-token-page').textContent = ''; $('output-step').value = '0';
     clearLayerMap();
     clearExperiment(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
     $('imported-control-warning').hidden = true; $('imported-comparison').hidden = true; clearDistribution('imported'); $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.'; syncButtons();
   }
   function showRun(run) {
+    state.outputStep = 0; state.tokenOffset = 0;
     state.run = run; $('imported-comparison').hidden = run.run_kind !== 'intervention_comparison'; if (run.run_kind === 'intervention_comparison') { renderDistribution('imported', run.experiment || {}); controlWarning('imported-control-warning', run.experiment || {}, run.model); } else clearDistribution('imported'); $('result-panel').hidden = false; $('trace-panel').hidden = false; $('answer').textContent = display(run.answer ?? 'No textual output.'); $('task-badge').textContent = run.task || 'Observed run';
     const captureModel = run.model; $('demo-capture-warning').hidden = !isDemo(captureModel); $('capture-model').textContent = captureModel ? `Capture model: ${captureModel.name || captureModel.family || captureModel.architecture || 'recorded model'}${captureModel.device ? ' on ' + captureModel.device : ''} — independent of the model currently loaded above.` : 'Model identity was not recorded in this capture.';
     $('capture-info').textContent = display({model: captureModel || null, settings: run.settings || null});
     $('run-metrics').replaceChildren();
     for (const [value, label] of [[run.event_count ?? '—', 'captured observations'], [bytes(run.total_bytes), 'CPU RAM tensor payload'], [Array.isArray(run.steps) ? run.steps.length : '—', 'explicit forward steps']]) { const box = document.createElement('div'), strong = document.createElement('strong'), span = document.createElement('span'); box.className = 'metric'; strong.textContent = String(value); span.textContent = label; box.append(strong, span); $('run-metrics').append(box); }
     $('coverage').textContent = typeof run.coverage === 'string' ? run.coverage : 'Full retained vectors at selected supported observation points. See the coverage record for exact scope.';
-    $('run-details').textContent = display({run_kind: run.run_kind, experiment: run.experiment, coverage: run.coverage, steps: run.steps, stop_reason: run.stop_reason, estimates: run.estimates, tokens: run.tokens, image_metadata: run.image_metadata}); syncButtons();
+    $('run-details').textContent = display({run_kind: run.run_kind, experiment: run.experiment, coverage: run.coverage, steps: run.steps, stop_reason: run.stop_reason, estimates: run.estimates, tokens: run.tokens, token_labels: run.token_labels, token_labels_note: run.token_labels_note, image_metadata: run.image_metadata}); renderForward(); syncButtons();
+  }
+  const safeId = value => Number.isSafeInteger(value) && value >= 0;
+  const shortText = value => typeof value === 'string' ? value.slice(0, 512) : null;
+  function renderReadableSource(c) {
+    const box = $('source-readable'); box.replaceChildren();
+    const title = document.createElement('strong'), meta = document.createElement('span');
+    if (!c || c.status !== 'known') { title.textContent = 'Source not yet known'; meta.textContent = c?.reason || 'Select and read a captured source position. No token meaning is inferred from vector values.'; }
+    else if (c.image_coordinate) {
+      const image = c.image_coordinate;
+      title.textContent = image.token_kind === 'cls' ? 'Image · CLS' : `Image patch · row ${image.patch_row ?? '?'}, column ${image.patch_column ?? '?'}`;
+      meta.textContent = `Processed-image position ${c.token_position ?? '?'} · forward ${c.app_forward_index ?? '?'} · not a text token or original-image coordinates`;
+    } else {
+      const decoded = shortText(c.token_text);
+      title.textContent = decoded === null ? 'Decoded token text unavailable' : decoded === '' ? '(empty decoded token)' : decoded.trim() === '' ? JSON.stringify(decoded) + ' (whitespace)' : decoded;
+      meta.textContent = `${c.stack || 'unknown stack'} · position ${c.token_position ?? '?'} · token ID ${c.token_id ?? '?'} · forward ${c.app_forward_index ?? '?'}${c.token_label_truncated ? ' · display label truncated' : ''}`;
+    }
+    box.append(title, meta);
+  }
+  function renderForward() {
+    const generation = ++state.outputGeneration, capture = state.run?.capture_id;
+    const steps = Array.isArray(state.run?.steps) ? state.run.steps : [];
+    state.outputStep = Math.max(0, Math.min(state.outputStep, Math.max(0, steps.length - 1)));
+    $('output-step').value = String(state.outputStep); $('output-step').max = String(Math.max(0, steps.length - 1));
+    const step = steps[state.outputStep], family = state.run?.model?.family;
+    const record = step && typeof step === 'object' && !Array.isArray(step) ? step : {};
+    const forward = record.app_forward_index;
+    const knownForward = safeId(forward) && steps.filter(item => item?.app_forward_index === forward).length === 1;
+    const out = $('output-readout'); out.replaceChildren();
+    $('output-note').textContent = knownForward ? `Forward ${forward} · model readout, separate from captured inputs. A selected next token is not an input position until a later recorded forward includes it. Logits are scores, not probabilities or confidence.` : 'Forward provenance unavailable. Recorded outputs are display-only; no source navigation is inferred.';
+    function outputRow(label, text, detail) { const row = document.createElement('div'); row.className = 'readout-row'; const badge = document.createElement('span'); badge.className = 'readout-label'; badge.textContent = label; const word = document.createElement('strong'); word.textContent = text; const score = document.createElement('span'); score.className = 'readout-score'; score.textContent = detail; row.append(badge, word, score); out.append(row); }
+    if (family === 'vit') {
+      const rows = Array.isArray(record.classes) ? record.classes.slice(0, 10) : [];
+      for (const item of rows) if (item && safeId(item.class_id) && typeof item.label === 'string' && Number.isFinite(item.probability) && item.probability >= 0 && item.probability <= 1) outputRow(`Class ${item.class_id}`, shortText(item.label), `${Number((item.probability * 100).toPrecision(5))}% · recorded model probability`);
+      $('output-note').textContent = knownForward ? `Forward ${forward} · image classification. Recorded full-class-distribution probabilities, not confidence or text tokens.` : 'Image readout provenance unavailable.';
+    } else if (family === 'distilbert') {
+      const rows = Array.isArray(record.mask_predictions) ? record.mask_predictions.slice(0, 48) : [];
+      for (const item of rows) if (item && safeId(item.position) && safeId(item.token_id) && typeof item.text === 'string') outputRow(`mask position ${item.position}`, shortText(item.text), `Predicted token ID ${item.token_id}`);
+      if (knownForward) $('output-note').textContent = `Forward ${forward} · masks predicted simultaneously. Predictions are output tokens, not replacement captured inputs. Scores were not recorded.`;
+    } else {
+      const rows = Array.isArray(record.top_next_tokens) ? record.top_next_tokens.slice(0, 10).filter(item => item && safeId(item.token_id) && typeof item.text === 'string' && Number.isFinite(item.logit)) : [];
+      if (safeId(record.selected_token_id)) { const selected = rows.find(item => item.token_id === record.selected_token_id); outputRow('Selected next output', selected ? shortText(selected.text) || '(empty text)' : 'Token text unavailable', `Token ID ${record.selected_token_id}`); }
+      for (const item of rows) outputRow(`ID ${item.token_id}`, shortText(item.text) || '(empty text)', `Logit ${number(item.logit)}`);
+    }
+    if (!out.children.length) outputRow('Recorded readout', 'Output details unavailable', 'See the preserved metadata; no scores are inferred.');
+    const stackSelect = $('input-token-stack'), previous = stackSelect.value; stackSelect.replaceChildren();
+    const stacks = family === 't5' ? ['encoder', 'decoder'] : ['gpt2','llama','distilbert'].includes(family) ? ['input'] : [];
+    for (const stack of stacks) { const option = document.createElement('option'); option.value = stack; option.textContent = stack === 'decoder' ? 'Decoder inputs' : stack === 'encoder' ? 'Encoder inputs' : 'Input tokens'; stackSelect.append(option); }
+    stackSelect.value = stacks.includes(previous) ? previous : stacks[0] || '';
+    const stack = stackSelect.value, list = stack === 'decoder' ? record.decoder_token_ids : record.input_token_ids;
+    const ids = stacks.length && Array.isArray(list) ? list : [];
+    state.tokenTotal = ids.length; if (state.tokenOffset >= ids.length) state.tokenOffset = 0;
+    const strip = $('input-token-strip'); strip.replaceChildren();
+    $('input-token-note').textContent = family === 'vit' ? 'Processed image patches are not words. Select a captured image site in the layer explorer.' : stacks.length ? `${stack} inputs actually recorded for this forward. Click a position to filter existing captures; no automatic token alignment. Individually decoded tokens may not concatenate into the response.` : 'Input token provenance unavailable for this capture. Use exact source coordinates instead.';
+    for (let position = state.tokenOffset; position < Math.min(ids.length, state.tokenOffset + 48); position++) {
+      const id = ids[position], valid = safeId(id), label = valid ? state.run?.token_labels?.[String(id)] : null;
+      const text = shortText(label?.text), button = document.createElement('button'); button.type = 'button'; button.className = 'token-chip';
+      const word = document.createElement('strong'); word.textContent = text === null ? 'Text unavailable' : text === '' ? '∅' : text.trim() === '' ? JSON.stringify(text) : text;
+      const info = document.createElement('small'); info.textContent = `pos ${position} · ID ${valid ? id : '?'}${label?.truncated ? ' · truncated' : ''}`; button.append(word, info);
+      const enabled = !!capture && knownForward && valid; button.disabled = !enabled || state.busy; button.setAttribute('data-unavailable', String(!enabled));
+      button.addEventListener('click', () => {
+        if (state.busy || generation !== state.outputGeneration || capture !== state.run?.capture_id || !enabled) return;
+        $('event-filter').value = ''; $('source-token').value = String(position); $('source-forward').value = String(forward); $('source-stack').value = stack;
+        scheduleEventSearch();
+      }); strip.append(button);
+    }
+    $('input-token-page').textContent = ids.length ? `${state.tokenOffset + 1}–${Math.min(state.tokenOffset + 48, ids.length)} of ${ids.length} recorded input positions` : 'No recorded text input positions.';
+    syncButtons();
   }
   function cell(row, value) { const td = document.createElement('td'); td.textContent = String(value ?? '—'); row.append(td); return td; }
   function eventName(event) { return event.metadata?.module_path || event.module_path || event.metadata?.site?.module_path || `Observation ${event.index}`; }
@@ -191,7 +266,7 @@
     return query;
   }
   function clearLayerMap() {
-    state.mapRequest++; state.mapOffset = 0; state.mapTotal = 0; state.mapForward = 0; state.mapCapture = null;
+    state.mapAutoCapture = null; state.mapRequest++; state.mapOffset = 0; state.mapTotal = 0; state.mapForward = 0; state.mapCapture = null;
     $('layer-map-forward').value = '0'; $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = '';
     $('layer-map-status').textContent = 'Open or refresh to list captured sites. No tensor values are read to build the map.';
   }
@@ -262,7 +337,7 @@
   }
   async function loadVector() {
     if (!state.event) return;
-    invalidateReferenceView(); const request = ++state.valueRequest; state.coordinate = null; syncButtons();
+    invalidateReferenceView(); const request = ++state.valueRequest; state.coordinate = null; renderReadableSource(null); syncButtons();
     // Never display the preceding tensor beneath a newly selected coordinate.
     $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren();
     $('raw-values').hidden = true; $('reduced-values').hidden = true; $('reduction-note').hidden = true;
@@ -275,7 +350,7 @@
     const result = await api(`tensor?event=${state.event.index}&vector=${vector}&offset=${state.valueOffset}&limit=${valuePageSize}&view=${view}`);
     if (request !== state.valueRequest) return;
     state.coordinate = result.coordinate || null; $('intervention-feature').max = String(Math.max(0, Number(result.vector_width ?? result.total ?? 0) - 1));
-    $('vector-coordinate').textContent = coordinateLabel(result.coordinate, vector);
+    $('vector-coordinate').textContent = coordinateLabel(result.coordinate, vector); renderReadableSource(result.coordinate);
     $('reduction-note').hidden = view !== 'reduced'; $('raw-values').hidden = view !== 'raw'; $('reduced-values').hidden = view !== 'reduced';
     state.valueTotal = Number(result.vector_width ?? result.total ?? 0);
     if (view === 'raw') {
@@ -291,7 +366,7 @@
   function resetVectorPicker() {
     invalidateReferenceView(); state.coordinate = null; state.vectorListRequest++; state.vectorListOffset = 0; state.vectorListTotal = 0; state.vectorOptions = [];
     $('vector-picker').replaceChildren(); $('vectors-page').textContent = ''; $('vector-list-status').textContent = '';
-    $('vector-coordinate').textContent = 'Coordinate unavailable until a vector is read.';
+    $('vector-coordinate').textContent = 'Coordinate unavailable until a vector is read.'; renderReadableSource(null);
   }
   function coordinateLabel(coordinate, index) {
     const c = coordinate;
@@ -497,6 +572,12 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   }));
   $('load-button').addEventListener('click', () => action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); const info = await api('load', {path, ...execution}); clearView(); setModel(info); await refreshReferenceOptional(); }));
   $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); const opened = await api('open', {path}); clearView(); showRun(opened); await loadEvents(); $('saved-status').textContent = 'Selected capture opened and validated. Other listed exports remain unverified.'; await refreshReferenceOptional(); }));
+  $('output-step').addEventListener('change', () => { const raw = $('output-step').value.trim(), index = Number(raw); if (!/^\d+$/.test(raw) || !safeId(index) || index >= (state.run?.steps?.length || 0)) { state.outputGeneration++; $('output-readout').replaceChildren(); $('input-token-strip').replaceChildren(); $('input-token-page').textContent = ''; $('output-note').textContent = 'Choose a recorded forward record in range.'; return; } state.outputStep = index; state.tokenOffset = 0; renderForward(); });
+  $('output-prev').addEventListener('click', () => { if (state.busy || state.outputStep === 0) return; state.outputStep--; state.tokenOffset = 0; renderForward(); });
+  $('output-next').addEventListener('click', () => { if (state.busy || state.outputStep + 1 >= (state.run?.steps?.length || 0)) return; state.outputStep++; state.tokenOffset = 0; renderForward(); });
+  $('input-token-stack').addEventListener('change', () => { state.tokenOffset = 0; renderForward(); });
+  $('input-tokens-prev').addEventListener('click', () => { if (state.busy) return; state.tokenOffset = Math.max(0, state.tokenOffset - 48); renderForward(); });
+  $('input-tokens-next').addEventListener('click', () => { if (state.busy || state.tokenOffset + 48 >= state.tokenTotal) return; state.tokenOffset += 48; renderForward(); });
   $('layer-map-options').addEventListener('toggle', () => { if ($('layer-map-options').open && !state.mapCapture) return loadLayerMap(); });
   $('layer-map-forward').addEventListener('input', () => { state.mapRequest++; state.mapCapture = null; state.mapTotal = 0; state.mapOffset = 0; $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = ''; $('layer-map-status').textContent = 'Forward changed. Load / refresh to list its captured sites.'; syncButtons(); });
   $('layer-map-load').addEventListener('click', () => loadLayerMap());

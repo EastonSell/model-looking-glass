@@ -78,7 +78,7 @@ def test_disclosures_have_native_named_noninteractive_summaries():
     details = [node for node in doc.elements if node.tag == "details"]
     assert details
     for node in details:
-        assert "open" not in node.attrs, "advanced details start collapsed"
+        assert "open" not in node.attrs or node.attrs.get("id") == "layer-map-options", "only the main captured-layer explorer starts open"
         summaries = [child for child in node.children if child.tag == "summary"]
         assert len(summaries) == 1 and node.children[0] is summaries[0], node.attrs
         summary = summaries[0]
@@ -92,8 +92,8 @@ def test_disclosures_have_native_named_noninteractive_summaries():
 def test_core_actions_and_critical_notices_stay_outside_disclosures():
     ids = page().ids
     core = ("model-path", "load-button", "demo-button", "model-badge",
-            "prompt", "run-button", "event-filter", "event-body", "vector-picker",
-            "vector-coordinate", "raw-values", "notice", "run-status", "replace-warning",
+            "prompt", "run-button", "vector-picker",
+            "vector-coordinate", "notice", "run-status", "replace-warning",
             "demo-model-warning", "demo-capture-warning", "demo-experiment-warning",
             "experiment-outcome")
     for identifier in core:
@@ -142,7 +142,7 @@ def test_reference_disclosure_remains_reachable_without_a_capture():
 def test_layer_map_is_optional_grounded_navigation():
     ids = page().ids
     group = ids["layer-map-options"]
-    assert group.tag == "details" and "open" not in group.attrs
+    assert group.tag == "details" and "open" in group.attrs
     assert ids["trace-panel"] in list(group.ancestors())
     for name in ("layer-map-forward", "layer-map-load", "layer-map-prev", "layer-map-next", "layer-map-body", "layer-map-status"):
         assert group in list(ids[name].ancestors())
@@ -161,3 +161,28 @@ def test_layer_map_cards_wrap_long_paths_without_primary_button_fill():
 
 def test_map_focus_target_is_programmatic_not_an_extra_tab_stop():
     assert page().ids["vector-heading"].attrs.get("tabindex") == "-1"
+
+
+def test_readable_explorer_and_outputs_are_primary_not_raw_numbers():
+    ids = page().ids
+    for identifier in ("output-readout", "input-token-strip", "source-readable", "explorer-grid"):
+        assert identifier in ids
+    assert ids["explorer-grid"] in list(ids["vector-panel"].ancestors())
+    assert ids["explorer-grid"] in list(ids["layer-map-options"].ancestors())
+    assert ids["feature-values-options"] in list(ids["raw-values"].ancestors())
+    assert ids["event-catalog-options"] in list(ids["event-body"].ancestors())
+    for name in ("source-readable", "output-readout", "input-token-strip"):
+        assert not any(n.tag == "details" for n in ids[name].ancestors())
+
+
+def test_workspace_has_local_dark_presentation_and_truthful_readout():
+    doc = page()
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    assert "color-scheme: dark" in css
+    assert "complete model output—not from decoding the selected intermediate activation" in doc.root.text
+    assert "Hidden feature numbers are not token IDs" in doc.root.text
+    assert "grid-template-columns:minmax(330px,1.1fr) minmax(320px,1fr)" in css
+    for node in doc.elements:
+        if node.tag in {"script", "link"}:
+            target = node.attrs.get("src", node.attrs.get("href", ""))
+            assert target.startswith("/") and not target.startswith("//"), target
