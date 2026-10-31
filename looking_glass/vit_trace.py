@@ -80,8 +80,12 @@ def patch_token_index(row, column, *, grid_rows, grid_columns):
 
 def trace_vit_classifier(model, pixel_values, *, points, run_id, max_events=128,
                          max_trace_bytes=4 * 1024 * 1024, max_tensor_bytes=16 * 1024 * 1024,
-                         max_input_bytes=16 * 1024 * 1024, max_logits_bytes=4 * 1024 * 1024):
-    """Run one eager CPU image-classifier forward and retain selected tokens.
+                         max_input_bytes=16 * 1024 * 1024, max_logits_bytes=4 * 1024 * 1024,
+                         synchronous_cpu=True):
+    """Run one eager float32 image-classifier forward and retain selected tokens.
+
+    CPU is required by default. Explicit synchronous_cpu=False also permits
+    a single exact CUDA device; caller owns device memory/lifetime limits.
 
     Images are already preprocessed; grid boxes refer to this input tensor, not
     an original image. The caller must own the model and pairing semantics.
@@ -98,12 +102,20 @@ def trace_vit_classifier(model, pixel_values, *, points, run_id, max_events=128,
     if (getattr(model.forward, "__func__", None) is not ViTForImageClassification.forward
             or model.config._attn_implementation != "eager" or model.vit.config._attn_implementation != "eager"):
         raise ValueError("only an unmodified eager root forward is supported")
+    if type(synchronous_cpu) is not bool:
+        raise ValueError("synchronous_cpu must be a boolean")
+    parameters = tuple(model.parameters())
+    if not parameters:
+        raise ValueError("model must retain standard parameters")
+    device = parameters[0].device
+    if (device.type not in ("cpu", "cuda") or (synchronous_cpu and device.type != "cpu")
+            or any(p.device != device or p.dtype != torch.float32 for p in parameters)
+            or any(b.device != device or b.is_complex() or b.is_quantized
+                   or (b.is_floating_point() and b.dtype != torch.float32) for b in model.buffers())):
+        raise ValueError("model parameters and buffers must share one CPU/CUDA device with float32 floating values; CPU required by default")
     if (any(module.training for module in model.modules()) or model.is_gradient_checkpointing
-            or torch.is_autocast_enabled("cpu")):
-        raise ValueError("evaluation mode without checkpointing or autocast is required")
-    if (any(p.device.type != "cpu" or p.dtype != torch.float32 for p in model.parameters())
-            or any(b.device.type != "cpu" for b in model.buffers())):
-        raise ValueError("model parameters must be CPU float32 and buffers must be on CPU")
+            or torch.is_autocast_enabled(device.type)):
+        raise ValueError("evaluation mode without checkpointing or selected-device autocast is required")
     if (torch.nn.modules.module._global_forward_pre_hooks or torch.nn.modules.module._global_forward_hooks
             or any(m._forward_pre_hooks or m._forward_hooks for m in model.modules())):
         raise ValueError("pre-existing local or global forward hooks are unsupported")
@@ -117,10 +129,10 @@ def trace_vit_classifier(model, pixel_values, *, points, run_id, max_events=128,
     if (type(points) not in (tuple, list) or not points or len(points) > max_events
             or any(type(point) is not ViTTracePoint for point in points) or len(set(points)) != len(points)):
         raise ValueError("points must be a bounded nonempty list of distinct ViTTracePoint values")
-    if (type(pixel_values) is not torch.Tensor or pixel_values.device.type != "cpu"
+    if (type(pixel_values) is not torch.Tensor or pixel_values.device != device
             or pixel_values.dtype != torch.float32 or pixel_values.ndim != 4 or not pixel_values.numel()
             or pixel_values.requires_grad):
-        raise ValueError("pixel_values must be a nonempty CPU float32 [batch, channel, height, width] tensor")
+        raise ValueError("pixel_values must be a nonempty same-device float32 [batch, channel, height, width] tensor")
     if pixel_values.numel() * pixel_values.element_size() > max_input_bytes:
         raise ValueError("input pixel byte budget exceeded")
     batch, channels, height, width = pixel_values.shape
@@ -174,7 +186,7 @@ def trace_vit_classifier(model, pixel_values, *, points, run_id, max_events=128,
     if not bool(torch.isfinite(pixels).all()):
         raise ValueError("pixel_values must be finite")
     def pixel_digest():
-        bits = pixels.detach().view(torch.int32).contiguous()
+        bits = pixels.detach().view(torch.int32).contiguous().to(device="cpu", non_blocking=False)
         return hashlib.sha256(memoryview(bits.numpy()).cast("B")).digest()
     before_digest = pixel_digest()
     dimensions = (len(layers), hidden, intermediate, model.config.num_labels, image_size, patch_size)
@@ -197,7 +209,9 @@ def trace_vit_classifier(model, pixel_values, *, points, run_id, max_events=128,
     with torch.inference_mode(), plan:
         output = model(pixel_values=pixels, interpolate_pos_encoding=False, output_attentions=False,
                        output_hidden_states=False, return_dict=True)
-    if (pixels.dtype != torch.float32 or pixels.device.type != "cpu"
+        if device.type == "cuda":
+            torch.cuda.synchronize(device)  # Drain model work before its lease is released.
+    if (pixels.dtype != torch.float32 or pixels.device != device
             or tuple(pixels.shape) != (batch, channels, height, width)
             or pixel_digest() != before_digest
             or (len(model.vit.encoder.layer), model.config.hidden_size, model.config.intermediate_size,
@@ -205,9 +219,9 @@ def trace_vit_classifier(model, pixel_values, *, points, run_id, max_events=128,
                 _pair(model.config.patch_size, "patch_size")) != dimensions):
         raise RuntimeError("pixel inputs or model geometry changed during the forward")
     if (type(output.logits) is not torch.Tensor or output.logits.dtype != torch.float32
-            or output.logits.device.type != "cpu" or tuple(output.logits.shape) != (batch, model.config.num_labels)
+            or output.logits.device != device or tuple(output.logits.shape) != (batch, model.config.num_labels)
             or not bool(torch.isfinite(output.logits).all())):
-        raise RuntimeError("classifier did not return finite CPU float32 logits")
+        raise RuntimeError("classifier did not return finite same-device float32 logits")
     captured, metadata = plan.captures, plan.metadata
     if len(metadata["steps"]) != len(ordered) or len(captured) != len(ordered):
         raise RuntimeError("plan omitted a requested ViT capture")
@@ -221,8 +235,8 @@ def trace_vit_classifier(model, pixel_values, *, points, run_id, max_events=128,
                 or step["batch_index"] != point.batch or step["token_index"] != point.token
                 or step["output_selector"] != [] or step["output_shape"] != [batch, sequence, feature_width]
                 or step["selected_shape"] != [feature_width] or step["dtype"] != "torch.float32"
-                or step["device"] != "cpu" or tuple(value.shape) != (feature_width,)
-                or value.dtype != torch.float32 or value.device.type != "cpu"):
+                or step["device"] != str(device) or tuple(value.shape) != (feature_width,)
+                or value.dtype != torch.float32 or value.device != device):
             raise RuntimeError("captured output differs from the declared ViT boundary")
         event = TraceEvent(identity=identity, sequence=index, forward_index=0, module_path=path,
             module_kind=f"vit_{point.module}", layer_index=point.layer, invocation=0, output_path=(),
@@ -243,4 +257,6 @@ def trace_vit_classifier(model, pixel_values, *, points, run_id, max_events=128,
     geometry = {"pixel_shape": [batch, channels, height, width], "patch_shape": list(patch_size),
                 "grid_shape": [rows, columns], "sequence_length": sequence, "cls_token_index": 0,
                 "patch_order": "row-major", "box_coordinates": "processed-pixel-xyxy-exclusive"}
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
     return ViTTraceResult(output, tuple(records), geometry, size)

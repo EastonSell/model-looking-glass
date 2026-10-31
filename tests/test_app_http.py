@@ -136,7 +136,7 @@ def test_device_inventory_and_load_options_are_explicit(server):
     assert len(received) == 1
 
 
-@pytest.mark.parametrize("family", ["gpt2", "distilbert"])
+@pytest.mark.parametrize("family", ["gpt2", "distilbert", "vit"])
 def test_cuda_unavailable_is_not_a_successful_cpu_load(tmp_path, monkeypatch, family):
     from test_app_runtime import local_checkpoint
     from looking_glass.app_runtime import LocalModelRuntime

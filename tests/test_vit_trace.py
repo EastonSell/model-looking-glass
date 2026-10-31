@@ -236,3 +236,84 @@ if dirty:
 """
     completed = subprocess.run([sys.executable, "-B", "-c", script], capture_output=True, text=True)
     assert completed.returncode == 0, completed.stderr
+
+
+def test_explicit_device_optin_preserves_cpu_logits_geometry_and_bits():
+    model = tiny_vit(); pixels = torch.zeros((1, 3, 32, 48))
+    pixels[0, 0, 0, 0] = -0.0
+    before = pixels.view(torch.int32).clone()
+    points = [ViTTracePoint(0, "intermediate", 0, 1), ViTTracePoint(1, "block", 0, 0)]
+    default = trace_vit_classifier(model, pixels, points=points, run_id="default")
+    optin = trace_vit_classifier(model, pixels, points=points, run_id="optin", synchronous_cpu=False)
+    assert torch.equal(default.output.logits.view(torch.int32), optin.output.logits.view(torch.int32))
+    assert default.image_metadata == optin.image_metadata
+    assert torch.equal(before, pixels.view(torch.int32))
+
+
+def test_device_optin_rejects_nonboolean_and_wrong_buffer_dtype():
+    model = tiny_vit(); pixels = torch.zeros((1, 3, 32, 48)); points = [ViTTracePoint(0, "block", 0, 0)]
+    with pytest.raises(ValueError, match="boolean"):
+        trace_vit_classifier(model, pixels, points=points, run_id="bad", synchronous_cpu=0)
+    model.register_buffer("invalid_float", torch.ones(1, dtype=torch.float64))
+    with pytest.raises(ValueError, match="buffers"):
+        trace_vit_classifier(model, pixels, points=points, run_id="bad", synchronous_cpu=False)
+
+
+def test_optin_same_device_integer_buffer_and_autocast_guards(monkeypatch):
+    model = tiny_vit(); pixels = torch.zeros((1, 3, 32, 48)); points = [ViTTracePoint(0, "block", 0, 0)]
+    model.register_buffer("valid_integer", torch.tensor([1], dtype=torch.int64))
+    assert trace_vit_classifier(model, pixels, points=points, run_id="ok", synchronous_cpu=False).records
+    with pytest.raises(ValueError, match="same-device"):
+        trace_vit_classifier(model, pixels.to("meta"), points=points, run_id="bad", synchronous_cpu=False)
+    with torch.autocast("cpu", dtype=torch.bfloat16), pytest.raises(ValueError, match="autocast"):
+        trace_vit_classifier(model, pixels, points=points, run_id="bad", synchronous_cpu=False)
+    model.register_buffer("wrong_device", torch.empty(1, device="meta"))
+    with pytest.raises(ValueError, match="buffers"):
+        trace_vit_classifier(model, pixels, points=points, run_id="bad", synchronous_cpu=False)
+
+
+@pytest.mark.parametrize("kind", ["shape", "dtype", "device", "nonfinite"])
+def test_optin_validates_classifier_logits(monkeypatch, kind):
+    model = tiny_vit(); pixels = torch.zeros((1, 3, 32, 48)); points = [ViTTracePoint(0, "block", 0, 0)]
+    # Keep the standard root method; inject only at the classifier output.
+    original = model.classifier.forward
+    def changed(*args, **kwargs):
+        value = original(*args, **kwargs)
+        if kind == "shape": return value[:, :1]
+        if kind == "dtype": return value.double()
+        if kind == "device": return value.to("meta")
+        return value * float("nan")
+    monkeypatch.setattr(model.classifier, "forward", changed)
+    with pytest.raises(RuntimeError, match="logits"):
+        trace_vit_classifier(model, pixels, points=points, run_id="bad", synchronous_cpu=False)
+    assert all(not m._forward_hooks and not m._forward_pre_hooks for m in model.modules())
+
+
+@pytest.mark.parametrize("raw_bits", [-2147483648, 1])
+def test_raw_pixel_digest_detects_raw_bit_change_without_modifying_caller(monkeypatch, raw_bits):
+    model = tiny_vit(); pixels = torch.zeros((1, 3, 32, 48)); original_bits = pixels.view(torch.int32).clone()
+    original = model.vit.forward
+    def mutate(*args, **kwargs):
+        (args[0] if args else kwargs["pixel_values"]).view(torch.int32)[0, 0, 0, 0] = raw_bits
+        return original(*args, **kwargs)
+    monkeypatch.setattr(model.vit, "forward", mutate)
+    with pytest.raises(RuntimeError, match="pixel inputs"):
+        trace_vit_classifier(model, pixels, points=[ViTTracePoint(0, "block", 0, 0)], run_id="mutated", synchronous_cpu=False)
+    assert torch.equal(original_bits, pixels.view(torch.int32))
+    assert all(not m._forward_hooks and not m._forward_pre_hooks for m in model.modules())
+
+
+def test_private_forward_pixels_preserve_signedzero_and_subnormal_encodings(monkeypatch):
+    model = tiny_vit(); pixels = torch.zeros((1, 3, 32, 48))
+    pixels.view(torch.int32).flatten()[:2] = torch.tensor([-2147483648, 1], dtype=torch.int32)
+    expected = pixels.view(torch.int32).clone()
+    observed = []
+    original = model.vit.forward
+    def observe(*args, **kwargs):
+        value = args[0] if args else kwargs["pixel_values"]
+        observed.append(value.view(torch.int32).clone())
+        return original(*args, **kwargs)
+    monkeypatch.setattr(model.vit, "forward", observe)
+    trace_vit_classifier(model, pixels, points=[ViTTracePoint(0, "block", 0, 0)], run_id="raw-bits", synchronous_cpu=False)
+    assert len(observed) == 1 and torch.equal(observed[0], expected)
+    assert torch.equal(pixels.view(torch.int32), expected)

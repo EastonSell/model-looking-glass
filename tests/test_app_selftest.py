@@ -54,7 +54,7 @@ def test_stage_failure_stops_remaining_family_and_removes_temporary_directory(mo
     assert "/private/path" not in json.dumps(report)
 
 
-def test_synthetic_success_requires_all_three_families_and_selected_budget(monkeypatch):
+def test_synthetic_success_requires_all_four_families_and_selected_budget(monkeypatch):
     _synthetic_prerequisite(monkeypatch)
     calls = []
     def synthetic(root, family, device, budget, stages):
@@ -63,10 +63,10 @@ def test_synthetic_success_requires_all_three_families_and_selected_budget(monke
                        "test_only": "synthetic ledger; not GPU execution"} for stage in subject.EXPECTED_STAGES)
     monkeypatch.setattr(subject, "_family", synthetic)
     assert subject.run_selftest(max_vram_mib=512)["status"] == "passed"
-    assert calls == [(family, "cuda:0", 512 * 1024**2) for family in ("gpt2", "t5", "distilbert")]
+    assert calls == [(family, "cuda:0", 512 * 1024**2) for family in ("gpt2", "t5", "distilbert", "vit")]
 
 
-@pytest.mark.parametrize("family", ["gpt2", "t5", "distilbert"])
+@pytest.mark.parametrize("family", ["gpt2", "t5", "distilbert", "vit"])
 def test_synthetic_local_assets_are_safe_and_deterministic(tmp_path, family):
     from looking_glass.app_runtime import LocalModelRuntime
     one, two = tmp_path / "one", tmp_path / "two"
@@ -78,9 +78,9 @@ def test_synthetic_local_assets_are_safe_and_deterministic(tmp_path, family):
     runtime = LocalModelRuntime()
     runtime.load(str(one), device="cpu")
     prompt = "hello [MASK]" if family == "distilbert" else "hello world"
-    result = runtime.run(prompt, {"max_new_tokens": 2})
+    result = runtime.run(prompt, {"max_new_tokens": 2}, subject._image() if family == "vit" else None)
     assert result["model"]["family"] == family
-    assert result["coverage"]["forward_count"] == (1 if family == "distilbert" else 2)
+    assert result["coverage"]["forward_count"] == (1 if family in ("distilbert", "vit") else 2)
     runtime.unload()
 
 
@@ -96,7 +96,7 @@ def test_real_cuda_end_to_end_selftest():
     report = subject.run_selftest()
     if report["status"] == "skipped": pytest.skip(report["reason"])
     assert report["status"] == "passed", report
-    assert len(report["stages"]) == 15
+    assert len(report["stages"]) == 20
     assert all(stage["status"] == "passed" for stage in report["stages"])
 
 

@@ -46,7 +46,7 @@
       <p class="hint">Unload releases the model owner separately from capture RAM. Your retained vectors remain inspectable; device memory release is subject to runtime cleanup.</p>
       <p id="demo-model-warning" class="approximation" hidden>Untrained random CPU demo: output is synthetic, not useful model answers. This is not GPU validation.</p>
       <div id="model-info" class="info-box" aria-live="polite">No model loaded.</div>
-      <p class="hint">Float32: GPT-2, T5 and DistilBERT masked language models support CPU or one CUDA GPU. Auto uses CUDA for these families when available and CPU for ViT image classifiers, with the device-selection reason recorded. No half-precision, multi-GPU sharding, Llama-family, GGUF, or custom-model support.</p>
+      <p class="hint">Float32: GPT-2, T5, DistilBERT masked language models and ViT image classifiers support CPU or one CUDA GPU. Auto prefers available CUDA and records the device-selection reason. Image preprocessing stays on CPU. No half-precision, multi-GPU sharding, Llama-family, GGUF, or custom-model support.</p>
     </section>
     <section aria-labelledby="open-heading">
       <h2 id="open-heading">Reopen a saved capture</h2>

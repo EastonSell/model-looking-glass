@@ -51,7 +51,7 @@ def test_input_setup_failure_preserves_live_owner_and_capture_over_http(tmp_path
             code, body, _ = call(endpoint, "/api/inspect", "POST", {"path": str(checkpoint)})
             assert code == 200, body
             inspection = json.loads(body)
-            assert inspection["supported_devices"] == (["cpu"] if family == "vit" else ["cpu", "cuda"])
+            assert inspection["supported_devices"] == ["cpu", "cuda"]
             checks = inspection["inspection"]
             assert checks["metadata_checked"] and checks["weight_headers_checked"] and checks["input_assets_loadable"]
             assert checks["weights_loaded"] is False and checks["inference_tested"] is False

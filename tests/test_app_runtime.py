@@ -399,11 +399,7 @@ def test_device_selection_is_family_aware_and_explicit_cuda_never_falls_back(mon
         "cuda": {"available": True, "reason": "synthetic device inventory"}}))
     device, reason = LocalModelRuntime._select_device("auto", "gpt2")
     assert str(device) == "cuda:0" and "Auto selected" in reason
-    for family in ("vit",):
-        device, reason = LocalModelRuntime._select_device("auto", family)
-        assert str(device) == "cpu" and "CPU-only" in reason
-        with pytest.raises(ValueError, match="CPU-only"):
-            LocalModelRuntime._select_device("cuda:0", family)
+    assert str(LocalModelRuntime._select_device("auto", "vit")[0]) == "cuda:0"
     assert str(LocalModelRuntime._select_device("auto", "distilbert")[0]) == "cuda:0"
     for invalid in ("cuda:99", "mps", "cuda:../../x", 0):
         with pytest.raises(ValueError): LocalModelRuntime._select_device(invalid, "gpt2")
@@ -609,3 +605,21 @@ def test_distilbert_cuda_planning_includes_all_vectors_and_full_length_logits(tm
     expected = (estimate["estimated_gpu_capture_transient_bytes"] + estimate["estimated_visible_workspace_bytes"]
         + 4 * estimate["largest_selected_boundary_bytes"] + 3 * 16 * 4 + (3 + 1) * 16 + 3 * 16)
     assert seen == [expected]
+
+
+def test_vit_cuda_planning_accounts_intermediate_vectors_pixels_and_class_logits(tmp_path, monkeypatch):
+    import looking_glass.app_runtime as module
+    path = tmp_path / "model"; local_checkpoint(path, "vit")
+    runtime = LocalModelRuntime(); runtime.load(str(path), device="cpu")
+    opts = runtime._settings({})
+    estimate = runtime._estimate(opts, 0, 1, 5)
+    assert estimate["estimated_gpu_capture_transient_bytes"] == 2 * 5 * (8 + 16 + 8) * 4
+    runtime._device = torch.device("cuda:0"); runtime._active_cuda_limit = 1024**3
+    seen = []
+    def stop(device, incremental, limit):
+        seen.append(incremental); raise ValueError("synthetic image admission stop before GPU transfer")
+    monkeypatch.setattr(module, "_cuda_admit", stop)
+    with pytest.raises(ValueError, match="synthetic image"):
+        runtime._run("", opts, image_bytes())
+    assert seen == [estimate["estimated_gpu_capture_transient_bytes"] + estimate["estimated_visible_workspace_bytes"]
+        + 4 * estimate["largest_selected_boundary_bytes"] + 3 * 4 + 2 * 3 * 8 * 8 * 4]

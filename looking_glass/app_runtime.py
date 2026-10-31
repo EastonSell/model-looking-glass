@@ -76,7 +76,7 @@ DEFAULTS = {"targets": "auto", "layers": None, "max_new_tokens": 8,
             "max_logits_bytes": 128 * 1024 * 1024}
 
 
-CUDA_FAMILIES = ("gpt2", "t5", "distilbert")
+CUDA_FAMILIES = ("gpt2", "t5", "distilbert", "vit")
 DEFAULT_VRAM_BYTES = 2 * 1024**3
 
 
@@ -505,7 +505,7 @@ class LocalModelRuntime:
         if len(parts) != 2 or parts[0] != "cuda" or not parts[1].isdigit():
             raise ValueError("device must be auto, cpu, or cuda:N")
         if family not in CUDA_FAMILIES:
-            raise ValueError("this adapter is CPU-only; select CPU explicitly or choose a GPT-2/T5/DistilBERT checkpoint for CUDA")
+            raise ValueError("this adapter is CPU-only; select CPU explicitly or choose a supported CUDA adapter for CUDA")
         normalized = f"cuda:{int(parts[1])}"
         if not any(item["id"] == normalized and item["available"] for item in capabilities["devices"]):
             raise ValueError("requested CUDA device is unavailable; no silent CPU fallback. " + capabilities["cuda"]["reason"])
@@ -778,7 +778,8 @@ class LocalModelRuntime:
             events = len(layers) * len(roles) * image_tokens
             values = len(layers) * image_tokens * sum(config.intermediate_size if r == "intermediate" else config.hidden_size for r in roles)
             boundary = image_tokens * max(config.hidden_size, config.intermediate_size) * 4
-            gpu_capture, workspace = 0, 0
+            gpu_capture = values * 4
+            workspace = 3 * config.num_attention_heads * image_tokens * image_tokens * 4 + 4 * image_tokens * config.intermediate_size * 4
         estimate = {"capture_events_upper_bound": events, "capture_bytes_upper_bound": values * 4,
                     "largest_selected_boundary_bytes": boundary,
                     "estimated_gpu_capture_transient_bytes": gpu_capture,
@@ -872,6 +873,8 @@ class LocalModelRuntime:
             count = 1 + (size[0] // patch[0]) * (size[1] // patch[1])
             estimate = self._estimate(opts, 0, 1, count)
             total_steps = 1
+            if model.config.num_labels * 4 > opts["max_logits_bytes"]:
+                raise ValueError("requested classifier logits exceed max_logits_bytes")
         else:
             ids, masks = self._text_inputs(prompt, opts)
             tokens = self.tokenizer.convert_ids_to_tokens(ids[0].tolist())
@@ -895,17 +898,23 @@ class LocalModelRuntime:
         decoder = torch.tensor([[start]], dtype=torch.int64) if family == "t5" else None
         stop_reason, answer = "length", ""
         if self._device.type == "cuda":
-            logits_bytes = logits_tokens * model.config.vocab_size * 4
+            if family == "vit":
+                logits_bytes = model.config.num_labels * 4
+                input_bytes = pixels.numel() * pixels.element_size() * 2  # Upload + adapter private raw-bit clone.
+            else:
+                logits_bytes = logits_tokens * model.config.vocab_size * 4
+                input_bytes = (ids.numel() + total_steps) * 16 + (ids.numel() * 16 if family == "distilbert" else 0)
             incremental = (estimate["estimated_gpu_capture_transient_bytes"] + estimate["estimated_visible_workspace_bytes"]
-                           + 4 * estimate["largest_selected_boundary_bytes"] + logits_bytes
-                           + (ids.numel() + total_steps) * 16
-                           + (ids.numel() * 16 if family == "distilbert" else 0))
+                           + 4 * estimate["largest_selected_boundary_bytes"] + logits_bytes + input_bytes)
             estimate["cuda_logits_bytes"] = logits_bytes
             estimate["cuda_admission"] = _cuda_admit(self._device, incremental, self._active_cuda_limit)
         try:
             if self._device.type == "cuda":
-                ids = ids.to(self._device)
-                masks = masks.to(self._device)
+                if pixels is not None:
+                    pixels = pixels.to(self._device)
+                else:
+                    ids = ids.to(self._device)
+                    masks = masks.to(self._device)
                 if decoder is not None:
                     decoder = decoder.to(self._device)
             for forward in range(total_steps):
@@ -940,7 +949,8 @@ class LocalModelRuntime:
                     points = [ViTTracePoint(layer, role, 0, token) for layer in opts["layers"]
                               for role in opts["targets"] for token in range(count)]
                     result = trace_vit_classifier(model, pixels, points=points, run_id=ident, **budget,
-                        max_tensor_bytes=opts["max_tensor_bytes"], max_logits_bytes=opts["max_logits_bytes"])
+                        max_tensor_bytes=opts["max_tensor_bytes"], max_logits_bytes=opts["max_logits_bytes"],
+                        synchronous_cpu=self._device.type == "cpu")
                     output, records, image_meta = result.output, result.records, result.image_metadata
                 if not bool(torch.isfinite(output.logits).all()):
                     raise ValueError("model produced nonfinite logits; no completed trace published")
