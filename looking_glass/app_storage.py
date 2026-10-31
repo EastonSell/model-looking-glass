@@ -216,6 +216,119 @@ class TraceStore:
             raise ValueError("Saved-run directory changed during catalog scan")
         return {"runs": runs, "truncated": enumeration_truncated or len(names) > 200}
 
+    def _coordinate(self, event, vector):
+        """Ground an original flat vector using only immutable retained provenance."""
+        coordinate = dict(status="unknown", app_forward_index=None, module_path=None,
+                          layer_index=None, stack=None, batch_position=None, token_position=None,
+                          token_id=None, token_piece=None, token_text=None, token_label_truncated=False,
+                          image_coordinate=None, reason=None)
+        def require(condition, reason):
+            if not condition: raise ValueError(reason)
+        def integer(value):
+            return type(value) is int and value >= 0
+        def integers(value, *, positive=False):
+            return type(value) is list and bool(value) and all(integer(x) and (not positive or x > 0) for x in value)
+        try:
+            metadata = self._events[event]["metadata"]
+            shape = self._events[event]["shape"]
+            source, saved = metadata.get("shape"), metadata.get("saved_shape")
+            require(integers(source, positive=True) and len(source) == 3, "Missing or invalid source shape")
+            require(integers(saved, positive=True) and saved == shape, "Saved shape does not match retained tensor")
+            require(type(metadata.get("batch_axis")) is int and metadata["batch_axis"] == 0
+                    and type(metadata.get("token_axis")) is int and metadata["token_axis"] == 1,
+                    "Unsupported or missing batch/token axes")
+            batches, positions = metadata.get("batch_positions"), metadata.get("token_positions")
+            require(integers(batches) and len(set(batches)) == len(batches) and max(batches) < source[0], "Invalid batch positions")
+            require(integers(positions) and len(set(positions)) == len(positions) and max(positions) < source[1], "Invalid token positions")
+            model = self._run.get("model")
+            family = model.get("family") if type(model) is dict else None
+            require(family in ("gpt2", "distilbert", "t5", "vit"), "Unknown retained adapter family")
+            if family in ("gpt2", "distilbert"):
+                require(shape == [len(batches), len(positions), source[2]], "Unsupported retained vector layout")
+                if family == "distilbert":
+                    require(len(batches) == len(positions) == 1, "DistilBERT requires singleton selected positions")
+                batch_slot, token_slot = divmod(vector, len(positions))
+            else:
+                require(shape == [source[2]] and len(batches) == len(positions) == 1 and vector == 0,
+                        "Adapter requires one rank-one selected vector")
+                batch_slot = token_slot = 0
+            forward, path, layer = (metadata.get(key) for key in ("app_forward_index", "module_path", "layer_index"))
+            require(integer(forward) and integer(layer) and type(path) is str and 0 < len(path) <= 1024,
+                    "Missing or invalid forward/module/layer provenance")
+            identity = metadata.get("identity")
+            require(type(identity) is dict and type(identity.get("run_id")) is str and bool(identity["run_id"]), "Missing capture run identity")
+            steps = self._run.get("steps")
+            require(type(steps) is list and all(type(step) is dict and integer(step.get("app_forward_index")) for step in steps), "Invalid retained forward steps")
+            matching = [step for step in steps if step["app_forward_index"] == forward]
+            require(len(matching) == 1 and matching[0].get("run_id") == identity["run_id"], "Forward step is missing, ambiguous, or has mismatched run identity")
+            step = matching[0]
+            batch, position = batches[batch_slot], positions[token_slot]
+            stack = "input"
+            if family == "t5":
+                require(path.startswith(("encoder.", "decoder.")), "T5 encoder/decoder stack is not explicit")
+                stack = path.split(".", 1)[0]
+            prefixes = {"gpt2": f"transformer.h.{layer}", "distilbert": f"distilbert.transformer.layer.{layer}",
+                        "t5": f"{stack}.block.{layer}", "vit": f"vit.encoder.layer.{layer}"}
+            suffixes = {"gpt2": ("", ".attn", ".mlp"), "distilbert": ("", ".attention", ".ffn"),
+                        "t5": ("", ".layer.0", ".layer.1" if stack == "encoder" else ".layer.2"),
+                        "vit": ("", ".attention", ".intermediate")}
+            require(path in {prefixes[family] + suffix for suffix in suffixes[family]},
+                    "Module path contradicts the retained adapter/layer boundary")
+            if family == "vit":
+                stack = "image"
+                image = metadata.get("image_coordinate")
+                require(type(image) is dict, "Missing image coordinate")
+                kind, row, col, box = (image.get(key) for key in ("token_kind", "patch_row", "patch_column", "processed_pixel_box_xyxy"))
+                if kind == "cls":
+                    require(position == 0 and row is None and col is None and box is None, "Invalid CLS image coordinate")
+                else:
+                    require(kind == "patch" and position > 0 and integer(row) and integer(col)
+                            and integers(box) and len(box) == 4 and box[0] < box[2] and box[1] < box[3], "Invalid patch image coordinate")
+                geometry = self._run.get("image_metadata")
+                require(geometry is not None, "Missing retained processed-image geometry")
+                reason = None
+                if geometry is not None:
+                    require(type(geometry) is dict, "Invalid image geometry")
+                    grid, patch = geometry.get("grid_shape"), geometry.get("patch_shape")
+                    require(integers(grid, positive=True) and len(grid) == 2 and integers(patch, positive=True) and len(patch) == 2,
+                            "Missing or invalid patch geometry")
+                    require(integer(geometry.get("sequence_length")) and geometry["sequence_length"] == source[1] == 1 + grid[0] * grid[1]
+                            and type(geometry.get("cls_token_index")) is int and geometry["cls_token_index"] == 0, "Inconsistent image sequence geometry")
+                    if kind == "patch":
+                        require(row < grid[0] and col < grid[1] and position == 1 + row * grid[1] + col
+                                and box == [col * patch[1], row * patch[0], (col + 1) * patch[1], (row + 1) * patch[0]], "Patch position or box contradicts processed geometry")
+                    reason = None
+                coordinate.update(image_coordinate={"token_kind": kind, "patch_row": row, "patch_column": col,
+                                                     "processed_pixel_box_xyxy": _json_copy(box)}, reason=reason)
+            else:
+                require(batch == 0 and source[0] == 1, "Recorded token sequences describe one batch-zero sample only")
+                ids = step.get("decoder_token_ids" if stack == "decoder" else "input_token_ids")
+                require(integers(ids) and len(ids) == source[1] and position < len(ids), "Missing or inconsistent forward input-token IDs")
+                token_id = ids[position]
+                coordinate["token_id"] = token_id
+                labels = self._run.get("token_labels")
+                label = labels.get(str(token_id)) if type(labels) is dict else None
+                if (type(label) is dict and type(label.get("piece")) is str and len(label["piece"]) <= 512
+                        and type(label.get("text")) is str and len(label["text"]) <= 512 and type(label.get("truncated")) is bool):
+                    coordinate.update(token_piece=label["piece"], token_text=label["text"], token_label_truncated=label["truncated"],
+                                      reason="Token display label is truncated" if label["truncated"] else None)
+                else:
+                    coordinate["reason"] = "Token display label unavailable in retained run; no tokenizer decoding performed"
+            coordinate.update(status="known", app_forward_index=forward, module_path=path, layer_index=layer,
+                              stack=stack, batch_position=batch, token_position=position)
+        except ValueError as error:
+            coordinate["reason"] = str(error)
+        return coordinate
+
+    def vectors(self, event, offset=0, limit=100):
+        """Bounded options retain original flat vector indices and exact coordinates."""
+        if self._run is None: raise ValueError("No completed trace is loaded")
+        _integer(event, "event", 0, len(self._values) - 1)
+        count = self._events[event]["vector_count"]
+        _integer(offset, "offset", 0, count); _integer(limit, "limit", 1, 200)
+        return {"vectors": [{"index": index, "coordinate": self._coordinate(event, index)}
+                            for index in range(offset, min(offset + limit, count))], "total": count}
+
     def tensor(self, event, vector=0, offset=0, limit=256, view="raw"):
         import torch
         if self._run is None: raise ValueError("No completed trace is loaded")
@@ -226,7 +339,8 @@ class TraceStore:
         if view not in ("raw", "reduced"): raise ValueError("view must be raw or reduced")
         row = value.reshape(-1, width)[vector]
         result = {"shape": list(value.shape), "dtype": "float32", "vector": vector,
-                  "vector_width": width, "offset": offset, "total": width, "approximate": view == "reduced"}
+                  "vector_width": width, "offset": offset, "total": width, "approximate": view == "reduced",
+                  "coordinate": self._coordinate(event, vector)}
         if view == "raw":
             segment = row[offset:offset + limit]
             result.update(values=segment.tolist(), raw_bits=[f"0x{x & 0xffffffff:08x}" for x in segment.view(torch.int32).tolist()])

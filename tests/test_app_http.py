@@ -107,10 +107,14 @@ def test_actual_local_checkpoint_through_http_and_reopen(tmp_path, family):
         assert report["model"]["family"] == family and report["complete"]
         assert report["settings"]["max_new_tokens"] == 2
         raw = json.loads(call(endpoint, "/api/tensor?event=0&vector=0&limit=4096")[1])
+        coordinates = json.loads(call(endpoint, "/api/vectors?event=0&limit=100")[1])
+        assert coordinates["vectors"][0]["coordinate"]["status"] == "known"
+        assert raw["coordinate"] == coordinates["vectors"][0]["coordinate"]
         saved = json.loads(call(endpoint, "/api/save", "POST", {"name": family})[1])
         assert call(endpoint, "/api/clear", "POST", {})[0] == 200
         assert call(endpoint, "/api/open", "POST", {"path": saved["path"]})[0] == 200
         assert json.loads(call(endpoint, "/api/tensor?event=0&vector=0&limit=4096")[1]) == raw
+        assert json.loads(call(endpoint, "/api/vectors?event=0&limit=100")[1]) == coordinates
     finally:
         httpd.shutdown(); thread.join(5); httpd.server_close()
 
@@ -235,3 +239,20 @@ def test_model_browser_listing_is_bounded_and_does_not_read_config(tmp_path):
     result=state.post("browse-models",{"path":str(root)})
     assert len(result["folders"]) == 200 and result["truncated"]
     assert all(row["is_checkpoint"] for row in result["folders"])
+
+
+def test_vector_navigation_api_is_authenticated_bounded_and_read_only(server):
+    state = server[0]
+    assert call(server, '/api/vectors?event=0')[0] == 400
+    assert call(server, '/api/run', 'POST', {'prompt': 'capture', 'settings': {}})[0] == 200
+    before = state.store.summary()
+    assert call(server, '/api/vectors?event=0', token=False)[0] == 403
+    code, body, _ = call(server, '/api/vectors?event=0&offset=1&limit=1')
+    assert code == 200, body
+    page = json.loads(body)
+    assert page['total'] == 2 and [row['index'] for row in page['vectors']] == [1]
+    # Generic legacy metadata has no grounded source coordinate; do not invent one.
+    assert page['vectors'][0]['coordinate']['status'] == 'unknown'
+    for query in ('event=-1', 'event=0&limit=201', 'event=0&offset=-1', 'event=0&event=0'):
+        assert call(server, '/api/vectors?' + query)[0] == 400
+    assert state.store.summary() == before

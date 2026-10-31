@@ -202,6 +202,7 @@ def create_server(state, port=0):
                     if path == "/api/status": answer = state.status()
                     elif path == "/api/saved": answer = state.store.saved_runs()
                     elif path == "/api/events": answer = state.store.events(number("offset", 0), number("limit", 100), query.get("q", [""])[0])
+                    elif path == "/api/vectors": answer = state.store.vectors(number("event", 0), number("offset", 0), number("limit", 100))
                     elif path == "/api/tensor": answer = state.store.tensor(number("event", 0), number("vector", 0), number("offset", 0), number("limit", 256), query.get("view", ["raw"])[0])
                     else:
                         self._send(404, {"error": "Not found"}); return

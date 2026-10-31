@@ -2,7 +2,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const token = document.querySelector('meta[name="mlg-token"]').content;
-  const state = {browse: null, saved: [], searchTimer: null, eventQuery: '', eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
+  const state = {vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
   const pageSize = 100, valuePageSize = 256;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
@@ -18,7 +18,7 @@
     return data;
   }
   function syncButtons() {
-    ['browse-button', 'browse-go', 'browse-parent', 'browse-select', 'browse-path', 'saved-runs', 'refresh-saved', 'inspect-button', 'load-button', 'model-path', 'execution-device', 'vram-mib', 'refresh-devices', 'open-button', 'open-path', 'vector-index', 'vector-view', 'capture-mode', 'layers', 'max-input', 'max-output', 'max-events', 'trace-mib', 'prompt', 'image-file'].forEach((id) => { $(id).disabled = state.busy; });
+    ['vector-picker', 'browse-button', 'browse-go', 'browse-parent', 'browse-select', 'browse-path', 'saved-runs', 'refresh-saved', 'inspect-button', 'load-button', 'model-path', 'execution-device', 'vram-mib', 'refresh-devices', 'open-button', 'open-path', 'vector-index', 'vector-view', 'capture-mode', 'layers', 'max-input', 'max-output', 'max-events', 'trace-mib', 'prompt', 'image-file'].forEach((id) => { $(id).disabled = state.busy; });
     $('run-button').textContent = state.run ? 'Replace capture →' : 'Run & capture →';
     $('replace-warning').hidden = !state.run;
     $('run-button').disabled = state.busy || !state.model || state.model.state === 'quarantined';
@@ -33,6 +33,10 @@
     $('events-next').disabled = state.busy || state.eventOffset + pageSize >= state.eventTotal;
     $('values-prev').disabled = state.busy || state.valueOffset === 0;
     $('values-next').disabled = state.busy || state.valueOffset + valuePageSize >= state.valueTotal;
+    $('vector-prev').disabled = state.busy || !state.event || Number($('vector-index').value) <= 0;
+    $('vector-next').disabled = state.busy || !state.event || Number($('vector-index').value) >= Number($('vector-index').max);
+    $('vectors-page-prev').disabled = state.busy || !state.event || state.vectorListOffset === 0;
+    $('vectors-page-next').disabled = state.busy || !state.event || state.vectorListOffset + 100 >= state.vectorListTotal;
     $('view-vector').disabled = state.busy || !state.event;
     document.querySelectorAll('#event-body button').forEach((button) => { button.disabled = state.busy; });
     document.querySelectorAll('#target-options input').forEach((input) => { input.disabled = state.busy; });
@@ -113,7 +117,7 @@
     syncButtons();
   }
   function clearView() {
-    clearTimeout(state.searchTimer); state.eventQuery = ''; $('event-filter').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
+    resetVectorPicker(); clearTimeout(state.searchTimer); state.eventQuery = ''; $('event-filter').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
     $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.'; syncButtons();
   }
   function showRun(run) {
@@ -144,7 +148,7 @@
     if (!state.event && state.events.length) await chooseEvent(state.events[0]);
   }
   async function chooseEvent(event) {
-    state.event = event; state.vector = 0; state.valueOffset = 0; $('vector-index').value = '0';
+    resetVectorPicker(); state.event = event; state.vector = 0; state.valueOffset = 0; $('vector-index').value = '0';
     const shape = event.shape || event.metadata?.saved_shape || event.metadata?.shape || []; const count = event.vector_count ?? shape.slice(0, -1).reduce((a, b) => a * b, 1);
     $('vector-index').max = String(Math.max(0, count - 1)); $('vector-panel').hidden = false; $('vector-heading').textContent = eventName(event); $('dtype-badge').textContent = event.dtype || event.metadata?.dtype || ''; $('vector-location').textContent = `${shape.join(' × ')} · ${count} vectors. Vector index flattens the preceding axes in row-major order; feature coordinates span the final axis. Consult metadata for source batch/token positions.`; $('event-metadata').textContent = display(event.metadata || event); renderEvents();
     await loadVector();
@@ -155,6 +159,7 @@
     // Never display the preceding tensor beneath a newly selected coordinate.
     $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren();
     $('raw-values').hidden = true; $('reduced-values').hidden = true; $('reduction-note').hidden = true;
+    $('vector-coordinate').textContent = 'Coordinate unavailable until this vector request succeeds.';
     $('value-page').textContent = 'Values unavailable until this request succeeds.'; state.valueTotal = 0;
     const vector = Number($('vector-index').value);
     if (!Number.isSafeInteger(vector) || vector < 0 || vector > Number($('vector-index').max)) throw new Error('Choose a vector index in the displayed range.');
@@ -162,6 +167,7 @@
     const view = $('vector-view').value;
     const result = await api(`tensor?event=${state.event.index}&vector=${vector}&offset=${state.valueOffset}&limit=${valuePageSize}&view=${view}`);
     if (request !== state.valueRequest) return;
+    $('vector-coordinate').textContent = coordinateLabel(result.coordinate, vector);
     $('reduction-note').hidden = view !== 'reduced'; $('raw-values').hidden = view !== 'raw'; $('reduced-values').hidden = view !== 'reduced';
     state.valueTotal = Number(result.vector_width ?? result.total ?? 0);
     if (view === 'raw') {
@@ -169,6 +175,42 @@
       values.forEach((value, i) => { const row = document.createElement('tr'); cell(row, Number(result.offset ?? state.valueOffset) + i); cell(row, number(value)); cell(row, bits[i] === undefined ? '—' : String(bits[i])); $('value-body').append(row); });
       $('value-page').textContent = `${state.valueOffset}–${Math.max(state.valueOffset, state.valueOffset + values.length - 1)} · ${state.valueTotal} features (zero-based)`;
     } else renderBins(result.bins || []);
+    const page = Math.floor(vector / 100) * 100;
+    if (!state.vectorOptions.length || page !== state.vectorListOffset) { state.vectorListOffset = page; await loadVectorList(); }
+    else $('vector-picker').value = String(vector);
+    syncButtons();
+  }
+  function resetVectorPicker() {
+    state.vectorListRequest++; state.vectorListOffset = 0; state.vectorListTotal = 0; state.vectorOptions = [];
+    $('vector-picker').replaceChildren(); $('vectors-page').textContent = ''; $('vector-list-status').textContent = '';
+    $('vector-coordinate').textContent = 'Coordinate unavailable until a vector is read.';
+  }
+  function coordinateLabel(coordinate, index) {
+    const c = coordinate;
+    if (!c || c.status !== 'known') return `Vector ${index} · source unknown: ${c?.reason || 'No validated source mapping was recorded.'}`;
+    const caveat = c.reason ? ` · ${c.reason}` : '';
+    const location = `Vector ${index} · forward ${c.app_forward_index ?? '?'} · ${c.stack || 'unknown stack'} · batch ${c.batch_position ?? '?'}`;
+    if (c.image_coordinate) return `${location} · processed-image coordinate ${JSON.stringify(c.image_coordinate)} (not original-image pixels or words)${caveat}`;
+    const piece = c.token_piece == null ? 'tokenizer piece unavailable' : `piece ${JSON.stringify(c.token_piece)}`;
+    return `${location} · token position ${c.token_position ?? '?'} · ID ${c.token_id ?? '?'} · ${piece}${c.token_label_truncated ? ' · label truncated' : ''}${caveat}`;
+  }
+  async function loadVectorList() {
+    if (!state.event) return;
+    const request = ++state.vectorListRequest, eventIndex = state.event.index;
+    $('vector-list-status').textContent = 'Reading source positions…';
+    try {
+      const result = await api(`vectors?event=${eventIndex}&offset=${state.vectorListOffset}&limit=100`);
+      if (request !== state.vectorListRequest || state.event?.index !== eventIndex) return;
+      state.vectorOptions = result.vectors || []; state.vectorListTotal = Number(result.total || 0); $('vector-picker').replaceChildren();
+      for (const item of state.vectorOptions) { const option = document.createElement('option'); option.value = String(item.index); option.textContent = coordinateLabel(item.coordinate, item.index); $('vector-picker').append(option); }
+      $('vector-picker').value = state.vectorOptions.some((item) => item.index === state.vector) ? String(state.vector) : '';
+      $('vectors-page').textContent = state.vectorListTotal ? `${state.vectorListOffset + 1}–${Math.min(state.vectorListOffset + state.vectorOptions.length, state.vectorListTotal)} of ${state.vectorListTotal} vectors` : 'No source positions';
+      $('vector-list-status').textContent = 'Picker labels describe saved source coordinates. Selecting one reads that exact flat vector index.';
+    } catch (error) {
+      if (request !== state.vectorListRequest || state.event?.index !== eventIndex) return;
+      state.vectorOptions = []; $('vector-picker').replaceChildren(); $('vectors-page').textContent = '';
+      $('vector-list-status').textContent = `Source-position list unavailable: ${error.message || String(error)}. Use the numeric vector index or previous/next vector controls; retained values remain available.`;
+    }
     syncButtons();
   }
   function renderBins(bins) {
@@ -230,11 +272,16 @@
   $('clear-button').addEventListener('click', () => action('Clearing captured results…', async () => { await api('clear', {}); clearView(); $('prompt').value = ''; state.imageRequest++; state.image = null; $('image-file').value = ''; $('image-description').textContent = 'Select a local PNG, JPEG, or WebP. It is sent only to this local app.'; }));
   $('event-filter').addEventListener('input', () => {
     clearTimeout(state.searchTimer); state.eventRequest++; state.valueRequest++;
-    state.eventQuery = $('event-filter').value.trim(); state.eventOffset = 0; state.event = null; $('vector-panel').hidden = true;
+    resetVectorPicker(); state.eventQuery = $('event-filter').value.trim(); state.eventOffset = 0; state.event = null; $('vector-panel').hidden = true;
     const revision = state.eventRequest; const search = async () => { if (!state.run || revision !== state.eventRequest) return; if (state.busy) { state.searchTimer = setTimeout(search, 250); return; } try { await loadEvents(); } catch (error) { if (revision + 1 === state.eventRequest) notice(error.message || String(error), true); } }; state.searchTimer = setTimeout(search, 250);
   });
   $('events-prev').addEventListener('click', () => action('Loading previous observations…', async () => { state.eventOffset = Math.max(0, state.eventOffset - pageSize); await loadEvents(); }));
   $('events-next').addEventListener('click', () => action('Loading next observations…', async () => { state.eventOffset += pageSize; await loadEvents(); }));
+  $('vector-picker').addEventListener('change', () => action('Reading selected source position…', async () => { const selected = state.vectorOptions.find((item) => String(item.index) === $('vector-picker').value); if (selected) { $('vector-index').value = String(selected.index); await loadVector(); } }));
+  $('vector-prev').addEventListener('click', () => action('Reading previous vector…', async () => { $('vector-index').value = String(Math.max(0, Number($('vector-index').value) - 1)); await loadVector(); }));
+  $('vector-next').addEventListener('click', () => action('Reading next vector…', async () => { $('vector-index').value = String(Math.min(Number($('vector-index').max), Number($('vector-index').value) + 1)); await loadVector(); }));
+  $('vectors-page-prev').addEventListener('click', () => action('Reading source-position picker…', async () => { state.vectorListOffset = Math.max(0, state.vectorListOffset - 100); await loadVectorList(); }));
+  $('vectors-page-next').addEventListener('click', () => action('Reading source-position picker…', async () => { state.vectorListOffset += 100; await loadVectorList(); }));
   $('view-vector').addEventListener('click', () => action('Reading retained vector…', loadVector));
   $('vector-view').addEventListener('change', () => action('Changing display view…', async () => { state.valueOffset = 0; await loadVector(); }));
   $('values-prev').addEventListener('click', () => action('Reading previous coordinates…', async () => { state.valueOffset = Math.max(0, state.valueOffset - valuePageSize); await loadVector(); }));

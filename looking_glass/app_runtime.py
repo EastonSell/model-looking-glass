@@ -17,6 +17,52 @@ import uuid
 import torch
 
 
+TOKEN_LABEL_CHARACTERS = 512
+TOKEN_LABEL_BYTES = 256 * 1024
+
+
+def _token_labels(tokenizer, steps):
+    """Snapshot display labels only; coordinates and tensors remain authoritative."""
+    identifiers = sorted({token for step in steps
+        for key in ("input_token_ids", "decoder_token_ids") for token in (step.get(key) or [])})
+    labels, unavailable, truncated, omitted = {}, 0, 0, 0
+    used = 2  # UTF-8 JSON object braces; compact separators below.
+    for identifier in identifiers:
+        if tokenizer is None:
+            unavailable += 1
+            continue
+        try:
+            piece = tokenizer.convert_ids_to_tokens(identifier)
+            text = tokenizer.decode([identifier], skip_special_tokens=False, clean_up_tokenization_spaces=False)
+            if type(piece) is not str or type(text) is not str:
+                raise ValueError("tokenizer label must be text")
+            clipped = len(piece) > TOKEN_LABEL_CHARACTERS or len(text) > TOKEN_LABEL_CHARACTERS
+            item = {"piece": piece[:TOKEN_LABEL_CHARACTERS], "text": text[:TOKEN_LABEL_CHARACTERS], "truncated": clipped}
+            key = str(identifier)
+            encoded = json.dumps(key, ensure_ascii=False).encode("utf-8") + b":" + json.dumps(
+                item, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8")
+        except Exception as error:
+            # Display lookup failures are recoverable, resource exhaustion is not.
+            if isinstance(error, (MemoryError, torch.OutOfMemoryError)) or (
+                    isinstance(error, RuntimeError) and "out of memory" in str(error).lower()):
+                raise
+            unavailable += 1
+            continue
+        size = len(encoded) + bool(labels)
+        if used + size > TOKEN_LABEL_BYTES:
+            omitted += 1
+            continue
+        labels[key] = item
+        used += size
+        truncated += int(clipped)
+    return labels, {"unique_input_ids": len(identifiers), "labeled_ids": len(labels),
+        "omitted_ids": omitted, "unavailable_ids": unavailable, "truncated_ids": truncated,
+        "max_label_characters": TOKEN_LABEL_CHARACTERS, "max_serialized_bytes": TOKEN_LABEL_BYTES,
+        "serialized_bytes": used, "serialization": "UTF-8 JSON mapping, ensure_ascii=False, compact separators",
+        "scope": "Display labels for exact retained input/decoder IDs only, not selected output tokens unless subsequently input. Individual decoded pieces may not concatenate into decoded text.",
+        "reason": "Display-only character/UTF-8 byte caps or unavailable tokenizer labels; exact IDs and tensors are unchanged."}
+
+
 FAMILIES = {
     "gpt2": {"architecture": "GPT2LMHeadModel", "config": "GPT2Config", "task": "text-generation", "targets": ("attn", "mlp", "block")},
     "distilbert": {"architecture": "DistilBertForMaskedLM", "config": "DistilBertConfig", "task": "fill-mask", "targets": ("attention", "ffn", "block")},
@@ -758,7 +804,9 @@ class LocalModelRuntime:
                     del result
             if family in ("gpt2", "t5"):
                 answer = self.tokenizer.decode(generated, skip_special_tokens=True)
+            token_labels, token_labels_note = _token_labels(self.tokenizer, steps)
             return {"answer": answer, "task": self._info["task"], "events": captures,
+                    "token_labels": token_labels, "token_labels_note": token_labels_note,
                     "model": self.info(), "settings": {**opts, "targets": list(opts["targets"]), "layers": list(opts["layers"])},
                     "prompt": prompt if family != "vit" else None,
                     "prompt_note": "Text input used as supplied" if family != "vit" else "Text prompt is unused for image classification",

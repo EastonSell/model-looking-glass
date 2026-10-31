@@ -525,3 +525,65 @@ def test_loaded_memory_metadata_includes_registered_buffers(tmp_path):
     runtime = LocalModelRuntime(); info = runtime.load(str(path), device="cpu")
     assert info["registered_buffer_bytes"] == sum(b.numel() * b.element_size() for b in runtime.model.buffers())
     assert info["registered_buffer_bytes"] > 0
+
+
+def test_token_labels_only_retained_input_ids_and_later_prefix(loaded):
+    runtime, info, _ = loaded
+    prompt = "hello [MASK]" if info["family"] == "distilbert" else "hello world"
+    result = runtime.run(prompt, {"max_new_tokens": 2}, image_bytes() if info["family"] == "vit" else None)
+    ids = {i for step in result["steps"] for key in ("input_token_ids", "decoder_token_ids") for i in (step[key] or [])}
+    assert set(result["token_labels"]) == {str(i) for i in ids}
+    for i in ids:
+        assert result["token_labels"][str(i)] == {"piece": runtime.tokenizer.convert_ids_to_tokens(i),
+            "text": runtime.tokenizer.decode([i], skip_special_tokens=False, clean_up_tokenization_spaces=False), "truncated": False}
+    if info["family"] == "t5": assert "0" in result["token_labels"]
+    if info["family"] in ("gpt2", "t5"):
+        assert str(result["steps"][0]["selected_token_id"]) in result["token_labels"]
+    if info["family"] == "vit": assert result["token_labels"] == {}
+
+
+def test_token_label_no_selected_output_leakage_and_deduplication():
+    from looking_glass.app_runtime import _token_labels
+    class Tokenizer:
+        def convert_ids_to_tokens(self, i): return f"piece{i}"
+        def decode(self, ids, **kwargs):
+            assert kwargs == {"skip_special_tokens": False, "clean_up_tokenization_spaces": False}
+            return str(ids[0])
+    labels, note = _token_labels(Tokenizer(), [{"input_token_ids": [1, 1], "decoder_token_ids": [0], "selected_token_id": 99}])
+    assert set(labels) == {"0", "1"} and note["unique_input_ids"] == 2
+
+
+def test_token_label_unicode_character_and_total_byte_caps():
+    from looking_glass.app_runtime import _token_labels
+    class Tokenizer:
+        def convert_ids_to_tokens(self, i): return "🧪" * 1000
+        def decode(self, ids, **kwargs): return "漢" * 1000
+    labels, note = _token_labels(Tokenizer(), [{"input_token_ids": list(range(1000))}])
+    assert 0 < len(labels) < 1000
+    assert all(len(x["piece"]) == len(x["text"]) == 512 and x["truncated"] for x in labels.values())
+    encoded = json.dumps(labels, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    assert len(encoded) == note["serialized_bytes"] <= 256 * 1024
+    assert note["omitted_ids"] == 1000 - len(labels) and note["truncated_ids"] == len(labels)
+
+
+def test_token_label_lookup_errors_unavailable_but_fatal_errors_propagate():
+    from looking_glass.app_runtime import _token_labels
+    class Tokenizer:
+        def convert_ids_to_tokens(self, i): raise ValueError("unavailable label")
+    assert _token_labels(Tokenizer(), [{"input_token_ids": [1]}])[1]["unavailable_ids"] == 1
+    for error in (MemoryError(), torch.OutOfMemoryError(), KeyboardInterrupt(), RuntimeError("CUDA out of memory")):
+        class Fatal:
+            def convert_ids_to_tokens(self, i): raise error
+        with pytest.raises(type(error)): _token_labels(Fatal(), [{"input_token_ids": [1]}])
+
+
+def test_token_labels_do_not_modify_capture_bits(tmp_path, monkeypatch):
+    import looking_glass.app_runtime as module
+    path = tmp_path / "model"; local_checkpoint(path, "gpt2")
+    runtime = LocalModelRuntime(); runtime.load(str(path), device="cpu")
+    with_labels = runtime.run("hello world", {"max_new_tokens": 2})
+    monkeypatch.setattr(module, "_token_labels", lambda *args: ({}, {}))
+    without_labels = runtime.run("hello world", {"max_new_tokens": 2})
+    assert with_labels["generated_token_ids"] == without_labels["generated_token_ids"]
+    for left, right in zip(with_labels["events"], without_labels["events"]):
+        assert torch.equal(left.value.view(torch.int32), right.value.view(torch.int32))

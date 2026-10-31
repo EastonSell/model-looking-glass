@@ -9,3 +9,6 @@
 #folder-browser { white-space: normal; }
 #folder-browser .button-row { flex-wrap: wrap; }
 .folder-row button { white-space: normal; }
+
+#vector-picker { max-width: 100%; }
+#vector-coordinate { font-size: 12px; }

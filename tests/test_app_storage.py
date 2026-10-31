@@ -233,3 +233,138 @@ def test_portable_catalog_rejects_replaced_root(tmp_path, monkeypatch):
     root.rmdir(); root.symlink_to(tmp_path, target_is_directory=True)
     monkeypatch.delattr(storage.os, "O_NOFOLLOW")
     with pytest.raises(ValueError, match="ordinary directory"): store.saved_runs()
+
+
+def coordinate_result(family="gpt2", *, batches=None, positions=None, path=None, forward=0):
+    batches = [0] if batches is None else batches
+    positions = [0, 1] if positions is None else positions
+    shape = [len(batches), len(positions), 4] if family in ("gpt2", "distilbert") else [4]
+    metadata = dict(identity={"run_id": "step-a"}, app_forward_index=forward,
+                    module_path=path or {"t5": "encoder.block.0", "gpt2": "transformer.h.0", "distilbert": "distilbert.transformer.layer.0", "vit": "vit.encoder.layer.0"}[family],
+                    layer_index=0, batch_axis=0, token_axis=1, shape=[max(batches) + 1, 3 if family == "t5" and path and path.startswith("decoder.") else 5, 4], saved_shape=shape,
+                    batch_positions=batches, token_positions=positions)
+    return dict(model={"family": family}, tokens=["initial", "second", "third", "fourth", "fifth"],
+                token_labels={str(i): {"piece": f"piece{i}", "text": f"text{i}", "truncated": False} for i in range(10)},
+                steps=[dict(app_forward_index=forward, run_id="step-a", input_token_ids=[0, 1, 2, 3, 4], decoder_token_ids=[0, 8, 9], selected_token_id=9)],
+                events=[SimpleNamespace(value=torch.arange(4 * (len(batches) * len(positions) if len(shape) == 3 else 1), dtype=torch.float32).reshape(shape), metadata=lambda: metadata)])
+
+
+def test_coordinate_selected_reordered_vectors_and_roundtrip(tmp_path):
+    store = TraceStore(tmp_path); store.publish(coordinate_result(positions=[4, 1, 3]))
+    options = store.vectors(0, 1, 2)
+    assert options["total"] == 3
+    assert [(v["index"], v["coordinate"]["token_position"], v["coordinate"]["token_id"]) for v in options["vectors"]] == [(1, 1, 1), (2, 3, 3)]
+    assert all(v["coordinate"]["status"] == "known" for v in options["vectors"])
+    assert store.tensor(0, 2)["coordinate"] == options["vectors"][1]["coordinate"]
+    saved = store.save("coordinates"); reopened = TraceStore(tmp_path); reopened.open(saved["path"])
+    assert reopened.vectors(0) == store.vectors(0)
+    assert reopened.tensor(0, 2) == store.tensor(0, 2)
+
+
+@pytest.mark.parametrize("family,path,expected", [("distilbert", "distilbert.transformer.layer.0", 2), ("t5", "encoder.block.0", 2), ("t5", "decoder.block.0", 9)])
+def test_coordinate_adapter_layouts(family, path, expected, tmp_path):
+    store = TraceStore(tmp_path); store.publish(coordinate_result(family, positions=[2], path=path))
+    coordinate = store.tensor(0)["coordinate"]
+    assert coordinate["status"] == "known" and coordinate["token_id"] == expected
+    assert coordinate["token_piece"] == f"piece{expected}"
+
+
+@pytest.mark.parametrize("key,value", [("batch_axis", False), ("token_axis", True), ("app_forward_index", False), ("layer_index", True), ("saved_shape", [1, 2, 99]), ("shape", [1, 1, 4]), ("token_positions", [1, 1]), ("batch_positions", [True]), ("identity", {"run_id": "wrong"})])
+def test_coordinate_malformed_metadata_is_unknown(tmp_path, key, value):
+    data = coordinate_result(); data["events"][0].metadata()[key] = value
+    store = TraceStore(tmp_path); store.publish(data)
+    coordinate = store.tensor(0)["coordinate"]
+    assert coordinate["status"] == "unknown" and coordinate["reason"]
+
+
+def test_coordinate_duplicate_forward_and_nonzero_batch_unknown(tmp_path):
+    data = coordinate_result(); data["steps"].append(dict(data["steps"][0]))
+    store = TraceStore(tmp_path); store.publish(data)
+    assert store.tensor(0)["coordinate"]["status"] == "unknown"
+    store.publish(coordinate_result(batches=[1, 0]))
+    assert store.tensor(0, 0)["coordinate"]["status"] == "unknown"
+    assert store.tensor(0, 2)["coordinate"]["status"] == "unknown"
+    assert store.tensor(0, 2)["raw_bits"] == ["0x41000000", "0x41100000", "0x41200000", "0x41300000"]
+
+
+def test_coordinate_generation_input_not_selected_output_and_decoder_start(tmp_path):
+    data = coordinate_result(positions=[2], forward=1)
+    data["steps"][0]["input_token_ids"] = [0, 1, 7]
+    data["events"][0].metadata()["shape"][1] = 3
+    store = TraceStore(tmp_path); store.publish(data)
+    assert store.tensor(0)["coordinate"]["token_id"] == 7  # Not selected output 9.
+    store.publish(coordinate_result("t5", positions=[0], path="decoder.block.0"))
+    assert store.tensor(0)["coordinate"]["token_id"] == 0
+
+
+def test_coordinate_missing_labels_remain_grounded_without_decoding(tmp_path):
+    data = coordinate_result(); del data["token_labels"]
+    store = TraceStore(tmp_path); store.publish(data)
+    coordinate = store.tensor(0)["coordinate"]
+    assert coordinate["status"] == "known" and coordinate["token_id"] == 0
+    assert coordinate["token_text"] is None
+    assert coordinate["token_piece"] in (None, "initial")
+    assert coordinate["reason"]
+    data["token_labels"] = {"0": {"piece": "x" * 513, "text": "x", "truncated": False}}
+    store.publish(data)
+    assert store.tensor(0)["coordinate"]["token_piece"] is None
+
+
+@pytest.mark.parametrize("position,image", [(0, dict(token_kind="cls", patch_row=None, patch_column=None, processed_pixel_box_xyxy=None)), (2, dict(token_kind="patch", patch_row=0, patch_column=1, processed_pixel_box_xyxy=[4, 0, 8, 4]))])
+def test_coordinate_vit_image_not_tokens(tmp_path, position, image):
+    data = coordinate_result("vit", positions=[position]); data["events"][0].metadata()["image_coordinate"] = image
+    data["image_metadata"] = dict(grid_shape=[2, 2], patch_shape=[4, 4], sequence_length=5, cls_token_index=0)
+    store = TraceStore(tmp_path); store.publish(data)
+    coordinate = store.tensor(0)["coordinate"]
+    assert coordinate["status"] == "known" and coordinate["stack"] == "image"
+    assert coordinate["image_coordinate"] == image
+    assert coordinate["token_id"] is None and coordinate["token_piece"] is None
+    image["patch_row"] = True
+    store.publish(data)
+    assert store.tensor(0)["coordinate"]["status"] == "unknown"
+
+
+@pytest.mark.parametrize("args", [(-1, 0, 1), (0, -1, 1), (0, 0, 201), (0, 0, 0), (True, 0, 1)])
+def test_vector_option_bounds(tmp_path, args):
+    store = TraceStore(tmp_path); store.publish(coordinate_result())
+    with pytest.raises(ValueError): store.vectors(*args)
+
+
+def test_coordinate_requires_input_sequence_shape_consistency(tmp_path):
+    data = coordinate_result(); data["steps"][0]["input_token_ids"] = [0, 1]
+    store = TraceStore(tmp_path); store.publish(data)
+    assert store.tensor(0)["coordinate"]["status"] == "unknown"
+
+
+def test_coordinate_vit_cross_checks_processed_geometry(tmp_path):
+    data = coordinate_result("vit", positions=[2])
+    data["image_metadata"] = dict(grid_shape=[2, 2], patch_shape=[4, 4], sequence_length=5, cls_token_index=0)
+    data["events"][0].metadata()["image_coordinate"] = dict(token_kind="patch", patch_row=0, patch_column=1, processed_pixel_box_xyxy=[4, 0, 8, 4])
+    store = TraceStore(tmp_path); store.publish(data)
+    assert store.tensor(0)["coordinate"]["status"] == "known"
+    data["events"][0].metadata()["image_coordinate"]["patch_column"] = 0
+    store.publish(data)
+    assert store.tensor(0)["coordinate"]["status"] == "unknown"
+
+
+def test_coordinate_boolean_step_and_truncated_label(tmp_path):
+    data = coordinate_result(); data["steps"][0]["app_forward_index"] = False
+    store = TraceStore(tmp_path); store.publish(data)
+    assert store.tensor(0)["coordinate"]["status"] == "unknown"
+    data = coordinate_result(); data["token_labels"]["0"] = {"piece": "x" * 512, "text": "partial", "truncated": True}
+    store.publish(data); coordinate = store.tensor(0)["coordinate"]
+    assert coordinate["status"] == "known" and coordinate["token_label_truncated"] is True
+    assert coordinate["reason"] == "Token display label is truncated"
+
+
+def test_coordinate_rejects_module_layer_contradiction(tmp_path):
+    data = coordinate_result(); data["events"][0].metadata()["module_path"] = "transformer.h.5.attn"
+    store = TraceStore(tmp_path); store.publish(data)
+    assert store.tensor(0)["coordinate"]["status"] == "unknown"
+
+
+def test_coordinate_missing_vit_geometry_is_unknown(tmp_path):
+    data = coordinate_result("vit", positions=[0])
+    data["events"][0].metadata()["image_coordinate"] = dict(token_kind="cls", patch_row=None, patch_column=None, processed_pixel_box_xyxy=None)
+    store = TraceStore(tmp_path); store.publish(data)
+    assert store.tensor(0)["coordinate"]["status"] == "unknown"
