@@ -295,8 +295,8 @@ class TraceStore:
             require(integers(positions) and len(set(positions)) == len(positions) and max(positions) < source[1], "Invalid token positions")
             model = self._run.get("model")
             family = model.get("family") if type(model) is dict else None
-            require(family in ("gpt2", "distilbert", "t5", "vit"), "Unknown retained adapter family")
-            if family in ("gpt2", "distilbert"):
+            require(family in ("gpt2", "distilbert", "t5", "vit", "llama"), "Unknown retained adapter family")
+            if family in ("gpt2", "distilbert", "llama"):
                 require(shape == [len(batches), len(positions), source[2]], "Unsupported retained vector layout")
                 if family == "distilbert":
                     require(len(batches) == len(positions) == 1, "DistilBERT requires singleton selected positions")
@@ -335,12 +335,18 @@ class TraceStore:
                 require(path.startswith(("encoder.", "decoder.")), "T5 encoder/decoder stack is not explicit")
                 stack = path.split(".", 1)[0]
             prefixes = {"gpt2": f"transformer.h.{layer}", "distilbert": f"distilbert.transformer.layer.{layer}",
-                        "t5": f"{stack}.block.{layer}", "vit": f"vit.encoder.layer.{layer}"}
+                        "t5": f"{stack}.block.{layer}", "vit": f"vit.encoder.layer.{layer}",
+                        "llama": f"model.layers.{layer}"}
             suffixes = {"gpt2": ("", ".attn", ".mlp"), "distilbert": ("", ".attention", ".ffn"),
                         "t5": ("", ".layer.0", ".layer.1" if stack == "encoder" else ".layer.2"),
-                        "vit": ("", ".attention", ".intermediate")}
+                        "vit": ("", ".attention", ".intermediate"), "llama": ("", ".self_attn", ".mlp")}
             require(path in {prefixes[family] + suffix for suffix in suffixes[family]},
                     "Module path contradicts the retained adapter/layer boundary")
+            if family == "llama":
+                output_path = metadata.get("output_path")
+                expected_path = [0] if path.endswith(".self_attn") else []
+                require(type(output_path) is list and all(type(index) is int for index in output_path)
+                        and output_path == expected_path, "Llama output selector contradicts the retained boundary")
             if family == "vit":
                 stack = "image"
                 image = metadata.get("image_coordinate")

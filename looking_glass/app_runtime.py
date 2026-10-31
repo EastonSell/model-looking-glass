@@ -64,6 +64,7 @@ def _token_labels(tokenizer, steps):
 
 
 FAMILIES = {
+    "llama": {"architecture": "LlamaForCausalLM", "config": "LlamaConfig", "task": "text-generation", "targets": ("attention", "mlp", "block")},
     "gpt2": {"architecture": "GPT2LMHeadModel", "config": "GPT2Config", "task": "text-generation", "targets": ("attn", "mlp", "block")},
     "distilbert": {"architecture": "DistilBertForMaskedLM", "config": "DistilBertConfig", "task": "fill-mask", "targets": ("attention", "ffn", "block")},
     "t5": {"architecture": "T5ForConditionalGeneration", "config": "T5Config", "task": "text-to-text", "targets": ("self_attention", "feed_forward", "block")},
@@ -76,7 +77,7 @@ DEFAULTS = {"targets": "auto", "layers": None, "max_new_tokens": 8,
             "max_logits_bytes": 128 * 1024 * 1024}
 
 
-CUDA_FAMILIES = ("gpt2", "t5", "distilbert", "vit")
+CUDA_FAMILIES = ("gpt2", "t5", "distilbert", "vit", "llama")
 DEFAULT_VRAM_BYTES = 2 * 1024**3
 
 
@@ -301,8 +302,11 @@ class LocalModelRuntime:
         config = _json(root / "config.json")
         family = config.get("model_type")
         if type(family) is not str or family not in FAMILIES:
-            raise ValueError("unsupported architecture; this version supports GPT-2, DistilBERT masked LM, T5 and ViT classifier only")
+            raise ValueError("unsupported architecture; this version supports GPT-2, DistilBERT masked LM, T5, ViT classifier and standard default-RoPE Llama only")
         spec = FAMILIES[family]
+        if family == "llama":
+            from .llama_trace import validate_llama_config
+            validate_llama_config(config)
         if config.get("auto_map") or config.get("quantization_config"):
             raise ValueError("custom remote code and quantized checkpoints are unsupported")
         architectures = config.get("architectures")
@@ -362,7 +366,7 @@ class LocalModelRuntime:
                  "vocab.json", "merges.txt", "vocab.txt", "spiece.model", "tokenizer.model",
                  "sentencepiece.bpe.model", "preprocessor_config.json", "chat_template.jinja"}
         tokenizer_config = _json(root / "tokenizer_config.json") if (root / "tokenizer_config.json").exists() else {}
-        allowed_classes = {"gpt2": {"GPT2Tokenizer", "GPT2TokenizerFast"},
+        allowed_classes = {"llama": {"LlamaTokenizer", "LlamaTokenizerFast"}, "gpt2": {"GPT2Tokenizer", "GPT2TokenizerFast"},
             "distilbert": {"DistilBertTokenizer", "DistilBertTokenizerFast", "BertTokenizer", "BertTokenizerFast"},
             "t5": {"T5Tokenizer", "T5TokenizerFast"}, "vit": set()}
         for metadata in (tokenizer_config, inspected["config"]):
@@ -657,6 +661,7 @@ class LocalModelRuntime:
             self._vram_limit = max_vram_bytes if selected.type == "cuda" else None
             family = inspected["family"]
             if family == "gpt2": depths = {"transformer": len(model.transformer.h)}
+            elif family == "llama": depths = {"decoder": len(model.model.layers)}
             elif family == "distilbert": depths = {"encoder": len(model.distilbert.transformer.layer)}
             elif family == "t5": depths = {"encoder": len(model.encoder.block), "decoder": len(model.decoder.block)}
             else: depths = {"encoder": len(model.vit.encoder.layer)}
@@ -665,7 +670,7 @@ class LocalModelRuntime:
                               device_selection_reason=reason, dtype="float32", state="loading", stack_layers=depths,
                               capture_device="cpu", max_vram_bytes=self._vram_limit, execution_numerics=self._numerics(),
                               identity_note="Local directory and configuration labels, not a cryptographic checkpoint fingerprint or execution attestation.",
-                              config_summary={key: value for key, value in model.config.to_dict().items() if key in ("model_type", "architectures", "vocab_size", "n_positions", "n_embd", "n_layer", "n_head", "dim", "hidden_dim", "n_layers", "n_heads", "max_position_embeddings", "d_model", "d_ff", "num_layers", "num_decoder_layers", "num_heads", "hidden_size", "intermediate_size", "num_hidden_layers", "num_attention_heads", "image_size", "patch_size", "num_channels", "num_labels")},
+                              config_summary={key: value for key, value in model.config.to_dict().items() if key in ("model_type", "architectures", "vocab_size", "n_positions", "n_embd", "n_layer", "n_head", "dim", "hidden_dim", "n_layers", "n_heads", "max_position_embeddings", "d_model", "d_ff", "num_layers", "num_decoder_layers", "num_heads", "hidden_size", "intermediate_size", "num_hidden_layers", "num_attention_heads", "num_key_value_heads", "head_dim", "rope_theta", "rope_scaling", "image_size", "patch_size", "num_channels", "num_labels")},
                               layers=list(range(max(depths.values()))),
                               parameter_bytes=sum(p.numel() * p.element_size() for p in model.parameters()),
                               registered_buffer_bytes=sum(b.numel() * b.element_size() for b in model.buffers()),
@@ -760,6 +765,15 @@ class LocalModelRuntime:
             gpu_capture = boundary
             context = length + steps - 1
             workspace = 3 * config.n_head * context * context * 4 + 4 * context * (config.n_inner or 4 * config.n_embd) * 4
+        elif family == "llama":
+            events = len(layers) * len(roles) * steps
+            values = len(layers) * len(roles) * sum(length+i for i in range(steps)) * config.hidden_size
+            context = length + steps - 1
+            boundary = context * config.hidden_size * 4
+            gpu_capture = len(layers) * len(roles) * boundary
+            workspace = (3 * config.num_attention_heads * context * context * 4
+                + 6 * context * config.intermediate_size * 4
+                + 4 * context * ((config.num_attention_heads + 2 * config.num_key_value_heads) * config.head_dim + config.hidden_size) * 4)
         elif family == "distilbert":
             events = len(layers) * len(roles) * length
             values = events * config.dim
@@ -849,6 +863,7 @@ class LocalModelRuntime:
         from .distilbert_trace import trace_distilbert_masked_lm
         from .flan_t5_trace import T5TracePoint, trace_t5_forward
         from .vit_trace import ViTTracePoint, trace_vit_classifier
+        from .llama_trace import trace_llama_causal_lm
         family, model = self._info["family"], self.model
         run_id = uuid.uuid4().hex
         captures, steps, used_bytes = [], [], 0
@@ -878,9 +893,9 @@ class LocalModelRuntime:
         else:
             ids, masks = self._text_inputs(prompt, opts)
             tokens = self.tokenizer.convert_ids_to_tokens(ids[0].tolist())
-            total_steps = opts["max_new_tokens"] if family in ("gpt2", "t5") else 1
+            total_steps = opts["max_new_tokens"] if family in ("gpt2", "llama", "t5") else 1
             limit = getattr(model.config, "n_positions", getattr(model.config, "max_position_embeddings", None))
-            required = ids.shape[1] + (total_steps - 1 if family == "gpt2" else 0)
+            required = ids.shape[1] + (total_steps - 1 if family in ("gpt2", "llama") else 0)
             if limit is not None and required > limit:
                 raise ValueError("requested prompt/generation exceeds model position limit; no truncation was performed")
             if family == "distilbert":
@@ -889,7 +904,7 @@ class LocalModelRuntime:
                     raise ValueError(f"this masked-LM requires a mask token, for example {self.tokenizer.mask_token or '[MASK]'}")
             estimate = self._estimate(opts, ids.shape[1], total_steps)
             vocab = model.config.vocab_size
-            logits_tokens = (ids.shape[1] + total_steps - 1 if family == "gpt2" else total_steps if family == "t5" else ids.shape[1])
+            logits_tokens = (ids.shape[1] + total_steps - 1 if family in ("gpt2", "llama") else total_steps if family == "t5" else ids.shape[1])
             if logits_tokens * vocab * 4 > opts["max_logits_bytes"]:
                 raise ValueError("requested logits exceed max_logits_bytes")
         start = getattr(model.config, "decoder_start_token_id", None)
@@ -903,7 +918,8 @@ class LocalModelRuntime:
                 input_bytes = pixels.numel() * pixels.element_size() * 2  # Upload + adapter private raw-bit clone.
             else:
                 logits_bytes = logits_tokens * model.config.vocab_size * 4
-                input_bytes = (ids.numel() + total_steps) * 16 + (ids.numel() * 16 if family == "distilbert" else 0)
+                input_bytes = ((ids.numel() + total_steps) * 48 if family == "llama" else
+                    (ids.numel() + total_steps) * 16 + (ids.numel() * 16 if family == "distilbert" else 0))
             incremental = (estimate["estimated_gpu_capture_transient_bytes"] + estimate["estimated_visible_workspace_bytes"]
                            + 4 * estimate["largest_selected_boundary_bytes"] + logits_bytes + input_bytes)
             estimate["cuda_logits_bytes"] = logits_bytes
@@ -921,7 +937,13 @@ class LocalModelRuntime:
                 budget = {"max_events": opts["max_events"] - len(captures),
                           "max_trace_bytes": opts["max_trace_bytes"] - used_bytes}
                 ident = f"{run_id}-{forward}"
-                if family == "gpt2":
+                if family == "llama":
+                    result = trace_llama_causal_lm(model, ids, masks, run_id=ident,
+                        layers=opts["layers"], modules=opts["targets"], **budget,
+                        max_tensor_bytes=opts["max_tensor_bytes"], max_logits_bytes=opts["max_logits_bytes"],
+                        synchronous_cpu=self._device.type == "cpu")
+                    output, records = result.output, result.events
+                elif family == "gpt2":
                     with torch.inference_mode(), GPT2TraceSession(model, run_id=ident,
                             targets=opts["targets"], layers=opts["layers"], samples=None, tokens=None,
                             mode="direct", capture_device="cpu", **budget,
@@ -965,7 +987,7 @@ class LocalModelRuntime:
                         "input_token_ids": None if ids is None else ids[0].tolist(),
                         "input_attention_mask": None if masks is None else masks[0].tolist(),
                         "decoder_token_ids": None if decoder is None else decoder[0].tolist()}
-                if family in ("gpt2", "t5"):
+                if family in ("gpt2", "llama", "t5"):
                     logits = output.logits[0, -1]
                     next_id = int(logits.argmax())
                     scores, choices = torch.topk(logits, min(5, logits.numel()))
@@ -973,9 +995,10 @@ class LocalModelRuntime:
                     step["selected_token_id"] = next_id
                     del logits  # A last-row view otherwise retains the previous full logits allocation.
                     generated.append(next_id)
-                    if family == "gpt2":
+                    if family in ("gpt2", "llama"):
                         ids = torch.cat((ids, torch.tensor([[next_id]], dtype=torch.int64, device=self._device)), dim=1)
-                        masks = torch.ones_like(ids)
+                        masks = (torch.cat((masks, torch.ones((1, 1), dtype=torch.int64, device=self._device)), dim=1)
+                                 if family == "llama" else torch.ones_like(ids))
                     else:
                         decoder = torch.cat((decoder, torch.tensor([[next_id]], dtype=torch.int64, device=self._device)), dim=1)
                     steps.append(step)
@@ -1002,9 +1025,9 @@ class LocalModelRuntime:
                     stop_reason = "single image-classification forward"
                     steps.append(step)
                 del output, records, record
-                if family in ("distilbert", "vit"):
+                if family in ("distilbert", "vit", "llama"):
                     del result
-            if family in ("gpt2", "t5"):
+            if family in ("gpt2", "llama", "t5"):
                 answer = self.tokenizer.decode(generated, skip_special_tokens=True)
             token_labels, token_labels_note = _token_labels(self.tokenizer, steps)
             return {"answer": answer, "task": self._info["task"], "events": captures,
@@ -1012,7 +1035,8 @@ class LocalModelRuntime:
                     "token_labels": token_labels, "token_labels_note": token_labels_note,
                     "model": self.info(), "settings": {**opts, "targets": list(opts["targets"]), "layers": list(opts["layers"])},
                     "prompt": prompt if family != "vit" else None,
-                    "prompt_note": "Text input used as supplied" if family != "vit" else "Text prompt is unused for image classification",
+                    "prompt_note": ("Plain text completion; no automatic chat template is applied" if family == "llama" else
+                        "Text input used as supplied" if family != "vit" else "Text prompt is unused for image classification"),
                     "steps": steps, "tokens": tokens, "generated_token_ids": generated,
                     "stop_reason": stop_reason, "estimates": estimate, "image_metadata": image_meta,
                     "coverage": {"complete": True, "auto_all_supported": opts["targets"] == FAMILIES[family]["targets"] and opts["layers"] == tuple(self._info["layers"]),

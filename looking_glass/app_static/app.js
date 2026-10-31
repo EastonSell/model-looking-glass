@@ -85,7 +85,7 @@
     const available = state.devices.filter((device) => /^cuda:\d+$/.test(device.id || '') && device.available !== false);
     const lines = available.map((device) => `${device.id}: ${device.name || 'CUDA GPU'} · ${bytes(device.free_bytes)} free / ${bytes(device.total_bytes)} total at last check`);
     if (!lines.length) lines.push(`CUDA unavailable${state.cuda?.reason ? ': ' + state.cuda.reason : ' or not reported'}. Auto will use CPU; an explicit CUDA choice will not fall back.`);
-    else lines.push('Auto prefers available CUDA for GPT-2/T5/DistilBERT/ViT, with its reason recorded. An explicit CUDA failure will not silently switch to CPU.');
+    else lines.push('Auto prefers available CUDA for GPT-2/T5/DistilBERT/ViT and supported standard Llama, with its reason recorded. Actual GPU validation remains outstanding. An explicit CUDA failure will not silently switch to CPU.');
     $('device-status').textContent = lines.join('\n'); syncButtons();
   }
   function loadSettings() {
@@ -138,7 +138,7 @@
     for (const target of targets) { const name = typeof target === 'string' ? target : target.name; if (!name) continue; const label = document.createElement('label'), input = document.createElement('input'); input.type = 'checkbox'; input.value = name; input.checked = !preserveTargets || selectedTargets.has(name); label.append(input, document.createTextNode(name)); $('target-options').append(label); }
     const family = String(info?.family || '').toLowerCase();
     const vision = family.includes('vit'); $('image-input-group').hidden = !vision; $('prompt').hidden = vision; document.querySelector('label[for="prompt"]').hidden = vision;
-    $('prompt-help').textContent = vision ? 'Classify one image. The app captures supported ViT module outputs; patch positions are not text tokens.' : family.includes('distilbert') ? 'Include [MASK] in your prompt. DistilBERT predicts masked tokens; it is not a chat or autoregressive generation model.' : family.includes('t5') ? 'Use a T5 task prompt, such as “translate English to German: …”. Generation uses explicit uncached forward steps.' : 'GPT-2 continues your prompt with greedy decoding. Each uncached forward step has its own capture coordinates.';
+    $('prompt-help').textContent = vision ? 'Classify one image. The app captures supported ViT module outputs; patch positions are not text tokens.' : family.includes('distilbert') ? 'Include [MASK] in your prompt. DistilBERT predicts masked tokens; it is not a chat or autoregressive generation model.' : family === 'llama' ? 'Standard Llama completes your raw/plain prompt with greedy, uncached forward steps; no automatic chat template is applied. This is completion, not a chat conversation. Only default/unscaled RoPE is supported.' : family.includes('t5') ? 'Use a T5 task prompt, such as “translate English to German: …”. Generation uses explicit uncached forward steps.' : 'GPT-2 continues your prompt with greedy decoding. Each uncached forward step has its own capture coordinates.';
     syncButtons();
   }
   function clearView() {
@@ -300,6 +300,7 @@
   }
   function interventionReason() {
     if (!state.model || state.model.state === 'quarantined') return 'Load a ready live GPT-2 model to replay. Unload or quarantine disables new edits; saved comparisons remain inspectable.';
+    if (state.model.family !== 'gpt2') return 'Fixed-input interventions support live GPT-2 only. Other model captures remain inspectable but cannot be edited here.';
     if (!state.run?.intervention_available || state.run.run_kind === 'intervention_comparison') return state.run?.intervention_reason || 'This capture is read-only for intervention; make a fresh supported live GPT-2 capture.';
     if (state.coordinate?.status !== 'known' || Number($('vector-index').value) !== state.vector) return 'Read a vector with validated source coordinates first. Unknown source mappings cannot be edited.';
     return 'A current live GPT-2 capture identifier is required.';

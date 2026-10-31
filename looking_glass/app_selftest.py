@@ -13,7 +13,7 @@ import sys
 from tempfile import TemporaryDirectory
 
 
-FAMILIES = ("gpt2", "t5", "distilbert", "vit")
+FAMILIES = ("gpt2", "t5", "distilbert", "vit", "llama")
 
 EXPECTED_STAGES = ("load", "same_device_full_logits_and_boundaries", "app_capture_offload",
                    "temporary_export_reopen", "repeated_forward_cleanup")
@@ -30,7 +30,7 @@ def _checkpoint(path, family):
     from tokenizers.pre_tokenizers import Whitespace
     from transformers import (GPT2Config, GPT2LMHeadModel, T5Config, T5ForConditionalGeneration,
         PreTrainedTokenizerFast, DistilBertConfig, DistilBertForMaskedLM, ViTConfig,
-        ViTForImageClassification, ViTImageProcessor)
+        ViTForImageClassification, ViTImageProcessor, LlamaConfig, LlamaForCausalLM)
     path.mkdir()
     with torch.random.fork_rng(devices=[]):
         torch.random.default_generator.manual_seed(123)
@@ -38,6 +38,12 @@ def _checkpoint(path, family):
             config = GPT2Config(vocab_size=8, n_positions=32, n_ctx=32, n_embd=8, n_layer=2,
                                 n_head=2, eos_token_id=None, bos_token_id=2)
             cls = GPT2LMHeadModel
+        elif family == "llama":
+            config = LlamaConfig(vocab_size=8, hidden_size=8, intermediate_size=16,
+                                 num_hidden_layers=2, num_attention_heads=2, num_key_value_heads=1,
+                                 max_position_embeddings=32, eos_token_id=None, bos_token_id=2,
+                                 rope_scaling=None, attention_dropout=0.0)
+            cls = LlamaForCausalLM
         elif family == "t5":
             config = T5Config(vocab_size=8, d_model=8, d_kv=4, d_ff=16, num_layers=2,
                               num_decoder_layers=1, num_heads=2, decoder_start_token_id=0,
@@ -80,6 +86,31 @@ def _bits_equal(left, right):
         left.detach().cpu().contiguous().view(torch.int32), right.detach().cpu().contiguous().view(torch.int32))
 
 
+def _verify_boundaries(records, expected, family):
+    """Compare every complete retained boundary and its exact coordinate inventory."""
+    coordinates = Counter()
+    wanted_coordinates = Counter()
+    whole = family in ("gpt2", "llama")
+    for name, value in expected.items():
+        if whole:
+            wanted_coordinates[(name, tuple(range(value.shape[0])), tuple(range(value.shape[1])))] += 1
+        else:
+            for batch in range(value.shape[0]):
+                for token in range(value.shape[1]):
+                    wanted_coordinates[(name, (batch,), (token,))] += 1
+    for record in records:
+        metadata = record.metadata() if hasattr(record, "metadata") else record.event.to_dict()
+        name = metadata["module_path"]
+        _require(name in expected, "unexpected captured boundary")
+        wanted = expected[name]
+        if not whole:
+            wanted = wanted[metadata["batch_positions"][0], metadata["token_positions"][0]]
+            if family == "distilbert": wanted = wanted.view(1, 1, -1)
+        _require(_bits_equal(record.value, wanted), "captured boundary differs")
+        coordinates[(name, tuple(metadata["batch_positions"]), tuple(metadata["token_positions"]))] += 1
+    _require(coordinates == wanted_coordinates, "boundary coordinates duplicated or missing")
+
+
 def _family(root, family, device, budget, stages):
     import torch
     from .app_runtime import LocalModelRuntime, _cuda_operation
@@ -89,6 +120,7 @@ def _family(root, family, device, budget, stages):
     from .flan_t5_trace import T5TracePoint, trace_t5_forward
     from .distilbert_trace import trace_distilbert_masked_lm
     from .vit_trace import ViTTracePoint, trace_vit_classifier
+    from .llama_trace import trace_llama_causal_lm
 
     runtime = LocalModelRuntime()
     handles = []
@@ -128,6 +160,9 @@ def _family(root, family, device, budget, stages):
             del baseline_device
             if family == "gpt2":
                 paths = [f"transformer.h.{layer}" + suffix for layer in range(2) for suffix in (".attn", ".mlp", "")]
+            elif family == "llama":
+                paths = [f"model.layers.{layer}" + suffix for layer in range(2)
+                         for suffix in (".self_attn", ".mlp", "")]
             elif family == "distilbert":
                 paths = [f"distilbert.transformer.layer.{layer}" + suffix for layer in range(2)
                          for suffix in (".attention", ".ffn", "")]
@@ -153,6 +188,12 @@ def _family(root, family, device, budget, stages):
                         forward_context=GenerationContext(stage="forward", use_cache=False)) as trace:
                     traced = runtime.model(**args).logits
                 records = trace.events
+            elif family == "llama":
+                output = trace_llama_causal_lm(runtime.model, ids, args["attention_mask"],
+                    layers=(0, 1), modules=("attention", "mlp", "block"), run_id="selftest",
+                    max_events=1000, max_trace_bytes=1024**2, max_tensor_bytes=1024**2,
+                    max_input_bytes=1024**2, max_logits_bytes=1024**2, synchronous_cpu=False)
+                traced, records = output.output.logits, output.events
             elif family == "distilbert":
                 output = trace_distilbert_masked_lm(runtime.model, ids, args["attention_mask"],
                     layers=(0, 1), tokens=tuple(range(ids.shape[1])), run_id="selftest",
@@ -176,8 +217,9 @@ def _family(root, family, device, budget, stages):
                 traced = output.logits
             _require(_bits_equal(baseline, traced), "adapter changed full logits")
             _require(len(records) > 0, "adapter captured no boundaries")
+            _verify_boundaries(records, expected, family)
             del traced, records
-            if family in ("t5", "distilbert", "vit"): del output
+            if family in ("t5", "distilbert", "vit", "llama"): del output
         _require(torch.cuda.get_per_process_memory_fraction(device) == previous, "comparison policy not restored")
         stages.append({"family": family, "stage": stage, "status": "passed", "comparison": "complete float32 logits, raw bits, same device",
                        "memory": {key: comparison_memory[key] for key in ("peak_allocated_bytes", "peak_reserved_bytes", "effective_limit_bytes")}})
@@ -197,7 +239,7 @@ def _family(root, family, device, budget, stages):
             _require(result["generated_token_ids"] == [int(baseline[0, -1].argmax())], "app prediction differs")
         seen = set()
         coordinates = Counter()
-        expected_count = len(paths) if family == "gpt2" else sum(expected[name].shape[1] for name in paths)
+        expected_count = len(paths) if family in ("gpt2", "llama") else sum(expected[name].shape[1] for name in paths)
         _require(len(result["events"]) == expected_count, "capture count mismatch")
         for event in result["events"]:
             metadata = event.metadata()
@@ -213,7 +255,7 @@ def _family(root, family, device, budget, stages):
         expected_coordinates = Counter()
         for name in paths:
             length = expected[name].shape[1]
-            if family == "gpt2": expected_coordinates[(name, (0,), tuple(range(length)))] += 1
+            if family in ("gpt2", "llama"): expected_coordinates[(name, (0,), tuple(range(length)))] += 1
             else:
                 for token in range(length): expected_coordinates[(name, (0,), (token,))] += 1
         _require(coordinates == expected_coordinates, "boundary coordinates duplicated or missing")
@@ -259,7 +301,7 @@ def _family(root, family, device, budget, stages):
 def run_selftest(device="cuda:0", max_vram_mib=1024):
     report = {"schema": "looking-glass-gpu-selftest-v1", "status": "failed", "device": device,
               "dtype": "float32", "max_vram_mib": max_vram_mib, "stages": [],
-              "scope": "Tiny synthetic GPT-2/T5/DistilBERT/ViT on one actual CUDA device; not arbitrary checkpoints, CPU/GPU equivalence, or full interpretability. Temporary synthetic exports are deleted."}
+              "scope": "Tiny synthetic GPT-2/T5/DistilBERT/ViT/Llama (default RoPE, grouped-query attention) on one actual CUDA device; not arbitrary checkpoints, CPU/GPU equivalence, or full interpretability. Temporary synthetic exports are deleted."}
     try:
         if not isinstance(device, str) or not re.fullmatch(r"cuda:(0|[1-9][0-9]*)", device):
             raise ValueError("explicit cuda:N required")

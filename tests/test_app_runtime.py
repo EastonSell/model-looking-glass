@@ -190,7 +190,8 @@ def test_load_limit_and_unload(tmp_path):
 
 
 @pytest.mark.parametrize("change,match", [
-    ({"model_type": "llama"}, "unsupported architecture"),
+    ({"model_type": "qwen2"}, "unsupported architecture"),
+    ({"model_type": "llama"}, "Llama hidden_size"),  # Relabeling GPT-2 does not make a valid Llama config.
     ({"auto_map": {"AutoModel": "remote.Model"}}, "remote code"),
     ({"quantization_config": {"bits": 4}}, "quantized"),
     ({"architectures": ["GPT2ForSequenceClassification"]}, "another head"),
