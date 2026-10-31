@@ -2,7 +2,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const token = document.querySelector('meta[name="mlg-token"]').content;
-  const state = {coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
+  const state = {coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
   const pageSize = 100, valuePageSize = 256;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
@@ -20,6 +20,7 @@
   }
   function syncButtons() {
     ['intervention-operation', 'intervention-feature', 'intervention-value', 'witness-phase', 'experiment-save-name', 'vector-picker', 'browse-button', 'browse-go', 'browse-parent', 'browse-select', 'browse-path', 'saved-runs', 'refresh-saved', 'inspect-button', 'load-button', 'model-path', 'execution-device', 'vram-mib', 'refresh-devices', 'open-button', 'open-path', 'vector-index', 'vector-view', 'capture-mode', 'layers', 'max-input', 'max-output', 'max-events', 'trace-mib', 'prompt', 'image-file'].forEach((id) => { $(id).disabled = state.busy; });
+    $('clear-event-filters').disabled = state.busy || !state.run;
     $('run-button').textContent = state.run ? 'Replace capture →' : 'Run & capture →';
     $('replace-warning').hidden = !state.run;
     $('run-button').disabled = state.busy || !state.model || state.model.state === 'quarantined';
@@ -141,7 +142,7 @@
     syncButtons();
   }
   function clearView() {
-    clearExperiment(); resetVectorPicker(); clearTimeout(state.searchTimer); state.eventQuery = ''; $('event-filter').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
+    clearExperiment(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
     $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.'; syncButtons();
   }
   function showRun(run) {
@@ -155,25 +156,48 @@
   }
   function cell(row, value) { const td = document.createElement('td'); td.textContent = String(value ?? '—'); row.append(td); return td; }
   function eventName(event) { return event.metadata?.module_path || event.module_path || event.metadata?.site?.module_path || `Observation ${event.index}`; }
+  function sourceSummary(event) {
+    const summary = event.source_summary;
+    if (!summary) return 'Source unknown — not recorded by this catalog.';
+    if (summary.status === 'multiple') return `${summary.vector_count ?? event.vector_count ?? '?'} vectors · multiple source positions; select a vector to inspect.`;
+    if (summary.status === 'known' && summary.coordinate?.status === 'known') { const match = Number.isSafeInteger(event.matched_vector_index) && (summary.vector_count ?? event.vector_count ?? 1) > 1 ? `Match vector ${event.matched_vector_index} of ${summary.vector_count ?? event.vector_count} (index zero-based) · ` : ''; return match + coordinateLabel(summary.coordinate, event.matched_vector_index ?? 0); }
+    return `Source unknown: ${summary.reason || 'No validated source mapping.'}`;
+  }
+  function sourceFilterQuery() {
+    let query = '';
+    for (const [id, key] of [['source-token','token_position'], ['source-forward','forward']]) {
+      const raw = $(id).value.trim(); if (!raw) continue;
+      if (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw))) throw new Error('Source position and forward filters must be nonnegative safe whole numbers, or blank.');
+      query += `&${key}=${Number(raw)}`;
+    }
+    const stack = $('source-stack').value;
+    if (stack && !['input','encoder','decoder','image'].includes(stack)) throw new Error('Choose a supported source stack or All stacks.');
+    if (stack) query += `&stack=${encodeURIComponent(stack)}`;
+    return query;
+  }
   function renderEvents() {
-    const filter = state.eventQuery; $('event-body').replaceChildren(); let shown = 0;
+    const filter = state.eventQuery || $('source-token').value || $('source-forward').value || $('source-stack').value; $('event-body').replaceChildren(); let shown = 0;
     for (const event of state.events) {
       const meta = event.metadata || {}; const forward = meta.app_forward_index ?? meta.forward_index ?? event.forward_index ?? '—';
-      shown++; const row = document.createElement('tr'); row.classList.toggle('selected', event.index === state.event?.index); cell(row, event.index); const nameCell = document.createElement('td'), button = document.createElement('button'); button.type = 'button'; button.textContent = eventName(event); button.disabled = state.busy; button.addEventListener('click', () => action('Reading selected observation…', () => chooseEvent(event))); nameCell.append(button); row.append(nameCell); cell(row, forward); cell(row, (event.shape || meta.saved_shape || meta.shape || []).join(' × ')); cell(row, bytes(event.tensor_bytes)); $('event-body').append(row);
+      shown++; const row = document.createElement('tr'); row.classList.toggle('selected', event.index === state.event?.index); cell(row, event.index); const nameCell = document.createElement('td'), button = document.createElement('button'); button.type = 'button'; button.textContent = eventName(event); button.disabled = state.busy; button.addEventListener('click', () => action('Reading selected observation…', () => chooseEvent(event))); nameCell.append(button); row.append(nameCell); cell(row, forward); cell(row, sourceSummary(event)); cell(row, (event.shape || meta.saved_shape || meta.shape || []).join(' × ')); cell(row, bytes(event.tensor_bytes)); $('event-body').append(row);
     }
-    if (!shown) { const row = document.createElement('tr'); const td = cell(row, 'No observations match this search.'); td.colSpan = 5; $('event-body').append(row); }
+    if (!shown) { const row = document.createElement('tr'); const td = cell(row, 'No observations match this search.'); td.colSpan = 6; $('event-body').append(row); }
     $('event-total').textContent = `${state.eventTotal} matching / ${state.eventTotalAll} total observations`;
     $('event-page').textContent = state.eventTotal ? `${state.eventOffset + 1}–${Math.min(state.eventOffset + state.events.length, state.eventTotal)} of ${state.eventTotal}${filter ? ' · filtered across all captures' : ''}` : 'No observations'; syncButtons();
   }
   async function loadEvents() {
-    const request = ++state.eventRequest; const result = await api(`events?offset=${state.eventOffset}&limit=${pageSize}&q=${encodeURIComponent(state.eventQuery)}`);
+    const request = ++state.eventRequest, filters = sourceFilterQuery(); const result = await api(`events?offset=${state.eventOffset}&limit=${pageSize}&q=${encodeURIComponent(state.eventQuery)}${filters}`);
     if (request !== state.eventRequest) return;
     state.events = result.events || []; state.eventTotal = Number(result.total || 0); state.eventTotalAll = Number(result.total_all ?? result.total ?? 0); renderEvents();
     if (!state.event && state.events.length) await chooseEvent(state.events[0]);
+    if (request === state.eventRequest && state.filterError) { state.filterError = false; notice(''); }
   }
   async function chooseEvent(event) {
-    resetVectorPicker(); state.event = event; state.vector = 0; state.valueOffset = 0; $('vector-index').value = '0';
+    resetVectorPicker(); state.valueRequest++; state.event = null; $('vector-panel').hidden = true;
     const shape = event.shape || event.metadata?.saved_shape || event.metadata?.shape || []; const count = event.vector_count ?? shape.slice(0, -1).reduce((a, b) => a * b, 1);
+    const matched = event.matched_vector_index ?? 0;
+    if (!Number.isSafeInteger(matched) || matched < 0 || matched >= count) throw new Error('The event catalog returned an invalid matched vector index; refresh the capture instead of guessing a source.');
+    state.event = event; state.vector = matched; state.valueOffset = 0; $('vector-index').value = String(matched);
     $('vector-index').max = String(Math.max(0, count - 1)); $('vector-panel').hidden = false; $('vector-heading').textContent = eventName(event); $('dtype-badge').textContent = event.dtype || event.metadata?.dtype || ''; $('vector-location').textContent = `${shape.join(' × ')} · ${count} vectors. Vector index flattens the preceding axes in row-major order; feature coordinates span the final axis. Consult metadata for source batch/token positions.`; $('event-metadata').textContent = display(event.metadata || event); renderEvents();
     await loadVector();
   }
@@ -346,11 +370,16 @@
   $('image-file').addEventListener('change', async () => { const request = ++state.imageRequest; state.image = null; const file = $('image-file').files[0]; if (!file) return; if (file.size > 4 * 1048576) { $('image-file').value = ''; notice('Choose an image no larger than 4 MiB.', true); return; } try { const result = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('Could not read this image.')); reader.readAsDataURL(file); }); if (request !== state.imageRequest) return; state.image = String(result).split(',')[1]; $('image-description').textContent = `${file.name} · ${bytes(file.size)} · held in this browser until Clear captured run or page close.`; } catch (error) { notice(error.message, true); } });
   $('save-button').addEventListener('click', () => action('Saving the complete capture…', async () => { const name = $('save-name').value.trim(); if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(name)) throw new Error('Use a save name of 1–64 letters, numbers, underscores, or hyphens, starting with a letter or number.'); $('save-status').textContent = 'No new export confirmed for this save attempt.'; const result = await api('save', {name, capture_id: state.run.capture_id}); $('save-status').textContent = `Saved explicitly: ${result.path || display(result)}. This export contains full capture data; keep it private when inputs are private.`; await refreshSavedOptional(); }));
   $('clear-button').addEventListener('click', () => action('Clearing captured results…', async () => { await api('clear', {}); clearView(); $('prompt').value = ''; state.imageRequest++; state.image = null; $('image-file').value = ''; $('image-description').textContent = 'Select a local PNG, JPEG, or WebP. It is sent only to this local app.'; }));
-  $('event-filter').addEventListener('input', () => {
+  function scheduleEventSearch() {
     clearTimeout(state.searchTimer); state.eventRequest++; state.valueRequest++;
-    resetVectorPicker(); state.eventQuery = $('event-filter').value.trim(); state.eventOffset = 0; state.event = null; $('vector-panel').hidden = true;
-    const revision = state.eventRequest; const search = async () => { if (!state.run || revision !== state.eventRequest) return; if (state.busy) { state.searchTimer = setTimeout(search, 250); return; } try { await loadEvents(); } catch (error) { if (revision + 1 === state.eventRequest) notice(error.message || String(error), true); } }; state.searchTimer = setTimeout(search, 250);
-  });
+    resetVectorPicker(); state.eventQuery = $('event-filter').value.trim(); state.eventOffset = 0; state.event = null; state.events = []; state.eventTotal = 0; $('event-body').replaceChildren(); $('event-page').textContent = 'Updating filters…'; $('event-total').textContent = 'Filtering…'; $('vector-panel').hidden = true; syncButtons();
+    const revision = state.eventRequest; const search = async () => { if (!state.run || revision !== state.eventRequest) return; if (state.busy) { state.searchTimer = setTimeout(search, 250); return; } try { await loadEvents(); } catch (error) { if (revision + 1 === state.eventRequest) { state.filterError = true; notice(error.message || String(error), true); $('event-page').textContent = 'Filter results unavailable. Adjust or clear filters to retry.'; } } }; state.searchTimer = setTimeout(search, 250);
+  }
+  $('event-filter').addEventListener('input', scheduleEventSearch);
+  $('source-token').addEventListener('input', scheduleEventSearch);
+  $('source-forward').addEventListener('input', scheduleEventSearch);
+  $('source-stack').addEventListener('change', scheduleEventSearch);
+  $('clear-event-filters').addEventListener('click', () => { $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; scheduleEventSearch(); });
   $('events-prev').addEventListener('click', () => action('Loading previous observations…', async () => { state.eventOffset = Math.max(0, state.eventOffset - pageSize); await loadEvents(); }));
   $('events-next').addEventListener('click', () => action('Loading next observations…', async () => { state.eventOffset += pageSize; await loadEvents(); }));
   $('vector-picker').addEventListener('change', () => action('Reading selected source position…', async () => { const selected = state.vectorOptions.find((item) => String(item.index) === $('vector-picker').value); if (selected) { $('vector-index').value = String(selected.index); await loadVector(); } }));

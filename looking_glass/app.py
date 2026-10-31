@@ -278,6 +278,7 @@ def create_server(state, port=0):
                 query = parse_qs(parsed.query, strict_parsing=True)
                 if any(len(values) != 1 for values in query.values()): raise ValueError("Duplicate query parameter")
                 def number(key, default): return int(query.get(key, [str(default)])[0])
+                def optional_number(key): return number(key, 0) if key in query else None
                 with state.lock:
                     if path in {"/api/events", "/api/vectors", "/api/tensor"} and "capture_id" in query:
                         if query["capture_id"][0] != state._capture_id:
@@ -290,7 +291,10 @@ def create_server(state, port=0):
                     elif path == "/api/experiment": answer = state._experiment_summary()
                     elif path == "/api/experiment-events": answer = state.experiment_store.events(number("offset", 0), number("limit", 100))
                     elif path == "/api/experiment-tensor": answer = state.experiment_store.tensor(number("event", 0), number("vector", 0), number("offset", 0), number("limit", 256), "raw")
-                    elif path == "/api/events": answer = state.store.events(number("offset", 0), number("limit", 100), query.get("q", [""])[0])
+                    elif path == "/api/events": answer = state.store.events(
+                        number("offset", 0), number("limit", 100), query.get("q", [""])[0],
+                        token_position=optional_number("token_position"), forward=optional_number("forward"),
+                        stack=query.get("stack", [None])[0])
                     elif path == "/api/vectors": answer = state.store.vectors(number("event", 0), number("offset", 0), number("limit", 100))
                     elif path == "/api/tensor": answer = state.store.tensor(number("event", 0), number("vector", 0), number("offset", 0), number("limit", 256), query.get("view", ["raw"])[0])
                     else:

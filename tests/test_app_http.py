@@ -110,11 +110,24 @@ def test_actual_local_checkpoint_through_http_and_reopen(tmp_path, family):
         coordinates = json.loads(call(endpoint, "/api/vectors?event=0&limit=100")[1])
         assert coordinates["vectors"][0]["coordinate"]["status"] == "known"
         assert raw["coordinate"] == coordinates["vectors"][0]["coordinate"]
+        stack = "encoder" if family == "t5" else "image" if family == "vit" else "input"
+        filtered_url = f"/api/events?token_position=1&forward=0&stack={stack}"
+        code, body, _ = call(endpoint, filtered_url)
+        assert code == 200, body
+        filtered = json.loads(body)
+        assert filtered["total"] == 6  # two layers, three supported roles at one source position
+        for row in filtered["events"]:
+            assert row["matched_vector_index"] == (1 if family == "gpt2" else 0)
+            selected = json.loads(call(endpoint, f"/api/tensor?event={row['index']}&vector={row['matched_vector_index']}")[1])
+            assert selected["coordinate"] == row["source_summary"]["coordinate"]
+            assert selected["coordinate"]["token_position"] == 1
+            assert selected["coordinate"]["stack"] == stack
         saved = json.loads(call(endpoint, "/api/save", "POST", {"name": family})[1])
         assert call(endpoint, "/api/clear", "POST", {})[0] == 200
         assert call(endpoint, "/api/open", "POST", {"path": saved["path"]})[0] == 200
         assert json.loads(call(endpoint, "/api/tensor?event=0&vector=0&limit=4096")[1]) == raw
         assert json.loads(call(endpoint, "/api/vectors?event=0&limit=100")[1]) == coordinates
+        assert json.loads(call(endpoint, filtered_url)[1]) == filtered
     finally:
         httpd.shutdown(); thread.join(5); httpd.server_close()
 
@@ -257,3 +270,32 @@ def test_vector_navigation_api_is_authenticated_bounded_and_read_only(server):
     for query in ('event=-1', 'event=0&limit=201', 'event=0&offset=-1', 'event=0&event=0'):
         assert call(server, '/api/vectors?' + query)[0] == 400
     assert state.store.summary() == before
+
+
+def test_source_event_filters_are_forwarded_and_revision_guarded(server):
+    from test_app_storage import coordinate_result
+    state = server[0]
+    state.store.publish(coordinate_result(positions=[3, 1, 0]))
+    state._capture_id = "source-filter-fixture"
+    url = "/api/events?token_position=1&forward=0&stack=input&capture_id=source-filter-fixture"
+    code, body, _ = call(server, url)
+    assert code == 200, body
+    result = json.loads(body)
+    assert result["total"] == 1
+    row = result["events"][0]
+    assert row["index"] == 0 and row["matched_vector_index"] == 1
+    assert row["source_summary"]["coordinate"]["token_position"] == 1
+    assert json.loads(call(server, "/api/events?token_position=2")[1])["total"] == 0
+    assert call(server, url.replace("source-filter-fixture", "stale"))[0] == 400
+    assert call(server, url, token=False)[0] == 403
+    assert state._capture_id == "source-filter-fixture"
+
+
+@pytest.mark.parametrize("query", ["token_position=-1", "token_position=true", "forward=1.5", "forward=-1",
+    "token_position=999999999999999999999999", "stack=unknown", "token_position=0&token_position=1"])
+def test_invalid_source_event_filter_returns_actionable_http_error(server, query):
+    from test_app_storage import coordinate_result
+    server[0].store.publish(coordinate_result())
+    code, body, _ = call(server, "/api/events?" + query)
+    assert code == 400 and json.loads(body)["error"]
+    assert server[0].store.summary()["event_count"] == 1

@@ -81,23 +81,69 @@ class TraceStore:
     def summary(self):
         return None if self._run is None else _json_copy(self._run)
 
-    def events(self, offset=0, limit=100, q=""):
-        """Search allowlisted capture metadata globally, then paginate stable indices."""
+    def events(self, offset=0, limit=100, q="", *, token_position=None, forward=None, stack=None):
+        """Filter recorded metadata, then page stable event and matching-vector indices.
+
+        Source filters require the same validated coordinates as the tensor view.
+        Summaries are a read-only view, not additions to the saved trace schema.
+        No tensor values, prompt text or currently loaded tokenizer are searched.
+        """
         if self._run is None: raise ValueError("No completed trace is loaded")
         _integer(offset, "offset", 0, len(self._events)); _integer(limit, "limit", 1, 200)
         if type(q) is not str or len(q) > 256:
             raise ValueError("q must be a string of at most 256 characters")
+        for name, value in (("token_position", token_position), ("forward", forward)):
+            if value is not None: _integer(value, name)
+        if stack is not None and (type(stack) is not str or stack not in ("input", "encoder", "decoder", "image")):
+            raise ValueError("stack must be input, encoder, decoder or image")
+        source_filters = token_position is not None or forward is not None or stack is not None
         query = " ".join(q.split()).casefold()
         fields = ("module_path", "module_kind", "layer_index", "app_forward_index", "forward_index")
         page, total = [], 0
         for event in self._events:
-            # Never stringify arbitrary metadata containers or search prompts/tensors.
-            searchable = [" ".join(str(event["metadata"][key]).split()).casefold()
-                          for key in fields if type(event["metadata"].get(key)) in (str, int)]
+            metadata = event["metadata"]
+            searchable = [" ".join(str(metadata[key]).split()).casefold()
+                          for key in fields if type(metadata.get(key)) in (str, int)]
             if query and not any(query in value for value in searchable):
                 continue
+            coordinate, candidate = None, 0
+            if source_filters:
+                if forward is not None and metadata.get("app_forward_index") != forward:
+                    continue
+                if token_position is not None:
+                    positions = metadata.get("token_positions")
+                    if type(positions) is not list:
+                        continue
+                    try:
+                        # Candidate only: _coordinate checks the complete saved
+                        # layout, selected axes, step identity and source bounds.
+                        # No expansion over every vector or hidden feature.
+                        candidate = positions.index(token_position)
+                    except ValueError:
+                        continue
+                if not 0 <= candidate < event["vector_count"]:
+                    continue
+                coordinate = self._coordinate(event["index"], candidate)
+                if (coordinate["status"] != "known"
+                        or (token_position is not None and coordinate["token_position"] != token_position)
+                        or (forward is not None and coordinate["app_forward_index"] != forward)
+                        or (stack is not None and coordinate["stack"] != stack)):
+                    continue
             if offset <= total < offset + limit:
-                page.append(event)
+                if coordinate is None:
+                    coordinate = self._coordinate(event["index"], 0)
+                count = event["vector_count"]
+                if coordinate["status"] != "known":
+                    summary = {"status": "unknown", "vector_count": count, "coordinate": None,
+                               "reason": coordinate["reason"]}
+                elif count > 1 and not source_filters:
+                    summary = {"status": "multiple", "vector_count": count, "coordinate": None,
+                               "reason": "Multiple source vectors; open this event to choose a position"}
+                else:
+                    summary = {"status": "known", "vector_count": count, "coordinate": coordinate,
+                               "reason": coordinate["reason"]}
+                page.append({**event, "source_summary": summary,
+                             "matched_vector_index": candidate if source_filters else None})
             total += 1
         return {"events": _json_copy(page), "total": total, "total_all": len(self._events)}
 

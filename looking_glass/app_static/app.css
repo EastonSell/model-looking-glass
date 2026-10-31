@@ -23,3 +23,6 @@
 .inspection-checks { padding-left: 18px; font-size: 12px; }
 .inspection-checks li { margin-block: 6px; }
 .inspection-panel { min-width: 0; }
+
+.event-source-filters { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: end; }
+@media(max-width: 850px) { .event-source-filters { grid-template-columns: 1fr 1fr; } }

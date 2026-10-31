@@ -432,3 +432,110 @@ def test_intervention_source_requires_loaded_finite_values(tmp_path):
     data = intervention_result(); store.publish(data)
     data["events"][0].value[0, 0, 0] = float("nan")
     with pytest.raises(ValueError, match="finite"): store.intervention_source(0, 0)
+
+
+def test_event_source_summary_distinguishes_single_and_multiple_vectors(tmp_path):
+    store = TraceStore(tmp_path)
+    store.publish(coordinate_result("distilbert", positions=[2]))
+    row = store.events()["events"][0]
+    assert row["matched_vector_index"] is None
+    summary = row["source_summary"]
+    assert summary["status"] == "known" and summary["vector_count"] == 1
+    assert summary["coordinate"]["token_position"] == 2 and summary["coordinate"]["token_piece"] == "piece2"
+    store.publish(coordinate_result(positions=[4, 1, 3]))
+    row = store.events()["events"][0]
+    assert row["source_summary"]["status"] == "multiple"
+    assert row["source_summary"]["vector_count"] == 3 and row["source_summary"]["coordinate"] is None
+
+
+def test_event_exact_filters_resolve_reordered_vector_and_survive_export(tmp_path):
+    store = TraceStore(tmp_path); store.publish(coordinate_result(positions=[4, 1, 3], forward=2))
+    page = store.events(token_position=1, forward=2, stack="input")
+    assert page["total"] == 1 and page["total_all"] == 1
+    row = page["events"][0]
+    assert row["index"] == 0 and row["matched_vector_index"] == 1
+    assert row["source_summary"]["coordinate"] == store.tensor(0, 1)["coordinate"]
+    assert row["source_summary"]["vector_count"] == 3
+    for filters in ({"token_position": 2}, {"forward": 1}, {"stack": "decoder"}):
+        assert store.events(**filters)["total"] == 0
+    first = store.events(forward=2)["events"][0]
+    assert first["matched_vector_index"] == 0 and first["source_summary"]["coordinate"]["token_position"] == 4
+    saved = store.save("source-filter"); store.clear(); store.open(saved["path"])
+    assert store.events(token_position=1, forward=2, stack="input") == page
+    manifest = json.loads((Path(saved["path"]) / "manifest.json").read_text())
+    assert "source_summary" not in manifest["events"][0]  # View-only, not a schema migration.
+
+
+def test_event_source_filter_paginates_original_event_indices(tmp_path):
+    data = coordinate_result("distilbert", positions=[2])
+    data["events"] = [coordinate_result("distilbert", positions=[position])["events"][0] for position in (1, 2, 1, 2, 3)]
+    store = TraceStore(tmp_path); store.publish(data)
+    page = store.events(offset=1, limit=1, q="distilbert", token_position=2)
+    assert page["total"] == 2 and page["total_all"] == 5
+    assert [row["index"] for row in page["events"]] == [3]
+    assert page["events"][0]["matched_vector_index"] == 0
+
+
+@pytest.mark.parametrize("kwargs", [{"token_position": True}, {"token_position": -1}, {"token_position": "1"},
+    {"forward": False}, {"forward": -1}, {"forward": 1.0}, {"stack": ""}, {"stack": "vision"}, {"stack": []}])
+def test_event_source_filters_reject_invalid_types_and_values(tmp_path, kwargs):
+    store = TraceStore(tmp_path); store.publish(coordinate_result())
+    with pytest.raises(ValueError): store.events(**kwargs)
+
+
+@pytest.mark.parametrize("mutation", ["duplicates", "identity", "shape", "position_bool"])
+def test_unknown_event_provenance_never_matches_source_filters(tmp_path, mutation):
+    data = coordinate_result(positions=[1, 3])
+    metadata = data["events"][0].metadata()
+    if mutation == "duplicates": metadata["token_positions"] = [1, 1]
+    elif mutation == "identity": metadata["identity"] = {"run_id": "wrong"}
+    elif mutation == "shape": metadata["saved_shape"] = [1, 1, 4]
+    else: metadata["token_positions"] = [True, 3]
+    store = TraceStore(tmp_path); store.publish(data)
+    row = store.events(q="transformer")["events"][0]
+    assert row["source_summary"]["status"] == "unknown" and row["source_summary"]["reason"]
+    assert store.events(token_position=1)["total"] == 0
+    assert store.events(forward=0)["total"] == 0
+
+
+@pytest.mark.parametrize("position,image", [(0, dict(token_kind="cls", patch_row=None, patch_column=None, processed_pixel_box_xyxy=None)),
+    (2, dict(token_kind="patch", patch_row=0, patch_column=1, processed_pixel_box_xyxy=[4, 0, 8, 4]))])
+def test_event_image_filters_keep_cls_and_processed_patch_coordinates(tmp_path, position, image):
+    data = coordinate_result("vit", positions=[position]); data["events"][0].metadata()["image_coordinate"] = image
+    data["image_metadata"] = dict(grid_shape=[2, 2], patch_shape=[4, 4], sequence_length=5, cls_token_index=0)
+    store = TraceStore(tmp_path); store.publish(data)
+    row = store.events(token_position=position, stack="image")["events"][0]
+    assert row["source_summary"]["coordinate"]["image_coordinate"] == image
+    assert row["matched_vector_index"] == 0
+    assert store.events(token_position=position, stack="input")["total"] == 0
+
+
+def test_unfiltered_source_summaries_resolve_only_the_returned_page(tmp_path, monkeypatch):
+    data = coordinate_result("distilbert", positions=[2]); data["events"] *= 305
+    store = TraceStore(tmp_path); store.publish(data)
+    observed = []; original = store._coordinate
+    def tracked(event, vector): observed.append((event, vector)); return original(event, vector)
+    monkeypatch.setattr(store, "_coordinate", tracked)
+    monkeypatch.setattr(store, "tensor", lambda *a, **k: pytest.fail("event metadata must not read tensor values"))
+    assert len(store.events(offset=200, limit=3)["events"]) == 3
+    assert observed == [(200, 0), (201, 0), (202, 0)]
+
+
+@pytest.mark.parametrize("path,stack,token_id", [("encoder.block.0", "encoder", 2), ("decoder.block.0", "decoder", 9)])
+def test_event_t5_stack_filters_do_not_conflate_input_and_decoder_ids(tmp_path, path, stack, token_id):
+    store = TraceStore(tmp_path); store.publish(coordinate_result("t5", positions=[2], path=path))
+    row = store.events(token_position=2, stack=stack)["events"][0]
+    assert row["source_summary"]["coordinate"]["token_id"] == token_id
+    assert store.events(token_position=2, stack="decoder" if stack == "encoder" else "encoder")["total"] == 0
+    row["source_summary"]["coordinate"]["token_id"] = 999
+    assert store.events(token_position=2, stack=stack)["events"][0]["source_summary"]["coordinate"]["token_id"] == token_id
+
+
+def test_event_image_source_keeps_explicit_nonzero_batch_coordinate(tmp_path):
+    data = coordinate_result("vit", positions=[0], batches=[1])
+    data["events"][0].metadata()["image_coordinate"] = dict(token_kind="cls", patch_row=None, patch_column=None, processed_pixel_box_xyxy=None)
+    data["image_metadata"] = dict(grid_shape=[2, 2], patch_shape=[4, 4], sequence_length=5, cls_token_index=0)
+    store = TraceStore(tmp_path); store.publish(data)
+    row = store.events(token_position=0, stack="image")["events"][0]
+    assert row["source_summary"]["coordinate"]["batch_position"] == 1
+    assert row["matched_vector_index"] == 0
