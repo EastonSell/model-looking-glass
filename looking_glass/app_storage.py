@@ -100,6 +100,7 @@ class TraceStore:
         query = " ".join(q.split()).casefold()
         fields = ("module_path", "module_kind", "layer_index", "app_forward_index", "forward_index")
         page, total = [], 0
+        coordinate_context = {}  # Shared validation only for this locked request.
         for event in self._events:
             metadata = event["metadata"]
             searchable = [" ".join(str(metadata[key]).split()).casefold()
@@ -123,7 +124,7 @@ class TraceStore:
                         continue
                 if not 0 <= candidate < event["vector_count"]:
                     continue
-                coordinate = self._coordinate(event["index"], candidate)
+                coordinate = self._coordinate(event["index"], candidate, _context=coordinate_context)
                 if (coordinate["status"] != "known"
                         or (token_position is not None and coordinate["token_position"] != token_position)
                         or (forward is not None and coordinate["app_forward_index"] != forward)
@@ -131,7 +132,7 @@ class TraceStore:
                     continue
             if offset <= total < offset + limit:
                 if coordinate is None:
-                    coordinate = self._coordinate(event["index"], 0)
+                    coordinate = self._coordinate(event["index"], 0, _context=coordinate_context)
                 count = event["vector_count"]
                 if coordinate["status"] != "known":
                     summary = {"status": "unknown", "vector_count": count, "coordinate": None,
@@ -262,8 +263,14 @@ class TraceStore:
             raise ValueError("Saved-run directory changed during catalog scan")
         return {"runs": runs, "truncated": enumeration_truncated or len(names) > 200}
 
-    def _coordinate(self, event, vector):
-        """Ground an original flat vector using only immutable retained provenance."""
+    def _coordinate(self, event, vector, *, _context=None):
+        """Ground a vector using retained provenance, never model/tokenizer state.
+
+        Browsing may share a private context within one serialized request to
+        validate shared forward inputs once. It must not survive that request;
+        source shapes, identities and all event-specific checks remain fresh.
+        Calls without a context perform the same checks without any reuse.
+        """
         coordinate = dict(status="unknown", app_forward_index=None, module_path=None,
                           layer_index=None, stack=None, batch_position=None, token_position=None,
                           token_id=None, token_piece=None, token_text=None, token_label_truncated=False,
@@ -304,10 +311,24 @@ class TraceStore:
             identity = metadata.get("identity")
             require(type(identity) is dict and type(identity.get("run_id")) is str and bool(identity["run_id"]), "Missing capture run identity")
             steps = self._run.get("steps")
-            require(type(steps) is list and all(type(step) is dict and integer(step.get("app_forward_index")) for step in steps), "Invalid retained forward steps")
-            matching = [step for step in steps if step["app_forward_index"] == forward]
-            require(len(matching) == 1 and matching[0].get("run_id") == identity["run_id"], "Forward step is missing, ambiguous, or has mismatched run identity")
-            step = matching[0]
+            if _context is None:
+                require(type(steps) is list and all(type(step) is dict and integer(step.get("app_forward_index")) for step in steps), "Invalid retained forward steps")
+                matching = [step for step in steps if step["app_forward_index"] == forward]
+                step = matching[0] if len(matching) == 1 else None
+            else:
+                if "steps_source" not in _context or _context["steps_source"] is not steps:
+                    valid = type(steps) is list and all(type(item) is dict and integer(item.get("app_forward_index")) for item in steps)
+                    lookup = {}
+                    if valid:
+                        for item in steps:
+                            key = item["app_forward_index"]
+                            # Duplicate indices stay ambiguous, even for the
+                            # same step object; never pick first/last silently.
+                            lookup[key] = None if key in lookup else item
+                    _context.update(steps_source=steps, steps_valid=valid, steps_lookup=lookup, token_ids={})
+                require(_context["steps_valid"], "Invalid retained forward steps")
+                step = _context["steps_lookup"].get(forward)
+            require(step is not None and step.get("run_id") == identity["run_id"], "Forward step is missing, ambiguous, or has mismatched run identity")
             batch, position = batches[batch_slot], positions[token_slot]
             stack = "input"
             if family == "t5":
@@ -348,8 +369,20 @@ class TraceStore:
                                                      "processed_pixel_box_xyxy": _json_copy(box)}, reason=reason)
             else:
                 require(batch == 0 and source[0] == 1, "Recorded token sequences describe one batch-zero sample only")
-                ids = step.get("decoder_token_ids" if stack == "decoder" else "input_token_ids")
-                require(integers(ids) and len(ids) == source[1] and position < len(ids), "Missing or inconsistent forward input-token IDs")
+                field = "decoder_token_ids" if stack == "decoder" else "input_token_ids"
+                ids = step.get(field)
+                if _context is None:
+                    valid_ids = integers(ids)
+                else:
+                    # At most two entries per retained step, not per event or
+                    # vector. Strong references prevent identity-key reuse.
+                    key = (id(step), field)
+                    cached = _context["token_ids"].get(key)
+                    if cached is None or cached[0] is not step or cached[1] is not ids:
+                        cached = (step, ids, integers(ids))
+                        _context["token_ids"][key] = cached
+                    valid_ids = cached[2]
+                require(valid_ids and len(ids) == source[1] and position < len(ids), "Missing or inconsistent forward input-token IDs")
                 token_id = ids[position]
                 coordinate["token_id"] = token_id
                 labels = self._run.get("token_labels")
@@ -372,7 +405,8 @@ class TraceStore:
         _integer(event, "event", 0, len(self._values) - 1)
         count = self._events[event]["vector_count"]
         _integer(offset, "offset", 0, count); _integer(limit, "limit", 1, 200)
-        return {"vectors": [{"index": index, "coordinate": self._coordinate(event, index)}
+        coordinate_context = {}
+        return {"vectors": [{"index": index, "coordinate": self._coordinate(event, index, _context=coordinate_context)}
                             for index in range(offset, min(offset + limit, count))], "total": count}
 
     def intervention_source(self, event, vector):

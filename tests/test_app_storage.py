@@ -514,7 +514,7 @@ def test_unfiltered_source_summaries_resolve_only_the_returned_page(tmp_path, mo
     data = coordinate_result("distilbert", positions=[2]); data["events"] *= 305
     store = TraceStore(tmp_path); store.publish(data)
     observed = []; original = store._coordinate
-    def tracked(event, vector): observed.append((event, vector)); return original(event, vector)
+    def tracked(event, vector, **kwargs): observed.append((event, vector)); return original(event, vector, **kwargs)
     monkeypatch.setattr(store, "_coordinate", tracked)
     monkeypatch.setattr(store, "tensor", lambda *a, **k: pytest.fail("event metadata must not read tensor values"))
     assert len(store.events(offset=200, limit=3)["events"]) == 3
@@ -539,3 +539,98 @@ def test_event_image_source_keeps_explicit_nonzero_batch_coordinate(tmp_path):
     row = store.events(token_position=0, stack="image")["events"][0]
     assert row["source_summary"]["coordinate"]["batch_position"] == 1
     assert row["matched_vector_index"] == 0
+
+
+@pytest.mark.parametrize("mutation", [None, "bad_ids", "duplicate_forward", "bad_step", "bad_forward", "wrong_length", "wrong_identity"])
+def test_request_coordinate_context_matches_uncached_validation(tmp_path, mutation):
+    data = coordinate_result(); data["events"] *= 3
+    if mutation == "bad_ids": data["steps"][0]["input_token_ids"][-1] = True
+    if mutation == "duplicate_forward": data["steps"] *= 2
+    if mutation == "bad_step": data["steps"].append(None)
+    if mutation == "bad_forward": data["steps"][0]["app_forward_index"] = True
+    if mutation == "wrong_length": data["steps"][0]["input_token_ids"].append(5)
+    if mutation == "wrong_identity": data["steps"][0]["run_id"] = "wrong"
+    store = TraceStore(tmp_path); store.publish(data)
+    context = {}
+    for event in range(3):
+        for vector in range(2):
+            expected = store._coordinate(event, vector)
+            assert store._coordinate(event, vector, _context=context) == expected
+            assert expected["status"] == ("known" if mutation is None else "unknown")
+
+
+def test_browse_context_is_shared_only_within_each_request(tmp_path, monkeypatch):
+    data = coordinate_result(); data["events"] *= 4
+    store = TraceStore(tmp_path); store.publish(data)
+    original = store._coordinate; seen = []
+    def tracked(event, vector, **kwargs):
+        seen.append(kwargs.get("_context"))
+        return original(event, vector, **kwargs)
+    monkeypatch.setattr(store, "_coordinate", tracked)
+    store.events(stack="input")
+    assert len(seen) == 4 and seen[0] is not None and all(x is seen[0] for x in seen)
+    first = seen[0]; seen.clear()
+    store.events(stack="input")
+    assert all(x is seen[0] for x in seen) and seen[0] is not first
+    second = seen[0]; seen.clear()
+    store.vectors(0)
+    assert len(seen) == 2 and all(x is seen[0] for x in seen) and seen[0] is not second
+
+
+def test_browse_revalidates_mutations_and_replaced_runs(tmp_path):
+    store = TraceStore(tmp_path); store.publish(coordinate_result())
+    saved = store.save("valid")
+    assert store.events(stack="input")["total"] == 1
+    store._run["steps"][0]["input_token_ids"][-1] = True
+    assert store.events(stack="input")["total"] == 0
+    assert store.vectors(0)["vectors"][0]["coordinate"]["status"] == "unknown"
+    store.clear(); store.open(saved["path"])
+    assert store.events(stack="input")["total"] == 1
+    store._run["steps"].append(dict(store._run["steps"][0]))
+    assert store.events(stack="input")["total"] == 0
+    store.publish(coordinate_result())
+    rows = store.events(stack="input")
+    rows["events"][0]["source_summary"]["coordinate"]["token_id"] = 999
+    assert store.tensor(0)["coordinate"]["token_id"] == 0
+
+
+@pytest.mark.parametrize("family,path", [("distilbert", None), ("t5", "encoder.block.0"), ("t5", "decoder.block.0"), ("vit", None)])
+def test_request_context_other_adapter_coordinates_match(tmp_path, family, path):
+    data = coordinate_result(family, positions=[2], path=path)
+    if family == "vit":
+        data["events"][0].metadata()["image_coordinate"] = dict(token_kind="patch", patch_row=0, patch_column=1, processed_pixel_box_xyxy=[4, 0, 8, 4])
+        data["image_metadata"] = dict(grid_shape=[2, 2], patch_shape=[4, 4], sequence_length=5, cls_token_index=0)
+    store = TraceStore(tmp_path); store.publish(data)
+    context = {}
+    for _ in range(3):
+        assert store._coordinate(0, 0, _context=context) == store._coordinate(0, 0)
+    assert store._coordinate(0, 0, _context=context)["status"] == "known"
+
+
+@pytest.mark.parametrize("mutation", ["source_length", "identity", "module", "axis", "positions"])
+def test_shared_input_validation_never_skips_event_checks(tmp_path, mutation):
+    data = coordinate_result(); data["events"] *= 2
+    store = TraceStore(tmp_path); store.publish(data)
+    second = store._events[1]["metadata"]
+    if mutation == "source_length": second["shape"][1] += 1
+    if mutation == "identity": second["identity"]["run_id"] = "different"
+    if mutation == "module": second["module_path"] = "transformer.h.9"
+    if mutation == "axis": second["batch_axis"] = True
+    if mutation == "positions": second["token_positions"] = [0, 0]
+    context = {}
+    assert store._coordinate(0, 0, _context=context)["status"] == "known"
+    assert store._coordinate(1, 0, _context=context) == store._coordinate(1, 0)
+    assert store._coordinate(1, 0, _context=context)["status"] == "unknown"
+
+
+def test_request_input_context_is_bounded_by_steps_not_events(tmp_path):
+    data = coordinate_result("t5", positions=[2], path="encoder.block.0")
+    decoder = coordinate_result("t5", positions=[2], path="decoder.block.0")["events"][0]
+    data["events"] = (data["events"] + [decoder]) * 150
+    store = TraceStore(tmp_path); store.publish(data)
+    context = {}
+    for index in range(300):
+        coordinate = store._coordinate(index, 0, _context=context)
+        assert coordinate["token_id"] == (2 if index % 2 == 0 else 9)
+    assert len(context["steps_lookup"]) == 1
+    assert len(context["token_ids"]) == 2
