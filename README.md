@@ -1,6 +1,6 @@
-# Model Looking Glass
+# Model Looking Glass — Local Model Debugger
 
-**Tools for observing a neural network, testing interventions, and measuring what actually changed.** The research goal is a causal debugger—not a claim that arbitrary model behavior is already explained or safely repairable.
+**Inspect and compare activation vectors with PyTorch hooks in a local browser workbench.** Run compatible local checkpoints, inspect full captures, and test controlled activation interventions without editing checkpoint files. The goal is a causal debugger—not a claim that arbitrary model behavior is already explained or safely repairable.
 
 Start with **direct activation capture**, explicit execution coordinates, and controlled intervention comparisons. The auxiliary-gradient reporting channel is an experimental control: it adds no information to an activation already available to copy, costs more in the original CPU study, and can lose subnormal bits.
 
