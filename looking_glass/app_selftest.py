@@ -42,7 +42,9 @@ def _checkpoint(path, family):
             config = LlamaConfig(vocab_size=8, hidden_size=8, intermediate_size=16,
                                  num_hidden_layers=2, num_attention_heads=2, num_key_value_heads=1,
                                  max_position_embeddings=32, eos_token_id=None, bos_token_id=2,
-                                 rope_scaling=None, attention_dropout=0.0)
+                                 rope_scaling={"rope_type": "llama3", "factor": 8.0,
+                                     "low_freq_factor": 1.0, "high_freq_factor": 4.0,
+                                     "original_max_position_embeddings": 8}, attention_dropout=0.0)
             cls = LlamaForCausalLM
         elif family == "t5":
             config = T5Config(vocab_size=8, d_model=8, d_kv=4, d_ff=16, num_layers=2,
@@ -301,7 +303,7 @@ def _family(root, family, device, budget, stages):
 def run_selftest(device="cuda:0", max_vram_mib=1024):
     report = {"schema": "looking-glass-gpu-selftest-v1", "status": "failed", "device": device,
               "dtype": "float32", "max_vram_mib": max_vram_mib, "stages": [],
-              "scope": "Tiny synthetic GPT-2/T5/DistilBERT/ViT/Llama (default RoPE, grouped-query attention) on one actual CUDA device; not arbitrary checkpoints, CPU/GPU equivalence, or full interpretability. Temporary synthetic exports are deleted."}
+              "scope": "Tiny synthetic GPT-2/T5/DistilBERT/ViT/Llama (static llama3 RoPE, factor 8, original context 8, grouped-query attention) on one actual CUDA device; not arbitrary checkpoints, CPU/GPU equivalence, or full interpretability. Temporary synthetic exports are deleted."}
     try:
         if not isinstance(device, str) or not re.fullmatch(r"cuda:(0|[1-9][0-9]*)", device):
             raise ValueError("explicit cuda:N required")

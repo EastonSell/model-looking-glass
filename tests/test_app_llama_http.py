@@ -13,13 +13,17 @@ from looking_glass.app import AppState, create_server
 from test_app_http import call
 
 
-def llama_checkpoint(path, key_value_heads):
+LLAMA3_SCALING = {"rope_type": "llama3", "factor": 8.0, "low_freq_factor": 1.0,
+                  "high_freq_factor": 4.0, "original_max_position_embeddings": 8}
+
+
+def llama_checkpoint(path, key_value_heads, rope_scaling=None):
     """Synthetic fast-tokenizer fixture, not a downloaded/pretrained Llama model."""
     path.mkdir()
     config = LlamaConfig(vocab_size=16, hidden_size=16, intermediate_size=32,
                          num_hidden_layers=2, num_attention_heads=4,
                          num_key_value_heads=key_value_heads, max_position_embeddings=32,
-                         bos_token_id=1, eos_token_id=None)
+                         bos_token_id=1, eos_token_id=None, rope_scaling=rope_scaling)
     config._attn_implementation = "eager"
     with torch.random.fork_rng(devices=[]):
         torch.random.default_generator.manual_seed(123)
@@ -31,10 +35,10 @@ def llama_checkpoint(path, key_value_heads):
                        eos_token="</s>", legacy=True).save_pretrained(path)
 
 
-@pytest.mark.parametrize("key_value_heads", [4, 2])
-def test_llama_local_fast_tokenizer_capture_coordinates_filter_and_reopen(tmp_path, key_value_heads):
+@pytest.mark.parametrize("key_value_heads,rope_scaling", [(4, None), (2, None), (2, LLAMA3_SCALING)])
+def test_llama_local_fast_tokenizer_capture_coordinates_filter_and_reopen(tmp_path, key_value_heads, rope_scaling):
     checkpoint = tmp_path / "llama"
-    llama_checkpoint(checkpoint, key_value_heads)
+    llama_checkpoint(checkpoint, key_value_heads, rope_scaling)
     state = AppState(export_root=tmp_path / "exports")
     httpd = create_server(state)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True); thread.start()
@@ -53,6 +57,7 @@ def test_llama_local_fast_tokenizer_capture_coordinates_filter_and_reopen(tmp_pa
         report = request("/api/run", {"prompt": "hello world", "settings": {"max_new_tokens": 2}})
         assert report["complete"] and report["coverage"]["forward_count"] == 2
         assert report["model"]["family"] == "llama" and report["model"]["device"] == "cpu"
+        assert report["model"]["config_summary"]["rope_scaling"] == rope_scaling
         assert report["steps"][0]["input_token_ids"] == [1, 3, 4]
         assert report["steps"][1]["input_token_ids"] == [1, 3, 4, report["steps"][0]["selected_token_id"]]
         assert report["event_count"] == 12 and not report["intervention_available"]
@@ -79,6 +84,7 @@ def test_llama_local_fast_tokenizer_capture_coordinates_filter_and_reopen(tmp_pa
         request("/api/unload", {}); request("/api/clear", {})
         reopened = request("/api/open", {"path": exported["path"]})
         assert not reopened["intervention_available"]
+        assert reopened["model"]["config_summary"]["rope_scaling"] == rope_scaling
         assert request(query + "&capture_id=" + reopened["capture_id"]) == filtered
         for event, vector, value in original:
             assert request(f"/api/tensor?event={event}&vector={vector}&capture_id=" + reopened["capture_id"]) == value

@@ -46,7 +46,7 @@
       <p class="hint">Unload releases the model owner separately from capture RAM. Your retained vectors remain inspectable; device memory release is subject to runtime cleanup.</p>
       <p id="demo-model-warning" class="approximation" hidden>Untrained random CPU demo: output is synthetic, not useful model answers. This is not GPU validation.</p>
       <div id="model-info" class="info-box" aria-live="polite">No model loaded.</div>
-      <p class="hint">Eager float32: GPT-2, T5, DistilBERT masked language models, ViT image classifiers, and standard LlamaForCausalLM have CPU or single-CUDA execution paths. Auto prefers available CUDA and records its reason; actual GPU validation is still outstanding. Image preprocessing stays on CPU. Llama requires default, unscaled RoPE. This is not support for Mistral, Qwen, multimodal descendants, quantized/GGUF checkpoints, half precision, multi-GPU sharding, or custom checkpoint code.</p>
+      <p class="hint">Eager float32: GPT-2, T5, DistilBERT masked language models, ViT image classifiers, and standard LlamaForCausalLM have CPU or single-CUDA execution paths. Auto prefers available CUDA and records its reason; actual GPU validation is still outstanding. Image preprocessing stays on CPU. Llama supports default or static Llama 3 RoPE only; dynamic, linear, YaRN, LongRoPE and partial rotary configurations remain unsupported. This is not support for Mistral, Qwen, multimodal descendants, quantized/GGUF checkpoints, half precision, multi-GPU sharding, or custom checkpoint code.</p>
     </section>
     <section aria-labelledby="open-heading">
       <h2 id="open-heading">Reopen a saved capture</h2>

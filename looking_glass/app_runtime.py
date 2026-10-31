@@ -302,7 +302,7 @@ class LocalModelRuntime:
         config = _json(root / "config.json")
         family = config.get("model_type")
         if type(family) is not str or family not in FAMILIES:
-            raise ValueError("unsupported architecture; this version supports GPT-2, DistilBERT masked LM, T5, ViT classifier and standard default-RoPE Llama only")
+            raise ValueError("unsupported architecture; this version supports GPT-2, DistilBERT masked LM, T5, ViT classifier and standard default/static-Llama3 RoPE Llama only")
         spec = FAMILIES[family]
         if family == "llama":
             from .llama_trace import validate_llama_config

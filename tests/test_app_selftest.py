@@ -82,6 +82,10 @@ def test_synthetic_local_assets_are_safe_and_deterministic(tmp_path, family):
     prompt = "hello [MASK]" if family == "distilbert" else "hello world"
     result = runtime.run(prompt, {"max_new_tokens": 2}, subject._image() if family == "vit" else None)
     assert result["model"]["family"] == family
+    if family == "llama":
+        assert result["model"]["config_summary"]["rope_scaling"] == {
+            "rope_type": "llama3", "factor": 8.0, "low_freq_factor": 1.0,
+            "high_freq_factor": 4.0, "original_max_position_embeddings": 8}
     assert result["coverage"]["forward_count"] == (1 if family in ("distilbert", "vit") else 2)
     runtime.unload()
 
@@ -134,12 +138,13 @@ def test_boundary_comparison_rejects_changed_bits_missing_and_duplicate_coordina
     with pytest.raises(RuntimeError, match="coordinates"): subject._verify_boundaries([record], expected, "llama")
 
 
-def test_llama_fixture_configuration_is_explicit_default_rope_and_gqa(tmp_path):
+def test_llama_fixture_configuration_is_explicit_static_llama3_rope_and_gqa(tmp_path):
     subject._checkpoint(tmp_path / "llama", "llama")
     config = json.loads((tmp_path / "llama" / "config.json").read_text())
     assert config["architectures"] == ["LlamaForCausalLM"]
     assert {name: config[name] for name in ("hidden_size", "intermediate_size", "num_hidden_layers", "num_attention_heads", "num_key_value_heads", "max_position_embeddings", "vocab_size")} == dict(hidden_size=8, intermediate_size=16, num_hidden_layers=2, num_attention_heads=2, num_key_value_heads=1, max_position_embeddings=32, vocab_size=8)
-    assert config.get("rope_scaling") is None
+    assert config["rope_scaling"] == {"rope_type": "llama3", "factor": 8.0,
+        "low_freq_factor": 1.0, "high_freq_factor": 4.0, "original_max_position_embeddings": 8}
     assert config["eos_token_id"] is None and config["bos_token_id"] == 2
 
 
@@ -152,29 +157,34 @@ def test_llama_fixture_cpu_full_logits_every_boundary_and_hook_cleanup(tmp_path)
     model = LlamaForCausalLM.from_pretrained(path, local_files_only=True, use_safetensors=True,
                                             attn_implementation="eager", torch_dtype=torch.float32).eval()
     tokenizer = PreTrainedTokenizerFast.from_pretrained(path, local_files_only=True)
-    ids = tokenizer("hello world", return_tensors="pt")["input_ids"]
-    mask = torch.ones_like(ids)
-    args = dict(input_ids=ids, attention_mask=mask, use_cache=False, return_dict=True)
-    with torch.inference_mode(): baseline = model(**args).logits
-    expected, handles = {}, []
-    for layer in range(2):
-        for suffix in (".self_attn", ".mlp", ""):
-            name = f"model.layers.{layer}{suffix}"
-            def observe(_module, _args, output, name=name):
-                expected[name] = (output[0] if isinstance(output, tuple) else output).detach().clone()
-            handles.append(model.get_submodule(name).register_forward_hook(observe))
-    try:
-        with torch.inference_mode(): hooked = model(**args).logits
-    finally:
-        for handle in handles: handle.remove()
-    assert subject._bits_equal(baseline, hooked)
-    for _ in range(2):
-        result = trace_llama_causal_lm(model, ids, mask, run_id="fixture-cpu-only", layers=(0, 1),
-            modules=("attention", "mlp", "block"), max_events=6,
-            max_trace_bytes=1024**2, max_tensor_bytes=1024**2, max_logits_bytes=1024**2)
-        assert subject._bits_equal(baseline, result.output.logits)
-        subject._verify_boundaries(result.events, expected, "llama")
-        assert len(result.events) == 6
-        assert {record.event.module_kind for record in result.events} == {"llama_attention", "llama_mlp", "llama_block"}
-        assert all(tuple(record.value.shape) == (1, 2, 8) for record in result.events)
-        assert all(not module._forward_hooks and not module._forward_pre_hooks for module in model.modules())
+    original_inv_freq = model.model.rotary_emb.inv_freq.detach().clone()
+    for length in (2, 8, 9, 16, 3):
+        ids = tokenizer(" ".join(["hello", "world"] * length), return_tensors="pt")["input_ids"][:, :length]
+        mask = torch.ones_like(ids)
+        args = dict(input_ids=ids, attention_mask=mask, use_cache=False, return_dict=True)
+        with torch.inference_mode(): baseline = model(**args).logits
+        assert subject._bits_equal(original_inv_freq, model.model.rotary_emb.inv_freq)
+        expected, handles = {}, []
+        for layer in range(2):
+            for suffix in (".self_attn", ".mlp", ""):
+                name = f"model.layers.{layer}{suffix}"
+                def observe(_module, _args, output, name=name):
+                    expected[name] = (output[0] if isinstance(output, tuple) else output).detach().clone()
+                handles.append(model.get_submodule(name).register_forward_hook(observe))
+        try:
+            with torch.inference_mode(): hooked = model(**args).logits
+        finally:
+            for handle in handles: handle.remove()
+        assert subject._bits_equal(baseline, hooked)
+        assert subject._bits_equal(original_inv_freq, model.model.rotary_emb.inv_freq)
+        for _ in range(2):
+            result = trace_llama_causal_lm(model, ids, mask, run_id="fixture-cpu-only", layers=(0, 1),
+                modules=("attention", "mlp", "block"), max_events=6,
+                max_trace_bytes=1024**2, max_tensor_bytes=1024**2, max_logits_bytes=1024**2)
+            assert subject._bits_equal(baseline, result.output.logits)
+            subject._verify_boundaries(result.events, expected, "llama")
+            assert len(result.events) == 6
+            assert {record.event.module_kind for record in result.events} == {"llama_attention", "llama_mlp", "llama_block"}
+            assert all(tuple(record.value.shape) == (1, length, 8) for record in result.events)
+            assert all(not module._forward_hooks and not module._forward_pre_hooks for module in model.modules())
+            assert subject._bits_equal(original_inv_freq, model.model.rotary_emb.inv_freq)

@@ -158,3 +158,121 @@ def test_nullable_standard_head_defaults():
     validate_llama_config(cfg)
     # Validation is read-only; the actual standard config constructor applies defaults.
     assert cfg['head_dim'] is None and cfg['num_key_value_heads'] is None
+
+
+def llama3_scaling():
+    return dict(rope_type='llama3',factor=8.0,low_freq_factor=1.0,high_freq_factor=4.0,
+                original_max_position_embeddings=16)
+
+
+def test_static_llama3_supported():
+    config=tiny().config.to_dict(); config['rope_scaling']=llama3_scaling()
+    config=LlamaConfig.from_dict(config);config._attn_implementation='eager'
+    model=LlamaForCausalLM(config).eval();ids=torch.tensor([[1,4]])
+    result=trace_llama_causal_lm(model,ids,torch.ones_like(ids),run_id='llama3')
+    assert result.output.logits.shape == (1, 2, 32)
+    assert model.config.rope_scaling == llama3_scaling()
+
+
+@pytest.mark.parametrize('kv',[1,2])
+def test_llama3_varied_prefixes_exact_logits_boundaries_and_static_bits(kv):
+    import copy
+    config=tiny(kv).config.to_dict();config['rope_scaling']=llama3_scaling()
+    config=LlamaConfig.from_dict(config);config._attn_implementation='eager'
+    model=LlamaForCausalLM(config).eval()
+    initial=model.model.rotary_emb.inv_freq.view(torch.int32).clone()
+    scaling=copy.deepcopy(config.rope_scaling)
+    for length in (2,16,17,24,3):
+        ids=torch.arange(length).remainder(32).unsqueeze(0); mask=torch.ones_like(ids)
+        observed={};handles=[]
+        for layer in range(2):
+            for role,suffix in [('attention','.self_attn'),('mlp','.mlp'),('block','')]:
+                path=f'model.layers.{layer}{suffix}'
+                def hook(_m,_a,out,key=path):
+                    observed[key]=(out[0] if isinstance(out,tuple) else out).detach().clone()
+                handles.append(model.get_submodule(path).register_forward_hook(hook))
+        try:
+            with torch.no_grad():baseline=model(input_ids=ids,attention_mask=mask,use_cache=False).logits
+        finally:
+            for h in handles:h.remove()
+        result=trace_llama_causal_lm(model,ids,mask,run_id=f'llama3-{length}',layers=(0,1))
+        assert len(result.events)==6
+        assert torch.equal(result.output.logits.view(torch.int32),baseline.view(torch.int32))
+        for event in result.events:
+            assert torch.equal(event.value.view(torch.int32),observed[event.event.module_path].view(torch.int32))
+        assert torch.equal(model.model.rotary_emb.inv_freq.view(torch.int32),initial)
+        assert config.rope_scaling==scaling
+
+
+def test_llama3_frequency_branches_nonvacuous():
+    import math
+    scaling=llama3_scaling();scaling['original_max_position_embeddings']=32
+    config=LlamaConfig(vocab_size=32,hidden_size=16,intermediate_size=24,num_hidden_layers=1,
+        num_attention_heads=1,num_key_value_heads=1,max_position_embeddings=64,rope_scaling=scaling)
+    model=LlamaForCausalLM(config).eval()
+    expected=[];branches=set()
+    for index in range(0,16,2):
+        freq=1/(config.rope_theta**(index/16));wave=2*math.pi/freq
+        if wave < 32/4: value=freq;branches.add('high')
+        elif wave > 32: value=freq/8;branches.add('low')
+        else:
+            smooth=(32/wave-1)/(4-1)
+            value=(1-smooth)*freq/8+smooth*freq;branches.add('medium')
+        expected.append(value)
+    assert branches=={'high','medium','low'}
+    torch.testing.assert_close(model.model.rotary_emb.inv_freq,torch.tensor(expected),rtol=1e-6,atol=0)
+    default=torch.tensor([1/(config.rope_theta**(i/16)) for i in range(0,16,2)])
+    assert not torch.equal(model.model.rotary_emb.inv_freq.view(torch.int32),default.view(torch.int32))
+
+
+@pytest.mark.parametrize('change', ['missing','extra','alias','dynamic','linear','yarn','longrope',
+    'bool_factor','nan_factor','small_factor','zero_low','equal_range','reversed_range',
+    'bool_original','zero_original','equal_original','partial','bool_partial'])
+def test_strict_llama3_config_rejections(change):
+    from looking_glass.llama_trace import validate_llama_config
+    cfg=tiny().config.to_dict();cfg['rope_scaling']=s=llama3_scaling()
+    if change=='missing':del s['factor']
+    elif change=='extra':s['attention_factor']=1
+    elif change=='alias':s['type']='llama3'
+    elif change in ('dynamic','linear','yarn','longrope'):s['rope_type']=change
+    elif change=='bool_factor':s['factor']=True
+    elif change=='nan_factor':s['factor']=float('nan')
+    elif change=='small_factor':s['factor']=.5
+    elif change=='zero_low':s['low_freq_factor']=0
+    elif change=='equal_range':s['low_freq_factor']=4
+    elif change=='reversed_range':s['low_freq_factor']=5
+    elif change=='bool_original':s['original_max_position_embeddings']=True
+    elif change=='zero_original':s['original_max_position_embeddings']=0
+    elif change=='equal_original':s['original_max_position_embeddings']=32
+    elif change=='partial':cfg['partial_rotary_factor']=.5
+    else:cfg['partial_rotary_factor']=True
+    with pytest.raises(ValueError):validate_llama_config(cfg)
+
+
+@pytest.mark.parametrize('change',['callable','rope_type','config','shape','nonfinite','scaling'])
+def test_rotary_instance_rejection(change):
+    model=tiny();rotary=model.model.rotary_emb
+    if change=='callable':rotary.rope_init_fn=lambda *a:None
+    elif change=='rope_type':rotary.rope_type='llama3'
+    elif change=='config':rotary.config=LlamaConfig.from_dict(model.config.to_dict())
+    elif change=='shape':rotary.inv_freq=rotary.inv_freq[:1]
+    elif change=='nonfinite':rotary.inv_freq[0]=float('nan')
+    else:rotary.attention_scaling=2
+    ids=torch.tensor([[1,4]])
+    with pytest.raises(ValueError):trace_llama_causal_lm(model,ids,torch.ones_like(ids),run_id='invalid')
+
+
+@pytest.mark.parametrize('change',['bits','replace','config'])
+def test_rotary_mutation_detected_after_forward(monkeypatch,change):
+    original=LlamaForCausalLM.forward
+    def faulty(self,*a,**kw):
+        result=original(self,*a,**kw);rotary=self.model.rotary_emb
+        if change=='bits':rotary.inv_freq.view(torch.int32)[0]+=1
+        elif change=='replace':rotary.inv_freq=rotary.inv_freq.clone()
+        else:rotary.config.rope_theta+=1
+        return result
+    model=tiny();monkeypatch.setattr(LlamaForCausalLM,'forward',faulty)
+    ids=torch.tensor([[1,4]])
+    with pytest.raises(RuntimeError,match='static rotary'):
+        trace_llama_causal_lm(model,ids,torch.ones_like(ids),run_id='mutation')
+    assert all(not m._forward_hooks for m in model.modules())

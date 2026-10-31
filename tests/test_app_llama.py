@@ -6,11 +6,11 @@ from test_app_runtime import tokenizer
 from looking_glass.app_runtime import LocalModelRuntime
 
 
-def checkpoint(path, kv=1):
+def checkpoint(path, kv=1, scaling=None):
     path.mkdir()
     config = LlamaConfig(vocab_size=16,hidden_size=8,intermediate_size=16,
         num_hidden_layers=2,num_attention_heads=2,num_key_value_heads=kv,
-        max_position_embeddings=32,eos_token_id=None)
+        max_position_embeddings=32,eos_token_id=None,rope_scaling=scaling)
     config._attn_implementation='eager'
     model=LlamaForCausalLM(config).eval()
     model.save_pretrained(path,safe_serialization=True)
@@ -83,7 +83,8 @@ def test_prefix_keeps_original_mask(tmp_path,monkeypatch):
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(),reason='real CUDA device required; CPU checks are not GPU validation')
-def test_real_cuda_llama_full_logits_boundaries_offload_export_repeat(tmp_path):
+@pytest.mark.parametrize('scaling',[None,dict(rope_type='llama3',factor=8.0,low_freq_factor=1.0,high_freq_factor=4.0,original_max_position_embeddings=8)])
+def test_real_cuda_llama_full_logits_boundaries_offload_export_repeat(tmp_path,scaling):
     import math
     from collections import Counter
     from looking_glass.llama_trace import trace_llama_causal_lm
@@ -92,7 +93,7 @@ def test_real_cuda_llama_full_logits_boundaries_offload_export_repeat(tmp_path):
     device=torch.device('cuda:0'); free,total=torch.cuda.mem_get_info(device)
     if free < max(256*1024**2,math.ceil(total*.1))+64*1024**2:
         pytest.skip('real GPU lacks free-memory/headroom prerequisite')
-    path=tmp_path/'llama'; checkpoint(path)
+    path=tmp_path/'llama'; checkpoint(path,scaling=scaling)
     runtime=LocalModelRuntime(); previous=torch.cuda.get_per_process_memory_fraction(device)
     handles=[]; expected={}
     try:
@@ -121,6 +122,17 @@ def test_real_cuda_llama_full_logits_boundaries_offload_export_repeat(tmp_path):
                 assert torch.equal(record.value.cpu().view(torch.int32),expected[record.event.module_path].view(torch.int32))
                 assert record.event.device=='cuda:0'
             del result,hooked
+            initial_rotary=runtime.model.model.rotary_emb.inv_freq.view(torch.int32).cpu().clone()
+            for length in (2,8,9,16,3):
+                varied=torch.arange(length,device=device).remainder(16).unsqueeze(0)
+                varied_mask=torch.ones_like(varied)
+                plain=runtime.model(input_ids=varied,attention_mask=varied_mask,use_cache=False).logits.cpu()
+                captured=trace_llama_causal_lm(runtime.model,varied,varied_mask,run_id=f'varied-{length}',
+                    layers=(0,1),synchronous_cpu=False)
+                assert torch.equal(plain.view(torch.int32),captured.output.logits.cpu().view(torch.int32))
+                assert torch.equal(runtime.model.model.rotary_emb.inv_freq.view(torch.int32).cpu(),initial_rotary)
+                assert runtime.model.config.rope_scaling==scaling
+                del plain,captured
         result=runtime.run('hello world',{'max_new_tokens':1})
         assert result['generated_token_ids']==[int(baseline[0,-1].argmax())]
         assert result['gpu_memory']['synchronized']
@@ -132,6 +144,7 @@ def test_real_cuda_llama_full_logits_boundaries_offload_export_repeat(tmp_path):
         store=TraceStore(tmp_path/'exports');store.publish(result)
         vectors=[[store.tensor(i,vector=j,limit=4096) for j in range(2)] for i in range(6)]
         saved=store.save('llama-cuda');store.clear();store.open(saved['path'])
+        assert store.summary()['model']['config_summary']['rope_scaling']==scaling
         for i,rows in enumerate(vectors):
             for j,row in enumerate(rows):
                 got=store.tensor(i,vector=j,limit=4096)
@@ -145,3 +158,45 @@ def test_real_cuda_llama_full_logits_boundaries_offload_export_repeat(tmp_path):
     finally:
         for h in handles: h.remove()
         if runtime.info() and runtime.info()['state']=='ready': runtime.unload()
+
+
+def test_llama3_metadata_and_export_roundtrip(tmp_path):
+    from looking_glass.app_storage import TraceStore
+    scaling=dict(rope_type='llama3',factor=8.0,low_freq_factor=1.0,high_freq_factor=4.0,original_max_position_embeddings=8)
+    path=tmp_path/'llama';checkpoint(path,scaling=scaling)
+    runtime=LocalModelRuntime();info=runtime.load(str(path),device='cpu')
+    assert info['config_summary']['rope_scaling']==scaling
+    result=runtime.run('hello world',{'max_new_tokens':2})
+    assert result['model']['config_summary']['rope_scaling']==scaling
+    store=TraceStore(tmp_path/'exports');store.publish(result)
+    saved=store.save('llama3');store.clear();store.open(saved['path'])
+    assert store.summary()['model']['config_summary']['rope_scaling']==scaling
+    runtime.unload()
+
+
+def test_static_llama3_tied_sharded_local_checkpoint(tmp_path):
+    scaling=dict(rope_type='llama3',factor=8.0,low_freq_factor=1.0,high_freq_factor=4.0,original_max_position_embeddings=8)
+    path=tmp_path/'tied-sharded';path.mkdir()
+    config=LlamaConfig(vocab_size=16,hidden_size=8,intermediate_size=16,num_hidden_layers=2,
+        num_attention_heads=2,num_key_value_heads=1,max_position_embeddings=32,
+        tie_word_embeddings=True,rope_scaling=scaling,eos_token_id=None)
+    config._attn_implementation='eager'
+    model=LlamaForCausalLM(config).eval()
+    assert model.lm_head.weight is model.model.embed_tokens.weight
+    model.to(dtype=torch.bfloat16)  # Stored reduced precision; inference remains float32.
+    expected={name:value.detach().float().clone() for name,value in model.state_dict().items()}
+    model.save_pretrained(path,safe_serialization=True,max_shard_size='1KB')
+    tokenizer(path)
+    assert (path/'model.safetensors.index.json').is_file()
+    import hashlib
+    hashes={file.name:hashlib.sha256(file.read_bytes()).hexdigest() for file in path.iterdir() if file.is_file()}
+    runtime=LocalModelRuntime();runtime.load(str(path),device='cpu')
+    assert runtime.model.lm_head.weight is runtime.model.model.embed_tokens.weight
+    for name,value in runtime.model.state_dict().items():
+        assert value.dtype==torch.float32
+        assert torch.equal(value.view(torch.int32),expected[name].view(torch.int32))
+    result=runtime.run('hello world',{'max_new_tokens':2})
+    assert len(result['events'])==12
+    assert result['model']['config_summary']['rope_scaling']==scaling
+    assert hashes=={file.name:hashlib.sha256(file.read_bytes()).hexdigest() for file in path.iterdir() if file.is_file()}
+    runtime.unload()
