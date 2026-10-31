@@ -329,6 +329,43 @@ class TraceStore:
         return {"vectors": [{"index": index, "coordinate": self._coordinate(event, index)}
                             for index in range(offset, min(offset + limit, count))], "total": count}
 
+    def intervention_source(self, event, vector):
+        """Copy one grounded GPT2 source for a privately bound runtime experiment.
+
+        This validates retained data, not live-model authority. The server must
+        separately require its private live-capture binding; JSON is not a binding.
+        """
+        import torch
+        if self._run is None: raise ValueError("No completed trace is loaded")
+        _integer(event, "event", 0, len(self._values) - 1)
+        _integer(vector, "vector", 0, self._events[event]["vector_count"] - 1)
+        coordinate = self._coordinate(event, vector)
+        model = self._run.get("model")
+        if (coordinate["status"] != "known" or type(model) is not dict
+                or model.get("family") != "gpt2"):
+            raise ValueError("Intervention source requires a known GPT2 coordinate")
+        metadata = self._events[event]["metadata"]
+        matches = [step for step in self._run["steps"]
+                   if step["app_forward_index"] == coordinate["app_forward_index"]
+                   and step.get("run_id") == metadata["identity"]["run_id"]]
+        if len(matches) != 1:
+            raise ValueError("Intervention source requires a unique retained forward step")
+        step = matches[0]
+        ids, mask = step.get("input_token_ids"), step.get("input_attention_mask")
+        if (type(ids) is not list or not ids or any(type(value) is not int or value < 0 for value in ids)
+                or type(mask) is not list or len(mask) != len(ids)
+                or any(type(value) is not int or value not in (0, 1) for value in mask)):
+            raise ValueError("Intervention source requires exact input IDs and a matching binary attention mask")
+        if step.get("use_cache") is not False:
+            raise ValueError("Intervention source requires an explicitly uncached forward")
+        value = self._values[event]
+        reference = value.reshape(-1, value.shape[-1])[vector].detach().clone().contiguous()
+        if (reference.device.type != "cpu" or reference.dtype != torch.float32
+                or not torch.isfinite(reference).all().item()):
+            raise ValueError("Intervention reference must be finite CPU float32")
+        return {"coordinate": _json_copy(coordinate), "step": _json_copy(step),
+                "model": _json_copy(model), "reference_value": reference}
+
     def tensor(self, event, vector=0, offset=0, limit=256, view="raw"):
         import torch
         if self._run is None: raise ValueError("No completed trace is loaded")

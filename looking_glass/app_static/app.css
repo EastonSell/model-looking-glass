@@ -12,3 +12,6 @@
 
 #vector-picker { max-width: 100%; }
 #vector-coordinate { font-size: 12px; }
+
+.intervention-editor { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 20px; }
+#experiment-metrics, #experiment-controls { overflow-wrap: anywhere; }

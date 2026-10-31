@@ -51,6 +51,16 @@ Navigation uses only the capture’s recorded shape, selected source positions a
 
 Auto means every supported **module boundary**, not every mathematical operation, neuron state, attention probability, or internal node. T5 cross-attention is not a separate capture role in the current adapter. GPT-2/T5 use explicit uncached generation forwards: later steps recompute the growing prefix, and repeated token vectors belong to distinct forwards. Attention/MLP/block changes are observations, not a proof of a unique causal mechanism or complete interpretability.
 
+## Try a controlled activation intervention
+
+With a **fresh live GPT-2 capture** and a known selected vector, use the intervention panel to **zero that vector**, **add to one feature**, or **set one feature**. These are temporary runtime operations, never checkpoint/weight edits. Imported captures, another model load, unknown coordinates, and other architectures are read-only for this workflow. Reloading the same path does not restore the private live-model binding; make a fresh capture. Stale selections from another browser tab are rejected.
+
+The experiment replays exactly one recorded input prefix and its attention mask, not the whole generated continuation. It runs an unhooked baseline, a same-site null control, the treatment, and an unhooked restoration. The null/restoration full logits must match the baseline bitwise; the fresh selected source must match the original capture. Other positions at the selected boundary must remain unchanged, and single-feature edits must preserve the other feature bits. A failed control publishes no successful comparison. This establishes a bounded same-input intervention comparison, **not** a model explanation, backdoor detector, general repair, or comparison between diverged generations.
+
+The original RAM capture stays intact. The separate panel shows baseline/treatment next-token choices, full-logit change metrics, explicit no-op results, and four full selected-vector witnesses (null before/after and treatment before/after), with exact value/bit pagination. It is **not a full-model post-intervention trace**; full logits are compared but only metrics/top candidates are retained in the report. Choose **Save experiment** to export this separate result; the original Save still saves the original capture. Reopening a comparison permits inspection, not another live intervention; expand its run details to read the saved controls and metrics.
+
+Experiments currently allow a fixed prefix of at most 64 tokens and at most 16 MiB of full logits. Their conservative logical-memory plan must fit both a 128 MiB additional allowance and the server’s remaining trace budget after the original capture. Limits reject requests before forwarding; they are not peak-memory guarantees. CPU execution is tested on tiny local checkpoints. CUDA uses the existing allocator/synchronization safeguards but remains hardware-unverified here. No permission to install a driver, download a model, or edit a checkpoint is implied.
+
 ## Memory, failures and privacy
 
 The default trace allowance is 128 MiB; the server has a 512 MiB ceiling, which can be lowered with `--max-trace-mib`. Byte/event estimates aggregate **all requested generation forwards**, including repeated prefix captures. A too-large requested capture is rejected before forwarding when it exceeds the calculated bound. Runtime limits still apply. Select fewer boundaries or shorten the request rather than expecting automatic thinning.
@@ -72,7 +82,11 @@ The server uses a fresh session token, same-origin/Host checks and no remote ass
 ```bash
 python -m pytest tests/test_app_runtime.py tests/test_app_cuda.py \
   tests/test_app_selftest.py tests/test_app_storage.py \
-  tests/test_app_http.py tests/test_app_install.py -q
+  tests/test_app_http.py tests/test_app_install.py tests/test_app_interventions.py \
+  tests/test_app_intervention_http.py tests/test_transformer_trace.py \
+  tests/test_distilbert_trace.py tests/test_flan_t5_trace.py tests/test_vit_trace.py \
+  tests/test_probes.py tests/test_interventions.py tests/test_intervention_plan.py \
+  tests/test_model_ownership.py -q
 # Optional developer-only DOM/API contract check (Node.js; no browser install):
 node tests/app_ui_contract.cjs
 ```
@@ -91,7 +105,7 @@ This executor has no visible NVIDIA device and a CPU-only PyTorch build. CUDA po
 python -m pytest tests/test_app_cuda.py -q -ra
 ```
 
-The focused app/adapter suite completed with **302 passed and 3 real-CUDA prerequisite skips** on the CPU executor; the UI DOM contract covered 77 mocked authenticated requests, including source-position paging, catalog failures, stale-search responses, unload and failed tensor reads. Independent local four-family roundtrips preserved all 105 inspected vectors’ raw bits and navigation coordinates after unloading the model and reopening an export. An independently installed wheel also passed the CPU capabilities/server/static-asset smoke check. These are focused checks, not a rerun of the entire historical research suite.
+The focused app/adapter suite completed with **444 passed and 4 real-CUDA prerequisite skips** on the CPU executor; the UI DOM contract covered 118 mocked authenticated requests, including source-position paging, controlled interventions, stale cross-tab reads/saves, catalog failures, unload and failed tensor reads. Real loopback HTTP tests also exercised all three intervention operations, separate witness export/reopen and original-capture preservation. Independent local four-family roundtrips preserved all 105 inspected vectors’ raw bits and navigation coordinates after unloading the model and reopening an export. An independently installed wheel also passed the CPU capabilities/server/static-asset smoke check. These are focused checks, not a rerun of the entire historical research suite.
 
 A prerequisite skip is not a pass. No GPU speedup, VRAM measurement, rounding-gate fidelity, or pretrained-model quality has been established by this release's CPU-only validation.
 

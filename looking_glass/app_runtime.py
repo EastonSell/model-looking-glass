@@ -286,6 +286,7 @@ class LocalModelRuntime:
         self._info = None
         self._lock = threading.Lock()
         self._quarantined = False
+        self._capture_binding = None
         self._device = torch.device("cpu")
         self._vram_limit = None
         self._active_cuda_limit = None
@@ -414,11 +415,13 @@ class LocalModelRuntime:
         return None if self._info is None else copy.deepcopy(self._info)
 
     def _quarantine(self):
+        self._capture_binding = None
         self._quarantined = True
         if self._info is not None:
             self._info["state"] = "quarantined"
 
     def _retire_current(self):
+        self._capture_binding = None
         if self._quarantined:
             raise RuntimeError("model owner is quarantined; restart the local app")
         if self.model is not None and self._device.type == "cuda":
@@ -524,6 +527,7 @@ class LocalModelRuntime:
             else:
                 self._info["gpu_memory"] = None
             self._info["state"] = "ready"
+            self._capture_binding = object()
             return self.info()
 
     def _image_geometry(self):
@@ -627,6 +631,33 @@ class LocalModelRuntime:
         if boundary > opts["max_tensor_bytes"]:
             raise ValueError("selected boundary tensor exceeds max_tensor_bytes")
         return estimate
+
+    def capture_binding(self):
+        """Opaque live-owner capability; never serialized into a saved trace."""
+        with self._lock:
+            return self._capture_binding
+
+    def intervene_fixed_forward(self, binding, source, operation, feature_index=None,
+                                value=None, max_pair_bytes=128 * 1024**2):
+        from .app_interventions import validate_request, execute
+        with self._lock:
+            if self._quarantined:
+                raise RuntimeError("model owner is quarantined; restart the local app")
+            if binding is None or binding is not self._capture_binding or self.model is None:
+                raise ValueError("intervention requires the original live model binding")
+            request = validate_request(self, source, operation, feature_index, value, max_pair_bytes)
+            try:
+                if self._device.type == "cuda":
+                    with _cuda_operation(self._device, self._vram_limit) as telemetry:
+                        _cuda_admit(self._device, request["planned_bytes"], telemetry["effective_limit_bytes"])
+                        result = execute(self, request)
+                    result["gpu_memory"] = copy.deepcopy(telemetry)
+                else:
+                    result = execute(self, request)
+                return result
+            except BaseException:
+                self._quarantine()
+                raise
 
     def run(self, prompt, settings, image_bytes=None):
         with self._lock:
@@ -762,6 +793,7 @@ class LocalModelRuntime:
                 step = {"app_forward_index": forward, "run_id": ident, "use_cache": False,
                         "execution": "one full uncached forward", "event_end": len(captures),
                         "input_token_ids": None if ids is None else ids[0].tolist(),
+                        "input_attention_mask": None if masks is None else masks[0].tolist(),
                         "decoder_token_ids": None if decoder is None else decoder[0].tolist()}
                 if family in ("gpt2", "t5"):
                     logits = output.logits[0, -1]

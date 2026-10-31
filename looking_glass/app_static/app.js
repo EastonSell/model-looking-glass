@@ -2,23 +2,24 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const token = document.querySelector('meta[name="mlg-token"]').content;
-  const state = {vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
+  const state = {coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
   const pageSize = 100, valuePageSize = 256;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
   const bytes = (value) => { const n = Number(value); if (!Number.isFinite(n)) return '—'; return n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KiB` : `${(n / 1048576).toFixed(2)} MiB`; };
   function notice(message, error = false) { $('notice').textContent = message; $('notice').hidden = !message; $('notice').classList.toggle('error', error); }
   async function api(path, body) {
+    if (body === undefined && /^(events|vectors|tensor)\?/.test(path) && state.run?.capture_id) path += `&capture_id=${encodeURIComponent(state.run.capture_id)}`;
     const options = {headers: {'X-MLG-Token': token}, credentials: 'same-origin', cache: 'no-store'};
     if (body !== undefined) { options.method = 'POST'; options.headers['Content-Type'] = 'application/json'; options.body = JSON.stringify(body); }
     const response = await fetch(`/api/${path}`, options);
     let data;
     try { data = await response.json(); } catch (_) { throw new Error(`The local app returned an invalid response (${response.status}).`); }
-    if (!response.ok || data.error) throw new Error(data.error || `Request failed (${response.status}).`);
+    if (!response.ok || data?.error) throw new Error(data?.error || `Request failed (${response.status}).`);
     return data;
   }
   function syncButtons() {
-    ['vector-picker', 'browse-button', 'browse-go', 'browse-parent', 'browse-select', 'browse-path', 'saved-runs', 'refresh-saved', 'inspect-button', 'load-button', 'model-path', 'execution-device', 'vram-mib', 'refresh-devices', 'open-button', 'open-path', 'vector-index', 'vector-view', 'capture-mode', 'layers', 'max-input', 'max-output', 'max-events', 'trace-mib', 'prompt', 'image-file'].forEach((id) => { $(id).disabled = state.busy; });
+    ['intervention-operation', 'intervention-feature', 'intervention-value', 'witness-phase', 'experiment-save-name', 'vector-picker', 'browse-button', 'browse-go', 'browse-parent', 'browse-select', 'browse-path', 'saved-runs', 'refresh-saved', 'inspect-button', 'load-button', 'model-path', 'execution-device', 'vram-mib', 'refresh-devices', 'open-button', 'open-path', 'vector-index', 'vector-view', 'capture-mode', 'layers', 'max-input', 'max-output', 'max-events', 'trace-mib', 'prompt', 'image-file'].forEach((id) => { $(id).disabled = state.busy; });
     $('run-button').textContent = state.run ? 'Replace capture →' : 'Run & capture →';
     $('replace-warning').hidden = !state.run;
     $('run-button').disabled = state.busy || !state.model || state.model.state === 'quarantined';
@@ -37,6 +38,11 @@
     $('vector-next').disabled = state.busy || !state.event || Number($('vector-index').value) >= Number($('vector-index').max);
     $('vectors-page-prev').disabled = state.busy || !state.event || state.vectorListOffset === 0;
     $('vectors-page-next').disabled = state.busy || !state.event || state.vectorListOffset + 100 >= state.vectorListTotal;
+    $('intervene-button').disabled = state.busy || !interventionReady();
+    $('intervention-status').textContent = interventionReady() ? 'Ready for the selected, successfully read source vector.' : interventionReason();
+    $('save-experiment').disabled = state.busy || !state.experiment;
+    $('witness-prev').disabled = state.busy || !state.experiment || state.witnessOffset === 0;
+    $('witness-next').disabled = state.busy || !state.experiment || state.witnessOffset + valuePageSize >= state.witnessTotal;
     $('view-vector').disabled = state.busy || !state.event;
     document.querySelectorAll('#event-body button').forEach((button) => { button.disabled = state.busy; });
     document.querySelectorAll('#target-options input').forEach((input) => { input.disabled = state.busy; });
@@ -117,7 +123,7 @@
     syncButtons();
   }
   function clearView() {
-    resetVectorPicker(); clearTimeout(state.searchTimer); state.eventQuery = ''; $('event-filter').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
+    clearExperiment(); resetVectorPicker(); clearTimeout(state.searchTimer); state.eventQuery = ''; $('event-filter').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
     $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.'; syncButtons();
   }
   function showRun(run) {
@@ -127,7 +133,7 @@
     $('run-metrics').replaceChildren();
     for (const [value, label] of [[run.event_count ?? '—', 'captured observations'], [bytes(run.total_bytes), 'CPU RAM tensor payload'], [Array.isArray(run.steps) ? run.steps.length : '—', 'explicit forward steps']]) { const box = document.createElement('div'), strong = document.createElement('strong'), span = document.createElement('span'); box.className = 'metric'; strong.textContent = String(value); span.textContent = label; box.append(strong, span); $('run-metrics').append(box); }
     $('coverage').textContent = typeof run.coverage === 'string' ? run.coverage : 'Full retained vectors at selected supported observation points. See the coverage record for exact scope.';
-    $('run-details').textContent = display({coverage: run.coverage, steps: run.steps, stop_reason: run.stop_reason, estimates: run.estimates, tokens: run.tokens, image_metadata: run.image_metadata}); syncButtons();
+    $('run-details').textContent = display({run_kind: run.run_kind, experiment: run.experiment, coverage: run.coverage, steps: run.steps, stop_reason: run.stop_reason, estimates: run.estimates, tokens: run.tokens, image_metadata: run.image_metadata}); syncButtons();
   }
   function cell(row, value) { const td = document.createElement('td'); td.textContent = String(value ?? '—'); row.append(td); return td; }
   function eventName(event) { return event.metadata?.module_path || event.module_path || event.metadata?.site?.module_path || `Observation ${event.index}`; }
@@ -155,7 +161,7 @@
   }
   async function loadVector() {
     if (!state.event) return;
-    const request = ++state.valueRequest;
+    const request = ++state.valueRequest; state.coordinate = null; syncButtons();
     // Never display the preceding tensor beneath a newly selected coordinate.
     $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren();
     $('raw-values').hidden = true; $('reduced-values').hidden = true; $('reduction-note').hidden = true;
@@ -167,6 +173,7 @@
     const view = $('vector-view').value;
     const result = await api(`tensor?event=${state.event.index}&vector=${vector}&offset=${state.valueOffset}&limit=${valuePageSize}&view=${view}`);
     if (request !== state.valueRequest) return;
+    state.coordinate = result.coordinate || null; $('intervention-feature').max = String(Math.max(0, Number(result.vector_width ?? result.total ?? 0) - 1));
     $('vector-coordinate').textContent = coordinateLabel(result.coordinate, vector);
     $('reduction-note').hidden = view !== 'reduced'; $('raw-values').hidden = view !== 'raw'; $('reduced-values').hidden = view !== 'reduced';
     state.valueTotal = Number(result.vector_width ?? result.total ?? 0);
@@ -181,7 +188,7 @@
     syncButtons();
   }
   function resetVectorPicker() {
-    state.vectorListRequest++; state.vectorListOffset = 0; state.vectorListTotal = 0; state.vectorOptions = [];
+    state.coordinate = null; state.vectorListRequest++; state.vectorListOffset = 0; state.vectorListTotal = 0; state.vectorOptions = [];
     $('vector-picker').replaceChildren(); $('vectors-page').textContent = ''; $('vector-list-status').textContent = '';
     $('vector-coordinate').textContent = 'Coordinate unavailable until a vector is read.';
   }
@@ -246,6 +253,46 @@
     $('saved-runs').value = state.saved.some((run) => run.path === selected && run.status === 'complete_unverified') ? selected : '';
     $('saved-status').textContent = `${state.saved.length} listed capture folders${result.truncated ? ' · list truncated' : ''}. Listing does not verify tensor integrity; Open validates the selected capture. Incomplete exports cannot be opened from this list.`;
   }
+  function interventionReady() {
+    return !!(state.run?.intervention_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && state.model?.family === 'gpt2' && state.model.state !== 'quarantined' && state.event && Number($('vector-index').value) === state.vector && state.coordinate?.status === 'known');
+  }
+  function interventionReason() {
+    if (!state.model || state.model.state === 'quarantined') return 'Load a ready live GPT-2 model to replay. Unload or quarantine disables new edits; saved comparisons remain inspectable.';
+    if (!state.run?.intervention_available || state.run.run_kind === 'intervention_comparison') return state.run?.intervention_reason || 'This capture is read-only for intervention; make a fresh supported live GPT-2 capture.';
+    if (state.coordinate?.status !== 'known' || Number($('vector-index').value) !== state.vector) return 'Read a vector with validated source coordinates first. Unknown source mappings cannot be edited.';
+    return 'A current live GPT-2 capture identifier is required.';
+  }
+  function clearWitness() {
+    state.witnessRequest++; state.witnessTotal = 0; $('witness-body').replaceChildren(); $('witness-coordinate').textContent = ''; $('witness-page').textContent = ''; $('witness-status').textContent = '';
+  }
+  function clearExperiment() {
+    state.experiment = null; state.witnessOffset = 0; clearWitness(); $('experiment-panel').hidden = true; $('experiment-token-body').replaceChildren(); $('experiment-details').textContent = ''; $('experiment-outcome').textContent = ''; $('experiment-controls').textContent = ''; $('experiment-metrics').textContent = ''; $('experiment-startup-status').textContent = ''; $('experiment-save-status').textContent = 'Optional export includes private fixed input, metadata and full witness tensors. Original capture is separate.';
+  }
+  function showExperiment(summary) {
+    state.experiment = summary; const e = summary.experiment || {}, c = e.comparison || {}; $('experiment-panel').hidden = false;
+    $('experiment-outcome').textContent = c.selected_vector_changed === false ? 'No-op: the selected vector did not change. Do not interpret this as evidence about the effect of changing it.' : c.selected_vector_changed === true ? `Selected vector changed. Baseline next-token ID ${c.baseline_next_token_id ?? '?'} → edited ID ${c.intervention_next_token_id ?? '?'}. This is one fixed-input comparison, not a generated continuation or explanation.` : 'Comparison returned without a verified selected-vector change flag; inspect the complete metadata.';
+    const controls = Object.entries(e.controls || {}); $('experiment-controls').textContent = controls.length ? 'Recorded controls: ' + controls.map(([key,value]) => `${key}: ${value === true ? 'passed' : value === false ? 'FAILED' : display(value)}`).join(' · ') : 'No control results recorded.';
+    $('experiment-metrics').textContent = `Full-logits max |Δ|: ${number(c.full_logits_max_abs_delta)} · full-logits L2 Δ: ${number(c.full_logits_l2_delta)} · last-position max |Δ|: ${number(c.last_position_max_abs_delta)}`;
+    $('experiment-details').textContent = display(summary); $('experiment-token-body').replaceChildren();
+    const before = e.baseline_top_next_tokens || [], after = e.intervention_top_next_tokens || [];
+    for (let i=0; i < Math.max(before.length, after.length); i++) { const row=document.createElement('tr'); cell(row,i+1); cell(row,before[i] ? `${JSON.stringify(before[i].text)} · ${before[i].token_id}` : '—'); cell(row,number(before[i]?.logit)); cell(row,after[i] ? `${JSON.stringify(after[i].text)} · ${after[i].token_id}` : '—'); cell(row,number(after[i]?.logit)); $('experiment-token-body').append(row); }
+    syncButtons();
+  }
+  async function loadWitness() {
+    if (!state.experiment) return;
+    clearWitness(); const request=state.witnessRequest, phase=$('witness-phase').value; $('witness-status').textContent='Reading exact witness values…';
+    try { const result=await api(`experiment-tensor?event=${phase}&vector=0&offset=${state.witnessOffset}&limit=${valuePageSize}&experiment_id=${encodeURIComponent(state.experiment.experiment_id || "")}`);
+      if(request!==state.witnessRequest || !state.experiment) return;
+      state.witnessTotal=Number(result.vector_width ?? result.total ?? 0); $('witness-coordinate').textContent=coordinateLabel(result.coordinate,0);
+      (result.values || []).forEach((value,i)=>{const row=document.createElement('tr');cell(row,Number(result.offset ?? state.witnessOffset)+i);cell(row,number(value));cell(row,result.raw_bits?.[i] ?? '—');$('witness-body').append(row);});
+      $('witness-page').textContent=`${state.witnessOffset}–${Math.max(state.witnessOffset,state.witnessOffset+(result.values || []).length-1)} of ${state.witnessTotal} features (zero-based)`; $('witness-status').textContent='Exact retained witness; independent of original capture values.';
+    } catch(error) {if(request===state.witnessRequest) $('witness-status').textContent=`Witness unavailable: ${error.message || String(error)}. The comparison summary remains available.`;}
+    syncButtons();
+  }
+  async function restoreExperimentOptional() {
+    try { const summary=await api('experiment'); if(summary?.run_kind==='intervention_comparison') {showExperiment(summary); await loadWitness();} }
+    catch(error) {$('experiment-startup-status').textContent=`Comparison could not be restored: ${error.message || String(error)}. Original capture access is unaffected.`;}
+  }
   async function refreshSavedOptional() {
     try { await refreshSaved(); }
     catch (error) {
@@ -268,7 +315,7 @@
   $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); clearView(); showRun(await api('open', {path})); await loadEvents(); $('saved-status').textContent = 'Selected capture opened and validated. Other listed exports remain unverified.'; }));
   $('run-button').addEventListener('click', () => action('Running model and capturing supported outputs…', async () => { const options = settings(), prompt = $('prompt').value; const vision = String(state.model?.family || '').toLowerCase().includes('vit'); if (vision && !state.image) throw new Error('Choose an image first.'); if (!vision && !prompt.trim()) throw new Error('Enter a prompt first.'); clearView(); const body = {prompt, settings: options}; if (vision) body.image_base64 = state.image; showRun(await api('run', body)); await loadEvents(); }));
   $('image-file').addEventListener('change', async () => { const request = ++state.imageRequest; state.image = null; const file = $('image-file').files[0]; if (!file) return; if (file.size > 4 * 1048576) { $('image-file').value = ''; notice('Choose an image no larger than 4 MiB.', true); return; } try { const result = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('Could not read this image.')); reader.readAsDataURL(file); }); if (request !== state.imageRequest) return; state.image = String(result).split(',')[1]; $('image-description').textContent = `${file.name} · ${bytes(file.size)} · held in this browser until Clear captured run or page close.`; } catch (error) { notice(error.message, true); } });
-  $('save-button').addEventListener('click', () => action('Saving the complete capture…', async () => { const name = $('save-name').value.trim(); if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(name)) throw new Error('Use a save name of 1–64 letters, numbers, underscores, or hyphens, starting with a letter or number.'); const result = await api('save', {name}); $('save-status').textContent = `Saved explicitly: ${result.path || display(result)}. This export contains full capture data; keep it private when inputs are private.`; await refreshSavedOptional(); }));
+  $('save-button').addEventListener('click', () => action('Saving the complete capture…', async () => { const name = $('save-name').value.trim(); if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(name)) throw new Error('Use a save name of 1–64 letters, numbers, underscores, or hyphens, starting with a letter or number.'); $('save-status').textContent = 'No new export confirmed for this save attempt.'; const result = await api('save', {name, capture_id: state.run.capture_id}); $('save-status').textContent = `Saved explicitly: ${result.path || display(result)}. This export contains full capture data; keep it private when inputs are private.`; await refreshSavedOptional(); }));
   $('clear-button').addEventListener('click', () => action('Clearing captured results…', async () => { await api('clear', {}); clearView(); $('prompt').value = ''; state.imageRequest++; state.image = null; $('image-file').value = ''; $('image-description').textContent = 'Select a local PNG, JPEG, or WebP. It is sent only to this local app.'; }));
   $('event-filter').addEventListener('input', () => {
     clearTimeout(state.searchTimer); state.eventRequest++; state.valueRequest++;
@@ -282,9 +329,23 @@
   $('vector-next').addEventListener('click', () => action('Reading next vector…', async () => { $('vector-index').value = String(Math.min(Number($('vector-index').max), Number($('vector-index').value) + 1)); await loadVector(); }));
   $('vectors-page-prev').addEventListener('click', () => action('Reading source-position picker…', async () => { state.vectorListOffset = Math.max(0, state.vectorListOffset - 100); await loadVectorList(); }));
   $('vectors-page-next').addEventListener('click', () => action('Reading source-position picker…', async () => { state.vectorListOffset += 100; await loadVectorList(); }));
+  $('vector-index').addEventListener('input', syncButtons);
+  $('intervention-operation').addEventListener('change',()=>{$('intervention-feature-fields').hidden=$('intervention-operation').value==='zero';});
+  $('intervene-button').addEventListener('click',()=>action('Replaying fixed input and checking controls…',async()=>{
+    if(!interventionReady()) throw new Error(interventionReason());
+    const operation=$('intervention-operation').value;
+    if(!['zero','add','replace'].includes(operation)) throw new Error('Choose Zero, Add or Set.');
+    const body={capture_id:state.run.capture_id,event:state.event.index,vector:state.vector,operation};
+    if(operation!=='zero'){body.feature_index=intField('intervention-feature');const input=$('intervention-value').value.trim();if(!input || !Number.isFinite(Number(input)))throw new Error('Enter an explicit finite numeric value for the feature edit.');body.value=Number(input);}
+    clearExperiment();const summary=await api('intervene',body);showExperiment(summary);$('witness-phase').value='0';await loadWitness();
+  }));
+  $('witness-phase').addEventListener('change',()=>{state.witnessOffset=0;return loadWitness();});
+  $('witness-prev').addEventListener('click',()=>{if(state.busy)return;state.witnessOffset=Math.max(0,state.witnessOffset-valuePageSize);return loadWitness();});
+  $('witness-next').addEventListener('click',()=>{if(state.busy)return;state.witnessOffset+=valuePageSize;return loadWitness();});
+  $('save-experiment').addEventListener('click',()=>action('Saving only the separate comparison…',async()=>{const name=$('experiment-save-name').value.trim();if(!/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(name))throw new Error('Use a comparison name of 1–64 letters, numbers, underscores or hyphens, starting with a letter or number.');$('experiment-save-status').textContent='No new comparison export confirmed for this save attempt.';const result=await api('save-experiment',{name,experiment_id:state.experiment.experiment_id});$('experiment-save-status').textContent=`Saved comparison explicitly: ${result.path || display(result)}. Original capture export is separate.`;await refreshSavedOptional();}));
   $('view-vector').addEventListener('click', () => action('Reading retained vector…', loadVector));
   $('vector-view').addEventListener('change', () => action('Changing display view…', async () => { state.valueOffset = 0; await loadVector(); }));
   $('values-prev').addEventListener('click', () => action('Reading previous coordinates…', async () => { state.valueOffset = Math.max(0, state.valueOffset - valuePageSize); await loadVector(); }));
   $('values-next').addEventListener('click', () => action('Reading next coordinates…', async () => { state.valueOffset += valuePageSize; await loadVector(); }));
-  action('Connecting to your local session…', async () => { const result = await api('status'); setModel(result.model); applyLimits(result.limits); applyDevices(result); for (const item of result.models || []) { const option = document.createElement('option'); option.value = typeof item === 'string' ? item : item.path; option.label = typeof item === 'string' ? item : item.name || item.path; $('model-choices').append(option); } if (result.run) { showRun(result.run); await loadEvents(); } await refreshSavedOptional(); });
+  action('Connecting to your local session…', async () => { const result = await api('status'); setModel(result.model); applyLimits(result.limits); applyDevices(result); for (const item of result.models || []) { const option = document.createElement('option'); option.value = typeof item === 'string' ? item : item.path; option.label = typeof item === 'string' ? item : item.name || item.path; $('model-choices').append(option); } if (result.run) { showRun(result.run); await loadEvents(); } await refreshSavedOptional(); await restoreExperimentOptional(); });
 })();

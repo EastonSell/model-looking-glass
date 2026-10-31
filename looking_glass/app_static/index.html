@@ -115,9 +115,27 @@
         <p id="reduction-note" class="approximation" hidden>Approximate display only: adjacent coordinates are grouped into mean/min/max bins. This is not learned semantic reduction, a concept label, or a lossless substitute. Full captured values remain in RAM and in an explicit export.</p>
         <div id="raw-values"><div class="table-scroll"><table><thead><tr><th>Feature coordinate</th><th>Value</th><th>Raw bits, when available</th></tr></thead><tbody id="value-body"></tbody></table></div><div class="pager"><button id="values-prev" class="quiet" type="button">← Previous values</button><span id="value-page" class="hint"></span><button id="values-next" class="quiet" type="button">Next values →</button></div></div>
         <div id="reduced-values" hidden><div id="bin-plot" class="bin-plot" role="img" aria-label="Approximate grouped feature means"></div><div class="table-scroll"><table><thead><tr><th>Feature range</th><th>Mean</th><th>Minimum</th><th>Maximum</th></tr></thead><tbody id="bin-body"></tbody></table></div></div>
+        <section class="intervention-editor" aria-labelledby="intervention-heading"><h3 id="intervention-heading">Try a controlled activation edit</h3>
+        <p class="hint">Live GPT-2 only. Edits affect this runtime replay, never checkpoint weights. Replay the fixed recorded input prefix and compare next-token logits—not a generated continuation, a semantic explanation, or backdoor proof. Maximum 64 prefix tokens; the separate comparison must fit remaining trace allowance and its 128 MiB limit.</p>
+        <p id="intervention-status" class="hint" aria-live="polite"></p>
+        <label for="intervention-operation">Edit at the selected source vector</label><select id="intervention-operation"><option value="zero">Zero the entire selected vector</option><option value="add">Add to one feature</option><option value="replace">Set one feature</option></select>
+        <div id="intervention-feature-fields" class="field-grid" hidden><div><label for="intervention-feature">Feature index · zero-based</label><input id="intervention-feature" type="number" min="0" max="0" value="0"></div><div><label for="intervention-value">Explicit finite value</label><input id="intervention-value" type="text" inputmode="decimal" placeholder="e.g. 0.5" autocomplete="off"></div></div>
+        <button id="intervene-button" type="button" disabled>Replay &amp; compare</button><p class="hint">Your original capture stays unchanged. A new replay replaces only the previous comparison, even if replay fails. Save that comparison first if needed.</p></section>
         <details><summary>Exact observation metadata</summary><pre id="event-metadata" class="detail-json"></pre></details>
       </div>
     </section>
+    <section id="experiment-panel" class="panel" aria-labelledby="experiment-heading" hidden>
+      <div class="panel-heading"><h2 id="experiment-heading">Fixed-input comparison</h2><span class="pill">Separate from original capture</span></div>
+      <p id="experiment-outcome" class="info-box"></p><p id="experiment-controls" class="hint"></p><p id="experiment-metrics" class="hint"></p>
+      <p class="hint">Paired columns rank each trial’s top next-token logits independently. These are logits, not probabilities. Identical next-token IDs alone do not mean all logits were unchanged.</p>
+      <div class="table-scroll"><table><thead><tr><th>Rank</th><th>Baseline token · ID</th><th>Logit</th><th>Edited token · ID</th><th>Logit</th></tr></thead><tbody id="experiment-token-body"></tbody></table></div>
+      <details><summary>Complete comparison metadata and controls</summary><pre id="experiment-details" class="detail-json"></pre></details>
+      <label for="witness-phase">Exact selected-vector witness</label><select id="witness-phase"><option value="0">Null control · before</option><option value="1">Null control · after</option><option value="2">Intervention · before</option><option value="3">Intervention · after</option></select><p id="witness-status" class="hint" aria-live="polite"></p><p id="witness-coordinate" class="hint"></p>
+      <div class="table-scroll"><table><thead><tr><th>Feature</th><th>Exact value</th><th>Raw bits</th></tr></thead><tbody id="witness-body"></tbody></table></div>
+      <div class="pager"><button id="witness-prev" class="quiet" type="button">← Previous values</button><span id="witness-page" class="hint"></span><button id="witness-next" class="quiet" type="button">Next values →</button></div>
+      <label for="experiment-save-name">Save only this comparison</label><div class="button-row"><input id="experiment-save-name" type="text" value="my-comparison" autocomplete="off"><button id="save-experiment" class="secondary" type="button">Save comparison</button></div><p id="experiment-save-status" class="hint">Explicit export includes the fixed input, output metadata and full witness tensors. Original Save capture remains separate. Keep private inputs private.</p>
+    </section>
+    <p id="experiment-startup-status" class="hint" aria-live="polite"></p>
     <footer class="main-footer">Observe precisely. Interpret cautiously. <span>Local inference · explicit coverage · no silent capture loss</span></footer>
   </main>
 </div>

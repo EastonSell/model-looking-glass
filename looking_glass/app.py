@@ -33,6 +33,10 @@ class AppState:
             runtime = LocalModelRuntime(max_model_bytes=max_model_bytes)
         self.runtime = runtime
         self.store = TraceStore(export_root, max_bytes=max_trace_bytes)
+        self.experiment_store = TraceStore(export_root, max_bytes=max_trace_bytes)
+        self._live_binding = None  # Process-local capability; never accepted from JSON/export.
+        self._capture_id = None
+        self._experiment_id = None
         self.lock = threading.Lock()
         self.models_dir = None if models_dir is None else Path(models_dir).expanduser().resolve()
         self.max_trace_bytes = max_trace_bytes
@@ -50,12 +54,42 @@ class AppState:
                         models.append({"name": folder["name"], "path": folder["path"]})
             except (OSError, ValueError):
                 discovery_warning = "Configured model folder is unavailable. Runtime and captures are unchanged; use an accessible model folder."
-        return {"model": self.runtime.info(), "run": self.store.summary(), "models": models,
+        return {"model": self.runtime.info(), "run": self._run_summary(), "models": models,
+                "experiment": self._experiment_summary(),
                 "model_discovery_warning": discovery_warning,
                 **self.runtime.capabilities(),
                 "limits": {"max_trace_bytes": self.max_trace_bytes, "max_image_bytes": MAX_IMAGE,
                            "max_vram_bytes": self.max_vram_bytes},
                 "privacy": "Local RAM only until Save; exports contain inputs, outputs and activations."}
+
+    def _clear_experiment(self):
+        self.experiment_store.clear()
+        self._experiment_id = None
+
+    def _experiment_summary(self):
+        summary = self.experiment_store.summary()
+        if summary is not None: summary["experiment_id"] = self._experiment_id
+        return summary
+
+    def _intervention_status(self):
+        if self.store.summary() is None:
+            return False, "Run a fresh GPT-2 capture first."
+        model = self.runtime.info()
+        if model is None or model.get("state") == "quarantined":
+            return False, "A ready live model is required; unloading or quarantine disables experiments."
+        if model.get("family") != "gpt2":
+            return False, "Fixed-forward experiments currently support GPT-2 only."
+        binding = getattr(self.runtime, "capture_binding", lambda: None)()
+        if self._live_binding is None or binding is not self._live_binding:
+            return False, "Run a fresh live capture from this model; imported or reloaded captures are read-only."
+        return True, "Replay one recorded input prefix; runtime activations only, never checkpoint edits."
+
+    def _run_summary(self):
+        summary = self.store.summary()
+        if summary is not None:
+            summary["intervention_available"], summary["intervention_reason"] = self._intervention_status()
+            summary["capture_id"] = self._capture_id
+        return summary
 
     def browse_models(self, data):
         requested = _text(data, "path", 4096, empty=True).strip()
@@ -97,7 +131,8 @@ class AppState:
         if not isinstance(data, dict): raise ValueError("Expected a JSON object")
         if action == "browse-models": return self.browse_models(data)
         if action == "unload":
-            self.runtime.unload()
+            try: self.runtime.unload()
+            finally: self._live_binding = None
             return self.status()
         if action == "inspect": return self.runtime.inspect(_text(data, "path", 4096))
         if action == "load":
@@ -108,7 +143,7 @@ class AppState:
             if type(device) is not str or not 1 <= len(device) <= 32:
                 raise ValueError("device must be auto, cpu or cuda:N")
             answer = self.runtime.load(_text(data, "path", 4096), device=device, max_vram_bytes=budget)
-            self.store.clear()
+            self.store.clear(); self._clear_experiment(); self._live_binding = None; self._capture_id = None
             return answer
         if action == "run":
             settings = data.get("settings", {})
@@ -124,13 +159,51 @@ class AppState:
                 except (ValueError, TypeError) as exc: raise ValueError("Invalid image encoding") from exc
                 if len(image) > MAX_IMAGE: raise ValueError("Image exceeds 4 MiB")
             # A failed query leaves no previous trace masquerading as the new answer.
-            self.store.clear()
+            self.store.clear(); self._clear_experiment(); self._live_binding = None; self._capture_id = None
             result = self.runtime.run(_text(data, "prompt", 100000, empty=True), settings, image_bytes=image)
-            return self.store.publish(result)
-        if action == "save": return self.store.save(_text(data, "name", 64))
-        if action == "open": return self.store.open(_text(data, "path", 4096))
+            self.store.publish(result)
+            self._capture_id = secrets.token_hex(16)
+            self._live_binding = getattr(self.runtime, "capture_binding", lambda: None)()
+            return self._run_summary()
+        if action == "intervene":
+            self._clear_experiment()  # Never present an earlier experiment as this attempt.
+            available, reason = self._intervention_status()
+            if not available: raise ValueError(reason)
+            if type(data.get("capture_id")) is not str or data["capture_id"] != self._capture_id:
+                raise ValueError("Capture selection is stale; refresh and select the current live capture")
+            operation = data.get("operation")
+            if operation not in ("zero", "add", "replace"):
+                raise ValueError("Choose zero, add one feature, or replace one feature")
+            remaining = min(128 * 1024**2, self.max_trace_bytes - self.store.summary()["total_bytes"])
+            if remaining <= 0: raise ValueError("No remaining trace budget for a separate experiment")
+            source = self.store.intervention_source(data.get("event"), data.get("vector"))
+            result = self.runtime.intervene_fixed_forward(self._live_binding, source, operation,
+                feature_index=data.get("feature_index"), value=data.get("value"), max_pair_bytes=remaining)
+            try:
+                summary = self.experiment_store.publish(result)
+                if summary["total_bytes"] > remaining:
+                    raise ValueError("Comparison witnesses exceed remaining trace allowance")
+                self._experiment_id = secrets.token_hex(16)
+                return self._experiment_summary()
+            except BaseException:
+                self._clear_experiment()
+                raise
+        if action == "save":
+            if "capture_id" in data and (type(data["capture_id"]) is not str or data["capture_id"] != self._capture_id):
+                raise ValueError("Capture selection is stale; refresh before saving")
+            return self.store.save(_text(data, "name", 64))
+        if action == "save-experiment":
+            if type(data.get("experiment_id")) is not str or data["experiment_id"] != self._experiment_id:
+                raise ValueError("Comparison selection is stale; refresh before saving")
+            return self.experiment_store.save(_text(data, "name", 64))
+        if action == "open":
+            self.store.open(_text(data, "path", 4096))
+            self._clear_experiment(); self._live_binding = None
+            self._capture_id = secrets.token_hex(16)
+            return self._run_summary()
         if action == "clear":
-            self.store.clear(); return self.status()
+            self.store.clear(); self._clear_experiment(); self._live_binding = None; self._capture_id = None
+            return self.status()
         raise ValueError("Unknown action")
 
 
@@ -199,8 +272,17 @@ def create_server(state, port=0):
                 if any(len(values) != 1 for values in query.values()): raise ValueError("Duplicate query parameter")
                 def number(key, default): return int(query.get(key, [str(default)])[0])
                 with state.lock:
+                    if path in {"/api/events", "/api/vectors", "/api/tensor"} and "capture_id" in query:
+                        if query["capture_id"][0] != state._capture_id:
+                            raise ValueError("Capture selection is stale; refresh before reading values")
+                    if path in {"/api/experiment-events", "/api/experiment-tensor"}:
+                        if query.get("experiment_id", [None])[0] is None or query["experiment_id"][0] != state._experiment_id:
+                            raise ValueError("Comparison selection is stale; refresh before reading witnesses")
                     if path == "/api/status": answer = state.status()
                     elif path == "/api/saved": answer = state.store.saved_runs()
+                    elif path == "/api/experiment": answer = state._experiment_summary()
+                    elif path == "/api/experiment-events": answer = state.experiment_store.events(number("offset", 0), number("limit", 100))
+                    elif path == "/api/experiment-tensor": answer = state.experiment_store.tensor(number("event", 0), number("vector", 0), number("offset", 0), number("limit", 256), "raw")
                     elif path == "/api/events": answer = state.store.events(number("offset", 0), number("limit", 100), query.get("q", [""])[0])
                     elif path == "/api/vectors": answer = state.store.vectors(number("event", 0), number("offset", 0), number("limit", 100))
                     elif path == "/api/tensor": answer = state.store.tensor(number("event", 0), number("vector", 0), number("offset", 0), number("limit", 256), query.get("view", ["raw"])[0])
@@ -213,7 +295,7 @@ def create_server(state, port=0):
         def do_POST(self):
             if not self._allowed(api=True): return
             path = urlsplit(self.path).path
-            if path not in {"/api/inspect", "/api/load", "/api/unload", "/api/browse-models", "/api/run", "/api/save", "/api/open", "/api/clear"}:
+            if path not in {"/api/inspect", "/api/load", "/api/unload", "/api/browse-models", "/api/run", "/api/intervene", "/api/save", "/api/save-experiment", "/api/open", "/api/clear"}:
                 self._send(404, {"error": "Not found"}); return
             if self.headers.get("Transfer-Encoding") or len(self.headers.get_all("Content-Length", [])) != 1:
                 self._send(400, {"error": "A single bounded Content-Length is required"}); return

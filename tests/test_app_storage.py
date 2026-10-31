@@ -368,3 +368,67 @@ def test_coordinate_missing_vit_geometry_is_unknown(tmp_path):
     data["events"][0].metadata()["image_coordinate"] = dict(token_kind="cls", patch_row=None, patch_column=None, processed_pixel_box_xyxy=None)
     store = TraceStore(tmp_path); store.publish(data)
     assert store.tensor(0)["coordinate"]["status"] == "unknown"
+
+
+def intervention_result(**kwargs):
+    data = coordinate_result(**kwargs)
+    data["steps"][0].update(input_attention_mask=[1] * len(data["steps"][0]["input_token_ids"]), use_cache=False)
+    return data
+
+
+def test_intervention_source_exact_selected_vector_clone_and_deepcopies(tmp_path):
+    store = TraceStore(tmp_path); store.publish(intervention_result(positions=[4, 1, 3]))
+    before = store.tensor(0, 1)
+    source = store.intervention_source(0, 1)
+    assert source["coordinate"] == before["coordinate"]
+    assert source["coordinate"]["token_position"] == 1
+    assert source["step"]["input_token_ids"] == [0, 1, 2, 3, 4]
+    assert source["reference_value"].tolist() == before["values"]
+    assert source["reference_value"].dtype == torch.float32
+    assert source["reference_value"].device.type == "cpu"
+    assert source["reference_value"].is_contiguous() and not source["reference_value"].requires_grad
+    source["reference_value"].zero_()
+    source["coordinate"]["token_position"] = 99
+    source["step"]["input_token_ids"][0] = 99
+    source["model"]["family"] = "changed"
+    assert store.tensor(0, 1) == before
+    again = store.intervention_source(0, 1)
+    assert again["step"]["input_token_ids"][0] == 0 and again["model"]["family"] == "gpt2"
+    assert again["reference_value"].tolist() == before["values"]
+
+
+@pytest.mark.parametrize("mask", [None, [], [1], [1, 1, 1, 1, 2], [1, 1, True, 1, 1], [1., 1, 1, 1, 1], "11111"])
+def test_intervention_source_invalid_masks_preserve_store(tmp_path, mask):
+    data = intervention_result(); data["steps"][0]["input_attention_mask"] = mask
+    store = TraceStore(tmp_path); store.publish(data); before = store.tensor(0)
+    with pytest.raises(ValueError, match="mask"): store.intervention_source(0, 0)
+    assert store.tensor(0) == before
+
+
+@pytest.mark.parametrize("mutation", ["missing_mask", "cache_true", "cache_zero", "cache_missing", "unknown", "nongpt2", "ambiguous"])
+def test_intervention_source_requires_uncached_known_gpt2_provenance(tmp_path, mutation):
+    data = intervention_result()
+    if mutation == "missing_mask": del data["steps"][0]["input_attention_mask"]
+    elif mutation == "cache_true": data["steps"][0]["use_cache"] = True
+    elif mutation == "cache_zero": data["steps"][0]["use_cache"] = 0
+    elif mutation == "cache_missing": del data["steps"][0]["use_cache"]
+    elif mutation == "unknown": data["events"][0].metadata()["token_positions"] = [1, 1]
+    elif mutation == "nongpt2": data = intervention_result(family="distilbert", positions=[1])
+    elif mutation == "ambiguous": data["steps"].append(dict(data["steps"][0]))
+    store = TraceStore(tmp_path); store.publish(data); before = store.tensor(0)
+    with pytest.raises(ValueError): store.intervention_source(0, 0)
+    assert store.tensor(0) == before
+
+
+@pytest.mark.parametrize("event,vector", [(-1, 0), (True, 0), (1, 0), (0, -1), (0, True), (0, 2)])
+def test_intervention_source_bounds(tmp_path, event, vector):
+    store = TraceStore(tmp_path); store.publish(intervention_result())
+    with pytest.raises(ValueError): store.intervention_source(event, vector)
+
+
+def test_intervention_source_requires_loaded_finite_values(tmp_path):
+    store = TraceStore(tmp_path)
+    with pytest.raises(ValueError): store.intervention_source(0, 0)
+    data = intervention_result(); store.publish(data)
+    data["events"][0].value[0, 0, 0] = float("nan")
+    with pytest.raises(ValueError, match="finite"): store.intervention_source(0, 0)
