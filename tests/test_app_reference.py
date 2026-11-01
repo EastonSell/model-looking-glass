@@ -129,7 +129,7 @@ def test_llama_reference_does_not_require_token_or_forward_alignment():
     assert result["metrics"]["raw_bit_changed_count"] == 0
 
 
-@pytest.mark.parametrize("family,path,selector", [("gpt2","arbitrary",[]),("gpt2","transformer.h.1.mlp",[]),("gpt2","transformer.h.0.mlp",[0]),("gpt2","transformer.h.0",[]),("llama","model.layers.0",[0]),("llama","model.layers.0.self_attn",[])])
+@pytest.mark.parametrize("family,path,selector", [("gpt2","arbitrary",[]),("gpt2","transformer.h.1.mlp",[]),("gpt2","transformer.h.0.mlp",[0]),("gpt2","transformer.h.0",[1]),("llama","model.layers.0",[0]),("llama","model.layers.0.self_attn",[])])
 def test_noncanonical_boundary_or_selector_rejected(family,path,selector):
     item=source(); item["model"]["family"]=family
     item["coordinate"]["module_path"]=item["metadata"]["module_path"]=path
@@ -208,3 +208,13 @@ def test_workspace_budget_checked_before_decode(monkeypatch):
     ref=ReferenceVector(max_workspace_bytes=65536+32*4); ref.pin(source())
     monkeypatch.setattr(numeric,"decode_f32_le",lambda *_: pytest.fail("must preflight decode workspace"))
     with pytest.raises(ValueError,match="workspace"): ref.compare(source())
+
+
+@pytest.mark.parametrize("selector", [[], [0]])
+def test_gpt2_block_current_and_legacy_reference_selectors(selector):
+    item = source()
+    item["coordinate"]["module_path"] = "transformer.h.0"
+    item["metadata"].update(module_path="transformer.h.0", output_path=selector)
+    ref = ReferenceVector()
+    ref.pin(item)
+    assert ref.compare(item)

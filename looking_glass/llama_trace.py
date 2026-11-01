@@ -15,10 +15,31 @@ class LlamaTraceResult:
     tensor_bytes: int
 
 
+def llama_rope_summary(config):
+    """Read native v5 or legacy on-disk RoPE without accepting conflicting aliases."""
+    values = config if isinstance(config, dict) else vars(config)
+    native = values.get('rope_parameters')
+    legacy = values.get('rope_scaling')
+    theta = values.get('rope_theta', 10000.0)
+    if native is not None:
+        if type(native) is not dict:
+            raise ValueError('Llama rope_parameters must be a flat dictionary')
+        if 'rope_scaling' in values or ('rope_theta' in values and theta != native.get('rope_theta', 10000.0)):
+            raise ValueError('ambiguous Llama RoPE parameter aliases')
+        theta = native.get('rope_theta', 10000.0)
+        scaling = {key: value for key, value in native.items() if key != 'rope_theta'}
+        if scaling == {'rope_type': 'default'}:
+            scaling = None
+    else:
+        scaling = legacy
+    return {'rope_theta': theta, 'rope_scaling': scaling}
+
+
 def validate_llama_config(config):
     """Reject unsupported RoPE/head geometry before construction or model retirement."""
     get = config.get if isinstance(config, dict) else lambda key, default=None: getattr(config, key, default)
-    scaling = get('rope_scaling')
+    summary = llama_rope_summary(config)
+    scaling = summary['rope_scaling']
     if scaling is not None:
         keys = {'rope_type', 'factor', 'low_freq_factor', 'high_freq_factor', 'original_max_position_embeddings'}
         if type(scaling) is not dict or set(scaling) != keys or scaling.get('rope_type') != 'llama3':
@@ -47,7 +68,7 @@ def validate_llama_config(config):
     if (type(kv) is not int or kv <= 0 or heads % kv or type(head_dim) is not int
             or head_dim <= 0 or head_dim % 2 or get('hidden_size') % heads):
         raise ValueError('unsupported Llama attention/GQA head geometry')
-    theta = get('rope_theta', 10000.0)
+    theta = summary['rope_theta']
     if type(theta) not in (int, float) or not math.isfinite(theta) or theta <= 0:
         raise ValueError('Llama rope_theta must be finite and positive')
     if type(get('pretraining_tp', 1)) is not int or get('pretraining_tp', 1) != 1:
@@ -93,7 +114,7 @@ def validate_llama_model(model, *, synchronous_cpu=True):
         if cls is not torch.nn.ModuleList and getattr(module.forward, '__func__', None) is not cls.forward:
             raise ValueError('unmodified standard module forwards required')
     core = model.model
-    expected_rope = 'default' if model.config.rope_scaling is None else 'llama3'
+    expected_rope = 'default' if llama_rope_summary(model.config)['rope_scaling'] is None else 'llama3'
     if (type(core) is not LlamaModel or type(core.layers) is not torch.nn.ModuleList
             or len(core.layers) != model.config.num_hidden_layers
             or model.config._attn_implementation != 'eager' or core.config._attn_implementation != 'eager'
@@ -102,10 +123,9 @@ def validate_llama_model(model, *, synchronous_cpu=True):
     h, vocab = model.config.hidden_size, model.config.vocab_size
     head_dim = model.config.head_dim
     heads, kv = model.config.num_attention_heads, model.config.num_key_value_heads
-    from transformers.modeling_rope_utils import _compute_default_rope_parameters, _compute_llama3_parameters
     rotary = core.rotary_emb
-    expected_init = _compute_default_rope_parameters if expected_rope == 'default' else _compute_llama3_parameters
-    if (rotary.config is not model.config or rotary.rope_init_fn is not expected_init
+    if (rotary.config is not model.config or 'rope_init_fn' in vars(rotary)
+            or 'compute_default_rope_parameters' in vars(rotary)
             or type(rotary.inv_freq) is not torch.Tensor or rotary.inv_freq.dtype != torch.float32
             or rotary.inv_freq.device != device or tuple(rotary.inv_freq.shape) != (head_dim // 2,)
             or not bool(torch.isfinite(rotary.inv_freq).all())
@@ -113,6 +133,11 @@ def validate_llama_model(model, *, synchronous_cpu=True):
             or rotary.max_seq_len_cached != model.config.max_position_embeddings
             or rotary.original_max_seq_len != model.config.max_position_embeddings):
         raise ValueError('unsupported static rotary implementation/state')
+    original = rotary.original_inv_freq
+    if (type(original) is not torch.Tensor or original.dtype != torch.float32
+            or original.device != device or tuple(original.shape) != (head_dim // 2,)
+            or not torch.equal(original.view(torch.int32), rotary.inv_freq.view(torch.int32))):
+        raise ValueError('unsupported original static rotary buffer')
     if (tuple(core.embed_tokens.weight.shape) != (vocab, h)
             or tuple(model.lm_head.weight.shape) != (vocab, h)):
         raise ValueError('standard embedding/output vocabulary geometry required')
@@ -133,30 +158,34 @@ def validate_llama_model(model, *, synchronous_cpu=True):
 def _rotary_state(model):
     rotary = model.model.rotary_emb
     return (rotary.rope_type, rotary.attention_scaling, rotary.max_seq_len_cached,
-        rotary.original_max_seq_len, model.config.rope_theta, model.config.max_position_embeddings,
+        rotary.original_max_seq_len, model.config.max_position_embeddings,
         model.config.head_dim, getattr(model.config, "partial_rotary_factor", 1.0),
-        copy.deepcopy(model.config.rope_scaling))
+        copy.deepcopy(llama_rope_summary(model.config)))
 
 
 def snapshot_llama_rotary(model):
     """Small bounded static-state witness, after validate_llama_model succeeds."""
     rotary = model.model.rotary_emb
-    buffer = rotary.inv_freq
-    return (rotary, buffer, buffer.detach().view(torch.int32).to('cpu', non_blocking=False).clone(),
-            rotary.rope_init_fn, model.config, buffer.device, _rotary_state(model))
+    buffers = (rotary.inv_freq, rotary.original_inv_freq)
+    # Both buffers were proven bit-identical at preflight; one witness bounds
+    # retained host memory while still checking both identities and contents.
+    return (rotary, buffers, buffers[0].detach().view(torch.int32).to('cpu', non_blocking=False).clone(),
+            model.config, buffers[0].device, _rotary_state(model))
 
 
 def check_llama_rotary(model, snapshot):
-    """Fail if a static buffer, implementation, identity or config changed."""
-    rotary, buffer, bits, initializer, config, device, state = snapshot
+    """Fail if static buffers, implementation, identity or config changed."""
+    rotary, buffers, bits, config, device, state = snapshot
     current = model.model.rotary_emb
-    if (current is not rotary or current.inv_freq is not buffer or current.rope_init_fn is not initializer
-            or model.config is not config or current.config is not config
-            or type(current.inv_freq) is not torch.Tensor or current.inv_freq.device != device
-            or current.inv_freq.dtype != torch.float32 or tuple(current.inv_freq.shape) != tuple(bits.shape)
-            or not torch.equal(current.inv_freq.detach().view(torch.int32).to('cpu', non_blocking=False), bits)
+    if (current is not rotary or model.config is not config or current.config is not config
+            or 'rope_init_fn' in vars(current) or 'compute_default_rope_parameters' in vars(current)
             or _rotary_state(model) != state):
         raise RuntimeError('static rotary buffer or configuration changed during forward')
+    for value, buffer in zip((current.inv_freq, current.original_inv_freq), buffers, strict=True):
+        if (value is not buffer or type(value) is not torch.Tensor or value.device != device
+                or value.dtype != torch.float32 or tuple(value.shape) != tuple(bits.shape)
+                or not torch.equal(value.detach().view(torch.int32).to('cpu', non_blocking=False), bits)):
+            raise RuntimeError('static rotary buffer or configuration changed during forward')
 
 
 def trace_llama_causal_lm(model, input_ids, attention_mask, *, run_id,

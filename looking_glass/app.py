@@ -19,6 +19,18 @@ from .app_reference import ReferenceVector
 MAX_BODY = 8 * 1024 * 1024
 MAX_IMAGE = 4 * 1024 * 1024
 STATIC = Path(__file__).parent / "app_static"
+# Explicit routes only: neither URL paths nor catalog paths become filesystem paths.
+STATIC_ROUTES = {
+    "/": ("index.html", "text/html; charset=utf-8"),
+    "/app.js": ("app.js", "application/javascript; charset=utf-8"),
+    "/app.css": ("app.css", "text/css; charset=utf-8"),
+    "/app_scene.js": ("app_scene.js", "application/javascript; charset=utf-8"),
+    "/vendor/three-0.128.0.min.js": ("vendor/three-0.128.0.min.js", "application/javascript; charset=utf-8"),
+    "/vendor/OrbitControls-0.128.0.js": ("vendor/OrbitControls-0.128.0.js", "application/javascript; charset=utf-8"),
+    **{f"/vendor/{font}-latin-{weight}-normal.woff2":
+       (f"vendor/{font}-latin-{weight}-normal.woff2", "font/woff2")
+       for font in ("inter", "jetbrains-mono") for weight in (400, 600)},
+}
 
 
 class AppState:
@@ -349,8 +361,8 @@ def create_server(state, port=0):
         def do_GET(self):
             parsed = urlsplit(self.path); path = parsed.path
             if not self._allowed(api=path.startswith("/api/")): return
-            if path in ("/", "/app.js", "/app.css"):
-                name, mime = {"/": ("index.html", "text/html; charset=utf-8"), "/app.js": ("app.js", "application/javascript; charset=utf-8"), "/app.css": ("app.css", "text/css; charset=utf-8")}[path]
+            if path in STATIC_ROUTES:
+                name, mime = STATIC_ROUTES[path]
                 try:
                     body = (STATIC / name).read_bytes()
                     if path == "/": body = body.replace(b"__MLG_TOKEN__", state.token.encode())

@@ -143,7 +143,7 @@ def test_llama_fixture_configuration_is_explicit_static_llama3_rope_and_gqa(tmp_
     config = json.loads((tmp_path / "llama" / "config.json").read_text())
     assert config["architectures"] == ["LlamaForCausalLM"]
     assert {name: config[name] for name in ("hidden_size", "intermediate_size", "num_hidden_layers", "num_attention_heads", "num_key_value_heads", "max_position_embeddings", "vocab_size")} == dict(hidden_size=8, intermediate_size=16, num_hidden_layers=2, num_attention_heads=2, num_key_value_heads=1, max_position_embeddings=32, vocab_size=8)
-    assert config["rope_scaling"] == {"rope_type": "llama3", "factor": 8.0,
+    assert config["rope_parameters"] == {"rope_type": "llama3", "rope_theta": 10000.0, "factor": 8.0,
         "low_freq_factor": 1.0, "high_freq_factor": 4.0, "original_max_position_embeddings": 8}
     assert config["eos_token_id"] is None and config["bos_token_id"] == 2
 

@@ -331,7 +331,7 @@ def _source_identity(root):
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     if subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=normal"], cwd=root):
         raise ValueError("source checkout must be clean")
-    names = ("looking_glass/flan_t5_sentiment_screen.py", "looking_glass/flan_t5_feasibility.py",
+    names = ("looking_glass/flan_t5_sentiment_screen.py", "looking_glass/flan_t5_feasibility.py", "looking_glass/t5_compat.py",
              "tests/test_flan_t5_sentiment_screen.py", "docs/FLAN_T5_SENTIMENT_SCREEN_V1.md")
     hashes = {}
     for name in names:
@@ -393,6 +393,8 @@ def main(argv=None):
         model, info = T5ForConditionalGeneration.from_pretrained(
             str(args.asset_dir), local_files_only=True, use_safetensors=True, trust_remote_code=False,
             output_loading_info=True, dtype=torch.float32, attn_implementation="eager")
+        from .t5_compat import validate_t5_checkpoint_contract
+        validate_t5_checkpoint_contract(model, {"tie_word_embeddings": False})
         if any(info.get(k) for k in ("missing_keys", "unexpected_keys", "mismatched_keys", "error_msgs")):
             raise ValueError("model loading diagnostics are not empty")
         model.eval()

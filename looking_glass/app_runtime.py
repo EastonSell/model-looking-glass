@@ -371,7 +371,7 @@ class LocalModelRuntime:
             "t5": {"T5Tokenizer", "T5TokenizerFast"}, "vit": set()}
         for metadata in (tokenizer_config, inspected["config"]):
             named_class = metadata.get("tokenizer_class")
-            if named_class is not None and (type(named_class) is not str or named_class not in allowed_classes[family] | {"PreTrainedTokenizerFast"}):
+            if named_class is not None and (type(named_class) is not str or named_class not in allowed_classes[family] | {"PreTrainedTokenizerFast", "TokenizersBackend"}):
                 raise ValueError("input assets name an unsupported tokenizer class for this model family")
         for key, value in tokenizer_config.items():
             if (key.endswith(("_file", "_files")) and value is not None
@@ -385,6 +385,19 @@ class LocalModelRuntime:
                     raise ValueError("input assets must use bounded files in the selected checkpoint folder")
                 known.add(value)
                 checked_paths[key] = str(root / value)
+        for key, inline_type in (("vocab", dict), ("merges", list)):
+            value = tokenizer_config.get(key)
+            if value is None:
+                continue
+            if type(value) is str:
+                if Path(value).name != value or "/" in value or "\\" in value:
+                    raise ValueError("input assets must use bounded files in the selected checkpoint folder")
+                if not (root / value).is_file():
+                    raise ValueError("selected tokenizer input asset is missing")
+                known.add(value)
+                checked_paths[key] = str(root / value)
+            elif type(value) is not inline_type:
+                raise ValueError("invalid inline tokenizer vocabulary or merges")
         alternatives = tokenizer_config.get("fast_tokenizer_files", [])
         if type(alternatives) is not list or len(alternatives) > 32:
             raise ValueError("invalid bounded fast tokenizer file list")
@@ -393,6 +406,36 @@ class LocalModelRuntime:
                 raise ValueError("fast tokenizer files must be local filenames")
             known.add(name)
         files = [root / name for name in known if (root / name).exists()]
+        # v5 can construct an empty default tokenizer when assets are missing.
+        # A loadable class is not evidence of the checkpoint's vocabulary.
+        named_class = tokenizer_config.get("tokenizer_class") or inspected["config"].get("tokenizer_class")
+        from transformers.tokenization_utils_base import get_fast_tokenizer_file
+        try:
+            selected_fast = (Path(checked_paths["tokenizer_file"]) if "tokenizer_file" in checked_paths
+                             else root / get_fast_tokenizer_file(alternatives))
+        except (ValueError, TypeError) as exc:
+            raise ValueError("invalid tokenizer asset version selection") from exc
+        has_fast = selected_fast.is_file()
+        if "tokenizer_file" in checked_paths and not has_fast:
+            raise ValueError("selected tokenizer input asset is missing")
+        vocab = Path(checked_paths.get("vocab", checked_paths.get("vocab_file"))) if ("vocab" in checked_paths or "vocab_file" in checked_paths) else None
+        inline_vocab = type(tokenizer_config.get("vocab")) is dict and bool(tokenizer_config["vocab"])
+        inline_merges = type(tokenizer_config.get("merges")) is list
+        merges = Path(checked_paths.get("merges", checked_paths.get("merges_file", root / "merges.txt")))
+        if named_class in ("PreTrainedTokenizerFast", "TokenizersBackend"):
+            has_legacy = False
+        elif named_class in ("GPT2Tokenizer", "GPT2TokenizerFast") or (named_class is None and family == "gpt2"):
+            has_legacy = (inline_vocab or (vocab or root / "vocab.json").is_file()) and (inline_merges or merges.is_file())
+        elif named_class in ("BertTokenizer", "BertTokenizerFast", "DistilBertTokenizer", "DistilBertTokenizerFast") or (named_class is None and family == "distilbert"):
+            has_legacy = inline_vocab or (vocab or root / "vocab.txt").is_file()
+        elif family == "t5":
+            has_legacy = (vocab or root / "spiece.model").is_file()
+        elif family == "llama":
+            has_legacy = (vocab or root / "tokenizer.model").is_file()
+        else:
+            has_legacy = False
+        if family != "vit" and not (has_fast or has_legacy):
+            raise ValueError("matching local tokenizer input assets are required")
         template_dir = root / "chat_templates"
         if template_dir.exists():
             if not template_dir.is_dir():
@@ -654,6 +697,9 @@ class LocalModelRuntime:
                 output_loading_info=True)
             if any(report.get(key) for key in ("missing_keys", "unexpected_keys", "mismatched_keys", "error_msgs")):
                 raise ValueError("checkpoint tensors do not exactly match the supported architecture/head")
+            if inspected["family"] == "t5":
+                from .t5_compat import validate_t5_checkpoint_contract
+                validate_t5_checkpoint_contract(model, inspected["config"])
             model = model.to(device="cpu", dtype=torch.float32).eval()
             model.requires_grad_(False)
             self.model, self.tokenizer, self.processor = model, tokenizer, processor
@@ -664,7 +710,7 @@ class LocalModelRuntime:
             elif family == "llama": depths = {"decoder": len(model.model.layers)}
             elif family == "distilbert": depths = {"encoder": len(model.distilbert.transformer.layer)}
             elif family == "t5": depths = {"encoder": len(model.encoder.block), "decoder": len(model.decoder.block)}
-            else: depths = {"encoder": len(model.vit.encoder.layer)}
+            else: depths = {"encoder": len(model.vit.layers)}
             self._info = {key: value for key, value in inspected.items() if key != "config"}
             self._info.update(device=str(selected), requested_device=device,
                               device_selection_reason=reason, dtype="float32", state="loading", stack_layers=depths,
@@ -675,6 +721,9 @@ class LocalModelRuntime:
                               parameter_bytes=sum(p.numel() * p.element_size() for p in model.parameters()),
                               registered_buffer_bytes=sum(b.numel() * b.element_size() for b in model.buffers()),
                               capture_scope="All supported adapter boundaries, not every operation/neuron or proof of complete interpretability.")
+            if family == "llama":
+                from .llama_trace import llama_rope_summary
+                self._info["config_summary"].update(llama_rope_summary(model.config))
             if selected.type == "cuda":
                 try:
                     with _cuda_operation(selected, max_vram_bytes) as telemetry:

@@ -27,6 +27,7 @@ def tiny_t5():
     previous = torch.random.get_rng_state()
     try:
         torch.random.default_generator.manual_seed(23)
+        config._attn_implementation = "eager"
         return T5ForConditionalGeneration(config).eval()
     finally:
         torch.random.set_rng_state(previous)
@@ -38,7 +39,11 @@ def pinned_meta_t5():
                       feed_forward_proj='gated-gelu', tie_word_embeddings=False,
                       dropout_rate=0.1, decoder_start_token_id=0, pad_token_id=0, eos_token_id=1)
     with torch.device('meta'):
-        return T5ForConditionalGeneration(config).eval()
+        config._attn_implementation = "eager"
+        config.tie_word_embeddings = False
+        model = T5ForConditionalGeneration(config).eval()
+        model.set_input_embeddings(model.shared)
+        return model
 
 
 def raw(tensor):
@@ -403,7 +408,8 @@ def test_cuda_numeric_state_rejects_backend_drift(monkeypatch):
     monkeypatch.setattr(torch, 'are_deterministic_algorithms_enabled', lambda: True)
     monkeypatch.setattr(torch, 'is_deterministic_algorithms_warn_only_enabled', lambda: False)
     monkeypatch.setattr(torch, 'is_autocast_enabled', lambda device: False)
-    monkeypatch.setattr(torch.backends.cuda.matmul, 'allow_tf32', False)
+    from types import SimpleNamespace
+    monkeypatch.setattr(torch.backends.cuda, 'matmul', SimpleNamespace(allow_tf32=False))
     monkeypatch.setattr(torch.backends.cudnn, 'allow_tf32', False)
     monkeypatch.setattr(torch.backends.cudnn, 'benchmark', False)
     monkeypatch.setattr(torch.backends.cudnn, 'deterministic', True)

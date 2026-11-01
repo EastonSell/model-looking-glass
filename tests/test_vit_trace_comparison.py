@@ -118,7 +118,7 @@ def test_bad_or_unpaired_metadata_returns_no_partial_metrics(traces, kind):
     elif kind == "shape":
         bad = mutate_record(b, 0, event=replace(record.event, shape=(1, 14, 16)))
     elif kind == "selector":
-        bad = mutate_record(b, 0, event=replace(record.event, output_path=(0,)))
+        bad = mutate_record(b, 0, event=replace(record.event, output_path=(1,)))
     elif kind == "generation":
         from looking_glass.trace_schema import GenerationContext
         bad = mutate_record(b, 0, event=replace(record.event, generation=GenerationContext(stage="forward")))
@@ -188,3 +188,32 @@ def test_invalid_policy_or_attestation_type_is_rejected(traces):
         compare_vit_traces(a, b, points=POINTS, pairing_verified=1)
     with pytest.raises(ValueError, match="budget"):
         compare_vit_traces(a, b, points=POINTS, pairing_verified=True, max_events=1025)
+
+
+def _legacy_trace(result):
+    """Historical records remain readable without pretending layouts are identical."""
+    records = []
+    for record in result.records:
+        event = record.event
+        path = f"vit.encoder.layer.{event.layer_index}"
+        module = event.module_kind.removeprefix("vit_")
+        if module != "block":
+            path += f".{module}"
+        records.append(replace(record, event=replace(event, module_path=path, output_path=())))
+    return replace(result, records=tuple(records))
+
+
+def test_exact_legacy_schema_remains_comparable(traces):
+    a, _, same = traces
+    report = compare(_legacy_trace(a), _legacy_trace(same))
+    assert report["status"] == "compared"
+    assert all(row["numeric_equality"] == "equal" for row in report["comparisons"])
+
+
+def test_legacy_schema_rejects_mixed_selector_and_runtime_pairing(traces):
+    a, b, _ = traces
+    legacy = _legacy_trace(b)
+    record = legacy.records[0]
+    bad = mutate_record(legacy, 0, event=replace(record.event, output_path=(0,)))
+    assert compare(_legacy_trace(a), bad)["status"] == "inconclusive"
+    assert compare(a, legacy)["status"] == "inconclusive"

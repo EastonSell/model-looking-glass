@@ -7,54 +7,57 @@
   <meta name="color-scheme" content="dark">
   <title>Model Looking Glass · Local inspector</title>
   <link rel="stylesheet" href="/app.css">
+  <script src="/vendor/three-0.128.0.min.js" defer></script>
+  <script src="/vendor/OrbitControls-0.128.0.js" defer></script>
+  <script src="/app_scene.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
 <header class="topbar">
-  <a class="brand" href="/" aria-label="Model Looking Glass home"><span class="brand-mark" aria-hidden="true">◈</span><span>Model Looking Glass</span></a>
-  <div class="session-label"><span class="status-dot"></span> Local session <span class="pill">RAM by default</span></div>
-  <div id="header-controls" class="header-controls"><span id="model-badge" class="pill">No model loaded</span><details id="session-options" class="session-drawer"><summary id="session-summary">Model &amp; settings</summary>  <aside class="settings" aria-label="Model and capture settings">
-    <div class="section-heading"><span class="eyebrow">SESSION</span><h1>Your local model.</h1></div>
+  <span class="local-note">local · RAM until saved</span>
+  <div id="header-controls" class="header-controls"><span id="model-badge" class="status-text">No model loaded</span><details id="session-options" class="session-drawer"><summary id="session-summary">Model &amp; settings</summary>  <aside class="settings" aria-label="Model and capture settings">
+    <div class="section-heading"><h1>Model settings</h1></div>
     <p class="muted">Load locally. Explore what was actually captured.</p>
     <section aria-labelledby="model-heading">
       <h2 id="model-heading">Checkpoint</h2>
-      <div class="demo-onboarding"><strong>No checkpoint yet?</strong><button id="demo-button" type="button">Load tiny CPU demo</button><p class="hint">Untrained random CPU model, built in RAM. No downloads; not useful answers or GPU validation. Auto hooks and short token limits; memory allowances unchanged.</p><p class="hint">Loading replaces the model and captures. Save first. Nothing runs automatically.</p></div>
+      <div class="demo-onboarding"><strong>No checkpoint yet?</strong><button id="demo-button" type="button" title="Load tiny CPU demo">Load tiny CPU demo</button><p class="hint">Untrained random CPU model, built in RAM. No downloads; not useful answers or GPU validation. Auto hooks and short token limits; memory allowances unchanged.</p><p class="hint">Loading replaces the model and captures. Save first. Nothing runs automatically.</p></div>
       <label for="model-path">Local checkpoint folder</label>
       <input id="model-path" type="text" autocomplete="off" spellcheck="false" placeholder="/path/to/local/checkpoint" list="model-choices">
       <datalist id="model-choices"></datalist>
       <p id="model-discovery-warning" class="hint" aria-live="polite" hidden></p>
-      <div class="button-row"><button id="load-button" type="button">Load model</button></div>
+      <div class="button-row"><button id="load-button" type="button" title="Load model">Load model</button></div>
 
       <details id="download-options" class="options"><summary>Get a model</summary>
         <p class="hint">Download a pinned model from Hugging Face. This writes model files locally; it does not load a model or change your capture.</p>
         <div class="field-grid"><div><label for="catalog-device">Estimate for</label><select id="catalog-device"><option value="auto">Auto</option><option value="cpu">CPU</option></select></div><div><label for="catalog-context">Context tokens</label><input id="catalog-context" type="number" min="1" max="4096" value="128"></div></div>
         <label class="check-row" for="catalog-all"><input id="catalog-all" type="checkbox"> Show models over the estimate</label>
-        <button id="refresh-catalog" class="quiet" type="button">Refresh models</button><p id="catalog-status" class="hint" role="status"></p><div id="catalog-models" class="catalog-models"></div>
+        <button id="refresh-catalog" class="quiet" type="button" title="Refresh models">Refresh models</button><p id="catalog-status" class="hint" role="status"></p><div id="catalog-models" class="catalog-models"></div>
         <details><summary>Memory estimates &amp; download location</summary><p class="hint">Estimates assume float32 weights, eager execution and the selected context. They are not peak-memory or fit guarantees. They use server limits, not your Load GPU allowance; a lower Load allowance may still reject it. CPU RAM is not measured. Download size differs from loaded model memory; GPU execution has not been validated by this catalog.</p><pre id="catalog-details" class="detail-json"></pre></details>
         <p id="download-location" class="hint"></p>
+        <button id="browse-downloads" type="button" class="quiet" disabled title="Browse downloads">Browse downloads</button>
         <p id="download-status" class="hint" role="status">No download status checked yet.</p><progress id="download-progress" max="1" value="0" aria-label="Downloaded bytes" hidden></progress>
-        <div class="button-row"><button id="refresh-download" type="button" class="quiet">Refresh download</button><button id="cancel-download" type="button" class="quiet" disabled>Cancel download</button><button id="use-download" type="button" class="secondary" disabled>Use downloaded folder</button></div>
+        <div class="button-row"><button id="refresh-download" type="button" class="quiet" title="Refresh download">Refresh download</button><button id="cancel-download" type="button" class="quiet" disabled title="Cancel download">Cancel download</button><button id="use-download" type="button" class="secondary" disabled title="Use downloaded folder">Use downloaded folder</button></div>
       </details>
 
       <details id="model-options" class="options"><summary>Model options &amp; compatibility</summary>
-      <button id="browse-button" class="secondary" type="button">Browse / find models</button>
+      <button id="browse-button" class="secondary" type="button" title="Browse / find models">Browse / find models</button>
       <div id="folder-browser" class="info-box" hidden>
         <label for="browse-path">Browse within the allowed model root</label><input id="browse-path" type="text" autocomplete="off" spellcheck="false">
-        <div class="button-row"><button id="browse-go" type="button" class="quiet">Go to folder</button><button id="browse-parent" type="button" class="quiet">Parent folder</button><button id="browse-select" type="button" class="quiet">Use this folder</button></div>
+        <div class="button-row"><button id="browse-go" type="button" class="quiet" title="Go to folder">Go to folder</button><button id="browse-parent" type="button" class="quiet" title="Parent folder">Parent folder</button><button id="browse-select" type="button" class="quiet" title="Use this folder">Use this folder</button></div>
         <p id="browse-status" class="hint" aria-live="polite"></p><p id="browse-current" class="info-box" role="status"></p><details><summary>Discovery limits &amp; skipped entries</summary><pre id="browse-discovery-details" class="detail-json"></pre></details><div id="folder-list" class="folder-list"></div>
         <p class="hint">Browse with an empty checkpoint field to choose a normal local location, or enter a folder explicitly. Only that folder and its immediate subfolders receive bounded metadata checks—no recursive or background disk scan. A metadata candidate is not verified compatible: Inspect checks local assets; Load is separate. Selecting Use path never loads or downloads a model. A server-configured model root still limits navigation.</p>
       </div>
       <p class="hint">Choose a local Hugging Face folder containing config.json, matching safetensors weights, and the matching fast tokenizer or image processor assets. For a Hugging Face cache, choose snapshots/&lt;revision&gt;, not a repository ID or cache parent. No automatic downloads or custom checkpoint code.</p>
       <label for="execution-device">Execution device</label>
       <select id="execution-device"><option value="auto">Auto — prefer CUDA for supported families</option><option value="cpu">CPU</option></select>
-      <div class="device-summary"><p id="device-status" class="hint" aria-live="polite">Checking actual device availability…</p><button id="refresh-devices" class="quiet" type="button">Refresh availability</button></div>
+      <div class="device-summary"><p id="device-status" class="hint" aria-live="polite">Checking actual device availability…</p><button id="refresh-devices" class="quiet" type="button" title="Refresh availability">Refresh availability</button></div>
       <p class="hint">To validate this machine with tiny local synthetic models, run <code>python -m looking_glass.app_selftest</code> in the app environment. The JSON result distinguishes passed, failed and skipped checks; it does not use your checkpoint.</p>
       <label for="vram-mib">GPU model / work allowance · MiB</label>
       <input id="vram-mib" type="number" min="1" max="65536" value="2048">
       <p id="vram-help" class="hint">CUDA preflight and synchronized checks accompany a scoped PyTorch caching-allocator cap. A stricter existing cap is preserved and restored afterward. This is not a total-VRAM guarantee: driver/context and non-PyTorch allocations are outside it. Full captured vectors are copied to CPU RAM. CPU execution ignores this allowance.</p>
-      <div class="button-row"><button id="inspect-button" class="secondary" type="button">Inspect folder</button></div>
+      <div class="button-row"><button id="inspect-button" class="secondary" type="button" title="Inspect folder">Inspect folder</button></div>
       <section id="inspection-panel" class="inspection-panel" aria-labelledby="inspection-heading" hidden><h3 id="inspection-heading">Folder inspection · not the loaded model</h3><p id="inspection-path" class="hint"></p><p id="inspection-status" class="hint" aria-live="polite"></p><ul id="inspection-checks" class="inspection-checks"></ul><p id="inspection-summary" class="hint"></p><p id="inspection-memory" class="hint"></p><p class="hint">Inspection does not load model weights or test device inference. A readable header is not proof of a successful model load.</p><details><summary>Exact inspection record</summary><pre id="inspection-details" class="detail-json"></pre></details></section>
-      <button id="unload-button" class="quiet" type="button" disabled>Unload model · keep capture</button>
+      <button id="unload-button" class="quiet" type="button" disabled title="Unload model · keep capture">Unload model · keep capture</button>
       <p class="hint">Unload releases the model owner separately from capture RAM. Your retained vectors remain inspectable; device memory release is subject to runtime cleanup.</p>
 
       <div id="model-info" class="info-box" aria-live="polite">No model loaded.</div>
@@ -63,10 +66,10 @@
     </section>
     <section aria-labelledby="open-heading"><details id="saved-options" class="options"><summary id="open-heading">Open a saved capture</summary>
       <label for="saved-runs">Saved captures in this app’s export folder</label><select id="saved-runs"><option value="">Choose a saved capture…</option></select>
-      <button id="refresh-saved" class="quiet" type="button">Refresh saved captures</button><p id="saved-status" class="hint" aria-live="polite"></p>
+      <button id="refresh-saved" class="quiet" type="button" title="Refresh saved captures">Refresh saved captures</button><p id="saved-status" class="hint" aria-live="polite"></p>
       <label for="open-path">Export folder</label>
       <input id="open-path" type="text" autocomplete="off" spellcheck="false" placeholder="/path/to/saved/capture">
-      <button id="open-button" class="secondary" type="button">Open saved trace</button>
+      <button id="open-button" class="secondary" type="button" title="Open saved trace">Open saved trace</button>
       <p class="hint">Read a previously saved safetensors + JSON export into RAM without loading its model. Never open pickle checkpoints or traces.</p>
       </details>
     </section>
@@ -90,14 +93,16 @@
       </details>
     </section>
     <section class="privacy-note"><p><strong>RAM-only. Save explicitly to keep a capture.</strong></p><details id="privacy-options" class="options"><summary>Privacy &amp; memory notes</summary><p>Prompts, outputs, and captures stay in this local process unless you choose <strong>Save capture</strong>. Approximate viewing does not discard the original vectors. Clearing a run releases the app’s references; it is not secure memory erasure.</p></details></section>
-  </aside></details><button id="run-button" type="button" disabled>Run &amp; capture <span aria-hidden="true">→</span></button></div>
+  </aside></details><button id="run-button" type="button" disabled title="Run &amp; capture →">Run &amp; capture <span aria-hidden="true">→</span></button></div>
 </header>
 <div class="app-layout">
 
   <main id="scene-workspace" class="scene-workspace">
+    <div id="scene-canvas" aria-hidden="true" hidden></div>
     <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
       <p id="demo-model-warning" class="approximation" hidden>Untrained random CPU demo: output is synthetic, not useful model answers. This is not GPU validation.</p>
-    <section id="scene-empty" class="scene-empty" aria-label="No captured layers yet"><h1>Look inside your model.</h1><p>Choose a model, write a prompt, then Run.</p><button id="open-settings" type="button" class="secondary">Choose model or tiny demo</button></section>
+    <section id="scene-empty" class="scene-empty" aria-label="No captured layers yet"><p>Choose a model, write a prompt, then Run.</p><button id="open-settings" type="button" class="secondary" title="Choose model or tiny demo">Choose model or tiny demo</button></section>
+    <aside id="query-dock" class="workspace-dock query-dock" aria-label="Prompt and response"><div class="dock-toolbar"><span>prompt / response</span><button id="query-dock-toggle" type="button" aria-label="Collapse prompt and response" aria-controls="query-dock-body" aria-expanded="true" title="Collapse prompt and response (])">›</button></div><div id="query-dock-body">
     <section id="input-card" class="panel query-panel" aria-labelledby="query-heading">
       <div class="panel-heading"><div><h2 id="query-heading">Prompt</h2></div></div>
       <label class="sr-only" for="prompt">Prompt</label>
@@ -107,16 +112,16 @@
       <p id="replace-warning" class="approximation" hidden>Run replaces this capture; a failed run can discard it too. Save first.</p>
         <details id="input-tokens-options" class="options"><summary>Explore input tokens</summary><div class="token-heading"><h3>Captured inputs</h3><label class="sr-only" for="input-token-stack">Captured input stack</label><select id="input-token-stack"><option value="input">Input</option></select></div>
         <p id="input-token-note" class="hint"></p><div id="input-token-strip" class="token-strip" aria-label="Recorded input token positions"></div>
-        <div class="pager"><button id="input-tokens-prev" type="button" class="quiet">← Inputs</button><span id="input-token-page" class="hint"></span><button id="input-tokens-next" type="button" class="quiet">Inputs →</button></div></details>
+        <div class="pager"><button id="input-tokens-prev" type="button" class="quiet" title="← Inputs">← Inputs</button><span id="input-token-page" class="hint"></span><button id="input-tokens-next" type="button" class="quiet" title="Inputs →">Inputs →</button></div></details>
       <div class="query-footer"><span id="run-status" class="muted" aria-live="polite">Ready when you are.</span></div>
     </section>
     <section id="result-panel" class="panel" aria-labelledby="result-heading" hidden>
-      <div class="panel-heading"><div><h2 id="result-heading">Response</h2></div><span id="task-badge" class="pill"></span></div>
+      <div class="panel-heading"><div><h2 id="result-heading">Response</h2></div><span id="task-badge" class="status-text"></span></div>
       <p id="demo-capture-warning" class="approximation" hidden>This capture came from the untrained random CPU demo. Outputs are synthetic and not useful answers or GPU validation.</p>
 
       <pre id="answer" class="answer"></pre>
       <details id="readout-options" class="options"><summary>Token predictions &amp; scores</summary><section id="forward-inspector" class="forward-inspector" aria-labelledby="forward-heading">
-        <div class="panel-heading"><h3 id="forward-heading">Whole-model output by forward</h3><div class="forward-navigation"><button id="output-prev" type="button" class="quiet">←</button><label for="output-step">Record</label><input id="output-step" type="number" min="0" step="1" value="0"><button id="output-next" type="button" class="quiet">→</button></div></div>
+        <div class="panel-heading"><h3 id="forward-heading">Whole-model output by forward</h3><div class="forward-navigation"><button id="output-prev" type="button" class="quiet" title="←">←</button><label for="output-step">Record</label><input id="output-step" type="number" min="0" step="1" value="0"><button id="output-next" type="button" class="quiet" title="→">→</button></div></div>
         <details class="readout-scope"><summary>What these scores mean</summary><p class="hint">Predictions come from the complete model output—not from decoding the selected intermediate activation. Hidden feature numbers are not token IDs or named concepts. Logits are not probabilities or confidence.</p></details>
         <p id="output-note" class="hint" role="status"></p><div id="output-readout" class="output-readout"></div>
       </section></details>
@@ -135,54 +140,58 @@
       <div id="run-metrics" class="metrics"></div>
       <p id="coverage" class="hint"></p>
       <details><summary>Exact run metadata, forward steps and capture coverage</summary><pre id="run-details" class="detail-json"></pre></details>
-      <div class="save-row"><label for="save-name">Save a complete capture</label><div class="button-row"><input id="save-name" type="text" placeholder="my-capture" value="my-capture" autocomplete="off"><button id="save-button" class="secondary" type="button">Save capture</button><button id="clear-button" class="quiet" type="button">Clear captured run</button></div><p id="save-status" class="hint">Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.</p></div>
+      <div class="save-row"><label for="save-name">Save a complete capture</label><div class="button-row"><input id="save-name" type="text" placeholder="my-capture" value="my-capture" autocomplete="off"><button id="save-button" class="secondary" type="button" title="Save capture">Save capture</button><button id="clear-button" class="quiet" type="button" title="Clear captured run">Clear captured run</button></div><p id="save-status" class="hint">Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.</p></div>
       </details>
     </section>
+    </div></aside>
     <section id="trace-panel" class="panel" aria-labelledby="trace-heading" hidden>
-      <div class="panel-heading"><div><h2 id="trace-heading">Captured layers</h2></div><span id="event-total" class="pill"></span></div>
+      <div class="panel-heading"><div><h2 id="trace-heading">Captured layers</h2></div><span id="event-total" class="status-text"></span></div>
 
       <div id="explorer-grid" class="explorer-grid">
       <details id="layer-map-options" class="options layer-stage" open>
         <summary>Layers</summary>
-        <details id="map-tools-options" class="options"><summary>Map options &amp; details</summary><p class="hint">Sheets are actual captured layers; module buttons are recorded sites, not neurons. Perspective is presentation only—not a neuron graph, model topology, or causal explanation. Independent of table filters. A module button opens its first captured vector; use the source picker to choose another position. Unknown observations remain available in the exact table.</p>
-        <div class="row layer-map-toolbar"><label for="layer-map-forward">Forward</label><input id="layer-map-forward" type="number" min="0" step="1" value="0"><button id="layer-map-load" type="button">Load / refresh</button></div>
+        <details id="map-tools-options" class="options"><summary>Map options &amp; details</summary><p class="hint">Planes are actual captured layers; selectable bands are recorded sites, not neurons. The 3D view is navigation—not a neuron graph, model topology, or causal explanation. Independent of table filters. A module button opens its first captured vector; use the source picker to choose another position. Unknown observations remain available in the exact table.</p>
+        <div class="row layer-map-toolbar"><label for="layer-map-forward">Forward</label><input id="layer-map-forward" type="number" min="0" step="1" value="0"><button id="layer-map-load" type="button" title="Load / refresh">Load / refresh</button></div>
         <p id="layer-map-status" class="hint" role="status">Open or refresh to list captured sites. No tensor values are read to build the map.</p>
-        </details><div class="scene-view-switch"><label class="sr-only" for="scene-view">View</label><select id="scene-view"><option value="scene">Sheets</option><option value="list">List</option></select><span class="hint">Captured sites · not neurons</span></div>
+        </details><div class="scene-view-switch"><label class="sr-only" for="scene-view">View</label><select id="scene-view"><option value="scene">3D scene</option><option value="list">List</option></select><span class="hint">Captured sites · not neurons</span></div>
+        <p id="scene-render-status" class="hint" role="status"></p>
         <p id="scene-selection-status" class="hint" role="status"></p>
         <div id="layer-map-body" class="layer-map" data-view="scene"></div>
-        <div class="row"><button id="layer-map-prev" type="button" disabled>Previous layers</button><span id="layer-map-page" class="hint"></span><button id="layer-map-next" type="button" disabled>Next layers</button></div>
+        <div class="row"><button id="layer-map-prev" type="button" disabled title="Previous layers">Previous layers</button><span id="layer-map-page" class="hint"></span><button id="layer-map-next" type="button" disabled title="Next layers">Next layers</button></div>
       </details>
       </div>
       <details id="event-catalog-options" class="options"><summary>All captures &amp; filters</summary>
       <label class="sr-only" for="event-filter">Search all captured observations</label><input id="event-filter" type="search" placeholder="Search all observations by module, layer, or forward…" autocomplete="off">
       <details id="source-options" class="options"><summary id="source-options-summary">Exact source filters</summary>
-      <div class="event-source-filters"><div><label for="source-token">Token / image-token position</label><input id="source-token" type="number" min="0" step="1" placeholder="All positions"></div><div><label for="source-forward">Forward index</label><input id="source-forward" type="number" min="0" step="1" placeholder="All forwards"></div><div><label for="source-stack">Source stack</label><select id="source-stack"><option value="">All stacks</option><option value="input">Input</option><option value="encoder">Encoder</option><option value="decoder">Decoder</option><option value="image">Image</option></select></div><button id="clear-event-filters" class="quiet" type="button">Clear all filters</button></div>
+      <div class="event-source-filters"><div><label for="source-token">Token / image-token position</label><input id="source-token" type="number" min="0" step="1" placeholder="All positions"></div><div><label for="source-forward">Forward index</label><input id="source-forward" type="number" min="0" step="1" placeholder="All forwards"></div><div><label for="source-stack">Source stack</label><select id="source-stack"><option value="">All stacks</option><option value="input">Input</option><option value="encoder">Encoder</option><option value="decoder">Decoder</option><option value="image">Image</option></select></div><button id="clear-event-filters" class="quiet" type="button" title="Clear all filters">Clear all filters</button></div>
       <p class="hint">Exact source positions are zero-based. For ViT, image-token 0 is CLS and patches start at 1 in row-major order; these are processed-image positions. T5 decoder position 0 is the decoder start token. Source filters exclude unknown coordinates; clear filters to reveal them. The search box matches module metadata, not tokenizer text. Filtering changes the view only—not captures or exports.</p>
       </details>
       <div class="table-scroll"><table class="event-table"><thead><tr><th>Event</th><th>Module / observation point</th><th>Forward</th><th>Source position</th><th>Shape</th><th>Bytes</th></tr></thead><tbody id="event-body"></tbody></table></div>
-      <div class="pager"><button id="events-prev" class="quiet" type="button">← Previous events</button><span id="event-page" class="hint"></span><button id="events-next" class="quiet" type="button">Next events →</button></div>
+      <div class="pager"><button id="events-prev" class="quiet" type="button" title="← Previous events">← Previous events</button><span id="event-page" class="hint"></span><button id="events-next" class="quiet" type="button" title="Next events →">Next events →</button></div>
       </details>
     </section>
+    <aside id="selection-dock" class="workspace-dock selection-dock" aria-label="Selected capture"><div class="dock-toolbar"><span>selected capture</span><button id="selection-dock-toggle" type="button" aria-label="Collapse selected capture" aria-controls="selection-dock-body" aria-expanded="true" title="Collapse selected capture ([)">‹</button></div><div id="selection-dock-body"><p id="selection-empty" class="hint">Select a captured site in the scene or list.</p>
       <div id="vector-panel" class="vector-panel source-dock" hidden>
-        <div class="panel-heading"><h3 id="vector-heading" tabindex="-1">Selected observation</h3><span id="dtype-badge" class="pill"></span></div>
+        <div class="panel-heading"><h3 id="vector-heading" tabindex="-1">Selected observation</h3><span id="dtype-badge" class="status-text"></span></div>
         <div id="source-readable" class="source-readable" role="status">Choose a captured module and source position.</div>
 
+        <section id="token-evidence" class="token-evidence" aria-labelledby="token-evidence-heading"><h4 id="token-evidence-heading">Recorded token evidence</h4><p class="hint">Whole-model output, not decoding this layer.</p><p id="token-evidence-status" class="hint" role="status"></p><div id="token-evidence-output"></div><details id="token-evidence-candidates-options" class="options"><summary>Recorded candidate logits</summary><p class="hint">Saved full-model logits at this readout; not probabilities, confidence, or layer-level explanations.</p><div id="token-evidence-candidates"></div></details></section>
         <label for="vector-picker">Token / position</label><select id="vector-picker"><option value="">Choose a source position…</option></select>
-        <div class="dock-actions"><button id="dock-exact" type="button" class="secondary">Exact values</button><button id="dock-edit" type="button" class="secondary">Edit</button><button id="dock-reference" type="button" class="quiet">Reference</button></div>
+        <div class="dock-actions"><button id="dock-exact" type="button" class="secondary" title="Exact values">Exact values</button><button id="dock-edit" type="button" class="secondary" title="Edit">Edit</button><button id="dock-reference" type="button" class="quiet" title="Reference">Reference</button></div>
         <details id="source-position-options" class="options"><summary>Position details</summary><p class="hint source-semantics">This activation is associated with this input token or patch position—not a word decoded from hidden features.</p>
-        <div class="pager"><button id="vectors-page-prev" class="quiet" type="button">← Picker page</button><span id="vectors-page" class="hint"></span><button id="vectors-page-next" class="quiet" type="button">Picker page →</button></div>
+        <div class="pager"><button id="vectors-page-prev" class="quiet" type="button" title="← Picker page">← Picker page</button><span id="vectors-page" class="hint"></span><button id="vectors-page-next" class="quiet" type="button" title="Picker page →">Picker page →</button></div>
         <p id="vector-list-status" class="hint" aria-live="polite"></p>
-        <div class="button-row"><button id="vector-prev" class="quiet" type="button">← Previous vector</button><button id="vector-next" class="quiet" type="button">Next vector →</button></div>
+        <div class="button-row"><button id="vector-prev" class="quiet" type="button" title="← Previous vector">← Previous vector</button><button id="vector-next" class="quiet" type="button" title="Next vector →">Next vector →</button></div>
         <p id="vector-coordinate" class="info-box" aria-live="polite">Coordinate unavailable until a vector is read.</p>
         <details id="vector-options" class="options"><summary>Vector display &amp; direct index</summary>
         <p id="vector-location" class="hint"></p>
         <p class="hint">Positions come from this capture, never the currently loaded model. Tokenizer pieces are shown with escaped whitespace; they are not semantic explanations. For GPT-2/T5/Llama, a token generated by forward N first enters the next input at N+1, if that forward was captured. ViT positions describe the processed image, not original-image pixels or words.</p>
-        <div class="vector-controls"><div><label for="vector-index">Vector index</label><input id="vector-index" type="number" min="0" value="0"></div><div><label for="vector-view">View</label><select id="vector-view"><option value="raw">Exact retained values</option><option value="reduced">Approximate grouped view</option></select></div><button id="view-vector" class="secondary" type="button">Show vector</button></div>
+        <div class="vector-controls"><div><label for="vector-index">Vector index</label><input id="vector-index" type="number" min="0" value="0"></div><div><label for="vector-view">View</label><select id="vector-view"><option value="raw">Exact retained values</option><option value="reduced">Approximate grouped view</option></select></div><button id="view-vector" class="secondary" type="button" title="Show vector">Show vector</button></div>
         </details>
         </details>
         <p id="reduction-note" class="approximation" hidden>Approximate display only: adjacent coordinates are grouped into mean/min/max bins. This is not learned semantic reduction, a concept label, or a lossless substitute. Full captured values remain in RAM and in an explicit export.</p>
         <details id="feature-values-options" class="options"><summary>Exact activation values &amp; bits</summary><p class="hint">Feature coordinates are numeric components, not token IDs or named concepts. Full values remain retained.</p>
-        <div id="raw-values"><div class="table-scroll"><table><thead><tr><th>Feature coordinate</th><th>Value</th><th>Raw bits, when available</th></tr></thead><tbody id="value-body"></tbody></table></div><div class="pager"><button id="values-prev" class="quiet" type="button">← Previous values</button><span id="value-page" class="hint"></span><button id="values-next" class="quiet" type="button">Next values →</button></div></div>
+        <div id="raw-values"><div class="table-scroll"><table><thead><tr><th>Feature coordinate</th><th>Value</th><th>Raw bits, when available</th></tr></thead><tbody id="value-body"></tbody></table></div><div class="pager"><button id="values-prev" class="quiet" type="button" title="← Previous values">← Previous values</button><span id="value-page" class="hint"></span><button id="values-next" class="quiet" type="button" title="Next values →">Next values →</button></div></div>
         <div id="reduced-values" hidden><div id="bin-plot" class="bin-plot" role="img" aria-label="Approximate grouped feature means"></div><div class="table-scroll"><table><thead><tr><th>Feature range</th><th>Mean</th><th>Minimum</th><th>Maximum</th></tr></thead><tbody id="bin-body"></tbody></table></div></div>
         </details>
         <details id="intervention-options" class="options intervention-editor"><summary id="intervention-heading">Edit this vector · controlled replay</summary>
@@ -190,24 +199,25 @@
         <p id="intervention-status" class="hint" aria-live="polite"></p>
         <label for="intervention-operation">Edit at the selected source vector</label><select id="intervention-operation"><option value="zero">Zero the entire selected vector</option><option value="add">Add to one feature</option><option value="replace">Set one feature</option></select>
         <div id="intervention-feature-fields" class="field-grid" hidden><div><label for="intervention-feature">Feature index · zero-based</label><input id="intervention-feature" type="number" min="0" max="0" value="0"></div><div><label for="intervention-value">Explicit finite value</label><input id="intervention-value" type="text" inputmode="decimal" placeholder="e.g. 0.5" autocomplete="off"></div></div>
-        <button id="intervene-button" type="button" disabled>Replay &amp; compare</button><p class="hint">Replay keeps the original capture but replaces the previous comparison, even if it fails. Save a comparison you want to keep first.</p></details>
+        <button id="intervene-button" type="button" disabled title="Replay &amp; compare">Replay &amp; compare</button><p class="hint">Replay keeps the original capture but replaces the previous comparison, even if it fails. Save a comparison you want to keep first.</p></details>
         <details><summary>Exact observation metadata</summary><pre id="event-metadata" class="detail-json"></pre></details>
       </div>
     <details id="reference-options" class="options reference-options"><summary id="reference-summary">Reference vector · empty</summary>
       <p class="hint">Keep one exact vector in RAM, then compare feature coordinates at the same model site in another live prompt. No automatic token alignment, concept labels, or causal explanation. Different token positions and inputs remain different observations.</p>
       <p id="reference-selection-status" class="hint"></p><p id="reference-identity" class="hint"></p><p id="reference-status" class="hint" aria-live="polite"></p>
-      <div class="button-row reference-actions"><button id="pin-reference" class="secondary" type="button" disabled>Keep selected vector</button><button id="inspect-reference" class="quiet" type="button" disabled>Inspect reference</button><button id="compare-reference" type="button" disabled>Compare selected vector</button><button id="clear-reference" class="quiet" type="button" disabled>Clear reference</button><button id="refresh-reference" class="quiet" type="button">Refresh reference status</button></div>
+      <div class="button-row reference-actions"><button id="pin-reference" class="secondary" type="button" disabled title="Keep selected vector">Keep selected vector</button><button id="inspect-reference" class="quiet" type="button" disabled title="Inspect reference">Inspect reference</button><button id="compare-reference" type="button" disabled title="Compare selected vector">Compare selected vector</button><button id="clear-reference" class="quiet" type="button" disabled title="Clear reference">Clear reference</button><button id="refresh-reference" class="quiet" type="button" title="Refresh reference status">Refresh reference status</button></div>
       <p class="hint">Keeping another vector explicitly replaces the previous reference. One reference only, at most 1 MiB, counted with other captures against the server trace allowance; not peak RAM. Rejected replacements keep the prior reference. If a response is lost, refresh status to learn the outcome.</p>
       <p class="hint"><strong>RAM-only; no reference export.</strong> Save capture saves the current capture only, not this reference or comparison. Save the full source capture before running another prompt if you need it later.</p>
       <div id="reference-values-panel" hidden><p id="reference-read-status" class="hint" aria-live="polite"></p><p id="reference-pair-label" class="info-box"></p><p id="reference-metrics" class="hint"></p>
       <div class="table-scroll"><table><thead><tr><th>Feature</th><th>Reference value</th><th>Current value</th><th>Float64 Δ · current − reference</th></tr></thead><tbody id="reference-value-body"></tbody></table></div>
-      <div class="pager"><button id="reference-prev" class="quiet" type="button">← Previous features</button><span id="reference-page" class="hint"></span><button id="reference-next" class="quiet" type="button">Next features →</button></div>
+      <div class="pager"><button id="reference-prev" class="quiet" type="button" title="← Previous features">← Previous features</button><span id="reference-page" class="hint"></span><button id="reference-next" class="quiet" type="button" title="Next features →">Next features →</button></div>
       <details><summary>Exact raw bits</summary><div class="table-scroll"><table><thead><tr><th>Feature</th><th>Reference bits</th><th>Current bits</th></tr></thead><tbody id="reference-bit-body"></tbody></table></div></details>
       <details><summary>Full metrics and both source records</summary><pre id="reference-details" class="detail-json"></pre></details></div>
       <details><summary>Pinned source metadata</summary><pre id="reference-source-details" class="detail-json"></pre></details>
     </details>
+    </div></aside>
     <section id="experiment-panel" class="panel" aria-labelledby="experiment-heading" hidden>
-      <div class="panel-heading"><h2 id="experiment-heading">Fixed-input comparison</h2><span class="pill">Separate from original capture</span></div>
+      <div class="panel-heading"><h2 id="experiment-heading">Fixed-input comparison</h2><span class="status-text">Separate from original capture</span></div>
       <p id="demo-experiment-warning" class="approximation" hidden>This comparison uses an untrained random CPU demo. It exercises the workflow, not useful model behavior or GPU validation.</p>
       <p id="experiment-outcome" class="info-box"></p><p id="experiment-control-warning" class="notice error" role="alert" hidden></p>
       <details id="comparison-checks" class="options"><summary>Controls &amp; measured differences</summary><p id="experiment-controls" class="hint"></p><p id="experiment-metrics" class="hint"></p></details>
@@ -220,9 +230,9 @@
       <details id="witness-options" class="options"><summary>Exact before / after witness values</summary>
       <label for="witness-phase">Exact selected-vector witness</label><select id="witness-phase"><option value="0">Null control · before</option><option value="1">Null control · after</option><option value="2">Intervention · before</option><option value="3">Intervention · after</option></select><p id="witness-status" class="hint" aria-live="polite"></p><p id="witness-coordinate" class="hint"></p>
       <div class="table-scroll"><table><thead><tr><th>Feature</th><th>Exact value</th><th>Raw bits</th></tr></thead><tbody id="witness-body"></tbody></table></div>
-      <div class="pager"><button id="witness-prev" class="quiet" type="button">← Previous values</button><span id="witness-page" class="hint"></span><button id="witness-next" class="quiet" type="button">Next values →</button></div>
+      <div class="pager"><button id="witness-prev" class="quiet" type="button" title="← Previous values">← Previous values</button><span id="witness-page" class="hint"></span><button id="witness-next" class="quiet" type="button" title="Next values →">Next values →</button></div>
       </details>
-      <label for="experiment-save-name">Save only this comparison</label><div class="button-row"><input id="experiment-save-name" type="text" value="my-comparison" autocomplete="off"><button id="save-experiment" class="secondary" type="button">Save comparison</button></div><p id="experiment-save-status" class="hint">Explicit export includes the fixed input, output metadata and full witness tensors. Original Save capture remains separate. Keep private inputs private.</p>
+      <label for="experiment-save-name">Save only this comparison</label><div class="button-row"><input id="experiment-save-name" type="text" value="my-comparison" autocomplete="off"><button id="save-experiment" class="secondary" type="button" title="Save comparison">Save comparison</button></div><p id="experiment-save-status" class="hint">Explicit export includes the fixed input, output metadata and full witness tensors. Original Save capture remains separate. Keep private inputs private.</p>
     </section>
     <p id="experiment-startup-status" class="hint" aria-live="polite"></p>
 

@@ -91,7 +91,7 @@ def test_discovery_direction_uses_only_fixed_discovery_labels():
 
 def test_failed_forward_cleans_hooks(monkeypatch):
     model, pixels = tiny(), synthetic_pixels(11, 32)
-    block = model.vit.encoder.layer[1]
+    block = model.vit.layers[1]
     def fail(*args, **kwargs):
         raise RuntimeError("fabricated failure")
     monkeypatch.setattr(block, "forward", fail)

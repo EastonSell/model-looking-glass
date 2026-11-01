@@ -27,6 +27,7 @@ def paired():
         config = T5Config(vocab_size=41, d_model=16, d_kv=8, d_ff=32, num_layers=2,
                           num_decoder_layers=2, num_heads=2, dropout_rate=0,
                           decoder_start_token_id=0, pad_token_id=0, eos_token_id=1)
+        config._attn_implementation = "eager"
         model = T5ForConditionalGeneration(config).eval()
     return model, torch.tensor([[4, 5, 1, 0]]), torch.tensor([[1, 1, 1, 0]]), \
         torch.tensor([[0, 7, 1]]), torch.tensor([[1, 1, 1]])

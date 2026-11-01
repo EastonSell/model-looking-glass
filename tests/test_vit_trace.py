@@ -31,12 +31,12 @@ def tiny_vit():
 def test_direct_hooks_match_ordered_cls_and_nonsquare_patch_captures():
     model = tiny_vit()
     pixels = torch.linspace(-1, 1, 2 * 3 * 32 * 48).reshape(2, 3, 32, 48)
-    paths = ("vit.encoder.layer.0.attention", "vit.encoder.layer.0.intermediate", "vit.encoder.layer.0",
-             "vit.encoder.layer.1.attention", "vit.encoder.layer.1.intermediate", "vit.encoder.layer.1")
+    paths = ("vit.layers.0.attention", "vit.layers.0.mlp.activation_fn", "vit.layers.0",
+             "vit.layers.1.attention", "vit.layers.1.mlp.activation_fn", "vit.layers.1")
     observed, handles = {}, []
     for path in paths:
         def capture(_module, _args, output, *, path=path):
-            observed[path] = output.detach().clone()
+            observed[path] = (output[0] if isinstance(output, tuple) else output).detach().clone()
         handles.append(model.get_submodule(path).register_forward_hook(capture))
     try:
         with torch.inference_mode():
@@ -60,7 +60,7 @@ def test_direct_hooks_match_ordered_cls_and_nonsquare_patch_captures():
         batch, token = event.batch_positions[0], event.token_positions[0]
         assert torch.equal(record.value, observed[event.module_path][batch, token])
         assert event.shape == (2, 13, width) and event.saved_shape == (width,)
-        assert event.output_path == () and event.invocation == event.forward_index == 0
+        assert event.output_path == ((0,) if event.module_kind == "vit_attention" else ()) and event.invocation == event.forward_index == 0
         assert event.generation.stage == "unknown" and event.generation.use_cache is None
     assert result.tensor_bytes == sum(x * 4 for x in expected_widths)
     cls, first, middle, last = result.records[1], result.records[0], result.records[3], result.records[5]
@@ -154,7 +154,7 @@ def test_modified_projection_geometry_and_nonzero_invocation_are_rejected():
 def test_late_runtime_failure_cleans_hooks_and_allows_reuse(monkeypatch):
     model = tiny_vit()
     pixels = torch.zeros((1, 3, 32, 48))
-    late = model.vit.encoder.layer[1].output
+    late = model.vit.layers[1].mlp.fc2
     old = late.forward
     def fail(*args, **kwargs):
         raise RuntimeError("fabricated late failure")
@@ -174,7 +174,7 @@ def test_compiled_context_and_preexisting_hooks_are_rejected(monkeypatch):
         context.setattr(torch.compiler, "is_compiling", lambda: True)
         with pytest.raises(ValueError, match="compiled"):
             trace_vit_classifier(model, pixels, run_id="compiled", points=point)
-    handle = model.vit.encoder.layer[1].register_forward_hook(lambda *_: None)
+    handle = model.vit.layers[1].register_forward_hook(lambda *_: None)
     try:
         with pytest.raises(ValueError, match="pre-existing"):
             trace_vit_classifier(model, pixels, run_id="hook", points=point)
@@ -184,7 +184,7 @@ def test_compiled_context_and_preexisting_hooks_are_rejected(monkeypatch):
 
 def test_repeated_selected_module_invocation_is_rejected_and_cleans_hooks(monkeypatch):
     model = tiny_vit()
-    encoder = model.vit.encoder
+    encoder = model.vit
     old = encoder.forward
     def repeat(*args, **kwargs):
         old(*args, **kwargs)
@@ -210,7 +210,7 @@ cfg = ViTConfig(image_size=32, patch_size=8, hidden_size=16, num_hidden_layers=2
                 num_attention_heads=2, intermediate_size=24, num_labels=3)
 cfg._attn_implementation = 'eager'
 model = ViTForImageClassification(cfg).eval()
-module = model.vit.encoder.layer[0].intermediate
+module = model.vit.layers[0].mlp.activation_fn
 calls = [0]
 def fail(*args, **kwargs):
     calls[0] += 1

@@ -156,7 +156,7 @@ def test_layer_map_cards_wrap_long_paths_without_primary_button_fill():
     css = (ROOT / "looking_glass/app_static/app.css").read_text()
     rule = re.search(r"\.layer-map-node\s*\{([^}]+)\}", css).group(1)
     for declaration in ("white-space: normal", "min-width: 0", "overflow-wrap: anywhere", "flex: 1 1 12rem", "max-width: 100%", "background: var(--accent-soft)", "color: var(--text)", "border-color: var(--line)"):
-        assert declaration in rule, declaration
+        assert declaration.replace(" ", "") in rule.replace(" ", ""), declaration
 
 
 def test_map_focus_target_is_programmatic_not_an_extra_tab_stop():
@@ -181,7 +181,8 @@ def test_workspace_has_local_dark_presentation_and_truthful_readout():
     assert "color-scheme: dark" in css
     assert "complete model output—not from decoding the selected intermediate activation" in doc.root.text
     assert "Hidden feature numbers are not token IDs" in doc.root.text
-    assert "perspective:" in css and "prefers-reduced-motion: reduce" in css
+    assert "/app_scene.js" in (ROOT / "looking_glass/app_static/index.html").read_text()
+    assert "prefers-reduced-motion: reduce" in css and "perspective:" not in css
     for node in doc.elements:
         if node.tag in {"script", "link"}:
             target = node.attrs.get("src", node.attrs.get("href", ""))
@@ -217,9 +218,9 @@ def test_output_card_keeps_predictions_primary_and_details_reachable():
 def test_scene_has_flat_reduced_motion_and_keyboard_front_plane():
     css = (ROOT / "looking_glass/app_static/app.css").read_text()
     assert "prefers-reduced-motion: reduce" in css
-    assert ".layer-map-row:focus-within" in css
-    assert '.layer-map[data-view=list]' in css
-    assert "transform:none" in css and "perspective:none" in css
+    assert ".layer-map-node[aria-pressed=true]" in css
+    assert "focus-visible" in css
+    assert "rotateY(" not in css and "perspective:" not in css
     assert "transition:all" not in css and "transition: all" not in css
     ids = page().ids
     assert ids["scene-view"].tag == "select"
@@ -234,10 +235,9 @@ def test_discovery_is_explicit_and_wireframe_is_not_fake_model_data():
     assert "immediate subfolders" in ids["folder-browser"].text
     assert "Inspect" in ids["folder-browser"].text
     css = (ROOT / "looking_glass/app_static/app.css").read_text()
-    assert "/* Wireframe refinement" in css
-    wire = css.split("/* Wireframe refinement", 1)[1]
-    assert "box-shadow:none" in wire and "backdrop-filter:none" in wire
-    assert "radial-gradient" not in wire
+    assert "#04050a" in css and "rgba(18,20,28,.78)" in css
+    assert "radial-gradient" not in css
+    assert "rotateY(" not in css  # Real scene geometry lives in app_scene.js, not CSS illusions.
 
 
 def test_minimal_default_keeps_explanations_and_scores_collapsed():
@@ -279,3 +279,55 @@ def test_model_downloads_remain_an_explicit_closed_settings_workflow():
     assert 'server limits, not your Load GPU allowance' in group.text
     assert 'a lower Load allowance may still reject it' in group.text
     assert group in ids['download-location'].ancestors()
+
+
+def test_download_reuse_is_a_native_explicit_settings_action():
+    ids=page().ids
+    assert 'browse-downloads' in ids
+    button=ids['browse-downloads']
+    assert button.tag == 'button' and button.attrs.get('type') == 'button'
+    assert 'disabled' in button.attrs
+    assert ids['download-options'] in button.ancestors()
+    assert 'Browse downloads' in button.text
+
+
+def test_selected_token_evidence_is_qualified_and_candidates_are_collapsed():
+    ids = page().ids
+    evidence = ids['token-evidence']
+    assert ids['vector-panel'] in evidence.ancestors()
+    assert 'Whole-model output, not decoding this layer' in evidence.text
+    assert ids['token-evidence-candidates-options'].tag == 'details'
+    assert 'open' not in ids['token-evidence-candidates-options'].attrs
+    assert ids['token-evidence-candidates-options'] in ids['token-evidence-candidates'].ancestors()
+    assert ids['token-evidence-status'].attrs.get('role') == 'status'
+
+
+def test_real_scene_and_two_docks_replace_perspective_dashboard():
+    doc=page(); ids=doc.ids
+    assert ids['selection-dock'] in ids['vector-panel'].ancestors()
+    assert ids['query-dock'] in ids['prompt'].ancestors()
+    assert ids['query-dock'] in ids['answer'].ancestors()
+    assert ids['scene-canvas'].attrs.get('aria-hidden') == 'true'
+    assert ids['scene-render-status'].attrs.get('role') == 'status'
+    for side in ('selection','query'):
+        assert ids[f'{side}-dock-toggle'].attrs['aria-controls'] == f'{side}-dock-body'
+        assert ids[f'{side}-dock-toggle'].attrs['aria-expanded'] == 'true'
+    sources=[e.attrs['src'] for e in doc.elements if e.tag=='script']
+    assert sources[-4:] == ['/vendor/three-0.128.0.min.js','/vendor/OrbitControls-0.128.0.js','/app_scene.js','/app.js']
+    css=(ROOT/'looking_glass/app_static/app.css').read_text()
+    assert '#04050a' in css
+    assert 'rotateY(' not in css and 'perspective:' not in css
+    assert 'text-transform:uppercase' not in css and 'text-transform: uppercase' not in css
+    assert not any(e.attrs.get('class') in ('brand','brand-mark') for e in doc.elements)
+
+
+def test_alerts_and_scene_docks_keep_accessible_neutral_chrome():
+    ids=page().ids
+    for name in ('experiment-panel','experiment-control-warning'):
+        assert ids['selection-dock-body'] not in ids[name].ancestors()
+        assert ids['query-dock-body'] not in ids[name].ancestors()
+    css=(ROOT/'looking_glass/app_static/app.css').read_text()
+    assert 'height:calc(94.7dvh - 8px)' in css
+    assert 'text-align:center' not in css and 'text-align:right' not in css
+    assert '--error-text:#e8eaf0' in css and '--warning-text:#e8eaf0' in css
+    assert '::-webkit-scrollbar{width:4px;height:4px}' in css

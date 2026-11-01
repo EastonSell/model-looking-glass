@@ -99,12 +99,12 @@ def load_distilgpt2(*, cache_dir, allow_download=False, stage_dir=None):
         import transformers
     except ImportError as exc:
         raise ImportError(
-            "The pretrained loader requires transformers; install transformers 4.57.3."
+            "The pretrained loader requires transformers; install the current project transformer extra."
         ) from exc
     try:
         import torch
     except ImportError as exc:
-        raise ImportError("The pretrained loader requires torch; install PyTorch 2.6 or later.") from exc
+        raise ImportError("The pretrained loader requires torch; install PyTorch 2.15 or later.") from exc
     try:
         import safetensors  # noqa: F401
     except ImportError as exc:

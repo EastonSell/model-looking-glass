@@ -227,6 +227,7 @@ def test_tiny_untrained_t5_uses_real_encoder_and_decoder_without_cache(tmp_path)
     config = T5Config(vocab_size=128, d_model=8, d_kv=4, d_ff=16, num_layers=1,
                       num_decoder_layers=1, num_heads=2, dropout_rate=0.0,
                       decoder_start_token_id=0, eos_token_id=1, pad_token_id=0, use_cache=False)
+    config._attn_implementation = "eager"
     model = T5ForConditionalGeneration(config).eval()
     def encode():
         return model.encoder(input_ids=torch.tensor([[7, 8, 1]]),

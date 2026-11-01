@@ -1,4 +1,5 @@
 import json
+import copy
 import pytest
 import torch
 from transformers import LlamaConfig, LlamaForCausalLM
@@ -10,7 +11,7 @@ def checkpoint(path, kv=1, scaling=None):
     path.mkdir()
     config = LlamaConfig(vocab_size=16,hidden_size=8,intermediate_size=16,
         num_hidden_layers=2,num_attention_heads=2,num_key_value_heads=kv,
-        max_position_embeddings=32,eos_token_id=None,rope_scaling=scaling)
+        max_position_embeddings=32,eos_token_id=None,rope_scaling=copy.deepcopy(scaling))
     config._attn_implementation='eager'
     model=LlamaForCausalLM(config).eval()
     model.save_pretrained(path,safe_serialization=True)
@@ -131,7 +132,7 @@ def test_real_cuda_llama_full_logits_boundaries_offload_export_repeat(tmp_path,s
                     layers=(0,1),synchronous_cpu=False)
                 assert torch.equal(plain.view(torch.int32),captured.output.logits.cpu().view(torch.int32))
                 assert torch.equal(runtime.model.model.rotary_emb.inv_freq.view(torch.int32).cpu(),initial_rotary)
-                assert runtime.model.config.rope_scaling==scaling
+                assert runtime.model.config.rope_parameters == {**(scaling or {'rope_type':'default'}), 'rope_theta':10000.0}
                 del plain,captured
         result=runtime.run('hello world',{'max_new_tokens':1})
         assert result['generated_token_ids']==[int(baseline[0,-1].argmax())]
@@ -179,7 +180,7 @@ def test_static_llama3_tied_sharded_local_checkpoint(tmp_path):
     path=tmp_path/'tied-sharded';path.mkdir()
     config=LlamaConfig(vocab_size=16,hidden_size=8,intermediate_size=16,num_hidden_layers=2,
         num_attention_heads=2,num_key_value_heads=1,max_position_embeddings=32,
-        tie_word_embeddings=True,rope_scaling=scaling,eos_token_id=None)
+        tie_word_embeddings=True,rope_scaling=copy.deepcopy(scaling),eos_token_id=None)
     config._attn_implementation='eager'
     model=LlamaForCausalLM(config).eval()
     assert model.lm_head.weight is model.model.embed_tokens.weight
@@ -221,7 +222,7 @@ def test_llama_accepts_bounded_builtin_gpt2_bpe_input_assets(tmp_path):
     tok.save_pretrained(path)
     runtime=LocalModelRuntime()
     info=runtime.inspect(str(path))
-    assert info['input_summary']['class']=='GPT2TokenizerFast'
+    assert info['input_summary']['class']=='GPT2Tokenizer'
     runtime.load(str(path),device='cpu')
     assert runtime.run('Hi',{'max_new_tokens':1})['coverage']['captured_events']==3
     runtime.unload()

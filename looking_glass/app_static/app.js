@@ -7,7 +7,36 @@
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
   const bytes = (value) => { const n = Number(value); if (!Number.isFinite(n)) return '—'; return n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KiB` : `${(n / 1048576).toFixed(2)} MiB`; };
-  function revealOptions(id) { $(id).open = true; if (id === 'map-tools-options') $('layer-map-options').open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','privacy-options','download-options'].includes(id)) $('session-options').open = true; }
+  let sceneApi=null, sceneFailed=false;
+  const sceneSites=new Map();
+  function setDock(side,open){
+    const dock=$(`${side}-dock`),body=$(`${side}-dock-body`),button=$(`${side}-dock-toggle`);
+    body.hidden=!open;dock.setAttribute('data-collapsed',String(!open));button.setAttribute('aria-expanded',String(open));
+    button.textContent=side==='selection'?(open?'‹':'›'):(open?'›':'‹');
+    const label=side==='selection'?'selected capture':'prompt and response';button.setAttribute('aria-label',`${open?'Collapse':'Expand'} ${label}`);button.setAttribute('title',`${open?'Collapse':'Expand'} ${label} (${side==='selection'?'[':']'})`);
+    if(sceneApi)sceneApi.resize();
+  }
+  function sceneUnavailable(reason){
+    sceneFailed=true;$('scene-render-status').textContent=reason||'3D rendering unavailable. Use the captured-site list.';$('scene-view').value='list';$('layer-map-options').open=true;syncSceneVisibility();
+  }
+  function syncSceneVisibility(){
+    const scene=$('scene-view').value==='scene'&&!sceneFailed&&!!sceneApi;
+    $('scene-canvas').hidden=!scene||!state.mapCapture;$('layer-map-body').hidden=scene&&!!state.mapCapture;
+    if(sceneApi){sceneApi.setActive(scene&&!!state.mapCapture);if(scene&&state.mapCapture)sceneApi.resize();}
+  }
+  function replaceSceneLayers(layers){
+    sceneSites.clear();for(const entry of state.mapButtons)sceneSites.set(entry.sceneKey,entry);
+    if(sceneApi&&!sceneFailed){try{sceneApi.setLayers(layers);}catch(_){sceneUnavailable('Captured-site scene unavailable. Use the exact list.');}}
+    syncSceneVisibility();
+  }
+  function initializeScene(){
+    const library=typeof window!=='undefined'?window.MLGScene:null;
+    if(!library||typeof library.create!=='function'){sceneUnavailable('3D assets unavailable. Use the captured-site list.');return;}
+    try{sceneApi=library.create($('scene-canvas'),{onUnavailable:sceneUnavailable,onSelect:key=>{const entry=sceneSites.get(key);if(sceneFailed||!entry||state.busy||!state.mapButtons.includes(entry))return;return entry.select();}});syncSceneVisibility();}
+    catch(_){sceneUnavailable('3D rendering unavailable. Use the captured-site list.');}
+  }
+
+  function revealOptions(id) { $(id).open = true; if (['vector-options','source-position-options','feature-values-options','intervention-options','reference-options'].includes(id)) setDock('selection',true); if (id === 'map-tools-options') $('layer-map-options').open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','privacy-options','download-options'].includes(id)) $('session-options').open = true; }
   function notice(message, error = false) { $('notice').textContent = message; $('notice').hidden = !message; $('notice').classList.toggle('error', error); }
   async function api(path, body) {
     if (body === undefined && /^(events|vectors|tensor|layer-map)\?/.test(path) && state.run?.capture_id) path += `&capture_id=${encodeURIComponent(state.run.capture_id)}`;
@@ -28,11 +57,13 @@
     const selector = metadata?.output_path;
     const validSelector = Array.isArray(selector) && selector.every(Number.isSafeInteger);
     for (const row of new Set(state.mapButtons.map(item => item.row))) row.setAttribute('data-selected', 'false');
-    let selectedSheet = false;
+    let selectedSheet = false, selectedSceneKey=null;
     for (const item of state.mapButtons) {
       const selected = item.capture === state.run?.capture_id && item.capture === state.mapCapture && item.forward === state.mapForward && coordinate?.status === 'known' && coordinate.app_forward_index === item.forward && coordinate.stack === item.stack && coordinate.layer_index === item.layer && coordinate.module_path === item.path && metadata?.module_kind === item.kind && validSelector && JSON.stringify(selector) === item.selector;
-      item.button.setAttribute('aria-pressed', String(selected)); if (selected) { item.row.setAttribute('data-selected', 'true'); selectedSheet = true; }
+      item.button.setAttribute('aria-pressed', String(selected)); if (selected) { item.row.setAttribute('data-selected', 'true'); selectedSheet = true; selectedSceneKey=item.sceneKey; }
     }
+    if(sceneApi&&!sceneFailed)sceneApi.selectSite(selectedSceneKey);
+    $('selection-empty').hidden=!!state.event;
     $('scene-selection-status').textContent = !state.mapCapture || !state.event ? '' : selectedSheet ? `Selected · position ${coordinate.token_position ?? '?'}` : coordinate?.status !== 'known' ? 'Source unknown · no highlight.' : 'Selection outside this layer page or forward.';
     const stepCount = Array.isArray(state.run?.steps) ? state.run.steps.length : 0;
     $('output-step').disabled = state.busy || !stepCount; $('input-token-stack').disabled = state.busy || !stepCount;
@@ -185,8 +216,8 @@
   function showRun(run) {
     $('scene-empty').hidden = true;
     state.outputStep = 0; state.tokenOffset = 0;
-    state.run = run; $('imported-comparison').hidden = run.run_kind !== 'intervention_comparison'; if (run.run_kind === 'intervention_comparison') { renderDistribution('imported', run.experiment || {}); controlWarning('imported-control-warning', run.experiment || {}, run.model); } else clearDistribution('imported'); $('result-panel').hidden = false; $('trace-panel').hidden = false; $('answer').textContent = display(run.answer ?? 'No textual output.'); $('task-badge').textContent = run.task || 'Observed run';
-    const captureModel = run.model; $('demo-capture-warning').hidden = !isDemo(captureModel); $('capture-model').textContent = captureModel ? `Capture model: ${captureModel.name || captureModel.family || captureModel.architecture || 'recorded model'}${captureModel.device ? ' on ' + captureModel.device : ''} — independent of the model currently loaded above.` : 'Model identity was not recorded in this capture.';
+    state.run = run; $('imported-comparison').hidden = run.run_kind !== 'intervention_comparison'; if (run.run_kind === 'intervention_comparison') { renderDistribution('imported', run.experiment || {}); if(controlWarning('imported-control-warning', run.experiment || {}, run.model))setDock('query',true); } else clearDistribution('imported'); $('result-panel').hidden = false; $('trace-panel').hidden = false; $('answer').textContent = display(run.answer ?? 'No textual output.'); $('task-badge').textContent = run.task || 'Observed run';
+    const captureModel = run.model; $('demo-capture-warning').hidden = !isDemo(captureModel); if(isDemo(captureModel))setDock('query',true); $('capture-model').textContent = captureModel ? `Capture model: ${captureModel.name || captureModel.family || captureModel.architecture || 'recorded model'}${captureModel.device ? ' on ' + captureModel.device : ''} — independent of the model currently loaded above.` : 'Model identity was not recorded in this capture.';
     $('capture-info').textContent = display({model: captureModel || null, settings: run.settings || null});
     $('run-metrics').replaceChildren();
     for (const [value, label] of [[run.event_count ?? '—', 'captured observations'], [bytes(run.total_bytes), 'CPU RAM tensor payload'], [Array.isArray(run.steps) ? run.steps.length : '—', 'explicit forward steps']]) { const box = document.createElement('div'), strong = document.createElement('strong'), span = document.createElement('span'); box.className = 'metric'; strong.textContent = String(value); span.textContent = label; box.append(strong, span); $('run-metrics').append(box); }
@@ -195,7 +226,53 @@
   }
   const safeId = value => Number.isSafeInteger(value) && value >= 0;
   const shortText = value => typeof value === 'string' ? value.slice(0, 512) : null;
+  function renderTokenEvidence(c) {
+    const output=$('token-evidence-output'), candidates=$('token-evidence-candidates'), disclosure=$('token-evidence-candidates-options');
+    output.replaceChildren();candidates.replaceChildren();disclosure.hidden=true;
+    const unavailable=reason=>{$('token-evidence-status').textContent=`Unavailable here: ${reason}`;};
+    if(state.run?.run_kind==='intervention_comparison'){unavailable('comparison witnesses are not ordinary forward readouts. See the comparison record.');return;}
+    if(!c||c.status!=='known'){unavailable('select a verified source position.');return;}
+    if(c.batch_position!==0||!safeId(c.app_forward_index)||!safeId(c.token_position)||!safeId(c.token_id)){unavailable('recorded source coordinates are incomplete.');return;}
+    const family=state.run?.model?.family, steps=state.run?.steps;
+    const supported=(['gpt2','llama','distilbert'].includes(family)&&c.stack==='input')||(family==='t5'&&c.stack==='decoder');
+    if(!supported||c.image_coordinate){unavailable(family==='vit'||c.stack==='image'?'image patches have no token prediction. See the whole-model class output.':family==='t5'&&c.stack==='encoder'?'encoder positions have no next-token readout. Choose a captured decoder position.':'this stream has no position-matched token readout. See the whole-model response.');return;}
+    if(!Array.isArray(steps)||steps.length>4096||steps.some(s=>!s||typeof s!=='object'||Array.isArray(s)||!safeId(s.app_forward_index))){unavailable('forward records are missing or malformed.');return;}
+    const matches=steps.filter(s=>s.app_forward_index===c.app_forward_index);
+    if(matches.length!==1){unavailable('the saved forward is missing or ambiguous.');return;}
+    const step=matches[0], metadata=state.event?.metadata;
+    if(typeof step.run_id!=='string'||!step.run_id||step.run_id.length>256||metadata?.run_id!==step.run_id||steps.filter(s=>s.run_id===step.run_id).length!==1||(metadata.app_forward_index!==undefined&&metadata.app_forward_index!==c.app_forward_index)){unavailable('capture and readout run identifiers do not match.');return;}
+    const ids=family==='t5'?step.decoder_token_ids:step.input_token_ids;
+    if(!Array.isArray(ids)||!ids.length||ids.length>65536||ids.some(id=>!safeId(id))||c.token_position>=ids.length||ids[c.token_position]!==c.token_id){unavailable('the source token does not match the saved input.');return;}
+    let selected, rows=[];
+    const validText=row=>row.text===undefined||typeof row.text==='string';
+    if(family==='distilbert'){
+      const predictions=step.mask_predictions;
+      if(!Array.isArray(predictions)||predictions.length>ids.length||predictions.some(row=>!row||typeof row!=='object'||Array.isArray(row)||!safeId(row.position)||row.position>=ids.length||!safeId(row.token_id)||!validText(row))||new Set(predictions.map(row=>row.position)).size!==predictions.length){unavailable('mask predictions are malformed or ambiguous.');return;}
+      selected=predictions.find(row=>row.position===c.token_position);
+      if(!selected){unavailable('no mask prediction was recorded here. Choose a captured mask position.');return;}
+    }else{
+      if(c.token_position!==ids.length-1){unavailable('no prediction was saved here. Choose the last input position if captured.');return;}
+      if(['gpt2','llama'].includes(family)){
+        const mask=step.input_attention_mask;
+        if(!Array.isArray(mask)||mask.length!==ids.length||mask.some(value=>value!==0&&value!==1)||mask[c.token_position]!==1){unavailable('the recorded attention mask is missing, invalid or masked here.');return;}
+      }
+      if(!safeId(step.selected_token_id)){unavailable('the selected output token ID is missing.');return;}
+      if(step.top_next_tokens!==undefined){
+        if(!Array.isArray(step.top_next_tokens)||step.top_next_tokens.length>10||step.top_next_tokens.some(row=>!row||typeof row!=='object'||Array.isArray(row)||!safeId(row.token_id)||!Number.isFinite(row.logit)||!validText(row))||new Set(step.top_next_tokens.map(row=>row.token_id)).size!==step.top_next_tokens.length){unavailable('candidate logits are malformed or ambiguous.');return;}
+        rows=step.top_next_tokens;
+      }
+      selected=rows.find(row=>row.token_id===step.selected_token_id)||{token_id:step.selected_token_id};
+      if(Number.isFinite(selected.logit)&&rows.some(row=>row.logit>selected.logit)){unavailable('the saved selected token conflicts with candidate logits.');return;}
+    }
+    const textFor=row=>typeof row.text!=='string'?'Text unavailable':row.text===''?'(empty text)':row.text.trim()===''?JSON.stringify(row.text.slice(0,512)):row.text.slice(0,512);
+    const title=document.createElement('strong'), id=document.createElement('span');title.textContent=textFor(selected);id.textContent=`Token ID ${selected.token_id}${typeof selected.text==='string'&&selected.text.length>512?' · label truncated':''}`;output.append(title,id);
+    $('token-evidence-status').textContent=`Recorded ${family==='distilbert'?'mask prediction':'next token'} · forward ${c.app_forward_index} · position ${c.token_position}.`;
+    for(const row of rows){const item=document.createElement('div');item.className='readout-row';const text=document.createElement('span'), score=document.createElement('span');text.textContent=`ID ${row.token_id} · ${textFor(row)}${typeof row.text==='string'&&row.text.length>512?' · truncated':''}`;score.textContent=`Logit ${number(row.logit)}`;item.append(text,score);candidates.append(item);}
+    disclosure.hidden=!rows.length;
+  }
+
   function renderReadableSource(c) {
+    renderTokenEvidence(c);
     const box = $('source-readable'); box.replaceChildren();
     const title = document.createElement('strong'), meta = document.createElement('span');
     if (!c || c.status !== 'known') { title.textContent = 'Source not yet known'; meta.textContent = c?.reason || 'Select and read a captured source position. No token meaning is inferred from vector values.'; }
@@ -283,6 +360,7 @@
   }
   function clearLayerMap() {
     state.mapButtons = []; state.mapAutoCapture = null; state.mapRequest++; state.mapOffset = 0; state.mapTotal = 0; state.mapForward = 0; state.mapCapture = null;
+    replaceSceneLayers([]);
     $('layer-map-forward').value = '0'; $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = '';
     $('layer-map-status').textContent = 'Open or refresh to list captured sites. No tensor values are read to build the map.';
   }
@@ -291,38 +369,41 @@
     const raw = $('layer-map-forward').value.trim();
     if (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw))) { revealOptions('map-tools-options'); $('layer-map-status').textContent = 'Choose a nonnegative safe whole forward number.'; return; }
     const forward = Number(raw), capture = state.run.capture_id, request = ++state.mapRequest;
-    state.mapButtons = []; state.mapTotal = 0; state.mapCapture = null; $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = ''; $('layer-map-status').textContent = 'Reading captured-site metadata…'; syncButtons();
+    state.mapButtons = []; state.mapTotal = 0; state.mapCapture = null; replaceSceneLayers([]); $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = ''; $('layer-map-status').textContent = 'Reading captured-site metadata…'; syncButtons();
     try {
       const result = await api(`layer-map?forward=${forward}&offset=${offset}&limit=12`);
       if (request !== state.mapRequest || capture !== state.run?.capture_id) return;
       if (result.capture_id !== capture || result.selected_forward !== forward) throw new Error('Layer map revision or forward does not match this capture; refresh instead of guessing.');
       state.mapCapture = capture; state.mapForward = forward; state.mapOffset = offset; state.mapTotal = result.total_layers;
-      const groups = new Map();
+      const groups = new Map(), sceneLayers=[];
       for (const layer of result.layers || []) {
+        const sceneLayer={key:JSON.stringify([capture,request,forward,layer.stack,layer.layer_index,sceneLayers.length]),label:`${layer.stack} · ${layer.layer_index}`,sites:[]};sceneLayers.push(sceneLayer);
         let group = groups.get(layer.stack);
         if (!group) { group = document.createElement('section'); group.className = 'layer-map-stack'; const heading = document.createElement('h4'); heading.textContent = `${layer.stack} stack`; group.append(heading); groups.set(layer.stack, group); $('layer-map-body').append(group); }
         const row = document.createElement('div'); row.className = 'layer-map-row'; const label = document.createElement('strong'); label.textContent = `Layer ${layer.layer_index}`; row.append(label); const nodes = document.createElement('div'); nodes.className = 'layer-map-nodes'; row.append(nodes); group.append(row);
         for (const node of layer.nodes || []) {
           const button = document.createElement('button'); button.type = 'button'; button.className = 'layer-map-node';
-          const kind = document.createElement('span'); kind.className = 'sheet-module-kind'; kind.textContent = node.module_kind; const path = document.createElement('small'); path.className = 'sheet-module-path'; path.textContent = node.module_path; button.append(kind, path); button.setAttribute('title', `${layer.stack} layer ${layer.layer_index} · ${node.module_path} · first captured vector`); button.setAttribute('aria-label', `${layer.stack} layer ${layer.layer_index} · ${node.module_kind} · ${node.module_path} · output ${JSON.stringify(node.output_path)} · first captured vector`); button.setAttribute('aria-pressed', 'false'); const entry = {button, row, capture, forward, stack: layer.stack, layer: layer.layer_index, path: node.module_path, kind: node.module_kind, selector: JSON.stringify(node.output_path), eventIndex: node.representative_event.index}; state.mapButtons.push(entry);
+          const kind = document.createElement('span'); kind.className = 'sheet-module-kind'; kind.textContent = node.module_kind; const path = document.createElement('small'); path.className = 'sheet-module-path'; path.textContent = node.module_path; button.append(kind, path); button.setAttribute('title', `${layer.stack} layer ${layer.layer_index} · ${node.module_path} · first captured vector`); button.setAttribute('aria-label', `${layer.stack} layer ${layer.layer_index} · ${node.module_kind} · ${node.module_path} · output ${JSON.stringify(node.output_path)} · first captured vector`); button.setAttribute('aria-pressed', 'false'); const entry = {sceneKey:JSON.stringify([capture,request,forward,layer.stack,layer.layer_index,state.mapButtons.length]),button, row, capture, forward, stack: layer.stack, layer: layer.layer_index, path: node.module_path, kind: node.module_kind, selector: JSON.stringify(node.output_path), eventIndex: node.representative_event.index}; state.mapButtons.push(entry);
           const counts = document.createElement('small'); counts.className = 'sheet-module-counts'; counts.textContent = `${node.event_count} captured events · ${node.vector_count} vectors · ${bytes(node.tensor_bytes)} · output ${JSON.stringify(node.output_path)}`; button.append(counts);
-          button.addEventListener('click', () => {
+          entry.select = () => {
             if (state.busy || !state.mapButtons.includes(entry) || capture !== state.run?.capture_id || state.mapCapture !== capture || forward !== state.mapForward) return;
             return action('Reading the first captured vector at this module site…', async () => {
               const selectionRequest = state.mapRequest, selected = node.representative_event, vector = selected.matched_vector_index ?? 0;
-              await chooseEvent(selected);
+              setDock('selection',true); await chooseEvent(selected);
               if (selectionRequest !== state.mapRequest || !state.mapButtons.includes(entry) || capture !== state.run?.capture_id || state.event?.index !== selected.index || state.vector !== vector || Number($('vector-index').value) !== vector) return;
               $('vector-heading').focus({preventScroll: true}); $('vector-panel').scrollIntoView({block: 'start'});
             });
-          });
+          };
+          button.addEventListener('click',entry.select);sceneLayer.sites.push({key:entry.sceneKey,label:node.module_kind});
           nodes.append(button);
         }
       }
+      replaceSceneLayers(sceneLayers);
       $('layer-map-status').textContent = `Map forward ${forward}: ${result.known_events} mapped + ${result.unmapped_events} unmapped of ${result.selected_forward_events} events. ${result.other_forward_events} events on other forwards; ${result.missing_forward_events} lack a forward; ${result.total_all_events} total. Unmapped observations remain in the exact table. First captured vectors only, not automatic token alignment.`;
       $('layer-map-page').textContent = state.mapTotal ? `${offset + 1}–${Math.min(offset + 12, state.mapTotal)} of ${state.mapTotal} captured layers` : 'No mapped layers for this forward.';
     } catch (error) {
       if (request !== state.mapRequest || capture !== state.run?.capture_id) return;
-      revealOptions('map-tools-options'); state.mapCapture = null; state.mapTotal = 0; $('layer-map-body').replaceChildren(); $('layer-map-status').textContent = `Layer map unavailable: ${error.message || error}. The exact event table remains available.`;
+      revealOptions('map-tools-options'); state.mapCapture = null; state.mapTotal = 0; state.mapButtons=[]; replaceSceneLayers([]); $('layer-map-body').replaceChildren(); $('layer-map-status').textContent = `Layer map unavailable: ${error.message || error}. The exact event table remains available.`;
     } finally { if (request === state.mapRequest) syncButtons(); }
   }
   function renderEvents() {
@@ -626,7 +707,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('load-button').addEventListener('click', () => action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); const info = await api('load', {path, ...execution}); clearView(); setModel(info); await refreshReferenceOptional(); }));
   $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); const opened = await api('open', {path}); clearView(); showRun(opened); await loadEvents(); $('saved-status').textContent = 'Selected capture opened and validated. Other listed exports remain unverified.'; await refreshReferenceOptional(); }));
   $('scene-view').value = 'scene'; $('layer-map-body').setAttribute('data-view', 'scene');
-  $('scene-view').addEventListener('change', () => { const view = $('scene-view').value; if (!['scene','list'].includes(view)) { $('scene-view').value = 'list'; } $('layer-map-body').setAttribute('data-view', $('scene-view').value); });
+  $('scene-view').addEventListener('change', () => { const view = $('scene-view').value; if (!['scene','list'].includes(view)||sceneFailed) $('scene-view').value = 'list'; $('layer-map-body').setAttribute('data-view',$('scene-view').value);syncSceneVisibility(); });
   $('open-settings').addEventListener('click', () => { state.settingsOpener = 'open-settings'; $('session-options').open = true; $('model-path').focus(); });
   function restoreSettingsFocus() { const opener = state.settingsOpener === 'open-settings' && !$('scene-empty').hidden ? 'open-settings' : 'session-summary'; $(opener).focus(); }
   $('session-summary').addEventListener('click', () => { state.settingsOpener = 'session-summary'; });
@@ -642,11 +723,11 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('input-tokens-prev').addEventListener('click', () => { if (state.busy) return; state.tokenOffset = Math.max(0, state.tokenOffset - 48); renderForward(); });
   $('input-tokens-next').addEventListener('click', () => { if (state.busy || state.tokenOffset + 48 >= state.tokenTotal) return; state.tokenOffset += 48; renderForward(); });
   $('layer-map-options').addEventListener('toggle', () => { if ($('layer-map-options').open && !state.mapCapture) return loadLayerMap(); });
-  $('layer-map-forward').addEventListener('input', () => { state.mapRequest++; state.mapCapture = null; state.mapTotal = 0; state.mapOffset = 0; $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = ''; $('layer-map-status').textContent = 'Forward changed. Load / refresh to list its captured sites.'; syncButtons(); });
+  $('layer-map-forward').addEventListener('input', () => { state.mapRequest++; state.mapCapture = null; state.mapTotal = 0; state.mapOffset = 0; state.mapButtons=[]; replaceSceneLayers([]); $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = ''; $('layer-map-status').textContent = 'Forward changed. Load / refresh to list its captured sites.'; syncButtons(); });
   $('layer-map-load').addEventListener('click', () => loadLayerMap());
   $('layer-map-prev').addEventListener('click', () => loadLayerMap(Math.max(0, state.mapOffset - 12)));
   $('layer-map-next').addEventListener('click', () => loadLayerMap(state.mapOffset + 12));
-  $('run-button').addEventListener('click', () => action('Running model and capturing supported outputs…', async () => { const options = settings(), prompt = $('prompt').value; const vision = String(state.model?.family || '').toLowerCase().includes('vit'); if (vision && !state.image) throw new Error('Choose an image first.'); if (!vision && !prompt.trim()) throw new Error('Enter a prompt first.'); // Cancel old read generations without discarding a capture the server may preserve on preflight rejection.
+  $('run-button').addEventListener('click', () => action('Running model and capturing supported outputs…', async () => { const options = settings(), prompt = $('prompt').value; const vision = String(state.model?.family || '').toLowerCase().includes('vit'); if (vision && !state.image) {setDock('query',true);throw new Error('Choose an image first.');} if (!vision && !prompt.trim()) {setDock('query',true);throw new Error('Enter a prompt first.');} // Cancel old read generations without discarding a capture the server may preserve on preflight rejection.
     clearTimeout(state.searchTimer); state.eventRequest++; state.valueRequest++; state.vectorListRequest++; state.witnessRequest++; state.referenceRequest++; state.mapRequest++;
     const body = {prompt, settings: options}; if (vision) body.image_base64 = state.image;
     let result;
@@ -707,6 +788,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     $('cancel-download').disabled = blocked || !downloads.fresh || downloads.job?.state !== 'running';
     $('use-download').disabled = blocked || !downloads.fresh || downloads.job?.state !== 'complete' || typeof downloads.job.path !== 'string' || !downloads.job.path;
     $('refresh-download').disabled = downloads.pending;
+    $('browse-downloads').disabled = blocked || !downloads.catalogFresh || !downloads.root;
   }
   function stopDownloadPoll() { if(downloads.timer !== null)clearTimeout(downloads.timer); downloads.timer=null; }
   function showDownloadLocation() {
@@ -762,9 +844,27 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('refresh-catalog').addEventListener('click',refreshCatalog);
   $('catalog-context').addEventListener('input',()=>{downloads.catalogRequest++;downloads.catalogFresh=false;downloads.cards=[];$('catalog-models').replaceChildren();$('catalog-details').textContent='';$('catalog-status').textContent='Estimate changed. Refresh models to use it.';syncDownloads();});
   for(const id of ['catalog-device','catalog-context','catalog-all'])$(id).addEventListener('change',refreshCatalog);
+  $('browse-downloads').addEventListener('click',()=>{
+    if(state.busy||downloads.pending||!downloads.catalogFresh||!downloads.root)return;
+    const root=downloads.root;
+    return action('Browsing downloaded models…',async()=>{
+      await browse(root,root);
+      if(state.browseFresh && state.browse?.path===root){
+        $('browse-status').textContent+=' Open a download folder, then its model subfolder. Nothing is loaded automatically.';
+        $('browse-path').focus({preventScroll:true});$('folder-browser').scrollIntoView({block:'nearest',behavior:'instant'});
+      }
+    });
+  });
   $('refresh-download').addEventListener('click',()=>{if(!downloads.pending)return refreshDownload();});
   $('cancel-download').addEventListener('click',()=>{if(!state.busy&&!downloads.pending&&downloads.fresh&&downloads.job?.state==='running')return downloadRequest('cancel-download',{job_id:downloads.job.job_id});});
   $('use-download').addEventListener('click',()=>{if(state.busy||downloads.pending||!downloads.fresh||downloads.job?.state!=='complete'||typeof downloads.job.path!=='string'||!downloads.job.path)return;$('model-path').value=downloads.job.path;invalidateInspection();invalidateBrowse(true);$('download-status').textContent='Folder selected. Inspect or Load when ready; your current model and capture are unchanged.';});
 
+  for(const side of ['selection','query']){
+    $(`${side}-dock-toggle`).addEventListener('click',()=>setDock(side,$(`${side}-dock-body`).hidden));
+    $(`${side}-dock`).addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();setDock(side,false);$(`${side}-dock-toggle`).focus();}});
+  }
+  document.addEventListener('keydown',event=>{const tag=(event.target?.tagName||event.target?.tag||'').toLowerCase();if(event.ctrlKey||event.metaKey||event.altKey||event.target?.isContentEditable||['input','textarea','select'].includes(tag))return;const side=event.key==='['?'selection':event.key===']'?'query':null;if(side){event.preventDefault();setDock(side,$(`${side}-dock-body`).hidden);}});
+  if(typeof window!=='undefined'&&window.addEventListener){window.addEventListener('resize',()=>{if(sceneApi)sceneApi.resize();});window.addEventListener('pagehide',()=>{if(sceneApi)sceneApi.dispose();});}
+  initializeScene();
   action('Connecting to your local session…', async () => { const result = await api('status'); setModel(result.model); applyLimits(result.limits); applyDevices(result); for (const item of result.models || []) { const option = document.createElement('option'); option.value = typeof item === 'string' ? item : item.path; option.label = typeof item === 'string' ? item : item.name || item.path; $('model-choices').append(option); } if (result.run) { showRun(result.run); await loadEvents(); } await refreshSavedOptional(); await restoreExperimentOptional(); await refreshReferenceOptional(); });
 })();

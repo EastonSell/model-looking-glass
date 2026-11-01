@@ -52,10 +52,10 @@ def test_cuda_plan_uses_explicit_official_build(tmp_path):
     spec = importlib.util.spec_from_file_location("mlg_cuda_install_test", ROOT / "install.py")
     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
     commands = module.plan(tmp_path, tmp_path / "python", "cuda", platform="linux")
-    assert "https://download.pytorch.org/whl/cu132" in commands[0]
-    assert "torch==2.15.0+cu132" in commands[0]
-    assert "torch==2.15.0+cpu" in module.plan(tmp_path, tmp_path / "python", "cpu", platform="linux")[0]
-    assert "torch==2.15.0" in module.plan(tmp_path, tmp_path / "python", "cpu", platform="darwin")[0]
+    assert "https://download.pytorch.org/whl/cu132" in commands[1]
+    assert "torch==2.15.0+cu132" in commands[1]
+    assert "torch==2.15.0+cpu" in module.plan(tmp_path, tmp_path / "python", "cpu", platform="linux")[1]
+    assert "torch==2.15.0" in module.plan(tmp_path, tmp_path / "python", "cpu", platform="darwin")[1]
 
 
 def test_cuda_installer_rejects_unsupported_platform_before_write(tmp_path, monkeypatch, capsys):
@@ -253,7 +253,7 @@ def test_install_commands_receive_sanitized_environment_without_parent_mutation(
     calls = []
     monkeypatch.setattr(module.subprocess, "run", lambda command, **kwargs: calls.append((command, kwargs)))
     assert module.main(["--reuse-venv", "--backend", "cpu", "--no-launch"]) == 0
-    assert len(calls) == 2
+    assert len(calls) == 3
     for command, kwargs in calls:
         assert command[1:6] == ["-I", "-m", "pip", "--isolated", "--require-virtualenv"]
         environment = kwargs["env"]

@@ -92,7 +92,7 @@ def trace_vit_classifier(model, pixel_values, *, points, run_id, max_events=128,
     """
     from transformers import ViTForImageClassification
     from transformers.models.vit.modeling_vit import (
-        ViTAttention, ViTEmbeddings, ViTIntermediate, ViTLayer, ViTPatchEmbeddings,
+        ViTAttention, ViTEmbeddings, ViTMLP, ViTLayer, ViTPatchEmbeddings,
     )
 
     if hasattr(torch, "compiler") and torch.compiler.is_compiling():
@@ -162,11 +162,11 @@ def trace_vit_classifier(model, pixel_values, *, points, run_id, max_events=128,
             or tuple(embeddings.cls_token.shape) != (1, 1, hidden)
             or tuple(embeddings.position_embeddings.shape) != (1, sequence, hidden)):
         raise ValueError("patch embedding geometry is not the supported row-major layout")
-    layers = model.vit.encoder.layer
+    layers = model.vit.layers
     if (not isinstance(layers, torch.nn.ModuleList) or not layers
             or any(type(layer) is not ViTLayer or type(layer.attention) is not ViTAttention
-                   or type(layer.intermediate) is not ViTIntermediate
-                   or layer.attention.attention.config._attn_implementation != "eager" for layer in layers)):
+                   or type(layer.mlp) is not ViTMLP
+                   or layer.attention.config._attn_implementation != "eager" for layer in layers)):
         raise ValueError("standard eager ViT layers are required")
     if type(model.classifier) is not torch.nn.Linear or model.classifier.out_features != model.config.num_labels:
         raise ValueError("standard ViT classification head is required")
@@ -197,9 +197,9 @@ def trace_vit_classifier(model, pixel_values, *, points, run_id, max_events=128,
         aliases.setdefault(id(module), []).append(path)
     steps = []
     for index, point in enumerate(ordered):
-        path = f"vit.encoder.layer.{point.layer}"
+        path = f"vit.layers.{point.layer}"
         if point.module != "block":
-            path += f".{point.module}"
+            path += ".mlp.activation_fn" if point.module == "intermediate" else ".attention"
         if aliases[id(model.get_submodule(path))] != [path]:
             raise ValueError("selected module must have a unique path")
         steps.append({"name": f"capture_{index}", "operation": "capture", "module_path": path,
@@ -214,7 +214,7 @@ def trace_vit_classifier(model, pixel_values, *, points, run_id, max_events=128,
     if (pixels.dtype != torch.float32 or pixels.device != device
             or tuple(pixels.shape) != (batch, channels, height, width)
             or pixel_digest() != before_digest
-            or (len(model.vit.encoder.layer), model.config.hidden_size, model.config.intermediate_size,
+            or (len(model.vit.layers), model.config.hidden_size, model.config.intermediate_size,
                 model.config.num_labels, _pair(model.config.image_size, "image_size"),
                 _pair(model.config.patch_size, "patch_size")) != dimensions):
         raise RuntimeError("pixel inputs or model geometry changed during the forward")
@@ -233,13 +233,13 @@ def trace_vit_classifier(model, pixel_values, *, points, run_id, max_events=128,
                 or step["module_path"] != path or step["module_aliases"] != [path]
                 or step["forward_index"] != 0 or step["invocation"] != 0
                 or step["batch_index"] != point.batch or step["token_index"] != point.token
-                or step["output_selector"] != [] or step["output_shape"] != [batch, sequence, feature_width]
+                or step["output_selector"] != ([0] if point.module == "attention" else []) or step["output_shape"] != [batch, sequence, feature_width]
                 or step["selected_shape"] != [feature_width] or step["dtype"] != "torch.float32"
                 or step["device"] != str(device) or tuple(value.shape) != (feature_width,)
                 or value.dtype != torch.float32 or value.device != device):
             raise RuntimeError("captured output differs from the declared ViT boundary")
         event = TraceEvent(identity=identity, sequence=index, forward_index=0, module_path=path,
-            module_kind=f"vit_{point.module}", layer_index=point.layer, invocation=0, output_path=(),
+            module_kind=f"vit_{point.module}", layer_index=point.layer, invocation=0, output_path=((0,) if point.module == "attention" else ()),
             shape=(batch, sequence, feature_width), dtype=step["dtype"], device=step["device"],
             capture_mode="direct", batch_positions=(point.batch,), token_positions=(point.token,),
             batch_axis=0, token_axis=1, generation=GenerationContext(), saved_shape=tuple(value.shape),

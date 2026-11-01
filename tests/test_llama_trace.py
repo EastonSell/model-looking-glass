@@ -1,7 +1,7 @@
 import pytest
 import torch
 from transformers import LlamaConfig, LlamaForCausalLM
-from looking_glass.llama_trace import trace_llama_causal_lm
+from looking_glass.llama_trace import trace_llama_causal_lm, llama_rope_summary
 
 
 def tiny(kv=2):
@@ -171,7 +171,7 @@ def test_static_llama3_supported():
     model=LlamaForCausalLM(config).eval();ids=torch.tensor([[1,4]])
     result=trace_llama_causal_lm(model,ids,torch.ones_like(ids),run_id='llama3')
     assert result.output.logits.shape == (1, 2, 32)
-    assert model.config.rope_scaling == llama3_scaling()
+    assert llama_rope_summary(model.config)['rope_scaling'] == llama3_scaling()
 
 
 @pytest.mark.parametrize('kv',[1,2])
@@ -212,7 +212,7 @@ def test_llama3_frequency_branches_nonvacuous():
     model=LlamaForCausalLM(config).eval()
     expected=[];branches=set()
     for index in range(0,16,2):
-        freq=1/(config.rope_theta**(index/16));wave=2*math.pi/freq
+        freq=1/(config.rope_parameters['rope_theta']**(index/16));wave=2*math.pi/freq
         if wave < 32/4: value=freq;branches.add('high')
         elif wave > 32: value=freq/8;branches.add('low')
         else:
@@ -221,7 +221,7 @@ def test_llama3_frequency_branches_nonvacuous():
         expected.append(value)
     assert branches=={'high','medium','low'}
     torch.testing.assert_close(model.model.rotary_emb.inv_freq,torch.tensor(expected),rtol=1e-6,atol=0)
-    default=torch.tensor([1/(config.rope_theta**(i/16)) for i in range(0,16,2)])
+    default=torch.tensor([1/(config.rope_parameters['rope_theta']**(i/16)) for i in range(0,16,2)])
     assert not torch.equal(model.model.rotary_emb.inv_freq.view(torch.int32),default.view(torch.int32))
 
 
@@ -269,10 +269,56 @@ def test_rotary_mutation_detected_after_forward(monkeypatch,change):
         result=original(self,*a,**kw);rotary=self.model.rotary_emb
         if change=='bits':rotary.inv_freq.view(torch.int32)[0]+=1
         elif change=='replace':rotary.inv_freq=rotary.inv_freq.clone()
-        else:rotary.config.rope_theta+=1
+        else:rotary.config.rope_parameters['rope_theta']+=1
         return result
     model=tiny();monkeypatch.setattr(LlamaForCausalLM,'forward',faulty)
     ids=torch.tensor([[1,4]])
     with pytest.raises(RuntimeError,match='static rotary'):
         trace_llama_causal_lm(model,ids,torch.ones_like(ids),run_id='mutation')
+    assert all(not m._forward_hooks for m in model.modules())
+
+
+@pytest.mark.parametrize('scaling', [None, llama3_scaling()])
+def test_native_rope_parameters_preserve_legacy_summary(scaling):
+    from looking_glass.llama_trace import validate_llama_config
+    cfg = tiny().config.to_dict()
+    cfg['rope_parameters'] = {**(scaling or {'rope_type': 'default'}), 'rope_theta': 10000.0}
+    validate_llama_config(cfg)
+    native = LlamaConfig.from_dict(cfg)
+    assert llama_rope_summary(native) == {'rope_theta': 10000.0, 'rope_scaling': scaling}
+    native._attn_implementation = 'eager'
+    model = LlamaForCausalLM(native).eval()
+    ids = torch.tensor([[1, 4, 6]])
+    result = trace_llama_causal_lm(model, ids, torch.ones_like(ids), run_id='native')
+    assert result.output.logits.shape == (1, 3, 32)
+
+
+@pytest.mark.parametrize('change', ['alias', 'unknown', 'nested', 'nonfinite', 'bool'])
+def test_native_rope_rejections(change):
+    from looking_glass.llama_trace import validate_llama_config
+    cfg = tiny().config.to_dict()
+    if change == 'alias': cfg['rope_scaling'] = None
+    elif change == 'unknown': cfg['rope_parameters']['attention_factor'] = 2
+    elif change == 'nested': cfg['rope_parameters'] = {'full_attention': cfg['rope_parameters']}
+    elif change == 'nonfinite': cfg['rope_parameters']['rope_theta'] = float('inf')
+    else: cfg['rope_parameters']['rope_theta'] = True
+    with pytest.raises(ValueError): validate_llama_config(cfg)
+
+
+@pytest.mark.parametrize('change', ['bits', 'replacement', 'original_bits', 'original_replacement'])
+def test_native_rotary_all_buffers_mutation_detected(monkeypatch, change):
+    original = LlamaForCausalLM.forward
+    def faulty(self, *args, **kwargs):
+        result = original(self, *args, **kwargs)
+        rotary = self.model.rotary_emb
+        name = 'original_inv_freq' if change.startswith('original_') else 'inv_freq'
+        if change.endswith('replacement'):
+            setattr(rotary, name, getattr(rotary, name).clone())
+        else:
+            getattr(rotary, name).view(torch.int32)[0] += 1
+        return result
+    model = tiny(); monkeypatch.setattr(LlamaForCausalLM, 'forward', faulty)
+    ids = torch.tensor([[1, 4]])
+    with pytest.raises(RuntimeError, match='static rotary'):
+        trace_llama_causal_lm(model, ids, torch.ones_like(ids), run_id='buffers')
     assert all(not m._forward_hooks for m in model.modules())

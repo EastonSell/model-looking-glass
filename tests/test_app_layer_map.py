@@ -123,7 +123,7 @@ def test_non_gpt2_selector_variants_are_unmapped_not_coalesced(tmp_path, family)
     data = fixture(family, layers=(0,))
     for capture in data["events"]:
         metadata = capture.metadata()
-        metadata["output_path"] = [] if metadata["output_path"] else [0]
+        metadata["output_path"] = [1]  # Neither current nor historical boundary output.
     store = TraceStore(tmp_path); store.publish(data)
     view = store.layer_map()
     assert view["known_events"] == view["total_layers"] == 0

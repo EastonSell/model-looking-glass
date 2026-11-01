@@ -53,7 +53,7 @@ def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
         raise RuntimeError("compiled execution is not supported")
     from transformers import DistilBertForMaskedLM
     from transformers.models.distilbert.modeling_distilbert import (
-        FFN, MultiHeadSelfAttention, TransformerBlock,
+        FFN, DistilBertSelfAttention, TransformerBlock,
     )
 
     if type(model) is not DistilBertForMaskedLM or model.config.model_type != "distilbert":
@@ -78,7 +78,7 @@ def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
     blocks = model.distilbert.transformer.layer
     if (not isinstance(blocks, torch.nn.ModuleList) or not blocks
             or any(type(block) is not TransformerBlock
-                   or type(block.attention) is not MultiHeadSelfAttention
+                   or type(block.attention) is not DistilBertSelfAttention
                    or type(block.ffn) is not FFN for block in blocks)):
         raise TypeError("DistilBERT blocks, attention and FFN must be standard classes")
     hook_state = torch.nn.modules.module
@@ -178,7 +178,7 @@ def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
         raise RuntimeError("plan did not retain all selected observations")
     observations = []
     for sequence, ((layer, kind, path, sample, token, name), step) in enumerate(zip(selections, steps_seen)):
-        selector = [] if kind == "ffn" else [0]
+        selector = [0] if kind == "attention" else []
         value = captures[name]
         if (step["name"] != name or step["order"] != sequence or step["operation"] != "capture"
                 or step["module_path"] != path or step["forward_index"] != 0

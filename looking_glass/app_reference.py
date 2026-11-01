@@ -92,11 +92,11 @@ class ReferenceVector:
         layer = coordinate["layer_index"]
         if model["family"] == "gpt2":
             prefix = f"transformer.h.{layer}"
-            sites = {prefix: [0], prefix + ".attn": [0], prefix + ".mlp": []}
+            sites = {prefix: ([], [0]), prefix + ".attn": ([0],), prefix + ".mlp": ([],)}
         else:
             prefix = f"model.layers.{layer}"
-            sites = {prefix: [], prefix + ".self_attn": [0], prefix + ".mlp": []}
-        if coordinate["module_path"] not in sites or selector != sites[coordinate["module_path"]]:
+            sites = {prefix: ([],), prefix + ".self_attn": ([0],), prefix + ".mlp": ([],)}
+        if coordinate["module_path"] not in sites or selector not in sites[coordinate["module_path"]]:
             raise ValueError("Reference requires a canonical family/layer boundary and output selector")
         if metadata["prompt"] is not None and type(metadata["prompt"]) is not str:
             raise ValueError("Reference prompt must be text or null")

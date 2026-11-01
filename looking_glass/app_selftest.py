@@ -169,8 +169,8 @@ def _family(root, family, device, budget, stages):
                 paths = [f"distilbert.transformer.layer.{layer}" + suffix for layer in range(2)
                          for suffix in (".attention", ".ffn", "")]
             elif family == "vit":
-                paths = [f"vit.encoder.layer.{layer}" + suffix for layer in range(2)
-                         for suffix in (".attention", ".intermediate", "")]
+                paths = [f"vit.layers.{layer}" + suffix for layer in range(2)
+                         for suffix in (".attention", ".mlp.activation_fn", "")]
             else:
                 paths = [f"{stack}.block.{layer}" + suffix for stack, depth in (("encoder", 2), ("decoder", 1))
                          for layer in range(depth) for suffix in (".layer.0", ".layer.1" if stack == "encoder" else ".layer.2", "")]

@@ -24,7 +24,7 @@ MAX_INPUT_BYTES = 8 * 1024**2
 SOURCE_PATHS = (
     PROTOCOL_PATH, "docs/FLAN_T5_MULTISUBTOKEN_CPU_OWNER_V2.md",
     "looking_glass/__init__.py", "looking_glass/bert_matched_numeric.py",
-    "looking_glass/flan_t5_feasibility.py", "looking_glass/flan_t5_sentiment_journal.py",
+    "looking_glass/flan_t5_feasibility.py", "looking_glass/t5_compat.py", "looking_glass/flan_t5_sentiment_journal.py",
     "looking_glass/flan_t5_sentiment_numeric.py", "looking_glass/flan_t5_sentiment_runner.py",
     "looking_glass/flan_multitoken_geometry_v2.py", "looking_glass/flan_multitoken_journal_v2.py",
     "looking_glass/flan_multitoken_manifest_v2.py", "looking_glass/flan_multitoken_orthogonal_v2.py",

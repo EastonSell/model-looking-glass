@@ -96,9 +96,9 @@ class DownloadHTTPTests(unittest.TestCase):
         self.assertEqual(self.before, self.snapshot())
         self.assertFalse((self.root / "exports").exists())
 
-    def call(self, route, body=None, *, token=True, origin=None):
-        port = self.server.server_port; connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
-        headers = {"X-MLG-Token": self.state.token} if token else {}
+    def call(self, route, body=None, *, token=True, origin=None, server=None, state=None):
+        port = (server or self.server).server_port; connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        headers = {"X-MLG-Token": (state or self.state).token} if token else {}
         if origin: headers["Origin"] = origin
         payload = None if body is None else json.dumps(body)
         if body is not None: headers["Content-Type"] = "application/json"
@@ -116,12 +116,55 @@ class DownloadHTTPTests(unittest.TestCase):
             time.sleep(.01)
         self.fail("Synthetic download did not reach a terminal state")
 
+    def raw_get(self, path, *, headers=None):
+        connection = http.client.HTTPConnection("127.0.0.1", self.server.server_port, timeout=5)
+        try:
+            connection.request("GET", path, headers=headers or {})
+            response = connection.getresponse()
+            return response.status, dict(response.getheaders()), response.read()
+        finally:
+            connection.close()
+
+    def test_scene_and_fonts_are_exact_local_assets_with_security_headers(self):
+        assets = {
+            "/app_scene.js": "application/javascript; charset=utf-8",
+            "/vendor/three-0.128.0.min.js": "application/javascript; charset=utf-8",
+            "/vendor/OrbitControls-0.128.0.js": "application/javascript; charset=utf-8",
+            **{f"/vendor/{font}-latin-{weight}-normal.woff2": "font/woff2"
+               for font in ("inter", "jetbrains-mono") for weight in (400, 600)},
+        }
+        for path, mime in assets.items():
+            with self.subTest(path=path):
+                status, headers, data = self.raw_get(path)
+                self.assertEqual(status, 200)
+                self.assertEqual(data, (self.app.STATIC / path.lstrip("/")).read_bytes())
+                self.assertEqual(headers["Content-Type"], mime)
+                self.assertEqual(headers["X-Content-Type-Options"], "nosniff")
+                self.assertEqual(headers["Cache-Control"], "no-store")
+                self.assertIn("script-src 'self'", headers["Content-Security-Policy"])
+                self.assertIn("connect-src 'self'", headers["Content-Security-Policy"])
+        self.assertFalse(self.transport_calls)
+
+    def test_scene_static_allowlist_does_not_expand_filesystem_or_origin_access(self):
+        for path in ("/vendor/README.md", "/vendor/provenance.json", "/vendor/../app.py",
+                     "/vendor/%2e%2e/app.py", "/app_scene.js/extra", "/vendor/missing.woff2"):
+            with self.subTest(path=path):
+                self.assertEqual(self.raw_get(path)[0], 404)
+        self.assertEqual(self.raw_get("/app_scene.js", headers={"Host": "evil.invalid"})[0], 403)
+        self.assertEqual(self.raw_get("/app_scene.js", headers={"Origin": "https://evil.invalid"})[0], 403)
+        with mock.patch.object(self.app, "STATIC", self.root / "no-assets"):
+            status, _, body = self.raw_get("/app_scene.js")
+            self.assertEqual(status, 500)
+            self.assertIn("reinstall the package", json.loads(body)["error"])
+        self.assertFalse(self.transport_calls)
+
     def test_catalog_is_local_read_only_and_cpu_is_not_gpu_fit(self):
         code, data = self.call("/api/model-catalog?device=auto&context_tokens=128&show_all=0")
         self.assertEqual(code, 200); self.assertEqual(data["device"], "cpu")
         self.assertEqual(data["models"][0]["fit"]["status"], "cpu")
         self.assertEqual(data["models"][0]["revision"], self.spec.revision)
         self.assertEqual(data["download_root"], str(self.root / "models"))
+        self.assertEqual(self.call("/api/browse-models", {"path": data["download_root"], "root": data["download_root"]})[0], 400)
         self.assertEqual(self.transport_calls, []); self.assertFalse((self.root / "models").exists())
 
     def test_download_requires_auth_explicit_curated_id_and_exact_revision(self):
@@ -183,6 +226,40 @@ class DownloadHTTPTests(unittest.TestCase):
         self.assertEqual(self.terminal()["state"], "cancelled")
         self.assertEqual(self.before, self.snapshot())
         self.state.stop_download()  # Terminal jobs need no second cancel request.
+
+    def test_fresh_app_can_explicitly_browse_retained_download_without_redownloading(self):
+        self.call("/api/download", {"model_id": self.spec.id, "revision": self.spec.revision})
+        result = self.terminal(); self.assertEqual(result["state"], "complete")
+        self.state.downloads._thread.join(5)
+        model = Path(result["path"]); root = self.root / "models"
+        original = (model / "config.json").read_bytes()
+        fresh = self.app.AppState(runtime=Owner(), export_root=self.root / "fresh-exports", download_root=root)
+        fresh._download_specs = (self.spec,)
+        def no_download(url): raise AssertionError("Reuse must not download")
+        fresh.downloads = self.download.DownloadManager(root, fresh._download_specs, transport=no_download)
+        with self.app.create_server(fresh) as server:
+            thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
+            try:
+                call = lambda path, body=None: self.call(path, body, server=server, state=fresh)
+                code, status = call("/api/download")
+                self.assertEqual(code, 200); self.assertEqual(status["state"], "idle")
+                code, catalog = call("/api/model-catalog?device=cpu")
+                self.assertEqual(code, 200); self.assertEqual(catalog["download_root"], str(root))
+                code, listing = call("/api/browse-models", {"path": str(root), "root": str(root)})
+                self.assertEqual(code, 200)
+                self.assertEqual([folder["path"] for folder in listing["folders"]], [str(model.parent)])
+                code, listing = call("/api/browse-models", {"path": str(model.parent), "root": str(root)})
+                self.assertEqual(code, 200)
+                self.assertEqual([folder["path"] for folder in listing["folders"]], [str(model)])
+                # Restart never turns a folder listing into verified compatibility or a model load.
+                self.assertIsNone(fresh.store.summary()); self.assertEqual((model / "config.json").read_bytes(), original)
+                restricted = self.root / "restricted"; restricted.mkdir(); fresh.models_dir = restricted
+                self.assertEqual(call("/api/browse-models", {"path": str(root), "root": str(root)})[0], 400)
+            finally:
+                server.shutdown(); thread.join(5)
+                self.assertFalse(thread.is_alive())
+        self.assertEqual(len(self.transport_calls), 1)
+        self.assertFalse((self.root / "fresh-exports").exists())
 
     def test_invalid_catalog_options_fail_without_fallback_or_files(self):
         for query in ("device=cuda:99", "device=cpu&device=auto", "show_all=maybe", "context_tokens=-1", "root=/tmp", "context_tokens=not-an-int"):

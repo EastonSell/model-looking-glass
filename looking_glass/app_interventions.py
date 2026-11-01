@@ -236,8 +236,7 @@ def execute(runtime, request):
             del output
             if device.type == "cuda": torch.cuda.synchronize(device)
         captures = plan.captures
-        expected_selector = ([0] if request["path"].endswith((".attn", ".self_attn"))
-                             or (family == "gpt2" and not request["path"].endswith(".mlp")) else [])
+        expected_selector = [0] if request["path"].endswith((".attn", ".self_attn")) else []
         metadata = plan.metadata
         require(set(captures) == {"before", "after"} and len(metadata["steps"]) == 3,
                 "intervention capture inventory incomplete")
@@ -274,7 +273,7 @@ def execute(runtime, request):
         kind = ("attention" if request["path"].endswith(".self_attn") else
                 "attn" if request["path"].endswith(".attn") else
                 "mlp" if request["path"].endswith(".mlp") else "block")
-        output_path = (0,) if kind in ("attn", "attention") or (family == "gpt2" and kind == "block") else ()
+        output_path = (0,) if kind in ("attn", "attention") else ()
         for phase, full_value in (("before", before), ("after", after)):
             value = full_value[:, token:token + 1].clone().contiguous()
             if family == "gpt2":

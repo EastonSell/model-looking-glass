@@ -24,6 +24,8 @@ python3 install.py --backend cpu
 
 Keep the terminal open. In the app, open **Model & settings**, choose **Load tiny CPU demo**, then **Run**. Select a layer and a token to inspect its captured vector. The demo needs no model download; it is untrained, so don't expect useful answers.
 
+Upgrading from an earlier release? Save your work and stop the app first. Run the new release's installer; `start.py` does not update dependencies. Don't copy an old `.venv` into a new extracted folder.
+
 To open the app again, run `py -3 start.py` on Windows or `python3 start.py` on macOS/Linux. Keep the extracted folder in place. You don't need to reinstall. [Installation help and older releases](docs/LOCAL_APP.md#install-and-start).
 
 <a id="what-to-use"></a>
@@ -32,11 +34,11 @@ To open the app again, run `py -3 start.py` on Windows or `python3 start.py` on 
 
 In **Model & settings**, browse to a local checkpoint folder, inspect it, then load it. Supported formats include compatible GPT-2, standard Llama, DistilBERT, T5 and ViT **safetensors** exports—not every model bearing those names. Need a checkpoint? Open **Get a model** for a small, pinned Hugging Face catalog. Downloads happen only when you choose **Download**; memory estimates are not fit guarantees. [Compatibility details](docs/LOCAL_APP.md#checkpoint-compatibility).
 
-- **Explore:** select a captured layer and input position; open exact values when you need them.
+- **Explore:** click a captured layer in the 3D view or list, choose an input position, and open its exact values. Recorded token predictions appear where the saved output matches that position.
 - **Compare:** keep a reference vector, run another prompt, and inspect the differences.
 - **Experiment:** with a fresh GPT-2 or supported Llama capture, temporarily change a vector or feature and compare the model's output.
 
-The layer view shows recorded data, not a diagram of the model's reasoning. A changed activation does not by itself explain a behavior.
+The layer view shows recorded sites, not a diagram of the model's reasoning. Token predictions come from the whole model—not from decoding a hidden vector. A changed activation does not by itself explain a behavior.
 
 ## Before you run
 

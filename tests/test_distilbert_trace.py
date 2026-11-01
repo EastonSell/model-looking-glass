@@ -55,7 +55,7 @@ def test_selected_outputs_match_independent_hooks_and_preserve_logits():
     for sequence, item in enumerate(result.events):
         event = item.event
         assert event.sequence == sequence and event.forward_index == event.invocation == 0
-        assert event.output_path == (() if event.module_kind == "ffn" else (0,))
+        assert event.output_path == ((0,) if event.module_kind == "attention" else ())
         assert event.generation.stage == "unknown" and event.generation.use_cache is None
         assert item.original_saved_shape == (16,)
         assert item.comparison_transform == "restore_singleton_batch_and_token_axes"

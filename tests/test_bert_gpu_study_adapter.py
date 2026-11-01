@@ -234,6 +234,11 @@ class AdapterTests(unittest.TestCase):
             n_heads=4, dropout=0., attention_dropout=0., max_position_embeddings=32,
             attn_implementation='sdpa')
         model = DistilBertForMaskedLM(config).eval()
+        from copy import deepcopy
+        # Current Transformers shares the attention class; each module consults
+        # its config dynamically. Exercise a genuine per-module SDPA mismatch.
+        for block in model.distilbert.transformer.layer:
+            block.attention.config = deepcopy(model.config)
         model.config._attn_implementation = 'eager'
         with patch.object(model, 'forward', wraps=model.forward) as forward:
             with self.assertRaisesRegex(RuntimeError, 'eager attention'):

@@ -156,7 +156,7 @@ def test_modified_execution_contract_rejected_before_forward(fixture, monkeypatc
     if mutation == "eager": runtime.model.config._attn_implementation = "sdpa"
     elif mutation == "hook": handle = runtime.model.register_forward_hook(lambda *args: pytest.fail("must not forward"))
     elif mutation == "forward": monkeypatch.setattr(runtime.model, "forward", lambda *args, **kwargs: pytest.fail("must not forward"))
-    elif mutation == "buffer": runtime.model.transformer.h[0].attn.masked_bias = torch.tensor(-1e4, dtype=torch.float64)
+    elif mutation == "buffer": runtime.model.transformer.h[0].attn.register_buffer("unexpected_buffer", torch.tensor(-1e4, dtype=torch.float64))
     else: context = torch.autocast("cpu", dtype=torch.bfloat16)
     binding = runtime.capture_binding()
     try:

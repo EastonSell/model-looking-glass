@@ -128,6 +128,7 @@ def plan(root, executable, backend="cuda", *, platform=None):
     flavor = "cu132" if backend == "cuda" else "cpu"
     version = "2.15.0" if platform == "darwin" else "2.15.0+" + flavor
     return [
+        [str(executable), "-I", "-m", "pip", "--isolated", "--require-virtualenv", "install", "--index-url", "https://pypi.org/simple", "--upgrade", "pip>=26.2", "setuptools>=84.2.1"],
         [str(executable), "-I", "-m", "pip", "--isolated", "--require-virtualenv", "install", "--index-url", "https://download.pytorch.org/whl/" + flavor, "torch==" + version],
         [str(executable), "-I", "-m", "pip", "--isolated", "--require-virtualenv", "install", "--index-url", "https://pypi.org/simple", "-e", str(root) + "[app]"],
     ]

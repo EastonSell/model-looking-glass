@@ -25,7 +25,7 @@ RANDOM_CHOICES = (166, 166, 52, 166)
 SEEDS = (11, 12, 13, 14, 21, 22, 23, 24)
 TOKENS = (16, 52, 103, 166)
 INJECTIONS = (16, 52, 103, 166, 103, 166, 16, 52)
-_PATH = "vit.encoder.layer.0"
+_PATH = "vit.layers.0"
 
 
 def synthetic_pixels(seed, image_size):

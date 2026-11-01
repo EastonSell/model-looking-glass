@@ -184,13 +184,15 @@ class TraceStore:
                 specs = {prefix: ("block", ((), (0,))), prefix + ".attn": ("attn", ((), (0,))), prefix + ".mlp": ("mlp", ((), (0,)))}
             elif family == "distilbert":
                 prefix = f"distilbert.transformer.layer.{layer}"
-                specs = {prefix: ("block", ((0,),)), prefix + ".attention": ("attention", ((0,),)), prefix + ".ffn": ("ffn", ((),))}
+                specs = {prefix: ("block", ((), (0,))), prefix + ".attention": ("attention", ((0,),)), prefix + ".ffn": ("ffn", ((),))}
             elif family == "llama":
                 prefix = f"model.layers.{layer}"
                 specs = {prefix: ("llama_block", ((),)), prefix + ".self_attn": ("llama_attention", ((0,),)), prefix + ".mlp": ("llama_mlp", ((),))}
             elif family == "vit":
-                prefix = f"vit.encoder.layer.{layer}"
-                specs = {prefix: ("vit_block", ((),)), prefix + ".attention": ("vit_attention", ((),)), prefix + ".intermediate": ("vit_intermediate", ((),))}
+                legacy = f"vit.encoder.layer.{layer}"
+                prefix = f"vit.layers.{layer}"
+                specs = {legacy: ("vit_block", ((),)), legacy + ".attention": ("vit_attention", ((),)), legacy + ".intermediate": ("vit_intermediate", ((),)),
+                         prefix: ("vit_block", ((),)), prefix + ".attention": ("vit_attention", ((0,),)), prefix + ".mlp.activation_fn": ("vit_intermediate", ((),))}
             elif family == "t5":
                 prefix = f"{stack}.block.{layer}"
                 specs = {prefix: (f"t5_{stack}_block_output", ((0,),)),
@@ -425,8 +427,16 @@ class TraceStore:
             suffixes = {"gpt2": ("", ".attn", ".mlp"), "distilbert": ("", ".attention", ".ffn"),
                         "t5": ("", ".layer.0", ".layer.1" if stack == "encoder" else ".layer.2"),
                         "vit": ("", ".attention", ".intermediate"), "llama": ("", ".self_attn", ".mlp")}
-            require(path in {prefixes[family] + suffix for suffix in suffixes[family]},
-                    "Module path contradicts the retained adapter/layer boundary")
+            allowed_paths = {prefixes[family] + suffix for suffix in suffixes[family]}
+            if family == "vit":
+                allowed_paths.update(f"vit.layers.{layer}" + suffix for suffix in ("", ".attention", ".mlp.activation_fn"))
+            require(path in allowed_paths, "Module path contradicts the retained adapter/layer boundary")
+            if family == "vit" and path.startswith("vit.layers."):
+                expected_selector = [0] if path == f"vit.layers.{layer}.attention" else []
+                require(type(metadata.get("output_path")) is list
+                        and all(type(index) is int for index in metadata["output_path"])
+                        and metadata["output_path"] == expected_selector,
+                        "ViT output selector contradicts the retained boundary")
             if family == "llama":
                 output_path = metadata.get("output_path")
                 expected_path = [0] if path.endswith(".self_attn") else []

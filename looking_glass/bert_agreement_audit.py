@@ -92,11 +92,14 @@ def audit_family_events(manifest, records, *, split, family, mask_id, hidden_siz
         if type(events) is not list or len(events) != len(names):
             raise ValueError('intervention event count differs')
         path = f'distilbert.transformer.layer.{layer}'
+        selector = events[0].get("output_selector") if type(events[0]) is dict else None
+        if selector not in ([], [0]):
+            raise ValueError('recorded intervention selector differs')
         for index, event in enumerate(events):
             expected = {'name': names[index], 'operation': operations[index], 'order': index,
                         'module_path': path, 'module_aliases': [path], 'call_site_known': False,
                         'forward_index': 0, 'invocation': 0, 'batch_index': 0, 'token_index': token,
-                        'output_selector': [0], 'output_shape': [1, 10, hidden_size],
+                        'output_selector': selector, 'output_shape': [1, 10, hidden_size],
                         'selected_shape': [hidden_size], 'dtype': 'torch.float32', 'device': expected_device,
                         'source_capture': 'before' if self_patch and index == 1 else None,
                         'preceding_same_site_actions': list(names[:index])}

@@ -55,7 +55,7 @@ def test_bad_input_contract_preserves_previous_owner(tmp_path, monkeypatch, fami
         file = path / "tokenizer.json"; data = json.loads(file.read_text()); data["model"]["vocab"]["outside"] = 99; file.write_text(json.dumps(data))
     elif mutation == "mask":
         file = path / "tokenizer_config.json"; data = json.loads(file.read_text()); data["mask_token"] = None; file.write_text(json.dumps(data))
-        file = path / "special_tokens_map.json"; data = json.loads(file.read_text()); data.pop("mask_token", None); file.write_text(json.dumps(data))
+        file = path / "special_tokens_map.json"; data = json.loads(file.read_text()) if file.exists() else {}; data.pop("mask_token", None); file.write_text(json.dumps(data))
     elif mutation == "start":
         file = path / "config.json"; data = json.loads(file.read_text()); data["decoder_start_token_id"] = 99; file.write_text(json.dumps(data))
     else:
@@ -81,7 +81,7 @@ def test_input_asset_byte_limits_precede_parser(tmp_path, monkeypatch, aggregate
 def test_valid_legacy_fast_layout_without_tokenizer_json(tmp_path, family):
     path = tmp_path / "model"; local_checkpoint(path, family)
     for name in ("tokenizer.json", "tokenizer_config.json", "special_tokens_map.json"):
-        (path / name).unlink()
+        (path / name).unlink(missing_ok=True)
     words = ["[PAD]", "[UNK]", "[BOS]", "[EOS]", "[MASK]", "hello", "world", "blue", "red", "the", "is", "small", "large", "a", "cat", "dog"]
     if family == "gpt2":
         (path / "vocab.json").write_text(json.dumps({word: i for i, word in enumerate(words)}))
@@ -187,3 +187,86 @@ def test_known_budget_or_option_failure_precedes_input_parser(tmp_path, monkeypa
     monkeypatch.setattr(runtime, "_prepare_inputs", lambda *args: pytest.fail("known invalid request must not parse input assets"))
     with pytest.raises(ValueError): runtime.load(str(path), **options)
     assert runtime.model is model and runtime.capture_binding() is binding
+
+
+@pytest.mark.parametrize("family,irrelevant", [("gpt2", "vocab.txt"), ("distilbert", "vocab.json")])
+def test_irrelevant_vocabulary_file_does_not_create_default_tokenizer(tmp_path, monkeypatch, family, irrelevant):
+    path = tmp_path / "model"; local_checkpoint(path, family)
+    for file in path.iterdir():
+        if file.name not in ("config.json", "model.safetensors", "generation_config.json"):
+            file.unlink()
+    (path / irrelevant).write_text("{}" if irrelevant.endswith("json") else "[UNK]\nhello")
+    monkeypatch.setattr(transformers.AutoTokenizer, "from_pretrained", lambda *a, **k: pytest.fail("reject before tokenizer parser"))
+    with pytest.raises(ValueError, match="tokenizer input assets"):
+        LocalModelRuntime.inspect(str(path))
+
+
+@pytest.mark.parametrize("alternate", ["ignored.json", "tokenizer.999.0.0.json"])
+def test_unselected_fast_tokenizer_asset_does_not_satisfy_preflight(tmp_path, monkeypatch, alternate):
+    path = tmp_path / "model"; local_checkpoint(path, "gpt2")
+    (path / "tokenizer.json").rename(path / alternate)
+    file = path / "tokenizer_config.json"; data = json.loads(file.read_text())
+    data["fast_tokenizer_files"] = [alternate]; file.write_text(json.dumps(data))
+    monkeypatch.setattr(transformers.AutoTokenizer, "from_pretrained", lambda *a, **k: pytest.fail("reject before parser"))
+    with pytest.raises(ValueError, match="tokenizer input assets"):
+        LocalModelRuntime.inspect(str(path))
+
+
+def test_missing_explicit_tokenizer_asset_cannot_use_canonical_file(tmp_path, monkeypatch):
+    path = tmp_path / "model"; local_checkpoint(path, "gpt2")
+    file = path / "tokenizer_config.json"; data = json.loads(file.read_text())
+    data["tokenizer_file"] = "absent.json"; file.write_text(json.dumps(data))
+    monkeypatch.setattr(transformers.AutoTokenizer, "from_pretrained", lambda *a, **k: pytest.fail("reject before parser"))
+    with pytest.raises(ValueError, match="selected tokenizer input asset"):
+        LocalModelRuntime.inspect(str(path))
+
+
+@pytest.mark.parametrize('key', ['vocab', 'merges'])
+@pytest.mark.parametrize('value', ['../outside.txt', '/tmp/outside.txt', 'C:\\outside.txt'])
+def test_v5_tokenizer_path_override_cannot_escape_asset_bounds(tmp_path, monkeypatch, key, value):
+    path = tmp_path / 'model'; local_checkpoint(path, 'gpt2')
+    file = path / 'tokenizer_config.json'; data = json.loads(file.read_text()); data[key] = value
+    file.write_text(json.dumps(data))
+    monkeypatch.setattr(transformers.AutoTokenizer, 'from_pretrained', lambda *a, **k: pytest.fail('reject before parser'))
+    with pytest.raises(ValueError, match='bounded files'):
+        LocalModelRuntime.inspect(str(path))
+
+
+def test_v5_vocab_override_is_bounded_and_root_relative(tmp_path, monkeypatch):
+    path = tmp_path / 'model'; local_checkpoint(path, 'distilbert')
+    for name in ('tokenizer.json', 'tokenizer_config.json'):
+        (path / name).unlink()
+    (path / 'alternate.txt').write_text('[PAD]\n[UNK]\n[CLS]\n[SEP]\n[MASK]\nhello\nworld')
+    (path / 'tokenizer_config.json').write_text(json.dumps({'tokenizer_class': 'BertTokenizer', 'vocab': 'alternate.txt'}))
+    elsewhere = tmp_path / 'cwd'; elsewhere.mkdir(); (elsewhere / 'alternate.txt').write_text('wrong')
+    monkeypatch.chdir(elsewhere)
+    info = LocalModelRuntime.inspect(str(path))
+    assert info['input_summary']['vocabulary_entries'] == 7
+    assert info['input_summary']['asset_bytes'] >= (path / 'alternate.txt').stat().st_size
+
+
+@pytest.mark.parametrize('key', ['vocab', 'merges'])
+def test_v5_tokenizer_override_byte_limit_precedes_parser(tmp_path, monkeypatch, key):
+    path = tmp_path / 'model'; local_checkpoint(path, 'gpt2')
+    with (path / 'huge.txt').open('wb') as stream: stream.truncate(64 * 1024**2 + 1)
+    file = path / 'tokenizer_config.json'; data = json.loads(file.read_text()); data[key] = 'huge.txt'; file.write_text(json.dumps(data))
+    monkeypatch.setattr(transformers.AutoTokenizer, 'from_pretrained', lambda *a, **k: pytest.fail('reject before parser'))
+    with pytest.raises(ValueError, match='byte limit'):
+        LocalModelRuntime.inspect(str(path))
+
+
+def test_selected_versioned_fast_tokenizer_asset_is_supported(tmp_path):
+    path = tmp_path / 'model'; local_checkpoint(path, 'gpt2')
+    selected = 'tokenizer.5.0.0.json'
+    (path / 'tokenizer.json').rename(path / selected)
+    file = path / 'tokenizer_config.json'; data = json.loads(file.read_text())
+    data['fast_tokenizer_files'] = [selected]; file.write_text(json.dumps(data))
+    assert LocalModelRuntime.inspect(str(path))['input_summary']['vocabulary_entries'] == 16
+
+
+def test_bounded_inline_bert_vocabulary_is_supported(tmp_path):
+    path = tmp_path / 'model'; local_checkpoint(path, 'distilbert')
+    (path / 'tokenizer.json').unlink()
+    words = ['[PAD]', '[UNK]', '[CLS]', '[SEP]', '[MASK]', 'hello']
+    (path / 'tokenizer_config.json').write_text(json.dumps({'tokenizer_class':'BertTokenizer', 'vocab':dict(zip(words, range(len(words))))}))
+    assert LocalModelRuntime.inspect(str(path))['input_summary']['vocabulary_entries'] == 6

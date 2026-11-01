@@ -522,7 +522,8 @@ def test_loaded_memory_metadata_includes_registered_buffers(tmp_path):
     path = tmp_path / "model"; local_checkpoint(path, "gpt2")
     runtime = LocalModelRuntime(); info = runtime.load(str(path), device="cpu")
     assert info["registered_buffer_bytes"] == sum(b.numel() * b.element_size() for b in runtime.model.buffers())
-    assert info["registered_buffer_bytes"] > 0
+    # Transformers 5 computes GPT-2 causal masks on demand, so this can be zero.
+    assert info["registered_buffer_bytes"] >= 0
 
 
 def test_token_labels_only_retained_input_ids_and_later_prefix(loaded):

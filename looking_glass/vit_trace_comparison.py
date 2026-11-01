@@ -56,19 +56,32 @@ def _validate_result(result, points, max_bytes):
     rows, columns = geometry["grid_shape"]
     sequence = geometry["sequence_length"]
     run_id, total, widths = None, 0, {}
+    layouts = set()
     for index, (point, record) in enumerate(zip(points, result.records, strict=True)):
         if type(record) is not ViTTraceRecord or type(record.event) is not TraceEvent:
             return None, f"record {index} is not a ViT trace record"
         event, value = record.event, record.value
         if run_id is None:
             run_id = event.identity.run_id
-        path = f"vit.encoder.layer.{point.layer}"
+        path = f"vit.layers.{point.layer}"
         if point.module != "block":
-            path += f".{point.module}"
+            path += ".mlp.activation_fn" if point.module == "intermediate" else ".attention"
+        legacy_path = f"vit.encoder.layer.{point.layer}"
+        if point.module != "block":
+            legacy_path += f".{point.module}"
+        coordinate = (event.module_path, event.output_path)
+        current_coordinate = (path, (0,) if point.module == "attention" else ())
+        legacy_coordinate = (legacy_path, ())
+        if coordinate == current_coordinate:
+            layouts.add("layers")
+        elif coordinate == legacy_coordinate:
+            layouts.add("encoder.layer")
+        else:
+            return None, f"record {index} does not match its declared coordinate or metadata"
         if (event.identity != RunIdentity(run_id) or len(run_id) > 128
                 or event.sequence != index or event.forward_index != 0 or event.invocation != point.invocation
-                or event.module_path != path or event.module_kind != f"vit_{point.module}"
-                or event.layer_index != point.layer or event.output_path != ()
+                or event.module_kind != f"vit_{point.module}"
+                or event.layer_index != point.layer
                 or event.batch_positions != (point.batch,) or event.token_positions != (point.token,)
                 or event.batch_axis != 0 or event.token_axis != 1
                 or event.dtype != "torch.float32" or event.device != "cpu" or event.capture_mode != "direct"
@@ -103,9 +116,11 @@ def _validate_result(result, points, max_bytes):
         total += value.numel() * value.element_size()
         if total > max_bytes:
             return None, "trace value byte budget exceeded"
+    if len(layouts) != 1:
+        return None, "trace mixes incompatible module layouts"
     if type(result.tensor_bytes) is not int or result.tensor_bytes != total:
         return None, "retained tensor byte count differs from the records"
-    return {"geometry": geometry, "run_id": run_id, "bytes": total, "records": result.records}, None
+    return {"geometry": geometry, "run_id": run_id, "bytes": total, "records": result.records, "layout": next(iter(layouts))}, None
 
 
 def _snapshot(value):
@@ -173,6 +188,8 @@ def compare_vit_traces(reference, candidate, *, points, pairing_verified=False,
         return report
     if left["bytes"] + right["bytes"] > max_trace_bytes:
         report["issues"].append("combined trace value byte budget exceeded")
+    if left["layout"] != right["layout"]:
+        report["issues"].append("module layouts differ; cross-runtime pairing is not established")
     if left["geometry"] != right["geometry"]:
         report["issues"].append("processed-image geometries differ")
     if left["run_id"] == right["run_id"]:

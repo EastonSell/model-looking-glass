@@ -111,7 +111,7 @@ def compare_vit_donor_patch(model, *, receiver_pixels, donor_pixels, target, con
             or any(size % patch for size, patch in zip(image_size, patch_size))):
         raise ValueError("model dimensions, readout class or input geometry are unsupported")
     sequence = 1 + (image_size[0] // patch_size[0]) * (image_size[1] // patch_size[1])
-    if target.layer >= len(model.vit.encoder.layer) or max(target.token, control.token) >= sequence:
+    if target.layer >= len(model.vit.layers) or max(target.token, control.token) >= sequence:
         raise ValueError("selected layer or token is out of range")
     width = intermediate if target.module == "intermediate" else hidden
     vector_bytes, full_bytes, logits_bytes = width * 4, sequence * width * 4, labels * 4
@@ -125,13 +125,13 @@ def compare_vit_donor_patch(model, *, receiver_pixels, donor_pixels, target, con
         raise ValueError("pixel inputs must be finite")
     digests = tuple(_digest(t) for t in (receiver_pixels, donor_pixels))
     pixel_shape = tuple(receiver_pixels.shape)
-    dimensions = (hidden, intermediate, labels, image_size, patch_size, len(model.vit.encoder.layer))
+    dimensions = (hidden, intermediate, labels, image_size, patch_size, len(model.vit.layers))
 
     def check_inputs():
         current = (receiver_pixels, donor_pixels)
         now = (model.config.hidden_size, model.config.intermediate_size, model.config.num_labels,
                _pair(model.config.image_size, "image_size"), _pair(model.config.patch_size, "patch_size"),
-               len(model.vit.encoder.layer))
+               len(model.vit.layers))
         if (any(t.dtype != torch.float32 or t.device.type != "cpu" or tuple(t.shape) != pixel_shape for t in current)
                 or tuple(_digest(t) for t in current) != digests or now != dimensions):
             raise RuntimeError("pixel inputs or model dimensions changed during the workflow")
@@ -155,12 +155,12 @@ def compare_vit_donor_patch(model, *, receiver_pixels, donor_pixels, target, con
             raise RuntimeError("trace omitted a selected token")
         for point in (target, control):
             r = records[point.token]
-            expected_path = f"vit.encoder.layer.{point.layer}"
+            expected_path = f"vit.layers.{point.layer}"
             if point.module != "block":
-                expected_path += f".{point.module}"
+                expected_path += ".mlp.activation_fn" if point.module == "intermediate" else ".attention"
             if (r.event.invocation != 0 or r.event.batch_positions != (0,) or r.event.layer_index != point.layer
                     or r.event.module_path != expected_path or r.event.module_kind != f"vit_{point.module}"
-                    or r.event.output_path != ()
+                    or r.event.output_path != ((0,) if point.module == "attention" else ())
                     or tuple(r.event.shape) != (1, sequence, width) or tuple(r.value.shape) != (width,)
                     or r.value.dtype != torch.float32 or r.value.device.type != "cpu"):
                 raise RuntimeError("trace metadata or selected shape differs")
