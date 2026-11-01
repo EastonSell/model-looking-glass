@@ -225,3 +225,16 @@ def test_scene_has_flat_reduced_motion_and_keyboard_front_plane():
     assert ids["scene-view"].tag == "select"
     assert ids["session-summary"].tag == "summary"
     assert "role" not in ids["session-options"].attrs  # Non-modal; no synthetic focus trap.
+
+
+def test_discovery_is_explicit_and_wireframe_is_not_fake_model_data():
+    ids = page().ids
+    assert ids["browse-current"].attrs.get("role") == "status"
+    assert ids["browse-discovery-details"].tag == "pre"
+    assert "immediate subfolders" in ids["folder-browser"].text
+    assert "Inspect" in ids["folder-browser"].text
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    assert "/* Wireframe refinement" in css
+    wire = css.split("/* Wireframe refinement", 1)[1]
+    assert "box-shadow:none" in wire and "backdrop-filter:none" in wire
+    assert "radial-gradient" not in wire

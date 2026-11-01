@@ -210,11 +210,15 @@ def test_model_browser_explicit_root_containment_and_no_implicit_home(tmp_path):
     outside = tmp_path / "outside"; outside.mkdir()
     (root / "escape").symlink_to(outside, target_is_directory=True)
     state = AppState(runtime=FakeRuntime(), export_root=tmp_path / "exports")
-    with pytest.raises(ValueError, match="explicit"):
-        state.post("browse-models", {"path": ""})
+    locations = state.post("browse-models", {"path": ""})
+    assert locations["mode"] == "locations" and locations["path"] is None
+    assert locations["folders"] == []
     result = state.post("browse-models", {"path": str(root)})
     assert result["root"] == result["path"] == str(root) and result["parent"] is None
-    assert result["folders"] == [{"name": "checkpoint", "path": str(child), "is_checkpoint": True}]
+    assert len(result["folders"]) == 1
+    assert {key: result["folders"][0][key] for key in ("name", "path", "is_checkpoint")} == {"name": "checkpoint", "path": str(child), "is_checkpoint": True}
+    assert result["folders"][0]["candidate"]["status"] == "unsupported"
+    assert result["current"]["candidate"]["status"] == "none"
     nested = state.post("browse-models", {"path": str(child), "root": str(root)})
     assert nested["parent"] == str(root)
     with pytest.raises(ValueError, match="root"):
@@ -272,7 +276,7 @@ def test_optional_discovery_failure_does_not_hide_runtime_status(tmp_path, monke
     assert status["model_discovery_warning"]
 
 
-def test_model_browser_listing_is_bounded_and_does_not_read_config(tmp_path):
+def test_model_browser_listing_and_config_reads_are_bounded(tmp_path):
     root=tmp_path / "models"; root.mkdir()
     for index in range(205):
         path=root / f"model-{index:03}"; path.mkdir(); (path / "config.json").write_bytes(b'invalid JSON is only a candidate')
@@ -280,6 +284,8 @@ def test_model_browser_listing_is_bounded_and_does_not_read_config(tmp_path):
     result=state.post("browse-models",{"path":str(root)})
     assert len(result["folders"]) == 200 and result["truncated"]
     assert all(row["is_checkpoint"] for row in result["folders"])
+    assert all(row["candidate"]["status"] == "unreadable" for row in result["folders"])
+    assert result["discovery"]["config_bytes_read"] <= result["discovery"]["max_total_config_bytes"]
 
 
 def test_vector_navigation_api_is_authenticated_bounded_and_read_only(server):

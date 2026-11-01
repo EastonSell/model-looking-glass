@@ -2,7 +2,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const token = document.querySelector('meta[name="mlg-token"]').content;
-  const state = {settingsOpener: 'session-summary', mapButtons: [], outputGeneration: 0, outputStep: 0, tokenOffset: 0, tokenTotal: 0, mapAutoCapture: null, mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
+  const state = {browseRequest: 0, browseFresh: false, settingsOpener: 'session-summary', mapButtons: [], outputGeneration: 0, outputStep: 0, tokenOffset: 0, tokenTotal: 0, mapAutoCapture: null, mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
   const pageSize = 100, valuePageSize = 256;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
@@ -57,8 +57,8 @@
     $('demo-button').disabled = state.busy || state.model?.state === 'quarantined';
     $('load-button').disabled = state.busy || state.model?.state === 'quarantined';
     $('unload-button').disabled = state.busy || !state.model || state.model.state === 'quarantined';
-    $('browse-parent').disabled = state.busy || !state.browse?.parent;
-    document.querySelectorAll('#folder-list button').forEach((button) => { button.disabled = state.busy; });
+    $('browse-parent').disabled = state.busy || !state.browseFresh || !state.browse?.parent; $('browse-select').disabled = state.busy || !state.browseFresh || !state.browse?.path;
+    document.querySelectorAll('#folder-list button').forEach((button) => { button.disabled = state.busy || !state.browseFresh; });
     $('vram-mib').disabled = state.busy || $('execution-device').value === 'cpu';
     $('save-button').disabled = state.busy || !state.run;
     $('clear-button').disabled = state.busy || !state.run;
@@ -423,21 +423,56 @@
       const title = document.createElementNS(ns, 'title'); title.textContent = `Features ${bin.start}–${bin.end}: mean ${number(bin.mean)}`; rect.append(title); svg.append(rect);
     }); $('bin-plot').append(svg);
   }
+  function invalidateBrowse(resetRoot = false) {
+    state.browseRequest++; state.browseFresh = false; if (resetRoot) state.browse = null;
+    $('folder-list').replaceChildren(); $('browse-current').textContent = ''; $('browse-discovery-details').textContent = '';
+    $('browse-status').textContent = 'Folder path changed. Browse or Go to check this location before selecting a path.'; syncButtons();
+  }
+  function candidateLabel(folder) {
+    const c = folder?.candidate;
+    if (!c || typeof c !== 'object') return folder?.is_checkpoint ? 'Unverified checkpoint candidate; Inspect checks local assets.' : 'Classification unavailable. Navigate or Inspect explicitly.';
+    const status = ['candidate','unverified','unsupported','incomplete','unreadable','none'].includes(c.status) ? c.status : 'unverified';
+    return `${status}: ${typeof c.label === 'string' ? c.label : 'Metadata check'}${typeof c.family === 'string' ? ' · ' + c.family : ''}${typeof c.architecture === 'string' ? ' · ' + c.architecture : ''}${typeof c.reason === 'string' ? ' — ' + c.reason : ''} · Metadata only; Inspect verifies local assets, not inference.`;
+  }
   async function browse(path, root) {
-    revealOptions('model-options');
-    const result = await api('browse-models', root ? {path, root} : {path}); state.browse = result;
-    $('folder-browser').hidden = false; $('browse-path').value = result.path;
-    $('browse-status').textContent = `Root: ${result.root}${result.truncated ? ' · Folder list truncated; enter a known subfolder path to navigate further.' : ''}`;
-    $('folder-list').replaceChildren();
-    for (const folder of result.folders || []) {
-      const row = document.createElement('div'), enter = document.createElement('button'); row.className = 'folder-row';
-      enter.type = 'button'; enter.className = 'quiet'; enter.textContent = folder.name + (folder.is_checkpoint ? ' · checkpoint candidate' : ' /');
-      enter.addEventListener('click', () => action('Browsing local folders…', () => browse(folder.path, result.root))); row.append(enter);
-      if (folder.is_checkpoint) { const use = document.createElement('button'); use.type = 'button'; use.className = 'secondary'; use.textContent = 'Use checkpoint'; use.addEventListener('click', () => { if (!state.busy) { $('model-path').value = folder.path; invalidateInspection(); $('browse-status').textContent = 'Checkpoint path selected. Inspect or Load explicitly when ready.'; } }); row.append(use); }
-      $('folder-list').append(row);
-    }
-    if (!(result.folders || []).length) $('folder-list').textContent = 'No visible subfolders.';
-    syncButtons();
+    revealOptions('model-options'); const request = ++state.browseRequest; state.browseFresh = false;
+    $('folder-browser').hidden = false; $('folder-list').replaceChildren(); $('browse-current').textContent = ''; $('browse-discovery-details').textContent = ''; $('browse-status').textContent = 'Reading this location only…'; syncButtons();
+    try {
+      const result = await api('browse-models', root ? {path, root} : {path});
+      if (request !== state.browseRequest) return;
+      state.browse = result; state.browseFresh = true; $('browse-path').value = typeof result.path === 'string' ? result.path : '';
+      const current = () => !state.busy && state.browseFresh && request === state.browseRequest && state.browse === result;
+      if (result.mode === 'locations') {
+        $('browse-status').textContent = result.notice || 'Choose a local location. No folders scanned until selected.';
+        $('browse-current').textContent = 'Location suggestions only—not discovered models. Choose where to browse.';
+        for (const location of (Array.isArray(result.locations) ? result.locations : []).slice(0, 64)) {
+          if (typeof location?.path !== 'string' || typeof location?.name !== 'string') continue;
+          const button = document.createElement('button'); button.type = 'button'; button.className = 'quiet'; button.textContent = `${location.name} · ${location.path}`;
+          button.addEventListener('click', () => { if (current()) return action('Checking selected local folder…', () => browse(location.path)); });
+          const row = document.createElement('div'); row.className = 'folder-row'; row.append(button); $('folder-list').append(row);
+        }
+        if (!$('folder-list').children.length) $('folder-list').textContent = 'No normal locations are available. Enter a local folder path explicitly.';
+      } else {
+        const discovery = result.discovery && typeof result.discovery === 'object' ? result.discovery : null;
+        $('browse-status').textContent = `Root: ${result.root || 'not recorded'}${result.notice ? ' · ' + result.notice : ''}${result.truncated ? ' · Folder list truncated; navigate to a known subfolder explicitly.' : ''}${Number.isSafeInteger(discovery?.skipped_entries) ? ' · ' + discovery.skipped_entries + ' skipped entries' : ''}${discovery?.budget_exhausted ? ' · Metadata budget exhausted; some folders remain unverified.' : ''}`;
+        $('browse-discovery-details').textContent = discovery ? display(discovery) : 'No discovery diagnostics supplied by this server.';
+        $('browse-current').textContent = `Current folder: ${result.path || 'unavailable'} — ${candidateLabel(result.current)}`;
+        for (const folder of (Array.isArray(result.folders) ? result.folders : []).slice(0, 512)) {
+          if (typeof folder?.path !== 'string' || typeof folder?.name !== 'string') continue;
+          const row = document.createElement('div'), enter = document.createElement('button'), description = document.createElement('small'); row.className = 'folder-row';
+          enter.type = 'button'; enter.className = 'quiet'; enter.textContent = folder.name + (folder.is_checkpoint ? ' · checkpoint candidate' : ' /');
+          description.textContent = candidateLabel(folder); const main = document.createElement('div'); main.className = 'folder-entry'; main.append(enter, description); row.append(main);
+          enter.addEventListener('click', () => { if (current()) return action('Checking selected local folder…', () => browse(folder.path, result.root)); });
+          if (folder.is_checkpoint || ['candidate','unverified','incomplete'].includes(folder.candidate?.status)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'secondary'; use.textContent = 'Use path'; use.addEventListener('click', () => { if (current()) { $('model-path').value = folder.path; invalidateInspection(); $('browse-status').textContent = 'Path selected only. Metadata is not a compatibility guarantee. Inspect or Load explicitly when ready.'; } }); row.append(use); }
+          $('folder-list').append(row);
+        }
+        if (!(result.folders || []).length) $('folder-list').textContent = 'No visible immediate subfolders. The current folder can still be selected above.';
+      }
+    } catch (error) {
+      if (request !== state.browseRequest) return;
+      $('browse-status').textContent = `Folder discovery unavailable: ${error.message || error}. Model and capture are unchanged by browsing.`;
+      throw error;
+    } finally { if (request === state.browseRequest) syncButtons(); }
   }
   async function refreshSaved() {
     const result = await api('saved'), selected = $('saved-runs').value; state.saved = result.runs || []; $('saved-runs').replaceChildren();
@@ -566,15 +601,16 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   }
   $('browse-button').addEventListener('click', () => action('Browsing local folders…', () => browse($('model-path').value.trim())));
   $('browse-go').addEventListener('click', () => action('Browsing local folders…', () => browse($('browse-path').value.trim(), state.browse?.root)));
-  $('browse-parent').addEventListener('click', () => action('Browsing parent folder…', async () => { if (state.browse?.parent) await browse(state.browse.parent, state.browse.root); }));
-  $('browse-select').addEventListener('click', () => { if (!state.busy && state.browse) { $('model-path').value = state.browse.path; invalidateInspection(); $('browse-status').textContent = 'Folder path selected. Inspect or Load explicitly when ready.'; } });
+  $('browse-parent').addEventListener('click', () => action('Browsing parent folder…', async () => { if (state.browseFresh && state.browse?.parent) await browse(state.browse.parent, state.browse.root); }));
+  $('browse-select').addEventListener('click', () => { if (!state.busy && state.browseFresh && typeof state.browse?.path === 'string' && state.browse.path) { $('model-path').value = state.browse.path; invalidateInspection(); $('browse-status').textContent = 'Folder path selected. Inspect or Load explicitly when ready.'; } });
   $('refresh-saved').addEventListener('click', () => action('Listing saved captures…', refreshSaved));
   $('saved-runs').addEventListener('change', () => { const run = state.saved.find((item) => item.path === $('saved-runs').value && item.status === 'complete_unverified'); if (run) $('open-path').value = run.path; });
   $('unload-button').addEventListener('click', () => action('Releasing the model owner; keeping captured vectors…', async () => { await api('unload', {}); const current = await api('status'); setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
   $('execution-device').addEventListener('change', syncButtons);
   $('refresh-devices').addEventListener('click', () => action('Checking actual device availability…', async () => { const current = await api('status'); setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
   $('capture-mode').addEventListener('change', () => { $('custom-capture').hidden = $('capture-mode').value !== 'custom'; });
-  $('model-path').addEventListener('input', invalidateInspection);
+  $('model-path').addEventListener('input', () => { invalidateInspection(); invalidateBrowse(true); });
+  $('browse-path').addEventListener('input', () => invalidateBrowse());
   $('inspect-button').addEventListener('click', () => action('Checking local configuration, weight headers and input assets…', async () => {
     const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); invalidateInspection();
     try { showInspection(await api('inspect', {path}), path); }

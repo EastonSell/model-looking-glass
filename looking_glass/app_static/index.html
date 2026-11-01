@@ -26,12 +26,12 @@
       <div class="button-row"><button id="load-button" type="button">Load model</button></div>
 
       <details id="model-options" class="options"><summary>Model options &amp; compatibility</summary>
-      <button id="browse-button" class="secondary" type="button">Browse folders</button>
+      <button id="browse-button" class="secondary" type="button">Browse / find models</button>
       <div id="folder-browser" class="info-box" hidden>
         <label for="browse-path">Browse within the allowed model root</label><input id="browse-path" type="text" autocomplete="off" spellcheck="false">
         <div class="button-row"><button id="browse-go" type="button" class="quiet">Go to folder</button><button id="browse-parent" type="button" class="quiet">Parent folder</button><button id="browse-select" type="button" class="quiet">Use this folder</button></div>
-        <p id="browse-status" class="hint" aria-live="polite"></p><div id="folder-list" class="folder-list"></div>
-        <p class="hint">Read-only folder navigation. Without a server-configured models folder, first enter a local root in the checkpoint field and choose Browse folders; navigation stays within that root. Selecting a checkpoint fills its path; it does not load or download a model.</p>
+        <p id="browse-status" class="hint" aria-live="polite"></p><p id="browse-current" class="info-box" role="status"></p><details><summary>Discovery limits &amp; skipped entries</summary><pre id="browse-discovery-details" class="detail-json"></pre></details><div id="folder-list" class="folder-list"></div>
+        <p class="hint">Browse with an empty checkpoint field to choose a normal local location, or enter a folder explicitly. Only that folder and its immediate subfolders receive bounded metadata checks—no recursive or background disk scan. A metadata candidate is not verified compatible: Inspect checks local assets; Load is separate. Selecting Use path never loads or downloads a model. A server-configured model root still limits navigation.</p>
       </div>
       <p class="hint">Choose a local Hugging Face folder containing config.json, matching safetensors weights, and the matching fast tokenizer or image processor assets. For a Hugging Face cache, choose snapshots/&lt;revision&gt;, not a repository ID or cache parent. No automatic downloads or custom checkpoint code.</p>
       <label for="execution-device">Execution device</label>

@@ -53,10 +53,12 @@ class AppState:
         models, discovery_warning = [], None
         if self.models_dir is not None:
             try:
-                for folder in self.browse_models({"path": str(self.models_dir)})["folders"]:
-                    if folder["is_checkpoint"]:
-                        models.append({"name": folder["name"], "path": folder["path"]})
-            except (OSError, ValueError):
+                discovered = self.browse_models({"path": str(self.models_dir)})
+                for folder in [discovered["current"], *discovered["folders"]]:
+                    if folder and folder["candidate"]["status"] in {"candidate", "unverified"}:
+                        models.append({"name": folder["name"], "path": folder["path"],
+                                       "candidate": folder["candidate"]})
+            except (OSError, ValueError, RuntimeError):
                 discovery_warning = "Configured model folder is unavailable. Runtime and captures are unchanged; use an accessible model folder."
         return {"model": self.runtime.info(), "run": self._run_summary(), "models": models,
                 "experiment": self._experiment_summary(),
@@ -131,40 +133,10 @@ class AppState:
         return {**self.reference.compare(source, offset, limit), "reference_id": reference_id, "capture_id": capture_id}
 
     def browse_models(self, data):
-        requested = _text(data, "path", 4096, empty=True).strip()
-        root_text = _text(data, "root", 4096, empty=True).strip()
-        if self.models_dir is not None:
-            root = self.models_dir.resolve(strict=True)
-        else:
-            if not (root_text or requested):
-                raise ValueError("Choose an explicit model folder, or start with --models-dir; no home/filesystem scan is automatic")
-            root = Path(root_text or requested).expanduser().resolve(strict=True)
-        path = Path(requested).expanduser().resolve(strict=True) if requested else root
-        if not root.is_dir() or not path.is_dir():
-            raise ValueError("Model browser needs a directory")
-        if not path.is_relative_to(root):
-            raise ValueError("Requested folder is outside the chosen model root")
-        folders, truncated = [], False
-        # Bounded discovery only: no recursive scan or model/weight parsing.
-        with os.scandir(path) as entries:
-            for index, entry in enumerate(entries):
-                if index == 500:
-                    truncated = True; break
-                if entry.name.startswith(".") or entry.is_symlink() or not entry.is_dir(follow_symlinks=False):
-                    continue
-                try: child = Path(entry.path).resolve(strict=True)
-                except FileNotFoundError: continue
-                if not child.is_relative_to(root):
-                    continue
-                config = child / "config.json"
-                folders.append({"name": entry.name, "path": str(child),
-                                "is_checkpoint": not config.is_symlink() and config.is_file()})
-        folders.sort(key=lambda row: (row["name"].casefold(), row["name"]))
-        if len(folders) > 200:
-            folders = folders[:200]; truncated = True
-        return {"root": str(root), "path": str(path),
-                "parent": None if path == root else str(path.parent),
-                "folders": folders, "truncated": truncated}
+        from .app_discovery import browse_model_folders
+        return browse_model_folders(_text(data, "path", 4096, empty=True).strip(),
+                                    _text(data, "root", 4096, empty=True).strip(),
+                                    models_dir=self.models_dir)
 
     def post(self, action, data):
         if not isinstance(data, dict): raise ValueError("Expected a JSON object")
