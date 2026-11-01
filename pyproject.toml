@@ -4,10 +4,20 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "model-looking-glass"
-version = "1.2.0"
-description = "Reproducible neural-network observation and causal experiments"
+version = "1.2.1"
+description = "Local model debugger for inspecting and comparing activation vectors"
+readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT AND OFL-1.1"
+license-files = ["LICENSE", "looking_glass/app_static/vendor/*-LICENSE.txt"]
 dependencies = ["torch>=2.15.0", "setuptools>=84.2.1"]
+
+[project.urls]
+Repository = "https://github.com/EastonSell/model-looking-glass"
+Documentation = "https://github.com/EastonSell/model-looking-glass/blob/main/docs/LOCAL_APP.md"
+Issues = "https://github.com/EastonSell/model-looking-glass/issues"
+Discussions = "https://github.com/EastonSell/model-looking-glass/discussions"
+Security = "https://github.com/EastonSell/model-looking-glass/security/policy"
 
 [project.scripts]
 model-looking-glass = "looking_glass.app:main"

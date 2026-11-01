@@ -6,10 +6,12 @@ Use the short path below. Most remaining files in this directory are **frozen st
 
 For interactive use, start with the [local model workbench](LOCAL_APP.md): settings, local checkpoint queries, full RAM captures and explicit save/reopen.
 
-1. [Repository quick start](../README.md#quick-start): direct capture without downloading a model.
+1. [Repository quick start](../README.md#quick-start): install the app and try its in-memory demo.
 2. [Known-corruption → localization → restoration tutorial](GPT2_TRACE_WORKFLOW.md): one end-to-end CPU workflow using an explicitly cached checkpoint.
 3. [Findings, support scope and limits](PROJECT_STATUS.md): what the research actually supports, with representative positive and negative evidence.
 4. [Roadmap and execution efficiency](RESEARCH_ROADMAP.md): the single living plan, not a promise of implemented features.
+
+Changing the code? Start with the [code map](../looking_glass/README.md) and [contribution guide](../CONTRIBUTING.md).
 
 ## Reference shelf
 

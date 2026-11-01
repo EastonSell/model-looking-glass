@@ -2,7 +2,7 @@
 
 <a id="model-looking-glass--local-model-debugger"></a>
 
-Run a local model and look inside its layers. The browser workbench lets you inspect captured activations, compare vectors across prompts, and try temporary activation edits without changing checkpoint files.
+A local PyTorch model debugger for inspecting activation vectors, comparing prompts, and testing temporary activation edits without changing checkpoint files.
 
 <a id="try-the-local-workbench"></a>
 
@@ -52,8 +52,15 @@ CPU is enough to begin. CUDA paths exist, but their hardware tests have not run 
 ## Go further
 
 - [App guide](docs/LOCAL_APP.md): loading, exploring, comparing and saving.
+- [Code map](looking_glass/README.md): where the app, shared tools and research code live.
 - [Python library tutorial](docs/GPT2_TRACE_WORKFLOW.md) and [API references](docs/README.md): use the tools in your own code.
 - [Research findings and limits](docs/PROJECT_STATUS.md), [roadmap](docs/RESEARCH_ROADMAP.md), and [original results](RESULTS.md).
 - [Historical records and restoration](archives/README.md): original evidence remains available, including failed experiments.
 
 This guide describes main. Existing release tags, including v1.0.0, are unchanged and may lack newer controls.
+
+## Contribute
+
+[Suggest a change](CONTRIBUTING.md), [join a discussion](https://github.com/EastonSell/model-looking-glass/discussions), or [report a vulnerability privately](SECURITY.md). See the [code of conduct](CODE_OF_CONDUCT.md) and [accessibility guidance](ACCESSIBILITY.md).
+
+Licensed under [MIT](LICENSE). Bundled third-party assets retain their [upstream licenses](looking_glass/app_static/vendor/README.md).

@@ -27,7 +27,12 @@ def test_existing_environment_requires_explicit_reuse(tmp_path):
 
 
 def test_application_assets_declared_for_package():
+    import tomllib
+
     project = (ROOT / "pyproject.toml").read_text()
+    metadata = tomllib.loads(project)["project"]
+    assert metadata["readme"] == "README.md"
+    assert (ROOT / metadata["readme"]).is_file()
     assert 'model-looking-glass = "looking_glass.app:main"' in project
     patterns = ["app_static/*.html", "app_static/*.js", "app_static/*.css"]
     assert all(pattern in project for pattern in patterns)
