@@ -14,8 +14,8 @@ model-looking-glass = "looking_glass.app:main"
 model-looking-glass-gpu-check = "looking_glass.app_selftest:main"
 
 [project.optional-dependencies]
-app = ["torch==2.15.0", "transformers==4.57.3", "safetensors>=0.4.3", "numpy>=1.26", "Pillow==11.3.0"]
-transformer = ["transformers==4.57.3"]
+app = ["torch==2.15.0", "transformers==5.10.1", "safetensors>=0.4.3", "numpy>=1.26", "Pillow==11.3.0"]
+transformer = ["transformers==5.10.1"]
 test = ["numpy>=1.26", "pytest>=8,<9", "Pillow==11.3.0"]
 
 [tool.setuptools.packages.find]
