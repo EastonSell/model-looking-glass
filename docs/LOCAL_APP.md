@@ -1,8 +1,43 @@
 # Local model workbench
 
-Download and extract a source ZIP (or clone), install, open the settings page, then try the built-in tiny demo or select an existing local checkpoint. Query it and inspect the captured vectors. **No checkpoint is downloaded by the app, and no prompt or activation is saved until you explicitly choose Save.** Hooks instrument the loaded runtime; they do not edit checkpoint files.
+Run a model on your computer, then explore the values captured inside its layers. Start with the tiny demo; you can bring your own checkpoint later.
 
-The main interface uses a **scene-first** composition: a compact header, input and output panels beside lightly outlined, wireframe-style captured-layer sheets, and a selected-source dock. **Model & settings** holds setup/device and saved-capture controls; named disclosures keep raw tables and advanced tools available without dominating the scene. Model state, errors, synthetic-demo warnings and replacement warnings remain visible. This is a new presentation of the same capture data—not reduced fidelity or an automatic semantic interpretation.
+## Get started
+
+1. Download and extract the source ZIP from main. Open a terminal in the folder containing `install.py`. You need **Python 3.11+** and internet for installation.
+2. Run `py -3 install.py --backend cpu` on Windows, or `python3 install.py --backend cpu` on macOS/Linux. Keep the folder in place and leave the terminal open while using the app.
+3. Open **Model & settings → Load tiny CPU demo**, enter a short prompt, and choose **Run**. This demo is random and untrained—not a useful language model.
+4. Select a module in **Layers**. Use the position picker to choose a token or image patch, and expand **Exact activation values & bits** when you want the raw numbers. A module initially opens its first captured vector; it isn't automatically aligned with another module's selection.
+
+Next time, use `py -3 start.py` on Windows or `python3 start.py` on macOS/Linux. **Don't reinstall just to reopen the app.** If an older release has no `start.py`, use its direct launch command in the installation reference below. Stop the app with Ctrl+C; an active model run may need to finish first.
+
+## Load your model
+
+Open **Model & settings**, browse to a local model folder, choose **Inspect folder**, then **Load**. Inspection checks the files; it doesn't prove the model will run. Use matching local safetensors weights and tokenizer/image-processor files. Compatible GPT-2, standard Llama, DistilBERT, T5 and ViT checkpoints are supported; see the exact compatibility table below. The app does not fetch checkpoints for you.
+
+Start with CPU and a short input. CUDA requires a compatible NVIDIA setup; its paths have not been hardware-validated in the recorded environment. Memory allowances aren't a guarantee that a model fits. If a request is too large, shorten it or capture fewer layers.
+
+## Keep a capture
+
+**Save before another run or model load.** An accepted new run replaces the previous RAM capture even if execution later fails. Successful model replacement also clears it. **Unload model** keeps the capture available; **Clear** removes it.
+
+Use **Save capture** to keep the full capture, then reopen it from the saved-run picker. Exports may contain private prompts, outputs and activations. They don't include checkpoint weights or the original uploaded image. Nothing is saved automatically. Keep the server local—don't share its session page or expose it online.
+
+## Compare or try an edit
+
+- **Across prompts:** keep a selected reference vector, run another prompt on the same loaded model, then compare a vector from the same module. The reference is RAM-only: Save capture does **not** save it or its comparison. Save the original capture before replacing it if you'll need it later.
+- **Temporary edits:** with a new GPT-2 or supported Llama capture, select a vector and try zeroing it or changing a feature. This compares one fixed input, not a whole rewritten conversation. Checkpoint files and the original capture stay unchanged. Use **Save comparison** for the separate result.
+
+Saved captures remain readable, but cannot authorize edits to a newly loaded model. If a run leaves the model unsafe to reuse, the app asks for a restart; ordinary input errors don't require one.
+
+The displayed values are measurements, not named concepts or decoded thoughts. Output scores come from the complete model, not the selected hidden layer. The reference below explains these distinctions when you need more detail.
+
+## Reference
+
+Open only what you need. Original experiment records and detailed checks remain linked in these sections.
+
+<details>
+<summary>Install and start</summary>
 
 ## Install and start
 
@@ -68,6 +103,11 @@ An unsuccessful dependency step identifies which stage stopped and prints a copy
 
 If environment creation or its interpreter check fails, the existing directory is preserved. An older Python, missing pip or a moved/broken environment needs repair or a fresh environment; blindly adding `--reuse-venv` does not fix it. Keep any files you need, then use a fresh trusted checkout with supported Python rather than deleting an unknown environment. If installation completed but browser/app startup failed, the installer distinguishes that from a package failure and prints the direct app-start command.
 
+</details>
+
+<details>
+<summary>Finding local checkpoints</summary>
+
 ## Finding local checkpoints
 
 Use **Model & settings → Model options & compatibility → Browse folders**. With no path and no configured model root, the app offers ordinary local locations (including an existing Hugging Face cache, and drives where the platform supports listing them). Choose one to begin; no background whole-PC scan runs. You can also paste a known folder. A configured `--models-dir` remains the browser boundary.
@@ -76,6 +116,11 @@ Each visit checks the **current folder and immediate subfolders only**. It reads
 
 Discovery stops at 500 directory entries and 200 visible folder results, with 64 KiB per config and 2 MiB aggregate config reads. Hidden folders are not enumerated as children; a known hidden cache can be selected explicitly. It does not follow directory symlinks/junctions to scan elsewhere. Config links outside the chosen root are not read; choose an appropriate cache parent as root or use explicit Inspect on a known snapshot. Permission, malformed-file and truncation notices remain local and do not discard the loaded model or retained capture. These are count/byte bounds, not a guarantee about slow or disconnected filesystem latency.
 
+</details>
+
+<details>
+<summary>First capture without a checkpoint</summary>
+
 ## First capture without a checkpoint
 
 Choose **Load tiny demo** to construct a fixed, tiny GPT-2 and byte-level tokenizer entirely in CPU RAM. No weights, tokenizer files or temporary checkpoint are written or downloaded. It is **random and untrained**: its output is not a useful answer or evidence of learned language, semantic features, model quality or GPU performance. The demo always uses CPU, independently of your local-checkpoint device selection.
@@ -83,6 +128,11 @@ Choose **Load tiny demo** to construct a fixed, tiny GPT-2 and byte-level tokeni
 Loading it replaces the loaded model and retained capture/comparison after success, so explicitly save anything you want first. The demo starts with auto hooks and short token limits; memory/event allowances and your checkpoint path/device preferences are unchanged. A suggested prompt fills only an empty prompt field; choose **Run** yourself. Then select an event and source position to inspect full values/bits, or try a controlled activation edit. The ordinary resource limits, exact capture and export paths still apply. The tiny model has a 128-position context window; byte-level tokens make ordinary text longer in tokens than a trained tokenizer would.
 
 The demo's provenance, seed/configuration and untrained warning stay attached to captures and comparisons, including saved/reopened exports. A saved capture is not a saved model. Loading a fresh demo creates a new live-model binding; old or reopened captures cannot authorize edits to it. To use your own model afterward, load a supported local folder normally. Nothing about this demo broadens checkpoint compatibility.
+
+</details>
+
+<details>
+<summary>Checkpoint compatibility</summary>
 
 ## Checkpoint compatibility
 
@@ -112,6 +162,11 @@ For static Llama 3 RoPE, the configuration must contain exactly `rope_type`, `fa
 
 Float32 needs four bytes per parameter before captures, logits and loading copies: a billion parameters alone is about 3.7 GiB, beyond the default 2 GiB model ceiling. For a larger compatible checkpoint, set `--max-model-mib` explicitly and, on CUDA, `--max-vram-mib` plus the Settings allowance only when your machine has sufficient headroom. Increasing these limits does not create memory or guarantee a successful load.
 
+</details>
+
+<details>
+<summary>Verified pretrained example: SmolLM2-135M (CPU)</summary>
+
 ## Verified pretrained example: SmolLM2-135M (CPU)
 
 [HuggingFaceTB/SmolLM2-135M](https://huggingface.co/HuggingFaceTB/SmolLM2-135M/tree/93efa2f097d58c2a74874c7e644dbc9b0cee75a2) is one actual pretrained checkpoint verified here, pinned to **`93efa2f097d58c2a74874c7e644dbc9b0cee75a2`**. Its publisher declares Apache-2.0 and public, ungated access. The weight file is **269,060,552 bytes**; all downloaded files together are about 260 MiB. The app loads its BF16-stored weights into **CPU float32** (538,060,032 parameter bytes), using the matching GPT-2 BPE tokenizer with the standard Llama model. This pairing is supported without renaming or editing checkpoint assets.
@@ -134,6 +189,11 @@ python results/local-app-smollm2-135m-cpu-20261031/verify_workbench.py --checkpo
 
 The export directory must be new. These are short CPU transparency/round-trip checks—not GPU validation, a quality benchmark, full-context testing or proof that every Llama checkpoint works. Wall times in the record are observations, not performance claims. No checkpoint weights or raw activation payloads are included in the repository.
 
+</details>
+
+<details>
+<summary>Device selection and GPU semantics</summary>
+
 ## Device selection and GPU semantics
 
 **Auto** prefers available CUDA for all five supported families and chooses CPU when CUDA is unavailable, reporting why. An explicit `cuda:N` request never silently falls back; unavailable devices and unsupported model families are rejected. Settings show discovered devices and the loaded model's actual device. Device indices follow PyTorch visibility (including `CUDA_VISIBLE_DEVICES`), not necessarily physical card numbering.
@@ -145,6 +205,11 @@ GPU captures are moved synchronously to CPU RAM without dtype reduction. GPT-2 o
 The standalone DistilBERT adapter remains CPU-only by default. Its explicit `synchronous_cpu=False` opt-in permits one CUDA float32 device, validates inputs, logits and captures on that device, and synchronizes before returning. CUDA results deliberately have no CPU `EncoderForwardContext`: the historical CPU comparison contract is not asserted for a GPU run. Callers must still own the model and handle failed/uncertain CUDA execution; the app quarantines such failures.
 
 ViT image decoding and preprocessing remain on CPU, with bounded RGB output geometry checked before transfer. Its CUDA adapter hashes the exact processed pixel encodings through blocking integer-bit CPU copies before/after forwarding; it does not infer original-image coordinates or change pixel precision. Like DistilBERT, standalone `trace_vit_classifier` is CPU-only by default and accepts CUDA only with `synchronous_cpu=False`. Its historical CPU-only comparison API remains unchanged and rejects CUDA-origin events, even after their vectors are offloaded.
+
+</details>
+
+<details>
+<summary>Full capture and readable inspection</summary>
 
 ## Full capture and readable inspection
 
@@ -159,6 +224,11 @@ Navigation uses only the capture’s recorded shape, selected source positions a
 Browsing reuses shared forward-input validation **only within one read request**; every event still undergoes its own source/shape/identity checks, and nothing is cached across reads or saved in exports. On this Linux/Python 3.12 CPU executor, a paired synthetic-catalog benchmark (six layers, 512 tokens, width 768; seven alternating measurements after warmup) reduced a 9,216-event DistilBERT stack filter from **414 ms to 73 ms median**. A GPT-2 100-vector picker page fell from 9.1 ms to 5.3 ms. Complete responses and tensor-byte hashes matched; ViT saw little change. These are storage-method timings, not browser rendering, inference or GPU speedups, and are not performance guarantees.
 
 Auto means every supported **module boundary**, not every mathematical operation, neuron state, attention probability, or internal node. T5 cross-attention is not a separate capture role in the current adapter. GPT-2/T5/Llama use explicit uncached generation forwards: later steps recompute the growing prefix, and repeated token vectors belong to distinct forwards. Attention/MLP/block changes are observations, not a proof of a unique causal mechanism or complete interpretability.
+
+</details>
+
+<details>
+<summary>Reading tokens and model output</summary>
 
 ## Reading tokens and model output
 
@@ -176,6 +246,11 @@ For example, the previously verified pretrained SmolLM2 run of “Gravity is” 
 
 **A hidden feature value is not a vocabulary ID.** Tokenizers cannot turn arbitrary float vectors into words. This view makes actual source tokens and observed output choices readable; it does not assign semantic names to neurons, decode an intermediate thought, or implement a logit lens. Exact raw values/bits, grouped display, references and controlled edits remain accessible.
 
+</details>
+
+<details>
+<summary>Optional layer map</summary>
+
 ## Optional layer map
 
 The **Layer map** is the central visual entry point to recorded module outputs. Choose a **forward index** and page through stack/layer sheets; each module button opens the existing exact-vector inspector in the source dock. The **Layer sheets / Flat list** switch changes presentation only. The scene uses CSS perspective and thin wireframe-style surfaces; it does not render measured neurons, connection edges, activation-derived positions or semantic clusters. There are no invented neuron dots or probability examples. Only captured sites are shown—not uncaptured layers inferred from a model configuration. The detailed event table remains available when you need paths, selectors, shapes, byte counts or unknown-source observations.
@@ -186,7 +261,7 @@ The scene is bounded to the same 12-layer metadata page as the list. Mobile and 
 
 Selecting a module opens its **first captured event at vector zero** in the existing exact-value viewer. Use the source-position picker to choose another token or image patch. Representatives are not automatically token-aligned across sites, and this map is independent of the table's search/source filters. Supported fresh GPT-2/Llama selections can use the same reference comparison and controlled-edit tools; the map does not broaden their eligibility. Saved captures can be mapped without a loaded model, but do not acquire live edit authority.
 
-This is a **recorded-boundary diagram**, not a neuron graph, attention visualization, semantic projection or causal explanation. Spacing, grouping and colors are presentation only; no connections or activation magnitudes are inferred. It reads metadata, not tensor statistics, and preserves every original value. Invalid or unsupported provenance is counted as unmapped and remains available in the exact event table. Explicit forward/count labels distinguish other-forward and missing-forward events. Native disclosure controls and module buttons provide standard keyboard interaction; actual browser/screen-reader rendering is not yet validated.
+This is a **recorded-boundary diagram**, not a neuron graph, attention visualization, semantic projection or causal explanation. Spacing, grouping and colors are presentation only; no connections or activation magnitudes are inferred. It reads metadata, not tensor statistics, and preserves every original value. Invalid or unsupported provenance is counted as unmapped and remains available in the exact event table. Explicit forward/count labels distinguish other-forward and missing-forward events. Native disclosure controls and module buttons provide standard keyboard interaction; the original checks were structural and simulated, not browser or screen-reader validation. See the verification records below for later checks.
 
 The installed-wheel CPU verification on the pinned SmolLM2 checkpoint mapped **30 layers / 90 observed module sites per forward** across two captured forwards. All **180 representative vectors × 576 features** had exact retained bits, before and after Save/Unload/Clear/Open; hashes of every retained tensor, model parameters/buffers and checkpoint files were unchanged. A mapped live Llama selection also used the existing reference comparison without changing eligibility. See the [record and reproducible offline check](../results/local-app-smollm2-135m-cpu-20261031/layer_map.json). This verifies metadata-to-payload navigation—not visual rendering or semantic interpretation.
 
@@ -194,13 +269,18 @@ The installed-wheel CPU verification on the pinned SmolLM2 checkpoint mapped **3
 python results/local-app-smollm2-135m-cpu-20261031/verify_layer_map.py --checkpoint ./models/smollm2-135m --output ./layer-map-check.json
 ```
 
+</details>
+
+<details>
+<summary>Try a controlled activation intervention</summary>
+
 ## Try a controlled activation intervention
 
 With a **fresh live GPT-2 or supported standard Llama capture** and a known selected vector, use the intervention panel to **zero that vector**, **add to one feature**, or **set one feature**. These are temporary runtime operations, never checkpoint/weight edits. Imported captures, another model load, unknown coordinates, and other architectures are read-only for this workflow. Reloading the same path does not restore the private live-model binding; make a fresh capture. Stale selections from another browser tab are rejected.
 
 The experiment replays exactly one recorded input prefix and its attention mask, not the whole generated continuation. It runs an unhooked baseline, a same-site null control, the treatment, and an unhooked restoration. The null/restoration full logits must match the baseline bitwise; the fresh selected source must match the original capture. Other positions at the selected boundary must remain unchanged, and single-feature edits must preserve the other feature bits. Llama additionally checks static rotary-buffer/configuration identity and bits, unchanged exact input IDs/mask, full same-device logits and absence of a KV cache on every trial. A failed control publishes no successful comparison. This establishes a bounded same-input intervention comparison, **not** a model explanation, backdoor detector, general repair, or comparison between diverged generations.
 
-The original RAM capture stays intact. The separate panel shows baseline/treatment next-token choices, a compact same-token probability comparison, explicit no-op results, and four full selected-vector witnesses (null before/after and treatment before/after), with exact value/bit pagination. It is **not a full-model post-intervention trace**; full logits are compared but only metrics/top candidates are retained in the report. Choose **Save experiment** to export this separate result; the original Save still saves the original capture. Reopening a comparison permits inspection, not another live intervention; expand its run details to read the saved controls and metrics.
+The original RAM capture stays intact. The separate panel shows baseline/treatment next-token choices, a compact same-token probability comparison, explicit no-op results, and four full selected-vector witnesses (null before/after and treatment before/after), with exact value/bit pagination. It is **not a full-model post-intervention trace**; full logits are compared but only metrics/top candidates are retained in the report. Choose **Save comparison** to export this separate result; the original Save still saves the original capture. Reopening a comparison permits inspection, not another live intervention; expand its run details to read the saved controls and metrics.
 
 The compact table aligns the union of each trial’s top five token IDs (at most ten rows), showing baseline/edited percentages and the signed change in **percentage points**. Probabilities use a stable float64 softmax over the **entire next-token vocabulary**, not just the displayed tokens; visible rows need not sum to 100%. These are model diagnostics, not calibrated confidence or correctness. Display percentages are rounded; exact logits, log-probabilities, deterministic full-vocabulary ranks (token ID breaks ties), full-logit metrics and whole-vocabulary total variation remain in expandable metadata/export. Float64 probabilities can underflow to zero; finite log-probabilities remain available. Old saved comparisons without compatible metadata show their original logits and explicitly mark probabilities unavailable—nothing is inferred from a top-token list. Opened comparisons get the same compact read-only view without acquiring a live experiment binding.
 
@@ -231,6 +311,11 @@ The normalized-probability follow-up shows why raw logits and probabilities are 
 python results/local-app-smollm2-135m-cpu-20261031/verify_probabilities.py --checkpoint ./models/smollm2-135m --export-root ./local-probability-export
 ```
 
+</details>
+
+<details>
+<summary>Compare a vector across prompts</summary>
+
 ## Compare a vector across prompts
 
 After a live GPT-2 or supported Llama capture, select an observation and vector. Open **Reference vector → Keep selected vector**, then run another prompt on the **same loaded model instance**. Select a vector at the same module/layer and choose **Compare selected vector**. Both input records and token/forward positions stay explicit: there is no automatic word alignment, concept labeling or causal explanation. Different positions are allowed, but module, output selector, width, dtype, execution device and recorded numerical settings must match.
@@ -251,6 +336,11 @@ python results/local-app-smollm2-135m-cpu-20261031/verify_reference_vectors.py \
 ```
 
 The record also includes a bounded paired CPU display timing check: seven alternating samples after warmup, 256 displayed values/bins. Exact raw decoding added about 0.03 ms per page in these synthetic cases. A 300,000-feature grouped view took 5.79 ms versus 2.37 ms before the fidelity fix; decoded chunks are reused and bounded. This is a measured tradeoff, not a browser/GPU/inference speedup. With FTZ off, smaller-row responses and all fixture tensor hashes were unchanged; the large-row response adds its rounding note.
+
+</details>
+
+<details>
+<summary>Memory, failures and privacy</summary>
 
 ## Memory, failures and privacy
 
@@ -281,7 +371,18 @@ Save writes a **new**, named directory under the export root, containing `tensor
 
 The server uses a fresh session token, same-origin/Host checks and no remote assets or telemetry. These are browser boundary safeguards, not protection from hostile code already running as the same local user. Do not proxy it to the internet or share its session page.
 
+</details>
+
+<details>
+<summary>Verification</summary>
+
 ## Verification
+
+The **minimal-view revision (2026-11-01)** passed 550 mocked browser requests, 556 with recorded SmolLM2 metadata, 17 layout checks, 39 discovery/loopback HTTP tests and 13 launcher tests. A no-install wheel preserved all three UI assets exactly. The full pytest command could not start because pytest, PyTorch and Transformers are absent in this environment.
+
+The updated UI was also rendered in real remote Chromium at 1600 × 1050 using public historical SmolLM2 metadata, not a live model server. Its default rendered text fell from 425 to 138 words while all 36 displayed module buttons remained. There were no page errors. Eight real-browser checks covered keyboard-opened details, retained recorded logits/input positions, the list view, and settings Escape/focus behavior. This is one browser/fixture check—not Windows, GPU, full accessibility, raw-tensor or new inference validation. The README and this guide now lead with the everyday workflow; detailed records remain below.
+
+The following records describe their named revisions. Historical testing limits are not a claim that later checks never happened.
 
 ```bash
 python -m pytest tests/test_app_runtime.py tests/test_app_cuda.py \
@@ -308,13 +409,13 @@ The subsequent no-reinstall launcher change was checked separately: **45 launche
 
 The visual/token-readout follow-up changes only browser assets, their tests and documentation—not model execution, capture, tensor storage or the API. **47 launcher/installer/static-layout tests passed** (including 11 layout checks); the DOM contract passed **530 mocked authenticated requests**, and **536** when replaying the unchanged recorded SmolLM2 “Gravity is” metadata. That replay verifies displayed token IDs, scores and forward/input separation, not a new checkpoint inference. A no-install wheel build preserved all three UI assets byte-for-byte. The aggregate attempt still stopped with **363 collection errors** in the dependency-light sparse checkout; no ML suite, GPU execution, fresh Windows installation or actual browser rendering was completed for this UI patch. The browser available to this task could not reach the executor’s loopback app. The display uses local assets only, with no CDN or new model downloads.
 
-The **scene-first presentation revision (2026-11-01)** is frontend-only. It passed **542 mocked authenticated requests**, **548** with the unchanged recorded SmolLM2 metadata, **14 static layout functions called directly**, and **13 standard-library launcher unit tests**. These cover the flat-view switch, settings-drawer Escape/focus, actual-site highlighting across token-specific events, stale selections, raw-value access and a retained map after a rejected Run. A no-install wheel build preserved the three UI assets exactly. The current aggregate command could not start: `python -m pytest -q` reported `No module named pytest`; PyTorch and Transformers are also absent in this restored environment. No new model inference or real HTTP integration ran for this presentation patch. Sandboxed Chromium could not launch here, and the separate browser could not reach executor localhost. Consequently **the scene has not received actual browser rendering, mobile, screen-reader or GPU validation**; the approved design concept is not an application screenshot. No renderer sandbox was disabled and no public endpoint was opened.
+The **scene-first presentation revision (2026-11-01)** is frontend-only. It passed **542 mocked authenticated requests**, **548** with the unchanged recorded SmolLM2 metadata, **14 static layout functions called directly**, and **13 standard-library launcher unit tests**. These cover the flat-view switch, settings-drawer Escape/focus, actual-site highlighting across token-specific events, stale selections, raw-value access and a retained map after a rejected Run. A no-install wheel build preserved the three UI assets exactly. The current aggregate command could not start: `python -m pytest -q` reported `No module named pytest`; PyTorch and Transformers are also absent in this restored environment. No new model inference or real HTTP integration ran for this presentation patch. Sandboxed Chromium could not launch here, and the separate browser could not reach executor localhost. At that revision, **the scene had not received actual browser rendering, mobile, screen-reader or GPU validation**; the approved design concept is not an application screenshot. No renderer sandbox was disabled and no public endpoint was opened.
 
 The **wireframe and local-discovery follow-up (2026-11-01)** passed **39 standard-library discovery tests**, including five real loopback HTTP tests of the actual routes/classifier with explicitly synthetic model and tensor-store stand-ins; **13 launcher tests**; and **15 static layout functions**. These cover configured-root containment, current-folder detection, bounded reads/enumeration, malformed/nonfinite JSON, symlinks and nonregular files, permission errors, authentication, and preservation of the loaded-owner/capture sentinels. The DOM contract passed **549 mocked authenticated requests**, or **555** with unchanged historical SmolLM2 metadata. A no-install wheel preserved the new discovery module, server module and three UI assets exactly. The modified ML-dependent HTTP tests and full suite could not run because `pytest`, PyTorch and Transformers are absent; `python -m pytest -q` stopped with `No module named pytest`. This does not establish arbitrary-checkpoint compatibility, new model inference, actual browser rendering, Windows behavior or GPU execution. The official v1.0.0 tag is unchanged.
 
 Tests use tiny locally generated checkpoints and synthetic tensors; they do not establish behavior for every pretrained model. The broader research suite and experimental opcode boundaries remain separate; see the [documentation guide](README.md).
 
-The DOM contract check exercises mocked requests, not rendering. The earlier layer-map validation had nine static HTML/CSS checks; the visual/token revision’s eleven checked balanced markup, unique IDs, input/ARIA labels, native named disclosure summaries, default-closed advanced groups, visible core actions/critical notices, wrapping map cards and a programmatic (not extra tab-stop) vector heading. Disclosure regressions cover active filters, validation that reveals the relevant controls, and missing or failed comparison checks that remain visible. These are structural and simulated-interaction checks, not a browser keyboard or screen-reader certification. Real loopback HTTP and tiny local-model roundtrips were exercised separately. Chromium visual testing was blocked by this execution environment, so no browser-rendering or cross-platform visual validation is claimed.
+The DOM contract check exercises mocked requests, not rendering. The earlier layer-map validation had nine static HTML/CSS checks; the visual/token revision’s eleven checked balanced markup, unique IDs, input/ARIA labels, native named disclosure summaries, default-closed advanced groups, visible core actions/critical notices, wrapping map cards and a programmatic (not extra tab-stop) vector heading. Disclosure regressions cover active filters, validation that reveals the relevant controls, and missing or failed comparison checks that remain visible. These are structural and simulated-interaction checks, not a browser keyboard or screen-reader certification. Real loopback HTTP and tiny local-model roundtrips were exercised separately. Chromium visual testing was blocked for those earlier checks; they provide no browser-rendering or cross-platform visual evidence.
 
 ### CUDA validation boundary
 
@@ -347,3 +448,5 @@ This is an explicit, bounded diagnostic, not a background test when the app star
 Standard output contains a JSON report with overall and per-stage **passed**, **failed**, or **skipped** states. Exit codes are **0 = passed, 1 = failed, 2 = skipped/prerequisite unavailable**. An unavailable CUDA device/build is skipped, never a CPU substitute or GPU pass. Device memory allowance covers the scoped PyTorch allocator only, with the same external-memory limitations described above. Temporary diagnostic checkpoints/traces are not your model data; the command does not persist a report unless you explicitly redirect its output.
 
 A passing check validates only these tiny synthetic workloads on that machine and runtime. It does not establish arbitrary-checkpoint compatibility, performance improvements, rounding-gate behavior, or hostile-code isolation. The larger hardware-gated pytest checks remain available separately.
+
+</details>

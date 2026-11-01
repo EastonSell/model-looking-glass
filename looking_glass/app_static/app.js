@@ -7,7 +7,7 @@
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
   const bytes = (value) => { const n = Number(value); if (!Number.isFinite(n)) return '—'; return n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KiB` : `${(n / 1048576).toFixed(2)} MiB`; };
-  function revealOptions(id) { $(id).open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','privacy-options'].includes(id)) $('session-options').open = true; }
+  function revealOptions(id) { $(id).open = true; if (id === 'map-tools-options') $('layer-map-options').open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','privacy-options'].includes(id)) $('session-options').open = true; }
   function notice(message, error = false) { $('notice').textContent = message; $('notice').hidden = !message; $('notice').classList.toggle('error', error); }
   async function api(path, body) {
     if (body === undefined && /^(events|vectors|tensor|layer-map)\?/.test(path) && state.run?.capture_id) path += `&capture_id=${encodeURIComponent(state.run.capture_id)}`;
@@ -32,7 +32,7 @@
       const selected = item.capture === state.run?.capture_id && item.capture === state.mapCapture && item.forward === state.mapForward && coordinate?.status === 'known' && coordinate.app_forward_index === item.forward && coordinate.stack === item.stack && coordinate.layer_index === item.layer && coordinate.module_path === item.path && metadata?.module_kind === item.kind && validSelector && JSON.stringify(selector) === item.selector;
       item.button.setAttribute('aria-pressed', String(selected)); if (selected) { item.row.setAttribute('data-selected', 'true'); selectedSheet = true; }
     }
-    $('scene-selection-status').textContent = !state.mapCapture || !state.event ? '' : selectedSheet ? `Selected site highlighted · source position ${coordinate.token_position ?? '?'}. Sheet buttons initially open the first captured vector; the dock shows your current selection.` : coordinate?.status !== 'known' ? 'Source is not verified; no sheet is highlighted.' : 'Selected observation is outside this layer page or forward; no sheet is highlighted.';
+    $('scene-selection-status').textContent = !state.mapCapture || !state.event ? '' : selectedSheet ? `Selected · position ${coordinate.token_position ?? '?'}` : coordinate?.status !== 'known' ? 'Source unknown · no highlight.' : 'Selection outside this layer page or forward.';
     const stepCount = Array.isArray(state.run?.steps) ? state.run.steps.length : 0;
     $('output-step').disabled = state.busy || !stepCount; $('input-token-stack').disabled = state.busy || !stepCount;
     $('output-prev').disabled = state.busy || state.outputStep === 0; $('output-next').disabled = state.busy || state.outputStep + 1 >= stepCount;
@@ -51,8 +51,8 @@
     $('refresh-reference').disabled = state.busy;
     $('reference-prev').disabled = state.busy || state.referenceOffset === 0 || !state.referenceMode;
     $('reference-next').disabled = state.busy || !state.referenceMode || state.referenceOffset + valuePageSize >= state.referenceTotal;
-    $('run-button').textContent = state.run ? 'Replace capture →' : 'Run & capture →';
-    $('replace-warning').hidden = !state.run;
+    $('run-button').textContent = state.run ? 'Run again' : 'Run';
+    $('replace-warning').hidden = !state.run || !state.model || state.model.state === 'quarantined';
     $('run-button').disabled = state.busy || !state.model || state.model.state === 'quarantined';
     $('demo-button').disabled = state.busy || state.model?.state === 'quarantined';
     $('load-button').disabled = state.busy || state.model?.state === 'quarantined';
@@ -288,7 +288,7 @@
   async function loadLayerMap(offset = 0) {
     if (state.busy || !state.run?.capture_id) return;
     const raw = $('layer-map-forward').value.trim();
-    if (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw))) { $('layer-map-status').textContent = 'Choose a nonnegative safe whole forward number.'; return; }
+    if (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw))) { revealOptions('map-tools-options'); $('layer-map-status').textContent = 'Choose a nonnegative safe whole forward number.'; return; }
     const forward = Number(raw), capture = state.run.capture_id, request = ++state.mapRequest;
     state.mapButtons = []; state.mapTotal = 0; state.mapCapture = null; $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = ''; $('layer-map-status').textContent = 'Reading captured-site metadata…'; syncButtons();
     try {
@@ -321,7 +321,7 @@
       $('layer-map-page').textContent = state.mapTotal ? `${offset + 1}–${Math.min(offset + 12, state.mapTotal)} of ${state.mapTotal} captured layers` : 'No mapped layers for this forward.';
     } catch (error) {
       if (request !== state.mapRequest || capture !== state.run?.capture_id) return;
-      state.mapCapture = null; state.mapTotal = 0; $('layer-map-body').replaceChildren(); $('layer-map-status').textContent = `Layer map unavailable: ${error.message || error}. The exact event table remains available.`;
+      revealOptions('map-tools-options'); state.mapCapture = null; state.mapTotal = 0; $('layer-map-body').replaceChildren(); $('layer-map-status').textContent = `Layer map unavailable: ${error.message || error}. The exact event table remains available.`;
     } finally { if (request === state.mapRequest) syncButtons(); }
   }
   function renderEvents() {

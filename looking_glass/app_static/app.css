@@ -118,3 +118,11 @@ body { background:#080c11; }
 @media(max-width:620px) { .header-controls { flex-wrap:wrap; }.header-controls #run-button { margin-left:auto; } }
 
 .folder-entry { min-width:0; flex:1; }.folder-entry small { display:block; color:var(--muted); font-size:12px; line-height:1.5; padding:0 8px 8px; overflow-wrap:anywhere; }.folder-row { align-items:start; }.folder-row > button { flex-shrink:0; }
+
+/* Quiet defaults: preserve room for captured layers, expand detail only on request. */
+.scene-view-switch { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:10px 0; }.scene-view-switch select { width:105px; }.scene-view-switch .hint { font-size:12px; margin:0; }
+#prompt-guide,#input-tokens-options,#readout-options,#map-tools-options { margin-top:10px; padding-top:4px; }
+#prompt-guide > summary,#input-tokens-options > summary,#readout-options > summary,#map-tools-options > summary { color:var(--muted); font-weight:400; }
+#input-card .query-footer { margin-top:8px; }#input-card textarea { min-height:112px; }
+#scene-selection-status:empty,#run-status:empty { display:none; }
+#map-tools-options[open] { padding-bottom:12px; }

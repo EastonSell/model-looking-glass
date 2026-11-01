@@ -11,7 +11,7 @@
 </head>
 <body>
 <header class="topbar">
-  <a class="brand" href="/" aria-label="Model Looking Glass home"><span class="brand-mark" aria-hidden="true">◈</span><span>Model Looking Glass<small>ACTIVATION WORKSPACE</small></span></a>
+  <a class="brand" href="/" aria-label="Model Looking Glass home"><span class="brand-mark" aria-hidden="true">◈</span><span>Model Looking Glass</span></a>
   <div class="session-label"><span class="status-dot"></span> Local session <span class="pill">RAM by default</span></div>
   <div id="header-controls" class="header-controls"><span id="model-badge" class="pill">No model loaded</span><details id="session-options" class="session-drawer"><summary id="session-summary">Model &amp; settings</summary>  <aside class="settings" aria-label="Model and capture settings">
     <div class="section-heading"><span class="eyebrow">SESSION</span><h1>Your local model.</h1></div>
@@ -86,29 +86,29 @@
   <main id="scene-workspace" class="scene-workspace">
     <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
       <p id="demo-model-warning" class="approximation" hidden>Untrained random CPU demo: output is synthetic, not useful model answers. This is not GPU validation.</p>
-    <section id="scene-empty" class="scene-empty" aria-label="No captured layers yet"><span class="eyebrow">LOCAL ACTIVATION EXPLORER</span><h1>No capture yet.</h1><p>Load a model and run a prompt. Only actual captured layers will appear here.</p><button id="open-settings" type="button" class="secondary">Choose model or tiny demo</button><p class="hint">RAM-only by default · no invented neurons, connections, or semantic labels.</p></section>
+    <section id="scene-empty" class="scene-empty" aria-label="No captured layers yet"><h1>Look inside your model.</h1><p>Choose a model, write a prompt, then Run.</p><button id="open-settings" type="button" class="secondary">Choose model or tiny demo</button></section>
     <section id="input-card" class="panel query-panel" aria-labelledby="query-heading">
-      <div class="panel-heading"><div><span class="eyebrow">INPUT</span><h2 id="query-heading">Prompt</h2></div></div>
-      <label for="prompt">Prompt</label>
+      <div class="panel-heading"><div><h2 id="query-heading">Prompt</h2></div></div>
+      <label class="sr-only" for="prompt">Prompt</label>
       <textarea id="prompt" rows="2" maxlength="65536" placeholder="Load a model, then enter your prompt…" spellcheck="false"></textarea>
-      <p id="prompt-help" class="hint">GPT-2 and standard Llama complete raw text. No Llama chat template is applied automatically. T5 uses a task prompt. DistilBERT predicts a [MASK]. ViT classifies an image.</p>
+      <details id="prompt-guide" class="options"><summary>Prompt tips</summary><p id="prompt-help" class="hint">GPT-2 and standard Llama complete raw text. No Llama chat template is applied automatically. T5 uses a task prompt. DistilBERT predicts a [MASK]. ViT classifies an image.</p></details>
       <div id="image-input-group" hidden><label for="image-file">Input image · maximum 4 MiB</label><input id="image-file" type="file" accept="image/png,image/jpeg,image/webp"><p id="image-description" class="hint">Select a local PNG, JPEG, or WebP. It is sent only to this local app.</p></div>
-      <p id="replace-warning" class="approximation" hidden>Running again replaces the current RAM capture, even if the new request fails. Save first if you want to keep it.</p>
-        <div class="token-heading"><h3>Captured inputs</h3><label class="sr-only" for="input-token-stack">Captured input stack</label><select id="input-token-stack"><option value="input">Input</option></select></div>
+      <p id="replace-warning" class="approximation" hidden>Run replaces this capture; a failed run can discard it too. Save first.</p>
+        <details id="input-tokens-options" class="options"><summary>Explore input tokens</summary><div class="token-heading"><h3>Captured inputs</h3><label class="sr-only" for="input-token-stack">Captured input stack</label><select id="input-token-stack"><option value="input">Input</option></select></div>
         <p id="input-token-note" class="hint"></p><div id="input-token-strip" class="token-strip" aria-label="Recorded input token positions"></div>
-        <div class="pager"><button id="input-tokens-prev" type="button" class="quiet">← Inputs</button><span id="input-token-page" class="hint"></span><button id="input-tokens-next" type="button" class="quiet">Inputs →</button></div>
+        <div class="pager"><button id="input-tokens-prev" type="button" class="quiet">← Inputs</button><span id="input-token-page" class="hint"></span><button id="input-tokens-next" type="button" class="quiet">Inputs →</button></div></details>
       <div class="query-footer"><span id="run-status" class="muted" aria-live="polite">Ready when you are.</span></div>
     </section>
     <section id="result-panel" class="panel" aria-labelledby="result-heading" hidden>
-      <div class="panel-heading"><div><span class="eyebrow">OUTPUT</span><h2 id="result-heading">Model response</h2></div><span id="task-badge" class="pill"></span></div>
+      <div class="panel-heading"><div><h2 id="result-heading">Response</h2></div><span id="task-badge" class="pill"></span></div>
       <p id="demo-capture-warning" class="approximation" hidden>This capture came from the untrained random CPU demo. Outputs are synthetic and not useful answers or GPU validation.</p>
 
-      <div class="answer-label">Decoded model response</div><pre id="answer" class="answer"></pre>
-      <section id="forward-inspector" class="forward-inspector" aria-labelledby="forward-heading">
+      <pre id="answer" class="answer"></pre>
+      <details id="readout-options" class="options"><summary>Token predictions &amp; scores</summary><section id="forward-inspector" class="forward-inspector" aria-labelledby="forward-heading">
         <div class="panel-heading"><h3 id="forward-heading">Whole-model output by forward</h3><div class="forward-navigation"><button id="output-prev" type="button" class="quiet">←</button><label for="output-step">Record</label><input id="output-step" type="number" min="0" step="1" value="0"><button id="output-next" type="button" class="quiet">→</button></div></div>
         <details class="readout-scope"><summary>What these scores mean</summary><p class="hint">Predictions come from the complete model output—not from decoding the selected intermediate activation. Hidden feature numbers are not token IDs or named concepts. Logits are not probabilities or confidence.</p></details>
         <p id="output-note" class="hint" role="status"></p><div id="output-readout" class="output-readout"></div>
-      </section>
+      </section></details>
 
 
 
@@ -118,7 +118,7 @@
       <div class="table-scroll"><table><thead><tr><th>Rank</th><th>Baseline token · ID</th><th>Logit</th><th>Edited token · ID</th><th>Logit</th></tr></thead><tbody id="imported-token-body"></tbody></table></div></div></section>
 
 
-      <details id="capture-details-options" class="options"><summary>Capture details &amp; save</summary>
+      <details id="capture-details-options" class="options"><summary>Save &amp; capture details</summary>
       <p id="capture-model" class="hint"></p>
       <details><summary>Capture model identity and settings</summary><pre id="capture-info" class="detail-json"></pre></details>
       <div id="run-metrics" class="metrics"></div>
@@ -128,20 +128,21 @@
       </details>
     </section>
     <section id="trace-panel" class="panel" aria-labelledby="trace-heading" hidden>
-      <div class="panel-heading"><div><span class="eyebrow">SCENE</span><h2 id="trace-heading">Captured layers</h2></div><span id="event-total" class="pill"></span></div>
-      <p class="muted">Open a captured module to inspect its source token and exact activation. These are recorded sites—not a full neuron graph or a semantic explanation.</p>
+      <div class="panel-heading"><div><h2 id="trace-heading">Captured layers</h2></div><span id="event-total" class="pill"></span></div>
+
       <div id="explorer-grid" class="explorer-grid">
       <details id="layer-map-options" class="options layer-stage" open>
-        <summary>Captured layer explorer</summary>
-        <p class="hint">Sheets are actual captured layers; module buttons are recorded sites, not neurons. Perspective is presentation only—not a neuron graph, model topology, or causal explanation. Independent of table filters. A module button opens its first captured vector; use the source picker to choose another position. Unknown observations remain available in the exact table.</p>
-        <div class="row layer-map-toolbar"><label for="scene-view">View</label><select id="scene-view"><option value="scene">Layer sheets</option><option value="list">Flat list · keyboard</option></select><label for="layer-map-forward">Map forward</label><input id="layer-map-forward" type="number" min="0" step="1" value="0"><button id="layer-map-load" type="button">Load / refresh</button></div>
+        <summary>Layers</summary>
+        <details id="map-tools-options" class="options"><summary>Map options &amp; details</summary><p class="hint">Sheets are actual captured layers; module buttons are recorded sites, not neurons. Perspective is presentation only—not a neuron graph, model topology, or causal explanation. Independent of table filters. A module button opens its first captured vector; use the source picker to choose another position. Unknown observations remain available in the exact table.</p>
+        <div class="row layer-map-toolbar"><label for="layer-map-forward">Forward</label><input id="layer-map-forward" type="number" min="0" step="1" value="0"><button id="layer-map-load" type="button">Load / refresh</button></div>
         <p id="layer-map-status" class="hint" role="status">Open or refresh to list captured sites. No tensor values are read to build the map.</p>
+        </details><div class="scene-view-switch"><label class="sr-only" for="scene-view">View</label><select id="scene-view"><option value="scene">Sheets</option><option value="list">List</option></select><span class="hint">Captured sites · not neurons</span></div>
         <p id="scene-selection-status" class="hint" role="status"></p>
         <div id="layer-map-body" class="layer-map" data-view="scene"></div>
         <div class="row"><button id="layer-map-prev" type="button" disabled>Previous layers</button><span id="layer-map-page" class="hint"></span><button id="layer-map-next" type="button" disabled>Next layers</button></div>
       </details>
       </div>
-      <details id="event-catalog-options" class="options"><summary>Exact event catalog &amp; filters</summary>
+      <details id="event-catalog-options" class="options"><summary>All captures &amp; filters</summary>
       <label class="sr-only" for="event-filter">Search all captured observations</label><input id="event-filter" type="search" placeholder="Search all observations by module, layer, or forward…" autocomplete="off">
       <details id="source-options" class="options"><summary id="source-options-summary">Exact source filters</summary>
       <div class="event-source-filters"><div><label for="source-token">Token / image-token position</label><input id="source-token" type="number" min="0" step="1" placeholder="All positions"></div><div><label for="source-forward">Forward index</label><input id="source-forward" type="number" min="0" step="1" placeholder="All forwards"></div><div><label for="source-stack">Source stack</label><select id="source-stack"><option value="">All stacks</option><option value="input">Input</option><option value="encoder">Encoder</option><option value="decoder">Decoder</option><option value="image">Image</option></select></div><button id="clear-event-filters" class="quiet" type="button">Clear all filters</button></div>
@@ -154,10 +155,10 @@
       <div id="vector-panel" class="vector-panel source-dock" hidden>
         <div class="panel-heading"><h3 id="vector-heading" tabindex="-1">Selected observation</h3><span id="dtype-badge" class="pill"></span></div>
         <div id="source-readable" class="source-readable" role="status">Choose a captured module and source position.</div>
-        <p class="hint source-semantics">This activation is associated with this input token or patch position—not a word decoded from hidden features.</p>
-        <label for="vector-picker">Source position</label><select id="vector-picker"><option value="">Choose a source position…</option></select>
-        <div class="dock-actions"><button id="dock-exact" type="button" class="secondary">View exact vector</button><button id="dock-edit" type="button" class="secondary">Edit / compare</button><button id="dock-reference" type="button" class="quiet">Reference</button></div>
-        <details id="source-position-options" class="options"><summary>Source navigation &amp; coordinates</summary>
+
+        <label for="vector-picker">Token / position</label><select id="vector-picker"><option value="">Choose a source position…</option></select>
+        <div class="dock-actions"><button id="dock-exact" type="button" class="secondary">Exact values</button><button id="dock-edit" type="button" class="secondary">Edit</button><button id="dock-reference" type="button" class="quiet">Reference</button></div>
+        <details id="source-position-options" class="options"><summary>Position details</summary><p class="hint source-semantics">This activation is associated with this input token or patch position—not a word decoded from hidden features.</p>
         <div class="pager"><button id="vectors-page-prev" class="quiet" type="button">← Picker page</button><span id="vectors-page" class="hint"></span><button id="vectors-page-next" class="quiet" type="button">Picker page →</button></div>
         <p id="vector-list-status" class="hint" aria-live="polite"></p>
         <div class="button-row"><button id="vector-prev" class="quiet" type="button">← Previous vector</button><button id="vector-next" class="quiet" type="button">Next vector →</button></div>
@@ -178,7 +179,7 @@
         <p id="intervention-status" class="hint" aria-live="polite"></p>
         <label for="intervention-operation">Edit at the selected source vector</label><select id="intervention-operation"><option value="zero">Zero the entire selected vector</option><option value="add">Add to one feature</option><option value="replace">Set one feature</option></select>
         <div id="intervention-feature-fields" class="field-grid" hidden><div><label for="intervention-feature">Feature index · zero-based</label><input id="intervention-feature" type="number" min="0" max="0" value="0"></div><div><label for="intervention-value">Explicit finite value</label><input id="intervention-value" type="text" inputmode="decimal" placeholder="e.g. 0.5" autocomplete="off"></div></div>
-        <button id="intervene-button" type="button" disabled>Replay &amp; compare</button></details><p class="hint">Replay keeps the original capture but replaces the previous comparison, even if it fails. Save a comparison you want to keep first.</p>
+        <button id="intervene-button" type="button" disabled>Replay &amp; compare</button><p class="hint">Replay keeps the original capture but replaces the previous comparison, even if it fails. Save a comparison you want to keep first.</p></details>
         <details><summary>Exact observation metadata</summary><pre id="event-metadata" class="detail-json"></pre></details>
       </div>
     <details id="reference-options" class="options reference-options"><summary id="reference-summary">Reference vector · empty</summary>
@@ -213,7 +214,7 @@
       <label for="experiment-save-name">Save only this comparison</label><div class="button-row"><input id="experiment-save-name" type="text" value="my-comparison" autocomplete="off"><button id="save-experiment" class="secondary" type="button">Save comparison</button></div><p id="experiment-save-status" class="hint">Explicit export includes the fixed input, output metadata and full witness tensors. Original Save capture remains separate. Keep private inputs private.</p>
     </section>
     <p id="experiment-startup-status" class="hint" aria-live="polite"></p>
-    <footer class="main-footer">Observe precisely. Interpret cautiously. <span>Local inference · explicit coverage · no silent capture loss</span></footer>
+
   </main>
 </div>
 </body>

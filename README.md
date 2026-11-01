@@ -1,100 +1,57 @@
-# Model Looking Glass — Local Model Debugger
+# Model Looking Glass
 
-**Inspect and compare activation vectors with PyTorch hooks in a local browser workbench.** Run compatible local checkpoints, inspect full captures, and test controlled activation interventions without editing checkpoint files. The goal is a causal debugger—not a claim that arbitrary model behavior is already explained or safely repairable.
+<a id="model-looking-glass--local-model-debugger"></a>
 
-Start with **direct activation capture**, explicit execution coordinates, and controlled intervention comparisons. The auxiliary-gradient reporting channel is an experimental control: it adds no information to an activation already available to copy, costs more in the original CPU study, and can lose subnormal bits.
+Run a local model and look inside its layers. The browser workbench lets you inspect captured activations, compare vectors across prompts, and try temporary activation edits without changing checkpoint files.
 
-**[Documentation: start here](docs/README.md)** · [Findings and limits](docs/PROJECT_STATUS.md#research-evidence) · [One living roadmap](docs/RESEARCH_ROADMAP.md)
-
-## Try the local workbench
-
-**Download:** choose **Source code (zip)** from a [release](https://github.com/EastonSell/model-looking-glass/releases), then **Extract All**. This is Python source, not an executable; Git is not required. Open a terminal in the extracted folder containing `install.py`. You need Python **3.11+** and internet for the initial package installation.
-
-```powershell
-# Windows: install once (CPU demo works without an NVIDIA GPU)
-py -3 install.py --backend cpu
-```
-
-On macOS/Linux use `python3 install.py --backend cpu`. For a compatible NVIDIA GPU/driver, choose `--backend cuda` instead when installing. Omitting `--backend` defaults to CUDA 13.2 on Linux/Windows; no driver or model checkpoint is installed. Keep the terminal open, open **Model & settings**, choose **Load tiny demo → Run & capture**, then select a captured layer/module to explore exact vectors. The demo is untrained, not a useful language model.
-
-**Start again without reinstalling:** on latest main, run `py -3 start.py` (Windows) or `python3 start.py` (macOS/Linux). It only uses this folder's existing `.venv`; it never installs packages or changes CPU/CUDA builds. Keep the extracted folder in place. **The published layer-map preview predates `start.py`**: if the file is absent, run `.\.venv\Scripts\python.exe -m looking_glass.app` on Windows or `./.venv/bin/python -m looking_glass.app` on macOS/Linux. [Installation and troubleshooting](docs/LOCAL_APP.md#install-and-start).
-
-Browse an explicitly chosen model folder or paste a compatible **local safetensors checkpoint** path, enter a prompt (or a ViT image), and capture every supported boundary or choose specific hooks. Full vectors stay **in RAM by default**; navigate recorded token/patch positions and raw values/bits, optionally view approximate grouped coordinates, filter events by exact token/patch position, forward and stack, and explicitly save/reopen lossless traces from the saved-run picker. Unload the model without losing the capture. A fresh live GPT-2 or supported standard Llama capture also supports controlled fixed-input activation experiments, kept separate from the original trace. Hooks do not alter checkpoint files.
-
-The workbench has **CUDA-first paths for GPT-2, T5, DistilBERT, ViT and standard Llama (default or static Llama 3 RoPE)**, with CPU fallback. Choose Auto or an explicit device in Settings. CUDA implementation is hardware-gated and has **not been executed on a GPU in the current validation environment**. Llama support is plain completion through exact `LlamaForCausalLM`, not all Llama-like architectures or automatic chat templating. This is not arbitrary-checkpoint or every-operation support. Grouped views are not semantic explanations. Validate a GPU locally with `python -m looking_glass.app_selftest`; it reports passed/failed/skipped checks using tiny synthetic models, without downloads or your checkpoints. [Installation, compatibility, memory limits and privacy](docs/LOCAL_APP.md). [Verified pretrained CPU example](docs/LOCAL_APP.md#verified-pretrained-example-smollm2-135m-cpu).
-
-**Find a local model:** choose **Browse folders** with an empty path to see normal local locations, then select a folder. Browsing automatically checks small config files in that folder and its immediate subfolders, distinguishing supported-family candidates from unsupported, incomplete or unreadable exports. It does not crawl the whole PC or load weights. **Inspect folder** performs the deeper local input/header checks before you explicitly Load; discovery alone is not proof a checkpoint will work. A failed inspection or browse leaves your loaded model and capture intact.
-
-**[Scene-first explorer](docs/LOCAL_APP.md#optional-layer-map):** input and output panels flank a minimal, wireframe-style layer scene; a source dock opens the exact captured vector. Each sheet comes from a recorded layer, not a fabricated neuron graph. Switch to **Flat list** for a straightforward module view. Perspective, spacing and outlines are visual layout—not learned geometry, activation magnitude or causal connections. Readable token IDs/positions and actual model outputs remain separate; all raw values/bits, references and controlled edits are still available. These refinements are on **main**; the existing **v1.0.0** release and preview tags remain unchanged.
-
-**No checkpoint yet?** Choose **Load tiny demo**, then Run. This builds an untrained miniature GPT-2 entirely in CPU RAM—no download or checkpoint files—so you can learn capture navigation and controlled edits immediately. Its random output is not useful language or GPU validation.
-
-## What to use
-
-| Task | Entry point | Scope |
-|---|---|---|
-| Observe named boundaries | [`TraceSession`, `TapPoint`](looking_glass/probes.py) | Local, single-threaded, bounded snapshots; no implicit tracing of every neuron |
-| Capture, inject, or patch | [Intervention primitives](docs/INTERVENTION_PLANS.md) | Explicit sites and controls, exclusive model ownership, cleanup checks |
-| Record and compare traces | [Schema](docs/TRACE_SCHEMA.md), [store](looking_glass/trace_store.py), [localization](docs/LOCALIZATION.md) | Execution metadata and first observed differences, not inferred reasoning |
-| Evaluate changes | [Causal metrics](docs/CAUSAL_METRICS.md), [behavioral evaluation](docs/BEHAVIORAL_EDIT_EVALUATION.md) | Paired outcomes and locality observations; no broad capability guarantee |
-| Work with transformers | [GPT-2 tutorial](docs/GPT2_TRACE_WORKFLOW.md), [DistilBERT](docs/DISTILBERT_TRACE.md), [T5](docs/FLAN_T5_TRACE.md), [ViT](docs/VIT_TRACE.md), [Llama](docs/LOCAL_APP.md#checkpoint-compatibility) | Documented eager-model adapters, not universal architecture support |
-
-See [project scope](docs/PROJECT_STATUS.md) for the boundary between reusable components, experimental infrastructure, and historical study runners. Retained code is not automatically a supported public API. The shared-service and GPU scheduling prototypes are **not** a validated general GPU service.
+<a id="try-the-local-workbench"></a>
 
 ## Quick start
 
-Python 3.10+ is declared; choose PyTorch using its [official installation instructions](https://pytorch.org/get-started/locally/). The optional `transformer` extra pins Transformers 4.57.3. Dependency ranges are not a claim that every permitted combination has been tested.
+You need **Python 3.11+** and internet for the initial installation. Download the [source ZIP from main](https://github.com/EastonSell/model-looking-glass/archive/refs/heads/main.zip), extract it, and open a terminal in the folder containing `install.py`. This is Python source, not a standalone executable.
 
-After cloning, enter the repository (`cd model-looking-glass`). Install the package into your chosen environment with `python -m pip install -e .` after selecting its PyTorch build. Use `python -m pip install -e ".[transformer,test]"` only when you need the optional adapter/test dependencies.
+**Windows:**
 
-```python
-import torch
-from looking_glass.model import TinyResidual
-from looking_glass.probes import TraceSession
-
-model = TinyResidual(width=16)
-with TraceSession(model, mode="direct", max_events=64,
-                  max_tensor_bytes=1_000_000) as trace:
-    output = model(torch.randn(8, 16), route=0)
-print([event.metadata() for event in trace.events])
+```powershell
+py -3 install.py --backend cpu
 ```
 
-Captured activations may contain private information. Limits count logical recorded bytes, not peak RAM/VRAM. No model or dataset is downloaded by this example or the original experiment. Pretrained loaders have separate explicit download/cache requirements.
+**macOS or Linux:**
 
 ```bash
-# Core observation checks (requires PyTorch; no checkpoint download):
-python -m unittest discover -s tests -p 'test_probes.py' -v
-python -m unittest discover -s tests -p 'test_interventions.py' -v
-# Original synthetic experiment; never overwrites an existing directory:
-python -m looking_glass.experiment --output results/local/my-run
-# Archive tooling checks (stdlib + Git only):
-python -m unittest discover -s tests -p 'test_archive_results.py' -v
+python3 install.py --backend cpu
 ```
 
-The complete historical suite has additional dependencies and archived fixtures. The default `python -m pytest tests` run explicitly excludes 57 historical opcode-exception experiments: Python documents that their injection mechanism can cause undefined interpreter behavior. Their exact cases and assertions are preserved behind explicit, per-case process-isolated opt-in. See [test boundaries and controls](docs/EXPERIMENTAL_OPCODE_TESTS.md).
+Keep the terminal open. In the app, open **Model & settings**, choose **Load tiny CPU demo**, then **Run**. Select a layer and a token to inspect its captured vector. The demo needs no model download; it is untrained, so don't expect useful answers.
 
-Do not treat a focused pass, prerequisite skip, excluded experiment, or unrun test as validated behavior. See [this cleanup's actual results](docs/MAINTENANCE_2026-10-29.md).
+To open the app again, run `py -3 start.py` on Windows or `python3 start.py` on macOS/Linux. Keep the extracted folder in place. You don't need to reinstall. [Installation help and older releases](docs/LOCAL_APP.md#install-and-start).
 
-## What the research supports
+<a id="what-to-use"></a>
 
-- **Observation baseline:** direct and gradient channels agreed under the recorded floating-point checks; gradient capture took 2.60–3.81× direct latency (across-seed median ratios) in a small CPU model. Dense taps narrowed where an injected difference first appeared. These are not LLM-scale or bitwise-fidelity results. [Original results](RESULTS.md)
-- **Important counterexample:** auxiliary-gradient readout can lose subnormal bits even when `torch.equal` reports equality. Prefer direct capture; use raw-bit checks when bitwise fidelity matters. [Denormal control](docs/GRADIENT_DENORMAL_V1.md)
-- **Interventions are not explanations by themselves:** small language/vision studies include positive score shifts, failed specificity controls, ineligible baselines, and locality failures. No general model-repair success is established. [Research evidence guide](docs/PROJECT_STATUS.md#research-evidence)
+## Try your own model
 
-All outcomes—including failures and negative controls—remain accessible. The [full pre-cleanup research index](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/README.md) is preserved at an immutable commit; it is historical, not a current support matrix.
+In **Model & settings**, browse to a local checkpoint folder, inspect it, then load it. Supported formats include compatible GPT-2, standard Llama, DistilBERT, T5 and ViT **safetensors** exports—not every model bearing those names. The app does not download checkpoints. [Compatibility details](docs/LOCAL_APP.md#checkpoint-compatibility).
 
-## Smaller checkout, intact evidence
+- **Explore:** select a captured layer and input position; open exact values when you need them.
+- **Compare:** keep a reference vector, run another prompt, and inspect the differences.
+- **Experiment:** with a fresh GPT-2 or supported Llama capture, temporarily change a vector or feature and compare the model's output.
 
-Large historical tensor/archive payloads are indexed in [`archives/results-manifest.json`](archives/results-manifest.json), with their original paths, Git blob hashes, sizes, and source commit. Uncompressed reports and decision records remain in the current tree; compressed records are included in the archive manifest. [Archive and restore instructions](archives/README.md) explain selective restoration and integrity verification.
+The layer view shows recorded data, not a diagram of the model's reasoning. A changed activation does not by itself explain a behavior.
 
-[Ten duplicate historical auditors and a superseded three-script preparation workflow](archives/SOURCE_CONSOLIDATION.md) were removed from active entry points, with canonical copies or immutable historical source links retained.
+## Before you run
 
-The [documentation consolidation](archives/README.md#historical-documentation) also replaces scattered historical manuals with a short reading path, one roadmap, a findings map and an experimental infrastructure reference.
+**Save anything you want to keep.** An accepted new run replaces the previous RAM capture, even if execution later fails. Saved traces can contain private prompts and activations. Keep this single-user app local; don't expose its server online.
 
-This reduces the **current checkout**, not Git history. No history is rewritten; a full clone still contains old objects. For a small new checkout:
+CPU is enough to begin. CUDA paths exist, but their hardware tests have not run in the recorded validation environment. Large captures need extra memory; configured limits don't guarantee that a model will fit. [Devices, memory and privacy](docs/LOCAL_APP.md#memory-failures-and-privacy).
 
-```bash
-git clone --filter=blob:none --depth=1 https://github.com/EastonSell/model-looking-glass.git
-```
+<a id="what-the-research-supports"></a>
+<a id="smaller-checkout-intact-evidence"></a>
 
-[Documentation](docs/README.md) · [Roadmap](docs/RESEARCH_ROADMAP.md) · [Original protocol](PROTOCOL.md) · [Mathematical limits](docs/MATHEMATICS.md)
+## Go further
+
+- [App guide](docs/LOCAL_APP.md): loading, exploring, comparing and saving.
+- [Python library tutorial](docs/GPT2_TRACE_WORKFLOW.md) and [API references](docs/README.md): use the tools in your own code.
+- [Research findings and limits](docs/PROJECT_STATUS.md), [roadmap](docs/RESEARCH_ROADMAP.md), and [original results](RESULTS.md).
+- [Historical records and restoration](archives/README.md): original evidence remains available, including failed experiments.
+
+This guide describes main. Existing release tags, including v1.0.0, are unchanged and may lack newer controls.

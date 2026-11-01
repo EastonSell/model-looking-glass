@@ -171,7 +171,7 @@ def test_readable_explorer_and_outputs_are_primary_not_raw_numbers():
     assert ids["explorer-grid"] in list(ids["layer-map-options"].ancestors())
     assert ids["feature-values-options"] in list(ids["raw-values"].ancestors())
     assert ids["event-catalog-options"] in list(ids["event-body"].ancestors())
-    for name in ("source-readable", "output-readout", "input-token-strip"):
+    for name in ("source-readable",):
         assert not any(n.tag == "details" for n in ids[name].ancestors())
 
 
@@ -198,7 +198,7 @@ def test_scene_composition_and_accessible_controls_preserve_truth():
     assert not any(n.tag == "details" for n in ids["demo-model-warning"].ancestors())
     assert ids["scene-view"].tag == "select"
     assert "not neurons" in ids["layer-map-options"].text
-    assert "No capture" in ids["scene-empty"].text
+    assert "Choose a model" in ids["scene-empty"].text
     for name in ("dock-exact", "dock-edit", "dock-reference"):
         assert ids[name].tag == "button"
         assert ids["vector-panel"] in list(ids[name].ancestors())
@@ -210,7 +210,7 @@ def test_output_card_keeps_predictions_primary_and_details_reachable():
     assert detail.tag == "details" and "open" not in detail.attrs
     for name in ("capture-model", "capture-info", "run-metrics", "coverage", "save-button", "save-status"):
         assert detail in ids[name].ancestors()
-    for name in ("answer", "output-readout", "demo-capture-warning", "imported-control-warning"):
+    for name in ("answer", "demo-capture-warning", "imported-control-warning"):
         assert not any(n.tag == "details" for n in ids[name].ancestors())
 
 
@@ -238,3 +238,31 @@ def test_discovery_is_explicit_and_wireframe_is_not_fake_model_data():
     wire = css.split("/* Wireframe refinement", 1)[1]
     assert "box-shadow:none" in wire and "backdrop-filter:none" in wire
     assert "radial-gradient" not in wire
+
+
+def test_minimal_default_keeps_explanations_and_scores_collapsed():
+    ids = page().ids
+    groups = {
+        'prompt-guide': ['prompt-help'],
+        'input-tokens-options': ['input-token-strip', 'input-token-note'],
+        'readout-options': ['output-readout', 'output-note'],
+        'map-tools-options': ['layer-map-forward', 'layer-map-status'],
+        'source-position-options': ['vector-coordinate'],
+    }
+    for group, contents in groups.items():
+        assert ids[group].tag == 'details' and 'open' not in ids[group].attrs
+        for item in contents:
+            assert ids[group] in ids[item].ancestors(), (group, item)
+    for item in ['prompt', 'answer', 'layer-map-body', 'vector-picker', 'source-readable']:
+        assert not any(n.tag == 'details' and 'open' not in n.attrs for n in ids[item].ancestors()), item
+
+
+def test_default_paragraphs_are_short_and_not_a_wall_of_instructions():
+    doc = page()
+    for node in doc.elements:
+        if node.tag != 'p':
+            continue
+        if any('hidden' in n.attrs or (n.tag == 'details' and 'open' not in n.attrs) for n in [node, *node.ancestors()]):
+            continue
+        # Optional comparison panels start hidden. Default guidance stays one short sentence.
+        assert len(node.text.split()) <= 35, node.text
