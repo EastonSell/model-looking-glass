@@ -1,21 +1,21 @@
 # Local model workbench
 
-Run a model on your computer, then explore the values captured inside its layers. Start with the tiny demo; you can bring your own checkpoint later.
+Run a model on your computer, then explore the values captured inside its layers. Use your own checkpoint on CPU or a compatible NVIDIA GPU. The tiny CPU demo is optional.
 
 ## Get started
 
-1. Download and extract the source ZIP from main. Open a terminal in the folder containing `install.py`. You need **Python 3.11+** and internet for installation.
-2. Run `py -3 install.py --backend cpu` on Windows, or `python3 install.py --backend cpu` on macOS/Linux. Keep the folder in place and leave the terminal open while using the app.
-3. Open **Model & settings → Load tiny CPU demo**, enter a short prompt, and choose **Run**. This demo is random and untrained—not a useful language model.
-4. Select a module in **Layers**. Use the position picker to choose a token or image patch, and expand **Exact activation values & bits** when you want the raw numbers. A module initially opens its first captured vector; it isn't automatically aligned with another module's selection.
+1. Download **model-looking-glass-app.zip** from the [latest release](https://github.com/EastonSell/model-looking-glass/releases/latest), extract it, and open a terminal in the folder containing `install.py`. You need **Python 3.11+**.
+2. Choose `--backend cuda` for a compatible NVIDIA GPU on Windows/Linux, or `--backend cpu` for CPU/macOS. On Windows run `py -3 install.py --backend cuda` (or `cpu`); on Linux/macOS use `python3`. The installer downloads packages, not drivers or model weights.
+3. Open **Model & settings**, choose your local checkpoint and device, then **Inspect folder → Load model**. Enter text or choose an image, then **Run & capture**. No checkpoint yet? **Get a model** offers explicit downloads; **Load tiny CPU demo** needs none but is untrained.
+4. Select a module in **Layers** and choose a token or image patch. **Exact values** opens the full vector. Each module initially selects its first captured vector, not an automatically matched token.
 
 Next time, use `py -3 start.py` on Windows or `python3 start.py` on macOS/Linux. **Don't reinstall just to reopen the app.** If an older release has no `start.py`, use its direct launch command in the installation reference below. Stop the app with Ctrl+C; an active model run may need to finish first.
 
 ## Load your model
 
-Open **Model & settings**, browse to a local model folder, choose **Inspect folder**, then **Load**. Inspection checks the files; it doesn't prove the model will run. Use matching local safetensors weights and tokenizer/image-processor files. Compatible GPT-2, standard Llama, DistilBERT, T5 and ViT checkpoints are supported; see the exact compatibility table below. Or open **Get a model**, choose an explicit download, then use its folder. The catalog is small and curated—not a search of every Hugging Face model.
+Open **Model & settings**, browse to a local model folder, choose **Inspect folder**, then **Load model**. Inspection checks the files; it doesn't prove the model will run. Use matching local safetensors weights and tokenizer/image-processor files. Compatible GPT-2, standard Llama, DistilBERT, T5 and ViT checkpoints are supported; see the exact compatibility table below. Or open **Get a model**, choose an explicit download, then use its folder. The catalog is small and curated—not a search of every Hugging Face model.
 
-Start with CPU and a short input. CUDA requires a compatible NVIDIA setup; its paths have not been hardware-validated in the recorded environment. Memory allowances aren't a guarantee that a model fits. If a request is too large, shorten it or capture fewer layers.
+Start with a short input on your chosen device. CUDA requires a compatible NVIDIA GPU and driver. The project owner reports a successful GPU run; the automated validation environment remains CPU-only, and no GPU/driver details were supplied for that report. Memory allowances aren't a guarantee that a model fits. If a request is too large, shorten it or capture fewer layers.
 
 ## Keep a capture
 
@@ -41,9 +41,9 @@ Open only what you need. Original experiment records and detailed checks remain 
 
 ## Install and start
 
-### First installation: source ZIP or clone
+### First installation: app ZIP or source checkout
 
-Use Python **3.11 or newer**. A GitHub release's **Source code (zip)** is source, not a standalone app or Windows executable. Download it, choose **Extract All**, and open a terminal in the extracted folder containing `install.py`; do not run it inside the ZIP. No Git is needed for this route. Keep the folder in its final location: the installer creates a local `.venv` and an editable package installation that are not portable after moving the folder.
+Use Python **3.11 or newer**. For the smaller app download, choose **model-looking-glass-app.zip** in release **Assets**. GitHub's separate **Source code (zip)** includes research datasets and is much larger. Both contain Python source, not a standalone app or Windows executable. Choose **Extract All**, and open a terminal in the extracted folder containing `install.py`; do not run it inside the ZIP. No Git is needed for this route. Keep the folder in its final location: the installer creates a local `.venv` and an editable package installation that are not portable after moving the folder.
 
 Windows PowerShell/Terminal:
 
@@ -51,7 +51,7 @@ Windows PowerShell/Terminal:
 py -3 install.py --backend cpu
 ```
 
-If `py` is unavailable but a supported Python is installed as `python`, use `python install.py --backend cpu`. If neither command exists, install supported Python first; this script does not install Python. On macOS/Linux use `python3 install.py --backend cpu`. For a compatible NVIDIA system, select `--backend cuda` for the initial installation instead. The CPU route is sufficient to try **Load tiny demo → Run & capture → Layer map**.
+If `py` is unavailable but a supported Python is installed as `python`, use `python install.py --backend cpu`. If neither command exists, install supported Python first; this script does not install Python. On macOS/Linux use `python3 install.py --backend cpu`. For a compatible NVIDIA system, select `--backend cuda` for the initial installation instead. The optional tiny demo always uses CPU; load a real checkpoint to exercise your selected GPU.
 
 Alternatively, with Git installed:
 

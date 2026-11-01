@@ -166,7 +166,7 @@ def main(argv=None):
         usable = True
         print(f"Installing {args.backend.upper()} dependencies; no drivers or model checkpoints will be downloaded.", flush=True)
         for number, command in enumerate(commands, 1):
-            stage = f"{'PyTorch' if number == 1 else 'app'} dependency installation stage {number}/{len(commands)}"
+            stage = f"{('installer tools', 'PyTorch', 'app')[number - 1]} dependency installation stage {number}/{len(commands)}"
             subprocess.run(command, cwd=ROOT, check=True, env=pip_environment())
         print("Installed. Restart:", command_text([executable, "-m", "looking_glass.app"]), flush=True)
         print("Optional GPU validation (local synthetic models only):", command_text([executable, "-m", "looking_glass.app_selftest"]), flush=True)

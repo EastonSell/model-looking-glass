@@ -114,12 +114,12 @@
   async function action(message, callback) {
     if (state.busy) return;
     let completed = false; state.busy = true; syncButtons(); notice(message); $('run-status').textContent = message;
-    try { await callback(); completed = true; if (state.model?.state === 'quarantined') { notice('Model owner quarantined. Stop and restart the app before loading or running a model again. Saved captures can still be inspected.', true); $('run-status').textContent = 'Quarantined — restart the app to recover.'; } else { notice(''); $('run-status').textContent = 'Ready.'; } }
+    try { await callback(); completed = true; if (state.model?.state === 'quarantined') { notice('The model cannot be reused safely. Please restart the app before loading or running again. Saved captures are still available.', true); $('run-status').textContent = 'Restart required before another model run.'; } else { notice(''); $('run-status').textContent = 'Ready.'; } }
     catch (error) {
       try { const current = await api('status'); if (error.reconcileRun && (!state.run?.capture_id || current.run?.capture_id !== state.run.capture_id)) clearView(); if (error.reconcileRun && state.experiment && Object.hasOwn(current, 'experiment') && current.experiment?.experiment_id !== state.experiment.experiment_id) clearExperiment(); if (state.run) { const same = current.run?.capture_id && current.run.capture_id === state.run.capture_id; state.run.intervention_available = !!(same && current.run.intervention_available); state.run.intervention_reason = same ? current.run.intervention_reason : 'The displayed capture is no longer bound to the current server revision; reopen or make a fresh capture.'; state.run.reference_available = !!(same && current.run.reference_available); state.run.reference_reason = same ? current.run.reference_reason : 'The displayed capture revision is no longer current.'; } setModel(current.model); applyLimits(current.limits); applyDevices(current); } catch (_) { if (error.reconcileRun) { clearView(); error.message += ' The Run outcome could not be verified; previous capture values are hidden. Refresh or reopen a saved capture before continuing.'; } /* Preserve the original failure if status is unavailable. */ }
       const quarantined = state.model?.state === 'quarantined';
-      notice((error.message || String(error)) + (quarantined ? ' This model owner is quarantined. Stop and restart the app before loading or running a model again.' : ''), true);
-      $('run-status').textContent = quarantined ? 'Quarantined — restart the app to recover.' : 'Stopped. See the message above.';
+      notice((error.message || String(error)) + (quarantined ? ' The model cannot be reused safely. Please restart the app before loading or running again.' : ''), true);
+      $('run-status').textContent = quarantined ? 'Restart required before another model run.' : 'Stopped. See the message above.';
     }
     finally { state.busy = false; syncButtons(); if (completed && state.run?.capture_id && $('layer-map-options').open && state.mapAutoCapture !== state.run.capture_id) { state.mapAutoCapture = state.run.capture_id; await loadLayerMap(); } }
   }
@@ -148,7 +148,7 @@
     const available = state.devices.filter((device) => /^cuda:\d+$/.test(device.id || '') && device.available !== false);
     const lines = available.map((device) => `${device.id}: ${device.name || 'CUDA GPU'} · ${bytes(device.free_bytes)} free / ${bytes(device.total_bytes)} total at last check`);
     if (!lines.length) lines.push(`CUDA unavailable${state.cuda?.reason ? ': ' + state.cuda.reason : ' or not reported'}. Auto will use CPU; an explicit CUDA choice will not fall back.`);
-    else lines.push('Auto prefers available CUDA for GPT-2/T5/DistilBERT/ViT and supported standard Llama, with its reason recorded. Actual GPU validation remains outstanding. An explicit CUDA failure will not silently switch to CPU.');
+    else lines.push('Auto prefers available CUDA. Choosing a CUDA device explicitly will not silently fall back to CPU.');
     $('device-status').textContent = lines.join('\n'); syncButtons();
   }
   function loadSettings() {
@@ -195,14 +195,14 @@
   function setModel(info) {
     const prior = state.model, selectedTargets = new Set(Array.from(document.querySelectorAll('#target-options input:checked'), (input) => input.value));
     const preserveTargets = prior && info && prior.path === info.path && prior.family === info.family;
-    state.model = info; $('demo-model-warning').hidden = !isDemo(info); $('model-badge').textContent = info ? (info.state === 'quarantined' ? 'Quarantined · restart app' : `${isDemo(info) ? 'Untrained CPU demo' : 'Loaded'}: ${info.name || info.family || 'model'}${info.device ? ' · ' + info.device : ''}`) : 'No model loaded';
+    state.model = info; $('demo-model-warning').hidden = !isDemo(info); $('model-badge').textContent = info ? (info.state === 'quarantined' ? 'Restart required' : `${isDemo(info) ? 'Untrained CPU demo' : 'Loaded'}: ${info.name || info.family || 'model'}${info.device ? ' · ' + info.device : ''}`) : 'No model loaded';
     $('model-info').textContent = info ? display(info) : 'No model loaded.';
     $('target-options').replaceChildren();
     const targets = info?.targets || ['attn', 'mlp', 'block'];
     for (const target of targets) { const name = typeof target === 'string' ? target : target.name; if (!name) continue; const label = document.createElement('label'), input = document.createElement('input'); input.type = 'checkbox'; input.value = name; input.checked = !preserveTargets || selectedTargets.has(name); label.append(input, document.createTextNode(name)); $('target-options').append(label); }
     const family = String(info?.family || '').toLowerCase();
     const vision = family.includes('vit'); $('image-input-group').hidden = !vision; $('prompt').hidden = vision; document.querySelector('label[for="prompt"]').hidden = vision;
-    $('prompt-help').textContent = vision ? 'Classify one image. The app captures supported ViT module outputs; patch positions are not text tokens.' : family.includes('distilbert') ? 'Include [MASK] in your prompt. DistilBERT predicts masked tokens; it is not a chat or autoregressive generation model.' : family === 'llama' ? 'Standard Llama completes your raw/plain prompt with greedy, uncached forward steps; no automatic chat template is applied. This is completion, not a chat conversation. Only default or static Llama 3 RoPE is supported; dynamic, linear, YaRN, LongRoPE and partial rotary configurations are unsupported.' : family.includes('t5') ? 'Use a T5 task prompt, such as “translate English to German: …”. Generation uses explicit uncached forward steps.' : 'GPT-2 continues your prompt with greedy decoding. Each uncached forward step has its own capture coordinates.';
+    $('prompt-help').textContent = vision ? 'Classify one image. The app captures supported ViT module outputs; patch positions are not text tokens.' : family.includes('distilbert') ? 'Include [MASK] where you want DistilBERT to predict a token. It does not continue a conversation.' : family === 'llama' ? 'Llama completes raw text with uncached steps; no automatic chat template is applied. Format chat prompts yourself. Supports default or static Llama 3 RoPE.' : family.includes('t5') ? 'Use a T5 task prompt, such as “translate English to German: …”.' : 'GPT-2 continues your text, choosing the highest-scoring next token.';
     syncButtons();
   }
   function clearView() {
@@ -545,7 +545,7 @@
           enter.type = 'button'; enter.className = 'quiet'; enter.textContent = folder.name + (folder.is_checkpoint ? ' · checkpoint candidate' : ' /');
           description.textContent = candidateLabel(folder); const main = document.createElement('div'); main.className = 'folder-entry'; main.append(enter, description); row.append(main);
           enter.addEventListener('click', () => { if (current()) return action('Checking selected local folder…', () => browse(folder.path, result.root)); });
-          if (folder.is_checkpoint || ['candidate','unverified','incomplete'].includes(folder.candidate?.status)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'secondary'; use.textContent = 'Use path'; use.addEventListener('click', () => { if (current()) { $('model-path').value = folder.path; invalidateInspection(); $('browse-status').textContent = 'Path selected only. Metadata is not a compatibility guarantee. Inspect or Load explicitly when ready.'; } }); row.append(use); }
+          if (folder.is_checkpoint || ['candidate','unverified','incomplete'].includes(folder.candidate?.status)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'secondary'; use.textContent = 'Use path'; use.addEventListener('click', () => { if (current()) { $('model-path').value = folder.path; invalidateInspection(); $('browse-status').textContent = 'Folder selected. Inspect checks the files; Load tries the model. Nothing has loaded yet.'; } }); row.append(use); }
           $('folder-list').append(row);
         }
         if (!(result.folders || []).length) $('folder-list').textContent = 'No visible immediate subfolders. The current folder can still be selected above.';

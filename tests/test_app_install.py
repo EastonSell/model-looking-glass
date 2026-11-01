@@ -287,3 +287,20 @@ def test_actual_pip_config_inspection_ignores_conflicting_settings(tmp_path, mon
                          capture_output=True, text=True, check=True, timeout=15)
     assert json.loads(out.stdout) == {}
     assert "target = /outside" in conflict.read_text()
+
+
+def test_dependency_failure_identifies_actual_stage(tmp_path, monkeypatch, capsys):
+    for stopped, name in enumerate(('installer tools', 'PyTorch', 'app'), 1):
+        location = tmp_path / str(stopped); location.mkdir()
+        module, env = installer(location, monkeypatch)
+        monkeypatch.setattr(module, 'probe_environment', lambda *args: {})
+        calls = []
+        def run(command, **kwargs):
+            calls.append(command)
+            if len(calls) == stopped:
+                raise subprocess.CalledProcessError(17, command)
+        monkeypatch.setattr(module.subprocess, 'run', run)
+        monkeypatch.setattr(module.subprocess, 'call', lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('must not launch')))
+        assert module.main(['--reuse-venv', '--backend', 'cpu', '--no-launch']) == 17
+        assert f'{name} dependency installation stage {stopped}/3' in capsys.readouterr().err
+        assert len(calls) == stopped and env.exists()
