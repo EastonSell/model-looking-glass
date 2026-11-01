@@ -126,3 +126,5 @@ body { background:#080c11; }
 #input-card .query-footer { margin-top:8px; }#input-card textarea { min-height:112px; }
 #scene-selection-status:empty,#run-status:empty { display:none; }
 #map-tools-options[open] { padding-bottom:12px; }
+
+.catalog-card { border-top:1px solid var(--line); padding:12px 0; min-width:0; }.catalog-card strong { overflow-wrap:anywhere; }.catalog-card > button { margin-top:8px; }.catalog-card details > summary { cursor:pointer; font-size:12px; }.catalog-card a { color:var(--accent); overflow-wrap:anywhere; }#download-progress { width:100%; accent-color:var(--accent); }

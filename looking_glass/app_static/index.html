@@ -25,6 +25,17 @@
       <p id="model-discovery-warning" class="hint" aria-live="polite" hidden></p>
       <div class="button-row"><button id="load-button" type="button">Load model</button></div>
 
+      <details id="download-options" class="options"><summary>Get a model</summary>
+        <p class="hint">Download a pinned model from Hugging Face. This writes model files locally; it does not load a model or change your capture.</p>
+        <div class="field-grid"><div><label for="catalog-device">Estimate for</label><select id="catalog-device"><option value="auto">Auto</option><option value="cpu">CPU</option></select></div><div><label for="catalog-context">Context tokens</label><input id="catalog-context" type="number" min="1" max="4096" value="128"></div></div>
+        <label class="check-row" for="catalog-all"><input id="catalog-all" type="checkbox"> Show models over the estimate</label>
+        <button id="refresh-catalog" class="quiet" type="button">Refresh models</button><p id="catalog-status" class="hint" role="status"></p><div id="catalog-models" class="catalog-models"></div>
+        <details><summary>Memory estimates &amp; download location</summary><p class="hint">Estimates assume float32 weights, eager execution and the selected context. They are not peak-memory or fit guarantees. They use server limits, not your Load GPU allowance; a lower Load allowance may still reject it. CPU RAM is not measured. Download size differs from loaded model memory; GPU execution has not been validated by this catalog.</p><pre id="catalog-details" class="detail-json"></pre></details>
+        <p id="download-location" class="hint"></p>
+        <p id="download-status" class="hint" role="status">No download status checked yet.</p><progress id="download-progress" max="1" value="0" aria-label="Downloaded bytes" hidden></progress>
+        <div class="button-row"><button id="refresh-download" type="button" class="quiet">Refresh download</button><button id="cancel-download" type="button" class="quiet" disabled>Cancel download</button><button id="use-download" type="button" class="secondary" disabled>Use downloaded folder</button></div>
+      </details>
+
       <details id="model-options" class="options"><summary>Model options &amp; compatibility</summary>
       <button id="browse-button" class="secondary" type="button">Browse / find models</button>
       <div id="folder-browser" class="info-box" hidden>

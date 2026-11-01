@@ -7,7 +7,7 @@
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
   const bytes = (value) => { const n = Number(value); if (!Number.isFinite(n)) return '—'; return n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KiB` : `${(n / 1048576).toFixed(2)} MiB`; };
-  function revealOptions(id) { $(id).open = true; if (id === 'map-tools-options') $('layer-map-options').open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','privacy-options'].includes(id)) $('session-options').open = true; }
+  function revealOptions(id) { $(id).open = true; if (id === 'map-tools-options') $('layer-map-options').open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','privacy-options','download-options'].includes(id)) $('session-options').open = true; }
   function notice(message, error = false) { $('notice').textContent = message; $('notice').hidden = !message; $('notice').classList.toggle('error', error); }
   async function api(path, body) {
     if (body === undefined && /^(events|vectors|tensor|layer-map)\?/.test(path) && state.run?.capture_id) path += `&capture_id=${encodeURIComponent(state.run.capture_id)}`;
@@ -20,6 +20,7 @@
     return data;
   }
   function syncButtons() {
+    syncDownloads();
     $('dock-exact').disabled = state.busy || !state.event; $('dock-edit').disabled = state.busy || !state.event; $('dock-reference').disabled = state.busy || !state.event;
     $('open-settings').disabled = state.busy;
     // Highlight canonical sites, not just their first event: singleton token captures share a site.
@@ -697,5 +698,73 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('vector-view').addEventListener('change', () => action('Changing display view…', async () => { state.valueOffset = 0; await loadVector(); }));
   $('values-prev').addEventListener('click', () => action('Reading previous coordinates…', async () => { state.valueOffset = Math.max(0, state.valueOffset - valuePageSize); await loadVector(); }));
   $('values-next').addEventListener('click', () => action('Reading next coordinates…', async () => { state.valueOffset += valuePageSize; await loadVector(); }));
+  // Downloads have independent state: they never replace the live owner or capture.
+  const downloads = {initialized:false,catalogRequest:0,catalogFresh:false,cards:[],request:0,timer:null,job:null,root:null,fresh:false,pending:false};
+  const downloadActive = () => ['running','cancelling'].includes(downloads.job?.state);
+  function syncDownloads() {
+    const blocked = state.busy || downloads.pending;
+    for (const card of downloads.cards) card.button.disabled = blocked || !downloads.catalogFresh || !downloads.fresh || downloadActive();
+    $('cancel-download').disabled = blocked || !downloads.fresh || downloads.job?.state !== 'running';
+    $('use-download').disabled = blocked || !downloads.fresh || downloads.job?.state !== 'complete' || typeof downloads.job.path !== 'string' || !downloads.job.path;
+    $('refresh-download').disabled = downloads.pending;
+  }
+  function stopDownloadPoll() { if(downloads.timer !== null)clearTimeout(downloads.timer); downloads.timer=null; }
+  function showDownloadLocation() {
+    const complete=downloads.job?.state==='complete' && typeof downloads.job.path==='string';
+    $('download-location').textContent=complete?`Saved folder: ${downloads.job.path}`:downloads.root?`Download folder: ${downloads.root}`:'';
+  }
+  function acceptDownload(job) {
+    if(!job || !['idle','running','cancelling','complete','cancelled','failed'].includes(job.state) || (job.state !== 'idle' && (typeof job.job_id !== 'string' || typeof job.model_id !== 'string')))throw new Error('Invalid download status');
+    downloads.job=job;downloads.fresh=true;
+    const labels={idle:'No download running.',running:'Downloading',cancelling:'Cancelling',complete:'Complete — use the folder, then Inspect or Load.',cancelled:'Download cancelled.',failed:'Download failed.'};
+    $('download-status').textContent=`${labels[job.state]}${job.state!=='idle'?` · ${job.model_id}`:''}${downloadActive()?` · ${bytes(job.received_bytes)} / ${bytes(job.total_bytes)}${job.file?` · ${job.file}`:''}`:''}${job.error?` ${job.error}`:''}`;
+    const progress=$('download-progress');progress.hidden=!downloadActive();progress.max=Number.isFinite(job.total_bytes)&&job.total_bytes>0?job.total_bytes:1;progress.value=Number.isFinite(job.received_bytes)?Math.min(progress.max,Math.max(0,job.received_bytes)):0;
+    showDownloadLocation();
+    if(downloadActive())downloads.timer=setTimeout(()=>refreshDownload(),1200);
+  }
+  async function downloadRequest(path='download',body) {
+    stopDownloadPoll();const request=++downloads.request;downloads.pending=true;syncDownloads();
+    try {const job=await api(path,body);if(request!==downloads.request)return;acceptDownload(job);}
+    catch(error){if(request!==downloads.request)return;downloads.fresh=false;$('download-progress').hidden=true;revealOptions('download-options');$('download-status').textContent=`Download outcome unavailable: ${error.message||error}. Refresh download status before starting, cancelling or using files.`;}
+    finally {if(request===downloads.request){downloads.pending=false;syncDownloads();}}
+  }
+  function refreshDownload(){return downloadRequest();}
+  function populateCatalogDevices(){
+    const field=$('catalog-device'), selected=field.value||'auto';field.replaceChildren();
+    for(const device of [{id:'auto',name:'Auto'},{id:'cpu',name:'CPU'},...state.devices.filter(d=>/^cuda:\d+$/.test(d.id||'')&&d.available!==false)]){const option=document.createElement('option');option.value=device.id;option.textContent=device.name||device.id;field.append(option);}
+    if(!['auto','cpu',...state.devices.filter(d=>d.available!==false).map(d=>d.id)].includes(selected)){const option=document.createElement('option');option.value=selected;option.textContent=`${selected} · unavailable`;field.append(option);}
+    field.value=selected;
+  }
+  async function refreshCatalog(){
+    const request=++downloads.catalogRequest;downloads.catalogFresh=false;downloads.cards=[];$('catalog-models').replaceChildren();$('catalog-details').textContent='';syncDownloads();
+    const raw=$('catalog-context').value.trim(),context=Number(raw),device=$('catalog-device').value||'auto';
+    if(!/^\d+$/.test(raw)||!Number.isSafeInteger(context)||context<1||context>4096){revealOptions('download-options');$('catalog-status').textContent='Choose 1–4096 context tokens for the estimate.';return;}
+    $('catalog-status').textContent='Reading the curated model list…';
+    try {
+      const result=await api(`model-catalog?device=${encodeURIComponent(device)}&context_tokens=${context}&show_all=${$('catalog-all').checked?'1':'0'}`);if(request!==downloads.catalogRequest)return;
+      if(!Array.isArray(result.models))throw new Error('Invalid model catalog');
+      downloads.catalogFresh=true;downloads.root=typeof result.download_root==='string'?result.download_root:null;showDownloadLocation();$('catalog-details').textContent=display(result);
+      $('catalog-status').textContent=`${result.models.length} model${result.models.length===1?'':'s'} · ${result.resolved_device||device}. ${Number.isSafeInteger(result.hidden_too_large)&&result.hidden_too_large>0?`${result.hidden_too_large} over-limit models hidden. `:''}Estimates only, not a fit guarantee.`;
+      for(const model of result.models.slice(0,64)){
+        if(!model||typeof model.id!=='string'||typeof model.revision!=='string')continue;
+        const card=document.createElement('div');card.className='catalog-card';const name=document.createElement('strong');name.textContent=typeof model.title==='string'?model.title:model.id;
+        const summary=document.createElement('p');summary.className='hint';const fit=model.fit||{},fitLabel={cpu:'CPU RAM not measured',likely_fits:'May fit GPU memory',too_large:'Over server/device or context limit',unknown:'Memory fit unknown'}[fit.status]||'Memory fit unknown';
+        summary.textContent=`${bytes(model.download_bytes)} download · ${fitLabel}. ${model.validation==='prior_cpu_verified'?'CPU checked with this app; GPU unverified.':'Metadata only; execution unverified.'}`;
+        const detail=document.createElement('details'),heading=document.createElement('summary');heading.textContent='Size, license & assumptions';const record=document.createElement('pre');record.className='detail-json';record.textContent=display(model);detail.append(heading);
+        if(typeof model.license_url==='string'&&/^https:\/\/huggingface\.co\/[A-Za-z0-9._/-]+$/.test(model.license_url)){const link=document.createElement('a');link.textContent=`Model card / license: ${model.license||'see card'}`;link.setAttribute('href',model.license_url);link.setAttribute('target','_blank');link.setAttribute('rel','noopener noreferrer');detail.append(link);}detail.append(record);
+        const button=document.createElement('button');button.type='button';button.textContent='Download';button.addEventListener('click',()=>{if(state.busy||downloads.pending||!downloads.fresh||downloadActive()||!downloads.catalogFresh||request!==downloads.catalogRequest)return;return downloadRequest('download',{model_id:model.id,revision:model.revision});});
+        downloads.cards.push({button});card.append(name,summary,detail,button);$('catalog-models').append(card);
+      }
+    }catch(error){if(request!==downloads.catalogRequest)return;downloads.catalogFresh=false;$('catalog-models').replaceChildren();revealOptions('download-options');$('catalog-status').textContent=`Model list unavailable: ${error.message||error}. Your model and capture are unchanged.`;}
+    syncDownloads();
+  }
+  $('download-options').addEventListener('toggle',async()=>{if(!$('download-options').open)return;populateCatalogDevices();if(downloads.initialized)return;downloads.initialized=true;await refreshCatalog();if(!downloads.pending)await refreshDownload();});
+  $('refresh-catalog').addEventListener('click',refreshCatalog);
+  $('catalog-context').addEventListener('input',()=>{downloads.catalogRequest++;downloads.catalogFresh=false;downloads.cards=[];$('catalog-models').replaceChildren();$('catalog-details').textContent='';$('catalog-status').textContent='Estimate changed. Refresh models to use it.';syncDownloads();});
+  for(const id of ['catalog-device','catalog-context','catalog-all'])$(id).addEventListener('change',refreshCatalog);
+  $('refresh-download').addEventListener('click',()=>{if(!downloads.pending)return refreshDownload();});
+  $('cancel-download').addEventListener('click',()=>{if(!state.busy&&!downloads.pending&&downloads.fresh&&downloads.job?.state==='running')return downloadRequest('cancel-download',{job_id:downloads.job.job_id});});
+  $('use-download').addEventListener('click',()=>{if(state.busy||downloads.pending||!downloads.fresh||downloads.job?.state!=='complete'||typeof downloads.job.path!=='string'||!downloads.job.path)return;$('model-path').value=downloads.job.path;invalidateInspection();invalidateBrowse(true);$('download-status').textContent='Folder selected. Inspect or Load when ready; your current model and capture are unchanged.';});
+
   action('Connecting to your local session…', async () => { const result = await api('status'); setModel(result.model); applyLimits(result.limits); applyDevices(result); for (const item of result.models || []) { const option = document.createElement('option'); option.value = typeof item === 'string' ? item : item.path; option.label = typeof item === 'string' ? item : item.name || item.path; $('model-choices').append(option); } if (result.run) { showRun(result.run); await loadEvents(); } await refreshSavedOptional(); await restoreExperimentOptional(); await refreshReferenceOptional(); });
 })();

@@ -30,7 +30,7 @@ To open the app again, run `py -3 start.py` on Windows or `python3 start.py` on 
 
 ## Try your own model
 
-In **Model & settings**, browse to a local checkpoint folder, inspect it, then load it. Supported formats include compatible GPT-2, standard Llama, DistilBERT, T5 and ViT **safetensors** exports—not every model bearing those names. The app does not download checkpoints. [Compatibility details](docs/LOCAL_APP.md#checkpoint-compatibility).
+In **Model & settings**, browse to a local checkpoint folder, inspect it, then load it. Supported formats include compatible GPT-2, standard Llama, DistilBERT, T5 and ViT **safetensors** exports—not every model bearing those names. Need a checkpoint? Open **Get a model** for a small, pinned Hugging Face catalog. Downloads happen only when you choose **Download**; memory estimates are not fit guarantees. [Compatibility details](docs/LOCAL_APP.md#checkpoint-compatibility).
 
 - **Explore:** select a captured layer and input position; open exact values when you need them.
 - **Compare:** keep a reference vector, run another prompt, and inspect the differences.

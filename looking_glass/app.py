@@ -23,10 +23,11 @@ STATIC = Path(__file__).parent / "app_static"
 
 class AppState:
     def __init__(self, *, runtime=None, export_root="looking-glass-runs", models_dir=None,
+                 download_root="looking-glass-models",
                  max_model_bytes=2 * 1024**3, max_trace_bytes=512 * 1024**2,
                  max_vram_bytes=64 * 1024**3):
         if runtime is None:
-            # Application mode is explicitly local-only, even if user shell settings differ.
+            # Model loading/execution stays offline; explicit curated downloads are separate.
             os.environ["HF_HUB_OFFLINE"] = "1"
             os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
             os.environ["TRANSFORMERS_OFFLINE"] = "1"
@@ -43,6 +44,10 @@ class AppState:
         self._experiment_id = None
         self.lock = threading.Lock()
         self.models_dir = None if models_dir is None else Path(models_dir).expanduser().resolve()
+        from .app_downloads import CATALOG, DownloadManager
+        self._download_specs = CATALOG
+        self.downloads = DownloadManager(Path(download_root).expanduser(), CATALOG)
+        self.max_model_bytes = max_model_bytes
         self.max_trace_bytes = max_trace_bytes
         if type(max_vram_bytes) is not int or not 1 <= max_vram_bytes <= 64 * 1024**3:
             raise ValueError("max_vram_bytes must be a positive integer <= 64 GiB")
@@ -138,8 +143,43 @@ class AppState:
                                     _text(data, "root", 4096, empty=True).strip(),
                                     models_dir=self.models_dir)
 
+    def model_catalog(self, query):
+        """Local pinned metadata and a live device snapshot; never downloads."""
+        from .app_downloads import catalog_view
+        if set(query) - {"device", "context_tokens", "show_all"} or any(len(v) != 1 for v in query.values()):
+            raise ValueError("Unknown or duplicate model catalog option")
+        requested = query.get("device", ["auto"])[0]
+        show = query.get("show_all", ["0"])[0]
+        if show not in {"0", "1"}: raise ValueError("show_all must be 0 or 1")
+        context = int(query.get("context_tokens", ["128"])[0])
+        capabilities = self.runtime.capabilities()
+        devices = [d for d in capabilities.get("devices", []) if isinstance(d, dict)]
+        cuda = [d for d in devices if isinstance(d.get("id"), str) and d["id"].startswith("cuda:")
+                and d.get("available") is True and capabilities.get("cuda", {}).get("available") is True]
+        device = (cuda[0]["id"] if cuda else "cpu") if requested == "auto" else requested
+        snapshot = next((d for d in cuda if d["id"] == device), None)
+        if device != "cpu" and snapshot is None:
+            raise ValueError("Selected CUDA device is unavailable; choose CPU or refresh device status")
+        answer = catalog_view(self._download_specs, device=device,
+            free_bytes=(snapshot or {}).get("free_bytes"), total_bytes=(snapshot or {}).get("total_bytes"),
+            context_tokens=context, show_all=show == "1", max_model_bytes=self.max_model_bytes,
+            max_vram_bytes=self.max_vram_bytes)
+        return {**answer, "resolved_device": device, "download_root": str(self.downloads.root)}
+
+    def stop_download(self):
+        current = self.downloads.status()
+        if current["state"] in {"running", "cancelling"}:
+            self.downloads.cancel(current["job_id"])
+
     def post(self, action, data):
         if not isinstance(data, dict): raise ValueError("Expected a JSON object")
+        if action == "download":
+            if set(data) != {"model_id", "revision"}: raise ValueError("Choose a catalog model and its exact revision")
+            return self.downloads.start(_text(data, "model_id", 64),
+                                        expected_revision=_text(data, "revision", 40))
+        if action == "cancel-download":
+            if set(data) != {"job_id"}: raise ValueError("Choose the current download ID")
+            return self.downloads.cancel(_text(data, "job_id", 64))
         if action == "pin-reference":
             self._require_capture_id(data.get("capture_id"))
             if data.get("expected_reference_id") != self._reference_id:
@@ -336,6 +376,11 @@ def create_server(state, port=0):
                         if query.get("experiment_id", [None])[0] is None or query["experiment_id"][0] != state._experiment_id:
                             raise ValueError("Comparison selection is stale; refresh before reading witnesses")
                     if path == "/api/status": answer = state.status()
+                    elif path == "/api/model-catalog": answer = state.model_catalog(
+                        parse_qs(parsed.query, strict_parsing=True, keep_blank_values=True))
+                    elif path == "/api/download":
+                        if parsed.query: raise ValueError("Download status takes no query options")
+                        answer = state.downloads.status()
                     elif path == "/api/reference": answer = state._reference_summary()
                     elif path == "/api/reference-tensor": answer = state.reference_tensor(query.get("reference_id", [None])[0], number("offset", 0), number("limit", 256))
                     elif path == "/api/compare-vector": answer = state.compare_reference(query.get("reference_id", [None])[0], query.get("capture_id", [None])[0], number("event", 0), number("vector", 0), number("offset", 0), number("limit", 256))
@@ -361,7 +406,7 @@ def create_server(state, port=0):
         def do_POST(self):
             if not self._allowed(api=True): return
             path = urlsplit(self.path).path
-            if path not in {"/api/inspect", "/api/load", "/api/demo", "/api/unload", "/api/browse-models", "/api/run", "/api/intervene", "/api/save", "/api/save-experiment", "/api/open", "/api/clear", "/api/pin-reference", "/api/clear-reference"}:
+            if path not in {"/api/inspect", "/api/load", "/api/demo", "/api/unload", "/api/browse-models", "/api/run", "/api/intervene", "/api/save", "/api/save-experiment", "/api/open", "/api/clear", "/api/pin-reference", "/api/clear-reference", "/api/download", "/api/cancel-download"}:
                 self._send(404, {"error": "Not found"}); return
             if self.headers.get("Transfer-Encoding") or len(self.headers.get_all("Content-Length", [])) != 1:
                 self._send(400, {"error": "A single bounded Content-Length is required"}); return
@@ -395,13 +440,14 @@ def main(argv=None):
     parser.add_argument("--no-browser", action="store_true")
     parser.add_argument("--models-dir", type=Path, help="Optional explicit directory whose immediate checkpoint subfolders appear in settings")
     parser.add_argument("--export-dir", type=Path, default=Path.cwd() / "looking-glass-runs")
+    parser.add_argument("--download-dir", type=Path, default=Path.cwd() / "looking-glass-models", help="Managed folder for explicitly requested curated downloads")
     parser.add_argument("--max-model-mib", type=int, default=2048, help="Parameter-storage preflight cap, not peak RAM")
     parser.add_argument("--max-vram-mib", type=int, default=65536, help="Maximum selectable CUDA allocator allowance; not all GPU/driver memory")
     parser.add_argument("--max-trace-mib", type=int, default=512, help="Saved tensor payload cap, not peak RAM")
     args = parser.parse_args(argv)
     if not 0 <= args.port <= 65535 or not 1 <= args.max_model_mib <= 16384 or not 1 <= args.max_trace_mib <= 512 or not 1 <= args.max_vram_mib <= 65536:
         parser.error("Invalid port or memory allowance")
-    state = AppState(export_root=args.export_dir, models_dir=args.models_dir,
+    state = AppState(export_root=args.export_dir, models_dir=args.models_dir, download_root=args.download_dir,
                      max_model_bytes=args.max_model_mib * 1024**2, max_trace_bytes=args.max_trace_mib * 1024**2,
                      max_vram_bytes=args.max_vram_mib * 1024**2)
     server = create_server(state, args.port)
@@ -413,6 +459,7 @@ def main(argv=None):
     finally:
         server.server_close()
         with state.lock:
+            state.stop_download()
             state.store.clear(); state.experiment_store.clear(); state.reference.clear()
     return 0
 

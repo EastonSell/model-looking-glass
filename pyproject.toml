@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "model-looking-glass"
-version = "0.1.0"
+version = "1.1.0"
 description = "Reproducible neural-network observation and causal experiments"
 requires-python = ">=3.10"
 dependencies = ["torch>=2.6"]

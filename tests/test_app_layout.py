@@ -266,3 +266,16 @@ def test_default_paragraphs_are_short_and_not_a_wall_of_instructions():
             continue
         # Optional comparison panels start hidden. Default guidance stays one short sentence.
         assert len(node.text.split()) <= 35, node.text
+
+
+def test_model_downloads_remain_an_explicit_closed_settings_workflow():
+    ids = page().ids
+    group = ids['download-options']
+    assert group.tag == 'details' and 'open' not in group.attrs
+    assert ids['session-options'] in group.ancestors()
+    for identifier in ('catalog-device', 'catalog-context', 'catalog-all', 'catalog-models', 'download-status', 'cancel-download', 'use-download'):
+        assert group in ids[identifier].ancestors()
+    assert 'does not load' in group.text
+    assert 'server limits, not your Load GPU allowance' in group.text
+    assert 'a lower Load allowance may still reject it' in group.text
+    assert group in ids['download-location'].ancestors()
