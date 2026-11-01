@@ -20,12 +20,17 @@
     <p class="muted">Load your model on CPU or an NVIDIA GPU.</p>
     <section aria-labelledby="model-heading">
       <h2 id="model-heading">Checkpoint</h2>
-      <div class="demo-onboarding"><strong>Optional demo</strong><button id="demo-button" type="button" title="Load tiny CPU demo">Load tiny CPU demo</button><p class="hint">Try the controls with a tiny, untrained CPU model. No download; its answers are not useful.</p><p class="hint">Save first: loading replaces your model and capture. Click Run when ready.</p></div>
       <label for="model-path">Local checkpoint folder</label>
       <input id="model-path" type="text" autocomplete="off" spellcheck="false" placeholder="/path/to/local/checkpoint" list="model-choices">
       <datalist id="model-choices"></datalist>
+      <button id="browse-button" class="secondary" type="button" title="Browse / find models">Browse / find models</button>
       <p id="model-discovery-warning" class="hint" aria-live="polite" hidden></p>
-      <div class="button-row"><button id="load-button" type="button" title="Load model">Load model</button></div>
+      <label for="execution-device">Device for next load</label>
+      <select id="execution-device" aria-describedby="device-choice-status"><option value="auto">Auto — prefer CUDA for supported families</option><option value="cpu">CPU</option></select>
+      <p id="device-choice-status" class="hint" role="status">Checking device availability…</p>
+      <div class="button-row"><button id="inspect-button" class="secondary" type="button" title="Inspect folder">Inspect folder</button><button id="load-button" type="button" title="Load model">Load model</button></div>
+      <p id="model-replace-warning" class="approximation" hidden>Save first: loading replaces your model, capture and comparison.</p>
+      <details id="demo-options" class="options"><summary>Try without a model</summary><div class="demo-onboarding"><button id="demo-button" type="button" title="Load tiny CPU demo">Load tiny CPU demo</button><p class="hint">Tiny, untrained and CPU-only. No download; its answers are not useful. Loading replaces your model and capture. Click Run when ready.</p></div></details>
 
       <details id="download-options" class="options"><summary>Get a model</summary>
         <p class="hint">Download a pinned model from Hugging Face. This writes model files locally; it does not load a model or change your capture.</p>
@@ -40,7 +45,6 @@
       </details>
 
       <details id="model-options" class="options"><summary>Model options &amp; compatibility</summary>
-      <button id="browse-button" class="secondary" type="button" title="Browse / find models">Browse / find models</button>
       <div id="folder-browser" class="info-box" hidden>
         <label for="browse-path">Browse within the allowed model root</label><input id="browse-path" type="text" autocomplete="off" spellcheck="false">
         <div class="button-row"><button id="browse-go" type="button" class="quiet" title="Go to folder">Go to folder</button><button id="browse-parent" type="button" class="quiet" title="Parent folder">Parent folder</button><button id="browse-select" type="button" class="quiet" title="Use this folder">Use this folder</button></div>
@@ -48,15 +52,12 @@
         <p class="hint">Choose a folder, or leave the path empty for local starting locations. We check that folder and its immediate subfolders—not your whole drive. Selecting a path never loads or downloads a model. Inspect checks files; Load tries the model. Browsing stays within the configured root.</p>
       </div>
       <p class="hint">Choose a local Hugging Face folder containing config.json, matching safetensors weights, and the matching fast tokenizer or image processor assets. For a Hugging Face cache, choose snapshots/&lt;revision&gt;, not a repository ID or cache parent. No automatic downloads or custom checkpoint code.</p>
-      <label for="execution-device">Execution device</label>
       <p class="hint">Install with <code>--backend cuda</code> for a compatible NVIDIA GPU, or <code>--backend cpu</code> for CPU. To change an existing installation, also pass <code>--reuse-venv</code> to <code>install.py</code>; then restart. Drivers are not installed for you.</p>
-      <select id="execution-device"><option value="auto">Auto — prefer CUDA for supported families</option><option value="cpu">CPU</option></select>
       <div class="device-summary"><p id="device-status" class="hint" aria-live="polite">Checking actual device availability…</p><button id="refresh-devices" class="quiet" type="button" title="Refresh availability">Refresh availability</button></div>
-      <p class="hint">Check this machine with <code>python -m looking_glass.app_selftest</code>. It tests tiny synthetic models, not your checkpoint, and reports passed, failed or skipped checks.</p>
+      <p class="hint">Check CUDA execution with <code>python -m looking_glass.app_selftest</code>. CPU-only machines report skipped. It uses tiny synthetic models, not your checkpoint; it does not establish CPU/GPU numerical equivalence.</p>
       <label for="vram-mib">GPU model / work allowance · MiB</label>
       <input id="vram-mib" type="number" min="1" max="65536" value="2048">
       <p id="vram-help" class="hint">Limits PyTorch GPU allocations, not total VRAM: drivers and other libraries need extra memory. Any stricter existing cap is respected and restored afterward. Full captures are copied to CPU RAM. CPU execution ignores this allowance.</p>
-      <div class="button-row"><button id="inspect-button" class="secondary" type="button" title="Inspect folder">Inspect folder</button></div>
       <section id="inspection-panel" class="inspection-panel" aria-labelledby="inspection-heading" hidden><h3 id="inspection-heading">Folder inspection · not the loaded model</h3><p id="inspection-path" class="hint"></p><p id="inspection-status" class="hint" aria-live="polite"></p><ul id="inspection-checks" class="inspection-checks"></ul><p id="inspection-summary" class="hint"></p><p id="inspection-memory" class="hint"></p><p class="hint">Inspection checks files without loading weights or running the model. Load can still fail.</p><details><summary>Exact inspection record</summary><pre id="inspection-details" class="detail-json"></pre></details></section>
       <button id="unload-button" class="quiet" type="button" disabled title="Unload model · keep capture">Unload model · keep capture</button>
       <p class="hint">Unloading keeps your capture readable. Device memory is released as runtime cleanup completes.</p>
@@ -102,7 +103,7 @@
     <div id="scene-canvas" aria-hidden="true" hidden></div>
     <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
       <p id="demo-model-warning" class="approximation" hidden>Untrained random CPU demo: output is synthetic, not useful model answers. This is not GPU validation.</p>
-    <section id="scene-empty" class="scene-empty" aria-label="No captured layers yet"><p>Choose a model, write a prompt, then Run.</p><button id="open-settings" type="button" class="secondary" title="Choose model or tiny demo">Choose model or tiny demo</button></section>
+    <section id="scene-empty" class="scene-empty" aria-label="No captured layers yet"><p id="scene-empty-message">Choose a model, write a prompt, then Run.</p><button id="open-settings" type="button" class="secondary" title="Choose model">Choose model</button></section>
     <aside id="query-dock" class="workspace-dock query-dock" aria-label="Prompt and response"><div class="dock-toolbar"><span>prompt / response</span><button id="query-dock-toggle" type="button" aria-label="Collapse prompt and response" aria-controls="query-dock-body" aria-expanded="true" title="Collapse prompt and response (])">›</button></div><div id="query-dock-body">
     <section id="input-card" class="panel query-panel" aria-labelledby="query-heading">
       <div class="panel-heading"><div><h2 id="query-heading">Prompt</h2></div></div>
@@ -154,7 +155,7 @@
         <details id="map-tools-options" class="options"><summary>Map options &amp; details</summary><p class="hint">Planes are actual captured layers; selectable bands are recorded sites, not neurons. The 3D view is navigation—not a neuron graph, model topology, or causal explanation. Independent of table filters. A module button opens its first captured vector; use the source picker to choose another position. Unknown observations remain available in the exact table.</p>
         <div class="row layer-map-toolbar"><label for="layer-map-forward">Forward</label><input id="layer-map-forward" type="number" min="0" step="1" value="0"><button id="layer-map-load" type="button" title="Load / refresh">Load / refresh</button></div>
         <p id="layer-map-status" class="hint" role="status">Open or refresh to list captured sites. No tensor values are read to build the map.</p>
-        </details><div class="scene-view-switch"><label class="sr-only" for="scene-view">View</label><select id="scene-view"><option value="scene">3D scene</option><option value="list">List</option></select><span class="hint">Captured sites · not neurons</span></div>
+        </details><div class="scene-view-switch"><label class="sr-only" for="scene-view">View</label><select id="scene-view"><option value="scene">3D scene</option><option value="list">List</option></select><button id="scene-reset" type="button" class="quiet" disabled title="Fit the captured layers in view">Reset view</button><span class="hint">Captured sites · not neurons</span></div>
         <p id="scene-render-status" class="hint" role="status"></p>
         <p id="scene-selection-status" class="hint" role="status"></p>
         <div id="layer-map-body" class="layer-map" data-view="scene"></div>

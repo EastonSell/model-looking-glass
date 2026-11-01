@@ -21,6 +21,7 @@
   }
   function syncSceneVisibility(){
     const scene=$('scene-view').value==='scene'&&!sceneFailed&&!!sceneApi;
+    $('scene-reset').disabled=state.busy||!scene||!state.mapCapture;
     $('scene-canvas').hidden=!scene||!state.mapCapture;$('layer-map-body').hidden=scene&&!!state.mapCapture;
     if(sceneApi){sceneApi.setActive(scene&&!!state.mapCapture);if(scene&&state.mapCapture)sceneApi.resize();}
   }
@@ -48,8 +49,30 @@
     if (!response.ok || data?.error) throw new Error(data?.error || `Request failed (${response.status}).`);
     return data;
   }
+  function syncDeviceChoice() {
+    const choice = $('execution-device').value || 'auto';
+    const available = state.devices.filter(device => /^cuda:\d+$/.test(device.id || '') && device.available === true);
+    let next;
+    if (choice === 'cpu') next = 'Next load: CPU.';
+    else if (choice === 'auto') next = available.length ? `Next load: Auto — prefers ${available[0].id} at last check.` : state.cuda?.available === false ? 'Next load: Auto — CPU at last check; CUDA unavailable.' : 'Next load: Auto — device availability not reported yet.';
+    else next = available.some(device => device.id === choice) ? `Next load: ${choice}.` : `Next load: ${choice} unavailable at last check; no CPU fallback.`;
+    const device = state.model?.device;
+    const actual = device === 'cpu' ? 'CPU' : typeof device === 'string' && /^cuda:\d+$/.test(device) ? device : null;
+    let current = '';
+    if (state.model?.state === 'quarantined') current = 'Restart required before loading or running again.';
+    else if (state.model) current = actual ? `Run still uses ${actual}. ${isDemo(state.model) ? 'The demo always uses CPU. ' : ''}Use Load model to apply a new device choice.` : 'The loaded device was not reported; changing this choice does not move the model.';
+    const message = [next, current].filter(Boolean).join(' ');
+    if ($('device-choice-status').textContent !== message) $('device-choice-status').textContent = message;
+    $('run-button').setAttribute('title', state.model?.state === 'quarantined' ? 'Restart required before another model run' : actual ? `Run & capture on ${actual}` : state.model ? 'Run & capture on the loaded model; device not reported' : 'Load a model before running');
+    $('model-replace-warning').hidden = !state.model && !state.run && !state.experiment;
+  }
   function syncButtons() {
-    syncDownloads();
+    syncDownloads(); syncDeviceChoice();
+    $('scene-reset').disabled = state.busy || sceneFailed || !sceneApi || !state.mapCapture || $('scene-view').value !== 'scene';
+    const ready = state.model && state.model.state !== 'quarantined', vision = String(state.model?.family || '').toLowerCase().includes('vit');
+    $('scene-empty-message').textContent = ready ? (vision ? 'Choose an image, then Run.' : 'Enter a prompt, then Run.') : state.model?.state === 'quarantined' ? 'Restart required for another model run. Saved captures can still be opened.' : 'Choose a model, write a prompt, then Run.';
+    $('open-settings').textContent = ready ? (vision ? 'Go to image' : 'Go to prompt') : 'Choose model';
+    $('open-settings').setAttribute('title', ready ? (vision ? 'Focus the image input' : 'Focus the prompt') : 'Open model settings');
     $('dock-exact').disabled = state.busy || !state.event; $('dock-edit').disabled = state.busy || !state.event; $('dock-reference').disabled = state.busy || !state.event;
     $('open-settings').disabled = state.busy;
     // Highlight canonical sites, not just their first event: singleton token captures share a site.
@@ -147,8 +170,8 @@
     select.value = selected;
     const available = state.devices.filter((device) => /^cuda:\d+$/.test(device.id || '') && device.available !== false);
     const lines = available.map((device) => `${device.id}: ${device.name || 'CUDA GPU'} · ${bytes(device.free_bytes)} free / ${bytes(device.total_bytes)} total at last check`);
-    if (!lines.length) lines.push(`CUDA unavailable${state.cuda?.reason ? ': ' + state.cuda.reason : ' or not reported'}. Auto will use CPU; an explicit CUDA choice will not fall back.`);
-    else lines.push('Auto prefers available CUDA. Choosing a CUDA device explicitly will not silently fall back to CPU.');
+    if (!lines.length) lines.push(`${state.cuda?.available === false ? 'CUDA unavailable at last check' : 'CUDA availability not reported'}${state.cuda?.reason ? ': ' + state.cuda.reason : ''}. Auto checks again when loading; an explicit CUDA choice will not fall back.`);
+    else lines.push('Availability is a snapshot, not a memory-fit guarantee. Auto checks again when loading; an explicit CUDA choice will not fall back to CPU.');
     $('device-status').textContent = lines.join('\n'); syncButtons();
   }
   function loadSettings() {
@@ -708,7 +731,8 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); const opened = await api('open', {path}); clearView(); showRun(opened); await loadEvents(); $('saved-status').textContent = 'Selected capture opened and validated. Other listed exports remain unverified.'; await refreshReferenceOptional(); }));
   $('scene-view').value = 'scene'; $('layer-map-body').setAttribute('data-view', 'scene');
   $('scene-view').addEventListener('change', () => { const view = $('scene-view').value; if (!['scene','list'].includes(view)||sceneFailed) $('scene-view').value = 'list'; $('layer-map-body').setAttribute('data-view',$('scene-view').value);syncSceneVisibility(); });
-  $('open-settings').addEventListener('click', () => { state.settingsOpener = 'open-settings'; $('session-options').open = true; $('model-path').focus(); });
+  $('open-settings').addEventListener('click', () => { if (state.busy) return; if (state.model && state.model.state !== 'quarantined') { setDock('query', true); const field = String(state.model.family || '').toLowerCase().includes('vit') ? $('image-file') : $('prompt'); field.focus({preventScroll:true}); $('query-dock').scrollIntoView({block:'nearest',behavior:'instant'}); return; } state.settingsOpener = 'open-settings'; $('session-options').open = true; $('model-path').focus(); });
+  $('scene-reset').addEventListener('click', () => { if (state.busy || sceneFailed || !sceneApi || !state.mapCapture || $('scene-view').value !== 'scene') return; try { sceneApi.resize(); } catch (_) { sceneUnavailable('3D framing unavailable. Use the captured-site list.'); } });
   function restoreSettingsFocus() { const opener = state.settingsOpener === 'open-settings' && !$('scene-empty').hidden ? 'open-settings' : 'session-summary'; $(opener).focus(); }
   $('session-summary').addEventListener('click', () => { state.settingsOpener = 'session-summary'; });
   $('session-options').addEventListener('keydown', event => { if (event.key === 'Escape' && $('session-options').open) { event.preventDefault(); $('session-options').open = false; restoreSettingsFocus(); } });

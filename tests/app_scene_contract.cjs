@@ -54,6 +54,7 @@ assert.deepEqual(selected,['a'],'raycast returns exact captured site key');
 clickCanvas.listeners.pointerdown(click);clickCanvas.listeners.pointerup({...click,clientX:click.clientX+30});assert.equal(selected.length,1,'drag is not selection');
 let released=0;for(const o of objects){if(o.geometry)o.geometry.addEventListener('dispose',()=>released++);if(o.material)o.material.addEventListener('dispose',()=>released++);}
 assert.equal(api.selectSite('a'),true);frame();frame();assert.equal(api.selectSite('a'),true);assert.equal(raf.size,0,'same-key UI synchronization must not restart focus');assert.equal(api.selectSite('missing'),false);
+const selectedOpacity=sites[0].material.opacity,sceneObjects=scene.children.slice();camera.position.set(80,40,-20);camera.lookAt(new THREE.Vector3(0,0,0));api.resize();frame();camera.updateMatrixWorld();assert.deepEqual(scene.children,sceneObjects);assert.equal(sites[0].material.opacity,selectedOpacity,'reset framing preserves selected-site highlight');for(const plane of planes)for(const x of [-.5,.5])for(const y of [-.65,.65]){const p=new THREE.Vector3(x,y,0).applyMatrix4(plane.matrixWorld).project(camera);assert((p.x+1)*800>=360&&(p.x+1)*800<=1040);assert((1-p.y)*450>=0&&(1-p.y)*450<=900);}assert.equal(selected.length,1,'reset does not select or read a site');
 assert.throws(()=>api.setLayers([{key:'x',sites:[{key:'same'},{key:'same'}]}]),/unique/i);
 assert.throws(()=>api.setLayers(Array.from({length:13},(_,i)=>({key:String(i),sites:[]}))),/12/);
 clickCanvas.listeners.pointerdown(click);

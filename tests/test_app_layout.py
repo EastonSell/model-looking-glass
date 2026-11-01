@@ -103,7 +103,7 @@ def test_core_actions_and_critical_notices_stay_outside_disclosures():
 def test_advanced_workflows_are_named_closed_disclosures_not_removed():
     ids = page().ids
     groups = {
-        "model-options": ("execution-device", "vram-mib", "browse-button", "inspect-button", "model-info"),
+        "model-options": ("vram-mib", "model-info"),
         "saved-options": ("saved-runs", "open-path", "open-button"),
         "capture-options": ("capture-mode", "layers", "trace-mib", "max-events"),
         "source-options": ("source-token", "source-forward", "source-stack", "clear-event-filters"),
@@ -331,3 +331,28 @@ def test_alerts_and_scene_docks_keep_accessible_neutral_chrome():
     assert 'text-align:center' not in css and 'text-align:right' not in css
     assert '--error-text:#e8eaf0' in css and '--warning-text:#e8eaf0' in css
     assert '::-webkit-scrollbar{width:4px;height:4px}' in css
+
+
+def test_model_path_and_next_load_device_precede_load_with_optional_demo_closed():
+    doc = page()
+    ids = doc.ids
+    for identifier in ("model-path", "browse-button", "inspect-button", "execution-device", "device-choice-status", "model-replace-warning", "load-button"):
+        assert [node.attrs.get("id") for node in ids[identifier].ancestors() if node.tag == "details"] == ["session-options"], identifier
+    assert doc.elements.index(ids["model-path"]) < doc.elements.index(ids["execution-device"]) < doc.elements.index(ids["load-button"])
+    assert ids["execution-device"].attrs["aria-describedby"] == "device-choice-status"
+    assert ids["device-choice-status"].attrs.get("role") == "status"
+    demo = ids["demo-options"]
+    assert demo.tag == "details" and "open" not in demo.attrs
+    assert demo in ids["demo-button"].ancestors()
+    assert doc.elements.index(ids["load-button"]) < doc.elements.index(demo)
+    assert "untrained" in demo.text and "CPU" in demo.text
+
+
+def test_reset_view_is_a_native_scene_action_not_hidden_in_map_details():
+    ids = page().ids
+    button = ids["scene-reset"]
+    assert button.tag == "button" and button.attrs.get("type") == "button"
+    assert "disabled" in button.attrs
+    assert "Reset view" in button.text
+    assert ids["map-tools-options"] not in button.ancestors()
+    assert ids["layer-map-options"] in button.ancestors()

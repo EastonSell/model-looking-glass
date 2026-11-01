@@ -216,7 +216,7 @@ The export directory must be new. These are short CPU transparency/round-trip ch
 
 ## Device selection and GPU semantics
 
-**Auto** prefers available CUDA for all five supported families and chooses CPU when CUDA is unavailable, reporting why. An explicit `cuda:N` request never silently falls back; unavailable devices and unsupported model families are rejected. Settings show discovered devices and the loaded model's actual device. Device indices follow PyTorch visibility (including `CUDA_VISIBLE_DEVICES`), not necessarily physical card numbering.
+**Auto** prefers available CUDA for all five supported families and chooses CPU when CUDA is unavailable, reporting why. An explicit `cuda:N` request never silently falls back; unavailable devices and unsupported model families are rejected. Choose the device beside the checkpoint path. It applies to the next **Load model**, not the model already loaded; the status and Run tooltip show that model's actual device. Device indices follow PyTorch visibility (including `CUDA_VISIBLE_DEVICES`), not necessarily physical card numbering.
 
 The app uses **direct forward hooks**: it copies the boundary values that the model actually computed. It does not implement a rounding-based gate, reconstruct hidden values from rounding error, or use the experimental auxiliary-gradient reporting channel. GPU arithmetic can differ from CPU arithmetic even at float32 (kernels, reduction order, TF32 settings and subnormal behavior); exact offload/save means preserving the observed values, **not** promising CPU/GPU-identical outputs. The run records device and numeric settings rather than silently changing global precision settings. See the [gradient-channel counterexample](GRADIENT_DENORMAL_V1.md).
 
@@ -232,6 +232,8 @@ ViT image decoding and preprocessing remain on CPU, with bounded RGB output geom
 <summary>Full capture and readable inspection</summary>
 
 ## Full capture and readable inspection
+
+**Reset view** fits the captured layers back into the 3D view without changing the selected vector or reading more data. Use **List** when WebGL is unavailable.
 
 1. Browse an explicitly chosen local folder or paste a checkpoint path. Inspect the model, select Auto/CPU/CUDA and the GPU allowance, then load it. Choose **Auto: all supported points**, or explicitly select roles and layers.
 2. Set input/output-token limits and capture byte/event allowances. Prompt truncation is rejected, never silently performed.
