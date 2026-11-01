@@ -2,12 +2,12 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const token = document.querySelector('meta[name="mlg-token"]').content;
-  const state = {outputGeneration: 0, outputStep: 0, tokenOffset: 0, tokenTotal: 0, mapAutoCapture: null, mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
+  const state = {settingsOpener: 'session-summary', mapButtons: [], outputGeneration: 0, outputStep: 0, tokenOffset: 0, tokenTotal: 0, mapAutoCapture: null, mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
   const pageSize = 100, valuePageSize = 256;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
   const bytes = (value) => { const n = Number(value); if (!Number.isFinite(n)) return '—'; return n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KiB` : `${(n / 1048576).toFixed(2)} MiB`; };
-  function revealOptions(id) { $(id).open = true; }
+  function revealOptions(id) { $(id).open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','privacy-options'].includes(id)) $('session-options').open = true; }
   function notice(message, error = false) { $('notice').textContent = message; $('notice').hidden = !message; $('notice').classList.toggle('error', error); }
   async function api(path, body) {
     if (body === undefined && /^(events|vectors|tensor|layer-map)\?/.test(path) && state.run?.capture_id) path += `&capture_id=${encodeURIComponent(state.run.capture_id)}`;
@@ -20,6 +20,19 @@
     return data;
   }
   function syncButtons() {
+    $('dock-exact').disabled = state.busy || !state.event; $('dock-edit').disabled = state.busy || !state.event; $('dock-reference').disabled = state.busy || !state.event;
+    $('open-settings').disabled = state.busy;
+    // Highlight canonical sites, not just their first event: singleton token captures share a site.
+    const coordinate = state.coordinate, metadata = state.event?.metadata;
+    const selector = metadata?.output_path;
+    const validSelector = Array.isArray(selector) && selector.every(Number.isSafeInteger);
+    for (const row of new Set(state.mapButtons.map(item => item.row))) row.setAttribute('data-selected', 'false');
+    let selectedSheet = false;
+    for (const item of state.mapButtons) {
+      const selected = item.capture === state.run?.capture_id && item.capture === state.mapCapture && item.forward === state.mapForward && coordinate?.status === 'known' && coordinate.app_forward_index === item.forward && coordinate.stack === item.stack && coordinate.layer_index === item.layer && coordinate.module_path === item.path && metadata?.module_kind === item.kind && validSelector && JSON.stringify(selector) === item.selector;
+      item.button.setAttribute('aria-pressed', String(selected)); if (selected) { item.row.setAttribute('data-selected', 'true'); selectedSheet = true; }
+    }
+    $('scene-selection-status').textContent = !state.mapCapture || !state.event ? '' : selectedSheet ? `Selected site highlighted · source position ${coordinate.token_position ?? '?'}. Sheet buttons initially open the first captured vector; the dock shows your current selection.` : coordinate?.status !== 'known' ? 'Source is not verified; no sheet is highlighted.' : 'Selected observation is outside this layer page or forward; no sheet is highlighted.';
     const stepCount = Array.isArray(state.run?.steps) ? state.run.steps.length : 0;
     $('output-step').disabled = state.busy || !stepCount; $('input-token-stack').disabled = state.busy || !stepCount;
     $('output-prev').disabled = state.busy || state.outputStep === 0; $('output-next').disabled = state.busy || state.outputStep + 1 >= stepCount;
@@ -161,6 +174,7 @@
     syncButtons();
   }
   function clearView() {
+    $('scene-empty').hidden = false;
     state.outputGeneration++; state.outputStep = 0; state.tokenOffset = 0; state.tokenTotal = 0;
     $('output-readout').replaceChildren(); $('input-token-strip').replaceChildren(); $('output-note').textContent = ''; $('input-token-note').textContent = ''; $('input-token-page').textContent = ''; $('output-step').value = '0';
     clearLayerMap();
@@ -168,6 +182,7 @@
     $('imported-control-warning').hidden = true; $('imported-comparison').hidden = true; clearDistribution('imported'); $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.'; syncButtons();
   }
   function showRun(run) {
+    $('scene-empty').hidden = true;
     state.outputStep = 0; state.tokenOffset = 0;
     state.run = run; $('imported-comparison').hidden = run.run_kind !== 'intervention_comparison'; if (run.run_kind === 'intervention_comparison') { renderDistribution('imported', run.experiment || {}); controlWarning('imported-control-warning', run.experiment || {}, run.model); } else clearDistribution('imported'); $('result-panel').hidden = false; $('trace-panel').hidden = false; $('answer').textContent = display(run.answer ?? 'No textual output.'); $('task-badge').textContent = run.task || 'Observed run';
     const captureModel = run.model; $('demo-capture-warning').hidden = !isDemo(captureModel); $('capture-model').textContent = captureModel ? `Capture model: ${captureModel.name || captureModel.family || captureModel.architecture || 'recorded model'}${captureModel.device ? ' on ' + captureModel.device : ''} — independent of the model currently loaded above.` : 'Model identity was not recorded in this capture.';
@@ -204,16 +219,16 @@
     const forward = record.app_forward_index;
     const knownForward = safeId(forward) && steps.filter(item => item?.app_forward_index === forward).length === 1;
     const out = $('output-readout'); out.replaceChildren();
-    $('output-note').textContent = knownForward ? `Forward ${forward} · model readout, separate from captured inputs. A selected next token is not an input position until a later recorded forward includes it. Logits are scores, not probabilities or confidence.` : 'Forward provenance unavailable. Recorded outputs are display-only; no source navigation is inferred.';
+    $('output-note').textContent = knownForward ? `Forward ${forward} · whole-model logits. A selected output is not an input position until recorded later.` : 'Forward provenance unavailable. Recorded outputs are display-only; no source navigation is inferred.';
     function outputRow(label, text, detail) { const row = document.createElement('div'); row.className = 'readout-row'; const badge = document.createElement('span'); badge.className = 'readout-label'; badge.textContent = label; const word = document.createElement('strong'); word.textContent = text; const score = document.createElement('span'); score.className = 'readout-score'; score.textContent = detail; row.append(badge, word, score); out.append(row); }
     if (family === 'vit') {
       const rows = Array.isArray(record.classes) ? record.classes.slice(0, 10) : [];
       for (const item of rows) if (item && safeId(item.class_id) && typeof item.label === 'string' && Number.isFinite(item.probability) && item.probability >= 0 && item.probability <= 1) outputRow(`Class ${item.class_id}`, shortText(item.label), `${Number((item.probability * 100).toPrecision(5))}% · recorded model probability`);
-      $('output-note').textContent = knownForward ? `Forward ${forward} · image classification. Recorded full-class-distribution probabilities, not confidence or text tokens.` : 'Image readout provenance unavailable.';
+      $('output-note').textContent = knownForward ? `Forward ${forward} · whole-model class probabilities, not confidence or text tokens.` : 'Image readout provenance unavailable.';
     } else if (family === 'distilbert') {
       const rows = Array.isArray(record.mask_predictions) ? record.mask_predictions.slice(0, 48) : [];
       for (const item of rows) if (item && safeId(item.position) && safeId(item.token_id) && typeof item.text === 'string') outputRow(`mask position ${item.position}`, shortText(item.text), `Predicted token ID ${item.token_id}`);
-      if (knownForward) $('output-note').textContent = `Forward ${forward} · masks predicted simultaneously. Predictions are output tokens, not replacement captured inputs. Scores were not recorded.`;
+      if (knownForward) $('output-note').textContent = `Forward ${forward} · simultaneous mask predictions, not replacement captured inputs. No scores recorded.`;
     } else {
       const rows = Array.isArray(record.top_next_tokens) ? record.top_next_tokens.slice(0, 10).filter(item => item && safeId(item.token_id) && typeof item.text === 'string' && Number.isFinite(item.logit)) : [];
       if (safeId(record.selected_token_id)) { const selected = rows.find(item => item.token_id === record.selected_token_id); outputRow('Selected next output', selected ? shortText(selected.text) || '(empty text)' : 'Token text unavailable', `Token ID ${record.selected_token_id}`); }
@@ -266,7 +281,7 @@
     return query;
   }
   function clearLayerMap() {
-    state.mapAutoCapture = null; state.mapRequest++; state.mapOffset = 0; state.mapTotal = 0; state.mapForward = 0; state.mapCapture = null;
+    state.mapButtons = []; state.mapAutoCapture = null; state.mapRequest++; state.mapOffset = 0; state.mapTotal = 0; state.mapForward = 0; state.mapCapture = null;
     $('layer-map-forward').value = '0'; $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = '';
     $('layer-map-status').textContent = 'Open or refresh to list captured sites. No tensor values are read to build the map.';
   }
@@ -275,7 +290,7 @@
     const raw = $('layer-map-forward').value.trim();
     if (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw))) { $('layer-map-status').textContent = 'Choose a nonnegative safe whole forward number.'; return; }
     const forward = Number(raw), capture = state.run.capture_id, request = ++state.mapRequest;
-    state.mapTotal = 0; state.mapCapture = null; $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = ''; $('layer-map-status').textContent = 'Reading captured-site metadata…'; syncButtons();
+    state.mapButtons = []; state.mapTotal = 0; state.mapCapture = null; $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = ''; $('layer-map-status').textContent = 'Reading captured-site metadata…'; syncButtons();
     try {
       const result = await api(`layer-map?forward=${forward}&offset=${offset}&limit=12`);
       if (request !== state.mapRequest || capture !== state.run?.capture_id) return;
@@ -288,14 +303,14 @@
         const row = document.createElement('div'); row.className = 'layer-map-row'; const label = document.createElement('strong'); label.textContent = `Layer ${layer.layer_index}`; row.append(label); const nodes = document.createElement('div'); nodes.className = 'layer-map-nodes'; row.append(nodes); group.append(row);
         for (const node of layer.nodes || []) {
           const button = document.createElement('button'); button.type = 'button'; button.className = 'layer-map-node';
-          button.textContent = `${node.module_kind} · ${node.module_path}`;
-          const counts = document.createElement('small'); counts.textContent = `${node.event_count} captured events · ${node.vector_count} vectors · ${bytes(node.tensor_bytes)} · output ${JSON.stringify(node.output_path)}`; button.append(counts);
+          const kind = document.createElement('span'); kind.className = 'sheet-module-kind'; kind.textContent = node.module_kind; const path = document.createElement('small'); path.className = 'sheet-module-path'; path.textContent = node.module_path; button.append(kind, path); button.setAttribute('title', `${layer.stack} layer ${layer.layer_index} · ${node.module_path} · first captured vector`); button.setAttribute('aria-label', `${layer.stack} layer ${layer.layer_index} · ${node.module_kind} · ${node.module_path} · output ${JSON.stringify(node.output_path)} · first captured vector`); button.setAttribute('aria-pressed', 'false'); const entry = {button, row, capture, forward, stack: layer.stack, layer: layer.layer_index, path: node.module_path, kind: node.module_kind, selector: JSON.stringify(node.output_path), eventIndex: node.representative_event.index}; state.mapButtons.push(entry);
+          const counts = document.createElement('small'); counts.className = 'sheet-module-counts'; counts.textContent = `${node.event_count} captured events · ${node.vector_count} vectors · ${bytes(node.tensor_bytes)} · output ${JSON.stringify(node.output_path)}`; button.append(counts);
           button.addEventListener('click', () => {
-            if (state.busy || request !== state.mapRequest || capture !== state.run?.capture_id || state.mapCapture !== capture || forward !== state.mapForward) return;
+            if (state.busy || !state.mapButtons.includes(entry) || capture !== state.run?.capture_id || state.mapCapture !== capture || forward !== state.mapForward) return;
             return action('Reading the first captured vector at this module site…', async () => {
-              const selected = node.representative_event, vector = selected.matched_vector_index ?? 0;
+              const selectionRequest = state.mapRequest, selected = node.representative_event, vector = selected.matched_vector_index ?? 0;
               await chooseEvent(selected);
-              if (request !== state.mapRequest || capture !== state.run?.capture_id || state.event?.index !== selected.index || state.vector !== vector || Number($('vector-index').value) !== vector) return;
+              if (selectionRequest !== state.mapRequest || !state.mapButtons.includes(entry) || capture !== state.run?.capture_id || state.event?.index !== selected.index || state.vector !== vector || Number($('vector-index').value) !== vector) return;
               $('vector-heading').focus({preventScroll: true}); $('vector-panel').scrollIntoView({block: 'start'});
             });
           });
@@ -392,6 +407,7 @@
     } catch (error) {
       if (request !== state.vectorListRequest || state.event?.index !== eventIndex) return;
       state.vectorOptions = []; $('vector-picker').replaceChildren(); $('vectors-page').textContent = '';
+      revealOptions('vector-options');
       $('vector-list-status').textContent = `Source-position list unavailable: ${error.message || String(error)}. Use the numeric vector index or previous/next vector controls; retained values remain available.`;
     }
     syncButtons();
@@ -572,6 +588,16 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   }));
   $('load-button').addEventListener('click', () => action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); const info = await api('load', {path, ...execution}); clearView(); setModel(info); await refreshReferenceOptional(); }));
   $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); const opened = await api('open', {path}); clearView(); showRun(opened); await loadEvents(); $('saved-status').textContent = 'Selected capture opened and validated. Other listed exports remain unverified.'; await refreshReferenceOptional(); }));
+  $('scene-view').value = 'scene'; $('layer-map-body').setAttribute('data-view', 'scene');
+  $('scene-view').addEventListener('change', () => { const view = $('scene-view').value; if (!['scene','list'].includes(view)) { $('scene-view').value = 'list'; } $('layer-map-body').setAttribute('data-view', $('scene-view').value); });
+  $('open-settings').addEventListener('click', () => { state.settingsOpener = 'open-settings'; $('session-options').open = true; $('model-path').focus(); });
+  function restoreSettingsFocus() { const opener = state.settingsOpener === 'open-settings' && !$('scene-empty').hidden ? 'open-settings' : 'session-summary'; $(opener).focus(); }
+  $('session-summary').addEventListener('click', () => { state.settingsOpener = 'session-summary'; });
+  $('session-options').addEventListener('keydown', event => { if (event.key === 'Escape' && $('session-options').open) { event.preventDefault(); $('session-options').open = false; restoreSettingsFocus(); } });
+  $('session-options').addEventListener('toggle', () => { if (!$('session-options').open) restoreSettingsFocus(); });
+  $('dock-exact').addEventListener('click', () => { if (!state.event || state.busy) return; revealOptions('feature-values-options'); $('feature-values-options').scrollIntoView({block:'nearest'}); });
+  $('dock-edit').addEventListener('click', () => { if (!state.event || state.busy) return; revealOptions('intervention-options'); $('intervention-operation').focus(); });
+  $('dock-reference').addEventListener('click', () => { if (!state.event || state.busy) return; revealOptions('reference-options'); $('reference-options').scrollIntoView({block:'nearest'}); });
   $('output-step').addEventListener('change', () => { const raw = $('output-step').value.trim(), index = Number(raw); if (!/^\d+$/.test(raw) || !safeId(index) || index >= (state.run?.steps?.length || 0)) { state.outputGeneration++; $('output-readout').replaceChildren(); $('input-token-strip').replaceChildren(); $('input-token-page').textContent = ''; $('output-note').textContent = 'Choose a recorded forward record in range.'; return; } state.outputStep = index; state.tokenOffset = 0; renderForward(); });
   $('output-prev').addEventListener('click', () => { if (state.busy || state.outputStep === 0) return; state.outputStep--; state.tokenOffset = 0; renderForward(); });
   $('output-next').addEventListener('click', () => { if (state.busy || state.outputStep + 1 >= (state.run?.steps?.length || 0)) return; state.outputStep++; state.tokenOffset = 0; renderForward(); });

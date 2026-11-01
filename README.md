@@ -15,7 +15,7 @@ Start with **direct activation capture**, explicit execution coordinates, and co
 py -3 install.py --backend cpu
 ```
 
-On macOS/Linux use `python3 install.py --backend cpu`. For a compatible NVIDIA GPU/driver, choose `--backend cuda` instead when installing. Omitting `--backend` defaults to CUDA 13.2 on Linux/Windows; no driver or model checkpoint is installed. Keep the terminal open, choose **Load tiny demo → Run & capture**, then expand **Layer map** to explore exact vectors. The demo is untrained, not a useful language model.
+On macOS/Linux use `python3 install.py --backend cpu`. For a compatible NVIDIA GPU/driver, choose `--backend cuda` instead when installing. Omitting `--backend` defaults to CUDA 13.2 on Linux/Windows; no driver or model checkpoint is installed. Keep the terminal open, open **Model & settings**, choose **Load tiny demo → Run & capture**, then select a captured layer/module to explore exact vectors. The demo is untrained, not a useful language model.
 
 **Start again without reinstalling:** on latest main, run `py -3 start.py` (Windows) or `python3 start.py` (macOS/Linux). It only uses this folder's existing `.venv`; it never installs packages or changes CPU/CUDA builds. Keep the extracted folder in place. **The published layer-map preview predates `start.py`**: if the file is absent, run `.\.venv\Scripts\python.exe -m looking_glass.app` on Windows or `./.venv/bin/python -m looking_glass.app` on macOS/Linux. [Installation and troubleshooting](docs/LOCAL_APP.md#install-and-start).
 
@@ -25,7 +25,7 @@ The workbench has **CUDA-first paths for GPT-2, T5, DistilBERT, ViT and standard
 
 **Inspect folder** checks local input assets before loading weights and keeps inspection separate from the loaded model. Missing tokenizer/processor files are diagnosed before replacing your live model; a failed load leaves the retained capture readable.
 
-**[Visual explorer and token readout](docs/LOCAL_APP.md#reading-tokens-and-model-output):** choose a recorded forward, read its input tokens and actual model output candidates, then click a captured module to inspect its recorded representative vector. The map is independent of token filters; use the source-position picker to choose another token. Decoded token text is shown alongside IDs and source positions; exact feature values remain available in details. Layer sheets show captured boundaries—not invented neuron connections or words decoded from hidden-state numbers.
+**[Scene-first explorer](docs/LOCAL_APP.md#optional-layer-map):** input and output panels flank a dark, translucent layer scene; a source dock opens the exact captured vector. Each sheet comes from a recorded layer, not a fabricated neuron graph. Switch to **Flat list** for a straightforward module view. Perspective, spacing and glow are visual layout—not learned geometry, activation magnitude or causal connections. Readable token IDs/positions and actual model outputs remain separate; all raw values/bits, references and controlled edits are still available. This layout is on **main**; existing preview tags remain unchanged.
 
 **No checkpoint yet?** Choose **Load tiny demo**, then Run. This builds an untrained miniature GPT-2 entirely in CPU RAM—no download or checkpoint files—so you can learn capture navigation and controlled edits immediately. Its random output is not useful language or GPU validation.
 

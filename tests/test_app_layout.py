@@ -91,9 +91,9 @@ def test_disclosures_have_native_named_noninteractive_summaries():
 
 def test_core_actions_and_critical_notices_stay_outside_disclosures():
     ids = page().ids
-    core = ("model-path", "load-button", "demo-button", "model-badge",
+    core = ("model-badge",
             "prompt", "run-button", "vector-picker",
-            "vector-coordinate", "notice", "run-status", "replace-warning",
+            "source-readable", "notice", "run-status", "replace-warning",
             "demo-model-warning", "demo-capture-warning", "demo-experiment-warning",
             "experiment-outcome")
     for identifier in core:
@@ -167,7 +167,7 @@ def test_readable_explorer_and_outputs_are_primary_not_raw_numbers():
     ids = page().ids
     for identifier in ("output-readout", "input-token-strip", "source-readable", "explorer-grid"):
         assert identifier in ids
-    assert ids["explorer-grid"] in list(ids["vector-panel"].ancestors())
+    assert ids["scene-workspace"] in list(ids["vector-panel"].ancestors())
     assert ids["explorer-grid"] in list(ids["layer-map-options"].ancestors())
     assert ids["feature-values-options"] in list(ids["raw-values"].ancestors())
     assert ids["event-catalog-options"] in list(ids["event-body"].ancestors())
@@ -181,8 +181,47 @@ def test_workspace_has_local_dark_presentation_and_truthful_readout():
     assert "color-scheme: dark" in css
     assert "complete model output—not from decoding the selected intermediate activation" in doc.root.text
     assert "Hidden feature numbers are not token IDs" in doc.root.text
-    assert "grid-template-columns:minmax(330px,1.1fr) minmax(320px,1fr)" in css
+    assert "perspective:" in css and "prefers-reduced-motion: reduce" in css
     for node in doc.elements:
         if node.tag in {"script", "link"}:
             target = node.attrs.get("src", node.attrs.get("href", ""))
             assert target.startswith("/") and not target.startswith("//"), target
+
+
+def test_scene_composition_and_accessible_controls_preserve_truth():
+    ids = page().ids
+    assert ids["header-controls"] in list(ids["run-button"].ancestors())
+    assert ids["header-controls"] in list(ids["model-badge"].ancestors())
+    assert ids["input-card"] in list(ids["input-token-strip"].ancestors())
+    assert ids["result-panel"] in list(ids["output-readout"].ancestors())
+    assert ids["scene-workspace"] in list(ids["vector-panel"].ancestors())
+    assert not any(n.tag == "details" for n in ids["demo-model-warning"].ancestors())
+    assert ids["scene-view"].tag == "select"
+    assert "not neurons" in ids["layer-map-options"].text
+    assert "No capture" in ids["scene-empty"].text
+    for name in ("dock-exact", "dock-edit", "dock-reference"):
+        assert ids[name].tag == "button"
+        assert ids["vector-panel"] in list(ids[name].ancestors())
+
+
+def test_output_card_keeps_predictions_primary_and_details_reachable():
+    ids = page().ids
+    detail = ids["capture-details-options"]
+    assert detail.tag == "details" and "open" not in detail.attrs
+    for name in ("capture-model", "capture-info", "run-metrics", "coverage", "save-button", "save-status"):
+        assert detail in ids[name].ancestors()
+    for name in ("answer", "output-readout", "demo-capture-warning", "imported-control-warning"):
+        assert not any(n.tag == "details" for n in ids[name].ancestors())
+
+
+def test_scene_has_flat_reduced_motion_and_keyboard_front_plane():
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    assert "prefers-reduced-motion: reduce" in css
+    assert ".layer-map-row:focus-within" in css
+    assert '.layer-map[data-view=list]' in css
+    assert "transform:none" in css and "perspective:none" in css
+    assert "transition:all" not in css and "transition: all" not in css
+    ids = page().ids
+    assert ids["scene-view"].tag == "select"
+    assert ids["session-summary"].tag == "summary"
+    assert "role" not in ids["session-options"].attrs  # Non-modal; no synthetic focus trap.
