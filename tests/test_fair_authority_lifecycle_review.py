@@ -54,7 +54,7 @@ def test_authority_fault_during_forward_quarantines_lifecycle_and_retains_budget
     try:
         assert ready.wait(5)
         client = IPCClient(server.address, server.team_tokens['team'], io_timeout=2)
-        client.submit(team_id='team', request_id='blocked', inputs={'input_ids': [[1, 2]]})
+        handle = client.submit(team_id='team', request_id='blocked', inputs={'input_ids': [[1, 2]]})
         assert model.entered.wait(5)
         authority.mark_unsafe()
         thread.join(5)
@@ -62,6 +62,7 @@ def test_authority_fault_during_forward_quarantines_lifecycle_and_retains_budget
         assert len(results) == 1 and results[0].status is OwnerStatus.QUARANTINED
         assert not results[0].teardown_verified
         assert owner.quarantined and set(budget.active_leases()) == {load, workspace}
+        assert handle is not None
     finally:
         stop.set()
         stop_owner(model, broker)
