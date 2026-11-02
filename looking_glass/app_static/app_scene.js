@@ -94,8 +94,10 @@
       if(dead || failed)return;
       const rect=container.getBoundingClientRect();width=Math.max(1,rect.width);height=Math.max(1,rect.height);
       renderer.setPixelRatio(Math.min(global.devicePixelRatio || 1,2));renderer.setSize(width,height,false);
-      const docked=width>=1280,left=docked?Math.max(300,width*0.225):0,right=docked?Math.max(400,width*0.35):0;
-      const gap=Math.max(160,width-left-right),center=left+gap/2;
+      const insets=options.getViewInsets?options.getViewInsets():null;
+      let left=Number.isFinite(insets?.left)?Math.max(0,insets.left):0,right=Number.isFinite(insets?.right)?Math.max(0,insets.right):0;
+      if(left+right>=width){left=0;right=0;} // Ignore stale/non-overlapping layout measurements.
+      const gap=width-left-right,center=left+gap/2;
       camera.aspect=width/height;camera.setViewOffset(width,height,width/2-center,0,width,height);
       const box=content && content.children.length ? new T.Box3().setFromObject(content) : new T.Box3(new T.Vector3(-0.5,-0.65,0),new T.Vector3(0.5,0.65,0));
       const target=box.getCenter(new T.Vector3());

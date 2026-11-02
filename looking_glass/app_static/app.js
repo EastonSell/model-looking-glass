@@ -12,6 +12,7 @@
   function setDock(side,open){
     const dock=$(`${side}-dock`),body=$(`${side}-dock-body`),button=$(`${side}-dock-toggle`);
     body.hidden=!open;dock.setAttribute('data-collapsed',String(!open));button.setAttribute('aria-expanded',String(open));
+    $('scene-workspace').setAttribute(`data-${side}-collapsed`,String(!open));
     button.textContent=side==='selection'?(open?'‹':'›'):(open?'›':'‹');
     const label=side==='selection'?'selected capture':'prompt and response';button.setAttribute('aria-label',`${open?'Collapse':'Expand'} ${label}`);button.setAttribute('title',`${open?'Collapse':'Expand'} ${label} (${side==='selection'?'[':']'})`);
     if(sceneApi)sceneApi.resize();
@@ -30,10 +31,21 @@
     if(sceneApi&&!sceneFailed){try{sceneApi.setLayers(layers);}catch(_){sceneUnavailable('Captured-site scene unavailable. Use the exact list.');}}
     syncSceneVisibility();
   }
+  function sceneViewInsets(){
+    const scene=$('scene-canvas').getBoundingClientRect();
+    if(!scene.width || !scene.height)return {left:0,right:0};
+    const overlap=id=>{
+      const dock=$(id).getBoundingClientRect();
+      return dock.width>0 && dock.height>0 && dock.top<scene.bottom && dock.bottom>scene.top && dock.left<scene.right && dock.right>scene.left ? dock : null;
+    };
+    const left=overlap('selection-dock'),right=overlap('query-dock');
+    // Read the actual layout: collapsed rails still need room; stacked docks do not.
+    return {left:left?Math.max(0,left.right-scene.left+12):0,right:right?Math.max(0,scene.right-right.left+12):0};
+  }
   function initializeScene(){
     const library=typeof window!=='undefined'?window.MLGScene:null;
     if(!library||typeof library.create!=='function'){sceneUnavailable('3D assets unavailable. Use the captured-site list.');return;}
-    try{sceneApi=library.create($('scene-canvas'),{onUnavailable:sceneUnavailable,onSelect:key=>{const entry=sceneSites.get(key);if(sceneFailed||!entry||state.busy||!state.mapButtons.includes(entry))return;return entry.select();}});syncSceneVisibility();}
+    try{sceneApi=library.create($('scene-canvas'),{getViewInsets:sceneViewInsets,onUnavailable:sceneUnavailable,onSelect:key=>{const entry=sceneSites.get(key);if(sceneFailed||!entry||state.busy||!state.mapButtons.includes(entry))return;return entry.select();}});syncSceneVisibility();}
     catch(_){sceneUnavailable('3D rendering unavailable. Use the captured-site list.');}
   }
 
@@ -433,7 +445,7 @@
     const filter = state.eventQuery || $('source-token').value || $('source-forward').value || $('source-stack').value; $('event-body').replaceChildren(); let shown = 0;
     for (const event of state.events) {
       const meta = event.metadata || {}; const forward = meta.app_forward_index ?? meta.forward_index ?? event.forward_index ?? '—';
-      shown++; const row = document.createElement('tr'); row.classList.toggle('selected', event.index === state.event?.index); cell(row, event.index); const nameCell = document.createElement('td'), button = document.createElement('button'); button.type = 'button'; button.textContent = eventName(event); button.disabled = state.busy; button.addEventListener('click', () => action('Reading selected observation…', () => chooseEvent(event))); nameCell.append(button); row.append(nameCell); cell(row, forward); cell(row, sourceSummary(event)); cell(row, (event.shape || meta.saved_shape || meta.shape || []).join(' × ')); cell(row, bytes(event.tensor_bytes)); $('event-body').append(row);
+      shown++; const row = document.createElement('tr'); row.classList.toggle('selected', event.index === state.event?.index); cell(row, event.index); const nameCell = document.createElement('td'), button = document.createElement('button'); button.type = 'button'; button.textContent = eventName(event); button.disabled = state.busy; button.addEventListener('click', () => action('Reading selected observation…', () => { setDock('selection',true); return chooseEvent(event); })); nameCell.append(button); row.append(nameCell); cell(row, forward); cell(row, sourceSummary(event)); cell(row, (event.shape || meta.saved_shape || meta.shape || []).join(' × ')); cell(row, bytes(event.tensor_bytes)); $('event-body').append(row);
     }
     if (!shown) { const row = document.createElement('tr'); const td = cell(row, 'No observations match this search.'); td.colSpan = 6; $('event-body').append(row); }
     $('event-total').textContent = `${state.eventTotal} matching / ${state.eventTotalAll} total observations`;

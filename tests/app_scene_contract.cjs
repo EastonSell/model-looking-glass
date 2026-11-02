@@ -12,7 +12,8 @@ const document=new El();document.createElement=()=>new El();document.hidden=fals
 const context={THREE:{...THREE,WebGLRenderer:Renderer},document,console,performance:{now:()=>0},matchMedia:()=>({matches:reduced,addEventListener(){},removeEventListener(){}}),requestAnimationFrame:f=>{raf.set(++serial,f);return serial;},cancelAnimationFrame:id=>raf.delete(id),devicePixelRatio:1,getComputedStyle:()=>({getPropertyValue:n=>({'--accent':'#112233','--muted':'#445566','--text-3':'#778899'}[n]||'')})};context.window=context;
 vm.runInNewContext(fs.readFileSync(path.join(root,'vendor/OrbitControls-0.128.0.js'),'utf8'),context);
 vm.runInNewContext(fs.readFileSync(path.join(root,'app_scene.js'),'utf8'),context);
-const el=new El(),selected=[],fail=[];const api=context.MLGScene.create(el,{onSelect:k=>selected.push(k),onUnavailable:r=>fail.push(r)});
+let viewInsets={left:360,right:560};
+const el=new El(),selected=[],fail=[];const api=context.MLGScene.create(el,{getViewInsets:()=>viewInsets,onSelect:k=>selected.push(k),onUnavailable:r=>fail.push(r)});
 assert(api);api.setLayers([{key:'L0',label:'Layer 0',sites:[{key:'a',label:'Attention'},{key:'b',label:'MLP'}]},{key:'L1',label:'Layer 1',sites:[{key:'c',label:'Block'}]}]);
 function frame(){const calls=[...raf.values()];raf.clear();calls.forEach(f=>f(arguments[0]||0));}frame();
 let {scene,camera}=renders.at(-1),objects=[];scene.traverse(o=>objects.push(o));
@@ -28,15 +29,42 @@ for(const plane of planes)for(const x of [-0.5,0.5])for(const y of [-0.65,0.65])
  assert(screenY>=0 && screenY<=900);
 }
 for(const viewport of [1440,2576]){
- el.clientWidth=viewport;api.resize();frame();camera.updateMatrixWorld();
+ el.clientWidth=viewport;viewInsets={left:Math.max(300,viewport*.225),right:Math.max(400,viewport*.35)};api.resize();frame();camera.updateMatrixWorld();
  const left=Math.max(300,viewport*.225),right=viewport-Math.max(400,viewport*.35);
  for(const plane of planes)for(const x of [-.5,.5])for(const y of [-.65,.65]){
   const p=new THREE.Vector3(x,y,0).applyMatrix4(plane.matrixWorld).project(camera),sx=(p.x+1)*viewport/2;
   assert(sx>=left && sx<=right,`plane outside ${viewport}px dock gap`);
  }
 }
-el.clientWidth=1200;api.resize();frame();camera.updateMatrixWorld();const centered=new THREE.Box3().setFromObject(scene).getCenter(new THREE.Vector3()).project(camera);assert(Math.abs(centered.x)<1e-8,'stacked responsive layout under1280 uses full-width framing');
-el.clientWidth=1600;api.resize();frame();
+el.clientWidth=1200;viewInsets={left:0,right:0};api.resize();frame();camera.updateMatrixWorld();const centered=new THREE.Box3().setFromObject(scene).getCenter(new THREE.Vector3()).project(camera);assert(Math.abs(centered.x)<1e-8,'stacked responsive layout under1280 uses full-width framing');
+el.clientWidth=1600;viewInsets={left:360,right:560};api.resize();frame();
+// Collapsing either side must reclaim real camera space, not merely hide its DOM.
+for(const width of [1280,1440,1920]){
+ el.clientWidth=width;
+ const fullLeft=Math.max(300,width*.225),fullRight=Math.max(400,width*.35);
+ const spans=[];
+ for(const insets of [{left:fullLeft,right:fullRight},{left:50,right:fullRight},{left:fullLeft,right:50},{left:50,right:50}]){
+  viewInsets=insets;api.resize();frame();camera.updateMatrixWorld();
+  const xs=[];
+  for(const plane of planes)for(const x of [-.5,.5])for(const y of [-.65,.65]){
+   const p=new THREE.Vector3(x,y,0).applyMatrix4(plane.matrixWorld).project(camera),sx=(p.x+1)*width/2;
+   assert(sx>=insets.left && sx<=width-insets.right,'scene stays outside visible dock/rail');xs.push(sx);
+  }
+  spans.push(Math.max(...xs)-Math.min(...xs));
+  const center=new THREE.Box3().setFromObject(scene).getCenter(new THREE.Vector3()).project(camera);
+  assert(Math.abs((center.x+1)*width/2-(insets.left+(width-insets.left-insets.right)/2))<1e-8,'camera recenters in the actual available gap');
+ }
+ for(const span of spans.slice(1))assert(span>=spans[0]-1e-8,'collapse never shrinks layers');
+ if(width<1920){assert(spans[1]>spans[0]*1.1,'left collapse makes width-constrained layers larger');assert(spans[2]>spans[0]*1.1,'right collapse makes width-constrained layers larger');}
+ assert(spans[3]>=Math.max(spans[1],spans[2])-1e-8,'both collapsed never shrink the view; height may already limit scale');
+ camera.updateMatrixWorld();const center=new THREE.Box3().setFromObject(scene).getCenter(new THREE.Vector3()).project(camera);
+ assert(Math.abs(center.x)<1e-8,'equal collapsed rails center the layer stack');
+}
+for(const invalid of [undefined,{left:NaN,right:-5},{left:Infinity,right:Infinity},{left:900,right:900}]){
+ viewInsets=invalid;el.clientWidth=800;api.resize();frame();
+ assert(Number.isFinite(camera.position.length()),'invalid or stale geometry never produces an invalid camera');
+}
+el.clientWidth=1600;viewInsets={left:360,right:560};api.resize();frame();
 const layerLabel=el.children[1].children[0],siteLabel=el.children[1].children[1];
 const labelCorner=new THREE.Vector3(-.5,.65,0).applyMatrix4(planes[0].matrixWorld).project(camera);
 assert(Math.abs(parseFloat(layerLabel.style.left)-(labelCorner.x+1)*800)<1e-6,'layer label anchors at actual top-left plane corner');

@@ -356,3 +356,17 @@ def test_reset_view_is_a_native_scene_action_not_hidden_in_map_details():
     assert "Reset view" in button.text
     assert ids["map-tools-options"] not in button.ancestors()
     assert ids["layer-map-options"] in button.ancestors()
+
+
+def test_collapsed_docks_release_grid_tracks_without_changing_mobile_stack():
+    # Structural CSS contract only; actual rendered widths require browser QA.
+    import re
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    workspace = re.search(r"\.scene-workspace\s*\{([^}]+)\}", css).group(1)
+    assert "grid-template-columns:var(--selection-width) minmax(0,1fr) var(--query-width)" in workspace
+    for side in ("selection", "query"):
+        rule = re.search(r"\.scene-workspace\[data-" + side + r"-collapsed=true\]\s*\{([^}]+)\}", css)
+        assert rule, side
+        assert f"--{side}-width:30px" in rule.group(1)
+    assert "@media(max-width:1279px){.scene-workspace{grid-template-columns:minmax(0,1fr) minmax(0,1fr)" in css
+    assert "@media(max-width:700px)" in css
