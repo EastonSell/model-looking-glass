@@ -1,6 +1,7 @@
 """Static HTML contracts, not browser rendering or assistive-technology certification."""
 from html.parser import HTMLParser
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -198,7 +199,7 @@ def test_scene_composition_and_accessible_controls_preserve_truth():
     assert ids["scene-workspace"] in list(ids["vector-panel"].ancestors())
     assert not any(n.tag == "details" for n in ids["demo-model-warning"].ancestors())
     assert ids["scene-view"].tag == "select"
-    assert "not neurons" in ids["scene-toolbar"].text
+    assert "not neurons" in ids["map-tools-options"].text
     assert "Choose a model" in ids["scene-empty"].text
     for name in ("dock-exact", "dock-edit", "dock-reference"):
         assert ids[name].tag == "button"
@@ -232,8 +233,8 @@ def test_discovery_is_explicit_and_wireframe_is_not_fake_model_data():
     ids = page().ids
     assert ids["browse-current"].attrs.get("role") == "status"
     assert ids["browse-discovery-details"].tag == "pre"
-    assert "immediate subfolders" in ids["folder-browser"].text
-    assert "Inspect" in ids["folder-browser"].text
+    assert ids["folder-browser"] in ids["browse-current"].ancestors()
+    assert ids["inspect-button"].tag == "button"
     css = (ROOT / "looking_glass/app_static/app.css").read_text()
     assert "#04050a" in css and "rgba(10,13,19,.82)" in css
     assert "radial-gradient" not in css
@@ -248,12 +249,13 @@ def test_minimal_default_keeps_explanations_and_scores_collapsed():
         'readout-options': ['output-readout', 'output-note'],
         'map-tools-options': ['layer-map-forward', 'layer-map-status'],
         'source-position-options': ['vector-coordinate'],
+        'explorer-options': ['trace-panel', 'layer-map-body'],
     }
     for group, contents in groups.items():
         assert ids[group].tag == 'details' and 'open' not in ids[group].attrs
         for item in contents:
             assert ids[group] in ids[item].ancestors(), (group, item)
-    for item in ['prompt', 'answer', 'layer-map-body', 'vector-picker', 'source-readable']:
+    for item in ['prompt', 'answer', 'vector-picker', 'source-readable']:
         assert not any(n.tag == 'details' and 'open' not in n.attrs for n in ids[item].ancestors()), item
 
 
@@ -275,7 +277,7 @@ def test_model_downloads_remain_an_explicit_closed_settings_workflow():
     assert ids['session-options'] in group.ancestors()
     for identifier in ('catalog-device', 'catalog-context', 'catalog-all', 'catalog-models', 'download-status', 'cancel-download', 'use-download'):
         assert group in ids[identifier].ancestors()
-    assert 'does not load' in group.text
+    assert 'Load it when ready' in group.text
     assert 'server limits, not your Load GPU allowance' in group.text
     assert 'a lower Load allowance may still reject it' in group.text
     assert group in ids['download-location'].ancestors()
@@ -295,6 +297,7 @@ def test_selected_token_evidence_is_qualified_and_candidates_are_collapsed():
     ids = page().ids
     evidence = ids['token-evidence']
     assert ids['vector-panel'] in evidence.ancestors()
+    assert evidence.tag == 'details' and 'open' not in evidence.attrs
     assert 'Whole-model output, not decoding this layer' in evidence.text
     assert ids['token-evidence-candidates-options'].tag == 'details'
     assert 'open' not in ids['token-evidence-candidates-options'].attrs
@@ -307,8 +310,12 @@ def test_real_scene_and_two_docks_replace_perspective_dashboard():
     assert ids['selection-dock'] in ids['vector-panel'].ancestors()
     assert ids['query-dock'] in ids['prompt'].ancestors()
     assert ids['query-dock'] in ids['answer'].ancestors()
-    assert ids['scene-canvas'].attrs.get('aria-hidden') == 'true'
+    assert ids['scene-canvas'].attrs.get('aria-hidden') != 'true'
+    assert not any(n.attrs.get('aria-hidden') == 'true' for n in ids['scene-canvas'].ancestors())
     assert ids['scene-render-status'].attrs.get('role') == 'status'
+    for name in ('scene-mode-select','scene-mode-orbit','scene-mode-pan','scene-panels','scene-layer-prev','scene-layer-next'):
+        assert ids[name].tag == 'button' and ids[name].attrs.get('aria-label')
+    assert ids['selection-details'].tag == 'details' and 'open' not in ids['selection-details'].attrs
     for side in ('selection','query'):
         assert ids[f'{side}-dock-toggle'].attrs['aria-controls'] == f'{side}-dock-body'
         assert ids[f'{side}-dock-toggle'].attrs['aria-expanded'] == 'true'
@@ -328,7 +335,11 @@ def test_alerts_and_scene_docks_keep_accessible_neutral_chrome():
         assert ids['query-dock-body'] not in ids[name].ancestors()
     css=(ROOT/'looking_glass/app_static/app.css').read_text()
     assert 'max-height:calc(100dvh - 76px)' in css
-    assert 'text-align:center' not in css and 'text-align:right' not in css
+    # Centered empty-state and right-aligned model badge are intentional; alerts
+    # must retain their inherited left alignment.
+    for selectors, declarations in re.findall(r'([^{}]+)\{([^{}]*)\}', css):
+        if any(name in selectors for name in ('.notice', '.approximation', '#notice', '#demo-model-warning')):
+            assert not re.search(r'text-align\s*:\s*(center|right)', declarations), selectors
     assert '--error-text:#e8eaf0' in css and '--warning-text:#e8eaf0' in css
     assert '::-webkit-scrollbar{width:4px;height:4px}' in css
 
@@ -345,7 +356,7 @@ def test_model_path_and_next_load_device_precede_load_with_optional_demo_closed(
     assert demo.tag == "details" and "open" not in demo.attrs
     assert demo in ids["demo-button"].ancestors()
     assert doc.elements.index(ids["load-button"]) < doc.elements.index(demo)
-    assert "untrained" in demo.text and "CPU" in demo.text
+    assert "untrained" in demo.text.lower() and "CPU" in demo.text
 
 
 def test_reset_view_is_a_native_scene_action_not_hidden_in_map_details():
@@ -353,7 +364,7 @@ def test_reset_view_is_a_native_scene_action_not_hidden_in_map_details():
     button = ids["scene-reset"]
     assert button.tag == "button" and button.attrs.get("type") == "button"
     assert "disabled" in button.attrs
-    assert "Fit view" in button.text
+    assert button.attrs.get("aria-label") == "Fit view"
     assert ids["map-tools-options"] not in button.ancestors()
     assert ids["scene-toolbar"] in button.ancestors()
 
@@ -421,3 +432,4 @@ def test_scrollable_trace_region_reserves_actual_toolbar_height():
     assert "flex-wrap:wrap" in toolbar
     layer = re.search(r"\.layer-map\s*\{([^}]+)\}", css).group(1)
     assert "max-height" not in layer and "overflow:auto" not in layer
+

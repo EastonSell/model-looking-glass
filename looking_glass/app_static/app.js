@@ -7,7 +7,17 @@
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
   const bytes = (value) => { const n = Number(value); if (!Number.isFinite(n)) return '—'; return n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KiB` : `${(n / 1048576).toFixed(2)} MiB`; };
-  let sceneApi=null, sceneFailed=false;
+  let sceneApi=null, sceneFailed=false, sceneMode='select', sceneNavigation={index:0,total:0,label:''};
+  function syncSceneControls(){
+    const ready=!!sceneApi&&!sceneFailed&&!state.busy&&!!state.mapCapture&&$('scene-view').value==='scene';
+    for(const mode of ['select','orbit','pan']){const button=$(`scene-mode-${mode}`);button.disabled=!ready;button.setAttribute('aria-pressed',String(mode===sceneMode));}
+    $('scene-layer-prev').disabled=!ready||sceneNavigation.index<=0;
+    $('scene-layer-next').disabled=!ready||sceneNavigation.index>=sceneNavigation.total-1;
+    $('scene-depth-status').textContent=sceneNavigation.total?`${sceneNavigation.index+1} / ${sceneNavigation.total}`:'—';
+    $('scene-depth-status').setAttribute('title',sceneNavigation.label?`${sceneNavigation.label} · captured layer ${sceneNavigation.index+1} of ${sceneNavigation.total}. Scroll the scene or use the arrow buttons.`:'No captured layers');
+    const visible=!$('selection-dock-body').hidden||!$('query-dock-body').hidden;
+    $('scene-panels').setAttribute('aria-pressed',String(visible));$('scene-panels').setAttribute('aria-label',visible?'Hide panels':'Show panels');
+  }
   const sceneSites=new Map();
   function setDock(side,open){
     const dock=$(`${side}-dock`),body=$(`${side}-dock-body`),button=$(`${side}-dock-toggle`);
@@ -15,16 +25,17 @@
     $('scene-workspace').setAttribute(`data-${side}-collapsed`,String(!open));
     button.textContent=side==='selection'?(open?'‹':'›'):(open?'›':'‹');
     const label=side==='selection'?'selected capture':'prompt and response';button.setAttribute('aria-label',`${open?'Collapse':'Expand'} ${label}`);button.setAttribute('title',`${open?'Collapse':'Expand'} ${label} (${side==='selection'?'[':']'})`);
-    if(sceneApi)sceneApi.resize();
+    if(sceneApi)sceneApi.resize();syncSceneControls();
   }
   function sceneUnavailable(reason){
-    sceneFailed=true;$('scene-render-status').textContent=reason||'3D rendering unavailable. Use the captured-site list.';$('scene-view').value='list';$('layer-map-options').open=true;syncSceneVisibility();
+    sceneFailed=true;$('scene-render-status').textContent=reason||'3D rendering unavailable. Use the captured-site list.';$('scene-view').value='list';$('layer-map-options').open=true;$('explorer-options').open=true;syncSceneVisibility();
   }
   function syncSceneVisibility(){
     const scene=$('scene-view').value==='scene'&&!sceneFailed&&!!sceneApi;
     $('scene-reset').disabled=state.busy||!scene||!state.mapCapture;
     $('scene-canvas').hidden=!scene||!state.mapCapture;$('layer-map-body').hidden=scene&&!!state.mapCapture;
-    if(sceneApi){sceneApi.setActive(scene&&!!state.mapCapture);if(scene&&state.mapCapture)sceneApi.resize();}
+    if(!scene && state.run)$('explorer-options').open=true;
+    if(sceneApi){sceneApi.setActive(scene&&!!state.mapCapture);if(scene&&state.mapCapture)sceneApi.resize();}syncSceneControls();
   }
   function replaceSceneLayers(layers){
     sceneSites.clear();for(const entry of state.mapButtons)sceneSites.set(entry.sceneKey,entry);
@@ -45,20 +56,20 @@
   function initializeScene(){
     const library=typeof window!=='undefined'?window.MLGScene:null;
     if(!library||typeof library.create!=='function'){sceneUnavailable('3D assets unavailable. Use the captured-site list.');return;}
-    try{sceneApi=library.create($('scene-canvas'),{getViewInsets:sceneViewInsets,onUnavailable:sceneUnavailable,onSelect:key=>{const entry=sceneSites.get(key);if(sceneFailed||!entry||state.busy||!state.mapButtons.includes(entry))return;return entry.select();}});syncSceneVisibility();}
+    try{sceneApi=library.create($('scene-canvas'),{getViewInsets:sceneViewInsets,onUnavailable:sceneUnavailable,onNavigate:value=>{sceneNavigation=value;syncSceneControls();},onSelect:key=>{const entry=sceneSites.get(key);if(sceneFailed||!entry||state.busy||!state.mapButtons.includes(entry))return;return entry.select();}});syncSceneVisibility();}
     catch(_){sceneUnavailable('3D rendering unavailable. Use the captured-site list.');}
   }
 
-  function revealOptions(id) { $(id).open = true; if (['vector-options','source-position-options','feature-values-options','intervention-options','reference-options'].includes(id)) setDock('selection',true); if (id === 'map-tools-options') $('layer-map-options').open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','privacy-options','download-options'].includes(id)) $('session-options').open = true; }
+  function revealOptions(id) { $(id).open = true; if (['vector-options','source-position-options','feature-values-options','intervention-options','reference-options'].includes(id)) setDock('selection',true); if (['vector-options','source-position-options','feature-values-options','intervention-options'].includes(id)) $('selection-details').open = true; if (['map-tools-options','source-options','event-catalog-options'].includes(id)) $('explorer-options').open = true; if (id === 'map-tools-options') $('layer-map-options').open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','privacy-options','download-options'].includes(id)) $('session-options').open = true; }
   function notice(message, error = false) { $('notice').textContent = message; $('notice').hidden = !message; $('notice').classList.toggle('error', error); }
-  async function api(path, body) {
+  async function api(path, body, {allowErrorField=false} = {}) {
     if (body === undefined && /^(events|vectors|tensor|layer-map)\?/.test(path) && state.run?.capture_id) path += `&capture_id=${encodeURIComponent(state.run.capture_id)}`;
     const options = {headers: {'X-MLG-Token': token}, credentials: 'same-origin', cache: 'no-store'};
     if (body !== undefined) { options.method = 'POST'; options.headers['Content-Type'] = 'application/json'; options.body = JSON.stringify(body); }
     const response = await fetch(`/api/${path}`, options);
     let data;
     try { data = await response.json(); } catch (_) { throw new Error(`The local app returned an invalid response (${response.status}).`); }
-    if (!response.ok || data?.error) throw new Error(data?.error || `Request failed (${response.status}).`);
+    if (!response.ok || (data?.error && !allowErrorField)) throw new Error(data?.error || `Request failed (${response.status}).`);
     return data;
   }
   function syncDeviceChoice() {
@@ -66,13 +77,13 @@
     const available = state.devices.filter(device => /^cuda:\d+$/.test(device.id || '') && device.available === true);
     let next;
     if (choice === 'cpu') next = 'Next load: CPU.';
-    else if (choice === 'auto') next = available.length ? `Next load: Auto — prefers ${available[0].id} at last check.` : state.cuda?.available === false ? 'Next load: Auto — CPU at last check; CUDA unavailable.' : 'Next load: Auto — device availability not reported yet.';
+    else if (choice === 'auto') next = available.length ? `Next load: Auto — prefers ${available[0].id} at last check.` : state.cuda?.available === false ? 'Next load: Auto — CPU at last check; CUDA unavailable.' : 'Next load: Auto · availability unknown.';
     else next = available.some(device => device.id === choice) ? `Next load: ${choice}.` : `Next load: ${choice} unavailable at last check; no CPU fallback.`;
     const device = state.model?.device;
     const actual = device === 'cpu' ? 'CPU' : typeof device === 'string' && /^cuda:\d+$/.test(device) ? device : null;
     let current = '';
     if (state.model?.state === 'quarantined') current = 'Restart required before loading or running again.';
-    else if (state.model) current = actual ? `Run still uses ${actual}. ${isDemo(state.model) ? 'The demo always uses CPU. ' : ''}Use Load model to apply a new device choice.` : 'The loaded device was not reported; changing this choice does not move the model.';
+    else if (state.model) current = actual ? `Current: ${actual}${isDemo(state.model) ? ' · demo uses CPU' : ''}. Load to apply changes.` : 'Current device unknown. Load to apply changes.';
     const message = [next, current].filter(Boolean).join(' ');
     if ($('device-choice-status').textContent !== message) $('device-choice-status').textContent = message;
     $('run-button').setAttribute('title', state.model?.state === 'quarantined' ? 'Restart required before another model run' : actual ? `Run & capture on ${actual}` : state.model ? 'Run & capture on the loaded model; device not reported' : 'Load a model before running');
@@ -80,7 +91,7 @@
   }
   function syncButtons() {
     syncDownloads(); syncDeviceChoice();
-    $('scene-toolbar').hidden = !state.run;
+    $('scene-toolbar').hidden = !state.run; $('explorer-options').hidden = !state.run;syncSceneControls();
     $('scene-reset').disabled = state.busy || sceneFailed || !sceneApi || !state.mapCapture || $('scene-view').value !== 'scene';
     const ready = state.model && state.model.state !== 'quarantined', vision = String(state.model?.family || '').toLowerCase().includes('vit');
     $('scene-empty-message').textContent = ready ? (vision ? 'Choose an image, then Run.' : 'Enter a prompt, then Run.') : state.model?.state === 'quarantined' ? 'Restart required for another model run. Saved captures can still be opened.' : 'Choose a model, write a prompt, then Run.';
@@ -111,7 +122,7 @@
     $('layer-map-prev').disabled = state.busy || !state.run || state.mapOffset === 0; $('layer-map-next').disabled = state.busy || !state.run || state.mapOffset + 12 >= state.mapTotal;
     document.querySelectorAll('#layer-map-body button').forEach((button) => { button.disabled = state.busy; });
     $('clear-event-filters').disabled = state.busy || !state.run;
-    $('reference-selection-status').textContent = referenceSelectionReady() ? 'The selected live vector is eligible to keep. Comparison also requires the same model owner and module site.' : state.run?.reference_reason || 'Select and read a known vector in a supported live GPT-2 or standard Llama capture. Imported or unknown-source captures are read-only.';
+    $('reference-selection-status').textContent = referenceSelectionReady() ? 'Ready to keep. Comparison requires the same model owner and site.' : state.run?.reference_reason || 'Select a known vector in a live GPT-2 or standard Llama capture. Imported or unknown-source captures are read-only.';
     $('pin-reference').disabled = state.busy || !referenceSelectionReady();
     $('compare-reference').disabled = state.busy || !referenceSelectionReady() || !state.referenceFresh || !state.reference?.ready_for_compare;
     $('inspect-reference').disabled = state.busy || !state.reference;
@@ -139,7 +150,7 @@
     $('vectors-page-prev').disabled = state.busy || !state.event || state.vectorListOffset === 0;
     $('vectors-page-next').disabled = state.busy || !state.event || state.vectorListOffset + 100 >= state.vectorListTotal;
     $('intervene-button').disabled = state.busy || !interventionReady();
-    $('intervention-status').textContent = interventionReady() ? 'Ready for the selected, successfully read source vector.' : interventionReason();
+    $('intervention-status').textContent = interventionReady() ? 'Ready for this source vector.' : interventionReason();
     $('save-experiment').disabled = state.busy || !state.experiment;
     $('witness-prev').disabled = state.busy || !state.experiment || state.witnessOffset === 0;
     $('witness-next').disabled = state.busy || !state.experiment || state.witnessOffset + valuePageSize >= state.witnessTotal;
@@ -183,8 +194,8 @@
     select.value = selected;
     const available = state.devices.filter((device) => /^cuda:\d+$/.test(device.id || '') && device.available !== false);
     const lines = available.map((device) => `${device.id}: ${device.name || 'CUDA GPU'} · ${bytes(device.free_bytes)} free / ${bytes(device.total_bytes)} total at last check`);
-    if (!lines.length) lines.push(`${state.cuda?.available === false ? 'CUDA unavailable at last check' : 'CUDA availability not reported'}${state.cuda?.reason ? ': ' + state.cuda.reason : ''}. Auto checks again when loading; an explicit CUDA choice will not fall back.`);
-    else lines.push('Availability is a snapshot, not a memory-fit guarantee. Auto checks again when loading; an explicit CUDA choice will not fall back to CPU.');
+    if (!lines.length) lines.push(`${state.cuda?.available === false ? 'CUDA unavailable at last check' : 'CUDA availability not reported'}${state.cuda?.reason ? ': ' + String(state.cuda.reason).replace(/[.\s]+$/, '') : ''}. Auto rechecks on load; explicit CUDA has no CPU fallback.`);
+    else lines.push('Snapshot only, not a fit guarantee. Auto rechecks on load; explicit CUDA has no CPU fallback.');
     $('device-status').textContent = lines.join('\n'); syncButtons();
   }
   function loadSettings() {
@@ -247,13 +258,13 @@
     $('output-readout').replaceChildren(); $('input-token-strip').replaceChildren(); $('output-note').textContent = ''; $('input-token-note').textContent = ''; $('input-token-page').textContent = ''; $('output-step').value = '0';
     clearLayerMap();
     clearExperiment(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
-    $('imported-control-warning').hidden = true; $('imported-comparison').hidden = true; clearDistribution('imported'); $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Optional. Saving includes potentially sensitive prompts, model output, metadata, and full tensor values.'; syncButtons();
+    $('imported-control-warning').hidden = true; $('imported-comparison').hidden = true; clearDistribution('imported'); $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Saving includes prompts, output, metadata and full tensor values; these may be sensitive.'; syncButtons();
   }
   function showRun(run) {
     $('scene-empty').hidden = true;
     state.outputStep = 0; state.tokenOffset = 0;
     state.run = run; $('imported-comparison').hidden = run.run_kind !== 'intervention_comparison'; if (run.run_kind === 'intervention_comparison') { renderDistribution('imported', run.experiment || {}); if(controlWarning('imported-control-warning', run.experiment || {}, run.model))setDock('query',true); } else clearDistribution('imported'); $('result-panel').hidden = false; $('trace-panel').hidden = false; $('answer').textContent = display(run.answer ?? 'No textual output.'); $('task-badge').textContent = run.task || 'Observed run';
-    const captureModel = run.model; $('demo-capture-warning').hidden = !isDemo(captureModel); if(isDemo(captureModel))setDock('query',true); $('capture-model').textContent = captureModel ? `Capture model: ${captureModel.name || captureModel.family || captureModel.architecture || 'recorded model'}${captureModel.device ? ' on ' + captureModel.device : ''} — independent of the model currently loaded above.` : 'Model identity was not recorded in this capture.';
+    const captureModel = run.model; $('demo-capture-warning').hidden = !isDemo(captureModel); if(isDemo(captureModel))setDock('query',true); $('capture-model').textContent = captureModel ? `Capture model: ${captureModel.name || captureModel.family || captureModel.architecture || 'recorded model'}${captureModel.device ? ' · ' + captureModel.device : ''} (may differ from loaded model).` : 'Model identity was not recorded in this capture.';
     $('capture-info').textContent = display({model: captureModel || null, settings: run.settings || null});
     $('run-metrics').replaceChildren();
     for (const [value, label] of [[run.event_count ?? '—', 'captured observations'], [bytes(run.total_bytes), 'CPU RAM tensor payload'], [Array.isArray(run.steps) ? run.steps.length : '—', 'explicit forward steps']]) { const box = document.createElement('div'), strong = document.createElement('strong'), span = document.createElement('span'); box.className = 'metric'; strong.textContent = String(value); span.textContent = label; box.append(strong, span); $('run-metrics').append(box); }
@@ -311,7 +322,7 @@
     renderTokenEvidence(c);
     const box = $('source-readable'); box.replaceChildren();
     const title = document.createElement('strong'), meta = document.createElement('span');
-    if (!c || c.status !== 'known') { title.textContent = 'Source not yet known'; meta.textContent = c?.reason || 'Select and read a captured source position. No token meaning is inferred from vector values.'; }
+    if (!c || c.status !== 'known') { title.textContent = 'Source unknown'; meta.textContent = c?.reason || 'Select a captured position. Vector values do not imply token meaning.'; }
     else if (c.image_coordinate) {
       const image = c.image_coordinate;
       title.textContent = image.token_kind === 'cls' ? 'Image · CLS' : `Image patch · row ${image.patch_row ?? '?'}, column ${image.patch_column ?? '?'}`;
@@ -398,14 +409,14 @@
     state.mapButtons = []; state.mapAutoCapture = null; state.mapRequest++; state.mapOffset = 0; state.mapTotal = 0; state.mapForward = 0; state.mapCapture = null;
     replaceSceneLayers([]);
     $('layer-map-forward').value = '0'; $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = '';
-    $('layer-map-status').textContent = 'Open or refresh to list captured sites. No tensor values are read to build the map.';
+    $('layer-map-status').textContent = 'Open or refresh captured sites. Map uses metadata only.';
   }
   async function loadLayerMap(offset = 0) {
     if (state.busy || !state.run?.capture_id) return;
     const raw = $('layer-map-forward').value.trim();
     if (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw))) { revealOptions('map-tools-options'); $('layer-map-status').textContent = 'Choose a nonnegative safe whole forward number.'; return; }
     const forward = Number(raw), capture = state.run.capture_id, request = ++state.mapRequest;
-    state.mapButtons = []; state.mapTotal = 0; state.mapCapture = null; replaceSceneLayers([]); $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = ''; $('layer-map-status').textContent = 'Reading captured-site metadata…'; syncButtons();
+    state.mapButtons = []; state.mapTotal = 0; state.mapCapture = null; replaceSceneLayers([]); $('layer-map-body').replaceChildren(); $('layer-map-page').textContent = ''; $('layer-map-status').textContent = 'Reading captured sites…'; syncButtons();
     try {
       const result = await api(`layer-map?forward=${forward}&offset=${offset}&limit=12`);
       if (request !== state.mapRequest || capture !== state.run?.capture_id) return;
@@ -544,13 +555,13 @@
   function invalidateBrowse(resetRoot = false) {
     state.browseRequest++; state.browseFresh = false; if (resetRoot) state.browse = null;
     $('folder-list').replaceChildren(); $('browse-current').textContent = ''; $('browse-discovery-details').textContent = '';
-    $('browse-status').textContent = 'Folder path changed. Browse or Go to check this location before selecting a path.'; syncButtons();
+    $('browse-status').textContent = 'Path changed. Browse or Go before selecting.'; syncButtons();
   }
   function candidateLabel(folder) {
     const c = folder?.candidate;
-    if (!c || typeof c !== 'object') return folder?.is_checkpoint ? 'Unverified checkpoint candidate; Inspect checks local assets.' : 'Classification unavailable. Navigate or Inspect explicitly.';
+    if (!c || typeof c !== 'object') return folder?.is_checkpoint ? 'Unverified checkpoint candidate.' : 'Classification unavailable.';
     const status = ['candidate','unverified','unsupported','incomplete','unreadable','none'].includes(c.status) ? c.status : 'unverified';
-    return `${status}: ${typeof c.label === 'string' ? c.label : 'Metadata check'}${typeof c.family === 'string' ? ' · ' + c.family : ''}${typeof c.architecture === 'string' ? ' · ' + c.architecture : ''}${typeof c.reason === 'string' ? ' — ' + c.reason : ''} · Metadata only; Inspect verifies local assets, not inference.`;
+    return `${status}: ${typeof c.label === 'string' ? c.label : 'Metadata check'}${typeof c.family === 'string' ? ' · ' + c.family : ''}${typeof c.architecture === 'string' ? ' · ' + c.architecture : ''}${typeof c.reason === 'string' ? ' — ' + c.reason : ''} · Metadata only.`;
   }
   async function browse(path, root) {
     revealOptions('model-options'); const request = ++state.browseRequest; state.browseFresh = false;
@@ -562,17 +573,17 @@
       const current = () => !state.busy && state.browseFresh && request === state.browseRequest && state.browse === result;
       if (result.mode === 'locations') {
         $('browse-status').textContent = result.notice || 'Choose a local location. No folders scanned until selected.';
-        $('browse-current').textContent = 'Location suggestions only—not discovered models. Choose where to browse.';
+        $('browse-current').textContent = 'Suggested locations, not discovered models.';
         for (const location of (Array.isArray(result.locations) ? result.locations : []).slice(0, 64)) {
           if (typeof location?.path !== 'string' || typeof location?.name !== 'string') continue;
           const button = document.createElement('button'); button.type = 'button'; button.className = 'quiet'; button.textContent = `${location.name} · ${location.path}`;
           button.addEventListener('click', () => { if (current()) return action('Checking selected local folder…', () => browse(location.path)); });
           const row = document.createElement('div'); row.className = 'folder-row'; row.append(button); $('folder-list').append(row);
         }
-        if (!$('folder-list').children.length) $('folder-list').textContent = 'No normal locations are available. Enter a local folder path explicitly.';
+        if (!$('folder-list').children.length) $('folder-list').textContent = 'No suggested locations. Enter a folder path.';
       } else {
         const discovery = result.discovery && typeof result.discovery === 'object' ? result.discovery : null;
-        $('browse-status').textContent = `Root: ${result.root || 'not recorded'}${result.notice ? ' · ' + result.notice : ''}${result.truncated ? ' · Folder list truncated; navigate to a known subfolder explicitly.' : ''}${Number.isSafeInteger(discovery?.skipped_entries) ? ' · ' + discovery.skipped_entries + ' skipped entries' : ''}${discovery?.budget_exhausted ? ' · Metadata budget exhausted; some folders remain unverified.' : ''}`;
+        $('browse-status').textContent = `Root: ${result.root || 'not recorded'}${result.notice && !result.notice.startsWith('Only this folder and its immediate children were checked.') ? ' · ' + result.notice : ' · Immediate children only; Inspect checks assets.'}${result.truncated ? ' · Folder list truncated; navigate to a known subfolder explicitly.' : ''}${Number.isSafeInteger(discovery?.skipped_entries) && discovery.skipped_entries > 0 ? ' · ' + discovery.skipped_entries + ' skipped' : ''}${discovery?.budget_exhausted ? ' · Metadata budget exhausted; some folders remain unverified.' : ''}`;
         $('browse-discovery-details').textContent = discovery ? display(discovery) : 'No discovery diagnostics supplied by this server.';
         $('browse-current').textContent = `Current folder: ${result.path || 'unavailable'} — ${candidateLabel(result.current)}`;
         for (const folder of (Array.isArray(result.folders) ? result.folders : []).slice(0, 512)) {
@@ -581,14 +592,14 @@
           enter.type = 'button'; enter.className = 'quiet'; enter.textContent = folder.name + (folder.is_checkpoint ? ' · checkpoint candidate' : ' /');
           description.textContent = candidateLabel(folder); const main = document.createElement('div'); main.className = 'folder-entry'; main.append(enter, description); row.append(main);
           enter.addEventListener('click', () => { if (current()) return action('Checking selected local folder…', () => browse(folder.path, result.root)); });
-          if (folder.is_checkpoint || ['candidate','unverified','incomplete'].includes(folder.candidate?.status)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'secondary'; use.textContent = 'Use path'; use.addEventListener('click', () => { if (current()) { $('model-path').value = folder.path; invalidateInspection(); $('browse-status').textContent = 'Folder selected. Inspect checks the files; Load tries the model. Nothing has loaded yet.'; } }); row.append(use); }
+          if (folder.is_checkpoint || ['candidate','unverified','incomplete'].includes(folder.candidate?.status)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'secondary'; use.textContent = 'Use path'; use.addEventListener('click', () => { if (current()) { $('model-path').value = folder.path; invalidateInspection(); $('browse-status').textContent = 'Folder selected. Inspect or Load.'; } }); row.append(use); }
           $('folder-list').append(row);
         }
-        if (!(result.folders || []).length) $('folder-list').textContent = 'No visible immediate subfolders. The current folder can still be selected above.';
+        if (!(result.folders || []).length) $('folder-list').textContent = 'No visible subfolders.';
       }
     } catch (error) {
       if (request !== state.browseRequest) return;
-      $('browse-status').textContent = `Folder discovery unavailable: ${error.message || error}. Model and capture are unchanged by browsing.`;
+      $('browse-status').textContent = `Folder discovery unavailable: ${error.message || error}`;
       throw error;
     } finally { if (request === state.browseRequest) syncButtons(); }
   }
@@ -597,7 +608,7 @@
     const placeholder = document.createElement('option'); placeholder.value = ''; placeholder.textContent = 'Choose a saved capture…'; $('saved-runs').append(placeholder);
     for (const run of state.saved) { const option = document.createElement('option'); option.value = run.path; option.disabled = run.status !== 'complete_unverified'; option.textContent = `${run.name} · ${run.status === 'complete_unverified' ? 'not yet verified' : 'incomplete'} · ${bytes(run.tensor_file_bytes)}`; $('saved-runs').append(option); }
     $('saved-runs').value = state.saved.some((run) => run.path === selected && run.status === 'complete_unverified') ? selected : '';
-    $('saved-status').textContent = `${state.saved.length} listed capture folders${result.truncated ? ' · list truncated' : ''}. Listing does not verify tensor integrity; Open validates the selected capture. Incomplete exports cannot be opened from this list.`;
+    $('saved-status').textContent = `${state.saved.length} captures${result.truncated ? ' · list truncated' : ''}. Open validates a selected capture; incomplete exports cannot be opened.`;
   }
   function referenceSelectionReady() {
     return !!(state.run?.reference_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && ['gpt2','llama'].includes(state.model?.family) && state.model.state !== 'quarantined' && state.event && state.coordinate?.status === 'known' && Number($('vector-index').value) === state.vector);
@@ -610,8 +621,8 @@
     if ((reference?.reference_id || null) !== (state.reference?.reference_id || null)) invalidateReferenceView();
     state.reference = reference; state.referenceFresh = true;
     $('reference-summary').textContent = reference ? `Reference vector · pinned${reference.coordinate?.token_position != null ? ' at source position ' + reference.coordinate.token_position : ''}` : 'Reference vector · empty';
-    $('reference-identity').textContent = reference ? `${reference.model?.name || reference.model?.family || 'Recorded model'} · ${coordinateLabel(reference.coordinate, 'pinned')} · ${bytes(reference.total_bytes)} retained` : 'No reference is pinned. Select a known vector in a live capture, then keep it here.';
-    $('reference-status').textContent = reference ? (reference.ready_for_compare ? 'Reference retained. Comparison still requires a compatible selected live vector; the server checks model and module identity.' : reference.reason || 'Reference retained for inspection; current model/capture is not compatible for comparison.') : '';
+    $('reference-identity').textContent = reference ? `${reference.model?.name || reference.model?.family || 'Recorded model'} · ${coordinateLabel(reference.coordinate, 'pinned')} · ${bytes(reference.total_bytes)} retained` : 'Select a known live vector to keep as reference.';
+    $('reference-status').textContent = reference ? (reference.ready_for_compare ? 'Reference retained. Comparison requires a compatible live vector; model and site are checked.' : reference.reason || 'Reference retained for inspection; current model or capture is incompatible.') : '';
     $('reference-source-details').textContent = reference ? display(reference) : ''; syncButtons();
   }
   async function refreshReferenceOptional() {
@@ -644,17 +655,17 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     return !!(state.run?.intervention_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && ['gpt2', 'llama'].includes(state.model?.family) && state.model.state !== 'quarantined' && state.event && Number($('vector-index').value) === state.vector && state.coordinate?.status === 'known');
   }
   function interventionReason() {
-    if (!state.model || state.model.state === 'quarantined') return 'Load a ready live GPT-2 or supported standard Llama model to replay. Unload or quarantine disables new edits; saved comparisons remain inspectable.';
-    if (!['gpt2', 'llama'].includes(state.model.family)) return 'Fixed-input interventions support live GPT-2 or supported standard Llama only. Other model captures remain inspectable but cannot be edited here.';
+    if (!state.model || state.model.state === 'quarantined') return 'Load a ready GPT-2 or supported standard Llama model to replay. Unloaded or quarantined models cannot be edited; saved comparisons remain inspectable.';
+    if (!['gpt2', 'llama'].includes(state.model.family)) return 'Interventions support live GPT-2 or standard Llama only. Other captures remain inspectable.';
     if (!state.run?.intervention_available || state.run.run_kind === 'intervention_comparison') return state.run?.intervention_reason || 'This capture is read-only for intervention; make a fresh supported live GPT-2 or standard Llama capture.';
-    if (state.coordinate?.status !== 'known' || Number($('vector-index').value) !== state.vector) return 'Read a vector with validated source coordinates first. Unknown source mappings cannot be edited.';
+    if (state.coordinate?.status !== 'known' || Number($('vector-index').value) !== state.vector) return 'Read a vector with validated source coordinates first.';
     return 'A current live GPT-2 or supported standard Llama capture identifier is required.';
   }
   function clearWitness() {
     state.witnessRequest++; state.witnessTotal = 0; $('witness-body').replaceChildren(); $('witness-coordinate').textContent = ''; $('witness-page').textContent = ''; $('witness-status').textContent = '';
   }
   function clearExperiment() {
-    $('experiment-control-warning').hidden = true; $('experiment-control-warning').textContent = ''; clearDistribution('experiment'); $('demo-experiment-warning').hidden = true; state.experiment = null; state.witnessOffset = 0; clearWitness(); $('experiment-panel').hidden = true; $('experiment-token-body').replaceChildren(); $('experiment-details').textContent = ''; $('experiment-outcome').textContent = ''; $('experiment-controls').textContent = ''; $('experiment-metrics').textContent = ''; $('experiment-startup-status').textContent = ''; $('experiment-save-status').textContent = 'Optional export includes private fixed input, metadata and full witness tensors. Original capture is separate.';
+    $('experiment-control-warning').hidden = true; $('experiment-control-warning').textContent = ''; clearDistribution('experiment'); $('demo-experiment-warning').hidden = true; state.experiment = null; state.witnessOffset = 0; clearWitness(); $('experiment-panel').hidden = true; $('experiment-token-body').replaceChildren(); $('experiment-details').textContent = ''; $('experiment-outcome').textContent = ''; $('experiment-controls').textContent = ''; $('experiment-metrics').textContent = ''; $('experiment-startup-status').textContent = ''; $('experiment-save-status').textContent = 'Export includes private input, metadata and full witness tensors. Original capture is separate.';
   }
   function clearDistribution(prefix) {
     $(`${prefix}-distribution-body`).replaceChildren(); $(`${prefix}-distribution-note`).textContent = ''; $(`${prefix}-distribution-table`).hidden = true; $(`${prefix}-token-body`).replaceChildren();
@@ -688,7 +699,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   }
   function showExperiment(summary) {
     $('demo-experiment-warning').hidden = !isDemo(summary.model); state.experiment = summary; const e = summary.experiment || {}, c = e.comparison || {}; $('experiment-panel').hidden = false;
-    $('experiment-outcome').textContent = c.selected_vector_changed === false ? 'No-op: the selected vector did not change. Do not interpret this as evidence about the effect of changing it.' : c.selected_vector_changed === true ? `Selected vector changed. Baseline next-token ID ${c.baseline_next_token_id ?? '?'} → edited ID ${c.intervention_next_token_id ?? '?'}. This is one fixed-input comparison, not a generated continuation or explanation.` : 'Comparison returned without a verified selected-vector change flag; inspect the complete metadata.';
+    $('experiment-outcome').textContent = c.selected_vector_changed === false ? 'No-op: the selected vector did not change; no effect can be inferred.' : c.selected_vector_changed === true ? `Selected vector changed. Baseline next-token ID ${c.baseline_next_token_id ?? '?'} → edited ID ${c.intervention_next_token_id ?? '?'}. This is one fixed-input comparison, not a generated continuation or explanation.` : 'Vector change unverified; inspect metadata.';
     if (controlWarning('experiment-control-warning', e, summary.model)) revealOptions('comparison-checks');
     const controls = Object.entries(e.controls || {}); $('experiment-controls').textContent = controls.length ? 'Recorded controls: ' + controls.map(([key,value]) => `${key}: ${value === true ? 'passed' : value === false ? 'FAILED' : display(value)}`).join(' · ') : 'No control results recorded.';
     $('experiment-metrics').textContent = `Full-logits max |Δ|: ${number(c.full_logits_max_abs_delta)} · full-logits L2 Δ: ${number(c.full_logits_l2_delta)} · last-position max |Δ|: ${number(c.last_position_max_abs_delta)}`;
@@ -714,13 +725,13 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     try { await refreshSaved(); }
     catch (error) {
       revealOptions('saved-options'); state.saved = []; $('saved-runs').replaceChildren();
-      $('saved-status').textContent = `Saved-capture catalog unavailable: ${error.message || String(error)}. This does not discard a RAM capture or undo a completed save. Refresh the catalog to retry, or enter a known export path.`;
+      $('saved-status').textContent = `Saved captures unavailable: ${error.message || String(error)}. Refresh or enter a known export path; RAM capture and completed saves are preserved.`;
     }
   }
   $('browse-button').addEventListener('click', () => action('Browsing local folders…', () => browse($('model-path').value.trim())));
   $('browse-go').addEventListener('click', () => action('Browsing local folders…', () => browse($('browse-path').value.trim(), state.browse?.root)));
   $('browse-parent').addEventListener('click', () => action('Browsing parent folder…', async () => { if (state.browseFresh && state.browse?.parent) await browse(state.browse.parent, state.browse.root); }));
-  $('browse-select').addEventListener('click', () => { if (!state.busy && state.browseFresh && typeof state.browse?.path === 'string' && state.browse.path) { $('model-path').value = state.browse.path; invalidateInspection(); $('browse-status').textContent = 'Folder path selected. Inspect or Load explicitly when ready.'; } });
+  $('browse-select').addEventListener('click', () => { if (!state.busy && state.browseFresh && typeof state.browse?.path === 'string' && state.browse.path) { $('model-path').value = state.browse.path; invalidateInspection(); $('browse-status').textContent = 'Folder selected. Inspect or Load.'; } });
   $('refresh-saved').addEventListener('click', () => action('Listing saved captures…', refreshSaved));
   $('saved-runs').addEventListener('change', () => { const run = state.saved.find((item) => item.path === $('saved-runs').value && item.status === 'complete_unverified'); if (run) $('open-path').value = run.path; });
   $('unload-button').addEventListener('click', () => action('Releasing the model owner; keeping captured vectors…', async () => { await api('unload', {}); const current = await api('status'); setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
@@ -745,7 +756,10 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('scene-view').value = 'scene'; $('layer-map-body').setAttribute('data-view', 'scene');
   $('scene-view').addEventListener('change', () => { const view = $('scene-view').value; if (!['scene','list'].includes(view)||sceneFailed) $('scene-view').value = 'list'; $('layer-map-body').setAttribute('data-view',$('scene-view').value);syncSceneVisibility(); });
   $('open-settings').addEventListener('click', () => { if (state.busy) return; if (state.model && state.model.state !== 'quarantined') { setDock('query', true); const field = String(state.model.family || '').toLowerCase().includes('vit') ? $('image-file') : $('prompt'); field.focus({preventScroll:true}); $('query-dock').scrollIntoView({block:'nearest',behavior:'instant'}); return; } state.settingsOpener = 'open-settings'; $('session-options').open = true; $('model-path').focus(); });
-  $('scene-reset').addEventListener('click', () => { if (state.busy || sceneFailed || !sceneApi || !state.mapCapture || $('scene-view').value !== 'scene') return; try { sceneApi.resize(); } catch (_) { sceneUnavailable('3D framing unavailable. Use the captured-site list.'); } });
+  $('scene-reset').addEventListener('click', () => { if (state.busy || sceneFailed || !sceneApi || !state.mapCapture || $('scene-view').value !== 'scene') return; try { if(sceneApi.fitView)sceneApi.fitView();else sceneApi.resize(); } catch (_) { sceneUnavailable('3D framing unavailable. Use the captured-site list.'); } });
+  for(const mode of ['select','orbit','pan'])$('scene-mode-'+mode).addEventListener('click',()=>{if(state.busy||sceneFailed||!sceneApi||!state.mapCapture||$('scene-view').value!=='scene')return;if(sceneApi.setMode?.(mode)===false)return;sceneMode=mode;syncSceneControls();});
+  for(const [id,direction] of [['scene-layer-prev',-1],['scene-layer-next',1]])$(id).addEventListener('click',()=>{if(state.busy||sceneFailed||!sceneApi||!state.mapCapture||$('scene-view').value!=='scene')return;sceneApi.navigateLayers?.(direction);});
+  $('scene-panels').addEventListener('click',()=>{const open=$('selection-dock-body').hidden&&$('query-dock-body').hidden;setDock('selection',open);setDock('query',open);});
   function restoreSettingsFocus() { const opener = state.settingsOpener === 'open-settings' && !$('scene-empty').hidden ? 'open-settings' : 'session-summary'; $(opener).focus(); }
   $('session-summary').addEventListener('click', () => { state.settingsOpener = 'session-summary'; });
   $('session-options').addEventListener('keydown', event => { if (event.key === 'Escape' && $('session-options').open) { event.preventDefault(); $('session-options').open = false; restoreSettingsFocus(); } });
@@ -835,7 +849,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   function acceptDownload(job) {
     if(!job || !['idle','running','cancelling','complete','cancelled','failed'].includes(job.state) || (job.state !== 'idle' && (typeof job.job_id !== 'string' || typeof job.model_id !== 'string')))throw new Error('Invalid download status');
     downloads.job=job;downloads.fresh=true;
-    const labels={idle:'No download running.',running:'Downloading',cancelling:'Cancelling',complete:'Complete — use the folder, then Inspect or Load.',cancelled:'Download cancelled.',failed:'Download failed.'};
+    const labels={idle:'No download running.',running:'Downloading',cancelling:'Cancelling',complete:'Complete · use folder, then Inspect or Load.',cancelled:'Download cancelled.',failed:'Download failed.'};
     $('download-status').textContent=`${labels[job.state]}${job.state!=='idle'?` · ${job.model_id}`:''}${downloadActive()?` · ${bytes(job.received_bytes)} / ${bytes(job.total_bytes)}${job.file?` · ${job.file}`:''}`:''}${job.error?` ${job.error}`:''}`;
     const progress=$('download-progress');progress.hidden=!downloadActive();progress.max=Number.isFinite(job.total_bytes)&&job.total_bytes>0?job.total_bytes:1;progress.value=Number.isFinite(job.received_bytes)?Math.min(progress.max,Math.max(0,job.received_bytes)):0;
     showDownloadLocation();
@@ -843,8 +857,8 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   }
   async function downloadRequest(path='download',body) {
     stopDownloadPoll();const request=++downloads.request;downloads.pending=true;syncDownloads();
-    try {const job=await api(path,body);if(request!==downloads.request)return;acceptDownload(job);}
-    catch(error){if(request!==downloads.request)return;downloads.fresh=false;$('download-progress').hidden=true;revealOptions('download-options');$('download-status').textContent=`Download outcome unavailable: ${error.message||error}. Refresh download status before starting, cancelling or using files.`;}
+    try {const job=await api(path,body,{allowErrorField:true});if(request!==downloads.request)return;acceptDownload(job);}
+    catch(error){if(request!==downloads.request)return;downloads.fresh=false;$('download-progress').hidden=true;revealOptions('download-options');$('download-status').textContent=`Download outcome unavailable: ${String(error.message||error).replace(/[.\s]+$/, '')}. Refresh download status before starting, cancelling or using files.`;}
     finally {if(request===downloads.request){downloads.pending=false;syncDownloads();}}
   }
   function refreshDownload(){return downloadRequest();}
@@ -858,7 +872,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     const request=++downloads.catalogRequest;downloads.catalogFresh=false;downloads.cards=[];$('catalog-models').replaceChildren();$('catalog-details').textContent='';syncDownloads();
     const raw=$('catalog-context').value.trim(),context=Number(raw),device=$('catalog-device').value||'auto';
     if(!/^\d+$/.test(raw)||!Number.isSafeInteger(context)||context<1||context>4096){revealOptions('download-options');$('catalog-status').textContent='Choose 1–4096 context tokens for the estimate.';return;}
-    $('catalog-status').textContent='Reading the curated model list…';
+    $('catalog-status').textContent='Loading models…';
     try {
       const result=await api(`model-catalog?device=${encodeURIComponent(device)}&context_tokens=${context}&show_all=${$('catalog-all').checked?'1':'0'}`);if(request!==downloads.catalogRequest)return;
       if(!Array.isArray(result.models))throw new Error('Invalid model catalog');
@@ -874,12 +888,12 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
         const button=document.createElement('button');button.type='button';button.textContent='Download';button.addEventListener('click',()=>{if(state.busy||downloads.pending||!downloads.fresh||downloadActive()||!downloads.catalogFresh||request!==downloads.catalogRequest)return;return downloadRequest('download',{model_id:model.id,revision:model.revision});});
         downloads.cards.push({button});card.append(name,summary,detail,button);$('catalog-models').append(card);
       }
-    }catch(error){if(request!==downloads.catalogRequest)return;downloads.catalogFresh=false;$('catalog-models').replaceChildren();revealOptions('download-options');$('catalog-status').textContent=`Model list unavailable: ${error.message||error}. Your model and capture are unchanged.`;}
+    }catch(error){if(request!==downloads.catalogRequest)return;downloads.catalogFresh=false;$('catalog-models').replaceChildren();revealOptions('download-options');$('catalog-status').textContent=`Model list unavailable: ${error.message||error}`;}
     syncDownloads();
   }
   $('download-options').addEventListener('toggle',async()=>{if(!$('download-options').open)return;populateCatalogDevices();if(downloads.initialized)return;downloads.initialized=true;await refreshCatalog();if(!downloads.pending)await refreshDownload();});
   $('refresh-catalog').addEventListener('click',refreshCatalog);
-  $('catalog-context').addEventListener('input',()=>{downloads.catalogRequest++;downloads.catalogFresh=false;downloads.cards=[];$('catalog-models').replaceChildren();$('catalog-details').textContent='';$('catalog-status').textContent='Estimate changed. Refresh models to use it.';syncDownloads();});
+  $('catalog-context').addEventListener('input',()=>{downloads.catalogRequest++;downloads.catalogFresh=false;downloads.cards=[];$('catalog-models').replaceChildren();$('catalog-details').textContent='';$('catalog-status').textContent='Estimate changed. Refresh models.';syncDownloads();});
   for(const id of ['catalog-device','catalog-context','catalog-all'])$(id).addEventListener('change',refreshCatalog);
   $('browse-downloads').addEventListener('click',()=>{
     if(state.busy||downloads.pending||!downloads.catalogFresh||!downloads.root)return;
@@ -887,7 +901,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     return action('Browsing downloaded models…',async()=>{
       await browse(root,root);
       if(state.browseFresh && state.browse?.path===root){
-        $('browse-status').textContent+=' Open a download folder, then its model subfolder. Nothing is loaded automatically.';
+        $('browse-status').textContent+=' Open the download folder, then its model subfolder.';
         $('browse-path').focus({preventScroll:true});$('folder-browser').scrollIntoView({block:'nearest',behavior:'instant'});
       }
     });
@@ -897,7 +911,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('use-download').addEventListener('click',()=>{
     if(state.busy||downloads.pending||!downloads.fresh||downloads.job?.state!=='complete'||typeof downloads.job.path!=='string'||!downloads.job.path)return;
     const field=$('model-path');field.value=downloads.job.path;invalidateInspection();invalidateBrowse(true);
-    $('download-status').textContent='Folder selected. Inspect or Load when ready; your current model and capture are unchanged.';
+    $('download-status').textContent='Folder selected. Inspect or Load; current model and capture unchanged.';
     $('session-options').open=true;field.focus({preventScroll:true});field.scrollIntoView({block:'nearest',behavior:'instant'});
   });
 
