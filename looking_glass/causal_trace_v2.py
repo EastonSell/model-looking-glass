@@ -53,7 +53,7 @@ def _validate_stream(stream):
         run_ids.add(event.run_id)
         value = event.value
         if (type(value) is not torch.Tensor or value.layout != torch.strided or
-                value.is_nested or value.is_neg() or value.is_conj() or value.has_names() or
+                value.is_nested or value.is_neg() or value.is_conj() or any(name is not None for name in getattr(value, "names", ())) or
                 tuple(value.shape) != (1, 8) or
                 value.dtype != torch.float32 or value.device.type != "cpu"):
             raise SparseTraceInvalid("trace payload does not match v2 policy")

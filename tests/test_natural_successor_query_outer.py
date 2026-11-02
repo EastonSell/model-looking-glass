@@ -15,7 +15,7 @@ from looking_glass import (injection_outer_observer as observer, natural_success
                            natural_successor_query_handoff as handoff, natural_successor_query_outer as outer)
 from scripts import v2_source_guards as guards
 from tools import natural_agreement_heldout_owner as owner
-from test_natural_successor_query import canonical, old_snapshot, rebind_config, setup, sha
+from test_natural_successor_query import canonical, old_snapshot, rebind_config, setup, sha, SyntheticLease
 
 
 def load(path, name):
@@ -26,7 +26,7 @@ def load(path, name):
 
 
 @pytest.fixture
-def prepared(setup, tmp_path):
+def prepared(setup, tmp_path, request):
     """Replace only the public caller with an invented offline test harness."""
     config = json.loads(setup['config_path'].read_bytes())
     original = Path(config['sources']['caller']).read_text(encoding='utf-8')
@@ -69,10 +69,23 @@ def prepared(setup, tmp_path):
     acl_path = Path(config['sources']['acl_verifier'])
     acl = load(acl_path, '_fabricated_acl_outer')
     files = [wrapper, setup['config_path'], Path(config['operation']), remote]
-    leases = [guards.SourceFileLease(path.parent, [path]) for path in files]
+    synthetic = request.node.originalname in (
+        'test_orphan_stops_before_invocation_or_comparator',
+        'test_orphan_after_invocation_marker_stops_before_comparator',
+        'test_observer_exception_retains_owner_custody')
+    lease_events = []
+    leases = ([SyntheticLease(path.parent, [path], lease_events) for path in files] if synthetic else
+              [guards.SourceFileLease(path.parent, [path]) for path in files])
+    if synthetic:
+        def verify_lease_lifecycle():
+            entered = [lease for action, lease in lease_events if action == 'enter']
+            closed = [lease for action, lease in lease_events if action == 'close']
+            assert closed == list(reversed(entered))
+        request.addfinalizer(verify_lease_lifecycle)
+    interpreter = str(setup['synthetic_interpreter']) if synthetic else sys._base_executable
     env = os.environ.copy()
     env.update({'CUDA_VISIBLE_DEVICES': '-1', 'FAKE_QUERY_REMOTE': str(remote)})
-    return SimpleNamespace(setup=setup, query=query, acl=acl, leases=leases, environment=env,
+    return SimpleNamespace(interpreter=interpreter, setup=setup, query=query, acl=acl, leases=leases, environment=env,
                            source_sha256=sha(wrapper.read_bytes()), wrapper=wrapper)
 
 
@@ -80,8 +93,8 @@ def invoke(value, *, observer_module=observer, leases=None):
     return outer.observe_query(query=value.query, handoff=handoff, observer=observer_module,
         guards=guards, owner=owner, accounting=accounting, acl=value.acl,
         config_path=value.setup['config_path'], config_sha256=value.setup['config_sha256'],
-        operation_sha256=value.setup['operation_sha256'], interpreter=sys._base_executable,
-        interpreter_sha256=sha(Path(sys._base_executable).read_bytes()), query_source_sha256=value.source_sha256,
+        operation_sha256=value.setup['operation_sha256'], interpreter=value.interpreter,
+        interpreter_sha256=sha(Path(value.interpreter).read_bytes()), query_source_sha256=value.source_sha256,
         source_check=lambda: True, leases=value.leases if leases is None else leases,
         environment=value.environment, timeout=60)
 

@@ -1,0 +1,206 @@
+{
+  "actual_norm_range": [
+    0.4999999310250695,
+    0.5000000618949594
+  ],
+  "changed_rows": [
+    {
+      "clean_token": "most",
+      "donor_context": "0",
+      "donor_cue": "never",
+      "pair": "evaluation-01",
+      "patched_token": "many",
+      "site": "mask2",
+      "target_context": "1",
+      "target_cue": "often"
+    },
+    {
+      "clean_token": "most",
+      "donor_context": "0",
+      "donor_cue": "rarely",
+      "pair": "evaluation-01",
+      "patched_token": "many",
+      "site": "mask2",
+      "target_context": "1",
+      "target_cue": "often"
+    },
+    {
+      "clean_token": "most",
+      "donor_context": "0",
+      "donor_cue": "always",
+      "pair": "evaluation-01",
+      "patched_token": "many",
+      "site": "mask2",
+      "target_context": "1",
+      "target_cue": "often"
+    },
+    {
+      "clean_token": "most",
+      "donor_context": "0",
+      "donor_cue": "often",
+      "pair": "evaluation-01",
+      "patched_token": "many",
+      "site": "mask2",
+      "target_context": "1",
+      "target_cue": "often"
+    },
+    {
+      "clean_token": "many",
+      "donor_context": "0",
+      "donor_cue": "rarely",
+      "pair": "evaluation-03",
+      "patched_token": "paintings",
+      "site": "cue2",
+      "target_context": "1",
+      "target_cue": "always"
+    },
+    {
+      "clean_token": "many",
+      "donor_context": "0",
+      "donor_cue": "often",
+      "pair": "evaluation-03",
+      "patched_token": "paintings",
+      "site": "cue2",
+      "target_context": "1",
+      "target_cue": "always"
+    },
+    {
+      "clean_token": "many",
+      "donor_context": "1",
+      "donor_cue": "rarely",
+      "pair": "evaluation-03",
+      "patched_token": "paintings",
+      "site": "cue2",
+      "target_context": "1",
+      "target_cue": "always"
+    },
+    {
+      "clean_token": "many",
+      "donor_context": "1",
+      "donor_cue": "often",
+      "pair": "evaluation-03",
+      "patched_token": "paintings",
+      "site": "cue2",
+      "target_context": "1",
+      "target_cue": "always"
+    },
+    {
+      "clean_token": "many",
+      "donor_context": "1",
+      "donor_cue": "rarely",
+      "pair": "evaluation-03",
+      "patched_token": "paintings",
+      "site": "mask2",
+      "target_context": "1",
+      "target_cue": "always"
+    },
+    {
+      "clean_token": "many",
+      "donor_context": "1",
+      "donor_cue": "often",
+      "pair": "evaluation-03",
+      "patched_token": "paintings",
+      "site": "mask2",
+      "target_context": "1",
+      "target_cue": "always"
+    }
+  ],
+  "compared_event_records": 1096,
+  "compared_selected_pairs": 1088,
+  "compared_top_table_rows": 896,
+  "compared_tv_mass_tuples": 896,
+  "event_counts": {
+    "baseline": 4,
+    "clean": 32,
+    "radius": 4,
+    "repeat": 32,
+    "self": 128,
+    "transfer": 896
+  },
+  "groups": [
+    {
+      "changed": 0,
+      "delta_max": 0.1129922866821289,
+      "delta_min": -0.08309078216552734,
+      "site": "cue2",
+      "split": "discovery",
+      "top_ties": 0,
+      "transfers": 56
+    },
+    {
+      "changed": 0,
+      "delta_max": 0.0,
+      "delta_min": 0.0,
+      "site": "cue5",
+      "split": "discovery",
+      "top_ties": 0,
+      "transfers": 56
+    },
+    {
+      "changed": 0,
+      "delta_max": 0.09137344360351562,
+      "delta_min": -0.09882450103759766,
+      "site": "mask2",
+      "split": "discovery",
+      "top_ties": 0,
+      "transfers": 56
+    },
+    {
+      "changed": 0,
+      "delta_max": 0.02495574951171875,
+      "delta_min": -0.022615432739257812,
+      "site": "object2",
+      "split": "discovery",
+      "top_ties": 0,
+      "transfers": 56
+    },
+    {
+      "changed": 4,
+      "delta_max": 0.12227439880371094,
+      "delta_min": -0.18888092041015625,
+      "site": "cue2",
+      "split": "evaluation",
+      "top_ties": 0,
+      "transfers": 168
+    },
+    {
+      "changed": 0,
+      "delta_max": 0.0,
+      "delta_min": 0.0,
+      "site": "cue5",
+      "split": "evaluation",
+      "top_ties": 0,
+      "transfers": 168
+    },
+    {
+      "changed": 6,
+      "delta_max": 0.11774158477783203,
+      "delta_min": -0.10985851287841797,
+      "site": "mask2",
+      "split": "evaluation",
+      "top_ties": 0,
+      "transfers": 168
+    },
+    {
+      "changed": 0,
+      "delta_max": 0.028761863708496094,
+      "delta_min": -0.047287940979003906,
+      "site": "object2",
+      "split": "evaluation",
+      "top_ties": 0,
+      "transfers": 168
+    }
+  ],
+  "max_relative_error": 1.3794986097881434e-07,
+  "requested_fraction_range": [
+    0.025158785225416397,
+    0.5797009251342471
+  ],
+  "scope": "Independent stream comparison of projection records to saved journal/result and independent full-logit top-table scan; metrics copied from result are not recomputed from subset; saved bytes do not attest execution.",
+  "source_journal_sha256": "a6c586dd9a8f125f60aa4003a8d8cbeac9cfae0f7862332412b5dde4a6417909",
+  "status": "passed",
+  "subset_sha256": "7ab40cf95e3689d8c331cd5cc7ba26173acf42d4c63541ce8612de356d92d5ac",
+  "tied_top_rows": 0,
+  "top_summary_sha256": "28392caf6c6fd17989da4e2e96430373b0cf933705aab9b21863ab6bc59ba034",
+  "top_table_sha256": "3c77d2875e6f073157ba7ed6e2f1badf756e88d384e19a34dcb6de6b972486d0"
+}

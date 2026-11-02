@@ -1,0 +1,697 @@
+"""RAM-first application traces, bounded views, and explicit lossless exports.
+
+This is a trusted local-user interface, not an activation privacy sanitizer.
+No pickle or executable checkpoint metadata is used for reopening a trace.
+"""
+from __future__ import annotations
+
+import hashlib
+import heapq
+from itertools import islice
+import json
+import math
+import os
+import stat
+from pathlib import Path
+import re
+from types import SimpleNamespace
+
+SCHEMA = "model-looking-glass-local-trace-v1"
+MAX_MANIFEST = 16 * 1024 * 1024
+
+
+def _integer(value, name, minimum=0, maximum=2**31):
+    if type(value) is not int or not minimum <= value <= maximum:
+        raise ValueError(f"{name} must be an integer from {minimum} to {maximum}")
+    return value
+
+
+def _json_copy(value):
+    return json.loads(json.dumps(value, allow_nan=False, ensure_ascii=False))
+
+
+def _digest(path):
+    h = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""): h.update(block)
+    return h.hexdigest()
+
+
+class TraceStore:
+    def __init__(self, export_root, *, max_bytes=512 * 1024 * 1024, max_events=100000):
+        self.export_root = Path(export_root).expanduser().resolve()
+        self.max_bytes = _integer(max_bytes, "max_bytes", 1)
+        self.max_events = _integer(max_events, "max_events", 1)
+        self._run = None
+        self._values = []
+        self._events = []
+
+    def publish(self, result):
+        """Atomically replace the visible run only after full capture validation."""
+        import torch
+        captures = result.get("events", [])
+        if not isinstance(captures, list) or not 0 < len(captures) <= self.max_events:
+            raise ValueError("A completed run must contain a bounded nonempty capture list")
+        values, events, total = [], [], 0
+        for i, capture in enumerate(captures):
+            value = capture.value
+            if (type(value) is not torch.Tensor or value.device.type != "cpu"
+                    or value.dtype != torch.float32 or value.layout != torch.strided
+                    or value.ndim < 1 or value.numel() == 0 or value.requires_grad
+                    or not value.is_contiguous()):
+                raise ValueError("Captures must be finite, detached contiguous CPU float32 tensors")
+            size = value.numel() * value.element_size(); total += size
+            if total > self.max_bytes: raise ValueError("Capture payload exceeds the RAM trace allowance")
+            if not torch.isfinite(value).all().item(): raise ValueError("Captures must contain finite values")
+            metadata = _json_copy(capture.metadata())
+            if not isinstance(metadata, dict): raise ValueError("Capture metadata must be an object")
+            events.append({"index": i, "metadata": metadata, "shape": list(value.shape),
+                           "dtype": "float32", "tensor_bytes": size,
+                           "vector_count": value.numel() // value.shape[-1], "vector_width": value.shape[-1]})
+            values.append(value)
+        report = _json_copy({k: v for k, v in result.items() if k != "events"})
+        report.update(event_count=len(values), total_bytes=total, storage="ram", complete=True)
+        # References are exclusively owned by this service; no tensor is sent to browser code.
+        self._run, self._values, self._events = report, values, events
+        return self.summary()
+
+    def clear(self):
+        self._run, self._values, self._events = None, [], []
+
+    def summary(self):
+        return None if self._run is None else _json_copy(self._run)
+
+    def events(self, offset=0, limit=100, q="", *, token_position=None, forward=None, stack=None):
+        """Filter recorded metadata, then page stable event and matching-vector indices.
+
+        Source filters require the same validated coordinates as the tensor view.
+        Summaries are a read-only view, not additions to the saved trace schema.
+        No tensor values, prompt text or currently loaded tokenizer are searched.
+        """
+        if self._run is None: raise ValueError("No completed trace is loaded")
+        _integer(offset, "offset", 0, len(self._events)); _integer(limit, "limit", 1, 200)
+        if type(q) is not str or len(q) > 256:
+            raise ValueError("q must be a string of at most 256 characters")
+        for name, value in (("token_position", token_position), ("forward", forward)):
+            if value is not None: _integer(value, name)
+        if stack is not None and (type(stack) is not str or stack not in ("input", "encoder", "decoder", "image")):
+            raise ValueError("stack must be input, encoder, decoder or image")
+        source_filters = token_position is not None or forward is not None or stack is not None
+        query = " ".join(q.split()).casefold()
+        fields = ("module_path", "module_kind", "layer_index", "app_forward_index", "forward_index")
+        page, total = [], 0
+        coordinate_context = {}  # Shared validation only for this locked request.
+        for event in self._events:
+            metadata = event["metadata"]
+            searchable = [" ".join(str(metadata[key]).split()).casefold()
+                          for key in fields if type(metadata.get(key)) in (str, int)]
+            if query and not any(query in value for value in searchable):
+                continue
+            coordinate, candidate = None, 0
+            if source_filters:
+                if forward is not None and metadata.get("app_forward_index") != forward:
+                    continue
+                if token_position is not None:
+                    positions = metadata.get("token_positions")
+                    if type(positions) is not list:
+                        continue
+                    try:
+                        # Candidate only: _coordinate checks the complete saved
+                        # layout, selected axes, step identity and source bounds.
+                        # No expansion over every vector or hidden feature.
+                        candidate = positions.index(token_position)
+                    except ValueError:
+                        continue
+                if not 0 <= candidate < event["vector_count"]:
+                    continue
+                coordinate = self._coordinate(event["index"], candidate, _context=coordinate_context)
+                if (coordinate["status"] != "known"
+                        or (token_position is not None and coordinate["token_position"] != token_position)
+                        or (forward is not None and coordinate["app_forward_index"] != forward)
+                        or (stack is not None and coordinate["stack"] != stack)):
+                    continue
+            if offset <= total < offset + limit:
+                if coordinate is None:
+                    coordinate = self._coordinate(event["index"], 0, _context=coordinate_context)
+                count = event["vector_count"]
+                if coordinate["status"] != "known":
+                    summary = {"status": "unknown", "vector_count": count, "coordinate": None,
+                               "reason": coordinate["reason"]}
+                elif count > 1 and not source_filters:
+                    summary = {"status": "multiple", "vector_count": count, "coordinate": None,
+                               "reason": "Multiple source vectors; open this event to choose a position"}
+                else:
+                    summary = {"status": "known", "vector_count": count, "coordinate": coordinate,
+                               "reason": coordinate["reason"]}
+                page.append({**event, "source_summary": summary,
+                             "matched_vector_index": candidate if source_filters else None})
+            total += 1
+        return {"events": _json_copy(page), "total": total, "total_all": len(self._events)}
+
+    def layer_map(self, forward=0, offset=0, limit=12):
+        """Page recorded boundary groups, not inferred topology or tensor statistics.
+
+        Only vector zero is grounded for each event. Representatives are first
+        captured events, not aligned token samples across sites. Invalid or
+        unsupported provenance stays available in the ordinary event table.
+        """
+        if self._run is None: raise ValueError("No completed trace is loaded")
+        _integer(forward, "forward"); _integer(offset, "offset", 0, len(self._events))
+        _integer(limit, "limit", 1, 50)
+        groups, context = {}, {}
+        selected = known = unmapped = other = missing = 0
+        family = self._run.get("model", {}).get("family") if type(self._run.get("model")) is dict else None
+        for event in self._events:
+            metadata = event["metadata"]
+            recorded_forward = metadata.get("app_forward_index")
+            if type(recorded_forward) is not int or recorded_forward < 0:
+                missing += 1
+                continue
+            if recorded_forward != forward:
+                other += 1
+                continue
+            selected += 1
+            coordinate = self._coordinate(event["index"], 0, _context=context)
+            if coordinate["status"] != "known":
+                unmapped += 1
+                continue
+            layer, stack, path = coordinate["layer_index"], coordinate["stack"], coordinate["module_path"]
+            # Match actual supported boundary roles AND selectors. GPT2's
+            # adapter records a tensor or tuple-first result; preserve those
+            # variants as separate nodes, never silently merge them.
+            if family == "gpt2":
+                prefix = f"transformer.h.{layer}"
+                specs = {prefix: ("block", ((), (0,))), prefix + ".attn": ("attn", ((), (0,))), prefix + ".mlp": ("mlp", ((), (0,)))}
+            elif family == "distilbert":
+                prefix = f"distilbert.transformer.layer.{layer}"
+                specs = {prefix: ("block", ((), (0,))), prefix + ".attention": ("attention", ((0,),)), prefix + ".ffn": ("ffn", ((),))}
+            elif family == "llama":
+                prefix = f"model.layers.{layer}"
+                specs = {prefix: ("llama_block", ((),)), prefix + ".self_attn": ("llama_attention", ((0,),)), prefix + ".mlp": ("llama_mlp", ((),))}
+            elif family == "vit":
+                legacy = f"vit.encoder.layer.{layer}"
+                prefix = f"vit.layers.{layer}"
+                specs = {legacy: ("vit_block", ((),)), legacy + ".attention": ("vit_attention", ((),)), legacy + ".intermediate": ("vit_intermediate", ((),)),
+                         prefix: ("vit_block", ((),)), prefix + ".attention": ("vit_attention", ((0,),)), prefix + ".mlp.activation_fn": ("vit_intermediate", ((),))}
+            elif family == "t5":
+                prefix = f"{stack}.block.{layer}"
+                specs = {prefix: (f"t5_{stack}_block_output", ((0,),)),
+                         prefix + ".layer.0": (f"t5_{stack}_self_attention_residual", ((0,),)),
+                         prefix + (".layer.1" if stack == "encoder" else ".layer.2"): (f"t5_{stack}_feed_forward_residual", ((),))}
+            else:
+                specs = {}
+            spec, selector, kind = specs.get(path), metadata.get("output_path"), metadata.get("module_kind")
+            if (spec is None or kind != spec[0] or type(selector) is not list
+                    or len(selector) > 1 or any(type(part) is not int for part in selector)
+                    or tuple(selector) not in spec[1]):
+                unmapped += 1
+                continue
+            known += 1
+            nodes = groups.setdefault((stack, layer), {})
+            key = (path, kind, tuple(selector))
+            if key not in nodes:
+                count = event["vector_count"]
+                summary = {"status": "multiple" if count > 1 else "known", "vector_count": count,
+                           "coordinate": None if count > 1 else coordinate,
+                           "reason": "Multiple source vectors; open this event to choose a position" if count > 1 else coordinate["reason"]}
+                nodes[key] = dict(module_path=path, module_kind=kind, output_path=selector,
+                                  event_count=0, vector_count=0, tensor_bytes=0,
+                                  representative_event={**event, "source_summary": summary, "matched_vector_index": 0})
+            node = nodes[key]
+            node["event_count"] += 1
+            node["vector_count"] += event["vector_count"]
+            node["tensor_bytes"] += event["tensor_bytes"]
+        _integer(offset, "offset", 0, len(groups))
+        order = {"input": 0, "encoder": 1, "decoder": 2, "image": 3}
+        keys = sorted(groups, key=lambda key: (order[key[0]], key[1]))
+        layers = [{"stack": stack, "layer_index": layer,
+                   "nodes": [node for _, node in sorted(groups[(stack, layer)].items())]}
+                  for stack, layer in keys[offset:offset + limit]]
+        return _json_copy(dict(selected_forward=forward, offset=offset, limit=limit, total_layers=len(groups),
+                               total_all_events=len(self._events), selected_forward_events=selected,
+                               known_events=known, unmapped_events=unmapped, other_forward_events=other,
+                               missing_forward_events=missing, layers=layers,
+                               scope_note="Recorded capture boundaries only, not complete model topology or attention weights. "
+                               "Each node opens its first capture at vector zero; representatives are not token-aligned across nodes. "
+                               "Unmapped captures remain inspectable in the event table."))
+
+    def saved_runs(self):
+        """Read-only immediate-child catalog; completion is NOT integrity verification.
+
+        At most 500 root entries are considered (plus one truncation lookahead),
+        then up to 200 candidate directories are inspected in lexical order. A
+        truncated result is a bounded subset, not a full inventory. Manifests and
+        payloads are never read. Descriptor-relative, no-follow access is POSIX-only.
+        """
+        if os.name != "posix" or not all(hasattr(os, key) for key in ("O_DIRECTORY", "O_NOFOLLOW")):
+            return self._saved_runs_portable()
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        try:
+            root_fd = os.open(self.export_root, flags)
+        except FileNotFoundError:
+            return {"runs": [], "truncated": False}
+        try:
+            with os.scandir(root_fd) as entries:
+                names = heapq.nsmallest(201, (entry.name for entry in islice(entries, 500)
+                                            if entry.is_dir(follow_symlinks=False)))
+                enumeration_truncated = next(entries, None) is not None
+            runs = []
+            for name in names[:200]:
+                try:
+                    run_fd = os.open(name, flags, dir_fd=root_fd)
+                except FileNotFoundError:
+                    continue  # A concurrently removed export is no longer a saved run.
+                try:
+                    files = {}
+                    for filename in ("manifest.json", "tensors.safetensors", "status.json"):
+                        try:
+                            info = os.stat(filename, dir_fd=run_fd, follow_symlinks=False)
+                        except FileNotFoundError:
+                            continue
+                        if stat.S_ISREG(info.st_mode):
+                            files[filename] = info.st_size
+                    complete = False
+                    if (len(files) == 3 and files["status.json"] <= 1024):
+                        try:
+                            status_fd = os.open("status.json", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                                                dir_fd=run_fd)
+                            with os.fdopen(status_fd, "rb") as source:
+                                info = os.fstat(source.fileno())
+                                if stat.S_ISREG(info.st_mode) and info.st_size <= 1024:
+                                    complete = json.loads(source.read(1024)) == {"status": "complete"}
+                        except (FileNotFoundError, ValueError, UnicodeError):
+                            pass
+                    runs.append({"name": name, "path": str(self.export_root / name),
+                                 "status": "complete_unverified" if complete else "incomplete",
+                                 "tensor_file_bytes": files.get("tensors.safetensors")})
+                finally:
+                    os.close(run_fd)
+            return {"runs": runs, "truncated": enumeration_truncated or len(names) > 200}
+        finally:
+            os.close(root_fd)
+
+    def _saved_runs_portable(self):
+        """Trusted single-user fallback, not hostile-filesystem race isolation.
+
+        Reject detected links/junctions and changed identities, but platforms
+        without descriptor-relative no-follow access cannot close every race.
+        """
+        def identity(info):
+            return (info.st_dev, info.st_ino, info.st_mode)
+
+        def ordinary_directory(path):
+            info = path.lstat()
+            if (not stat.S_ISDIR(info.st_mode) or path.is_symlink()
+                    or (hasattr(path, "is_junction") and path.is_junction())):
+                raise ValueError("Saved-run catalog requires an ordinary directory, not a link")
+            return identity(info)
+
+        try:
+            root_identity = ordinary_directory(self.export_root)
+        except FileNotFoundError:
+            return {"runs": [], "truncated": False}
+        with os.scandir(self.export_root) as entries:
+            names = heapq.nsmallest(201, (entry.name for entry in islice(entries, 500)
+                                        if entry.is_dir(follow_symlinks=False)))
+            enumeration_truncated = next(entries, None) is not None
+        runs = []
+        for name in names[:200]:
+            path = self.export_root / name
+            try:
+                run_identity = ordinary_directory(path)
+            except FileNotFoundError:
+                continue
+            files = {}
+            for filename in ("manifest.json", "tensors.safetensors", "status.json"):
+                try:
+                    info = (path / filename).lstat()
+                except FileNotFoundError:
+                    continue
+                if stat.S_ISREG(info.st_mode):
+                    files[filename] = info
+            complete = False
+            if len(files) == 3 and files["status.json"].st_size <= 1024:
+                try:
+                    with (path / "status.json").open("rb") as source:
+                        current = os.fstat(source.fileno())
+                        if identity(current) != identity(files["status.json"]):
+                            raise ValueError("Saved-run status changed during catalog scan")
+                        if stat.S_ISREG(current.st_mode) and current.st_size <= 1024:
+                            complete = json.loads(source.read(1024)) == {"status": "complete"}
+                except (FileNotFoundError, ValueError, UnicodeError):
+                    pass
+            if ordinary_directory(path) != run_identity or ordinary_directory(self.export_root) != root_identity:
+                raise ValueError("Saved-run directory changed during catalog scan")
+            tensor = files.get("tensors.safetensors")
+            runs.append({"name": name, "path": str(path),
+                         "status": "complete_unverified" if complete else "incomplete",
+                         "tensor_file_bytes": tensor.st_size if tensor is not None else None})
+        if ordinary_directory(self.export_root) != root_identity:
+            raise ValueError("Saved-run directory changed during catalog scan")
+        return {"runs": runs, "truncated": enumeration_truncated or len(names) > 200}
+
+    def _coordinate(self, event, vector, *, _context=None):
+        """Ground a vector using retained provenance, never model/tokenizer state.
+
+        Browsing may share a private context within one serialized request to
+        validate shared forward inputs once. It must not survive that request;
+        source shapes, identities and all event-specific checks remain fresh.
+        Calls without a context perform the same checks without any reuse.
+        """
+        coordinate = dict(status="unknown", app_forward_index=None, module_path=None,
+                          layer_index=None, stack=None, batch_position=None, token_position=None,
+                          token_id=None, token_piece=None, token_text=None, token_label_truncated=False,
+                          image_coordinate=None, reason=None)
+        def require(condition, reason):
+            if not condition: raise ValueError(reason)
+        def integer(value):
+            return type(value) is int and value >= 0
+        def integers(value, *, positive=False):
+            return type(value) is list and bool(value) and all(integer(x) and (not positive or x > 0) for x in value)
+        try:
+            metadata = self._events[event]["metadata"]
+            shape = self._events[event]["shape"]
+            source, saved = metadata.get("shape"), metadata.get("saved_shape")
+            require(integers(source, positive=True) and len(source) == 3, "Missing or invalid source shape")
+            require(integers(saved, positive=True) and saved == shape, "Saved shape does not match retained tensor")
+            require(type(metadata.get("batch_axis")) is int and metadata["batch_axis"] == 0
+                    and type(metadata.get("token_axis")) is int and metadata["token_axis"] == 1,
+                    "Unsupported or missing batch/token axes")
+            batches, positions = metadata.get("batch_positions"), metadata.get("token_positions")
+            require(integers(batches) and len(set(batches)) == len(batches) and max(batches) < source[0], "Invalid batch positions")
+            require(integers(positions) and len(set(positions)) == len(positions) and max(positions) < source[1], "Invalid token positions")
+            model = self._run.get("model")
+            family = model.get("family") if type(model) is dict else None
+            require(family in ("gpt2", "distilbert", "t5", "vit", "llama"), "Unknown retained adapter family")
+            if family in ("gpt2", "distilbert", "llama"):
+                require(shape == [len(batches), len(positions), source[2]], "Unsupported retained vector layout")
+                if family == "distilbert":
+                    require(len(batches) == len(positions) == 1, "DistilBERT requires singleton selected positions")
+                batch_slot, token_slot = divmod(vector, len(positions))
+            else:
+                require(shape == [source[2]] and len(batches) == len(positions) == 1 and vector == 0,
+                        "Adapter requires one rank-one selected vector")
+                batch_slot = token_slot = 0
+            forward, path, layer = (metadata.get(key) for key in ("app_forward_index", "module_path", "layer_index"))
+            require(integer(forward) and integer(layer) and type(path) is str and 0 < len(path) <= 1024,
+                    "Missing or invalid forward/module/layer provenance")
+            identity = metadata.get("identity")
+            require(type(identity) is dict and type(identity.get("run_id")) is str and bool(identity["run_id"]), "Missing capture run identity")
+            steps = self._run.get("steps")
+            if _context is None:
+                require(type(steps) is list and all(type(step) is dict and integer(step.get("app_forward_index")) for step in steps), "Invalid retained forward steps")
+                matching = [step for step in steps if step["app_forward_index"] == forward]
+                step = matching[0] if len(matching) == 1 else None
+            else:
+                if "steps_source" not in _context or _context["steps_source"] is not steps:
+                    valid = type(steps) is list and all(type(item) is dict and integer(item.get("app_forward_index")) for item in steps)
+                    lookup = {}
+                    if valid:
+                        for item in steps:
+                            key = item["app_forward_index"]
+                            # Duplicate indices stay ambiguous, even for the
+                            # same step object; never pick first/last silently.
+                            lookup[key] = None if key in lookup else item
+                    _context.update(steps_source=steps, steps_valid=valid, steps_lookup=lookup, token_ids={})
+                require(_context["steps_valid"], "Invalid retained forward steps")
+                step = _context["steps_lookup"].get(forward)
+            require(step is not None and step.get("run_id") == identity["run_id"], "Forward step is missing, ambiguous, or has mismatched run identity")
+            batch, position = batches[batch_slot], positions[token_slot]
+            stack = "input"
+            if family == "t5":
+                require(path.startswith(("encoder.", "decoder.")), "T5 encoder/decoder stack is not explicit")
+                stack = path.split(".", 1)[0]
+            prefixes = {"gpt2": f"transformer.h.{layer}", "distilbert": f"distilbert.transformer.layer.{layer}",
+                        "t5": f"{stack}.block.{layer}", "vit": f"vit.encoder.layer.{layer}",
+                        "llama": f"model.layers.{layer}"}
+            suffixes = {"gpt2": ("", ".attn", ".mlp"), "distilbert": ("", ".attention", ".ffn"),
+                        "t5": ("", ".layer.0", ".layer.1" if stack == "encoder" else ".layer.2"),
+                        "vit": ("", ".attention", ".intermediate"), "llama": ("", ".self_attn", ".mlp")}
+            allowed_paths = {prefixes[family] + suffix for suffix in suffixes[family]}
+            if family == "vit":
+                allowed_paths.update(f"vit.layers.{layer}" + suffix for suffix in ("", ".attention", ".mlp.activation_fn"))
+            require(path in allowed_paths, "Module path contradicts the retained adapter/layer boundary")
+            if family == "vit" and path.startswith("vit.layers."):
+                expected_selector = [0] if path == f"vit.layers.{layer}.attention" else []
+                require(type(metadata.get("output_path")) is list
+                        and all(type(index) is int for index in metadata["output_path"])
+                        and metadata["output_path"] == expected_selector,
+                        "ViT output selector contradicts the retained boundary")
+            if family == "llama":
+                output_path = metadata.get("output_path")
+                expected_path = [0] if path.endswith(".self_attn") else []
+                require(type(output_path) is list and all(type(index) is int for index in output_path)
+                        and output_path == expected_path, "Llama output selector contradicts the retained boundary")
+            if family == "vit":
+                stack = "image"
+                image = metadata.get("image_coordinate")
+                require(type(image) is dict, "Missing image coordinate")
+                kind, row, col, box = (image.get(key) for key in ("token_kind", "patch_row", "patch_column", "processed_pixel_box_xyxy"))
+                if kind == "cls":
+                    require(position == 0 and row is None and col is None and box is None, "Invalid CLS image coordinate")
+                else:
+                    require(kind == "patch" and position > 0 and integer(row) and integer(col)
+                            and integers(box) and len(box) == 4 and box[0] < box[2] and box[1] < box[3], "Invalid patch image coordinate")
+                geometry = self._run.get("image_metadata")
+                require(geometry is not None, "Missing retained processed-image geometry")
+                reason = None
+                if geometry is not None:
+                    require(type(geometry) is dict, "Invalid image geometry")
+                    grid, patch = geometry.get("grid_shape"), geometry.get("patch_shape")
+                    require(integers(grid, positive=True) and len(grid) == 2 and integers(patch, positive=True) and len(patch) == 2,
+                            "Missing or invalid patch geometry")
+                    require(integer(geometry.get("sequence_length")) and geometry["sequence_length"] == source[1] == 1 + grid[0] * grid[1]
+                            and type(geometry.get("cls_token_index")) is int and geometry["cls_token_index"] == 0, "Inconsistent image sequence geometry")
+                    if kind == "patch":
+                        require(row < grid[0] and col < grid[1] and position == 1 + row * grid[1] + col
+                                and box == [col * patch[1], row * patch[0], (col + 1) * patch[1], (row + 1) * patch[0]], "Patch position or box contradicts processed geometry")
+                    reason = None
+                coordinate.update(image_coordinate={"token_kind": kind, "patch_row": row, "patch_column": col,
+                                                     "processed_pixel_box_xyxy": _json_copy(box)}, reason=reason)
+            else:
+                require(batch == 0 and source[0] == 1, "Recorded token sequences describe one batch-zero sample only")
+                field = "decoder_token_ids" if stack == "decoder" else "input_token_ids"
+                ids = step.get(field)
+                if _context is None:
+                    valid_ids = integers(ids)
+                else:
+                    # At most two entries per retained step, not per event or
+                    # vector. Strong references prevent identity-key reuse.
+                    key = (id(step), field)
+                    cached = _context["token_ids"].get(key)
+                    if cached is None or cached[0] is not step or cached[1] is not ids:
+                        cached = (step, ids, integers(ids))
+                        _context["token_ids"][key] = cached
+                    valid_ids = cached[2]
+                require(valid_ids and len(ids) == source[1] and position < len(ids), "Missing or inconsistent forward input-token IDs")
+                token_id = ids[position]
+                coordinate["token_id"] = token_id
+                labels = self._run.get("token_labels")
+                label = labels.get(str(token_id)) if type(labels) is dict else None
+                if (type(label) is dict and type(label.get("piece")) is str and len(label["piece"]) <= 512
+                        and type(label.get("text")) is str and len(label["text"]) <= 512 and type(label.get("truncated")) is bool):
+                    coordinate.update(token_piece=label["piece"], token_text=label["text"], token_label_truncated=label["truncated"],
+                                      reason="Token display label is truncated" if label["truncated"] else None)
+                else:
+                    coordinate["reason"] = "Token display label unavailable in retained run; no tokenizer decoding performed"
+            coordinate.update(status="known", app_forward_index=forward, module_path=path, layer_index=layer,
+                              stack=stack, batch_position=batch, token_position=position)
+        except ValueError as error:
+            coordinate["reason"] = str(error)
+        return coordinate
+
+    def vectors(self, event, offset=0, limit=100):
+        """Bounded options retain original flat vector indices and exact coordinates."""
+        if self._run is None: raise ValueError("No completed trace is loaded")
+        _integer(event, "event", 0, len(self._values) - 1)
+        count = self._events[event]["vector_count"]
+        _integer(offset, "offset", 0, count); _integer(limit, "limit", 1, 200)
+        coordinate_context = {}
+        return {"vectors": [{"index": index, "coordinate": self._coordinate(event, index, _context=coordinate_context)}
+                            for index in range(offset, min(offset + limit, count))], "total": count}
+
+    def intervention_source(self, event, vector):
+        """Copy one grounded GPT2/Llama source for a privately bound runtime experiment.
+
+        This validates retained data, not live-model authority. The server must
+        separately require its private live-capture binding; JSON is not a binding.
+        """
+        import torch
+        if self._run is None: raise ValueError("No completed trace is loaded")
+        _integer(event, "event", 0, len(self._values) - 1)
+        _integer(vector, "vector", 0, self._events[event]["vector_count"] - 1)
+        coordinate = self._coordinate(event, vector)
+        model = self._run.get("model")
+        if (coordinate["status"] != "known" or type(model) is not dict
+                or model.get("family") not in ("gpt2", "llama")):
+            raise ValueError("Intervention source requires a known GPT2 or Llama coordinate")
+        metadata = self._events[event]["metadata"]
+        matches = [step for step in self._run["steps"]
+                   if step["app_forward_index"] == coordinate["app_forward_index"]
+                   and step.get("run_id") == metadata["identity"]["run_id"]]
+        if len(matches) != 1:
+            raise ValueError("Intervention source requires a unique retained forward step")
+        step = matches[0]
+        ids, mask = step.get("input_token_ids"), step.get("input_attention_mask")
+        if (type(ids) is not list or not ids or any(type(value) is not int or value < 0 for value in ids)
+                or type(mask) is not list or len(mask) != len(ids)
+                or any(type(value) is not int or value not in (0, 1) for value in mask)):
+            raise ValueError("Intervention source requires exact input IDs and a matching binary attention mask")
+        if step.get("use_cache") is not False:
+            raise ValueError("Intervention source requires an explicitly uncached forward")
+        value = self._values[event]
+        reference = value.reshape(-1, value.shape[-1])[vector].detach().clone().contiguous()
+        if (reference.device.type != "cpu" or reference.dtype != torch.float32
+                or not torch.isfinite(reference).all().item()):
+            raise ValueError("Intervention reference must be finite CPU float32")
+        return {"coordinate": _json_copy(coordinate), "step": _json_copy(step),
+                "model": _json_copy(model), "reference_value": reference}
+
+    def reference_source(self, event, vector, *, max_bytes):
+        """Preflight one retained vector and metadata before any tensor clone.
+
+        The server separately enforces a private live binding; imported metadata
+        is not authority to pin or compare with a currently loaded model.
+        """
+        from .app_reference import MAX_VECTOR_BYTES, _bounded_metadata_copy
+        _integer(max_bytes, "max_bytes", 1, MAX_VECTOR_BYTES)
+        if self._run is None: raise ValueError("No completed trace is loaded")
+        _integer(event, "event", 0, len(self._values) - 1)
+        _integer(vector, "vector", 0, self._events[event]["vector_count"] - 1)
+        if self._values[event].shape[-1] * 4 > max_bytes:
+            raise ValueError("Reference vector exceeds byte limit")
+        coordinate = self._coordinate(event, vector)
+        if coordinate["status"] != "known": raise ValueError("Reference requires a known coordinate")
+        metadata = self._events[event]["metadata"]
+        matches = [step for step in self._run["steps"]
+                   if step["app_forward_index"] == coordinate["app_forward_index"]
+                   and step.get("run_id") == metadata["identity"]["run_id"]]
+        if len(matches) != 1: raise ValueError("Reference requires one retained forward step")
+        snapshot = _bounded_metadata_copy(dict(coordinate=coordinate, step=matches[0],
+            model=self._run.get("model"), metadata=metadata, prompt=self._run.get("prompt")))
+        source = self.intervention_source(event, vector)
+        source.update(metadata=snapshot["metadata"], prompt=snapshot["prompt"])
+        return source
+
+    def tensor(self, event, vector=0, offset=0, limit=256, view="raw"):
+        import torch
+        from .app_reference import MAX_VECTOR_BYTES, ReferenceVector
+        decode = ReferenceVector._decoded
+        if self._run is None: raise ValueError("No completed trace is loaded")
+        _integer(event, "event", 0, len(self._values) - 1)
+        value = self._values[event]; width = value.shape[-1]
+        _integer(vector, "vector", 0, value.numel() // width - 1)
+        _integer(offset, "offset", 0, width); _integer(limit, "limit", 1, 4096)
+        if view not in ("raw", "reduced"): raise ValueError("view must be raw or reduced")
+        row = value.reshape(-1, width)[vector]
+        result = {"shape": list(value.shape), "dtype": "float32", "vector": vector,
+                  "vector_width": width, "offset": offset, "total": width, "approximate": view == "reduced",
+                  "coordinate": self._coordinate(event, vector)}
+        if view == "raw":
+            segment = row[offset:offset + limit]
+            result.update(values=decode(segment).tolist(), raw_bits=[f"0x{x & 0xffffffff:08x}" for x in segment.view(torch.int32).tolist()])
+        else:
+            if offset != 0: raise ValueError("Grouped views start at offset zero")
+            count = min(limit, 256, width); bins = []
+            chunk_width = MAX_VECTOR_BYTES // 4
+            # Decode ordinary rows once. Larger rows never acquire a full float64
+            # copy: one request-local chunk is reused across successive bins.
+            decoded = decode(row) if width <= chunk_width else None
+            chunk = None
+            chunk_start = chunk_end = 0
+            for i in range(count):
+                start, end = i * width // count, (i + 1) * width // count
+                if decoded is not None:
+                    part = decoded[start:end]
+                    mean, low, high = part.mean().item(), part.min().item(), part.max().item()
+                else:
+                    total, low, high = 0.0, None, None
+                    cursor = start
+                    while cursor < end:
+                        if chunk is None or cursor >= chunk_end:
+                            # No surviving part view keeps the prior chunk alive.
+                            chunk = None
+                            chunk_start = cursor
+                            chunk_end = min(chunk_start + chunk_width, width)
+                            chunk = decode(row[chunk_start:chunk_end])
+                        stop = min(end, chunk_end)
+                        part = chunk[cursor - chunk_start:stop - chunk_start]
+                        total += part.sum().item()
+                        part_low, part_high = part.min().item(), part.max().item()
+                        low = part_low if low is None else min(low, part_low)
+                        high = part_high if high is None else max(high, part_high)
+                        del part
+                        cursor = stop
+                    mean = total / (end - start)
+                bins.append(dict(start=start, end=end, mean=mean, min=low, max=high))
+            note = "Contiguous coordinate means/ranges; not semantic concepts. Full original values remain in RAM."
+            if decoded is None:
+                note += " Large-row means use bounded float64 chunk sums; summation rounding may differ from a whole-row reduction."
+            result.update(bins=bins, reduction=note)
+        return result
+
+    def save(self, name):
+        from safetensors.torch import save_file
+        if self._run is None: raise ValueError("No completed trace to save")
+        if type(name) is not str or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", name):
+            raise ValueError("Use a new run name with letters, digits, hyphens or underscores (1–64 characters)")
+        self.export_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        output = self.export_root / name
+        output.mkdir(mode=0o700)  # Never overwrite a prior run, symlink or partial export.
+        status = output / "status.json"
+        status.write_text('{"status":"incomplete"}\n', encoding="utf-8")
+        tensor_path = output / "tensors.safetensors"
+        # Each capture owns its copy. Different keys must never share mutable checkpoint storage.
+        save_file({f"event_{i}": v for i, v in enumerate(self._values)}, str(tensor_path))
+        manifest = {"schema": SCHEMA, "tensor_file": tensor_path.name,
+                    "tensor_sha256": _digest(tensor_path), "total_bytes": self._run["total_bytes"],
+                    "run": self.summary(), "events": _json_copy(self._events)}
+        encoded = json.dumps(manifest, ensure_ascii=False, allow_nan=False, indent=2).encode("utf-8")
+        if len(encoded) > MAX_MANIFEST: raise ValueError("Export metadata exceeds the manifest limit; incomplete export retained")
+        (output / "manifest.json").write_bytes(encoded)
+        status.write_text('{"status":"complete"}\n', encoding="utf-8")
+        return {"path": str(output), "event_count": len(self._events), "tensor_bytes": self._run["total_bytes"], "format": "safetensors + JSON", "lossless": True}
+
+    def open(self, directory):
+        """Verify a complete export before replacing the current in-memory trace."""
+        from safetensors import safe_open
+        import torch
+        root = Path(directory).expanduser().resolve()
+        manifest_path, tensor_path, status_path = (root / n for n in ("manifest.json", "tensors.safetensors", "status.json"))
+        for path in (manifest_path, tensor_path, status_path):
+            if path.is_symlink() or not path.is_file(): raise ValueError("Trace files must be ordinary files, not symlinks")
+        if manifest_path.stat().st_size > MAX_MANIFEST or status_path.stat().st_size > 1024:
+            raise ValueError("Trace metadata exceeds its limit")
+        if json.loads(status_path.read_text()) != {"status": "complete"}: raise ValueError("Incomplete exports cannot be opened")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if not isinstance(manifest, dict): raise ValueError("Trace manifest must be a JSON object")
+        if manifest.get("schema") != SCHEMA or manifest.get("tensor_file") != "tensors.safetensors":
+            raise ValueError("Unsupported trace schema or tensor filename")
+        rows = manifest.get("events")
+        if not isinstance(rows, list) or not 0 < len(rows) <= self.max_events: raise ValueError("Invalid capture count")
+        # Reject malformed container structure before hashing or allocating the
+        # tensor payload. Invalid exports are input errors, not failed forwards.
+        run = manifest.get("run")
+        if not isinstance(run, dict): raise ValueError("Run metadata must be an object")
+        for i, row in enumerate(rows):
+            if not isinstance(row, dict): raise ValueError(f"Capture entry {i} must be a JSON object")
+            if not isinstance(row.get("metadata"), dict): raise ValueError(f"Capture metadata {i} must be an object")
+        expected_total = _integer(manifest.get("total_bytes"), "total_bytes", 1, self.max_bytes)
+        if tensor_path.stat().st_size > self.max_bytes + MAX_MANIFEST: raise ValueError("Tensor file exceeds import allowance")
+        if _digest(tensor_path) != manifest.get("tensor_sha256"): raise ValueError("Tensor digest mismatch")
+        captures, total = [], 0
+        with safe_open(str(tensor_path), framework="pt", device="cpu") as handle:
+            if set(handle.keys()) != {f"event_{i}" for i in range(len(rows))}: raise ValueError("Tensor inventory mismatch")
+            for i, row in enumerate(rows):
+                sliced = handle.get_slice(f"event_{i}"); shape = sliced.get_shape()
+                if (row.get("index") != i or row.get("shape") != shape or row.get("dtype") != "float32"
+                        or sliced.get_dtype() != "F32" or not shape or any(type(x) is not int or x <= 0 for x in shape)):
+                    raise ValueError("Capture shape, dtype or identity mismatch")
+                size = math.prod(shape) * 4; total += size
+                if size != row.get("tensor_bytes") or total > self.max_bytes: raise ValueError("Capture size mismatch")
+                value = handle.get_tensor(f"event_{i}").clone()  # No live file mapping after successful open.
+                metadata = _json_copy(row.get("metadata"))
+                captures.append(SimpleNamespace(value=value, metadata=lambda m=metadata: m))
+        if total != expected_total: raise ValueError("Total capture size mismatch")
+        result = {**run, "events": captures}
+        return self.publish(result)

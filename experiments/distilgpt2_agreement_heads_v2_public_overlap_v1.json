@@ -1,0 +1,20 @@
+{
+  "bidirectional_prefix_relations": {
+    "cross_model": 0,
+    "inventory": 0,
+    "noun_substitution": 0
+  },
+  "candidate_sequences": 80,
+  "cases_sha256": "51d14d87f7a318ff94e613d3ff88dfd338a6906675a92af41899b3a027eead7b",
+  "cross_model_sequences": 160,
+  "cross_model_sha256": "b1d6dbad76240f07be3a55196ace982767400b60e497d4e7fc75aaae82c8c503",
+  "inventory_commit": "161c143285dbe7458be8b4ad74496d2383e42fe5",
+  "inventory_records": 1167,
+  "inventory_sequences_checked": 4915,
+  "inventory_sha256": "f3a500dc02d85b8f004275ba2edd74febf9cec138e83755568e5be31045898a9",
+  "inventory_version": "distilgpt2-development-exposures-v38",
+  "noun_substitution_sequences": 486,
+  "noun_substitution_sha256": "94910e59415936a09c18f81478e0eaffb790c9b69d0962ab3f6b70947fbe1dfe",
+  "schema": "agreement-head-v2-public-overlap-v1",
+  "scope": "public known records and declared continuations only; not a private comparison or complete exposure certificate"
+}

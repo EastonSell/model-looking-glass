@@ -1,0 +1,11 @@
+{
+  "canonical_selection": true,
+  "card_sha256": "05574d7c513716d946d70c67f190886a81b221cef0b17220c7f7b6135b411eca",
+  "commitment": "fdbe6b3ba3c1d44f6629d895d6ae9e2aa52a499591e48d4879c8250ba77a855f",
+  "pool_commitment": "f79c8fdb977a459a803f3a92a45ba7a82dc2fedd1e14349432371b40da9c1671",
+  "salt_bytes": 32,
+  "schema": "flan-sentiment-private-selection-verification-v1",
+  "scope": "Custodian reconciliation of private bytes and public cards; no independent timing or execution attestation.",
+  "screened_units": 12,
+  "status": "matched"
+}

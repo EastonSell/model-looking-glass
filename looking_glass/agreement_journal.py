@@ -24,6 +24,9 @@ class JournalError(RuntimeError):
 
 _MAX_TOTAL = 512 * 1024 * 1024
 _MAX_FORWARD = 1024 * 1024
+# The default remains 1 MiB. A longer, explicitly reserved CPU sequence can
+# require a larger failed-return witness; callers must opt in to this ceiling.
+_MAX_FORWARD_LIMIT = 4 * 1024 * 1024
 _MAX_EVENTS = 10000
 _MAX_METADATA = 256 * 1024
 _MAX_EVENT_LOG = 64 * 1024 * 1024
@@ -55,7 +58,7 @@ class AgreementJournal:
     def __init__(self, directory, metadata, *, max_total_bytes=_MAX_TOTAL,
                  max_forward_bytes=_MAX_FORWARD, max_events=_MAX_EVENTS,
                  max_event_log_bytes=_MAX_EVENT_LOG):
-        for value, limit in ((max_total_bytes, _MAX_TOTAL), (max_forward_bytes, _MAX_FORWARD),
+        for value, limit in ((max_total_bytes, _MAX_TOTAL), (max_forward_bytes, _MAX_FORWARD_LIMIT),
                              (max_events, _MAX_EVENTS), (max_event_log_bytes, _MAX_EVENT_LOG)):
             if type(value) is not int or not 0 < value <= limit:
                 raise ValueError('journal limits must be positive and within protocol bounds')

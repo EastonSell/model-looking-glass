@@ -1,0 +1,25 @@
+{
+  "complete_cells": [
+    "exposed-calibration-prior",
+    "exposed-calibration-new",
+    "fresh-01-prior",
+    "fresh-01-new"
+  ],
+  "error_type": "RuntimeError",
+  "failure_phase": "forwards",
+  "message": "disk reserve exhausted before the next evidence event",
+  "no_saved_records_for_cells": [
+    "fresh-02-new",
+    "fresh-03-prior",
+    "fresh-03-new"
+  ],
+  "original_failure_sha256_commitment": "12b861407be2e4050b7f5e7b792847867f7b7c588cf75857783fc36d1bb8317a",
+  "original_journal_bytes": 98085910,
+  "original_journal_sha256": "ef3d75a34903e8c2fae9f69cf3d3f71d9c77c59ec171d72cbf07c9e67e9d0e05",
+  "partial_cell": "fresh-02-prior",
+  "saved_events": 509,
+  "saved_forward_witnesses": 499,
+  "scope": "Operator projection from closed saved records and source; commitments alone do not authenticate the withheld files or execution. One further transfer returned to the emitter, but its witness was not saved.",
+  "source_commit": "b75e5bcc3a866a9af56ac1ac3ba54c6abe1691a4",
+  "status": "incomplete"
+}

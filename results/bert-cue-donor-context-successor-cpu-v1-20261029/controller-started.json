@@ -1,0 +1,12 @@
+{
+  "attempt": "bert-cue-donor-context-successor-b6667ad5-v1",
+  "controller_sha256": "6e20e506550666e8dc0b0a22919e7e9f95ef49de81d1b8082f70491712a4cca0",
+  "controller_start_utc": "2026-10-29T14:02:00.561575+00:00",
+  "full_reader_sha256": "1a7994e2405ea03d8c1e4607f4a00c2ca9640ee58aaf310feac932eede5dacc5",
+  "predecessor_exit_sha256": "fef33220fa71a2c8a31c8f3c35373cfaa70483256536c9d5549f6a7983d1155c",
+  "predecessor_preflight_sha256": "c91419bb2c379b24deefe1bb3a5da3378ebd0a484933377e6558a9e9fb62c6f1",
+  "predecessor_stderr_sha256": "46962f3641d666a7e719f2ea895c50e6c5cc3291524642dd831c8078c81bb39b",
+  "process_waited": false,
+  "score_reader_sha256": "6670787ce5369278a159d71a7efb1c5eef63f7c8650acda16c4343fa294fdd49",
+  "source_commit": "b6667ad5bfcadac6e0f45d4ad6530cca1f4584ca"
+}

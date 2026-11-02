@@ -1,0 +1,8 @@
+{
+  "custody_report_sha256": "a34efab03d6498143a0953786179d09466884fecbeec0daee060bff203b3d496",
+  "operator_transcription_sha256": "0977ec418c2ad1c3e9b1e352a2d924b80216debdaf9ff51110f7ed2b595d8ee4",
+  "outer_record_sha256": "86897fe8a359ee97c22dc84e93ba85a9958051a467c07befc9f6880cfb5c48a4",
+  "recorded_tool_exit_code": 0,
+  "schema": "independent-multisuffix-outer-tool-reconciliation-v1",
+  "scope": "The separate record is an operator transcription, not an independently observed OS exit or process-tree attestation."
+}

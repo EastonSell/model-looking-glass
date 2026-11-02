@@ -1,0 +1,108 @@
+{
+  "accepted_complete_phase": true,
+  "exit_code": 0,
+  "failure_file_present": false,
+  "free_bytes_after": {
+    "cache": 1781153792,
+    "output": 388171534336,
+    "source": 1781153792
+  },
+  "freeze_sha256": null,
+  "interrupted": false,
+  "launcher_error_type": null,
+  "phase": "discovery",
+  "pre_run_sha256": "3cffd5c7ebedc35506fc2c64a14d00eb8a5dd8c4f9c94d59446c00c1943cb33f",
+  "prefix_empty_after": true,
+  "prefix_sha256": "31faa51f9bfc273316ed0a0f5df212e4efce97c746f6a54b9866fb31cf2e75cc",
+  "reaped_observed_utc": "2026-10-29T12:42:47.160157+00:00",
+  "reservation_sha256": "f3a500dc02d85b8f004275ba2edd74febf9cec138e83755568e5be31045898a9",
+  "run_files": {
+    "distractor-repair-01.f32": {
+      "bytes": 16102112,
+      "sha256": "7e8382f926ce37f9d17f59e99d1006422f0ce51e5af992afdb68fa4b1cc716bc"
+    },
+    "distractor-repair-01.f64": {
+      "bytes": 18432,
+      "sha256": "3fa2f5d368917269efba7d016d8612c4a004d8f8cc7ce0aa8606b163d29c8c57"
+    },
+    "distractor-repair-02.f32": {
+      "bytes": 15303392,
+      "sha256": "0159e19d2a18cb8691e40231f2f30f065c334cffb68ecab8c5224ae709045d22"
+    },
+    "distractor-repair-02.f64": {
+      "bytes": 18432,
+      "sha256": "392981a586e00b22b74fad4abdacdd0f1cb542b1740fbf8fa8dc10aadd5b27ea"
+    },
+    "distractor-repair-03.f32": {
+      "bytes": 15303392,
+      "sha256": "f4dbc164037ed7742bd16a7d3868e808e97a45a70451e0fef4aa225fe1fe2a07"
+    },
+    "distractor-repair-03.f64": {
+      "bytes": 18432,
+      "sha256": "5d952aa0715b36f01a3736afa76574b586167568960f04c3b9094b6191bfa203"
+    },
+    "distractor-repair-04.f32": {
+      "bytes": 15303392,
+      "sha256": "8ae753010ab569a98f668837a36a8d7cc945c708053173cec4fdf8a9ad5bbc6c"
+    },
+    "distractor-repair-04.f64": {
+      "bytes": 18432,
+      "sha256": "35a3d4f1f25224cd95fd99f5072bf27f3361637accd2ac5ac090c101609f9d6f"
+    },
+    "distractor-repair-05.f32": {
+      "bytes": 14904032,
+      "sha256": "1301619e61e0d2689347081878424eace8801806e441faae6c2c6926f48fa2fd"
+    },
+    "distractor-repair-05.f64": {
+      "bytes": 18432,
+      "sha256": "d42a23ba377c7097eca759cc2ac40a2ac81fcfc2f612f169f8b7efe69ba0d567"
+    },
+    "distractor-repair-06.f32": {
+      "bytes": 15303392,
+      "sha256": "3e3ad7a4c8348d91e4baf6037cd8a39e9fcc693c6fc1cfcd411d4584cc8554d9"
+    },
+    "distractor-repair-06.f64": {
+      "bytes": 18432,
+      "sha256": "9fa1aa3fb927237ac8a7df5ecf13e042e4884ef97a545c7aacc781d217486aec"
+    },
+    "distractor-repair-07.f32": {
+      "bytes": 15702752,
+      "sha256": "ccb1dd77bf3e8935aa0b894fd04a302c0f99d07cca26ff6bcb98db0fc702d8d7"
+    },
+    "distractor-repair-07.f64": {
+      "bytes": 18432,
+      "sha256": "6eb12620078b1f07480d10aa42c1a41e423f6549eebcfde7542665d36262f553"
+    },
+    "distractor-repair-08.f32": {
+      "bytes": 14904032,
+      "sha256": "c1aba96276ad05835850a6b4328530ff46cf6b2955486b02cc964ffad6a28415"
+    },
+    "distractor-repair-08.f64": {
+      "bytes": 18432,
+      "sha256": "d36de0e4aa2984531c133b0d1043d542054d2d8578d90ab7a9ab8910ad961c32"
+    },
+    "events.jsonl": {
+      "bytes": 3327755,
+      "sha256": "4f15b75602a14c8ab2e1d69aa123fa95924126de88f45fbdbd3c7e2fedc0f624"
+    },
+    "phase-summary.json": {
+      "bytes": 148,
+      "sha256": "fd8a86942480069efac0df5d1eec6a9cec52370649b5bab2c7e62e1f6a991800"
+    }
+  },
+  "schema": "public-distractor-repair-direct-receipt-v1",
+  "scope": "cooperative direct-child observation; no descendant or authenticated execution attestation",
+  "source_revision": "26e84ad8da3139a110d45302a99b996d242fc54d",
+  "source_tree": "a03400a4a45fd95b2ed15b89d5dbd5b4dbe54d9e",
+  "stage_dir_sha256": "a1beec3faf63701a20014240ef3ba260dfc569ca4c76855d264a7faefae2e334",
+  "stage_empty_after": true,
+  "start_observed_utc": "2026-10-29T12:42:03.688677+00:00",
+  "stderr": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stdout": {
+    "bytes": 418,
+    "sha256": "b6998272cbf768a8d699fcd08203880aaf25fc422d6f2d8e2330ebb11f86e7ad"
+  }
+}

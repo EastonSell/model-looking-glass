@@ -10,14 +10,14 @@ import torch
 
 from .host_budget import HostBudget, HostClaim, HostRequest
 from .producer_slot import ProducerSlotRegistry
-from .resident_worker import ForwardRequest
+from .resident_worker import ForwardRequest, ForwardResult
 from .trace_batch_owner import BatchStateError, TraceBatchRegistry
 from .trace_job_validation import _strip_failure_frames, make_trace_job_layout
 from .trace_producer import ClaimLimit, ProducerProfile
 from .trace_store import HostTraceStore
 from .traced_broker_worker import (BoundTracePlan, SampleTrace, TraceLimits,
                                    TraceSpec, bind_trace_plan)
-from .traced_worker import TraceSite, TracedGPT2Worker
+from .traced_worker import TraceSite, TracedForwardResult, TracedGPT2Worker
 
 
 class CpuTraceStateError(RuntimeError):
@@ -228,6 +228,7 @@ class _CpuTraceJob:
         self._input_state = "unattempted"
         self._run_state = "unattempted"
         self._failed = False
+        self._output_exposed = False
         self._lock = threading.Lock()
         self._cancel = threading.Event()
         self._phase = "registered"
@@ -410,6 +411,39 @@ class _CpuTraceJob:
                 except BaseException:
                     pass
             request = input_owner = input_claim = None
+            raise
+
+    def expose_output(self, sink):
+        """Borrow this job's output synchronously while producer custody is live."""
+        if not callable(sink):
+            raise ValueError("output sink must be callable")
+        token = object()
+        try:
+            self._begin(("staged",), "exposing_output", token)
+            if self._output_exposed:
+                raise CpuTraceStateError("job output was already exposed")
+            result = self._result
+            if (type(result) is not TracedForwardResult or type(result.forward_result) is not ForwardResult
+                    or result.forward_result.request_id != self._plan.worker_request_id):
+                raise CpuTraceStateError("traced output identity changed")
+            tensor = result.forward_result.logits
+            expected = (self._batch_size, self._sequence_length, self._owner._model.lm_head.out_features)
+            if (type(tensor) is not torch.Tensor or tensor.device.type != "cpu"
+                    or tensor.dtype is not torch.float32 or tuple(tensor.shape) != expected
+                    or not tensor.is_contiguous() or tensor.storage_offset() != 0
+                    or tensor.untyped_storage().nbytes() != tensor.numel() * tensor.element_size()):
+                raise CpuTraceStateError("traced output layout changed")
+            if sink(tensor) is not None:
+                raise CpuTraceStateError("output sink must complete synchronously")
+            result = tensor = sink = None
+            with self._lock:
+                if self._cancel.is_set():
+                    raise CpuTraceStateError("job was cancelled during output exposure")
+                self._output_exposed = True
+                self._phase = "staged"
+                self._active = None
+        except BaseException:
+            self._quarantine(token)
             raise
 
     def discard_result(self):

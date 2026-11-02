@@ -1,0 +1,66 @@
+name: Small app download
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-zip-${{ github.event.release.id }}
+  cancel-in-progress: false
+
+jobs:
+  app-zip:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - name: Read the exact public release source
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"
+          git init --quiet source
+          cd source
+          git remote add origin "https://github.com/$GITHUB_REPOSITORY.git"
+          git sparse-checkout init --no-cone
+          git sparse-checkout set --no-cone \
+            '/looking_glass/' '/docs/' '/README.md' '/LICENSE' '/install.py' '/start.py' \
+            '/pyproject.toml' '/PROTOCOL.md' '/requirements-tested.txt' '/CONTRIBUTING.md' \
+            '/CODE_OF_CONDUCT.md' '/SECURITY.md' '/ACCESSIBILITY.md' '/RESULTS.md' \
+            '/archives/README.md' '/tools/build_app_bundle.py'
+          git fetch --depth=1 --filter=blob:none origin "$GITHUB_REF"
+          actual=$(git rev-parse 'FETCH_HEAD^{commit}')
+          test "$actual" = "$GITHUB_SHA"
+          git checkout --detach "$GITHUB_SHA"
+      - name: Build and check the app archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(python3 -c 'import pathlib,tomllib; print(tomllib.loads(pathlib.Path("source/pyproject.toml").read_text())["project"]["version"])')
+          test "$RELEASE_TAG" = "v$version"
+          mkdir dist
+          python3 source/tools/build_app_bundle.py --repo source --revision "$GITHUB_SHA" --output dist/model-looking-glass-app.zip
+          python3 -m zipfile -t dist/model-looking-glass-app.zip
+          (cd dist && sha256sum model-looking-glass-app.zip > SHA256SUMS)
+      - name: Publish and read back release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Refuse an existing asset rather than replacing another upload.
+          gh release upload "$RELEASE_TAG" dist/model-looking-glass-app.zip dist/SHA256SUMS --repo "$GITHUB_REPOSITORY"
+          mkdir verified
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern model-looking-glass-app.zip --pattern SHA256SUMS --dir verified
+          cmp dist/model-looking-glass-app.zip verified/model-looking-glass-app.zip
+          cmp dist/SHA256SUMS verified/SHA256SUMS
+          (cd verified && sha256sum -c SHA256SUMS)
+          echo 'App ZIP uploaded and downloaded bytes verified. Dependencies and checkpoints are separate.' >> "$GITHUB_STEP_SUMMARY"

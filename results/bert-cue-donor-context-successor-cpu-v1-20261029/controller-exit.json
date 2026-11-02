@@ -1,0 +1,12 @@
+{
+  "attempt": "bert-cue-donor-context-successor-b6667ad5-v1",
+  "controller_end_utc": "2026-10-29T14:06:33.569011+00:00",
+  "controller_start_utc": "2026-10-29T14:02:00.561575+00:00",
+  "exit_code": 0,
+  "preflight_sha256": "3568bd2585b7cefa590a13aebd1e268fe76361fb647191d46b92caffa78677f0",
+  "process_started": true,
+  "process_waited": true,
+  "source_commit": "b6667ad5bfcadac6e0f45d4ad6530cca1f4584ca",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256": "01134a50f74228ce2d66f30d377ad07816b6171b76d1aae4356fe3f1fcf0a7b1"
+}

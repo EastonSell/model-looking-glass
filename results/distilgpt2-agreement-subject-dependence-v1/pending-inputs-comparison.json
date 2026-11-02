@@ -1,0 +1,24 @@
+{
+  "case_sha256": "5f3a2c850454e74da2bdc3819d492357f829994c126e1ac95d90ca3813b0643e",
+  "comparisons": [
+    {
+      "description": "answer-format fixed cases and candidate extensions",
+      "input_file_sha256": "cb1cfb9c4ab3c57dbcb78b778d01eaec50c0600caee2c9ee862ded14f2b8f38a",
+      "other_sequences": 320,
+      "pairs_compared": 230400,
+      "relations": 0
+    },
+    {
+      "description": "two-attractor tokenizer-only proposed cases and candidate extensions",
+      "input_file_sha256": "fcb79a2762a2fd9fa346347c5156f5eb87bba314b1c8a021fe5fb639827f2798",
+      "other_sequences": 640,
+      "pairs_compared": 460800,
+      "relations": 0
+    }
+  ],
+  "own_sequences": 720,
+  "recorded_utc": "2026-10-29T10:25:03.233571+00:00",
+  "rule": "either complete token sequence is a prefix of the other",
+  "schema": "agreement-subject-pending-input-comparison-v1",
+  "scope": "Public or prospective inputs only; no model forward, private data or complete exposure guarantee."
+}

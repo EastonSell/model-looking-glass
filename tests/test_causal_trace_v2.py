@@ -132,16 +132,22 @@ class SparseV2TraceTests(unittest.TestCase):
                 with self.assertRaises(SparseTraceInvalid):
                     compare(events("reference"), candidate)
 
-    def test_named_and_negative_bit_views_are_rejected_predictably(self):
+    def test_negative_bit_views_are_rejected_predictably(self):
+        candidate = events("candidate")
+        candidate[1].value = torch._neg_view(torch.ones(1, 8))
+        with self.assertRaises(SparseTraceInvalid):
+            compare(events("reference"), candidate)
+
+    @unittest.skipUnless(hasattr(torch.Tensor, "refine_names"),
+                         "this PyTorch build has no named-tensor API")
+    def test_named_tensors_are_rejected_when_supported(self):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
-            values = [torch._neg_view(torch.ones(1, 8)),
-                      torch.ones(1, 8).refine_names("batch", "hidden")]
-        for value in values:
-            with self.subTest(value=value), self.assertRaises(SparseTraceInvalid):
-                candidate = events("candidate")
-                candidate[1].value = value
-                compare(events("reference"), candidate)
+            value = torch.ones(1, 8).refine_names("batch", "hidden")
+        candidate = events("candidate")
+        candidate[1].value = value
+        with self.assertRaises(SparseTraceInvalid):
+            compare(events("reference"), candidate)
 
     def test_mixed_or_reused_run_ids_are_invalid_provenance(self):
         reference, candidate = events("same"), events("same")

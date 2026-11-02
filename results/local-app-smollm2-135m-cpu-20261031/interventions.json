@@ -1,0 +1,811 @@
+{
+  "schema": "mlg-smollm2-fixed-prefix-interventions-v1",
+  "status": "passed",
+  "model": "HuggingFaceTB/SmolLM2-135M",
+  "revision": "93efa2f097d58c2a74874c7e644dbc9b0cee75a2",
+  "historical_asset_record_sha256": "d2425a1bd3848f1378570be7262c138c883be076070dab533ad19b5a279cfe32",
+  "environment": {
+    "python": "3.12.14",
+    "torch": "2.15.0+cpu",
+    "transformers": "4.57.3",
+    "device": "cpu",
+    "dtype": "float32",
+    "threads": 1,
+    "cuda_executed": false
+  },
+  "implementation_sha256": {
+    "app.py": "eff5a1fee0d6175da66b4d371d049b019924ed542645103cf864858ff3fb9d63",
+    "app_runtime.py": "860623e9a56490fc3dd9e194c21eb68d34a11560bd2edc017f7756235d4f77d9",
+    "app_storage.py": "67b2728068564f11cb35a3844e06d1817207ef686e5c4ce2dfcabffbe993b0fe",
+    "app_interventions.py": "3b8b3a794eeb481f956b41a0eeb357daeeb2cdcb97ef0dee176bce494edb2965",
+    "llama_trace.py": "7051a525f62e68c8f48a5215d3f3f4908b41d44f69181e971a0fd5afa180b75a",
+    "intervention_plan.py": "5bb643c538a1d7dcd97214238c2a996967d4b6ae2e965d3776b3699758491c0a",
+    "model_ownership.py": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434"
+  },
+  "script_sha256": "2a65f73c8fa5c6ca518271569eb9c24339253ae4bb6b1892d3bffd3df837dc9b",
+  "prompt": "Gravity is",
+  "input_ids": [
+    22007,
+    6463,
+    314
+  ],
+  "attention_mask": [
+    1,
+    1,
+    1
+  ],
+  "original_events": 90,
+  "original_vectors": 270,
+  "original_tensor_bytes": 622080,
+  "checks": {
+    "all_original_capture_hashes_unchanged_after_each_trial": true,
+    "all_model_parameter_hashes_unchanged": true,
+    "tied_weight_identity": true,
+    "rotary_bits_unchanged": true,
+    "checkpoint_files_unchanged": true,
+    "all_16_witness_vectors_exact_after_export_reopen": true,
+    "imported_and_unloaded_interventions_rejected": true
+  },
+  "trials": [
+    {
+      "name": "zero_attention",
+      "module_path": "model.layers.15.self_attn",
+      "token_position": 2,
+      "token_id": 314,
+      "operation": "zero",
+      "feature_index": null,
+      "requested_value": null,
+      "independent_direct_hook_full_logit_metrics_equal": true,
+      "independent_direct_hook_witness_bits_equal": true,
+      "experiment": {
+        "source_coordinate": {
+          "status": "known",
+          "app_forward_index": 0,
+          "module_path": "model.layers.15.self_attn",
+          "layer_index": 15,
+          "stack": "input",
+          "batch_position": 0,
+          "token_position": 2,
+          "token_id": 314,
+          "token_piece": "\u0120is",
+          "token_text": " is",
+          "token_label_truncated": false,
+          "image_coordinate": null,
+          "reason": null
+        },
+        "source_step": {
+          "app_forward_index": 0,
+          "run_id": "ed61ba5fc0854619bf5d85dff7c59ff3-0",
+          "use_cache": false,
+          "execution": "one full uncached forward",
+          "event_end": 90,
+          "input_token_ids": [
+            22007,
+            6463,
+            314
+          ],
+          "input_attention_mask": [
+            1,
+            1,
+            1
+          ],
+          "decoder_token_ids": null,
+          "top_next_tokens": [
+            {
+              "token_id": 260,
+              "text": " the",
+              "logit": 22.05638885498047
+            },
+            {
+              "token_id": 253,
+              "text": " a",
+              "logit": 22.02391242980957
+            },
+            {
+              "token_id": 441,
+              "text": " not",
+              "logit": 20.377180099487305
+            },
+            {
+              "token_id": 354,
+              "text": " an",
+              "logit": 20.195520401000977
+            },
+            {
+              "token_id": 582,
+              "text": " one",
+              "logit": 19.900869369506836
+            }
+          ],
+          "selected_token_id": 260
+        },
+        "input_prefix": [
+          22007,
+          6463,
+          314
+        ],
+        "input_attention_mask": [
+          1,
+          1,
+          1
+        ],
+        "operation": "zero",
+        "feature_index": null,
+        "requested_value": null,
+        "operation_semantics": "Zero whole vector, or change only the selected feature on a fresh baseline clone and patch it; other feature bits preserved.",
+        "activation_changed": true,
+        "realized_displacement_l2": 22.555800575479985,
+        "realized_feature_value": null,
+        "controls": {
+          "null_full_logits_bitwise_equal": true,
+          "restoration_full_logits_bitwise_equal": true,
+          "static_rotary_state_unchanged": true,
+          "fixed_input_ids_mask_unchanged": true,
+          "source_vector_bitwise_equal": true,
+          "other_token_positions_at_selected_site_bitwise_equal": true
+        },
+        "full_logits": {
+          "shape": [
+            1,
+            3,
+            49152
+          ],
+          "bitwise_equal": false,
+          "max_absolute_change": 1.6466679573059082,
+          "l2_change": 166.06771340020708
+        },
+        "comparison": {
+          "full_logits_max_abs_delta": 1.6466679573059082,
+          "full_logits_l2_delta": 166.06771340020708,
+          "last_position_max_abs_delta": 1.6466679573059082,
+          "baseline_next_token_id": 260,
+          "intervention_next_token_id": 260,
+          "selected_vector_changed": true
+        },
+        "readout_position": 2,
+        "baseline_top_next_tokens": [
+          {
+            "token_id": 260,
+            "text": " the",
+            "logit": 22.05638885498047
+          },
+          {
+            "token_id": 253,
+            "text": " a",
+            "logit": 22.02391242980957
+          },
+          {
+            "token_id": 441,
+            "text": " not",
+            "logit": 20.377180099487305
+          },
+          {
+            "token_id": 354,
+            "text": " an",
+            "logit": 20.195520401000977
+          },
+          {
+            "token_id": 582,
+            "text": " one",
+            "logit": 19.900869369506836
+          }
+        ],
+        "intervention_top_next_tokens": [
+          {
+            "token_id": 260,
+            "text": " the",
+            "logit": 21.44546127319336
+          },
+          {
+            "token_id": 253,
+            "text": " a",
+            "logit": 21.366180419921875
+          },
+          {
+            "token_id": 441,
+            "text": " not",
+            "logit": 19.625707626342773
+          },
+          {
+            "token_id": 354,
+            "text": " an",
+            "logit": 19.585330963134766
+          },
+          {
+            "token_id": 582,
+            "text": " one",
+            "logit": 19.435564041137695
+          }
+        ],
+        "execution_numerics": {
+          "dtype": "float32",
+          "torch_version": "2.15.0+cpu",
+          "cuda_runtime": null,
+          "float32_matmul_precision": "highest",
+          "cuda_matmul_allow_tf32": false,
+          "cudnn_allow_tf32": true,
+          "note": "Existing backend numerical settings are observed, not changed. CPU/CUDA outputs need not match bitwise; captured values are direct clones/offloads, not rounding gates."
+        },
+        "logical_planned_bytes": 6203612,
+        "logical_allowance_bytes": 134217728,
+        "scope": "One exact fixed input and next-token readout; no generated continuation, checkpoint edit, causal explanation or backdoor proof. Logical budgets are not peak-memory guarantees."
+      }
+    },
+    {
+      "name": "add_mlp_feature",
+      "module_path": "model.layers.15.mlp",
+      "token_position": 2,
+      "token_id": 314,
+      "operation": "add",
+      "feature_index": 0,
+      "requested_value": 1.0,
+      "independent_direct_hook_full_logit_metrics_equal": true,
+      "independent_direct_hook_witness_bits_equal": true,
+      "experiment": {
+        "source_coordinate": {
+          "status": "known",
+          "app_forward_index": 0,
+          "module_path": "model.layers.15.mlp",
+          "layer_index": 15,
+          "stack": "input",
+          "batch_position": 0,
+          "token_position": 2,
+          "token_id": 314,
+          "token_piece": "\u0120is",
+          "token_text": " is",
+          "token_label_truncated": false,
+          "image_coordinate": null,
+          "reason": null
+        },
+        "source_step": {
+          "app_forward_index": 0,
+          "run_id": "ed61ba5fc0854619bf5d85dff7c59ff3-0",
+          "use_cache": false,
+          "execution": "one full uncached forward",
+          "event_end": 90,
+          "input_token_ids": [
+            22007,
+            6463,
+            314
+          ],
+          "input_attention_mask": [
+            1,
+            1,
+            1
+          ],
+          "decoder_token_ids": null,
+          "top_next_tokens": [
+            {
+              "token_id": 260,
+              "text": " the",
+              "logit": 22.05638885498047
+            },
+            {
+              "token_id": 253,
+              "text": " a",
+              "logit": 22.02391242980957
+            },
+            {
+              "token_id": 441,
+              "text": " not",
+              "logit": 20.377180099487305
+            },
+            {
+              "token_id": 354,
+              "text": " an",
+              "logit": 20.195520401000977
+            },
+            {
+              "token_id": 582,
+              "text": " one",
+              "logit": 19.900869369506836
+            }
+          ],
+          "selected_token_id": 260
+        },
+        "input_prefix": [
+          22007,
+          6463,
+          314
+        ],
+        "input_attention_mask": [
+          1,
+          1,
+          1
+        ],
+        "operation": "add",
+        "feature_index": 0,
+        "requested_value": 1.0,
+        "operation_semantics": "Zero whole vector, or change only the selected feature on a fresh baseline clone and patch it; other feature bits preserved.",
+        "activation_changed": true,
+        "realized_displacement_l2": 1.0,
+        "realized_feature_value": 1.7921202182769775,
+        "controls": {
+          "null_full_logits_bitwise_equal": true,
+          "restoration_full_logits_bitwise_equal": true,
+          "static_rotary_state_unchanged": true,
+          "fixed_input_ids_mask_unchanged": true,
+          "source_vector_bitwise_equal": true,
+          "other_token_positions_at_selected_site_bitwise_equal": true,
+          "other_features_at_selected_vector_bitwise_equal": true
+        },
+        "full_logits": {
+          "shape": [
+            1,
+            3,
+            49152
+          ],
+          "bitwise_equal": false,
+          "max_absolute_change": 0.038272857666015625,
+          "l2_change": 1.751394391093002
+        },
+        "comparison": {
+          "full_logits_max_abs_delta": 0.038272857666015625,
+          "full_logits_l2_delta": 1.751394391093002,
+          "last_position_max_abs_delta": 0.038272857666015625,
+          "baseline_next_token_id": 260,
+          "intervention_next_token_id": 260,
+          "selected_vector_changed": true
+        },
+        "readout_position": 2,
+        "baseline_top_next_tokens": [
+          {
+            "token_id": 260,
+            "text": " the",
+            "logit": 22.05638885498047
+          },
+          {
+            "token_id": 253,
+            "text": " a",
+            "logit": 22.02391242980957
+          },
+          {
+            "token_id": 441,
+            "text": " not",
+            "logit": 20.377180099487305
+          },
+          {
+            "token_id": 354,
+            "text": " an",
+            "logit": 20.195520401000977
+          },
+          {
+            "token_id": 582,
+            "text": " one",
+            "logit": 19.900869369506836
+          }
+        ],
+        "intervention_top_next_tokens": [
+          {
+            "token_id": 260,
+            "text": " the",
+            "logit": 22.063575744628906
+          },
+          {
+            "token_id": 253,
+            "text": " a",
+            "logit": 22.03285026550293
+          },
+          {
+            "token_id": 441,
+            "text": " not",
+            "logit": 20.38372039794922
+          },
+          {
+            "token_id": 354,
+            "text": " an",
+            "logit": 20.20166778564453
+          },
+          {
+            "token_id": 582,
+            "text": " one",
+            "logit": 19.91193389892578
+          }
+        ],
+        "execution_numerics": {
+          "dtype": "float32",
+          "torch_version": "2.15.0+cpu",
+          "cuda_runtime": null,
+          "float32_matmul_precision": "highest",
+          "cuda_matmul_allow_tf32": false,
+          "cudnn_allow_tf32": true,
+          "note": "Existing backend numerical settings are observed, not changed. CPU/CUDA outputs need not match bitwise; captured values are direct clones/offloads, not rounding gates."
+        },
+        "logical_planned_bytes": 6203612,
+        "logical_allowance_bytes": 134217728,
+        "scope": "One exact fixed input and next-token readout; no generated continuation, checkpoint edit, causal explanation or backdoor proof. Logical budgets are not peak-memory guarantees."
+      }
+    },
+    {
+      "name": "replace_block_feature",
+      "module_path": "model.layers.15",
+      "token_position": 2,
+      "token_id": 314,
+      "operation": "replace",
+      "feature_index": 0,
+      "requested_value": 0.0,
+      "independent_direct_hook_full_logit_metrics_equal": true,
+      "independent_direct_hook_witness_bits_equal": true,
+      "experiment": {
+        "source_coordinate": {
+          "status": "known",
+          "app_forward_index": 0,
+          "module_path": "model.layers.15",
+          "layer_index": 15,
+          "stack": "input",
+          "batch_position": 0,
+          "token_position": 2,
+          "token_id": 314,
+          "token_piece": "\u0120is",
+          "token_text": " is",
+          "token_label_truncated": false,
+          "image_coordinate": null,
+          "reason": null
+        },
+        "source_step": {
+          "app_forward_index": 0,
+          "run_id": "ed61ba5fc0854619bf5d85dff7c59ff3-0",
+          "use_cache": false,
+          "execution": "one full uncached forward",
+          "event_end": 90,
+          "input_token_ids": [
+            22007,
+            6463,
+            314
+          ],
+          "input_attention_mask": [
+            1,
+            1,
+            1
+          ],
+          "decoder_token_ids": null,
+          "top_next_tokens": [
+            {
+              "token_id": 260,
+              "text": " the",
+              "logit": 22.05638885498047
+            },
+            {
+              "token_id": 253,
+              "text": " a",
+              "logit": 22.02391242980957
+            },
+            {
+              "token_id": 441,
+              "text": " not",
+              "logit": 20.377180099487305
+            },
+            {
+              "token_id": 354,
+              "text": " an",
+              "logit": 20.195520401000977
+            },
+            {
+              "token_id": 582,
+              "text": " one",
+              "logit": 19.900869369506836
+            }
+          ],
+          "selected_token_id": 260
+        },
+        "input_prefix": [
+          22007,
+          6463,
+          314
+        ],
+        "input_attention_mask": [
+          1,
+          1,
+          1
+        ],
+        "operation": "replace",
+        "feature_index": 0,
+        "requested_value": 0.0,
+        "operation_semantics": "Zero whole vector, or change only the selected feature on a fresh baseline clone and patch it; other feature bits preserved.",
+        "activation_changed": true,
+        "realized_displacement_l2": 5.1993913650512695,
+        "realized_feature_value": 0.0,
+        "controls": {
+          "null_full_logits_bitwise_equal": true,
+          "restoration_full_logits_bitwise_equal": true,
+          "static_rotary_state_unchanged": true,
+          "fixed_input_ids_mask_unchanged": true,
+          "source_vector_bitwise_equal": true,
+          "other_token_positions_at_selected_site_bitwise_equal": true,
+          "other_features_at_selected_vector_bitwise_equal": true
+        },
+        "full_logits": {
+          "shape": [
+            1,
+            3,
+            49152
+          ],
+          "bitwise_equal": false,
+          "max_absolute_change": 0.19372129440307617,
+          "l2_change": 8.800794713091538
+        },
+        "comparison": {
+          "full_logits_max_abs_delta": 0.19372129440307617,
+          "full_logits_l2_delta": 8.800794713091538,
+          "last_position_max_abs_delta": 0.19372129440307617,
+          "baseline_next_token_id": 260,
+          "intervention_next_token_id": 260,
+          "selected_vector_changed": true
+        },
+        "readout_position": 2,
+        "baseline_top_next_tokens": [
+          {
+            "token_id": 260,
+            "text": " the",
+            "logit": 22.05638885498047
+          },
+          {
+            "token_id": 253,
+            "text": " a",
+            "logit": 22.02391242980957
+          },
+          {
+            "token_id": 441,
+            "text": " not",
+            "logit": 20.377180099487305
+          },
+          {
+            "token_id": 354,
+            "text": " an",
+            "logit": 20.195520401000977
+          },
+          {
+            "token_id": 582,
+            "text": " one",
+            "logit": 19.900869369506836
+          }
+        ],
+        "intervention_top_next_tokens": [
+          {
+            "token_id": 260,
+            "text": " the",
+            "logit": 22.01833724975586
+          },
+          {
+            "token_id": 253,
+            "text": " a",
+            "logit": 21.977622985839844
+          },
+          {
+            "token_id": 441,
+            "text": " not",
+            "logit": 20.342588424682617
+          },
+          {
+            "token_id": 354,
+            "text": " an",
+            "logit": 20.16340446472168
+          },
+          {
+            "token_id": 582,
+            "text": " one",
+            "logit": 19.842334747314453
+          }
+        ],
+        "execution_numerics": {
+          "dtype": "float32",
+          "torch_version": "2.15.0+cpu",
+          "cuda_runtime": null,
+          "float32_matmul_precision": "highest",
+          "cuda_matmul_allow_tf32": false,
+          "cudnn_allow_tf32": true,
+          "note": "Existing backend numerical settings are observed, not changed. CPU/CUDA outputs need not match bitwise; captured values are direct clones/offloads, not rounding gates."
+        },
+        "logical_planned_bytes": 6203612,
+        "logical_allowance_bytes": 134217728,
+        "scope": "One exact fixed input and next-token readout; no generated continuation, checkpoint edit, causal explanation or backdoor proof. Logical budgets are not peak-memory guarantees."
+      }
+    },
+    {
+      "name": "noop_attention_feature",
+      "module_path": "model.layers.15.self_attn",
+      "token_position": 2,
+      "token_id": 314,
+      "operation": "add",
+      "feature_index": 0,
+      "requested_value": 0.0,
+      "independent_direct_hook_full_logit_metrics_equal": true,
+      "independent_direct_hook_witness_bits_equal": true,
+      "experiment": {
+        "source_coordinate": {
+          "status": "known",
+          "app_forward_index": 0,
+          "module_path": "model.layers.15.self_attn",
+          "layer_index": 15,
+          "stack": "input",
+          "batch_position": 0,
+          "token_position": 2,
+          "token_id": 314,
+          "token_piece": "\u0120is",
+          "token_text": " is",
+          "token_label_truncated": false,
+          "image_coordinate": null,
+          "reason": null
+        },
+        "source_step": {
+          "app_forward_index": 0,
+          "run_id": "ed61ba5fc0854619bf5d85dff7c59ff3-0",
+          "use_cache": false,
+          "execution": "one full uncached forward",
+          "event_end": 90,
+          "input_token_ids": [
+            22007,
+            6463,
+            314
+          ],
+          "input_attention_mask": [
+            1,
+            1,
+            1
+          ],
+          "decoder_token_ids": null,
+          "top_next_tokens": [
+            {
+              "token_id": 260,
+              "text": " the",
+              "logit": 22.05638885498047
+            },
+            {
+              "token_id": 253,
+              "text": " a",
+              "logit": 22.02391242980957
+            },
+            {
+              "token_id": 441,
+              "text": " not",
+              "logit": 20.377180099487305
+            },
+            {
+              "token_id": 354,
+              "text": " an",
+              "logit": 20.195520401000977
+            },
+            {
+              "token_id": 582,
+              "text": " one",
+              "logit": 19.900869369506836
+            }
+          ],
+          "selected_token_id": 260
+        },
+        "input_prefix": [
+          22007,
+          6463,
+          314
+        ],
+        "input_attention_mask": [
+          1,
+          1,
+          1
+        ],
+        "operation": "add",
+        "feature_index": 0,
+        "requested_value": 0.0,
+        "operation_semantics": "Zero whole vector, or change only the selected feature on a fresh baseline clone and patch it; other feature bits preserved.",
+        "activation_changed": false,
+        "realized_displacement_l2": 0.0,
+        "realized_feature_value": -0.4182108938694,
+        "controls": {
+          "null_full_logits_bitwise_equal": true,
+          "restoration_full_logits_bitwise_equal": true,
+          "static_rotary_state_unchanged": true,
+          "fixed_input_ids_mask_unchanged": true,
+          "source_vector_bitwise_equal": true,
+          "other_token_positions_at_selected_site_bitwise_equal": true,
+          "other_features_at_selected_vector_bitwise_equal": true
+        },
+        "full_logits": {
+          "shape": [
+            1,
+            3,
+            49152
+          ],
+          "bitwise_equal": true,
+          "max_absolute_change": 0.0,
+          "l2_change": 0.0
+        },
+        "comparison": {
+          "full_logits_max_abs_delta": 0.0,
+          "full_logits_l2_delta": 0.0,
+          "last_position_max_abs_delta": 0.0,
+          "baseline_next_token_id": 260,
+          "intervention_next_token_id": 260,
+          "selected_vector_changed": false
+        },
+        "readout_position": 2,
+        "baseline_top_next_tokens": [
+          {
+            "token_id": 260,
+            "text": " the",
+            "logit": 22.05638885498047
+          },
+          {
+            "token_id": 253,
+            "text": " a",
+            "logit": 22.02391242980957
+          },
+          {
+            "token_id": 441,
+            "text": " not",
+            "logit": 20.377180099487305
+          },
+          {
+            "token_id": 354,
+            "text": " an",
+            "logit": 20.195520401000977
+          },
+          {
+            "token_id": 582,
+            "text": " one",
+            "logit": 19.900869369506836
+          }
+        ],
+        "intervention_top_next_tokens": [
+          {
+            "token_id": 260,
+            "text": " the",
+            "logit": 22.05638885498047
+          },
+          {
+            "token_id": 253,
+            "text": " a",
+            "logit": 22.02391242980957
+          },
+          {
+            "token_id": 441,
+            "text": " not",
+            "logit": 20.377180099487305
+          },
+          {
+            "token_id": 354,
+            "text": " an",
+            "logit": 20.195520401000977
+          },
+          {
+            "token_id": 582,
+            "text": " one",
+            "logit": 19.900869369506836
+          }
+        ],
+        "execution_numerics": {
+          "dtype": "float32",
+          "torch_version": "2.15.0+cpu",
+          "cuda_runtime": null,
+          "float32_matmul_precision": "highest",
+          "cuda_matmul_allow_tf32": false,
+          "cudnn_allow_tf32": true,
+          "note": "Existing backend numerical settings are observed, not changed. CPU/CUDA outputs need not match bitwise; captured values are direct clones/offloads, not rounding gates."
+        },
+        "logical_planned_bytes": 6203612,
+        "logical_allowance_bytes": 134217728,
+        "scope": "One exact fixed input and next-token readout; no generated continuation, checkpoint edit, causal explanation or backdoor proof. Logical budgets are not peak-memory guarantees."
+      }
+    }
+  ],
+  "scope": "Four specified interventions on one three-token prefix, same-device CPU float32. No generated edited continuation, GPU validation, semantic explanation, global causal claim, quality benchmark, or checkpoint mutation.",
+  "date_utc": "2026-10-31",
+  "publication_evidence": {
+    "base_commit_before_intervention_extension": "4571d0660147ef89ab0168ee86c7c9395a2b775a",
+    "execution": "fresh separately installed wheel, same pinned pretrained checkpoint; earlier source-tree replay agreed",
+    "wheel_sha256": "50d4fb3cefb718869c8c232e6101a059a98970e459e77f956731552fb7effdf8",
+    "raw_result_sha256": "a086dde2691db3067cec843a35dff3778ef415185f7d4a1359379ac2bb7a4e41",
+    "focused_tests": {
+      "passed": 875,
+      "real_cuda_skipped": 10,
+      "seconds": 55.46
+    },
+    "mocked_authenticated_ui_requests": 226,
+    "historical_suite_collection_errors": 47,
+    "historical_error_paths_unchanged": true,
+    "browser_visual_validation": false,
+    "ui_sha256": {
+      "app.js": "65ad10626e6e9836c69c6cdf1f44b24b0b3d9eeb5fe186c70157a6f263cc3daa",
+      "index.html": "ec2c9ef648f2eab8979e32ee81ab049d058cef313ea5f74c4c403fcc6c03b7ab"
+    }
+  }
+}

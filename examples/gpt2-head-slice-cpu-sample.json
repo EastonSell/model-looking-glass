@@ -1,0 +1,137 @@
+{
+  "prompt": "Hello world",
+  "model": {
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "tokenizer_id": "distilbert/distilgpt2",
+    "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "model_class": "GPT2LMHeadModel",
+    "tokenizer_class": "GPT2TokenizerFast",
+    "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+    "asset_sha256": {
+      "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+      "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+      "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+      "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+      "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783",
+      "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+    },
+    "torch_version": "2.8.0+cu128",
+    "transformers_version": "4.57.3",
+    "device": "cpu",
+    "dtype": "float32",
+    "attention_implementation": "eager",
+    "use_cache": false,
+    "parameter_count": 81912576
+  },
+  "schema": "gpt2-head-slice-cpu-example-v1",
+  "input_ids": [
+    15496,
+    995
+  ],
+  "target": {
+    "metadata": {
+      "run_id": "head-zero",
+      "module_path": "transformer.h.0.attn.c_proj",
+      "layer": 0,
+      "batch": 0,
+      "token": 1,
+      "invocation": 0,
+      "head": 0,
+      "heads": 12,
+      "head_width": 64,
+      "feature_start": 0,
+      "feature_end": 64,
+      "input_shape": [
+        1,
+        2,
+        768
+      ],
+      "input_ids": [
+        15496,
+        995
+      ],
+      "attention_mask": [
+        1,
+        1
+      ],
+      "operation": "patch",
+      "tensor_role": "projection_input",
+      "input_argument": 0,
+      "forward_index": 0,
+      "use_cache": false,
+      "dtype": "float32",
+      "device": "cpu"
+    },
+    "captured_tensor_bytes": 18432,
+    "head_before_preview": [
+      0.08010853826999664,
+      0.21435537934303284,
+      -0.015556423924863338,
+      0.060382574796676636
+    ],
+    "head_after_preview": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "realized_input_l2": 0.9787240458406385,
+    "max_final_token_logit_change": 1.3378448486328125
+  },
+  "comparison": {
+    "metadata": {
+      "run_id": "other-head-zero",
+      "module_path": "transformer.h.0.attn.c_proj",
+      "layer": 0,
+      "batch": 0,
+      "token": 1,
+      "invocation": 0,
+      "head": 1,
+      "heads": 12,
+      "head_width": 64,
+      "feature_start": 64,
+      "feature_end": 128,
+      "input_shape": [
+        1,
+        2,
+        768
+      ],
+      "input_ids": [
+        15496,
+        995
+      ],
+      "attention_mask": [
+        1,
+        1
+      ],
+      "operation": "patch",
+      "tensor_role": "projection_input",
+      "input_argument": 0,
+      "forward_index": 0,
+      "use_cache": false,
+      "dtype": "float32",
+      "device": "cpu"
+    },
+    "captured_tensor_bytes": 18432,
+    "realized_input_l2": 1.1371340252977364,
+    "max_final_token_logit_change": 0.4411430358886719
+  },
+  "checks": {
+    "observed_logits_equal_clean": true,
+    "other_observed_logits_equal_clean": true,
+    "self_patch_input_unchanged": true,
+    "self_patch_logits_equal_clean": true,
+    "target_patch_input_matches_observation": true,
+    "comparison_input_matches_observation": true,
+    "both_heads_share_observed_input": true,
+    "target_head_zero_delivered": true,
+    "comparison_head_zero_delivered": true,
+    "target_dose_nonzero": true,
+    "comparison_dose_nonzero": true,
+    "earlier_token_logits_unchanged": true,
+    "post_session_logits_equal_clean": true
+  },
+  "interpretation": "These artificial head ablations show an API measurement. The comparison is not dose-matched; neither the selected head nor its slice establishes a unique circuit or attention-weight provenance."
+}

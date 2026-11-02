@@ -217,7 +217,7 @@ class TraceBatchHandoffTests(unittest.TestCase):
             max_jobs=1, max_events=4)
         code = type(registry).register.__code__
         offsets = [instruction.offset for instruction in dis.get_instructions(code)
-                   if instruction.opname == "RETURN_VALUE"]
+                   if instruction.opname in {"RETURN_VALUE", "RETURN_CONST"}]
         self.assertTrue(offsets)
 
         def interrupt(frame, event, arg):
@@ -381,7 +381,7 @@ class TraceBatchHandoffTests(unittest.TestCase):
         calls = []
         code = type(recipient).send.__code__
         offsets = [instruction.offset for instruction in dis.get_instructions(code)
-                   if instruction.opname == "RETURN_VALUE"]
+                   if instruction.opname in {"RETURN_VALUE", "RETURN_CONST"}]
         self.assertTrue(offsets)
 
         def interrupt(frame, event, arg):

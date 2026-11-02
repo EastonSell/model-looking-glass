@@ -1,0 +1,17 @@
+{
+  "all_changed_paths_count": 119,
+  "c_free_bytes": 2412154880,
+  "e_free_bytes": 393790889984,
+  "exposure_modules_changed_since_v37": [],
+  "latest_numbered_inventory": "v37",
+  "numbered_inventory_module_count": 37,
+  "observed_at_utc": "2026-10-29T12:13:57.989117+00:00",
+  "official_main_fetched": "f9fca7132bea476714a24f675c1f488339c48921",
+  "pending_public_distractor": "16 fixed cases independently compared to v37 and reported unforwarded",
+  "scope": "cooperative point-in-time public source and storage observations; no private or unknown exposure claim",
+  "source_manifest_head": "ecb75b82aed89a7414e8f9329da4328a6835a840",
+  "source_manifest_sha256": "a3cd19642ec5d83b078f85f94c45f6768c3f701bbfcd009359b1e4dd74a707ca",
+  "v37_canonical_sha256": "c84d0b83ede1f526215898ce0c2f4f5bdd9c78c8cfeb3f2aced75faaa33fdf6b",
+  "v37_merge": "d07afda63297a26a962f4ba821433867dc639f23",
+  "verify_only_exit_sha256": "7bd5c1df4ebdba684ea047add48e04494e6e3446d1eef4ef43aa798187d3ad97"
+}

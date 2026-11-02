@@ -10,21 +10,10 @@ import torch
 from looking_glass.trace_store import HostTraceStore
 
 
-def start_opcode_trace(tracer):
-    # CPython 3.12 may only emit opcode events after one trace session has
-    # requested them. Preserve any pre-existing tracer across the warm-up.
-    old_trace = sys.gettrace()
-
-    def warmup():
-        return None
-
-    try:
-        sys.settrace(tracer)
-        warmup()
-    finally:
-        sys.settrace(old_trace)
-    sys.settrace(tracer)
-    return old_trace
+if __package__:
+    from .opcode_support import run_opcode_trace
+else:
+    from opcode_support import run_opcode_trace
 
 
 class TakeInterruptionTests(unittest.TestCase):
@@ -39,6 +28,8 @@ class TakeInterruptionTests(unittest.TestCase):
         observed = []
 
         def observe_return(frame, event, arg):
+            if frame.f_code is not method.__code__:
+                return None
             if event == "call":
                 frame.f_trace_opcodes = True
             if (frame.f_code is method.__code__ and event == "opcode"
@@ -50,31 +41,30 @@ class TakeInterruptionTests(unittest.TestCase):
         # transfer branch that actually executes, then inject into a fresh take.
         calibration = HostTraceStore(max_tensor_bytes=4, max_items=1)
         calibration_handle = calibration.request("calibration").put(0, torch.ones(1))
-        old_trace = start_opcode_trace(observe_return)
-        try:
-            calibration_handle.take()
-        finally:
-            sys.settrace(old_trace)
+        run_opcode_trace(observe_return, calibration_handle.take)
         self.assertEqual(len(observed), 1)
         offset = observed[0]
 
+        fired = []
+
         def tracer(frame, event, arg):
+            if frame.f_code is not method.__code__:
+                return None
             if event == "call":
                 frame.f_trace_opcodes = True
             if (frame.f_code is method.__code__ and event == "opcode"
                     and frame.f_lasti == offset):
+                fired.append(frame.f_lasti)
                 sys.settrace(None)
                 raise KeyboardInterrupt("injected interruption")
             return tracer
 
         error = None
-        old_trace = start_opcode_trace(tracer)
         try:
-            handle.take()
+            run_opcode_trace(tracer, handle.take)
         except KeyboardInterrupt as caught:
             error = caught
-        finally:
-            sys.settrace(old_trace)
+        self.assertEqual(fired, [offset])
         self.assertIsNotNone(error)
         self.assertEqual(store.usage().claimed_bytes, 0)
         gc.collect()
@@ -93,23 +83,26 @@ class TakeInterruptionTests(unittest.TestCase):
         offset = next(i.offset for i in dis.get_instructions(method)
                       if i.starts_line == lines[0])
 
+        fired = []
+
         def tracer(frame, event, arg):
+            if frame.f_code is not method.__code__:
+                return None
             if event == "call":
                 frame.f_trace_opcodes = True
             if (frame.f_code is method.__code__ and event == "opcode"
                     and frame.f_lasti == offset):
+                fired.append(frame.f_lasti)
                 sys.settrace(None)
                 raise KeyboardInterrupt("injected interruption")
             return tracer
 
         error = None
-        old_trace = start_opcode_trace(tracer)
         try:
-            handle.take()
+            run_opcode_trace(tracer, handle.take)
         except KeyboardInterrupt as caught:
             error = caught
-        finally:
-            sys.settrace(old_trace)
+        self.assertEqual(fired, [offset])
         self.assertIsNotNone(error)
         handle.drop()
         self.assertEqual(store.usage().claimed_bytes, 0)

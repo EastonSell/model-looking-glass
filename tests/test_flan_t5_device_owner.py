@@ -497,7 +497,9 @@ def test_pinned_loader_accepts_the_eight_layer_untied_meta_architecture(monkeypa
         num_layers=8, num_decoder_layers=8, num_heads=6, feed_forward_proj='gated-gelu',
         tie_word_embeddings=False, decoder_start_token_id=0, pad_token_id=0, eos_token_id=1)
     with torch.device('meta'):
+        config.tie_word_embeddings = False
         model = T5ForConditionalGeneration(config)
+        model.set_input_embeddings(model.shared)
     diagnostics = {name: [] for name in ('missing_keys', 'unexpected_keys', 'mismatched_keys', 'error_msgs')}
     monkeypatch.setattr(T5ForConditionalGeneration, 'from_pretrained',
                         lambda *args, **kwargs: (model, diagnostics))

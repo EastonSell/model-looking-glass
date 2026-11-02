@@ -1,0 +1,20 @@
+{
+  "argv_sha256": "3aa2e7d617b8956a2fd827f05ff8390c2492f228b214ecb12ade152fef817501",
+  "c_free_bytes": 1749020672,
+  "cache_and_output_volume": "E:",
+  "cache_receipt_sha256": "7ea29c9235071ec6d4e477966bc33215323ba2d7613c52b92b0780f59fb5afa1",
+  "e_free_bytes": 385397477376,
+  "observer_sha256": "a51a3a0c9185041e25cba8371bba60e616fdf4e4d1512cb5397c40c04c72a8c5",
+  "observer_support_sha256": "4e3e88634871fcd0d820ea649f7159952d5e6a26fe3a8c098ceb641f4dc28584",
+  "operator_v41_sha256": "110ebcf674168e794544c257d158b3c3242f98bcf108375cdc073bb145e2bfad",
+  "prelaunch_sha256": "d5c825436fcd7cacad34ff94799ff8c0589478335a29e6da29a5fd6b69ae8025",
+  "public_compare": "v41 merge is merge base; 129 changed files include no looking_glass/pretrained_exposures files",
+  "public_main_observed": "9c58e786775760a74a5841ccf63cd73510300411",
+  "recorded_utc": "2026-10-29T13:08:25.518406+00:00",
+  "reservation_v40_sha256": "685391b672c356dd627923681c4a93fc9a310c03a40fdd22e0b29af2ae9f7be3",
+  "same_volume_minimum_bytes": 2684354560,
+  "schema": "agreement-invariant-launch-boundary-v1",
+  "scope": "Point-in-time cooperative observation; not a disk reservation, exposure completeness attestation, or process exit.",
+  "source_revision": "2b79b63cbef79127afc4cdcfa1539ffa53cca37e",
+  "source_tree": "6771d04cc2eae7072f8edccfe3bef03127f5e1c3"
+}

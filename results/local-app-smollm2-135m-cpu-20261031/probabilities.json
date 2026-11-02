@@ -1,0 +1,256 @@
+{
+  "schema": "mlg-smollm2-probability-view-v1",
+  "status": "passed",
+  "model": "HuggingFaceTB/SmolLM2-135M",
+  "revision": "93efa2f097d58c2a74874c7e644dbc9b0cee75a2",
+  "device": "cpu",
+  "dtype": "float32",
+  "torch": "2.15.0+cpu",
+  "transformers": "4.57.3",
+  "prompt": "Gravity is",
+  "input_ids": [
+    22007,
+    6463,
+    314
+  ],
+  "attention_mask": [
+    1,
+    1,
+    1
+  ],
+  "readout_position": 2,
+  "target": {
+    "module_path": "model.layers.15.self_attn",
+    "token_position": 2,
+    "token_id": 314
+  },
+  "implementation_sha256": {
+    "app.py": "eff5a1fee0d6175da66b4d371d049b019924ed542645103cf864858ff3fb9d63",
+    "app_runtime.py": "860623e9a56490fc3dd9e194c21eb68d34a11560bd2edc017f7756235d4f77d9",
+    "app_storage.py": "67b2728068564f11cb35a3844e06d1817207ef686e5c4ce2dfcabffbe993b0fe",
+    "app_interventions.py": "06eabfd7393f4afa26c1e6a7f39744ba15f62127717adfb28faa18fb65c02477",
+    "llama_trace.py": "7051a525f62e68c8f48a5215d3f3f4908b41d44f69181e971a0fd5afa180b75a"
+  },
+  "script_sha256": "ef78b6dbf8ef58914622c8d993821f42c50623fa549a394ce7f12bc9e2364cb0",
+  "checks": {
+    "all_original_capture_hashes_unchanged": true,
+    "all_model_parameter_hashes_unchanged": true,
+    "rotary_bits_and_assets_unchanged": true,
+    "probability_metadata_exact_after_save_reopen": true
+  },
+  "trials": [
+    {
+      "name": "zero_attention",
+      "selected_token_before": 260,
+      "selected_token_after": 260,
+      "independent_scalar_full_vocabulary_normalization_matches": true,
+      "probability_abs_tolerance": 5e-15,
+      "log_probability_abs_tolerance": 5e-13,
+      "next_token_distribution": {
+        "normalization": "full vocabulary",
+        "computation_dtype": "float64",
+        "vocabulary_size": 49152,
+        "readout_position": 2,
+        "total_variation": 0.04778765860595912,
+        "rows": [
+          {
+            "token_id": 260,
+            "text": " the",
+            "text_truncated": false,
+            "text_unavailable": false,
+            "baseline_logit": 22.05638885498047,
+            "intervention_logit": 21.44546127319336,
+            "baseline_log_probability": -1.6841977605253176,
+            "intervention_log_probability": -1.6469870910488547,
+            "baseline_probability": 0.18559326249052882,
+            "intervention_probability": 0.19262941006367207,
+            "probability_delta": 0.007036147573143248,
+            "baseline_rank": 1,
+            "intervention_rank": 1
+          },
+          {
+            "token_id": 253,
+            "text": " a",
+            "text_truncated": false,
+            "text_unavailable": false,
+            "baseline_logit": 22.02391242980957,
+            "intervention_logit": 21.366180419921875,
+            "baseline_log_probability": -1.716674185696216,
+            "intervention_log_probability": -1.726267944320339,
+            "baseline_probability": 0.17966268009532013,
+            "intervention_probability": 0.17794728142622715,
+            "probability_delta": -0.0017153986690929823,
+            "baseline_rank": 2,
+            "intervention_rank": 2
+          },
+          {
+            "token_id": 441,
+            "text": " not",
+            "text_truncated": false,
+            "text_unavailable": false,
+            "baseline_logit": 20.377180099487305,
+            "intervention_logit": 19.625707626342773,
+            "baseline_log_probability": -3.3634065160184816,
+            "intervention_log_probability": -3.466740737899441,
+            "baseline_probability": 0.03461713404015724,
+            "intervention_probability": 0.03121861467431316,
+            "probability_delta": -0.00339851936584408,
+            "baseline_rank": 3,
+            "intervention_rank": 3
+          },
+          {
+            "token_id": 354,
+            "text": " an",
+            "text_truncated": false,
+            "text_unavailable": false,
+            "baseline_logit": 20.195520401000977,
+            "intervention_logit": 19.585330963134766,
+            "baseline_log_probability": -3.5450662145048097,
+            "intervention_log_probability": -3.5071174011074486,
+            "baseline_probability": 0.028866711051424895,
+            "intervention_probability": 0.02998321958116769,
+            "probability_delta": 0.0011165085297427935,
+            "baseline_rank": 4,
+            "intervention_rank": 4
+          },
+          {
+            "token_id": 582,
+            "text": " one",
+            "text_truncated": false,
+            "text_unavailable": false,
+            "baseline_logit": 19.900869369506836,
+            "intervention_logit": 19.435564041137695,
+            "baseline_log_probability": -3.8397172459989504,
+            "intervention_log_probability": -3.656884323104519,
+            "baseline_probability": 0.02149967960615303,
+            "intervention_probability": 0.02581281194998369,
+            "probability_delta": 0.004313132343830659,
+            "baseline_rank": 5,
+            "intervention_rank": 5
+          }
+        ],
+        "rank_definition": "1-based descending full-vocabulary logits; ascending token ID breaks exact ties",
+        "selection": "Union of deterministic baseline top 5 followed by unseen intervention top 5; at most 10 rows. Legacy top lists may order tied logits differently.",
+        "label_max_characters": 512,
+        "scope": "Next-token model distribution only, not truth, confidence, calibration, semantic meaning or causal explanation. Float64 probabilities can underflow to zero; finite log probabilities are retained. Total variation is full-vocabulary, bounded for floating-point roundoff. Captured tensor bits are unchanged."
+      }
+    },
+    {
+      "name": "noop_attention",
+      "selected_token_before": 260,
+      "selected_token_after": 260,
+      "independent_scalar_full_vocabulary_normalization_matches": true,
+      "probability_abs_tolerance": 5e-15,
+      "log_probability_abs_tolerance": 5e-13,
+      "next_token_distribution": {
+        "normalization": "full vocabulary",
+        "computation_dtype": "float64",
+        "vocabulary_size": 49152,
+        "readout_position": 2,
+        "total_variation": 0.0,
+        "rows": [
+          {
+            "token_id": 260,
+            "text": " the",
+            "text_truncated": false,
+            "text_unavailable": false,
+            "baseline_logit": 22.05638885498047,
+            "intervention_logit": 22.05638885498047,
+            "baseline_log_probability": -1.6841977605253176,
+            "intervention_log_probability": -1.6841977605253176,
+            "baseline_probability": 0.18559326249052882,
+            "intervention_probability": 0.18559326249052882,
+            "probability_delta": 0.0,
+            "baseline_rank": 1,
+            "intervention_rank": 1
+          },
+          {
+            "token_id": 253,
+            "text": " a",
+            "text_truncated": false,
+            "text_unavailable": false,
+            "baseline_logit": 22.02391242980957,
+            "intervention_logit": 22.02391242980957,
+            "baseline_log_probability": -1.716674185696216,
+            "intervention_log_probability": -1.716674185696216,
+            "baseline_probability": 0.17966268009532013,
+            "intervention_probability": 0.17966268009532013,
+            "probability_delta": 0.0,
+            "baseline_rank": 2,
+            "intervention_rank": 2
+          },
+          {
+            "token_id": 441,
+            "text": " not",
+            "text_truncated": false,
+            "text_unavailable": false,
+            "baseline_logit": 20.377180099487305,
+            "intervention_logit": 20.377180099487305,
+            "baseline_log_probability": -3.3634065160184816,
+            "intervention_log_probability": -3.3634065160184816,
+            "baseline_probability": 0.03461713404015724,
+            "intervention_probability": 0.03461713404015724,
+            "probability_delta": 0.0,
+            "baseline_rank": 3,
+            "intervention_rank": 3
+          },
+          {
+            "token_id": 354,
+            "text": " an",
+            "text_truncated": false,
+            "text_unavailable": false,
+            "baseline_logit": 20.195520401000977,
+            "intervention_logit": 20.195520401000977,
+            "baseline_log_probability": -3.5450662145048097,
+            "intervention_log_probability": -3.5450662145048097,
+            "baseline_probability": 0.028866711051424895,
+            "intervention_probability": 0.028866711051424895,
+            "probability_delta": 0.0,
+            "baseline_rank": 4,
+            "intervention_rank": 4
+          },
+          {
+            "token_id": 582,
+            "text": " one",
+            "text_truncated": false,
+            "text_unavailable": false,
+            "baseline_logit": 19.900869369506836,
+            "intervention_logit": 19.900869369506836,
+            "baseline_log_probability": -3.8397172459989504,
+            "intervention_log_probability": -3.8397172459989504,
+            "baseline_probability": 0.02149967960615303,
+            "intervention_probability": 0.02149967960615303,
+            "probability_delta": 0.0,
+            "baseline_rank": 5,
+            "intervention_rank": 5
+          }
+        ],
+        "rank_definition": "1-based descending full-vocabulary logits; ascending token ID breaks exact ties",
+        "selection": "Union of deterministic baseline top 5 followed by unseen intervention top 5; at most 10 rows. Legacy top lists may order tied logits differently.",
+        "label_max_characters": 512,
+        "scope": "Next-token model distribution only, not truth, confidence, calibration, semantic meaning or causal explanation. Float64 probabilities can underflow to zero; finite log probabilities are retained. Total variation is full-vocabulary, bounded for floating-point roundoff. Captured tensor bits are unchanged."
+      }
+    }
+  ],
+  "scope": "Two specified edits, one fixed three-token input. Normalized model token probabilities are not calibrated confidence, correctness, semantic explanations or quality results. No GPU execution.",
+  "date_utc": "2026-10-31",
+  "publication_evidence": {
+    "base_commit_before_probability_view": "72c468afb1c0c7f879dc66fa0946a356b06f89c8",
+    "execution": "fresh separately installed wheel; source-tree replay agreed",
+    "wheel_sha256": "648f2fcdd2d1d14ba298d29459ad84278a976d46fb04371ce14dbbedd6cab143",
+    "raw_result_sha256": "6eee5581c399b6690ad46012c88e8ccc93e28d6bc12ce1ee94a3836971a0b33f",
+    "focused_tests": {
+      "passed": 892,
+      "real_cuda_skipped": 10,
+      "seconds": 53.73
+    },
+    "mocked_authenticated_ui_requests": 250,
+    "historical_collection_errors": 47,
+    "historical_error_paths_unchanged": true,
+    "browser_visual_validation": false,
+    "ui_sha256": {
+      "app.js": "af37f26836b69e6dbbf37db6a9ac18d48b0ab3e64a8bb93ef5e2589a2e0939d7",
+      "index.html": "3fa31a63e93e47cde943f33a432614d142e7d279c42fe25d2ce7f1c4de91056d"
+    }
+  }
+}

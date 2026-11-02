@@ -48,9 +48,9 @@ is not an attestation against native-code bypass.
 permutation, target and source hash. [Attempt log](run/attempt.jsonl) has 33
 starts and 33 completions: one uncaptured control followed by 32 attention
 captures. The uncaptured and captured first-case final-logit bytes were
-identical. The full [32 final-logit vectors](run/last_logits.f32),
-[32 attention arrays](run/attentions.f32), and
-[uncaptured vector](run/uncaptured_logits.f32) are little-endian float32 in
+identical. The full [32 final-logit vectors](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/distilgpt2-copying-dev-v1-20261028/run/last_logits.f32),
+[32 attention arrays](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/distilgpt2-copying-dev-v1-20261028/run/attentions.f32), and
+[uncaptured vector](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/distilgpt2-copying-dev-v1-20261028/run/uncaptured_logits.f32) are little-endian float32 in
 manifest order. Their shapes per case are `[50257]` and `[6,12,11,11]`.
 [Result JSON](run/result.json) retains every case score, pairwise difference,
 attention summary and all 72 head scores. [Pre-run](pre-run.json) and

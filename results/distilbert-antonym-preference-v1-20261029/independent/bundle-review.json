@@ -1,0 +1,17 @@
+{
+  "archive_sha256": "d4d14562ef02e486299951b2b1159f79c4d6933eadbcfedc7dc29b0c46463e2b",
+  "copied_review_sha256": {
+    "launch-scan-review.json": "a82fcb3f27b6195054f0b3f88cb2ef39db19482be12d844cbaa1d7fee7da1afa",
+    "methods-review.json": "329c6144508bd8a1314b2fefeb0fde0aaafc9f54fbb613b01e04adeabf02cafc",
+    "receipt-review.json": "083cacf94bc471761076d3b6d063951533a8ed2c98dc95a0a68ffb2930d86a8a",
+    "screen-review.json": "c64862705bf087242140e88177cc5b72f4198c7a5395dd0357ef4073cb084a52",
+    "source-review.json": "9593fc6925be0345d7da538e4ad6947bd0c04a21a023aa5ade8c1a598705ab86",
+    "summary-review.json": "43f627410cec77a942ae2ac016d62e5f997c30bc7b850a3167dfaeb01014a863"
+  },
+  "index_sha256": "a22f4a32d94c30bfd33f7c394b1dd72f2748eb7498fe494141af156b1bc6ef49",
+  "local_path_pattern_scan_passed": true,
+  "members_checked": 8,
+  "run_sha256": "128ea99295dcfadaa5b40cdcdfd7e485fcfb6d700c1de41e20bac728ecb6d821",
+  "schema": "antonym-screen-independent-bundle-review-v1",
+  "scope": "Byte round-trip and limited text-pattern scan, not proof of privacy or execution."
+}

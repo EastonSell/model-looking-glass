@@ -20,7 +20,7 @@ from looking_glass import grouped_gpu_dev as dev
 
 
 def synthetic_session():
-    repo = Path(__file__).resolve().parents[1]
+    repo = Path(dev.__file__).resolve().parents[1]
     root = dev.shared_workspace_root(repo)
     return SimpleNamespace(device_lease_path='unused', identity=SimpleNamespace(workspace_root=root),
                            _identity_spec={'workspace_root': str(root)}, run_id='owner')
@@ -42,6 +42,19 @@ def synthetic_runtime():
 
 class GroupedGpuDevelopmentTests(unittest.TestCase):
     def setUp(self):
+        # Keep the physical-device namespace guard real while making synthetic
+        # sessions independent of the checkout's location on the test host.
+        temporary = tempfile.TemporaryDirectory(prefix='grouped-owner-layout-')
+        self.addCleanup(temporary.cleanup)
+        checkout = Path(temporary.name).resolve() / 'work' / 'checkout'
+        source_repo = Path(__file__).resolve().parents[1]
+        for relative in ('looking_glass/grouped_gpu_dev.py', dev._PROTOCOL):
+            target = checkout / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source_repo / relative, target)
+        location = patch.object(dev, '__file__', str(checkout / 'looking_glass/grouped_gpu_dev.py'))
+        location.start()
+        self.addCleanup(location.stop)
         self.gc_was_enabled = gc.isenabled()
         # Owner-entry tests run in the test process; the real subprocess policy
         # is exercised separately in an isolated supervised child below.
@@ -1721,6 +1734,10 @@ runpy.run_module('looking_glass.grouped_gpu_dev', run_name='__main__')
             patch.object(dev, '_runtime_uuid', return_value='fake'),
             patch.object(pretrained, 'load_distilgpt2', side_effect=load),
             patch.object(cuda_cleanup, 'clear_cublas_after_drain', side_effect=check_cleanup),
+            # CPU builds omit this private CUDA symbol. The synthetic cleanup
+            # observer above does not invoke it; never call a real CUDA API here.
+            patch.object(torch._C, '_cuda_clearCublasWorkspaces', create=True,
+                         side_effect=AssertionError('synthetic cleanup must not invoke native CUDA')),
             patch.object(HostClaim, 'release', new=check_release),
             patch.object(MemoryLease, 'release', new=release_memory),
             patch.object(torch.cuda, 'is_available', return_value=True),

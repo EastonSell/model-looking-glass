@@ -1,0 +1,14 @@
+{
+  "manifest_members": 20,
+  "schema": "independent-multisuffix-archive-review-v1",
+  "scope": [
+    "All 20 members match the manifest and corresponding original files; ZIP was streamed without extraction.",
+    "The archive does not itself establish process authenticity, whole-tree drain or an independent outer-tool exit.",
+    "Later derived science reports and operator exit transcription are separate from these original members."
+  ],
+  "source_commit": "42519c13a5b33ce3601b89ba65d67b07ebd2f78d",
+  "status": "member_consistency",
+  "zip_bytes": 122677157,
+  "zip_entries_including_manifest": 21,
+  "zip_sha256": "4d1f462222b3420094094bf96979a257ea98e1acd41a5652c8de4460adc0bf0a"
+}

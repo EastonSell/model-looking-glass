@@ -148,7 +148,7 @@ def fake_child(output, scenario):
 
 class FlanT5FeasibilityTests(unittest.TestCase):
     def test_full_synthetic_control_path(self):
-        workspace = REPO.parent.parent
+        workspace = Path(tempfile.gettempdir()).resolve()
         scenarios = ("positive", "negative", "unsupported", "bad_control", "bad_capture", "nonfinite", "non_tensor", "bad_score", "bad_validate", "bounds")
         def execute(scenario):
             with tempfile.TemporaryDirectory(prefix="t5-fake-test-", dir=workspace) as root:

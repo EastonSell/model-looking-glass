@@ -1,0 +1,1 @@
+{"status": "complete", "mode": "screen", "owner_exit": 0, "terminal_sha256": "5aa69a7399434e775ee5b40838bba2d843c3b4d8f9b9b335fae8a2da97c28cb1"}

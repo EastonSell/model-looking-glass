@@ -1,0 +1,97 @@
+{
+  "files": [
+    {
+      "bytes": 10468,
+      "name": "README.md",
+      "sha256": "e42cff2bf1fcec155013456a50a280eed4f0ba3fc73f96eee193eea01e9fb023"
+    },
+    {
+      "bytes": 57215,
+      "name": "audit_full.json",
+      "sha256": "d554d68b0f9d7abc33f2141edafaa2a0fd572091f91dc01b303332d483a15082"
+    },
+    {
+      "bytes": 19831,
+      "name": "audit_full.py",
+      "sha256": "42c60ce03b1ce2f910dbbd2a673bd24644a33ff81f16e0b8a45777b39c53d0dd"
+    },
+    {
+      "bytes": 57135,
+      "name": "audit_scores.json",
+      "sha256": "fd525778e94c32e5f36bf35ed9df006439c5a36f86d7091faae34899234d2546"
+    },
+    {
+      "bytes": 9862,
+      "name": "audit_scores.py",
+      "sha256": "71cda6e49626239b7e70011407a75d0b4afaf4495040cd6a0be63837e76fd59e"
+    },
+    {
+      "bytes": 12041,
+      "name": "baselines.csv",
+      "sha256": "aaad087b735fa6c7a8f0eaa69a8dcf9a765a83040015485a030056b9143407e3"
+    },
+    {
+      "bytes": 2417,
+      "name": "cases.csv",
+      "sha256": "5201d470bf2f74d49fb430fdf55a6137e13f3f97fee80daecd5349299e00f454"
+    },
+    {
+      "bytes": 2770,
+      "name": "cpu-preflight.json",
+      "sha256": "a4230d244dadd67b83e34a9f7fcd2c86be36d5e031651705b68c90740304d9c6"
+    },
+    {
+      "bytes": 2898,
+      "name": "cpu-preflight.py",
+      "sha256": "bea64df78b5302595fc9fb22d419f072cedb4e66bffe5862bbf92569ea4c5963"
+    },
+    {
+      "bytes": 39819,
+      "name": "effects.csv",
+      "sha256": "653ad65b4528d28fa3e0329b65d72ff261c1b18ff39524a7b563f655c0e853e8"
+    },
+    {
+      "bytes": 218,
+      "name": "exit.json",
+      "sha256": "fee7117ec38e825ec84a5154416a436d665132dc7917304cdccef98b57dc6377"
+    },
+    {
+      "bytes": 3819,
+      "name": "make_tables.py",
+      "sha256": "d074bfa48498a994fc2632c86ffe64006cb348622c72e29e3c3bc8750db407c5"
+    },
+    {
+      "bytes": 34307,
+      "name": "manifest.json",
+      "sha256": "57a55d89097ab1b955eb4e6bab38d48a4108aa24608b96827f3d27830fc7bf8c"
+    },
+    {
+      "bytes": 10726,
+      "name": "protocol.md",
+      "sha256": "dd7a7541eb2d1fe1056d187bb639caec875b84d10f0de33d31a036963053e686"
+    },
+    {
+      "bytes": 1973,
+      "name": "public-exposure-check.json",
+      "sha256": "b05f8ef22eb7627b00f1b75c00c0bbeaf7373b0a489885d3384229cafefde025"
+    },
+    {
+      "bytes": 249813,
+      "name": "result.json",
+      "sha256": "40c71340878c8897aae105c1efc3eaf347864f4d90f97617b9f7af0b8e867575"
+    },
+    {
+      "bytes": 2620,
+      "name": "started.json",
+      "sha256": "b11a1d6e91c67071119ba466f31a1dfbab8bebd5a645684b82efb6775a93307d"
+    },
+    {
+      "bytes": 32713,
+      "name": "target_checks.csv",
+      "sha256": "1682ce626bf33639a7b7a4c243898d8327716e1de8e313257672b3b7ebe86ec8"
+    }
+  ],
+  "journal_included": false,
+  "journal_sha256": "d3a62eca442b20e7a48f5a4840c50969df874cbadd22037d1003972eb935fed9",
+  "schema": "bert-cue-class-evidence-inventory-v1"
+}

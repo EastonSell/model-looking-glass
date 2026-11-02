@@ -1,0 +1,9 @@
+{
+  "direct_target_conflict": "unknown",
+  "observation": "Timestamp is the operator public-source review; no protected state or membership was queried. Protected history and target relation are unverified.",
+  "protected_history": "unverified",
+  "refreshed_utc": "2026-10-29T14:01:01.822078+00:00",
+  "schema": "agreement-invariant-injection-refresh-v1",
+  "site": "transformer.h.3.attn",
+  "status": "protected_status_unknown"
+}

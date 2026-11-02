@@ -1,0 +1,27 @@
+{
+  "aligned_target_donor_pairs": 8,
+  "case_count": 24,
+  "cases_sha256": "a118dde671351d21c519b6a61957e9478c9501bac52d55aa34e8394772e933d5",
+  "model_forward_asserted": false,
+  "roles": {
+    "calibration-donor": 2,
+    "calibration-target": 2,
+    "discovery-donor": 2,
+    "discovery-target": 2,
+    "evaluation-donor": 4,
+    "evaluation-target": 4,
+    "locality-sentiment": 4,
+    "locality-target-token": 2,
+    "locality-unrelated": 2
+  },
+  "semantic_scope": "Public fixed cases; independently assessed target and locality meaning separately. Locality-2 is the exact excellent substitution of evaluation-2.",
+  "status": "passed",
+  "tokenization_fields": [
+    "ids",
+    "attention masks",
+    "special-token masks",
+    "offsets",
+    "expected-answer ids"
+  ],
+  "tokenizer_sha256": "fe2ebbbbde2985be723e0ce18217853e4020c5e9d35bd07be2c27ab9d3ead57a"
+}

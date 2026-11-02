@@ -1,0 +1,18 @@
+[
+  {
+    "case_sha256": "1da4f8e4773009fedc750480c21597fc60ecaa0c990dcff0af15a5c7101c3dca",
+    "hits": [],
+    "pairs": 2048,
+    "pending_rows": 32,
+    "pending_sha256": "917bad800f72a9613e69d8feae3faf90ffbae5cc446bbeb3e2c8df1d03678dc9",
+    "rows": 64
+  },
+  {
+    "case_sha256": "bc8d1af844c52f46bf068c04257280ed37e4302028885540ea498103d6ce125e",
+    "hits": [],
+    "pairs": 5120,
+    "pending_rows": 32,
+    "pending_sha256": "917bad800f72a9613e69d8feae3faf90ffbae5cc446bbeb3e2c8df1d03678dc9",
+    "rows": 160
+  }
+]

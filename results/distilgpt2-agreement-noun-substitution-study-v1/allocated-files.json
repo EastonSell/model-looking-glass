@@ -1,0 +1,9 @@
+{
+  "allocated_file_bytes": 91825856,
+  "apparent_bytes": 89677752,
+  "directories": 5,
+  "files": 1158,
+  "recorded_utc": "2026-10-29T11:55:46.027560+00:00",
+  "schema": "agreement-substitution-allocated-file-observation-v1",
+  "scope": "Windows FileStandardInfo allocation sizes for ordinary files after direct-child exit; excludes directory metadata and alternate streams and does not establish descendant drain or an OS quota."
+}

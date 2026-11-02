@@ -480,11 +480,15 @@ class CudaAgreementGuardTests(unittest.TestCase):
             torch.use_deterministic_algorithms(True)
             torch.backends.cuda.matmul.allow_tf32 = False
             torch.backends.cudnn.allow_tf32 = False
-            runner._warmup_execution_contract = runner._execution_contract()
-            runner._warmup_completed = True
-            model.transformer.h[1].attn.scale_attn_weights = False
-            with self.assertRaisesRegex(StudyFailure, 'configuration changed since same-owner warmup'):
-                runner._execution_contract()
+            # This CPU-only test isolates attention-configuration drift, not
+            # execution under the historical pinned CUDA runtime.
+            with (mock.patch.object(torch, '__version__', runner._expected_key.torch_version),
+                  mock.patch.object(torch.version, 'cuda', runner._expected_key.cuda_runtime_version)):
+                runner._warmup_execution_contract = runner._execution_contract()
+                runner._warmup_completed = True
+                model.transformer.h[1].attn.scale_attn_weights = False
+                with self.assertRaisesRegex(StudyFailure, 'configuration changed since same-owner warmup'):
+                    runner._execution_contract()
         finally:
             torch.backends.cuda.matmul.allow_tf32 = matmul_tf32
             torch.backends.cudnn.allow_tf32 = cudnn_tf32

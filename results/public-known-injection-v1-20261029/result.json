@@ -1,0 +1,885 @@
+{
+  "discovery": {
+    "A": {
+      "constant_site": 1,
+      "first_changed_site": 1,
+      "first_changed_votes": [
+        8,
+        0,
+        0,
+        0
+      ],
+      "magnitude_scores": [
+        4.000000041909516,
+        2.52333156217522,
+        2.1480788055011115,
+        2.3076893772488294
+      ],
+      "magnitude_site": 1,
+      "random_site": 2,
+      "selector": {
+        "ranking": [
+          1,
+          4,
+          2,
+          3
+        ],
+        "scores": [
+          0.10663270950317383,
+          0.007161140441894531,
+          0.0022125244140625,
+          0.020781517028808594
+        ],
+        "selected_site": 1,
+        "signed_predictions": [
+          0.10663270950317383,
+          0.007161140441894531,
+          0.0022125244140625,
+          0.020781517028808594
+        ],
+        "tied_max_sites": [
+          1
+        ]
+      },
+      "uniform_site_reference": 0.25
+    },
+    "B": {
+      "constant_site": 1,
+      "first_changed_site": 4,
+      "first_changed_votes": [
+        0,
+        0,
+        0,
+        8
+      ],
+      "magnitude_scores": [
+        0.0,
+        0.0,
+        0.0,
+        4.000000016763806
+      ],
+      "magnitude_site": 4,
+      "random_site": 4,
+      "selector": {
+        "ranking": [
+          4,
+          1,
+          2,
+          3
+        ],
+        "scores": [
+          0.0,
+          0.0,
+          0.0,
+          0.11855363845825195
+        ],
+        "selected_site": 4,
+        "signed_predictions": [
+          0.0,
+          0.0,
+          0.0,
+          0.11855363845825195
+        ],
+        "tied_max_sites": [
+          4
+        ]
+      },
+      "uniform_site_reference": 0.25
+    }
+  },
+  "discovery_freeze_sha256": "5c1d1d0f9db7a5b9daca7cd6784e231f442456a25a8ecac5b99f0bd8d7645152",
+  "heldout": {
+    "A": {
+      "by_site": {
+        "1": {
+          "cases": [
+            {
+              "absolute_error": 0.03181028366088867,
+              "actual_effect": 0.1384429931640625,
+              "case_id": "known-injection-09",
+              "distance_injected": 104.26613299550986,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.10663270950317383,
+              "zero_absolute_error": 0.1384429931640625
+            },
+            {
+              "absolute_error": 0.07633256912231445,
+              "actual_effect": 0.030300140380859375,
+              "case_id": "known-injection-10",
+              "distance_injected": 122.15742502935312,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.10663270950317383,
+              "zero_absolute_error": 0.030300140380859375
+            },
+            {
+              "absolute_error": 0.028384685516357422,
+              "actual_effect": 0.13501739501953125,
+              "case_id": "known-injection-11",
+              "distance_injected": 76.68040271678748,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.10663270950317383,
+              "zero_absolute_error": 0.13501739501953125
+            },
+            {
+              "absolute_error": 0.08823060989379883,
+              "actual_effect": 0.018402099609375,
+              "case_id": "known-injection-12",
+              "distance_injected": 60.56088813037725,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.10663270950317383,
+              "zero_absolute_error": 0.018402099609375
+            },
+            {
+              "absolute_error": 0.09956026077270508,
+              "actual_effect": 0.00707244873046875,
+              "case_id": "known-injection-13",
+              "distance_injected": 92.13963364116992,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.10663270950317383,
+              "zero_absolute_error": 0.00707244873046875
+            },
+            {
+              "absolute_error": 0.0871129035949707,
+              "actual_effect": 0.019519805908203125,
+              "case_id": "known-injection-14",
+              "distance_injected": 58.06896621380932,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.10663270950317383,
+              "zero_absolute_error": 0.019519805908203125
+            },
+            {
+              "absolute_error": 0.0008921623229980469,
+              "actual_effect": 0.10752487182617188,
+              "case_id": "known-injection-15",
+              "distance_injected": 294.8913529679849,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.10663270950317383,
+              "zero_absolute_error": 0.10752487182617188
+            },
+            {
+              "absolute_error": 0.011810779571533203,
+              "actual_effect": 0.09482192993164062,
+              "case_id": "known-injection-16",
+              "distance_injected": 25.709993544439442,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.10663270950317383,
+              "zero_absolute_error": 0.09482192993164062
+            }
+          ],
+          "mean_distance_injected": 104.30934940492891,
+          "mean_distance_patch": 0.0,
+          "prediction_mae": 0.0530167818069458,
+          "prediction_success": true,
+          "restoration_success": true,
+          "undefined_ratio_count": 0,
+          "zero_mae": 0.06888771057128906
+        },
+        "2": {
+          "cases": [
+            {
+              "absolute_error": 0.005068778991699219,
+              "actual_effect": 0.01222991943359375,
+              "case_id": "known-injection-09",
+              "distance_injected": 104.26613299550986,
+              "distance_patch": 65.90325979662535,
+              "distance_ratio": 0.6320677472469745,
+              "prediction": 0.007161140441894531,
+              "zero_absolute_error": 0.01222991943359375
+            },
+            {
+              "absolute_error": 0.044739723205566406,
+              "actual_effect": -0.037578582763671875,
+              "case_id": "known-injection-10",
+              "distance_injected": 122.15742502935312,
+              "distance_patch": 111.26502246057156,
+              "distance_ratio": 0.9108330699819169,
+              "prediction": 0.007161140441894531,
+              "zero_absolute_error": 0.037578582763671875
+            },
+            {
+              "absolute_error": 0.01589679718017578,
+              "actual_effect": -0.00873565673828125,
+              "case_id": "known-injection-11",
+              "distance_injected": 76.68040271678748,
+              "distance_patch": 37.563546090111934,
+              "distance_ratio": 0.4898715285683838,
+              "prediction": 0.007161140441894531,
+              "zero_absolute_error": 0.00873565673828125
+            },
+            {
+              "absolute_error": 0.024682044982910156,
+              "actual_effect": -0.017520904541015625,
+              "case_id": "known-injection-12",
+              "distance_injected": 60.56088813037725,
+              "distance_patch": 22.43282708988413,
+              "distance_ratio": 0.370417736305156,
+              "prediction": 0.007161140441894531,
+              "zero_absolute_error": 0.017520904541015625
+            },
+            {
+              "absolute_error": 0.01625537872314453,
+              "actual_effect": -0.00909423828125,
+              "case_id": "known-injection-13",
+              "distance_injected": 92.13963364116992,
+              "distance_patch": 42.03994169983451,
+              "distance_ratio": 0.45626339110002906,
+              "prediction": 0.007161140441894531,
+              "zero_absolute_error": 0.00909423828125
+            },
+            {
+              "absolute_error": 0.02219867706298828,
+              "actual_effect": -0.01503753662109375,
+              "case_id": "known-injection-14",
+              "distance_injected": 58.06896621380932,
+              "distance_patch": 17.962639771321946,
+              "distance_ratio": 0.3093328664606099,
+              "prediction": 0.007161140441894531,
+              "zero_absolute_error": 0.01503753662109375
+            },
+            {
+              "absolute_error": 0.08910083770751953,
+              "actual_effect": -0.081939697265625,
+              "case_id": "known-injection-15",
+              "distance_injected": 294.8913529679849,
+              "distance_patch": 212.69269781334165,
+              "distance_ratio": 0.7212578316476875,
+              "prediction": 0.007161140441894531,
+              "zero_absolute_error": 0.081939697265625
+            },
+            {
+              "absolute_error": 0.06560802459716797,
+              "actual_effect": 0.0727691650390625,
+              "case_id": "known-injection-16",
+              "distance_injected": 25.709993544439442,
+              "distance_patch": 41.30271044002544,
+              "distance_ratio": 1.6064846678640412,
+              "prediction": 0.007161140441894531,
+              "zero_absolute_error": 0.0727691650390625
+            }
+          ],
+          "mean_distance_injected": 104.30934940492891,
+          "mean_distance_patch": 68.89533064521457,
+          "prediction_mae": 0.035443782806396484,
+          "prediction_success": false,
+          "restoration_success": true,
+          "undefined_ratio_count": 0,
+          "zero_mae": 0.03186321258544922
+        },
+        "3": {
+          "cases": [
+            {
+              "absolute_error": 0.048492431640625,
+              "actual_effect": -0.0462799072265625,
+              "case_id": "known-injection-09",
+              "distance_injected": 104.26613299550986,
+              "distance_patch": 17.320004356156677,
+              "distance_ratio": 0.16611342397154547,
+              "prediction": 0.0022125244140625,
+              "zero_absolute_error": 0.0462799072265625
+            },
+            {
+              "absolute_error": 0.11624526977539062,
+              "actual_effect": -0.11403274536132812,
+              "case_id": "known-injection-10",
+              "distance_injected": 122.15742502935312,
+              "distance_patch": 20.903965606950607,
+              "distance_ratio": 0.17112316833731234,
+              "prediction": 0.0022125244140625,
+              "zero_absolute_error": 0.11403274536132812
+            },
+            {
+              "absolute_error": 0.00026702880859375,
+              "actual_effect": 0.00247955322265625,
+              "case_id": "known-injection-11",
+              "distance_injected": 76.68040271678748,
+              "distance_patch": 19.294816383859594,
+              "distance_ratio": 0.25162643518088124,
+              "prediction": 0.0022125244140625,
+              "zero_absolute_error": 0.00247955322265625
+            },
+            {
+              "absolute_error": 0.040771484375,
+              "actual_effect": -0.0385589599609375,
+              "case_id": "known-injection-12",
+              "distance_injected": 60.56088813037725,
+              "distance_patch": 18.35739781205874,
+              "distance_ratio": 0.303122995365233,
+              "prediction": 0.0022125244140625,
+              "zero_absolute_error": 0.0385589599609375
+            },
+            {
+              "absolute_error": 0.039306640625,
+              "actual_effect": -0.0370941162109375,
+              "case_id": "known-injection-13",
+              "distance_injected": 92.13963364116992,
+              "distance_patch": 19.106042164752694,
+              "distance_ratio": 0.20735964980238117,
+              "prediction": 0.0022125244140625,
+              "zero_absolute_error": 0.0370941162109375
+            },
+            {
+              "absolute_error": 0.03327178955078125,
+              "actual_effect": -0.03105926513671875,
+              "case_id": "known-injection-14",
+              "distance_injected": 58.06896621380932,
+              "distance_patch": 13.685960671280215,
+              "distance_ratio": 0.2356845930559303,
+              "prediction": 0.0022125244140625,
+              "zero_absolute_error": 0.03105926513671875
+            },
+            {
+              "absolute_error": 0.12885665893554688,
+              "actual_effect": 0.13106918334960938,
+              "case_id": "known-injection-15",
+              "distance_injected": 294.8913529679849,
+              "distance_patch": 153.32337208781215,
+              "distance_ratio": 0.5199317326352998,
+              "prediction": 0.0022125244140625,
+              "zero_absolute_error": 0.13106918334960938
+            },
+            {
+              "absolute_error": 0.001003265380859375,
+              "actual_effect": 0.003215789794921875,
+              "case_id": "known-injection-16",
+              "distance_injected": 25.709993544439442,
+              "distance_patch": 77.71383128077257,
+              "distance_ratio": 3.02270909350658,
+              "prediction": 0.0022125244140625,
+              "zero_absolute_error": 0.003215789794921875
+            }
+          ],
+          "mean_distance_injected": 104.30934940492891,
+          "mean_distance_patch": 42.463173795455404,
+          "prediction_mae": 0.05102682113647461,
+          "prediction_success": false,
+          "restoration_success": true,
+          "undefined_ratio_count": 0,
+          "zero_mae": 0.050473690032958984
+        },
+        "4": {
+          "cases": [
+            {
+              "absolute_error": 0.005799293518066406,
+              "actual_effect": 0.026580810546875,
+              "case_id": "known-injection-09",
+              "distance_injected": 104.26613299550986,
+              "distance_patch": 138.45478860678273,
+              "distance_ratio": 1.3278979916973153,
+              "prediction": 0.020781517028808594,
+              "zero_absolute_error": 0.026580810546875
+            },
+            {
+              "absolute_error": 0.014468193054199219,
+              "actual_effect": 0.006313323974609375,
+              "case_id": "known-injection-10",
+              "distance_injected": 122.15742502935312,
+              "distance_patch": 140.48369127096785,
+              "distance_ratio": 1.1500217136797959,
+              "prediction": 0.020781517028808594,
+              "zero_absolute_error": 0.006313323974609375
+            },
+            {
+              "absolute_error": 0.021117210388183594,
+              "actual_effect": -0.000335693359375,
+              "case_id": "known-injection-11",
+              "distance_injected": 76.68040271678748,
+              "distance_patch": 113.21989025129814,
+              "distance_ratio": 1.4765166358015376,
+              "prediction": 0.020781517028808594,
+              "zero_absolute_error": 0.000335693359375
+            },
+            {
+              "absolute_error": 0.0028429031372070312,
+              "actual_effect": 0.023624420166015625,
+              "case_id": "known-injection-12",
+              "distance_injected": 60.56088813037725,
+              "distance_patch": 71.22650238806183,
+              "distance_ratio": 1.1761139010168302,
+              "prediction": 0.020781517028808594,
+              "zero_absolute_error": 0.023624420166015625
+            },
+            {
+              "absolute_error": 0.027579307556152344,
+              "actual_effect": -0.00679779052734375,
+              "case_id": "known-injection-13",
+              "distance_injected": 92.13963364116992,
+              "distance_patch": 114.07184789885929,
+              "distance_ratio": 1.2380323579655474,
+              "prediction": 0.020781517028808594,
+              "zero_absolute_error": 0.00679779052734375
+            },
+            {
+              "absolute_error": 0.02360057830810547,
+              "actual_effect": -0.002819061279296875,
+              "case_id": "known-injection-14",
+              "distance_injected": 58.06896621380932,
+              "distance_patch": 76.66970658455398,
+              "distance_ratio": 1.3203215346086399,
+              "prediction": 0.020781517028808594,
+              "zero_absolute_error": 0.002819061279296875
+            },
+            {
+              "absolute_error": 0.033226966857910156,
+              "actual_effect": 0.05400848388671875,
+              "case_id": "known-injection-15",
+              "distance_injected": 294.8913529679849,
+              "distance_patch": 234.25733427795518,
+              "distance_ratio": 0.7943852266952958,
+              "prediction": 0.020781517028808594,
+              "zero_absolute_error": 0.05400848388671875
+            },
+            {
+              "absolute_error": 0.012671470642089844,
+              "actual_effect": 0.00811004638671875,
+              "case_id": "known-injection-16",
+              "distance_injected": 25.709993544439442,
+              "distance_patch": 26.660005330354082,
+              "distance_ratio": 1.0369510705738822,
+              "prediction": 0.020781517028808594,
+              "zero_absolute_error": 0.00811004638671875
+            }
+          ],
+          "mean_distance_injected": 104.30934940492891,
+          "mean_distance_patch": 114.38047082610413,
+          "prediction_mae": 0.017663240432739258,
+          "prediction_success": false,
+          "restoration_success": false,
+          "undefined_ratio_count": 0,
+          "zero_mae": 0.01607370376586914
+        }
+      },
+      "choices": {
+        "constant": 1,
+        "first_changed": 1,
+        "magnitude": 1,
+        "random": 2,
+        "selector": 1
+      }
+    },
+    "B": {
+      "by_site": {
+        "1": {
+          "cases": [
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-09",
+              "distance_injected": 21.13194082691893,
+              "distance_patch": 21.13194082691893,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-10",
+              "distance_injected": 15.104460422698278,
+              "distance_patch": 15.104460422698278,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-11",
+              "distance_injected": 18.80708102483718,
+              "distance_patch": 18.80708102483718,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-12",
+              "distance_injected": 20.240859925162827,
+              "distance_patch": 20.240859925162827,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-13",
+              "distance_injected": 23.303567565041035,
+              "distance_patch": 23.303567565041035,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-14",
+              "distance_injected": 13.06910078025146,
+              "distance_patch": 13.06910078025146,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-15",
+              "distance_injected": 38.12454477051124,
+              "distance_patch": 38.12454477051124,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-16",
+              "distance_injected": 16.80107668096066,
+              "distance_patch": 16.80107668096066,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            }
+          ],
+          "mean_distance_injected": 20.822828999547703,
+          "mean_distance_patch": 20.822828999547703,
+          "prediction_mae": 0.0,
+          "prediction_success": false,
+          "restoration_success": false,
+          "undefined_ratio_count": 0,
+          "zero_mae": 0.0
+        },
+        "2": {
+          "cases": [
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-09",
+              "distance_injected": 21.13194082691893,
+              "distance_patch": 21.13194082691893,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-10",
+              "distance_injected": 15.104460422698278,
+              "distance_patch": 15.104460422698278,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-11",
+              "distance_injected": 18.80708102483718,
+              "distance_patch": 18.80708102483718,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-12",
+              "distance_injected": 20.240859925162827,
+              "distance_patch": 20.240859925162827,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-13",
+              "distance_injected": 23.303567565041035,
+              "distance_patch": 23.303567565041035,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-14",
+              "distance_injected": 13.06910078025146,
+              "distance_patch": 13.06910078025146,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-15",
+              "distance_injected": 38.12454477051124,
+              "distance_patch": 38.12454477051124,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-16",
+              "distance_injected": 16.80107668096066,
+              "distance_patch": 16.80107668096066,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            }
+          ],
+          "mean_distance_injected": 20.822828999547703,
+          "mean_distance_patch": 20.822828999547703,
+          "prediction_mae": 0.0,
+          "prediction_success": false,
+          "restoration_success": false,
+          "undefined_ratio_count": 0,
+          "zero_mae": 0.0
+        },
+        "3": {
+          "cases": [
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-09",
+              "distance_injected": 21.13194082691893,
+              "distance_patch": 21.13194082691893,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-10",
+              "distance_injected": 15.104460422698278,
+              "distance_patch": 15.104460422698278,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-11",
+              "distance_injected": 18.80708102483718,
+              "distance_patch": 18.80708102483718,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-12",
+              "distance_injected": 20.240859925162827,
+              "distance_patch": 20.240859925162827,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-13",
+              "distance_injected": 23.303567565041035,
+              "distance_patch": 23.303567565041035,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-14",
+              "distance_injected": 13.06910078025146,
+              "distance_patch": 13.06910078025146,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-15",
+              "distance_injected": 38.12454477051124,
+              "distance_patch": 38.12454477051124,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            },
+            {
+              "absolute_error": 0.0,
+              "actual_effect": 0.0,
+              "case_id": "known-injection-16",
+              "distance_injected": 16.80107668096066,
+              "distance_patch": 16.80107668096066,
+              "distance_ratio": 1.0,
+              "prediction": 0.0,
+              "zero_absolute_error": 0.0
+            }
+          ],
+          "mean_distance_injected": 20.822828999547703,
+          "mean_distance_patch": 20.822828999547703,
+          "prediction_mae": 0.0,
+          "prediction_success": false,
+          "restoration_success": false,
+          "undefined_ratio_count": 0,
+          "zero_mae": 0.0
+        },
+        "4": {
+          "cases": [
+            {
+              "absolute_error": 0.018844127655029297,
+              "actual_effect": 0.13739776611328125,
+              "case_id": "known-injection-09",
+              "distance_injected": 21.13194082691893,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.11855363845825195,
+              "zero_absolute_error": 0.13739776611328125
+            },
+            {
+              "absolute_error": 0.014660358428955078,
+              "actual_effect": 0.10389328002929688,
+              "case_id": "known-injection-10",
+              "distance_injected": 15.104460422698278,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.11855363845825195,
+              "zero_absolute_error": 0.10389328002929688
+            },
+            {
+              "absolute_error": 0.05644559860229492,
+              "actual_effect": 0.17499923706054688,
+              "case_id": "known-injection-11",
+              "distance_injected": 18.80708102483718,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.11855363845825195,
+              "zero_absolute_error": 0.17499923706054688
+            },
+            {
+              "absolute_error": 0.06560945510864258,
+              "actual_effect": 0.052944183349609375,
+              "case_id": "known-injection-12",
+              "distance_injected": 20.240859925162827,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.11855363845825195,
+              "zero_absolute_error": 0.052944183349609375
+            },
+            {
+              "absolute_error": 0.0538487434387207,
+              "actual_effect": 0.06470489501953125,
+              "case_id": "known-injection-13",
+              "distance_injected": 23.303567565041035,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.11855363845825195,
+              "zero_absolute_error": 0.06470489501953125
+            },
+            {
+              "absolute_error": 0.08508729934692383,
+              "actual_effect": 0.033466339111328125,
+              "case_id": "known-injection-14",
+              "distance_injected": 13.06910078025146,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.11855363845825195,
+              "zero_absolute_error": 0.033466339111328125
+            },
+            {
+              "absolute_error": 0.022289752960205078,
+              "actual_effect": 0.09626388549804688,
+              "case_id": "known-injection-15",
+              "distance_injected": 38.12454477051124,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.11855363845825195,
+              "zero_absolute_error": 0.09626388549804688
+            },
+            {
+              "absolute_error": 0.017765522003173828,
+              "actual_effect": 0.10078811645507812,
+              "case_id": "known-injection-16",
+              "distance_injected": 16.80107668096066,
+              "distance_patch": 0.0,
+              "distance_ratio": 0.0,
+              "prediction": 0.11855363845825195,
+              "zero_absolute_error": 0.10078811645507812
+            }
+          ],
+          "mean_distance_injected": 20.822828999547703,
+          "mean_distance_patch": 0.0,
+          "prediction_mae": 0.041818857192993164,
+          "prediction_success": true,
+          "restoration_success": true,
+          "undefined_ratio_count": 0,
+          "zero_mae": 0.09555721282958984
+        }
+      },
+      "choices": {
+        "constant": 1,
+        "first_changed": 4,
+        "magnitude": 4,
+        "random": 4,
+        "selector": 4
+      }
+    }
+  },
+  "heldout_evidence": {
+    "actions": 120,
+    "events_sha256": "52fdaccf141a59dd659c12d38bdd8e8d6f17021ea86914bf80427a91c8ee3ab8",
+    "raw_bytes": 32921568,
+    "raw_files": {
+      "known-injection-09": {
+        "bytes": 4044540,
+        "sha256": "a299406a74a9fb8f912f33ae1dabc8f0455f822ac83dfa1bb9ea892a94fe801b"
+      },
+      "known-injection-10": {
+        "bytes": 4044540,
+        "sha256": "a986a351a9ee7606e6601643342851018e5efe81df3b2bbb590aa7f95cd390dc"
+      },
+      "known-injection-11": {
+        "bytes": 4044540,
+        "sha256": "b954c8f3d739f86eba4f7bd1b1f5263d71290ad7d488ac68fe49d419c51524dc"
+      },
+      "known-injection-12": {
+        "bytes": 4044540,
+        "sha256": "dd77b7a1c436531a48304222b07e61364950bdc8887618ad24639a844e47ebf9"
+      },
+      "known-injection-13": {
+        "bytes": 4044540,
+        "sha256": "a530d9bad4f75748acbf9b54263a43df492b4973bf81a16ae11e070c58cd74b6"
+      },
+      "known-injection-14": {
+        "bytes": 4327164,
+        "sha256": "260d0f1a5b8fa915452b6001e2a90c35d9a753ab2eb764f289d39244532b8776"
+      },
+      "known-injection-15": {
+        "bytes": 4185852,
+        "sha256": "f853d2f7904f5fd54907d016261ce9f9f911f4ce631328b51e777564c44a0327"
+      },
+      "known-injection-16": {
+        "bytes": 4185852,
+        "sha256": "6b8b54a5a6f3b9db5bddae4e74cf2ac7a4c3a258f1ae2267129c38d69e0f5e10"
+      }
+    }
+  },
+  "heldout_receipt_sha256": "577b99d302bce2e56ed1bd3ce4ddc30ab622fc4fa2297796b46a5b125b426e88",
+  "pre_run_sha256": "b4f632ed69f0b20ceb82a176ee64047a815771231072ec04bb60dc880c18d6c6",
+  "schema": "public-known-injection-result-v1"
+}

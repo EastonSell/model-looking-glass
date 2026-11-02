@@ -77,7 +77,11 @@ reach saved-record validation. The controller checks all six ordered starts,
 tensor hashes, exact coordinates and controls, 37 synchronized memory stages,
 the staged checkpoint, and the final allocator-cleanup record. Its strongest
 outcome is `awaiting-independent-audit`; a separate audit must examine the raw
-records, supervisor and external observations. After the owner exits, the
+records, supervisor and external observations. As a sanity threshold for this
+fixed development smoke, the owner's runtime device total must agree with the
+before/after inventory total within 2 MiB. Other devices or drivers can report
+different totals; this cross-check does not by itself establish physical-device
+identity or cleanup. After the owner exits, the
 controller enumerates the bounded owner evidence, protects the existing files,
 validates and hashes them, and rechecks the inventory before writing its
 provisional final record. The protections do not prevent a new directory

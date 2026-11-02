@@ -1,0 +1,5 @@
+parts/* -text
+*.json -text
+*.jsonl -text
+*.md -text
+*.py -text

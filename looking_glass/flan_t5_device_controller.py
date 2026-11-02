@@ -296,6 +296,7 @@ def _validate_records(directory, supervision, *, source_commit, source_hashes, g
         raise ValueError('owner observation-record byte count differs')
     return {'forward_count': 6, 'memory_record_count': len(records), 'record_bytes_before_final': record_bytes,
             'staged_assets': final['staged_assets'], 'model_state_sha256': final['model_state_sha256'],
+            'device_total_bytes': final['device_total_bytes'],
             'raw_control_checks': 'matched', 'status': 'saved-records-consistent-not-approved'}
 
 
@@ -497,6 +498,14 @@ def _check_inventory(snapshot):
     return timestamp
 
 
+def _check_device_totals(inventory_total, runtime_total):
+    """Apply this smoke's 2 MiB sanity threshold to separately reported totals."""
+    if (type(inventory_total) is not int or type(runtime_total) is not int
+            or inventory_total <= 0 or runtime_total <= 0
+            or abs(inventory_total - runtime_total) > 2 * _MIB):
+        raise ValueError('runtime and inventory device totals differ')
+
+
 def run_controller(*, workspace_root, run_dir, asset_dir, site_packages, git_executable, smi, source_commit):
     """Run one exact child after a future separately reviewed enablement."""
     if GPU_SMOKE_ENABLED is not True:
@@ -622,6 +631,7 @@ def run_controller(*, workspace_root, run_dir, asset_dir, site_packages, git_exe
             raise RuntimeError('owner evidence changed while acquiring protection')
         records = _validate_records(owner_root, supervision, source_commit=source_commit,
             source_hashes=hashes, gpu_uuid=gpu_uuid, device_name=before['device_name'], site_packages=site)
+        _check_device_totals(before['total_bytes'], records['device_total_bytes'])
         evidence_manifest = _evidence_manifest(owner_root, evidence_files)
         if _owner_evidence_files(owner_root) != evidence_files:
             raise RuntimeError('owner evidence inventory changed during validation')

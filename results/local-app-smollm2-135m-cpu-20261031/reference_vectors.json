@@ -1,0 +1,391 @@
+{
+  "status": "passed",
+  "model": "HuggingFaceTB/SmolLM2-135M",
+  "revision": "93efa2f097d58c2a74874c7e644dbc9b0cee75a2",
+  "device": "cpu",
+  "dtype": "float32",
+  "python": "3.12.14",
+  "torch": "2.15.0+cpu",
+  "transformers": "4.57.3",
+  "reference_prompt": "Gravity is",
+  "current_prompt": "Electricity is",
+  "reference_coordinate": {
+    "status": "known",
+    "app_forward_index": 0,
+    "module_path": "model.layers.15.self_attn",
+    "layer_index": 15,
+    "stack": "input",
+    "batch_position": 0,
+    "token_position": 2,
+    "token_id": 314,
+    "token_piece": "Ġis",
+    "token_text": " is",
+    "token_label_truncated": false,
+    "image_coordinate": null,
+    "reason": null
+  },
+  "current_coordinate": {
+    "status": "known",
+    "app_forward_index": 0,
+    "module_path": "model.layers.15.self_attn",
+    "layer_index": 15,
+    "stack": "input",
+    "batch_position": 0,
+    "token_position": 2,
+    "token_id": 314,
+    "token_piece": "Ġis",
+    "token_text": " is",
+    "token_label_truncated": false,
+    "image_coordinate": null,
+    "reason": null
+  },
+  "reference_input_token_ids": [
+    22007,
+    6463,
+    314
+  ],
+  "current_input_token_ids": [
+    31332,
+    383,
+    314
+  ],
+  "width": 576,
+  "independent_scalar_metrics": {
+    "max_abs_delta": 1.8144813776016235,
+    "l1": 212.82778865471482,
+    "l2": 11.564389957632711,
+    "cosine": 0.87612929175287,
+    "raw_bit_changed_count": 576,
+    "numeric_nonzero_count": 576
+  },
+  "all576_float32_bits_and_float64_deltas_verified": true,
+  "pagination_preserves_full_width_metrics": true,
+  "original_trace_vectors": 270,
+  "current_trace_vectors": 270,
+  "original_trace_unchanged_by_pin": true,
+  "current_trace_unchanged_by_comparison": true,
+  "reference_survives_new_prompt_bad_requests_unload_reload": true,
+  "stale_imported_reloaded_bindings_rejected": true,
+  "explicit_clear_required": true,
+  "current_save_does_not_persist_reference": true,
+  "parameters_and_buffers_unchanged": true,
+  "checkpoint_files_unchanged": true,
+  "pinned_tensor_has_distinct_storage": true,
+  "stale_replacement_rejected": true,
+  "checkpoint_file_sha256": {
+    "README.md": "d1ba68cae64a89b6b434b11526e6e2271ee5ffd2c914ec35ed515f9d84c6085c",
+    "config.json": "1d556eab73b69c7f11f64c557a2f9c6f440bd4c6b89bb2584a6b498c92603843",
+    "generation_config.json": "2056c988e990b0d13670f63f2f3b87b3b6d07edaf7a3416998ba27dab2d8a059",
+    "merges.txt": "0b54e8aa4e53d5383e2e4bc635a56b43f9647f7b13832d5d9ecd8f82dac4f510",
+    "model.safetensors": "80521b40281d6ce74e35c9282c22539e75aa0ac8578892b2a59955ef78d55da1",
+    "special_tokens_map.json": "e786b595b9a23148bf1630df78d9037a048ea671e48bfd3549a1e3c233742bb3",
+    "tokenizer.json": "9ca9acddb6525a194ec8ac7a87f24fbba7232a9a15ffa1af0c1224fcd888e47c",
+    "tokenizer_config.json": "4bb9af56a342753d39374f4016a16574cab299fe088e896f425ce3c433f61424",
+    "vocab.json": "82b84012e3add4d01d12ba14442026e49b8cbbaead1f79ecf3d919784f82dc79"
+  },
+  "exact_nine_asset_manifest_verified": true,
+  "historical_manifest_record_sha256": "d2425a1bd3848f1378570be7262c138c883be076070dab533ad19b5a279cfe32",
+  "implementation_sha256": {
+    "looking_glass/agreement_numeric.py": "f9a5a9ee3627162d843c0dc0d8c6ea9d98c000a4b6d472fb55254fb3395d07dc",
+    "looking_glass/app.py": "a2edd2b4063083d051b4e49e8fb44c842bd2671629b1e220f3bd207118e9f664",
+    "looking_glass/app_interventions.py": "06eabfd7393f4afa26c1e6a7f39744ba15f62127717adfb28faa18fb65c02477",
+    "looking_glass/app_reference.py": "74ba9815d651627ec58942cc48f93cb08b291c242be8b68243dbfdcd64833a63",
+    "looking_glass/app_runtime.py": "860623e9a56490fc3dd9e194c21eb68d34a11560bd2edc017f7756235d4f77d9",
+    "looking_glass/app_selftest.py": "e422d0d5fbecf5e0f56e21fa8d662d4b28a5f1d93ffb38637720fa7692f32010",
+    "looking_glass/app_storage.py": "e32752639fc4ad6048e475b5c3ff8c127058962888980788ce8ed89468609634",
+    "looking_glass/intervention_plan.py": "5bb643c538a1d7dcd97214238c2a996967d4b6ae2e965d3776b3699758491c0a",
+    "looking_glass/llama_trace.py": "7051a525f62e68c8f48a5215d3f3f4908b41d44f69181e971a0fd5afa180b75a",
+    "looking_glass/model_ownership.py": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434",
+    "looking_glass/trace_schema.py": "38e05eb52a59a10ad9f93d19763d60df4c27f9eb626fdefdcba39fc4af3eb92c"
+  },
+  "reference_http_response_sha256": "529c376189f0357d4a21c74894df7eb3254966034bda339d50a25558327368a1",
+  "current_http_response_sha256": "e271b79ec1750962377698b8711c6391599c72b6b80f4c8480adf77d78835deb",
+  "http_response_hash_note": "Response hashes include session/run identities and are not portable vector identities.",
+  "reference_vector_bits_sha256": "c7ebb6ee071abdf9aea1e6d1ea60345b49c80564246c67bab9b863a85c76e2e3",
+  "current_vector_bits_sha256": "5a4d878c3bcb55429b6f3a5d85b9a35cedf36853a7a799e6072de0f560e606b7",
+  "vector_hash_encoding": "Concatenated little-endian uint32 raw float32 encodings in feature order",
+  "verification_script_sha256": "81bbf7607b47d4b572bc43942f44f8972f029f4fbdf3c6c2686dddb00ccb4003",
+  "elapsed_seconds_not_benchmark": 6.781,
+  "scope": "Actual short CPU local-checkpoint comparison at an explicitly selected common hook; no automatic token/semantic alignment, GPU evidence, causal explanation, or model-quality claim.",
+  "display_timing": {
+    "scope": "Paired synthetic endpoint timing; not browser, model inference, or GPU performance.",
+    "torch": "2.15.0+cpu",
+    "threads": 1,
+    "baseline_commit": "4640246e44530436ccd8ca8ca87d219f99a04b15",
+    "candidate_source_sha256": "e32752639fc4ad6048e475b5c3ff8c127058962888980788ce8ed89468609634",
+    "fixture_tensor_hashes_unchanged": true,
+    "cases": [
+      {
+        "width": 8192,
+        "view": "raw",
+        "limit": 256,
+        "baseline_ms": [
+          0.07232899952214211,
+          0.149354000313906,
+          0.07222800195449963,
+          0.06830300117144361,
+          0.06995500007178634,
+          0.07029499829513952,
+          0.06951400064281188
+        ],
+        "candidate_ms": [
+          0.13131699961377308,
+          0.1071010010491591,
+          0.0990289991023019,
+          0.10106199988513254,
+          0.09710599988466129,
+          0.09326999861514196,
+          0.09562400009599514
+        ],
+        "baseline_median_ms": 0.07029499829513952,
+        "candidate_median_ms": 0.0990289991023019,
+        "baseline_range_ms": [
+          0.06830300117144361,
+          0.149354000313906
+        ],
+        "candidate_range_ms": [
+          0.09326999861514196,
+          0.13131699961377308
+        ],
+        "candidate_over_baseline": 1.408763091315832,
+        "complete_response_equal": true,
+        "max_reduced_mean_abs_delta": 0.0
+      },
+      {
+        "width": 8192,
+        "view": "reduced",
+        "limit": 256,
+        "baseline_ms": [
+          1.9587020033213776,
+          2.049749000434531,
+          2.698412001336692,
+          2.1808550009154715,
+          2.0634190004784614,
+          2.2093379993748385,
+          1.960984998731874
+        ],
+        "candidate_ms": [
+          1.782916999218287,
+          2.129468000930501,
+          2.1085160005895887,
+          2.0843599995714612,
+          1.8130030002794228,
+          1.7799529996409547,
+          1.8252709996886551
+        ],
+        "baseline_median_ms": 2.0634190004784614,
+        "candidate_median_ms": 1.8252709996886551,
+        "baseline_range_ms": [
+          1.9587020033213776,
+          2.698412001336692
+        ],
+        "candidate_range_ms": [
+          1.7799529996409547,
+          2.129468000930501
+        ],
+        "candidate_over_baseline": 0.8845857284756101,
+        "complete_response_equal": true,
+        "max_reduced_mean_abs_delta": 0.0
+      },
+      {
+        "width": 65536,
+        "view": "raw",
+        "limit": 256,
+        "baseline_ms": [
+          0.08224399789469317,
+          0.06915400081197731,
+          0.06902300083311275,
+          0.06820300040999427,
+          0.06758200106560253,
+          0.06705100167891942,
+          0.07682500290684402
+        ],
+        "candidate_ms": [
+          0.10015999941970222,
+          0.09604399747331627,
+          0.09333999696536921,
+          0.09259899889002554,
+          0.09236899859388359,
+          0.09417100227437913,
+          0.10061099965241738
+        ],
+        "baseline_median_ms": 0.06902300083311275,
+        "candidate_median_ms": 0.09417100227437913,
+        "baseline_range_ms": [
+          0.06705100167891942,
+          0.08224399789469317
+        ],
+        "candidate_range_ms": [
+          0.09236899859388359,
+          0.10061099965241738
+        ],
+        "candidate_over_baseline": 1.364342337159036,
+        "complete_response_equal": true,
+        "max_reduced_mean_abs_delta": 0.0
+      },
+      {
+        "width": 65536,
+        "view": "reduced",
+        "limit": 256,
+        "baseline_ms": [
+          2.052072002697969,
+          2.148997002223041,
+          2.0743149980262388,
+          2.03053899895167,
+          2.209698999649845,
+          2.048406000540126,
+          2.277911000419408
+        ],
+        "candidate_ms": [
+          2.8249819988559466,
+          2.6748279997264035,
+          2.6520930005062837,
+          2.7860840018547606,
+          2.7137450015288778,
+          2.954757001134567,
+          2.8405260018189438
+        ],
+        "baseline_median_ms": 2.0743149980262388,
+        "candidate_median_ms": 2.7860840018547606,
+        "baseline_range_ms": [
+          2.03053899895167,
+          2.277911000419408
+        ],
+        "candidate_range_ms": [
+          2.6520930005062837,
+          2.954757001134567
+        ],
+        "candidate_over_baseline": 1.3431344827115397,
+        "complete_response_equal": true,
+        "max_reduced_mean_abs_delta": 0.0
+      },
+      {
+        "width": 300000,
+        "view": "raw",
+        "limit": 256,
+        "baseline_ms": [
+          0.08687000081408769,
+          0.07143800030462444,
+          0.06936499994480982,
+          0.07749599899398163,
+          0.0690039996698033,
+          0.0680920020386111,
+          0.0911069982976187
+        ],
+        "candidate_ms": [
+          0.13839799794368446,
+          0.1002610006253235,
+          0.09430199861526489,
+          0.12042100206599571,
+          0.09458199929213151,
+          0.09336000221082941,
+          0.10338499851059169
+        ],
+        "baseline_median_ms": 0.07143800030462444,
+        "candidate_median_ms": 0.1002610006253235,
+        "baseline_range_ms": [
+          0.0680920020386111,
+          0.0911069982976187
+        ],
+        "candidate_range_ms": [
+          0.09336000221082941,
+          0.13839799794368446
+        ],
+        "candidate_over_baseline": 1.4034687448947707,
+        "complete_response_equal": true,
+        "max_reduced_mean_abs_delta": 0.0
+      },
+      {
+        "width": 300000,
+        "view": "reduced",
+        "limit": 256,
+        "baseline_ms": [
+          2.23890200140886,
+          2.329857998120133,
+          2.992284000356449,
+          2.3222670024551917,
+          2.3719220007478725,
+          2.59935400026734,
+          4.099246001715073
+        ],
+        "candidate_ms": [
+          5.956215001788223,
+          5.5743409975548275,
+          6.077737001760397,
+          5.786009001894854,
+          5.697295997379115,
+          5.557705997489393,
+          9.395900997333229
+        ],
+        "baseline_median_ms": 2.3719220007478725,
+        "candidate_median_ms": 5.786009001894854,
+        "baseline_range_ms": [
+          2.23890200140886,
+          4.099246001715073
+        ],
+        "candidate_range_ms": [
+          5.557705997489393,
+          9.395900997333229
+        ],
+        "candidate_over_baseline": 2.439375746786999,
+        "complete_response_equal": false,
+        "intentional_difference": "large-row reduction note and at most two ULP mean rounding; all other response fields equal",
+        "max_reduced_mean_abs_delta": 0.0
+      }
+    ],
+    "baseline_tree": "fe1d6c2e1d7349d2a329159d898915af88ec5273",
+    "method": {
+      "fixture": "CPU float32 torch.linspace(-3,3,width).reshape(1,1,width), one GPT2-like synthetic event, input token ID 1",
+      "warmups_per_case": 3,
+      "paired_alternating_iterations": 7,
+      "timer": "time.perf_counter, wall milliseconds",
+      "ftz": "off; ±subnormal correctness tested separately with FTZ off/on",
+      "equality": "Complete response equality for raw pages and smaller reduced rows; large reduced comparison permits added rounding note and at most two ULP mean changes; observed numeric delta zero",
+      "original_fixture_bit_hashes": "SHA256 over int32 views checked before/after; no model inference"
+    }
+  },
+  "publication_evidence": {
+    "base_commit": "4640246e44530436ccd8ca8ca87d219f99a04b15",
+    "verification_date_utc": "2026-10-31",
+    "execution": "Freshly installed project wheel with existing dependencies; same public script also passed against source with identical implementation hashes, vector hashes and scalar metrics",
+    "wheel_sha256": "336b1368927113cb43dcc8fcc14295ff623ef485657675d993a32fd8276ee911",
+    "focused_pytest": {
+      "passed": 942,
+      "skipped_real_cuda_prerequisites": 12,
+      "failed": 0,
+      "elapsed_seconds": 56.38,
+      "scope": "33 app/adapter/reference test modules listed in docs/LOCAL_APP.md"
+    },
+    "ui_mocked_authenticated_requests": 362,
+    "static_html_structure_tests": 6,
+    "installed_five_family_http_smoke": {
+      "families": [
+        "gpt2",
+        "distilbert",
+        "t5",
+        "vit",
+        "llama"
+      ],
+      "selected_vectors": 30,
+      "exact_values_bits_indices_coordinates_after_save_reopen": true
+    },
+    "historical_suite": {
+      "collection_errors": 47,
+      "same_error_paths_as_prior_attempt": true,
+      "executed_tests": false,
+      "reason": "Missing historical sources/fixtures in sparse checkout; not an all-repository pass"
+    },
+    "browser_visual_validation": false,
+    "real_cuda_execution": false,
+    "static_asset_sha256": {
+      "looking_glass/app_static/app.js": "1848f6968bc7f799ad7f7ec1d4f90e892d62bdce9bcad6dc3a585c756d7d15c7",
+      "looking_glass/app_static/app.css": "b4ddc18900c6caa0b7930f5e088420d69e1020675500e6f626117a8a4b039981",
+      "looking_glass/app_static/index.html": "8bea4e3f09dbb3800584e8780a46b50d5b1b086b36627edbf1e09bd63bbe1cac"
+    },
+    "limitations": [
+      "One exact local pretrained revision and two short prompts on CPU float32; not pretrained quality, semantic alignment, causal explanation or GPU evidence",
+      "Pin and comparison are RAM-only; saving a capture does not persist them",
+      "Synthetic display timing is not model inference or browser performance; large grouped view has a disclosed bounded float64 summation-rounding tradeoff"
+    ]
+  }
+}

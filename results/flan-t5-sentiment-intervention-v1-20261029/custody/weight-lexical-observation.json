@@ -1,0 +1,14 @@
+{
+  "all_fixed_pool_variable_words_excluded": true,
+  "exposure_descriptors_sha256": "536987b063b002b2ed5a4dcdf8c6d9e105cb0e9648da0eb85a89cf95db6180a8",
+  "schema": "flan-sentiment-weight-lexical-observation-v1",
+  "scope": "Custodian observation of lexical-only checks; not proof of chronology, execution or unknown exposures. Token-prefix comparison follows public pool commitment and tokenizer screening.",
+  "selector_revision": "6fe4cc4e16ece717d672d8fc73fd3860e76ed459",
+  "source": {
+    "path": "docs/FLAN_T5_WEIGHT_EDIT_CASES_V1.json",
+    "revision": "bc18fda362a102adda8ad1d94839089a83019d3e",
+    "sha256": "a118dde671351d21c519b6a61957e9478c9501bac52d55aa34e8394772e933d5"
+  },
+  "source_row_count": 24,
+  "source_words_extracted_from_recorded_fields": true
+}

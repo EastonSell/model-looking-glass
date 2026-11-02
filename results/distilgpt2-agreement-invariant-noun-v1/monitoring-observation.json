@@ -1,0 +1,42 @@
+{
+  "commands": {
+    "first": "$path='E:\\Codex\\model-looking-glass\\work\\agreement-invariant-noun-v1\\study-attempt-01\\run\\attempt\\events.jsonl'\ntry {$n = ([System.IO.File]::ReadLines($path) | Measure-Object -Line).Lines; [pscustomobject]@{observed_utc=[DateTime]::UtcNow.ToString('o'); journal_records=$n; completed_forward_records=[Math]::Max(0,$n-1)} | ConvertTo-Json -Compress} catch {Write-Output 'journal temporarily busy'}",
+    "repeat": "$path='E:\\Codex\\model-looking-glass\\work\\agreement-invariant-noun-v1\\study-attempt-01\\run\\attempt\\events.jsonl'\ntry {$n=([System.IO.File]::ReadLines($path) | Measure-Object -Line).Lines; [pscustomobject]@{observed_utc=[DateTime]::UtcNow.ToString('o'); completed_forward_records=[Math]::Max(0,$n-1); supervisor_closed=Test-Path 'E:\\Codex\\model-looking-glass\\work\\agreement-invariant-noun-v1\\study-attempt-01\\supervisor.json'} | ConvertTo-Json -Compress} catch {Write-Output 'journal temporarily busy'}"
+  },
+  "failure": "The separately observed child later reported PermissionError opening the journal for append. An isolated reproduction shows the same reader style can deny an append on Windows, but these records do not prove the live conflict caused the failure.",
+  "observations": [
+    {
+      "command": "first",
+      "completed_forward_records": 34,
+      "journal_records": 35,
+      "observed_utc": "2026-10-29T13:10:48.3894043Z"
+    },
+    {
+      "command": "repeat",
+      "completed_forward_records": 139,
+      "observed_utc": "2026-10-29T13:11:12.6337657Z",
+      "supervisor_closed": false
+    },
+    {
+      "command": "repeat",
+      "completed_forward_records": 243,
+      "observed_utc": "2026-10-29T13:11:34.2293358Z",
+      "supervisor_closed": false
+    },
+    {
+      "command": "repeat",
+      "completed_forward_records": 301,
+      "observed_utc": "2026-10-29T13:11:46.2335440Z",
+      "supervisor_closed": false
+    },
+    {
+      "command": "repeat",
+      "completed_forward_records": 301,
+      "observed_utc": "2026-10-29T13:11:58.7912010Z",
+      "supervisor_closed": true
+    }
+  ],
+  "operator_recorded_utc": "2026-10-29T13:13:52.246973+00:00",
+  "schema": "agreement-invariant-live-monitoring-observation-v1",
+  "scope": "Operator reconstruction from retained tool call/output transcript; timestamps below were taken after line enumeration and are not independently authenticated start/end intervals."
+}
