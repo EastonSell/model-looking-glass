@@ -1,0 +1,254 @@
+{
+  "executed_local_commit": "24e9de6cc4025432ff3f4b2a72f1026213a843d6",
+  "executed_local_tree": "10cbe13d7c41a5cd302c3db16b9f793653697edd",
+  "files": [
+    {
+      "bytes": 14502,
+      "git_blob_sha1": "e894373f3f764e8319277a92c9d5fb0472ba7965",
+      "git_mode": "100644",
+      "path": "docs/GROUPED_GPU_DEV_PLAN.md",
+      "sha256": "d78845ebcbc4292e4f6fbe12df3347914b5a87000fab18afb7f3f8df8cd5528c"
+    },
+    {
+      "bytes": 19820,
+      "git_blob_sha1": "d48439ec8e44f0badf2750f16cd5dd9ce564d846",
+      "git_mode": "100644",
+      "path": "docs/SHARED_BATCH_THROUGHPUT_PROPOSAL_V1.md",
+      "sha256": "e59b8aad49a5a6bc40590bc14961797be53f6cf8797b4bfa50bfd335346f7b1f"
+    },
+    {
+      "bytes": 2739,
+      "git_blob_sha1": "d1dc95c967b975e20b76e77fa9548c9d9a446fe5",
+      "git_mode": "100644",
+      "path": "experiments/grouped_gpu_dev_v3.json",
+      "sha256": "011e214dbdc57e29869f41e38082cd1fa4baaf15747169d0d778e6f27b33a6f1"
+    },
+    {
+      "bytes": 78,
+      "git_blob_sha1": "77fbb616980042135d953f088b0eda05379d4a6a",
+      "git_mode": "100644",
+      "path": "looking_glass/__init__.py",
+      "sha256": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0"
+    },
+    {
+      "bytes": 873,
+      "git_blob_sha1": "805f142544a9424437b5fcf4f647753201c8cfa2",
+      "git_mode": "100644",
+      "path": "looking_glass/agreement_calibration_workspace.py",
+      "sha256": "eb5c991d025e299efa3731d5be329ebd65f1e06b3622c9e870fdb851207568a3"
+    },
+    {
+      "bytes": 37781,
+      "git_blob_sha1": "c47cdb52bd8744d2e1b46865c1aec515887eca7e",
+      "git_mode": "100644",
+      "path": "looking_glass/batch_validation.py",
+      "sha256": "214732f79a476e82c325216b118525a9a3bac72860e7e98aab059180e17dda18"
+    },
+    {
+      "bytes": 2431,
+      "git_blob_sha1": "fd8d3463128156dee51a3c09cdf4f30415b5aaba",
+      "git_mode": "100644",
+      "path": "looking_glass/bert_gpu_evidence.py",
+      "sha256": "08a84c4eee1910f2322687f548501cc3eb0e39daa2714b36a26cf5f85ced3b5e"
+    },
+    {
+      "bytes": 24254,
+      "git_blob_sha1": "c96a6c99a9eeee1b8d02016c958970e4927c8c4a",
+      "git_mode": "100644",
+      "path": "looking_glass/budgeted_worker.py",
+      "sha256": "96c573c0a85c63419c20a9e90d37942fcfb1569fba9d758faa4745ca9d19e35d"
+    },
+    {
+      "bytes": 9737,
+      "git_blob_sha1": "e08b076644afece58a1a7df42866ee75e065da6d",
+      "git_mode": "100644",
+      "path": "looking_glass/certified_batch_policy.py",
+      "sha256": "4355979f8655eff414ee763b6a107504503be2e5532654153d88e859f125c08d"
+    },
+    {
+      "bytes": 2444,
+      "git_blob_sha1": "c3fa838726d0bf6241e72c02e654ffcaa3724be5",
+      "git_mode": "100644",
+      "path": "looking_glass/cuda_cleanup.py",
+      "sha256": "bccde75044bd2ee0ab1c4dfd8826fa214fc497e0d44b0d56493303b2315d73c9"
+    },
+    {
+      "bytes": 11877,
+      "git_blob_sha1": "70fb4275c9b291f5b8fec732f459e5bdc10b012c",
+      "git_mode": "100644",
+      "path": "looking_glass/device_identity.py",
+      "sha256": "ad08eff6edbb1c94af9abec0d07d8a10944624488b8d723b10c75e8c67e10c45"
+    },
+    {
+      "bytes": 10644,
+      "git_blob_sha1": "d0956dd28ee30941b45483b96571ec2dbd007203",
+      "git_mode": "100644",
+      "path": "looking_glass/device_lease.py",
+      "sha256": "7f52ad238a1c9e8800c3d1ebf3b6969edd810a02754d1462c34f06cf783b57bf"
+    },
+    {
+      "bytes": 11410,
+      "git_blob_sha1": "01af92945b2189bdd622b3a7c8add638b9147003",
+      "git_mode": "100644",
+      "path": "looking_glass/fair_queue.py",
+      "sha256": "af9b1fdf9b8b86483ee446a9d13bce72ff844341266707b757807ea6265ad1fb"
+    },
+    {
+      "bytes": 24313,
+      "git_blob_sha1": "25d606ee9eb52eeedecdd3ed7220a7daf040d59a",
+      "git_mode": "100644",
+      "path": "looking_glass/gpu_oneshot.py",
+      "sha256": "bc994727276a9918741ee80bd1ad8913b01d474015bb8dfdadbbfed1de9e048f"
+    },
+    {
+      "bytes": 80509,
+      "git_blob_sha1": "f7d3ef0600b5428222e9ab1118f2b1620a52a1b4",
+      "git_mode": "100644",
+      "path": "looking_glass/grouped_broker.py",
+      "sha256": "a23756ce38dd2ca2af86e90dd0a477effb586c64c4dc5a6ad9812b4101361f8f"
+    },
+    {
+      "bytes": 16448,
+      "git_blob_sha1": "d747ed69e09566349259c0e75db2e051073e5cab",
+      "git_mode": "100644",
+      "path": "looking_glass/grouped_broker_state.py",
+      "sha256": "6a74329af5fc2b3e20212a578f834963d3a612e850b4414b5059c1ba0aa2049d"
+    },
+    {
+      "bytes": 117849,
+      "git_blob_sha1": "7f21de244e3665acaa81b6b6500ee7f9f08b8c54",
+      "git_mode": "100644",
+      "path": "looking_glass/grouped_gpu_dev.py",
+      "sha256": "619e587d5f052ab5e9741d271e53686fb41caf8d9feaf42726dbf96df4325a4b"
+    },
+    {
+      "bytes": 13477,
+      "git_blob_sha1": "90c1fdd0e205df4745fb7b27389191739c68343f",
+      "git_mode": "100644",
+      "path": "looking_glass/grouped_observation.py",
+      "sha256": "24f936fabf37f31ce6428698fa32865c8483e1fce45b64e89f0c6821bde8cf37"
+    },
+    {
+      "bytes": 29875,
+      "git_blob_sha1": "154cf82c4992b39d0df17b27245f87320d3379ea",
+      "git_mode": "100644",
+      "path": "looking_glass/grouped_owner_worker.py",
+      "sha256": "34fe9ae4cacaf0b0d7b41c396151e450de8c157025524f8d1263b122247e1efc"
+    },
+    {
+      "bytes": 36899,
+      "git_blob_sha1": "facc09ad167e074365ce2fe2a36ee10b356fd0f9",
+      "git_mode": "100644",
+      "path": "looking_glass/grouped_throughput_driver.py",
+      "sha256": "3b0a9235ccf30e516c6a2123bad8094fcb58f223fb276699284630f7c4b084da"
+    },
+    {
+      "bytes": 6552,
+      "git_blob_sha1": "caa774f8fc16cc7b88337dd193acfea25bd1eed7",
+      "git_mode": "100644",
+      "path": "looking_glass/grouped_throughput_gpu_owner.py",
+      "sha256": "5d4b7ade2d86d8227353d98b51af6babed2e4d2665cd5004416c53dae1cdeb59"
+    },
+    {
+      "bytes": 6224,
+      "git_blob_sha1": "3e519f982cbc0b0f555af23e68591f64e65ff918",
+      "git_mode": "100644",
+      "path": "looking_glass/grouped_throughput_memory.py",
+      "sha256": "bd8f04c94cb5def40b3618a8e04bba5a245af8e0c130e853e0cafac1d0db64f5"
+    },
+    {
+      "bytes": 13312,
+      "git_blob_sha1": "cb25bca476b916a6e59ac8c5b389f669ec435fab",
+      "git_mode": "100644",
+      "path": "looking_glass/grouped_throughput_private_evidence.py",
+      "sha256": "caac6f69f523e06ed5fc094353344e67894d412b5b700655b1d41ac9f4ce3745"
+    },
+    {
+      "bytes": 9490,
+      "git_blob_sha1": "447d0e5953a3b12ddcf83dc8da7b2787ba59e631",
+      "git_mode": "100644",
+      "path": "looking_glass/grouped_throughput_stamps.py",
+      "sha256": "35f53f79627484036aa99b4143e79554311ad7935dfaa082f32c4a13de274532"
+    },
+    {
+      "bytes": 20676,
+      "git_blob_sha1": "508a60c8ce879335840fdd1086baf769822056ff",
+      "git_mode": "100644",
+      "path": "looking_glass/grouped_worker.py",
+      "sha256": "66063be7d1510ce2998ef14b72a6eb4cde27dbb370b827fe5eff4f9fbf02702c"
+    },
+    {
+      "bytes": 24427,
+      "git_blob_sha1": "9415f494a00d8b487e6a61c2535f999ef3395864",
+      "git_mode": "100644",
+      "path": "looking_glass/host_budget.py",
+      "sha256": "1bab870bba3d7f5d8ccdbf25458c7cb60192248c25506b451859fadcc6340d37"
+    },
+    {
+      "bytes": 11456,
+      "git_blob_sha1": "23a42fd3335070b5936ca188ff8353597ccdc26d",
+      "git_mode": "100644",
+      "path": "looking_glass/memory_budget.py",
+      "sha256": "27d7b1a352815b7a103e1d70a5f8f0a3ccffdd10dacb71a0744a47ad6f66e1b9"
+    },
+    {
+      "bytes": 22946,
+      "git_blob_sha1": "71bef12a3bf81542a7d840aa27833d0749ab43b6",
+      "git_mode": "100644",
+      "path": "looking_glass/microbatch.py",
+      "sha256": "c1f50d987cb3cc253f21a46fde696f3443131ab743272685f14a94ad181e5032"
+    },
+    {
+      "bytes": 26879,
+      "git_blob_sha1": "a01859da36b19eaad51b3c99c3e9d99f8f18423e",
+      "git_mode": "100644",
+      "path": "looking_glass/owner_completion.py",
+      "sha256": "01497e6ecde4ef37362e71c18173b17a4a85b9725841ba86c857aac32336565c"
+    },
+    {
+      "bytes": 7985,
+      "git_blob_sha1": "5dc84744ff471dfa1bf4f5c90f0d63a31fd17132",
+      "git_mode": "100644",
+      "path": "looking_glass/pretrained.py",
+      "sha256": "c903a0cbbc83d70b7bbb4b812b637bfbd888fae252c1a38385d1654f4d157b4e"
+    },
+    {
+      "bytes": 41363,
+      "git_blob_sha1": "b888c56311d0342c3f8d2d4f1859f69596fa71ef",
+      "git_mode": "100644",
+      "path": "looking_glass/resident_worker.py",
+      "sha256": "d796ec9a86ad596e9b654e2e7f2d1ad0ed920ae9ecceb3096014289daceae176"
+    },
+    {
+      "bytes": 51301,
+      "git_blob_sha1": "a66a71d6d83f7a2d8ab98a3742c5995a6669428e",
+      "git_mode": "100644",
+      "path": "looking_glass/supervisor.py",
+      "sha256": "435c998255e894e003e9f2d05a701407a9b58f75aa50de9a63e7cc35bb132a1d"
+    },
+    {
+      "bytes": 117418,
+      "git_blob_sha1": "493b7d8d1f2cd9858903915fec00c3efe8a2fbee",
+      "git_mode": "100644",
+      "path": "looking_glass/throughput_benchmark.py",
+      "sha256": "601aa88f21a6b841bd576a83c7672a13720f304e685d532e81ccb0e5997ced8d"
+    },
+    {
+      "bytes": 5302,
+      "git_blob_sha1": "119e877ac83c8cc2185be99539d3ba32f61e661e",
+      "git_mode": "100644",
+      "path": "scripts/grouped_gpu_dev_bootstrap.py",
+      "sha256": "ba0d114c7b0d14a6f93bd65eca3f737532f66f1e95af64dcc7886e472af84898"
+    },
+    {
+      "bytes": 26199,
+      "git_blob_sha1": "9bc766526431b6d9f7feeff0b3b6a48d89b372b2",
+      "git_mode": "100644",
+      "path": "scripts/v2_source_guards.py",
+      "sha256": "9a9a6c2db19fc5923a1845fb620aebf43135a1cc72150f16b095a019576c7c5c"
+    }
+  ],
+  "publication": "created after the GPU session",
+  "schema": "matched-throughput-executed-source-snapshot-v1",
+  "scope": "35 source/protocol files protected by the executed run manifest; not the entire historical Git tree"
+}

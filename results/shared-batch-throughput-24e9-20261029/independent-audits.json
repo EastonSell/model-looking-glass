@@ -1,0 +1,35 @@
+{
+  "original_reports_private": true,
+  "private_record_sha256": {
+    "grouped": "2c97cc4d416361b10aad3bb17138eab27746ed0bc27ff8645b9591b46b7b0e86",
+    "pair": "469d12c60a4fcb109132251633db52a9063316fd3d07e10a29a55f9c44b9d211",
+    "rows": "ca5ba5ca0344221804941d37fe8fef4349401be4b8f87511412a7c1d3504bce7",
+    "serial": "2705aacd3f6deab97a5a25f2dac5860ef824221980066b8aaf8318eec39fccbb"
+  },
+  "publication_scope": "Fields are summarized and identifying paths, process IDs, device UUIDs and generated cohort IDs are omitted. The original reports and raw logits are not published.",
+  "resource": {
+    "limits": "point screens and reset-window process allocator peaks are not physical reservations or device-wide peaks",
+    "original_report_sha256": "78d663437c55f62e3011a747e9ee30b0b51f93928d5995d72d035f412b6cd38c",
+    "scope": "35 source blobs, 16 saved rows, 78 owner memory points, four window points and 52 admission calculations",
+    "status": "pass"
+  },
+  "saved_rows": {
+    "limits": "numerical saved-byte replay does not establish source, device isolation or cleanup",
+    "original_report_sha256": "78b63f5cefbde550e9dd886c00b2d59ea07a9d316705fdd1354f8842225eb6c7",
+    "scope": "eight paired full-float32 rows match tolerance; actual group row routing and cross-row controls checked",
+    "status": "pass"
+  },
+  "schema": "shared-batch-throughput-24e9-public-audit-projections-v1",
+  "science": {
+    "limits": "one fixed-order pair and dispatcher-observed fallback do not imply general throughput, strict deadlines or fairness guarantees",
+    "original_report_sha256": "d8362bd219555a2150bf5931d25a56fcfa66dd5607321c0fa7370495070d03a5",
+    "scope": "all 16 full rows, eight matched and eight swapped comparisons, eight serial and four grouped model entries, four two-member claims and recorded timing arithmetic",
+    "status": "pass"
+  },
+  "source_and_custody": {
+    "limits": "coordinator marker-absence observation was not separately saved; native and descendant cleanup and global idleness are not established",
+    "original_report_sha256": "79ddfda2e69b3ab8e1bdbe075e1cc0e56b3cf3009d6caa2b81dba696ca2525cc",
+    "scope": "35 protected source blobs and commit/tree, owner/supervisor/candidate and directly held controller/log bindings; 78 owner memory files and 16 row files",
+    "status": "pass"
+  }
+}
