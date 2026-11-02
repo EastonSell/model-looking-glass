@@ -275,8 +275,8 @@
     if(!Array.isArray(steps)||steps.length>4096||steps.some(s=>!s||typeof s!=='object'||Array.isArray(s)||!safeId(s.app_forward_index))){unavailable('forward records are missing or malformed.');return;}
     const matches=steps.filter(s=>s.app_forward_index===c.app_forward_index);
     if(matches.length!==1){unavailable('the saved forward is missing or ambiguous.');return;}
-    const step=matches[0], metadata=state.event?.metadata;
-    if(typeof step.run_id!=='string'||!step.run_id||step.run_id.length>256||metadata?.run_id!==step.run_id||steps.filter(s=>s.run_id===step.run_id).length!==1||(metadata.app_forward_index!==undefined&&metadata.app_forward_index!==c.app_forward_index)){unavailable('capture and readout run identifiers do not match.');return;}
+    const step=matches[0], metadata=state.event?.metadata, identity=metadata?.identity;
+    if(!identity||typeof identity!=='object'||Array.isArray(identity)||typeof step.run_id!=='string'||!step.run_id||step.run_id.length>256||identity.run_id!==step.run_id||steps.filter(s=>s.run_id===step.run_id).length!==1||(metadata.app_forward_index!==undefined&&metadata.app_forward_index!==c.app_forward_index)){unavailable('capture and readout run identifiers do not match.');return;}
     const ids=family==='t5'?step.decoder_token_ids:step.input_token_ids;
     if(!Array.isArray(ids)||!ids.length||ids.length>65536||ids.some(id=>!safeId(id))||c.token_position>=ids.length||ids[c.token_position]!==c.token_id){unavailable('the source token does not match the saved input.');return;}
     let selected, rows=[];
