@@ -175,7 +175,8 @@ class ServiceQuarantineIntegrationTests(unittest.TestCase):
             env = os.environ.copy()
             env['CUDA_VISIBLE_DEVICES'] = GPU_UUID
             env['PYTHONPATH'] = os.pathsep.join(
-                (str(package_root), sysconfig.get_path('purelib'), env.get('PYTHONPATH', '')))
+                (str(package_root), sysconfig.get_path('stdlib'),
+                 sysconfig.get_path('purelib'), env.get('PYTHONPATH', '')))
             identity = resolve_device_identity(root, GPU_UUID, physical_uuids=(GPU_UUID,), environ=env)
             result = run_supervised(
                 [sys._base_executable, '-c', OWNER, str(report_path), CLIENT],

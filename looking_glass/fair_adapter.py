@@ -11,6 +11,7 @@ from .fair_admission import AdmissionEmpty, AdmissionFull, FairAdmissionQueue, U
 
 
 HANDOFF_PROTOCOL = 'looking-glass.atomic-admission.v1'
+_MISSING_BINDING = object()
 
 
 class AdapterClosed(RuntimeError):
@@ -77,7 +78,8 @@ class ExperimentalFairAdapter:
     """A waiting queue; its target must own atomic broker resource handoff."""
 
     def __init__(self, principal_teams, *, verifier, target, max_waiters,
-                 max_waiters_per_team, max_waiting_bytes, max_item_bytes):
+                 max_waiters_per_team, max_waiting_bytes, max_item_bytes,
+                 completion_authority=None):
         if not callable(verifier):
             raise TypeError('a trusted credential verifier is required')
         if (getattr(target, 'handoff_protocol', None) != HANDOFF_PROTOCOL or
@@ -88,6 +90,19 @@ class ExperimentalFairAdapter:
                 raise ValueError('byte limits must be positive integers')
         if max_item_bytes > max_waiting_bytes:
             raise ValueError('item byte limit cannot exceed total waiting byte limit')
+        # A real broker's completion authority is an exact, owner-controlled
+        # capability. Generic experimental targets cannot attach one.
+        from .broker_fair_handoff import BrokerFairHandoff
+        if type(target) is BrokerFairHandoff:
+            broker_authority = getattr(target._broker, '_completion_authority', None)
+            if completion_authority is not broker_authority:
+                raise ValueError('adapter and broker completion authorities must match')
+        elif completion_authority is not None:
+            raise ValueError('completion authority requires a concrete broker target')
+        if completion_authority is not None:
+            from .owner_completion import OwnerCompletionAuthority
+            if type(completion_authority) is not OwnerCompletionAuthority:
+                raise TypeError('completion authority must be exact trusted owner state')
         target_limit = getattr(target, 'max_item_bytes', None)
         if target_limit is not None:
             if type(target_limit) is not int or target_limit <= 0:
@@ -102,6 +117,8 @@ class ExperimentalFairAdapter:
         self._principal_teams = principal_snapshot
         self._verifier = verifier
         self._target = target
+        self._target_binding = target
+        self._broker_target_binding = target if type(target) is BrokerFairHandoff else None
         self._max_waiting_bytes = max_waiting_bytes
         self._max_item_bytes = max_item_bytes
         self._namespace = uuid4().hex
@@ -117,6 +134,9 @@ class ExperimentalFairAdapter:
         self._closed_tickets = ()
         self._closed = False
         self._indeterminate = False
+        self._completion_authority = completion_authority
+        self._authority_binding = completion_authority
+        self._bridge_guard = None
         # A concrete broker target can reserve itself for exactly one waiting
         # adapter and validate the canonical team set. This hook is trusted,
         # like the target's atomic handoff implementation itself.
@@ -131,6 +151,30 @@ class ExperimentalFairAdapter:
         guard.submit()
         return guard.adopt()
 
+    def bridge_construction_guard(self):
+        """Reserve the sole recoverable authority-bound bridge construction."""
+        from .ipc_fair_bridge import FairIPCBridge, _BridgeConstructionGuard
+        candidate = object.__new__(FairIPCBridge)
+        guard = _BridgeConstructionGuard(self, candidate)
+        with self._lock:
+            self._check_transition_locked()
+            if self._authority_binding is None:
+                raise ValueError('bridge construction guard requires an owner authority')
+            if self._closed or self._bridge_guard is not None:
+                raise AdapterClosed('a bridge is already bound or admission is closed')
+            if self._owners or self._registration_roots or self._issued_registrations:
+                raise AdapterClosed('bridge binding requires an unused adapter')
+            # The adapter is already owner-rooted; this assignment roots both
+            # guard and uninitialized candidate before any bridge initializer.
+            self._bridge_guard = guard
+        return guard
+
+    def recover_bridge_construction_guard(self):
+        """Recover the exact guard after a lost trusted-owner return."""
+        with self._lock:
+            self._check_transition_locked()
+            return self._bridge_guard
+
     def registration_guard(self, credential, payload, *, team_id=None):
         """Create a handle without mutating the queue; retain it before submit."""
         principal = self._verify(credential)
@@ -142,6 +186,12 @@ class ExperimentalFairAdapter:
             raise Full('waiting payload byte limit reached')
         guard = RegistrationGuard(self, principal, payload)
         with self._lock:
+            self._check_transition_locked()
+            if self._closed:
+                raise AdapterClosed('waiting admission is closed')
+            if (self._completion_authority is not None and self._bridge_guard is not None
+                    and not self._bridge_guard._ready):
+                raise AdapterClosed('authority-bound bridge construction is incomplete')
             self._issued_registrations[guard] = _Registration(principal, payload)
         return guard
 
@@ -164,6 +214,7 @@ class ExperimentalFairAdapter:
             size = len(payload)
             if size > self._max_item_bytes or sum(self._sizes.values()) + size > self._max_waiting_bytes:
                 raise Full('waiting payload byte limit reached')
+            self._commit_owner_decision_locked()
             self._transition = guard
             self._inflight_registration = guard
             try:
@@ -173,8 +224,7 @@ class ExperimentalFairAdapter:
                 self._transition = None
                 raise
             except BaseException:
-                self._indeterminate = True
-                self._closed = True
+                self._mark_indeterminate()
                 raise
             try:
                 ticket = WaitingTicket(self._namespace, sequence)
@@ -199,27 +249,78 @@ class ExperimentalFairAdapter:
                     self._inflight_registration = None
                     self._transition = None
                 except BaseException:
-                    self._indeterminate = True
-                    self._closed = True
+                    self._mark_indeterminate()
                     raise
                 raise
+
+    def _mark_indeterminate(self):
+        authority = self._authority_binding
+        try:
+            if authority is not None:
+                authority.mark_unsafe()
+        finally:
+            try:
+                if authority is not None:
+                    authority._unsafe = True
+            finally:
+                self._indeterminate = True
+                self._closed = True
 
     def _mark_transition_unknown(self, marker):
         # This boundary intentionally takes no lock: an interrupted CPython
         # context-manager exit may have stranded that lock. The service owner
         # must stop and let a supervisor replace an unresponsive process.
         if self._transition is marker:
-            self._indeterminate = True
-            self._closed = True
+            self._mark_indeterminate()
+
+    def _owner_binding_valid(self):
+        target = self._broker_target_binding
+        return (getattr(self, '_target', _MISSING_BINDING) is self._target_binding and
+                getattr(self, '_completion_authority', _MISSING_BINDING) is self._authority_binding and
+                (target is None or
+                 (target is self._target_binding and
+                  target._authority_binding is self._authority_binding and
+                  target._owner_binding_valid())))
+
+    def _check_owner_binding_locked(self):
+        # Do not acquire the broker condition under this lock: broker claim
+        # callbacks can enter the adapter while holding that condition.
+        if self._observe_owner_binding():
+            return
+        raise AdapterClosed('fair owner binding changed; process replacement required')
+
+    def _observe_owner_binding(self):
+        try:
+            target = self._broker_target_binding
+            valid = (self._owner_binding_valid() if target is None else
+                     target._observe_owner_binding(self._owner_binding_valid))
+        except BaseException:
+            self._mark_indeterminate()
+            raise
+        if not valid:
+            self._mark_indeterminate()
+        return valid
 
     def _check_transition_locked(self):
+        self._check_owner_binding_locked()
         if self._transition is not None:
-            self._indeterminate = True
-            self._closed = True
+            self._mark_indeterminate()
             raise AdapterClosed('prior admission transition is indeterminate')
+        if self._completion_authority is not None and self._completion_authority.unsafe:
+            raise AdapterClosed('service owner is unsafe; process replacement required')
+
+    def _commit_owner_decision_locked(self):
+        """Order a waiting-queue mutation against the shared unsafe signal."""
+        self._check_owner_binding_locked()
+        authority = self._authority_binding
+        if authority is not None:
+            with authority._decision_lock:
+                if authority.unsafe:
+                    raise AdapterClosed('service owner is unsafe; process replacement required')
 
     def _adopt_guard(self, guard):
         with self._lock:
+            self._check_transition_locked()
             if type(guard) is not RegistrationGuard or guard._adapter is not self:
                 raise ValueError('foreign registration guard')
             registration = self._issued_registrations.get(guard)
@@ -235,7 +336,9 @@ class ExperimentalFairAdapter:
     @property
     def indeterminate(self):
         """Sticky best-effort signal; an unresponsive lock needs a supervisor."""
-        return self._indeterminate
+        authority = self._authority_binding
+        return (self._indeterminate or not self._observe_owner_binding() or
+                (authority is not None and authority.unsafe))
 
     @property
     def inflight_registration(self):
@@ -279,6 +382,7 @@ class ExperimentalFairAdapter:
                 return False
             if owner != principal:
                 raise PermissionError('ticket belongs to another principal')
+            self._commit_owner_decision_locked()
             self._transition = ticket
             try:
                 if not self._queue.cancel(ticket.sequence):
@@ -289,8 +393,7 @@ class ExperimentalFairAdapter:
                 del self._registration_roots[ticket.sequence]
                 self._transition = None
             except BaseException:
-                self._indeterminate = True
-                self._closed = True
+                self._mark_indeterminate()
                 raise
         return True
 
@@ -344,6 +447,7 @@ class ExperimentalFairAdapter:
                     self._check_transition_locked()
                     if self._closed:
                         return None
+                    self._commit_owner_decision_locked()
                     self._transition = claim_marker
                     try:
                         request = self._queue.claim_next(eligible)
@@ -362,8 +466,7 @@ class ExperimentalFairAdapter:
                         # asynchronous interruption or failed allocation. Do
                         # not offer more work or guess which ticket moved. The
                         # owner must close and reconcile all outstanding IDs.
-                        self._indeterminate = True
-                        self._closed = True
+                        self._mark_indeterminate()
                         raise
 
         try:
@@ -412,6 +515,7 @@ class ExperimentalFairAdapter:
                 return ()
             tickets = tuple(self._tickets.values())
             self._closing_roots = tuple(self._registration_roots.values())
+            self._commit_owner_decision_locked()
             self._transition = marker
             removed = self._queue.drain()
             self._closed = True

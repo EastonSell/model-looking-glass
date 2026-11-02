@@ -1657,7 +1657,7 @@ class FairBrokerHandoffTests(unittest.TestCase):
             def trace(frame, event, arg):
                 source = linecache.getline(frame.f_code.co_filename, frame.f_lineno).strip()
                 if (event == 'line' and frame.f_code.co_name == 'accept_next' and
-                        source == 'with self._broker._condition:'):
+                        source == 'with self._broker_binding._condition:'):
                     sys.settrace(None)
                     barrier.wait(timeout=5)
                 return trace

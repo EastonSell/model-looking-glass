@@ -971,6 +971,11 @@ def test_one_proxy_operation_at_a_time_preserves_original_failure(first_action):
     assert adapter.transfer_next() is not None
     assert worker.started.wait(3)
     handle = adapter.recover_receipt(proxy._record.ticket)
+    if first_action == 'wait':
+        # A poll of an unfinished request no longer calls handle.wait();
+        # observe a terminal outcome to exercise its guarded return path.
+        worker.release.set()
+        handle.wait(timeout=3)
     entered = threading.Event()
     resume = threading.Event()
     refs, public_errors = [], []

@@ -32,11 +32,14 @@ def make_fair_owner(*, max_connections=2):
         max_result_bytes=128, max_unacknowledged=4)
     adapter = ExperimentalFairAdapter(
         {"alice": "team"}, verifier=lambda token: "alice", target=target,
-        max_waiters=4, max_waiters_per_team=3, max_waiting_bytes=2048, max_item_bytes=512)
-    bridge = FairIPCBridge(adapter, codec=codec, team_credentials={"team": b"secret"},
-                           custody_epoch="b" * 32, max_connections=max_connections,
-                           max_request_bytes=2048, max_response_bytes=4096,
-                           connection_commitment_bytes=2_000_000)
+        max_waiters=4, max_waiters_per_team=3, max_waiting_bytes=2048, max_item_bytes=512,
+        completion_authority=authority)
+    guard = adapter.bridge_construction_guard()
+    guard.construct(codec=codec, team_credentials={"team": b"secret"},
+                    custody_epoch="b" * 32, max_connections=max_connections,
+                    max_request_bytes=2048, max_response_bytes=4096,
+                    connection_commitment_bytes=2_000_000)
+    bridge = guard.adopt()
     return model, broker, authority, bridge
 
 
