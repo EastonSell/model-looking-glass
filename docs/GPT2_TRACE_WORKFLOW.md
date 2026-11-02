@@ -137,6 +137,6 @@ model weights, logits, metadata, intermediates, temporary copies or peak
 memory. Model hidden width is limited to 1,024, vocabulary to 65,536 and the
 trace to six layers. Failures and invalid or nondeterministic controls raise
 instead of being reported as successful comparisons. See
-[transformer comparison](TRANSFORMER_LOCALIZATION.md),
+[transformer comparison](LOCALIZATION.md#transformer-observations),
 [GPT-2 tracing](TRANSFORMER_TRACE.md) and [ordered plans](INTERVENTION_PLANS.md)
 for the full contracts.

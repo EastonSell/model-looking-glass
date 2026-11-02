@@ -17,7 +17,7 @@ Changing the code? Start with the [code map](../looking_glass/README.md) and [co
 
 | Need | Read |
 |---|---|
-| Observe and compare | [Trace schema](TRACE_SCHEMA.md), [bounded store](TRACE_STORE.md), [localization](LOCALIZATION.md), [transformer comparison](TRANSFORMER_LOCALIZATION.md) |
+| Observe and compare | [Trace schema](TRACE_SCHEMA.md), [bounded store](TRACE_STORE.md), [probe and transformer comparison](LOCALIZATION.md) |
 | Apply controlled changes | [Intervention primitives](INTERVENTIONS.md), [ordered plans](INTERVENTION_PLANS.md), [causal metrics](CAUSAL_METRICS.md), [behavioral evaluation](BEHAVIORAL_EDIT_EVALUATION.md) |
 | Load a pinned model | [Pretrained loader and asset checks](PRETRAINED_MODEL.md) |
 | GPT-2 | [Trace reference](TRANSFORMER_TRACE.md), [head slices](GPT2_HEAD_SLICE.md) |
