@@ -664,10 +664,18 @@ class TraceStore:
             raise ValueError("Trace metadata exceeds its limit")
         if json.loads(status_path.read_text()) != {"status": "complete"}: raise ValueError("Incomplete exports cannot be opened")
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if not isinstance(manifest, dict): raise ValueError("Trace manifest must be a JSON object")
         if manifest.get("schema") != SCHEMA or manifest.get("tensor_file") != "tensors.safetensors":
             raise ValueError("Unsupported trace schema or tensor filename")
         rows = manifest.get("events")
         if not isinstance(rows, list) or not 0 < len(rows) <= self.max_events: raise ValueError("Invalid capture count")
+        # Reject malformed container structure before hashing or allocating the
+        # tensor payload. Invalid exports are input errors, not failed forwards.
+        run = manifest.get("run")
+        if not isinstance(run, dict): raise ValueError("Run metadata must be an object")
+        for i, row in enumerate(rows):
+            if not isinstance(row, dict): raise ValueError(f"Capture entry {i} must be a JSON object")
+            if not isinstance(row.get("metadata"), dict): raise ValueError(f"Capture metadata {i} must be an object")
         expected_total = _integer(manifest.get("total_bytes"), "total_bytes", 1, self.max_bytes)
         if tensor_path.stat().st_size > self.max_bytes + MAX_MANIFEST: raise ValueError("Tensor file exceeds import allowance")
         if _digest(tensor_path) != manifest.get("tensor_sha256"): raise ValueError("Tensor digest mismatch")
@@ -683,10 +691,7 @@ class TraceStore:
                 if size != row.get("tensor_bytes") or total > self.max_bytes: raise ValueError("Capture size mismatch")
                 value = handle.get_tensor(f"event_{i}").clone()  # No live file mapping after successful open.
                 metadata = _json_copy(row.get("metadata"))
-                if not isinstance(metadata, dict): raise ValueError("Capture metadata must be an object")
                 captures.append(SimpleNamespace(value=value, metadata=lambda m=metadata: m))
         if total != expected_total: raise ValueError("Total capture size mismatch")
-        run = manifest.get("run")
-        if not isinstance(run, dict): raise ValueError("Run metadata must be an object")
         result = {**run, "events": captures}
         return self.publish(result)
