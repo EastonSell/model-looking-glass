@@ -1,0 +1,35 @@
+{
+  "additional_independent_checks": [
+    "Observed 13 saved source hashes matched Git objects for the recorded commit.",
+    "The recorded commit tree matched the independently reviewed source tree.",
+    "All five present cache files matched the saved asset sizes and hashes and the committed loader pins.",
+    "At review time the public research branch resolved to the recorded source commit.",
+    "The saved result and observer receipt had matching result and journal hashes."
+  ],
+  "audit_script_sha256": "297f61c09181844f59d61b71469ab3c020887ad1be94bda2cad8978403475ef6",
+  "cases_sha256": "362b84af462e7f5bb4ccbb365c8ab5ee1bc96845ee6021df23d6d08c298acad8",
+  "counts": {
+    "baseline_rows": 8,
+    "completed_forwards": 248,
+    "per_case_patch_effects": 144
+  },
+  "journal_sha256": {
+    "drink.jsonl": "e6810094bee2ac4cdccfcd8913143368296fd204ff6ca44eca4cef6b5be948ea",
+    "sauce.jsonl": "23f481e9dca72ffee6969cef3c52ca1fa961ce979a6ed4d147c579a7be9b9a26",
+    "tea.jsonl": "addcd541275187defa9bd1baf2cb41871812f3fe6f6c8a284e669b44ba5f01ac",
+    "water.jsonl": "c1c83d2b0fd1e54f3ca9272a09a5abd293a99dbeb215dfd763fbfbdb100a678e"
+  },
+  "limitations": [
+    "The audit checks saved records and cannot prove execution or publication chronology.",
+    "The child receipt observes the direct child; whole-process-tree cleanup was not verified.",
+    "Full-output untouched-coordinate equality and patched full-vocabulary summaries are owner-observed.",
+    "The public cases are exploratory; no unobserved-history, holdout or generalization claim is made."
+  ],
+  "observer_sha256": "b87dbdbe9ecf6c3e5b7c2e8f3381e781804eebc577cab7964d0be46ecd2061f3",
+  "result_sha256": "19178494cd26742b6282ed15cbffbc159a836a1433d6fe4183655c7c0c4cd94b",
+  "schema": "bert-taste-independent-saved-audit-v1",
+  "source_commit": "bb2ccb0d4b674a4e2c90be4952ccff5195e8730a",
+  "source_tree": "878b2c143466d09e4ba328288670427c09cec432",
+  "started_sha256": "cfd4ada99edd5ccd9019a84bebdb06229d748b4645f86aa4d27594caaa9302bb",
+  "status": "saved_consistency_verified"
+}

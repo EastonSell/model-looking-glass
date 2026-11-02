@@ -1,0 +1,13 @@
+{
+  "advance": "BERT taste-result-only merge since the earlier observation; the first shell preflight stopped before invoking the pretrained runner and created no run or redirected output files.",
+  "current_exposure_sha256": "a391c5f3a8ca33ad32e9378417b424338b12ea55257979977d2afd5a0c7f90ae",
+  "current_exposure_source_git_blob": "a965a51a68c204e43c3e4eedd26b1d5af44944a6",
+  "current_exposure_version": "distilgpt2-development-exposures-v21",
+  "observed_utc": "2026-10-29T08:29:50.507134+00:00",
+  "official_main_observed": "6f78a42ed66615d2ac8d5ad09bfeeae7d7ce68a3",
+  "pre_run_sha256": "676dd2ac8b2ceb2c2311d38b01f4d9e8a348c5b29430662926757677c9aded49",
+  "previous_observation_sha256": "a2d7916ccb1e604fc392b1133b258aafb8fd1ff629e9235e2b4ba475736ab641",
+  "schema": "distilgpt2-explicit-year-direction-launch-observation-update-v1",
+  "scope": "Point-in-time operator/source observation, not a claim that no unrecorded model activity or pretraining exposure exists.",
+  "v22_at_observed_commit": "not found; status-only v22 was public for review but unmerged"
+}

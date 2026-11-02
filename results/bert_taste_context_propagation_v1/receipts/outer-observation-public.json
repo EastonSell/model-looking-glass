@@ -1,0 +1,20 @@
+{
+  "observer_exception_type": null,
+  "operator_exit_code": 0,
+  "operator_exit_record_sha256": "fcc940ec02aa58c0a1ecd5dee104a3208114e74cd71802ab6684f9a521d74216",
+  "operator_finished_at_utc_clock": "2026-10-29T09:06:12.655499+00:00",
+  "operator_reaped": true,
+  "operator_sha256": "7c5e90c8706776e02210928fdc34853938fdc6ebe8086827eb0bacb412d59ebf",
+  "operator_started_at_utc_clock": "2026-10-29T09:02:17.766947+00:00",
+  "original_record_sha256": "1bf73a4dd155b658415702de1c963a2196079b650e8d3e12e97642155ab1a5a0",
+  "projection_scope": "Public projection; original private process record is not independently authenticated here.",
+  "redacted_fields": [
+    "operator_process_id"
+  ],
+  "schema": "bert-propagation-outer-operator-observation-v1",
+  "scope": "Direct operator-process observation and saved receipt hash; no execution or whole-tree attestation.",
+  "source_commit": "a27b34533c3da5f34a541ef2b8b57631bf42e819",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256": "ff3487b014f0d7fc49a8bb6b53c6a6ddfbdcc33bea86be5450d1ac7ecc4becdc",
+  "timed_out": false
+}

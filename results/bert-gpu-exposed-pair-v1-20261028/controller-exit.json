@@ -1,0 +1,8 @@
+{
+  "controller_exit_code": 0,
+  "observation": "direct base interpreter execution session reported process exit 0",
+  "observed_utc": "2026-10-29T06:44:25.030120+00:00",
+  "schema": "bert-exposed-pair-controller-exit-observation-v1",
+  "source_commit": "a39945187c383c0bac9cfb0cce950ce590357261",
+  "stdout_status": "success"
+}

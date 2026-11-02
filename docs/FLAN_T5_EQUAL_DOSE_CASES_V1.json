@@ -1,0 +1,1887 @@
+{
+  "asset_manifest_sha256": "d369e3095dc35c52608f40fbd2715d7a2ff80a02fd71f0692c24af2cf3402083",
+  "cases": [
+    {
+      "alignment_eligible": true,
+      "case_id": "pair0-translate",
+      "context_position": 5,
+      "instruction_position": 0,
+      "neutral": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          30355,
+          15,
+          1566,
+          12,
+          2968,
+          10,
+          1
+        ],
+        "offsets": [
+          [
+            0,
+            8
+          ],
+          [
+            8,
+            9
+          ],
+          [
+            9,
+            17
+          ],
+          [
+            17,
+            20
+          ],
+          [
+            20,
+            27
+          ],
+          [
+            27,
+            28
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "special_tokens_mask": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "text": "Translate English to German:",
+        "token_strings": [
+          "\u2581Translat",
+          "e",
+          "\u2581English",
+          "\u2581to",
+          "\u2581German",
+          ":",
+          "</s>"
+        ]
+      },
+      "pair_id": 0,
+      "source": [
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            30355,
+            15,
+            1566,
+            12,
+            2968,
+            10,
+            8947,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              8
+            ],
+            [
+              8,
+              9
+            ],
+            [
+              9,
+              17
+            ],
+            [
+              17,
+              20
+            ],
+            [
+              20,
+              27
+            ],
+            [
+              27,
+              28
+            ],
+            [
+              28,
+              34
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "Translate English to German: apple",
+          "token_strings": [
+            "\u2581Translat",
+            "e",
+            "\u2581English",
+            "\u2581to",
+            "\u2581German",
+            ":",
+            "\u2581apple",
+            "</s>"
+          ],
+          "word": "apple",
+          "word_positions": [
+            6
+          ]
+        },
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            30355,
+            15,
+            1566,
+            12,
+            2968,
+            10,
+            5470,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              8
+            ],
+            [
+              8,
+              9
+            ],
+            [
+              9,
+              17
+            ],
+            [
+              17,
+              20
+            ],
+            [
+              20,
+              27
+            ],
+            [
+              27,
+              28
+            ],
+            [
+              28,
+              35
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "Translate English to German: orange",
+          "token_strings": [
+            "\u2581Translat",
+            "e",
+            "\u2581English",
+            "\u2581to",
+            "\u2581German",
+            ":",
+            "\u2581orange",
+            "</s>"
+          ],
+          "word": "orange",
+          "word_positions": [
+            6
+          ]
+        }
+      ],
+      "targets": [
+        {
+          "attention_mask": [
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            71,
+            17433,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              5
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            1
+          ],
+          "text": "Apfel",
+          "token_strings": [
+            "\u2581A",
+            "pfel",
+            "</s>"
+          ]
+        },
+        {
+          "attention_mask": [
+            1,
+            1
+          ],
+          "input_ids": [
+            7311,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              6
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            1
+          ],
+          "text": "Orange",
+          "token_strings": [
+            "\u2581Orange",
+            "</s>"
+          ]
+        }
+      ],
+      "template_id": "translate",
+      "word_position": 6
+    },
+    {
+      "alignment_eligible": true,
+      "case_id": "pair0-question",
+      "context_position": 7,
+      "instruction_position": 0,
+      "neutral": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          363,
+          19,
+          8,
+          2968,
+          1448,
+          21,
+          1
+        ],
+        "offsets": [
+          [
+            0,
+            4
+          ],
+          [
+            4,
+            7
+          ],
+          [
+            7,
+            11
+          ],
+          [
+            11,
+            18
+          ],
+          [
+            18,
+            23
+          ],
+          [
+            23,
+            27
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "special_tokens_mask": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "text": "What is the German word for",
+        "token_strings": [
+          "\u2581What",
+          "\u2581is",
+          "\u2581the",
+          "\u2581German",
+          "\u2581word",
+          "\u2581for",
+          "</s>"
+        ]
+      },
+      "pair_id": 0,
+      "source": [
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            363,
+            19,
+            8,
+            2968,
+            1448,
+            21,
+            8947,
+            58,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              4
+            ],
+            [
+              4,
+              7
+            ],
+            [
+              7,
+              11
+            ],
+            [
+              11,
+              18
+            ],
+            [
+              18,
+              23
+            ],
+            [
+              23,
+              27
+            ],
+            [
+              27,
+              33
+            ],
+            [
+              33,
+              34
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "What is the German word for apple?",
+          "token_strings": [
+            "\u2581What",
+            "\u2581is",
+            "\u2581the",
+            "\u2581German",
+            "\u2581word",
+            "\u2581for",
+            "\u2581apple",
+            "?",
+            "</s>"
+          ],
+          "word": "apple",
+          "word_positions": [
+            6
+          ]
+        },
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            363,
+            19,
+            8,
+            2968,
+            1448,
+            21,
+            5470,
+            58,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              4
+            ],
+            [
+              4,
+              7
+            ],
+            [
+              7,
+              11
+            ],
+            [
+              11,
+              18
+            ],
+            [
+              18,
+              23
+            ],
+            [
+              23,
+              27
+            ],
+            [
+              27,
+              34
+            ],
+            [
+              34,
+              35
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "What is the German word for orange?",
+          "token_strings": [
+            "\u2581What",
+            "\u2581is",
+            "\u2581the",
+            "\u2581German",
+            "\u2581word",
+            "\u2581for",
+            "\u2581orange",
+            "?",
+            "</s>"
+          ],
+          "word": "orange",
+          "word_positions": [
+            6
+          ]
+        }
+      ],
+      "targets": [
+        {
+          "attention_mask": [
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            71,
+            17433,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              5
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            1
+          ],
+          "text": "Apfel",
+          "token_strings": [
+            "\u2581A",
+            "pfel",
+            "</s>"
+          ]
+        },
+        {
+          "attention_mask": [
+            1,
+            1
+          ],
+          "input_ids": [
+            7311,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              6
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            1
+          ],
+          "text": "Orange",
+          "token_strings": [
+            "\u2581Orange",
+            "</s>"
+          ]
+        }
+      ],
+      "template_id": "question",
+      "word_position": 6
+    },
+    {
+      "alignment_eligible": true,
+      "case_id": "pair1-translate",
+      "context_position": 5,
+      "instruction_position": 0,
+      "neutral": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          30355,
+          15,
+          1566,
+          12,
+          2968,
+          10,
+          1
+        ],
+        "offsets": [
+          [
+            0,
+            8
+          ],
+          [
+            8,
+            9
+          ],
+          [
+            9,
+            17
+          ],
+          [
+            17,
+            20
+          ],
+          [
+            20,
+            27
+          ],
+          [
+            27,
+            28
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "special_tokens_mask": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "text": "Translate English to German:",
+        "token_strings": [
+          "\u2581Translat",
+          "e",
+          "\u2581English",
+          "\u2581to",
+          "\u2581German",
+          ":",
+          "</s>"
+        ]
+      },
+      "pair_id": 1,
+      "source": [
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            30355,
+            15,
+            1566,
+            12,
+            2968,
+            10,
+            387,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              8
+            ],
+            [
+              8,
+              9
+            ],
+            [
+              9,
+              17
+            ],
+            [
+              17,
+              20
+            ],
+            [
+              20,
+              27
+            ],
+            [
+              27,
+              28
+            ],
+            [
+              28,
+              34
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "Translate English to German: water",
+          "token_strings": [
+            "\u2581Translat",
+            "e",
+            "\u2581English",
+            "\u2581to",
+            "\u2581German",
+            ":",
+            "\u2581water",
+            "</s>"
+          ],
+          "word": "water",
+          "word_positions": [
+            6
+          ]
+        },
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            30355,
+            15,
+            1566,
+            12,
+            2968,
+            10,
+            1472,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              8
+            ],
+            [
+              8,
+              9
+            ],
+            [
+              9,
+              17
+            ],
+            [
+              17,
+              20
+            ],
+            [
+              20,
+              27
+            ],
+            [
+              27,
+              28
+            ],
+            [
+              28,
+              33
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "Translate English to German: fire",
+          "token_strings": [
+            "\u2581Translat",
+            "e",
+            "\u2581English",
+            "\u2581to",
+            "\u2581German",
+            ":",
+            "\u2581fire",
+            "</s>"
+          ],
+          "word": "fire",
+          "word_positions": [
+            6
+          ]
+        }
+      ],
+      "targets": [
+        {
+          "attention_mask": [
+            1,
+            1
+          ],
+          "input_ids": [
+            3999,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              6
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            1
+          ],
+          "text": "Wasser",
+          "token_strings": [
+            "\u2581Wasser",
+            "</s>"
+          ]
+        },
+        {
+          "attention_mask": [
+            1,
+            1
+          ],
+          "input_ids": [
+            19857,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            1
+          ],
+          "text": "Feuer",
+          "token_strings": [
+            "\u2581Feuer",
+            "</s>"
+          ]
+        }
+      ],
+      "template_id": "translate",
+      "word_position": 6
+    },
+    {
+      "alignment_eligible": true,
+      "case_id": "pair1-question",
+      "context_position": 7,
+      "instruction_position": 0,
+      "neutral": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          363,
+          19,
+          8,
+          2968,
+          1448,
+          21,
+          1
+        ],
+        "offsets": [
+          [
+            0,
+            4
+          ],
+          [
+            4,
+            7
+          ],
+          [
+            7,
+            11
+          ],
+          [
+            11,
+            18
+          ],
+          [
+            18,
+            23
+          ],
+          [
+            23,
+            27
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "special_tokens_mask": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "text": "What is the German word for",
+        "token_strings": [
+          "\u2581What",
+          "\u2581is",
+          "\u2581the",
+          "\u2581German",
+          "\u2581word",
+          "\u2581for",
+          "</s>"
+        ]
+      },
+      "pair_id": 1,
+      "source": [
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            363,
+            19,
+            8,
+            2968,
+            1448,
+            21,
+            387,
+            58,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              4
+            ],
+            [
+              4,
+              7
+            ],
+            [
+              7,
+              11
+            ],
+            [
+              11,
+              18
+            ],
+            [
+              18,
+              23
+            ],
+            [
+              23,
+              27
+            ],
+            [
+              27,
+              33
+            ],
+            [
+              33,
+              34
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "What is the German word for water?",
+          "token_strings": [
+            "\u2581What",
+            "\u2581is",
+            "\u2581the",
+            "\u2581German",
+            "\u2581word",
+            "\u2581for",
+            "\u2581water",
+            "?",
+            "</s>"
+          ],
+          "word": "water",
+          "word_positions": [
+            6
+          ]
+        },
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            363,
+            19,
+            8,
+            2968,
+            1448,
+            21,
+            1472,
+            58,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              4
+            ],
+            [
+              4,
+              7
+            ],
+            [
+              7,
+              11
+            ],
+            [
+              11,
+              18
+            ],
+            [
+              18,
+              23
+            ],
+            [
+              23,
+              27
+            ],
+            [
+              27,
+              32
+            ],
+            [
+              32,
+              33
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "What is the German word for fire?",
+          "token_strings": [
+            "\u2581What",
+            "\u2581is",
+            "\u2581the",
+            "\u2581German",
+            "\u2581word",
+            "\u2581for",
+            "\u2581fire",
+            "?",
+            "</s>"
+          ],
+          "word": "fire",
+          "word_positions": [
+            6
+          ]
+        }
+      ],
+      "targets": [
+        {
+          "attention_mask": [
+            1,
+            1
+          ],
+          "input_ids": [
+            3999,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              6
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            1
+          ],
+          "text": "Wasser",
+          "token_strings": [
+            "\u2581Wasser",
+            "</s>"
+          ]
+        },
+        {
+          "attention_mask": [
+            1,
+            1
+          ],
+          "input_ids": [
+            19857,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            1
+          ],
+          "text": "Feuer",
+          "token_strings": [
+            "\u2581Feuer",
+            "</s>"
+          ]
+        }
+      ],
+      "template_id": "question",
+      "word_position": 6
+    },
+    {
+      "alignment_eligible": true,
+      "case_id": "pair2-translate",
+      "context_position": 5,
+      "instruction_position": 0,
+      "neutral": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          30355,
+          15,
+          1566,
+          12,
+          2968,
+          10,
+          1
+        ],
+        "offsets": [
+          [
+            0,
+            8
+          ],
+          [
+            8,
+            9
+          ],
+          [
+            9,
+            17
+          ],
+          [
+            17,
+            20
+          ],
+          [
+            20,
+            27
+          ],
+          [
+            27,
+            28
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "special_tokens_mask": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "text": "Translate English to German:",
+        "token_strings": [
+          "\u2581Translat",
+          "e",
+          "\u2581English",
+          "\u2581to",
+          "\u2581German",
+          ":",
+          "</s>"
+        ]
+      },
+      "pair_id": 2,
+      "source": [
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            30355,
+            15,
+            1566,
+            12,
+            2968,
+            10,
+            5963,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              8
+            ],
+            [
+              8,
+              9
+            ],
+            [
+              9,
+              17
+            ],
+            [
+              17,
+              20
+            ],
+            [
+              20,
+              27
+            ],
+            [
+              27,
+              28
+            ],
+            [
+              28,
+              33
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "Translate English to German: bird",
+          "token_strings": [
+            "\u2581Translat",
+            "e",
+            "\u2581English",
+            "\u2581to",
+            "\u2581German",
+            ":",
+            "\u2581bird",
+            "</s>"
+          ],
+          "word": "bird",
+          "word_positions": [
+            6
+          ]
+        },
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            30355,
+            15,
+            1566,
+            12,
+            2968,
+            10,
+            2495,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              8
+            ],
+            [
+              8,
+              9
+            ],
+            [
+              9,
+              17
+            ],
+            [
+              17,
+              20
+            ],
+            [
+              20,
+              27
+            ],
+            [
+              27,
+              28
+            ],
+            [
+              28,
+              33
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "Translate English to German: fish",
+          "token_strings": [
+            "\u2581Translat",
+            "e",
+            "\u2581English",
+            "\u2581to",
+            "\u2581German",
+            ":",
+            "\u2581fish",
+            "</s>"
+          ],
+          "word": "fish",
+          "word_positions": [
+            6
+          ]
+        }
+      ],
+      "targets": [
+        {
+          "attention_mask": [
+            1,
+            1
+          ],
+          "input_ids": [
+            26329,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            1
+          ],
+          "text": "Vogel",
+          "token_strings": [
+            "\u2581Vogel",
+            "</s>"
+          ]
+        },
+        {
+          "attention_mask": [
+            1,
+            1
+          ],
+          "input_ids": [
+            21252,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            1
+          ],
+          "text": "Fisch",
+          "token_strings": [
+            "\u2581Fisch",
+            "</s>"
+          ]
+        }
+      ],
+      "template_id": "translate",
+      "word_position": 6
+    },
+    {
+      "alignment_eligible": true,
+      "case_id": "pair2-question",
+      "context_position": 7,
+      "instruction_position": 0,
+      "neutral": {
+        "attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_ids": [
+          363,
+          19,
+          8,
+          2968,
+          1448,
+          21,
+          1
+        ],
+        "offsets": [
+          [
+            0,
+            4
+          ],
+          [
+            4,
+            7
+          ],
+          [
+            7,
+            11
+          ],
+          [
+            11,
+            18
+          ],
+          [
+            18,
+            23
+          ],
+          [
+            23,
+            27
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "special_tokens_mask": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "text": "What is the German word for",
+        "token_strings": [
+          "\u2581What",
+          "\u2581is",
+          "\u2581the",
+          "\u2581German",
+          "\u2581word",
+          "\u2581for",
+          "</s>"
+        ]
+      },
+      "pair_id": 2,
+      "source": [
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            363,
+            19,
+            8,
+            2968,
+            1448,
+            21,
+            5963,
+            58,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              4
+            ],
+            [
+              4,
+              7
+            ],
+            [
+              7,
+              11
+            ],
+            [
+              11,
+              18
+            ],
+            [
+              18,
+              23
+            ],
+            [
+              23,
+              27
+            ],
+            [
+              27,
+              32
+            ],
+            [
+              32,
+              33
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "What is the German word for bird?",
+          "token_strings": [
+            "\u2581What",
+            "\u2581is",
+            "\u2581the",
+            "\u2581German",
+            "\u2581word",
+            "\u2581for",
+            "\u2581bird",
+            "?",
+            "</s>"
+          ],
+          "word": "bird",
+          "word_positions": [
+            6
+          ]
+        },
+        {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            363,
+            19,
+            8,
+            2968,
+            1448,
+            21,
+            2495,
+            58,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              4
+            ],
+            [
+              4,
+              7
+            ],
+            [
+              7,
+              11
+            ],
+            [
+              11,
+              18
+            ],
+            [
+              18,
+              23
+            ],
+            [
+              23,
+              27
+            ],
+            [
+              27,
+              32
+            ],
+            [
+              32,
+              33
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "text": "What is the German word for fish?",
+          "token_strings": [
+            "\u2581What",
+            "\u2581is",
+            "\u2581the",
+            "\u2581German",
+            "\u2581word",
+            "\u2581for",
+            "\u2581fish",
+            "?",
+            "</s>"
+          ],
+          "word": "fish",
+          "word_positions": [
+            6
+          ]
+        }
+      ],
+      "targets": [
+        {
+          "attention_mask": [
+            1,
+            1
+          ],
+          "input_ids": [
+            26329,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            1
+          ],
+          "text": "Vogel",
+          "token_strings": [
+            "\u2581Vogel",
+            "</s>"
+          ]
+        },
+        {
+          "attention_mask": [
+            1,
+            1
+          ],
+          "input_ids": [
+            21252,
+            1
+          ],
+          "offsets": [
+            [
+              0,
+              5
+            ],
+            [
+              0,
+              0
+            ]
+          ],
+          "special_tokens_mask": [
+            0,
+            1
+          ],
+          "text": "Fisch",
+          "token_strings": [
+            "\u2581Fisch",
+            "</s>"
+          ]
+        }
+      ],
+      "template_id": "question",
+      "word_position": 6
+    }
+  ],
+  "eos_token_id": 1,
+  "model": "google/flan-t5-small",
+  "pad_token_id": 0,
+  "revision": "0fc9ddf78a1e988dac52e2dac162b0ede4fd74ab",
+  "schema": "mlg-flan-t5-equal-dose-public-cases-v1",
+  "tokenizer_class": "T5TokenizerFast"
+}

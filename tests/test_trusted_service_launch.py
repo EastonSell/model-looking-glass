@@ -34,6 +34,7 @@ class TrustedServiceLaunchTests(unittest.TestCase):
                   "print(json.dumps({'path':sys.path,'argv':sys.argv[1:],"
                   "'visibility':os.environ.get('CUDA_VISIBLE_DEVICES'),"
                   "'hf_home':os.environ.get('HF_HOME'),"
+                  "'programfiles':os.environ.get('PROGRAMFILES'),"
                   "'rogue':os.environ.get('CUDA_LAUNCH_BLOCKING'),"
                   "'pythonpath':os.environ.get('PYTHONPATH')}))\n")
         for name in ('gpu_service_process', 'trusted_profile_collector'):
@@ -63,6 +64,7 @@ class TrustedServiceLaunchTests(unittest.TestCase):
             self.assertNotIn('EXTRA_SECRET', launch.environment)
             self.assertNotIn('CUDA_LAUNCH_BLOCKING', launch.environment)
             self.assertNotIn('PYTHONPATH', launch.environment)
+            self.assertEqual(outputs[-1]['programfiles'], launch.environment.get('PROGRAMFILES'))
         self.assertEqual(outputs[0]['path'], outputs[1]['path'])
         self.assertEqual(outputs[0]['path'][-2:], [str(self.repo), str(self.site)])
         info = self.config.stat()
@@ -73,6 +75,18 @@ class TrustedServiceLaunchTests(unittest.TestCase):
         self.assertEqual([output['hf_home'] for output in outputs], [str(self.hf_home)] * 2)
         self.assertIsNone(outputs[0]['rogue'])
         self.assertIsNone(outputs[0]['pythonpath'])
+
+    def test_preserves_only_validated_programfiles_for_driver_discovery(self):
+        program_files = self.root / 'program files'
+        program_files.mkdir()
+        environment = {'PROGRAMFILES': str(program_files), 'EXTRA_SECRET': 'not retained'}
+        for module in ('looking_glass.gpu_service_process', 'looking_glass.trusted_profile_collector'):
+            launch = self.build(module=module, inherited_environment=environment)
+            self.assertEqual(launch.environment['PROGRAMFILES'], str(program_files.resolve()))
+            self.assertNotIn('EXTRA_SECRET', launch.environment)
+        for invalid in ('relative-program-files', str(self.root / 'missing')):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                self.build(inherited_environment={'PROGRAMFILES': invalid})
 
     def test_changed_configuration_and_nonempty_prefix_are_rejected(self):
         launch = self.build()

@@ -1,0 +1,28 @@
+{
+  "schema": "copying-head-pairs-dose-execution-context-v1",
+  "recorded_utc": "2026-10-29T06:45:59Z",
+  "source_revision": "98d14df98ce04ce6b65a4346fe13c5f2cfc8aeef",
+  "case_sha256": "3e5d40fff832a6976f5e4f8d3bda916ab203ed93936463a1a0726e88dcab1106",
+  "exposure_inventories": {
+    "v13": "27ffe8d2ab312ccf2a62a07dab835d3cafce7364ca8abadbb1e73ec835e9aca8",
+    "v15": "6c6ed34755dd9daebdde9a2de07f65c0c5d20301656416d873f321fa2c146d34"
+  },
+  "official_main_at_check": "4604ac0687f82febbaff80cb017d3378da8a59d2",
+  "private_split_status": {
+    "case_sha256": "3e5d40fff832a6976f5e4f8d3bda916ab203ed93936463a1a0726e88dcab1106",
+    "natural": {
+      "reporter": "natural held-out custodian",
+      "status": "no_protected_rows",
+      "scope": "The latest custodian report states no held-out nonce, split or commitment exists; no private row comparison occurred.",
+      "reported_utc": "2026-10-29T06:45:59Z"
+    },
+    "injection": {
+      "reporter": "injection custodian",
+      "status": "no_protected_rows",
+      "scope": "The latest custodian report states no protected held-out split or rows exist; no private row comparison occurred. The existing concealed site remains sealed.",
+      "target_boundary": "proceed_no_direct_conflict",
+      "reported_utc": "2026-10-29T06:45:59Z"
+    }
+  },
+  "scope": "Operator-recorded public-main and custodian reports; reported_utc is the operator recording time, not an independently secured timestamp or private disjointness attestation."
+}

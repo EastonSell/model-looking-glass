@@ -1,0 +1,1110 @@
+{
+  "schema": "gpt2-known-corruption-workflow-v1",
+  "input_ids": [
+    15496,
+    995
+  ],
+  "attention_mask": [
+    1,
+    1
+  ],
+  "readout_token_id": 13,
+  "corruption": {
+    "token_index": 1,
+    "coordinate": 0,
+    "requested_addition": 5.0,
+    "before": -0.1725083440542221,
+    "after": 4.827491760253906,
+    "realized_addition": 5.000000104308128
+  },
+  "trace_limits": {
+    "max_events_per_run": 18,
+    "max_tensor_bytes_per_run": 131072,
+    "clean_tensor_bytes": 18432,
+    "corrupt_tensor_bytes": 18432
+  },
+  "localization": {
+    "status": "difference_observed",
+    "first_compared_difference": {
+      "batch_axis": 0,
+      "batch_positions": [
+        0
+      ],
+      "forward_index": 0,
+      "generation": {
+        "cache_length_after": null,
+        "cache_length_before": null,
+        "cache_position": null,
+        "generation_step": null,
+        "stage": "forward",
+        "use_cache": false
+      },
+      "invocation": 0,
+      "layer_index": 0,
+      "module_kind": "attn",
+      "module_path": "transformer.h.0.attn",
+      "output_path": [
+        0
+      ],
+      "sample_id": null,
+      "source_device": "cpu",
+      "source_dtype": "torch.float32",
+      "source_shape": [
+        1,
+        2,
+        768
+      ],
+      "token_axis": 1,
+      "token_positions": [
+        1
+      ]
+    },
+    "first_observed_interval": {
+      "last_equal": null,
+      "first_unequal": {
+        "batch_axis": 0,
+        "batch_positions": [
+          0
+        ],
+        "forward_index": 0,
+        "generation": {
+          "cache_length_after": null,
+          "cache_length_before": null,
+          "cache_position": null,
+          "generation_step": null,
+          "stage": "forward",
+          "use_cache": false
+        },
+        "invocation": 0,
+        "layer_index": 0,
+        "module_kind": "attn",
+        "module_path": "transformer.h.0.attn",
+        "output_path": [
+          0
+        ],
+        "sample_id": null,
+        "source_device": "cpu",
+        "source_dtype": "torch.float32",
+        "source_shape": [
+          1,
+          2,
+          768
+        ],
+        "token_axis": 1,
+        "token_positions": [
+          1
+        ]
+      }
+    },
+    "coverage": {
+      "reference_count": 6,
+      "candidate_count": 6,
+      "reference_complete": true,
+      "candidate_complete": true,
+      "reference_sequence_complete": true,
+      "candidate_sequence_complete": true,
+      "reference_invocations_complete": true,
+      "candidate_invocations_complete": true,
+      "reference_run_identity_consistent": true,
+      "candidate_run_identity_consistent": true,
+      "matching_order": true,
+      "invalid_reference": [],
+      "invalid_candidate": [],
+      "ambiguous_reference": [],
+      "ambiguous_candidate": [],
+      "reference_only": [],
+      "candidate_only": [],
+      "compared": 6,
+      "unavailable": 0,
+      "incompatible": 0
+    },
+    "comparisons": [
+      {
+        "coordinate": {
+          "batch_axis": 0,
+          "batch_positions": [
+            0
+          ],
+          "forward_index": 0,
+          "generation": {
+            "cache_length_after": null,
+            "cache_length_before": null,
+            "cache_position": null,
+            "generation_step": null,
+            "stage": "forward",
+            "use_cache": false
+          },
+          "invocation": 0,
+          "layer_index": 0,
+          "module_kind": "attn",
+          "module_path": "transformer.h.0.attn",
+          "output_path": [
+            0
+          ],
+          "sample_id": null,
+          "source_device": "cpu",
+          "source_dtype": "torch.float32",
+          "source_shape": [
+            1,
+            2,
+            768
+          ],
+          "token_axis": 1,
+          "token_positions": [
+            1
+          ]
+        },
+        "result": "different",
+        "reason": null,
+        "reference_saved": {
+          "shape": [
+            1,
+            1,
+            768
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu"
+        },
+        "candidate_saved": {
+          "shape": [
+            1,
+            1,
+            768
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu"
+        }
+      },
+      {
+        "coordinate": {
+          "batch_axis": 0,
+          "batch_positions": [
+            0
+          ],
+          "forward_index": 0,
+          "generation": {
+            "cache_length_after": null,
+            "cache_length_before": null,
+            "cache_position": null,
+            "generation_step": null,
+            "stage": "forward",
+            "use_cache": false
+          },
+          "invocation": 0,
+          "layer_index": 0,
+          "module_kind": "mlp",
+          "module_path": "transformer.h.0.mlp",
+          "output_path": [],
+          "sample_id": null,
+          "source_device": "cpu",
+          "source_dtype": "torch.float32",
+          "source_shape": [
+            1,
+            2,
+            768
+          ],
+          "token_axis": 1,
+          "token_positions": [
+            1
+          ]
+        },
+        "result": "different",
+        "reason": null,
+        "reference_saved": {
+          "shape": [
+            1,
+            1,
+            768
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu"
+        },
+        "candidate_saved": {
+          "shape": [
+            1,
+            1,
+            768
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu"
+        }
+      },
+      {
+        "coordinate": {
+          "batch_axis": 0,
+          "batch_positions": [
+            0
+          ],
+          "forward_index": 0,
+          "generation": {
+            "cache_length_after": null,
+            "cache_length_before": null,
+            "cache_position": null,
+            "generation_step": null,
+            "stage": "forward",
+            "use_cache": false
+          },
+          "invocation": 0,
+          "layer_index": 0,
+          "module_kind": "block",
+          "module_path": "transformer.h.0",
+          "output_path": [
+            0
+          ],
+          "sample_id": null,
+          "source_device": "cpu",
+          "source_dtype": "torch.float32",
+          "source_shape": [
+            1,
+            2,
+            768
+          ],
+          "token_axis": 1,
+          "token_positions": [
+            1
+          ]
+        },
+        "result": "different",
+        "reason": null,
+        "reference_saved": {
+          "shape": [
+            1,
+            1,
+            768
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu"
+        },
+        "candidate_saved": {
+          "shape": [
+            1,
+            1,
+            768
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu"
+        }
+      },
+      {
+        "coordinate": {
+          "batch_axis": 0,
+          "batch_positions": [
+            0
+          ],
+          "forward_index": 0,
+          "generation": {
+            "cache_length_after": null,
+            "cache_length_before": null,
+            "cache_position": null,
+            "generation_step": null,
+            "stage": "forward",
+            "use_cache": false
+          },
+          "invocation": 0,
+          "layer_index": 1,
+          "module_kind": "attn",
+          "module_path": "transformer.h.1.attn",
+          "output_path": [
+            0
+          ],
+          "sample_id": null,
+          "source_device": "cpu",
+          "source_dtype": "torch.float32",
+          "source_shape": [
+            1,
+            2,
+            768
+          ],
+          "token_axis": 1,
+          "token_positions": [
+            1
+          ]
+        },
+        "result": "different",
+        "reason": null,
+        "reference_saved": {
+          "shape": [
+            1,
+            1,
+            768
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu"
+        },
+        "candidate_saved": {
+          "shape": [
+            1,
+            1,
+            768
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu"
+        }
+      },
+      {
+        "coordinate": {
+          "batch_axis": 0,
+          "batch_positions": [
+            0
+          ],
+          "forward_index": 0,
+          "generation": {
+            "cache_length_after": null,
+            "cache_length_before": null,
+            "cache_position": null,
+            "generation_step": null,
+            "stage": "forward",
+            "use_cache": false
+          },
+          "invocation": 0,
+          "layer_index": 1,
+          "module_kind": "mlp",
+          "module_path": "transformer.h.1.mlp",
+          "output_path": [],
+          "sample_id": null,
+          "source_device": "cpu",
+          "source_dtype": "torch.float32",
+          "source_shape": [
+            1,
+            2,
+            768
+          ],
+          "token_axis": 1,
+          "token_positions": [
+            1
+          ]
+        },
+        "result": "different",
+        "reason": null,
+        "reference_saved": {
+          "shape": [
+            1,
+            1,
+            768
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu"
+        },
+        "candidate_saved": {
+          "shape": [
+            1,
+            1,
+            768
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu"
+        }
+      },
+      {
+        "coordinate": {
+          "batch_axis": 0,
+          "batch_positions": [
+            0
+          ],
+          "forward_index": 0,
+          "generation": {
+            "cache_length_after": null,
+            "cache_length_before": null,
+            "cache_position": null,
+            "generation_step": null,
+            "stage": "forward",
+            "use_cache": false
+          },
+          "invocation": 0,
+          "layer_index": 1,
+          "module_kind": "block",
+          "module_path": "transformer.h.1",
+          "output_path": [
+            0
+          ],
+          "sample_id": null,
+          "source_device": "cpu",
+          "source_dtype": "torch.float32",
+          "source_shape": [
+            1,
+            2,
+            768
+          ],
+          "token_axis": 1,
+          "token_positions": [
+            1
+          ]
+        },
+        "result": "different",
+        "reason": null,
+        "reference_saved": {
+          "shape": [
+            1,
+            1,
+            768
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu"
+        },
+        "candidate_saved": {
+          "shape": [
+            1,
+            1,
+            768
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu"
+        }
+      }
+    ],
+    "tolerance": {
+      "rtol": 0.0,
+      "atol": 0.0,
+      "rtol_binary64_hex": "0000000000000000",
+      "atol_binary64_hex": "0000000000000000",
+      "reference": "reference"
+    },
+    "causal_origin": "unknown",
+    "schema_coverage": {
+      "pairing_verified": true,
+      "execution_order_verified": true,
+      "run_ids_disjoint": true,
+      "reference_forwards_complete": true,
+      "candidate_forwards_complete": true,
+      "reference_invocations_complete": true,
+      "candidate_invocations_complete": true,
+      "reference_source_metadata_consistent": true,
+      "candidate_source_metadata_consistent": true,
+      "reference_metadata_issues": [],
+      "candidate_metadata_issues": []
+    }
+  },
+  "candidate_sites": [
+    {
+      "batch_axis": 0,
+      "batch_positions": [
+        0
+      ],
+      "forward_index": 0,
+      "generation": {
+        "cache_length_after": null,
+        "cache_length_before": null,
+        "cache_position": null,
+        "generation_step": null,
+        "stage": "forward",
+        "use_cache": false
+      },
+      "invocation": 0,
+      "layer_index": 0,
+      "module_kind": "attn",
+      "module_path": "transformer.h.0.attn",
+      "output_path": [
+        0
+      ],
+      "sample_id": null,
+      "source_device": "cpu",
+      "source_dtype": "torch.float32",
+      "source_shape": [
+        1,
+        2,
+        768
+      ],
+      "token_axis": 1,
+      "token_positions": [
+        1
+      ]
+    },
+    {
+      "batch_axis": 0,
+      "batch_positions": [
+        0
+      ],
+      "forward_index": 0,
+      "generation": {
+        "cache_length_after": null,
+        "cache_length_before": null,
+        "cache_position": null,
+        "generation_step": null,
+        "stage": "forward",
+        "use_cache": false
+      },
+      "invocation": 0,
+      "layer_index": 0,
+      "module_kind": "mlp",
+      "module_path": "transformer.h.0.mlp",
+      "output_path": [],
+      "sample_id": null,
+      "source_device": "cpu",
+      "source_dtype": "torch.float32",
+      "source_shape": [
+        1,
+        2,
+        768
+      ],
+      "token_axis": 1,
+      "token_positions": [
+        1
+      ]
+    },
+    {
+      "batch_axis": 0,
+      "batch_positions": [
+        0
+      ],
+      "forward_index": 0,
+      "generation": {
+        "cache_length_after": null,
+        "cache_length_before": null,
+        "cache_position": null,
+        "generation_step": null,
+        "stage": "forward",
+        "use_cache": false
+      },
+      "invocation": 0,
+      "layer_index": 0,
+      "module_kind": "block",
+      "module_path": "transformer.h.0",
+      "output_path": [
+        0
+      ],
+      "sample_id": null,
+      "source_device": "cpu",
+      "source_dtype": "torch.float32",
+      "source_shape": [
+        1,
+        2,
+        768
+      ],
+      "token_axis": 1,
+      "token_positions": [
+        1
+      ]
+    },
+    {
+      "batch_axis": 0,
+      "batch_positions": [
+        0
+      ],
+      "forward_index": 0,
+      "generation": {
+        "cache_length_after": null,
+        "cache_length_before": null,
+        "cache_position": null,
+        "generation_step": null,
+        "stage": "forward",
+        "use_cache": false
+      },
+      "invocation": 0,
+      "layer_index": 1,
+      "module_kind": "attn",
+      "module_path": "transformer.h.1.attn",
+      "output_path": [
+        0
+      ],
+      "sample_id": null,
+      "source_device": "cpu",
+      "source_dtype": "torch.float32",
+      "source_shape": [
+        1,
+        2,
+        768
+      ],
+      "token_axis": 1,
+      "token_positions": [
+        1
+      ]
+    },
+    {
+      "batch_axis": 0,
+      "batch_positions": [
+        0
+      ],
+      "forward_index": 0,
+      "generation": {
+        "cache_length_after": null,
+        "cache_length_before": null,
+        "cache_position": null,
+        "generation_step": null,
+        "stage": "forward",
+        "use_cache": false
+      },
+      "invocation": 0,
+      "layer_index": 1,
+      "module_kind": "mlp",
+      "module_path": "transformer.h.1.mlp",
+      "output_path": [],
+      "sample_id": null,
+      "source_device": "cpu",
+      "source_dtype": "torch.float32",
+      "source_shape": [
+        1,
+        2,
+        768
+      ],
+      "token_axis": 1,
+      "token_positions": [
+        1
+      ]
+    },
+    {
+      "batch_axis": 0,
+      "batch_positions": [
+        0
+      ],
+      "forward_index": 0,
+      "generation": {
+        "cache_length_after": null,
+        "cache_length_before": null,
+        "cache_position": null,
+        "generation_step": null,
+        "stage": "forward",
+        "use_cache": false
+      },
+      "invocation": 0,
+      "layer_index": 1,
+      "module_kind": "block",
+      "module_path": "transformer.h.1",
+      "output_path": [
+        0
+      ],
+      "sample_id": null,
+      "source_device": "cpu",
+      "source_dtype": "torch.float32",
+      "source_shape": [
+        1,
+        2,
+        768
+      ],
+      "token_axis": 1,
+      "token_positions": [
+        1
+      ]
+    }
+  ],
+  "target_site": "transformer.h.0",
+  "comparison_site": "transformer.h.0.attn",
+  "baselines": {
+    "clean": {
+      "readout_logit": -41.41719055175781,
+      "max_absolute_logit_distance_to_clean": 0.0,
+      "max_absolute_logit_distance_to_corrupt": 2.6246910095214844
+    },
+    "corrupt": {
+      "readout_logit": -42.45526885986328,
+      "max_absolute_logit_distance_to_clean": 2.6246910095214844,
+      "max_absolute_logit_distance_to_corrupt": 0.0
+    },
+    "input_ids_equal_clean_embeds": true
+  },
+  "interpretation": "Differences describe only selected observations after an artificial input edit. Testing a clean-state patch at an observed site does not establish the causal origin or a natural feature; the comparison-site patch is not assumed to be ineffective or matched in dose. In the example, replacing the only changed token's full layer-0 block output restores that whole block output by construction, so downstream restoration is a mechanics check rather than evidence of a unique location.",
+  "interventions": {
+    "status": "complete",
+    "plan_limits": {
+      "max_tensor_bytes": 6144,
+      "max_capture_bytes": 15360,
+      "max_source_bytes": 3072,
+      "max_steps": 4,
+      "max_invocations": 1
+    },
+    "controls": {
+      "input_ids_equal_clean_embeds": true,
+      "target_self_patch_equal_corrupt": true,
+      "post_session_clean_repeat_equal": true,
+      "post_session_corrupt_repeat_equal": true
+    },
+    "target_self_patch": {
+      "measurement": {
+        "readout_logit": -42.45526885986328,
+        "max_absolute_logit_distance_to_clean": 2.6246910095214844,
+        "max_absolute_logit_distance_to_corrupt": 0.0
+      },
+      "witness": {
+        "checks": {
+          "receiver_matches_corrupt_trace": true,
+          "selected_output_matches_source": true,
+          "other_positions_unchanged": true
+        },
+        "realized_displacement_l2": 0.0,
+        "steps": [
+          {
+            "name": "before_all",
+            "operation": "capture",
+            "order": 0,
+            "module_path": "transformer.h.0",
+            "module_aliases": [
+              "transformer.h.0"
+            ],
+            "call_site_known": false,
+            "forward_index": 0,
+            "invocation": 0,
+            "batch_index": null,
+            "token_index": null,
+            "output_selector": [
+              0
+            ],
+            "output_shape": [
+              1,
+              2,
+              768
+            ],
+            "selected_shape": [
+              1,
+              2,
+              768
+            ],
+            "dtype": "torch.float32",
+            "device": "cpu",
+            "source_capture": null,
+            "preceding_same_site_actions": []
+          },
+          {
+            "name": "self_source",
+            "operation": "capture",
+            "order": 1,
+            "module_path": "transformer.h.0",
+            "module_aliases": [
+              "transformer.h.0"
+            ],
+            "call_site_known": false,
+            "forward_index": 0,
+            "invocation": 0,
+            "batch_index": 0,
+            "token_index": 1,
+            "output_selector": [
+              0
+            ],
+            "output_shape": [
+              1,
+              2,
+              768
+            ],
+            "selected_shape": [
+              768
+            ],
+            "dtype": "torch.float32",
+            "device": "cpu",
+            "source_capture": null,
+            "preceding_same_site_actions": [
+              "before_all"
+            ]
+          },
+          {
+            "name": "patch",
+            "operation": "patch",
+            "order": 2,
+            "module_path": "transformer.h.0",
+            "module_aliases": [
+              "transformer.h.0"
+            ],
+            "call_site_known": false,
+            "forward_index": 0,
+            "invocation": 0,
+            "batch_index": 0,
+            "token_index": 1,
+            "output_selector": [
+              0
+            ],
+            "output_shape": [
+              1,
+              2,
+              768
+            ],
+            "selected_shape": [
+              768
+            ],
+            "dtype": "torch.float32",
+            "device": "cpu",
+            "source_capture": "self_source",
+            "preceding_same_site_actions": [
+              "before_all",
+              "self_source"
+            ]
+          },
+          {
+            "name": "after_all",
+            "operation": "capture",
+            "order": 3,
+            "module_path": "transformer.h.0",
+            "module_aliases": [
+              "transformer.h.0"
+            ],
+            "call_site_known": false,
+            "forward_index": 0,
+            "invocation": 0,
+            "batch_index": null,
+            "token_index": null,
+            "output_selector": [
+              0
+            ],
+            "output_shape": [
+              1,
+              2,
+              768
+            ],
+            "selected_shape": [
+              1,
+              2,
+              768
+            ],
+            "dtype": "torch.float32",
+            "device": "cpu",
+            "source_capture": null,
+            "preceding_same_site_actions": [
+              "before_all",
+              "self_source",
+              "patch"
+            ]
+          }
+        ]
+      }
+    },
+    "target_patch": {
+      "measurement": {
+        "readout_logit": -41.41719055175781,
+        "max_absolute_logit_distance_to_clean": 0.0,
+        "max_absolute_logit_distance_to_corrupt": 2.6246910095214844
+      },
+      "witness": {
+        "checks": {
+          "receiver_matches_corrupt_trace": true,
+          "selected_output_matches_source": true,
+          "other_positions_unchanged": true
+        },
+        "realized_displacement_l2": 10.832838928508135,
+        "steps": [
+          {
+            "name": "before_all",
+            "operation": "capture",
+            "order": 0,
+            "module_path": "transformer.h.0",
+            "module_aliases": [
+              "transformer.h.0"
+            ],
+            "call_site_known": false,
+            "forward_index": 0,
+            "invocation": 0,
+            "batch_index": null,
+            "token_index": null,
+            "output_selector": [
+              0
+            ],
+            "output_shape": [
+              1,
+              2,
+              768
+            ],
+            "selected_shape": [
+              1,
+              2,
+              768
+            ],
+            "dtype": "torch.float32",
+            "device": "cpu",
+            "source_capture": null,
+            "preceding_same_site_actions": []
+          },
+          {
+            "name": "patch",
+            "operation": "patch",
+            "order": 1,
+            "module_path": "transformer.h.0",
+            "module_aliases": [
+              "transformer.h.0"
+            ],
+            "call_site_known": false,
+            "forward_index": 0,
+            "invocation": 0,
+            "batch_index": 0,
+            "token_index": 1,
+            "output_selector": [
+              0
+            ],
+            "output_shape": [
+              1,
+              2,
+              768
+            ],
+            "selected_shape": [
+              768
+            ],
+            "dtype": "torch.float32",
+            "device": "cpu",
+            "source_capture": null,
+            "preceding_same_site_actions": [
+              "before_all"
+            ]
+          },
+          {
+            "name": "after_all",
+            "operation": "capture",
+            "order": 2,
+            "module_path": "transformer.h.0",
+            "module_aliases": [
+              "transformer.h.0"
+            ],
+            "call_site_known": false,
+            "forward_index": 0,
+            "invocation": 0,
+            "batch_index": null,
+            "token_index": null,
+            "output_selector": [
+              0
+            ],
+            "output_shape": [
+              1,
+              2,
+              768
+            ],
+            "selected_shape": [
+              1,
+              2,
+              768
+            ],
+            "dtype": "torch.float32",
+            "device": "cpu",
+            "source_capture": null,
+            "preceding_same_site_actions": [
+              "before_all",
+              "patch"
+            ]
+          }
+        ]
+      }
+    },
+    "comparison_patch": {
+      "measurement": {
+        "readout_logit": -41.652339935302734,
+        "max_absolute_logit_distance_to_clean": 0.49069976806640625,
+        "max_absolute_logit_distance_to_corrupt": 2.2508316040039062
+      },
+      "witness": {
+        "checks": {
+          "receiver_matches_corrupt_trace": true,
+          "selected_output_matches_source": true,
+          "other_positions_unchanged": true
+        },
+        "realized_displacement_l2": 12.433747139904519,
+        "steps": [
+          {
+            "name": "before_all",
+            "operation": "capture",
+            "order": 0,
+            "module_path": "transformer.h.0.attn",
+            "module_aliases": [
+              "transformer.h.0.attn"
+            ],
+            "call_site_known": false,
+            "forward_index": 0,
+            "invocation": 0,
+            "batch_index": null,
+            "token_index": null,
+            "output_selector": [
+              0
+            ],
+            "output_shape": [
+              1,
+              2,
+              768
+            ],
+            "selected_shape": [
+              1,
+              2,
+              768
+            ],
+            "dtype": "torch.float32",
+            "device": "cpu",
+            "source_capture": null,
+            "preceding_same_site_actions": []
+          },
+          {
+            "name": "patch",
+            "operation": "patch",
+            "order": 1,
+            "module_path": "transformer.h.0.attn",
+            "module_aliases": [
+              "transformer.h.0.attn"
+            ],
+            "call_site_known": false,
+            "forward_index": 0,
+            "invocation": 0,
+            "batch_index": 0,
+            "token_index": 1,
+            "output_selector": [
+              0
+            ],
+            "output_shape": [
+              1,
+              2,
+              768
+            ],
+            "selected_shape": [
+              768
+            ],
+            "dtype": "torch.float32",
+            "device": "cpu",
+            "source_capture": null,
+            "preceding_same_site_actions": [
+              "before_all"
+            ]
+          },
+          {
+            "name": "after_all",
+            "operation": "capture",
+            "order": 2,
+            "module_path": "transformer.h.0.attn",
+            "module_aliases": [
+              "transformer.h.0.attn"
+            ],
+            "call_site_known": false,
+            "forward_index": 0,
+            "invocation": 0,
+            "batch_index": null,
+            "token_index": null,
+            "output_selector": [
+              0
+            ],
+            "output_shape": [
+              1,
+              2,
+              768
+            ],
+            "selected_shape": [
+              1,
+              2,
+              768
+            ],
+            "dtype": "torch.float32",
+            "device": "cpu",
+            "source_capture": null,
+            "preceding_same_site_actions": [
+              "before_all",
+              "patch"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "model": {
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "tokenizer_id": "distilbert/distilgpt2",
+    "tokenizer_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "model_class": "GPT2LMHeadModel",
+    "tokenizer_class": "GPT2TokenizerFast",
+    "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+    "asset_sha256": {
+      "config.json": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a",
+      "generation_config.json": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805",
+      "tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+      "tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+      "vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783",
+      "merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+      "model.safetensors": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+    },
+    "torch_version": "2.8.0+cu128",
+    "transformers_version": "4.57.3",
+    "device": "cpu",
+    "dtype": "float32",
+    "attention_implementation": "eager",
+    "use_cache": false,
+    "parameter_count": 81912576
+  },
+  "prompt": "Hello world",
+  "readout_token_text": "."
+}

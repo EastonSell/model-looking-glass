@@ -1,0 +1,210 @@
+{
+  "abstract_prior_agreement_core": {
+    "continued_same_core": 32,
+    "terminal_core_prefix": 32
+  },
+  "between_pairs_compared": 76224,
+  "candidate_noun_surface_token_sources": {
+    "guide": [],
+    "guides": [],
+    "monk": [],
+    "monks": [],
+    "poet": [],
+    "poets": [],
+    "scout": [],
+    "scouts": [],
+    "tourist": [],
+    "tourists": [],
+    "visitor": [],
+    "visitors": []
+  },
+  "collisions": [],
+  "frame_scope": "After omitting the proposed locative preamble and masking the subject and attractor noun IDs, continued rows match a named earlier agreement core and terminal rows are its prefix. This is structural reuse, not identical input.",
+  "new_commit": null,
+  "new_rows": 64,
+  "new_sha256": "1da4f8e4773009fedc750480c21597fc60ecaa0c990dcff0af15a5c7101c3dca",
+  "scope": "Named public rows plus one fixed pending public proposal only; repeated rows across inventories are counted repeatedly. The 32 intended within-pair prefix relations are explicitly excluded. No protected, unknown or pretraining disjointness is established.",
+  "source_count": 25,
+  "source_row_references": 1191,
+  "sources": [
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_agreement_exposures_v6.json",
+      "rows": 160,
+      "sha256": "0d0b37539c30c8ff25ea5b1cfa95ecd4587f048434348a1c91ec010418553afb"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_matched_public_cases_v1.json",
+      "rows": 64,
+      "sha256": "5b708600dba78db9e4ee676650bc5e1f6b3269d52179a8e45d5d45fee55219bb"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_taste_public_exposures_v2.json",
+      "rows": 8,
+      "sha256": "a766d20778191280122a6b498b9bcb34907bfac761152ae7c3cf4df0fb9c5aa1"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_taste_matched_dose_public_exposures_v2.json",
+      "rows": 12,
+      "sha256": "9b08e38927187c6f43d8659603e27e0f5397034e01143e665ab01a139a64e845"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_taste_template_direction_public_exposures_v2.json",
+      "rows": 24,
+      "sha256": "bf4d67ca16519a133f263d2da4b7a270bcd7a259a7cab4b8e8c85a04baa4f424"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_taste_propagation_public_exposures_v2.json",
+      "rows": 24,
+      "sha256": "7978b729aedb2b01b93c9c86e115d2f2d95cdb0e50480edb59db6d5bebb080bf"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_negation_public_cases_v1.json",
+      "rows": 32,
+      "sha256": "4308e7977e36eb731948193cce27ffa399421bf1bd8bbdd4e42dfa7cc6f4a8ff"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_cue_class_public_cases_v1.json",
+      "rows": 48,
+      "sha256": "57a55d89097ab1b955eb4e6bab38d48a4108aa24608b96827f3d27830fc7bf8c"
+    },
+    {
+      "collisions": 0,
+      "commit": "b4b2d1d01c923cd37bce537973047261c585cbe6",
+      "path": "experiments/bert_cue_heldout_frames_cases_v1.json",
+      "rows": 24,
+      "sha256": "7a10dbcb598e48c2e8f56e2b75d8c03188ec04ca7a21ac071aea4b1e8294162c"
+    },
+    {
+      "collisions": 0,
+      "commit": "d5b23ff25134e6a22084bc0d9f1c8edab1863211",
+      "path": "experiments/bert_cue_factorial_cases_v1.json",
+      "rows": 48,
+      "sha256": "b91eba1e0a52f6a183a59b0bfbb365dd54d67341bd74a4fb56325e72a7f45d4f"
+    },
+    {
+      "collisions": 0,
+      "commit": "b75e5bcc3a866a9af56ac1ac3ba54c6abe1691a4",
+      "path": "experiments/bert_cue_dose_response_cases_v1.json",
+      "rows": 32,
+      "sha256": "6205dc2c1c2e779e98df2366410221c04845758549f9e79cd5fa15e51a8fb07a"
+    },
+    {
+      "collisions": 0,
+      "commit": "0d24bddfa3a8f1d62fa7d106614a145db7eae873",
+      "path": "experiments/bert_color_edit_public_cases_v1.json",
+      "rows": 37,
+      "sha256": "4f00000cf205137347d551fc2837e082ac632a515e92c1e5893b3312f1f71623"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_agreement_exposures_v2.json",
+      "rows": 96,
+      "sha256": "224d683291b5b4f3a617697c8f9811351cf63bef19958fff9870c943e88fcdbc"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_agreement_exposures_v3.json",
+      "rows": 96,
+      "sha256": "6945a478e3af37083af055bf20bf65628fa979e0ee8b253ea8bacb475cb9e9f2"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_agreement_exposures_v4.json",
+      "rows": 96,
+      "sha256": "1f9ae67040646341097414f5ef6da1f66d0ccc5f0be47deeee36cfe66550e32e"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_agreement_exposures_v5.json",
+      "rows": 96,
+      "sha256": "34db577a211d6036e7803b8cdb6aaab35687b56974de8cf1ac6bccbf3272fb3c"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_agreement_public_cases_v1.json",
+      "rows": 96,
+      "sha256": "20a8ce96bab80c1f3b19ca86ac43e5d32f62c4b4a9bbd3c23e1a3fc9abfd91e5"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_taste_public_cases_v1.json",
+      "rows": 8,
+      "sha256": "362b84af462e7f5bb4ccbb365c8ab5ee1bc96845ee6021df23d6d08c298acad8"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_taste_matched_dose_public_cases_v1.json",
+      "rows": 12,
+      "sha256": "983be330b6691ce23986f26e50a345f77ca5cf46dd28a660a3a012a2cf598a7c"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_taste_template_direction_public_cases_v1.json",
+      "rows": 24,
+      "sha256": "e59f5e1da0b3ce8c99ea9c231b4998e1c1e685d09c20bff4fdb734dc4910256f"
+    },
+    {
+      "collisions": 0,
+      "commit": "2090fe8d1158dc7c9bb309563d76a5d842bc8d8b",
+      "path": "experiments/bert_taste_propagation_public_cases_v1.json",
+      "rows": 24,
+      "sha256": "341300932b0dab6d4004c3dd7007d73500162f8d945a91ca50538b9e2802c979"
+    },
+    {
+      "collisions": 0,
+      "commit": "f79dc502ff85b467b0682f4e8d168fbeb776cadf",
+      "path": "experiments/bert_color_preference_public_cases_v2.json",
+      "rows": 37,
+      "sha256": "f938cee4acab09d70f3d827e6172a62d273a5c621c35b6e3e47bd46303aa5a10"
+    },
+    {
+      "collisions": 0,
+      "commit": "8c03137ccee6664e4ace2dd324f7b0108ab88a28",
+      "path": "experiments/bert_color_edit_public_exposures_v2.json",
+      "rows": 37,
+      "sha256": "2129d9642548b69928e9e3f4bcb8d044e0383b9671a3f01fe9bb0754ef3a7824"
+    },
+    {
+      "collisions": 0,
+      "commit": "a49cec14227ac1823b67f63e2793b513210fca7c",
+      "path": "experiments/cross_model_agreement_cases_v1.json",
+      "rows": 32,
+      "sha256": "b1d6dbad76240f07be3a55196ace982767400b60e497d4e7fc75aaae82c8c503"
+    },
+    {
+      "collisions": 0,
+      "commit": null,
+      "path": "pending:bert_cue_context_transfer_cases_v1.json",
+      "rows": 24,
+      "sha256": "4fb31c4b49c24e78f6a4b0b59d928ebb6204a55ecdc2c9c4cd55528700d592a7"
+    }
+  ],
+  "status": "pass",
+  "within_new_expected_relations": 32,
+  "within_new_pairs": 2016,
+  "within_new_unexpected_collisions": []
+}

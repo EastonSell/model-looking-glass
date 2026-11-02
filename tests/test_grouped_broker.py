@@ -256,7 +256,8 @@ class GroupedBrokerTests(unittest.TestCase):
                 receive(ticket, 1)
         self.assertIsNone(caught.exception.__context__)
         self.assertTrue(broker.quarantined)
-        ticket.release()
+        with self.assertRaises(GroupedBrokerUnavailable):
+            ticket.release()
         with self.assertRaises(GroupedBrokerUnavailable):
             first.dispose()
         with self.assertRaises(GroupedBrokerUnavailable):
@@ -367,7 +368,8 @@ class GroupedBrokerTests(unittest.TestCase):
             sys.settrace(None)
         self.assertIsNone(caught.exception.__context__)
         self.assertTrue(broker.quarantined)
-        ticket.release()
+        with self.assertRaises(GroupedBrokerUnavailable):
+            ticket.release()
         with self.assertRaises(GroupedBrokerUnavailable):
             first.dispose()
         with self.assertRaises(GroupedBrokerUnavailable):

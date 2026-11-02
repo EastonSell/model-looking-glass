@@ -1,0 +1,16 @@
+{
+  "added_records": 64,
+  "bidirectional_comparisons": 1872000,
+  "other_known_sequences": 2600,
+  "own_planned_records": 80,
+  "predecessor_sha256": "ef42683a664dda450e82c69afedda34a8a34f2daf9f50f2db54f6c9d846f07e5",
+  "prior_records_preserved": 723,
+  "recorded_utc": "2026-10-29T10:32:28.289258+00:00",
+  "relations": 0,
+  "saved_forward_observed_at_check": true,
+  "schema": "agreement-subject-postlaunch-exposure-observation-v1",
+  "scope": "Operator post-launch public-inventory comparison; the child remains bound to v27. A missing saved forward is not proof that no forward occurred.",
+  "subject_sequences": 720,
+  "v28_revision": "055e44a47503122826eaef05ad5f39dae7a60ac5",
+  "v28_sha256": "2e883a9694e42f0eee8c2a82448f8b0a68b28ab91ffefa12ef57fd74b0ebb9f2"
+}

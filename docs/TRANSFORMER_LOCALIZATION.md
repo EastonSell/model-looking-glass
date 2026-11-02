@@ -5,6 +5,32 @@
 localization comparator after encoding explicit source coordinates. It does not
 automatically accept or infer metadata from an arbitrary model hook.
 
+## DistilBERT encoder-forward comparisons
+
+For results produced by `trace_distilbert_masked_lm`, callers may pass
+`encoder_contexts=(reference.encoder_context, candidate.encoder_context)` and
+an explicit `expected_input_differences` tuple to `compare_transformer_traces`.
+Use `()` for identical input IDs, or list exactly the changed `(batch, token)`
+positions. The contract requires identical complete masks and input shapes,
+checks all input ID differences against that exact set, and verifies the full
+selected layer/module/sample/token event policy, run identity, order, forward
+and invocation metadata on each side. It checks recorded model dimensions;
+it does not authenticate model weights, runtime, provenance, or the truth of a
+producer-supplied context. Local token coordinates are not semantic alignment.
+Keep the explicit completion, pairing and execution-order attestations: the
+caller must verify model and runtime correspondence, tokenizer/semantic
+alignment and the producer's cooperative ownership. A missing or inconsistent
+context makes this opt-in comparison inconclusive. The returned context check
+reports difference positions, but not the input IDs themselves.
+
+This first contract is limited to the adapter's single eager DistilBERT
+masked-LM encoder forward. It does not validate T5, decoder events, generation
+or arbitrary hooks. It leaves the underlying event's generation fields unknown.
+Legacy calls without the opt-in arguments retain their previous behavior.
+Contexts retain full input IDs and masks and may contain sensitive data.
+
+## Generation-aware comparisons
+
 ```python
 from looking_glass.trace_schema import TraceEvent
 from looking_glass.transformer_localization import TensorObservation, compare_transformer_traces

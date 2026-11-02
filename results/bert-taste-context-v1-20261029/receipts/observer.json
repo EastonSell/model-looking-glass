@@ -1,0 +1,27 @@
+{
+  "bytecode_prefix_empty": true,
+  "child_exit_code": 0,
+  "child_reaped": true,
+  "journals": {
+    "drink.jsonl": {
+      "sha256": "e6810094bee2ac4cdccfcd8913143368296fd204ff6ca44eca4cef6b5be948ea",
+      "size": 1002880
+    },
+    "sauce.jsonl": {
+      "sha256": "23f481e9dca72ffee6969cef3c52ca1fa961ce979a6ed4d147c579a7be9b9a26",
+      "size": 1002983
+    },
+    "tea.jsonl": {
+      "sha256": "addcd541275187defa9bd1baf2cb41871812f3fe6f6c8a284e669b44ba5f01ac",
+      "size": 1002414
+    },
+    "water.jsonl": {
+      "sha256": "c1c83d2b0fd1e54f3ca9272a09a5abd293a99dbeb215dfd763fbfbdb100a678e",
+      "size": 1002907
+    }
+  },
+  "result_sha256": "19178494cd26742b6282ed15cbffbc159a836a1433d6fe4183655c7c0c4cd94b",
+  "source_commit": "bb2ccb0d4b674a4e2c90be4952ccff5195e8730a",
+  "source_unchanged": true,
+  "status": "complete"
+}

@@ -1,0 +1,15 @@
+{
+  "card_sha256": "f6e174110bcca104c9ec0cf3ba0abce986dbf7f7e5aadcbcda089418b6419563",
+  "commitment_sha256": "f79c8fdb977a459a803f3a92a45ba7a82dc2fedd1e14349432371b40da9c1671",
+  "custodian": "schema",
+  "eos_rule": "strip-one-final-eos",
+  "no_prefix_collision": true,
+  "no_variable_word_collision": true,
+  "private_screen_rows": 96,
+  "proposal_revision": "bc18fda362a102adda8ad1d94839089a83019d3e",
+  "proposal_sha256": "a118dde671351d21c519b6a61957e9478c9501bac52d55aa34e8394772e933d5",
+  "public_rows": 24,
+  "schema": "flan-weight-edit-pool-comparison-v1",
+  "scope": "Aggregate custodian check of the fixed local pool and all screened rows against the pinned public proposal; no claim about unknown exposure or execution timing.",
+  "selection_card_sha256": "05574d7c513716d946d70c67f190886a81b221cef0b17220c7f7b6135b411eca"
+}

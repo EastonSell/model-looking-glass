@@ -82,9 +82,19 @@ class CohortState:
     exceptions and host/device reservations remain the coordinator's custody.
     """
 
-    def __init__(self, cohort_id, members, profile, *, observation=None):
+    def __init__(self, cohort_id, members, profile, *, observation=None, completion_authority=None,
+                 completion_broker=None):
         if observation is not None and type(observation) is not GroupedObservation:
             raise ValueError('an exact trusted observation is required')
+        if completion_authority is not None:
+            from .owner_completion import OwnerCompletionAuthority
+            if type(completion_authority) is not OwnerCompletionAuthority:
+                raise ValueError('an exact trusted completion authority is required')
+        if completion_broker is not None:
+            from .grouped_broker import GroupedBroker
+            if (type(completion_broker) is not GroupedBroker or completion_authority is None
+                    or completion_authority._broker is not completion_broker):
+                raise ValueError('completion broker must be bound to the exact authority')
         if not _name(cohort_id) or type(members) is not tuple or not 2 <= len(members) <= 256:
             raise ValueError('a bounded, identified cohort of at least two members is required')
         if type(profile) is not BatchProfile or type(profile.contract) is not ForwardContract:
@@ -112,6 +122,8 @@ class CohortState:
         self._condition = Condition(Lock())
         self._state = _Open(False, 0)
         self._observation = observation
+        self._completion_authority = completion_authority
+        self._completion_broker = completion_broker
         self._published_ns = None
 
     def _index(self, job_id):
@@ -215,7 +227,22 @@ class CohortState:
         return self._publish('failure', error_code, quarantine_required)
 
     def _publish(self, kind, data, quarantine):
+        health_gate = None
+        health_acquired = False
         try:
+            authority = self._completion_authority
+            if kind == 'success' and authority is not None:
+                # The dispatcher owns this immutable outcome and its host
+                # claim. Validate and check the physical owner without holding
+                # either the cohort condition or the decision lock.
+                self._validate_outcome(data)
+                authority._before_device()
+                if self._completion_broker is not None:
+                    # Wait without the cohort condition or authority decision
+                    # lock. A pending health read cannot be mistaken for a
+                    # healthy decision, and cancellation remains responsive.
+                    health_gate = self._completion_broker._health_lock
+                    health_acquired = health_gate.acquire()
             with self._condition:
                 old = self._state
                 self._check_state(old)
@@ -227,7 +254,7 @@ class CohortState:
                     raise RuntimeError('a prelaunch cancellation is required')
                 if kind == 'failure' and old.launch_committed and not quarantine:
                     raise ValueError('a failure after launch requires quarantine')
-                if kind == 'success':
+                if kind == 'success' and authority is None:
                     self._validate_outcome(data)
                 completions = []
                 for index, member in enumerate(self._members):
@@ -246,7 +273,17 @@ class CohortState:
                                                 quarantine, tuple(completions))
                 if self._observation is not None:
                     self._published_ns = self._observation._stamp()
-                self._state = publication
+                if kind == 'success' and authority is not None:
+                    # Tensor validation and publication construction have
+                    # already completed. Order only the pointer commit against
+                    # the owner's nonblocking sticky unsafe signal.
+                    with authority._decision_lock:
+                        if (authority.unsafe or (self._completion_broker is not None
+                                and (self._completion_broker._fatal or self._completion_broker._quarantined))):
+                            raise CohortUnavailable('owner became unsafe before publication')
+                        self._state = publication
+                else:
+                    self._state = publication
                 self._condition.notify_all()
         except BaseException:
             # The outer exception region begins before acquiring the lock. A
@@ -254,6 +291,9 @@ class CohortState:
             # preserves a publication that was already committed.
             self.mark_unknown()
             raise
+        finally:
+            if health_acquired:
+                health_gate.release()
         return publication
 
     def _validate_outcome(self, outcome):

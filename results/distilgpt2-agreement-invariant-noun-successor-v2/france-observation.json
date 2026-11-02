@@ -1,0 +1,12 @@
+{
+  "schema": "agreement-invariant-v2-post-start-public-input-observation-v1",
+  "recorded_utc": "2026-10-29T14:04:27.9362599+00:00",
+  "observer_start_utc": "2026-10-29T14:03:20.4091234+00:00",
+  "invariant_case_sha256": "188782606abd576cde029408bb34975e7fd7ac2113bf17299dbb7e1aa2ddd76b",
+  "france_case_sha256": "c8dd418bea948c8ca2b4d1e39e696374a28bd2f911bb16707415c38170fbba82",
+  "france_public_head": "2693a9eb",
+  "public_comparison_sha256": "49453de1a125bcfe10d53ea659191e5cf28b66e852273f3d6541cb8e6489f9fc",
+  "comparisons": "612 invariant base/answer sequences versus 73 named France sequences: zero prefix relations",
+  "owner_report": "France owner reported no checkpoint load or forward at this observation",
+  "scope": "Recorded after observer start; public inputs only, operator and owner reports are cooperative, no protected or unknown history is certified."
+}

@@ -1,0 +1,19 @@
+{
+  "annotation_sha256": "e8c7f7908f1d7278341fae127d0da654f102f11bd7b21d8aeefa635b8c810b6f",
+  "auditor_sha256": "4ac2d8bd9b61d5a4bbfa914851039ba5cf40b8a5b10fc694cd6edc1e61f881ee",
+  "distinct_donors": 3,
+  "distinct_images": 19,
+  "donor_references": 16,
+  "https_checked": true,
+  "limitations": [
+    "Third-party mirrors do not independently authenticate official COCO origin.",
+    "Input bytes/split do not establish pretraining independence, execution or chronology."
+  ],
+  "manifest_sha256": "6fc5159a57cf07a91e93c8bc38f27d3f5925877083532ce92fec828c6d777bfb",
+  "prior_manifest_sha256": "8b5cbfa3b2ab2786721b2c7f2e1975256aaf0864dd34784ed4bfb5e609706207",
+  "selection_receipt_sha256": "5751572eb746d472bd2b960487f197bab658cb23b7e455d9c546009170265485",
+  "selection_revision": "20ba2249f8e385d1f81048ef27484c012afae93f",
+  "status": "saved_input_consistency_verified",
+  "support_sha256": "50005edb939d225bf58e1d3353c36df98279e72302d52b7caea4d5ded43c0717",
+  "target_images": 16
+}

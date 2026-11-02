@@ -512,6 +512,7 @@ def test_bound_cases_reject_changed_manifest_or_tokenizer_alignment():
         control.bind_public_cases(raw, manifest['rows'], manifest['groups'])
 
 
+@pytest.mark.skipif(os.name != "nt", reason="requires Windows Job or named-pipe integration")
 def test_supervisor_preserves_nonzero_child_output_and_exit(tmp_path):
     control = _controller()
     out = tmp_path / 'new-run'
@@ -526,6 +527,7 @@ def test_supervisor_preserves_nonzero_child_output_and_exit(tmp_path):
         control.supervise(command, out, [], os.environ.copy())
 
 
+@pytest.mark.skipif(os.name != "nt", reason="requires Windows Job or named-pipe integration")
 def test_supervisor_counts_unpublished_partial_tensor_after_failed_child(tmp_path):
     control = _controller()
     out = tmp_path / 'partial-run'
@@ -553,6 +555,7 @@ def test_uncertain_cleanup_does_not_read_live_tensor_files(tmp_path, monkeypatch
     assert observed['files'] == [] and 'pending' in observed['reason']
 
 
+@pytest.mark.skipif(os.name != "nt", reason="requires Windows Job or named-pipe integration")
 def test_supervisor_reports_verified_keyboard_interrupt_as_cancelled(tmp_path, monkeypatch):
     control = _controller()
     actual_popen = subprocess.Popen
@@ -574,6 +577,7 @@ def test_supervisor_reports_verified_keyboard_interrupt_as_cancelled(tmp_path, m
     assert verdict['cleanup_verified'] is True and verdict['child_reaped'] is True
 
 
+@pytest.mark.skipif(os.name != "nt", reason="requires Windows Job or named-pipe integration")
 def test_supervisor_bounds_log_overflow(tmp_path):
     control = _controller()
     out = tmp_path / 'overflow'
@@ -593,6 +597,7 @@ def test_deep_json_is_reported_as_incomplete(tmp_path):
     assert verdict['status'] == 'incomplete'
 
 
+@pytest.mark.skipif(os.name != "nt", reason="requires Windows Job or named-pipe integration")
 def test_owner_start_gate_times_out_without_permission(tmp_path):
     _controller()
     root = Path(__file__).resolve().parents[1]
@@ -608,6 +613,7 @@ def test_owner_start_gate_times_out_without_permission(tmp_path):
     child.stdin.close()
 
 
+@pytest.mark.skipif(os.name != "nt", reason="requires Windows Job or named-pipe integration")
 def test_owner_start_gate_accepts_exact_supervisor_signal(tmp_path):
     _controller()
     root = Path(__file__).resolve().parents[1]
@@ -622,6 +628,7 @@ def test_owner_start_gate_accepts_exact_supervisor_signal(tmp_path):
     assert marker.read_text() == 'started'
 
 
+@pytest.mark.skipif(os.name != "nt", reason="requires Windows Job or named-pipe integration")
 def test_lost_spawn_handle_never_signals_study_and_is_unverified(tmp_path, monkeypatch):
     control = _controller()
     root = Path(__file__).resolve().parents[1]
@@ -698,6 +705,13 @@ def test_source_binding_ignores_git_replace_and_environment_overrides(tmp_path, 
 
 def test_supervisor_closes_job_even_when_termination_fails(tmp_path, monkeypatch):
     control = _controller()
+    # Exercise the fake-job cleanup contract on any host; do not pretend this
+    # verifies native Windows Job assignment or mutate process-global os.name.
+    if os.name != 'nt':
+        from types import SimpleNamespace
+        monkeypatch.setattr(control, 'os', SimpleNamespace(**dict(vars(os), name='nt')))
+        monkeypatch.setattr(control, 'subprocess', SimpleNamespace(
+            **dict(vars(subprocess), DETACHED_PROCESS=0)))
     import scripts.v2_source_guards as guards
     jobs = []
     class FailingJob:

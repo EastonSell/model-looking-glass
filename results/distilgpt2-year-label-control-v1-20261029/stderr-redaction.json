@@ -1,0 +1,10 @@
+{
+  "operation": "Replace each occurrence of the absolute execution checkout path with <SOURCE_ROOT>; retain all other bytes.",
+  "original_bytes": 1452,
+  "original_sha256": "1937a444fb8169e0f3b1adc7f7198f262875d85c4630383f8eedec668be8169f",
+  "projection_bytes": 952,
+  "projection_sha256": "0c9d3176ff1dfd47f33d77b166487de301810628f731f9863706fab735c2b0a4",
+  "replacement_count": 5,
+  "schema": "year-label-stderr-redaction-v1",
+  "scope": "The unchanged direct-process receipt binds the privately retained original stderr, not this derivative. The projection alone cannot attest the original or the redaction operation."
+}

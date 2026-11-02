@@ -1,0 +1,376 @@
+{
+  "device": "cpu",
+  "exif_transpose": false,
+  "forwards": 2,
+  "image_metadata": {
+    "box_coordinates": "processed-pixel-xyxy-exclusive",
+    "cls_token_index": 0,
+    "grid_shape": [
+      14,
+      14
+    ],
+    "patch_order": "row-major",
+    "patch_shape": [
+      16,
+      16
+    ],
+    "pixel_shape": [
+      1,
+      3,
+      224,
+      224
+    ],
+    "sequence_length": 197
+  },
+  "image_sha256": "41a423af33123a924fd6b38d5318c0f9db0f83c139d32b718b2b09fc6bace310",
+  "logits_match_reference_bits": true,
+  "model": "WinKawaks/vit-tiny-patch16-224",
+  "model_asset_sha256": {
+    "config.json": "7e5aeb1add0a832153071a858bb18145cafb809e54e7fea4e5dc1183c82078f5",
+    "model.safetensors": "a9146f3ee7cf6de399190132627e4aef1aeddd13692f5b333f24629dd36c37b0",
+    "preprocessor_config.json": "90d1ae427c27d2b9dcb01f6a62ba96aa67aac2de1697c59cd212055b5035c4a2"
+  },
+  "note": "This report stores hashes and metadata, not raw image, logits or activation vectors.",
+  "original_size_xy": [
+    640,
+    427
+  ],
+  "pillow_version": "11.3.0",
+  "processed_pixels_sha256": "4cadfa22b04ef1fb0ab450559b8ceae8a3311f1901cd7ca6ebcf9053f7b17228",
+  "records": [
+    {
+      "event": {
+        "batch_axis": 0,
+        "batch_positions": [
+          0
+        ],
+        "capture_mode": "direct",
+        "device": "cpu",
+        "dtype": "torch.float32",
+        "forward_index": 0,
+        "generation": {
+          "cache_length_after": null,
+          "cache_length_before": null,
+          "cache_position": null,
+          "generation_step": null,
+          "stage": "unknown",
+          "use_cache": null
+        },
+        "identity": {
+          "job_id": null,
+          "request_id": null,
+          "run_id": "vit-cpu-example",
+          "sample_id": null
+        },
+        "invocation": 0,
+        "layer_index": 2,
+        "module_kind": "vit_attention",
+        "module_path": "vit.encoder.layer.2.attention",
+        "output_path": [],
+        "saved_device": "cpu",
+        "saved_dtype": "torch.float32",
+        "saved_shape": [
+          192
+        ],
+        "schema_version": "1.0",
+        "sequence": 0,
+        "shape": [
+          1,
+          197,
+          192
+        ],
+        "token_axis": 1,
+        "token_positions": [
+          0
+        ]
+      },
+      "patch_column": null,
+      "patch_row": null,
+      "processed_pixel_box_xyxy": null,
+      "token_kind": "cls",
+      "value_sha256": "752790943023e77bea18465e24ffdfe3ba7ac4571aac413a34edd7a42a6baf8d"
+    },
+    {
+      "event": {
+        "batch_axis": 0,
+        "batch_positions": [
+          0
+        ],
+        "capture_mode": "direct",
+        "device": "cpu",
+        "dtype": "torch.float32",
+        "forward_index": 0,
+        "generation": {
+          "cache_length_after": null,
+          "cache_length_before": null,
+          "cache_position": null,
+          "generation_step": null,
+          "stage": "unknown",
+          "use_cache": null
+        },
+        "identity": {
+          "job_id": null,
+          "request_id": null,
+          "run_id": "vit-cpu-example",
+          "sample_id": null
+        },
+        "invocation": 0,
+        "layer_index": 2,
+        "module_kind": "vit_attention",
+        "module_path": "vit.encoder.layer.2.attention",
+        "output_path": [],
+        "saved_device": "cpu",
+        "saved_dtype": "torch.float32",
+        "saved_shape": [
+          192
+        ],
+        "schema_version": "1.0",
+        "sequence": 1,
+        "shape": [
+          1,
+          197,
+          192
+        ],
+        "token_axis": 1,
+        "token_positions": [
+          1
+        ]
+      },
+      "patch_column": 0,
+      "patch_row": 0,
+      "processed_pixel_box_xyxy": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "token_kind": "patch",
+      "value_sha256": "7224d6727b1e22ab156796ebb70155e6b8a84d8bfaac72156e8847bf9bd7529c"
+    },
+    {
+      "event": {
+        "batch_axis": 0,
+        "batch_positions": [
+          0
+        ],
+        "capture_mode": "direct",
+        "device": "cpu",
+        "dtype": "torch.float32",
+        "forward_index": 0,
+        "generation": {
+          "cache_length_after": null,
+          "cache_length_before": null,
+          "cache_position": null,
+          "generation_step": null,
+          "stage": "unknown",
+          "use_cache": null
+        },
+        "identity": {
+          "job_id": null,
+          "request_id": null,
+          "run_id": "vit-cpu-example",
+          "sample_id": null
+        },
+        "invocation": 0,
+        "layer_index": 2,
+        "module_kind": "vit_intermediate",
+        "module_path": "vit.encoder.layer.2.intermediate",
+        "output_path": [],
+        "saved_device": "cpu",
+        "saved_dtype": "torch.float32",
+        "saved_shape": [
+          768
+        ],
+        "schema_version": "1.0",
+        "sequence": 2,
+        "shape": [
+          1,
+          197,
+          768
+        ],
+        "token_axis": 1,
+        "token_positions": [
+          0
+        ]
+      },
+      "patch_column": null,
+      "patch_row": null,
+      "processed_pixel_box_xyxy": null,
+      "token_kind": "cls",
+      "value_sha256": "6032509f8fc1a358ad454bf9f2be8950ceec457db07868ae96b03f09b5652f9d"
+    },
+    {
+      "event": {
+        "batch_axis": 0,
+        "batch_positions": [
+          0
+        ],
+        "capture_mode": "direct",
+        "device": "cpu",
+        "dtype": "torch.float32",
+        "forward_index": 0,
+        "generation": {
+          "cache_length_after": null,
+          "cache_length_before": null,
+          "cache_position": null,
+          "generation_step": null,
+          "stage": "unknown",
+          "use_cache": null
+        },
+        "identity": {
+          "job_id": null,
+          "request_id": null,
+          "run_id": "vit-cpu-example",
+          "sample_id": null
+        },
+        "invocation": 0,
+        "layer_index": 2,
+        "module_kind": "vit_intermediate",
+        "module_path": "vit.encoder.layer.2.intermediate",
+        "output_path": [],
+        "saved_device": "cpu",
+        "saved_dtype": "torch.float32",
+        "saved_shape": [
+          768
+        ],
+        "schema_version": "1.0",
+        "sequence": 3,
+        "shape": [
+          1,
+          197,
+          768
+        ],
+        "token_axis": 1,
+        "token_positions": [
+          1
+        ]
+      },
+      "patch_column": 0,
+      "patch_row": 0,
+      "processed_pixel_box_xyxy": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "token_kind": "patch",
+      "value_sha256": "2c538c089ba2ab6b2c00d13a4be43a23c6a71ed93501f76ba4c8d8786662358e"
+    },
+    {
+      "event": {
+        "batch_axis": 0,
+        "batch_positions": [
+          0
+        ],
+        "capture_mode": "direct",
+        "device": "cpu",
+        "dtype": "torch.float32",
+        "forward_index": 0,
+        "generation": {
+          "cache_length_after": null,
+          "cache_length_before": null,
+          "cache_position": null,
+          "generation_step": null,
+          "stage": "unknown",
+          "use_cache": null
+        },
+        "identity": {
+          "job_id": null,
+          "request_id": null,
+          "run_id": "vit-cpu-example",
+          "sample_id": null
+        },
+        "invocation": 0,
+        "layer_index": 2,
+        "module_kind": "vit_block",
+        "module_path": "vit.encoder.layer.2",
+        "output_path": [],
+        "saved_device": "cpu",
+        "saved_dtype": "torch.float32",
+        "saved_shape": [
+          192
+        ],
+        "schema_version": "1.0",
+        "sequence": 4,
+        "shape": [
+          1,
+          197,
+          192
+        ],
+        "token_axis": 1,
+        "token_positions": [
+          0
+        ]
+      },
+      "patch_column": null,
+      "patch_row": null,
+      "processed_pixel_box_xyxy": null,
+      "token_kind": "cls",
+      "value_sha256": "0d6f54712547f270d6ccb2dcd49498d5be7a4fbc8bdf721768c8df8a5a2b21ee"
+    },
+    {
+      "event": {
+        "batch_axis": 0,
+        "batch_positions": [
+          0
+        ],
+        "capture_mode": "direct",
+        "device": "cpu",
+        "dtype": "torch.float32",
+        "forward_index": 0,
+        "generation": {
+          "cache_length_after": null,
+          "cache_length_before": null,
+          "cache_position": null,
+          "generation_step": null,
+          "stage": "unknown",
+          "use_cache": null
+        },
+        "identity": {
+          "job_id": null,
+          "request_id": null,
+          "run_id": "vit-cpu-example",
+          "sample_id": null
+        },
+        "invocation": 0,
+        "layer_index": 2,
+        "module_kind": "vit_block",
+        "module_path": "vit.encoder.layer.2",
+        "output_path": [],
+        "saved_device": "cpu",
+        "saved_dtype": "torch.float32",
+        "saved_shape": [
+          192
+        ],
+        "schema_version": "1.0",
+        "sequence": 5,
+        "shape": [
+          1,
+          197,
+          192
+        ],
+        "token_axis": 1,
+        "token_positions": [
+          1
+        ]
+      },
+      "patch_column": 0,
+      "patch_row": 0,
+      "processed_pixel_box_xyxy": [
+        0,
+        0,
+        16,
+        16
+      ],
+      "token_kind": "patch",
+      "value_sha256": "55b2824d37bd72c82b59025c6e886bdc0cc8922d4dbed41b093522a75f5c7fa2"
+    }
+  ],
+  "revision": "77d1485af66b34d4ed0fe95dbb0c60c7496f950b",
+  "schema": "vit-trace-cpu-example-v1",
+  "selected_values_match_reference_bits": true,
+  "tensor_bytes": 9216,
+  "top_logit_index": 861,
+  "torch_version": "2.8.0+cu128",
+  "transformers_version": "4.57.3"
+}

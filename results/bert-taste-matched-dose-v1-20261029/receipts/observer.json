@@ -1,0 +1,35 @@
+{
+  "bytecode_prefix_empty": true,
+  "child_exit_code": 0,
+  "child_reaped": true,
+  "journals": {
+    "cake.jsonl": {
+      "sha256": "2167be12c5d4be6ce4b9636adf2c7556b8cc764ab6cd6ce67cc99f237ae1989e",
+      "size": 1499481
+    },
+    "cocoa.jsonl": {
+      "sha256": "263ac9945042beb36d5b6251d1f2daba4e31add62c98b6195e517e06f42663e8",
+      "size": 1499939
+    },
+    "coffee.jsonl": {
+      "sha256": "6c3593951cb7436d6938037776ac6b764bf7a37df8a7776494674562892f8f04",
+      "size": 1500102
+    },
+    "milk.jsonl": {
+      "sha256": "aeef7bf17e322a9726cb23a7d1f3d022dc8a4daa5f4720487316e5d8214eaab8",
+      "size": 1499051
+    },
+    "pudding.jsonl": {
+      "sha256": "1bd33200cf5ab2d8ec6c6225dec0741f823fc44237c79154f195f77814b41483",
+      "size": 1500514
+    },
+    "soup.jsonl": {
+      "sha256": "f3cdadacaf6db52c689abd7de1ba90f251177d7fa6beb22ee8ed75da5af0566b",
+      "size": 1499359
+    }
+  },
+  "result_sha256": "cad47fbb5599f5ec44161d59ddbfc6d26bd904b399f23c68089b709921ec194e",
+  "source_commit": "74227e9909e4a485296065aced0368a1ccafba64",
+  "source_unchanged": true,
+  "status": "complete"
+}

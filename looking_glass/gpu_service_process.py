@@ -34,6 +34,7 @@ class _Config:
     profiles: tuple
     source_base_sha256: str
     asset_manifest_sha256: str
+    serving_memory_path: Path | None = None
 
 
 def _absolute(value, *, directory):
@@ -55,7 +56,9 @@ def _parse_config(data):
                            parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
         fields = {'schema', 'repo_root', 'cache_root', 'workspace_root', 'stop_path',
                   'teams', 'profiles', 'source_base_sha256', 'asset_manifest_sha256'}
-        if type(value) is not dict or set(value) != fields or value['schema'] != 'gpu-service-owner-v1':
+        if (type(value) is not dict or set(value) not in (fields, fields | {'observe_serving_memory'})
+                or value['schema'] != 'gpu-service-owner-v1'
+                or ('observe_serving_memory' in value and value['observe_serving_memory'] is not True)):
             raise ValueError('invalid owner configuration')
         repo = _absolute(value['repo_root'], directory=True)
         cache = _absolute(value['cache_root'], directory=True)
@@ -80,8 +83,9 @@ def _parse_config(data):
             profiles.append((*paths, item['approved_profile_id']))
         if len({item[3] for item in profiles}) != 3:
             raise ValueError('profile pins must be distinct')
+        memory_path = stop.parent / 'serving-memory.json' if value.get('observe_serving_memory') else None
         return _Config(repo, cache, workspace, stop, teams, tuple(profiles),
-                       value['source_base_sha256'], value['asset_manifest_sha256'])
+                       value['source_base_sha256'], value['asset_manifest_sha256'], memory_path)
     except (KeyError, TypeError, ValueError, UnicodeError, RecursionError, OSError):
         raise ValueError('invalid private service configuration') from None
 
@@ -108,6 +112,17 @@ def _result_code(result, *, monitor_failed, monitor_alive):
     return 32
 
 
+def _drain_stop_monitor(stop, monitor, failed):
+    """Join the host-only stop-file monitor before clean attestation.
+
+    This monitor only checks the stop path and signals an event; it must not
+    issue CUDA work or own GPU resources after the owner's device drain.
+    """
+    stop.set()
+    monitor.join(timeout=2)
+    return monitor.is_alive() is False and len(failed) == 1 and failed[0] is False
+
+
 def _owner(config):
     """Run only as the direct child of the identity-aware supervisor."""
     global _LEASE_HOLD
@@ -127,10 +142,12 @@ def _owner(config):
     from .device_identity import DeviceIdentity
     from .device_lease import DeviceLease
     from .supervisor import OwnerSession
-    from .gpu_service import ProfileFiles, _load_profile_registry, _run_bound_owner, _TorchServiceBackend
-    from .trusted_service_profile import (prepare_trusted_source, build_trusted_service_identity,
-        resolve_trusted_service_profiles, verify_trusted_cpu_model, verify_trusted_device_tie,
-        JOB_COMMITMENT)
+    from .gpu_service import (ProfileFiles, _load_profile_registry, _run_bound_owner,
+                              _TorchServiceBackend, _mark_unsafe)
+    from .trusted_service_profile import (prepare_trusted_source, verify_trusted_cpu_model,
+        verify_trusted_device_tie, JOB_COMMITMENT)
+    from .custody_service_profile import (build_custody_service_identity,
+                                          resolve_custody_service_profiles)
 
     session = OwnerSession.from_environment()
     _require_workspace_spec(session, config.repo_root)
@@ -151,7 +168,7 @@ def _owner(config):
     latest = [None]
 
     def live_keys(actual_identity):
-        live = build_trusted_service_identity(source, actual_identity, session, lease)
+        live = build_custody_service_identity(source, actual_identity, session, lease)
         latest[0] = live
         return live.keys
 
@@ -160,7 +177,7 @@ def _owner(config):
             live = latest[0]
             if live is None or live.keys != keys:
                 raise RuntimeError('live service identity was not reconstructed')
-            checked = resolve_trusted_service_profiles(candidate, live, pins)
+            checked = resolve_custody_service_profiles(candidate, live, pins)
             # The independently checked measured estimates establish
             # eligibility. The worker reserves the larger fixed commitment.
             checked = (checked[0],
@@ -174,16 +191,25 @@ def _owner(config):
     backend = CheckedBackend(session=session, device_lease=lease, cache_dir=config.cache_root,
         team_ids=config.teams, live_key_builder=live_keys,
         verify_loaded_model=lambda model: verify_trusted_cpu_model(source, model),
-        verify_device_model=verify_trusted_device_tie, shutdown_timeout=10)
+        verify_device_model=verify_trusted_device_tie, shutdown_timeout=10,
+        serving_memory_path=config.serving_memory_path,
+        serving_memory_binding=None if config.serving_memory_path is None else {
+            'source_base_sha256': config.source_base_sha256,
+            'asset_manifest_sha256': config.asset_manifest_sha256,
+            'profile_ids': list(pins), 'owner_pid': os.getpid(),
+            'device_uuid': identity.gpu_uuid})
     stop = Event()
-    monitor, failed, _errors = _monitor_stop(config.stop_path, stop)
+    monitor, failed, _errors = _monitor_stop(config.stop_path, stop, on_failure=_mark_unsafe)
 
     def announce(server):
         session.send_startup(lease, _encode_ready(server, config.teams))
 
+    def before_attest():
+        return _drain_stop_monitor(stop, monitor, failed)
+
     try:
         result = _run_bound_owner(session, lease, backend=backend, registry=registry,
-                                  stop_event=stop, announce=announce)
+                                  stop_event=stop, announce=announce, before_attest=before_attest)
     finally:
         stop.set()
         monitor.join(timeout=2)

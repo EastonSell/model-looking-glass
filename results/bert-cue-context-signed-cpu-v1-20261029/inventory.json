@@ -1,0 +1,155 @@
+{
+  "files": [
+    {
+      "bytes": 10095,
+      "path": "README.md",
+      "sha256": "c93fb59dca4610b51d69c7cf9f41afdb529d7e31aa9adcea23f8c23364d9b18d"
+    },
+    {
+      "bytes": 3207,
+      "path": "REPLAY.md",
+      "sha256": "9e4e658fa2551761ec62bc21499cc7ed68d731333850f379b58331c46de62bdf"
+    },
+    {
+      "bytes": 28753,
+      "path": "audit_bert_cue_context_signed_full_saved.py",
+      "sha256": "d1a4b0b64744d773c634108252e814d8661bbe9146d5315fafbd1e180619c731"
+    },
+    {
+      "bytes": 14791,
+      "path": "baselines.csv",
+      "sha256": "e6118de88209cead4be9c56ca130c160ce72fb13af529449fd6111b0a84ad510"
+    },
+    {
+      "bytes": 49062,
+      "path": "bert-cue-context-signed-score-tv-subset-91f9960e.jsonl.gz",
+      "sha256": "7ab40cf95e3689d8c331cd5cc7ba26173acf42d4c63541ce8612de356d92d5ac"
+    },
+    {
+      "bytes": 7160,
+      "path": "derive_bert_cue_context_signed_subset.py",
+      "sha256": "f5b66cb25e5e93ce75bd71b29a15b28cad92bb35224112133cbd2a153f0f81ea"
+    },
+    {
+      "bytes": 162862,
+      "path": "effects.csv",
+      "sha256": "f1ac7afd89dafa7961c19acbe2018bc61ddebb3dbcb79330ee6d6cc4a56151d9"
+    },
+    {
+      "bytes": 496,
+      "path": "exit.json",
+      "sha256": "d6ee7b35cf13e9fc93b75d4fc384fe47c69aea1d63ede3b56ade1c911dffa444"
+    },
+    {
+      "bytes": 31028,
+      "path": "full-witness-audit.json",
+      "sha256": "a765b5db4a365cbe8643048e08ab8d811359a0f1ef9938308d87e8ae3adb608d"
+    },
+    {
+      "bytes": 7289,
+      "path": "independent-public-overlap.json",
+      "sha256": "88b8a79881a78bdb3641af61417c05e7af5baed4b75e17112a918ef447277c13"
+    },
+    {
+      "bytes": 5414,
+      "path": "independent-stream-check.json",
+      "sha256": "33038c7b0bb222d5b2f36434d557090657ad3c1ed9072130963e353bf3de4a04"
+    },
+    {
+      "bytes": 5711,
+      "path": "make-tables.py",
+      "sha256": "e4216aa92afe434fed007fb729c2cca7bed07936c5bfbdce61edb7d86b5ee264"
+    },
+    {
+      "bytes": 6004,
+      "path": "make-top-tokens.py",
+      "sha256": "ea2cc8cc0aa54abdd3eae136502215bf1b20f9fcb87715668d249373ad347f54"
+    },
+    {
+      "bytes": 25619,
+      "path": "manifest.json",
+      "sha256": "843649c3f105e26185d96f31d769b0585d219bb7a45ba445cf2c2548598927df"
+    },
+    {
+      "bytes": 1147,
+      "path": "pairs.csv",
+      "sha256": "774d7f1749e3ea711b9689038811ad09121685e428878fc40ebbabab0419e395"
+    },
+    {
+      "bytes": 3317,
+      "path": "preflight.json",
+      "sha256": "c3286daceb9990e258b721dd7674117e945328f6721cc0e8062a1f1d8c0c3df7"
+    },
+    {
+      "bytes": 11669,
+      "path": "protocol.md",
+      "sha256": "6dbcc7e9e13c66174ac688a0bebe69f1c9fa5f67fc46de4e99f3e340d5b0bc70"
+    },
+    {
+      "bytes": 7809,
+      "path": "public-exposure.json",
+      "sha256": "e30b269a2a29fd93ad4ab4f51e859e2599e3c6f167a5d7698ac6403f50efecfc"
+    },
+    {
+      "bytes": 13825,
+      "path": "recipients.csv",
+      "sha256": "c5846192df67cdbb627420b887a90aa550871ce625e8cb060fa10a6c16c8d364"
+    },
+    {
+      "bytes": 652610,
+      "path": "result.json",
+      "sha256": "0a788dfb0655ac8da55d94b1154fa240860850bf9464928b391d8cfa3327f62a"
+    },
+    {
+      "bytes": 21054,
+      "path": "review_bert_cue_context_signed_scores.py",
+      "sha256": "481f81b85b79ce7cb54f5a71dd3cfccd0d6d629d23289cab19db6f1f0faede03"
+    },
+    {
+      "bytes": 13184,
+      "path": "review_bert_cue_context_signed_subset.py",
+      "sha256": "33ed2473a0698877137f6002981a5b84280edf5d37116a891e1f3cd232e434ef"
+    },
+    {
+      "bytes": 34805,
+      "path": "score-audit.json",
+      "sha256": "80a373ff18193422fda4f487d4f4fd119c3fcceb503134f5ae657187550a393e"
+    },
+    {
+      "bytes": 3410,
+      "path": "started.json",
+      "sha256": "c69862836f26d8a23baf25fdd65dc3690368aff01106acc418ca37b1eebdef60"
+    },
+    {
+      "bytes": 34906,
+      "path": "subset-audit.json",
+      "sha256": "6afa5248f5368b7b9f75046b01c29efe8835208448d98d2b1bf43dbc71f1621c"
+    },
+    {
+      "bytes": 636,
+      "path": "subset-derivation.json",
+      "sha256": "90f04984ebb77df939278badbc280cd65dbaf568cbc6340ddd9afa2b4a224bc3"
+    },
+    {
+      "bytes": 305,
+      "path": "tokenizer-review.json",
+      "sha256": "c3c689654eefdd8029a0fc7ad535e416aafbcc6d846d07c576337a3f709eeb4f"
+    },
+    {
+      "bytes": 1332,
+      "path": "top-summary.json",
+      "sha256": "28392caf6c6fd17989da4e2e96430373b0cf933705aab9b21863ab6bc59ba034"
+    },
+    {
+      "bytes": 89013,
+      "path": "top-tokens.csv",
+      "sha256": "3c77d2875e6f073157ba7ed6e2f1badf756e88d384e19a34dcb6de6b972486d0"
+    },
+    {
+      "bytes": 2425,
+      "path": "tv_summary.csv",
+      "sha256": "713178042374d66676bd687dcfa92976d8b1df53d02fd34448e0df776ab2ea62"
+    }
+  ],
+  "schema": "bert-cue-context-signed-public-inventory-v1"
+}

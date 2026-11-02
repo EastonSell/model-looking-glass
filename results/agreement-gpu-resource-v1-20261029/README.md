@@ -69,8 +69,9 @@ known-exit timeout path returns after its child stop/wait and Windows Job
 finish calls; the saved artifacts do not include raw Job counts or a member
 inventory. That ordering is an inference from the source and terminal result,
 not independently recorded proof of process-tree or CUDA cleanup. The marker
-remained retained at the terminal observation; later device recovery requires
-a separate assessment.
+remained retained at the terminal observation. A subsequent [qualified manual
+recovery](RECOVERY.md) followed a separate assessment; it did not establish a
+clean teardown or turn the incomplete attempt into a profile.
 
 The operator recorded reports of concurrent CUDA-hidden CPU work, including
 synthetic hook tests and a public factorial study; the exact process intervals

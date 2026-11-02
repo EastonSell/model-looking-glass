@@ -1,0 +1,353 @@
+{
+  "schema": "bert-taste-matched-dose-public-exposures-v2",
+  "status": "observed-public-exploratory",
+  "scope": "Public nonblind convenience rows; unknown prior and pretraining exposure is not certified.",
+  "reservation_path": "experiments/bert_taste_matched_dose_public_cases_v1.json",
+  "reservation_sha256": "983be330b6691ce23986f26e50a345f77ca5cf46dd28a660a3a012a2cf598a7c",
+  "source_commit": "74227e9909e4a485296065aced0368a1ccafba64",
+  "result_sha256": "cad47fbb5599f5ec44161d59ddbfc6d26bd904b399f23c68089b709921ec194e",
+  "observation": "Each reserved row has completed-forward records with the recorded input IDs and attention mask; this is saved-record consistency, not independent execution attestation.",
+  "prior_public_inventories": {
+    "experiments/bert_agreement_exposures_v6.json": "0d0b37539c30c8ff25ea5b1cfa95ecd4587f048434348a1c91ec010418553afb",
+    "experiments/bert_matched_public_cases_v1.json": "5b708600dba78db9e4ee676650bc5e1f6b3269d52179a8e45d5d45fee55219bb",
+    "experiments/bert_taste_public_exposures_v2.json": "a766d20778191280122a6b498b9bcb34907bfac761152ae7c3cf4df0fb9c5aa1"
+  },
+  "rows": [
+    {
+      "id": "coffee-sugar",
+      "text": "The coffee tasted [MASK] after adding sugar.",
+      "input_ids": [
+        101,
+        1996,
+        4157,
+        12595,
+        103,
+        2044,
+        5815,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "coffee-lemon",
+      "text": "The coffee tasted [MASK] after adding lemon.",
+      "input_ids": [
+        101,
+        1996,
+        4157,
+        12595,
+        103,
+        2044,
+        5815,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "milk-sugar",
+      "text": "The milk tasted [MASK] after adding sugar.",
+      "input_ids": [
+        101,
+        1996,
+        6501,
+        12595,
+        103,
+        2044,
+        5815,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "milk-lemon",
+      "text": "The milk tasted [MASK] after adding lemon.",
+      "input_ids": [
+        101,
+        1996,
+        6501,
+        12595,
+        103,
+        2044,
+        5815,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "soup-sugar",
+      "text": "The soup tasted [MASK] after adding sugar.",
+      "input_ids": [
+        101,
+        1996,
+        11350,
+        12595,
+        103,
+        2044,
+        5815,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "soup-lemon",
+      "text": "The soup tasted [MASK] after adding lemon.",
+      "input_ids": [
+        101,
+        1996,
+        11350,
+        12595,
+        103,
+        2044,
+        5815,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cake-sugar",
+      "text": "The cake tasted [MASK] with some sugar.",
+      "input_ids": [
+        101,
+        1996,
+        9850,
+        12595,
+        103,
+        2007,
+        2070,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cake-lemon",
+      "text": "The cake tasted [MASK] with some lemon.",
+      "input_ids": [
+        101,
+        1996,
+        9850,
+        12595,
+        103,
+        2007,
+        2070,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "pudding-sugar",
+      "text": "The pudding tasted [MASK] with some sugar.",
+      "input_ids": [
+        101,
+        1996,
+        29593,
+        12595,
+        103,
+        2007,
+        2070,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "pudding-lemon",
+      "text": "The pudding tasted [MASK] with some lemon.",
+      "input_ids": [
+        101,
+        1996,
+        29593,
+        12595,
+        103,
+        2007,
+        2070,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cocoa-sugar",
+      "text": "The cocoa tasted [MASK] with some sugar.",
+      "input_ids": [
+        101,
+        1996,
+        22940,
+        12595,
+        103,
+        2007,
+        2070,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "cocoa-lemon",
+      "text": "The cocoa tasted [MASK] with some lemon.",
+      "input_ids": [
+        101,
+        1996,
+        22940,
+        12595,
+        103,
+        2007,
+        2070,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    }
+  ]
+}

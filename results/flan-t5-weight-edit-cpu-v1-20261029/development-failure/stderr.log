@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "C:\Users\easto\Documents\Codex\2026-10-28\https-github-com-eastonsell-model-looking\work\flan_weight_edit_owner.py", line 537, in <module>
+    main()
+  File "C:\Users\easto\Documents\Codex\2026-10-28\https-github-com-eastonsell-model-looking\work\flan_weight_edit_owner.py", line 412, in main
+    volumes(args.attempt, args.source_dir)
+  File "C:\Users\easto\Documents\Codex\2026-10-28\https-github-com-eastonsell-model-looking\work\flan_weight_edit_owner.py", line 252, in volumes
+    raise ValueError("insufficient output or source disk headroom")
+ValueError: insufficient output or source disk headroom

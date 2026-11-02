@@ -1,0 +1,13 @@
+{
+  "current_exposure_merge_commit": "a2528d2f105d84e18a13af4025c87626700386e0",
+  "current_exposure_sha256": "a391c5f3a8ca33ad32e9378417b424338b12ea55257979977d2afd5a0c7f90ae",
+  "current_exposure_version": "distilgpt2-development-exposures-v21",
+  "observed_utc": "2026-10-29T08:27:50.146442+00:00",
+  "official_main_observed": "fc6496e89b9130805f484555378f29b74dd7ba76",
+  "other_exposure_observation": "The exposure owner reports no newer unreserved DistilGPT2 inputs beyond the eight operator-reported rows already included in v18. A v22 status-only successor was under test but had not been published or merged at this observation.",
+  "pre_run_sha256": "676dd2ac8b2ceb2c2311d38b01f4d9e8a348c5b29430662926757677c9aded49",
+  "schema": "distilgpt2-explicit-year-direction-launch-observation-v1",
+  "scope": "Operator currentness observation using official main and owner reports; not an independent proof of all process activity or outside/pretraining exposure.",
+  "screened_baseline_observation": "The owner reports 32 screened target rows were forwarded and all were already among the 44 prompts reserved in v19 and preserved in v21; the 12 locality prompts remained unforwarded at that report.",
+  "source_revision": "4059fa97d78033b1f382c09b4b9b93d8fb4885bd"
+}

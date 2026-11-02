@@ -1,0 +1,24 @@
+{
+  "manifest_sha256": "284fc9adc0cc3caa52ea5d122c1f08db50c8dda2d881297e2dcd1f2229cb6386",
+  "prelaunch_sha256": "61815c5a738c981701456b1bc6f170df391edfaaf7dc87334d52f9f1862c6eff",
+  "schema": "antonym-additional-public-independent-review-v1",
+  "scope": "Pinned public rows only; no model or unknown-history claims.",
+  "sources": [
+    {
+      "commit": "0eacf78d9ffba8aa94279ba1faa0a226e94fcd31",
+      "path": "experiments/bert_multisuffix_agreement_cases_v1.json",
+      "relations": 0,
+      "row_pairs_compared": 8800,
+      "rows": 160,
+      "sha256": "bc8d1af844c52f46bf068c04257280ed37e4302028885540ea498103d6ce125e"
+    },
+    {
+      "commit": "b6667ad5bfcadac6e0f45d4ad6530cca1f4584ca",
+      "path": "experiments/bert_cue_donor_context_retention_cases_v1.json",
+      "relations": 0,
+      "row_pairs_compared": 1760,
+      "rows": 32,
+      "sha256": "917bad800f72a9613e69d8feae3faf90ffbae5cc446bbeb3e2c8df1d03678dc9"
+    }
+  ]
+}

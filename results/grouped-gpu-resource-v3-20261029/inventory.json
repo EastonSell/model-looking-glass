@@ -1,0 +1,292 @@
+{
+  "files": {
+    "audit_saved_result.py": {
+      "bytes": 18472,
+      "sha256": "3eae1f68d51031d50a13852798c18c98553fcac6c0f34ac219db4d46c93f6b95"
+    },
+    "audit_startup_failure.py": {
+      "bytes": 7146,
+      "sha256": "c7d5de8089b614b5c0590791c21cb6e001cd6cd2dbefd75a22fc0f48594428a5"
+    },
+    "frozen-policy.json": {
+      "bytes": 2577,
+      "sha256": "8d0c256eacd7966cfdbccc0958368a05dd497f90113e18f8e40ba9e4250b0454"
+    },
+    "memory/memory-000.json": {
+      "bytes": 180,
+      "sha256": "b46333eb3314b5807839c3654ee184cdcab5565f38fa403edce83683e7279b0f"
+    },
+    "memory/memory-001.json": {
+      "bytes": 339,
+      "sha256": "a90955562185e7de7b4983780fcc89a5c9e4a073ff3dcf9700b84cf15e0fa816"
+    },
+    "memory/memory-002.json": {
+      "bytes": 338,
+      "sha256": "84e4b3ae350d4308de6ca620b1d93a609eee223974d5b0ea41ea67c9e801c21b"
+    },
+    "memory/memory-003.json": {
+      "bytes": 211,
+      "sha256": "1333082cb58235f7c54d3dedd8eecf6ddaa6a27cb3efdc80bcf14cbce2216596"
+    },
+    "memory/memory-004.json": {
+      "bytes": 381,
+      "sha256": "de53757672a6cbfcbe40a8420e1f57df07b340b4013f5b437b94f7ea1354495e"
+    },
+    "memory/memory-005.json": {
+      "bytes": 375,
+      "sha256": "eb7b105305ea0f4de316f21d74db0b1d5a65bb997277cffa6c16415742520547"
+    },
+    "memory/memory-006.json": {
+      "bytes": 212,
+      "sha256": "fedb2a5fe5751a6a0da66a34d0a9d34d914322380e31fd7ec9843e7225b05dd5"
+    },
+    "memory/memory-007.json": {
+      "bytes": 381,
+      "sha256": "f115d60b45f36480919840fa951bb697435d8c1e07d054bd3dc57ca0a890768e"
+    },
+    "memory/memory-008.json": {
+      "bytes": 381,
+      "sha256": "17aac53a0e5a1a967fadafad51120ee04a934962457a91108d190facbd651d9a"
+    },
+    "memory/memory-009.json": {
+      "bytes": 211,
+      "sha256": "6a3ee64d7fd714c6713c7e37a13c2f553914e1d2ec1657eae9e090b4290a75fe"
+    },
+    "memory/memory-010.json": {
+      "bytes": 212,
+      "sha256": "f97b6fa8453745472f55477ab8b41770695b87a4ba90639ac626f7e7eb73c253"
+    },
+    "memory/memory-011.json": {
+      "bytes": 381,
+      "sha256": "a2d09e2481c8134627c29520936683f7c856a6e0906531e4687afa3e9507be51"
+    },
+    "memory/memory-012.json": {
+      "bytes": 381,
+      "sha256": "ea27d82217c67dad9db5a866667b7e53d375f0d147ec58ecb00292e6ef2b14dc"
+    },
+    "memory/memory-013.json": {
+      "bytes": 211,
+      "sha256": "b8188f7ebe5f695a101a704f8da509496ebcc8d63e964be4aae463fac07bd1e0"
+    },
+    "memory/memory-014.json": {
+      "bytes": 209,
+      "sha256": "04d46aac157efcf957481919ff03c7dec3b44e87bde4326d32fecd363b88f3b0"
+    },
+    "memory/memory-015.json": {
+      "bytes": 378,
+      "sha256": "f8f8f23810b34a455dcdfe3ec468907d5979ecff912c0860fec2cae27fbf0c0c"
+    },
+    "memory/memory-016.json": {
+      "bytes": 378,
+      "sha256": "125e9edd5284013e0bef9eb7f73d29f5cf813b4109b3c5142177dd1850cf002b"
+    },
+    "memory/memory-017.json": {
+      "bytes": 208,
+      "sha256": "9ffeb3cbc3f22b0546c65e51a1efe06ef352e478338e99d2920f2d41512c67b8"
+    },
+    "memory/memory-018.json": {
+      "bytes": 212,
+      "sha256": "33bb0506aff6a2a56338f6bd38e6aaa817521e8c5f102d6cf03400a79dc4861d"
+    },
+    "memory/memory-019.json": {
+      "bytes": 381,
+      "sha256": "9d25f0588c169d73b2900881940a572dfd9d53cc3057be117d24225d44994d09"
+    },
+    "memory/memory-020.json": {
+      "bytes": 381,
+      "sha256": "b5ea1fb1433b549cf5857f05e4e2d99bdc875b218f1e49dcd5c5a7c4b68d7ad6"
+    },
+    "memory/memory-021.json": {
+      "bytes": 211,
+      "sha256": "3a90a38f780ae4d17a0948b852ace27f66d80836ed2d7059e9314c20c4f0682f"
+    },
+    "memory/memory-022.json": {
+      "bytes": 212,
+      "sha256": "7dc77ccececd7f0695a48827dfeba8f954d797a88fe404ac7039c2645e8de2d1"
+    },
+    "memory/memory-023.json": {
+      "bytes": 381,
+      "sha256": "8d69ac7555eba12c0c72abda61363e0e99e2b818f00f1ccdd58caf11188176f2"
+    },
+    "memory/memory-024.json": {
+      "bytes": 381,
+      "sha256": "c6b4f4c24cac5903afa7eb2b749778feb013cda1250733a30b3495007280bc65"
+    },
+    "memory/memory-025.json": {
+      "bytes": 211,
+      "sha256": "ecfc47c39caab3d210deb9fead37242fd0f1d61d86516cb5972510b91606bac1"
+    },
+    "memory/memory-026.json": {
+      "bytes": 209,
+      "sha256": "6946b4a2979bc389e2ca2cbce933bacaec61fdaf8ea9fcba4a25277efd81e93b"
+    },
+    "memory/memory-027.json": {
+      "bytes": 378,
+      "sha256": "a91113b88703e7a3230f13c70613ca547bd7779ac84d7b24149eedb4e857ab1b"
+    },
+    "memory/memory-028.json": {
+      "bytes": 378,
+      "sha256": "03cb00dd640774f8546731b85103bd47dfb6bc3fd5b5ff26ef4902df756cbc3b"
+    },
+    "memory/memory-029.json": {
+      "bytes": 208,
+      "sha256": "f584d41f9952375a5f877df13a638c8d2d27a4cbe7fa4ff45d01c7128fea19ac"
+    },
+    "memory/memory-030.json": {
+      "bytes": 220,
+      "sha256": "a99cf634ac37f13bcd82cab94307db73656ff43564d9d199a946c25ca1af346c"
+    },
+    "memory/memory-031.json": {
+      "bytes": 389,
+      "sha256": "f3ae47021a184c99d08799b9f8b38cc700f8b5a45f3f0a5ff18f37666e88d3b5"
+    },
+    "memory/memory-032.json": {
+      "bytes": 389,
+      "sha256": "0b500ecb6a252930d8dadd24429393583f11d261b670740bda606a9158b2060a"
+    },
+    "memory/memory-033.json": {
+      "bytes": 219,
+      "sha256": "db0d3e77be3f36cde382482c9e91d3bdaa12ed812df2fc62113163cb45b045b1"
+    },
+    "memory/memory-034.json": {
+      "bytes": 220,
+      "sha256": "81a2c6b66fb9294a472ccb1595d6f2018373f089314db54e4d9ecd714bac62a8"
+    },
+    "memory/memory-035.json": {
+      "bytes": 389,
+      "sha256": "ed43ece1ccb332b52ce0d3d2a243cd3a30e54faec9d773dc63fe43637e3f5548"
+    },
+    "memory/memory-036.json": {
+      "bytes": 389,
+      "sha256": "b13d566dab0dcb14f7edd9492c36bdc244764bf106d3c1600e9b390900998779"
+    },
+    "memory/memory-037.json": {
+      "bytes": 219,
+      "sha256": "9df4830520fe7451e2c74b33fa2b94730cfd8a958a69f00bb513eaa0815f508f"
+    },
+    "memory/memory-038.json": {
+      "bytes": 217,
+      "sha256": "ab232fe8e159c923471441c96439673dee20b18ce8f073baf56973b315c10b00"
+    },
+    "memory/memory-039.json": {
+      "bytes": 386,
+      "sha256": "58905bd830615aae708eb65a8a4a5513fe5fd38d000a5aa5ea8ab294c993ac59"
+    },
+    "memory/memory-040.json": {
+      "bytes": 386,
+      "sha256": "3723335bb14e256032ccc79e82a0bec623fe937bca91afb6b6f8ff5043ee9b12"
+    },
+    "memory/memory-041.json": {
+      "bytes": 216,
+      "sha256": "c132c7131c12cbb6c284173e7c35cddbd66f89f18348855e73e97b847f4a20b8"
+    },
+    "memory/memory-042.json": {
+      "bytes": 220,
+      "sha256": "d16fde075dfa07e9d18c3f4e9b00c76a797bd517122af45f7770f927bc3fca92"
+    },
+    "memory/memory-043.json": {
+      "bytes": 389,
+      "sha256": "1a4207df8bc37fa04aed3c444eeae9d38529016be3f5f19eeb09e5f7fcaf8f43"
+    },
+    "memory/memory-044.json": {
+      "bytes": 389,
+      "sha256": "5cc348840bb2d759879458d75b704aa5c0097a0c814c387219a3027bdbdd1ca2"
+    },
+    "memory/memory-045.json": {
+      "bytes": 219,
+      "sha256": "442fd6fb4220f9d88ffdb8795971e73125a4f483fd72cfab3da4badf6ca5445e"
+    },
+    "memory/memory-046.json": {
+      "bytes": 220,
+      "sha256": "54d365886d7dbe0585fbcb4287b102d890ac9b573668187063e38a5b45fdfb5f"
+    },
+    "memory/memory-047.json": {
+      "bytes": 389,
+      "sha256": "00d4e3802c54fa4d8b500150ca80e25713024c1be4f6848d8c158335151505e6"
+    },
+    "memory/memory-048.json": {
+      "bytes": 389,
+      "sha256": "6677d3770182aeb89da0692c0e327b7f236c41acab65cf54502ca231792ae143"
+    },
+    "memory/memory-049.json": {
+      "bytes": 219,
+      "sha256": "c8a743a99f3fe1fdfad690b90cfb4e284344965dd0af496cb443a0613a9300c3"
+    },
+    "memory/memory-050.json": {
+      "bytes": 217,
+      "sha256": "d8b69f707085be09cd14b7bcdc887328ef5629e0d3de55a1f685b8a6208f94a4"
+    },
+    "memory/memory-051.json": {
+      "bytes": 386,
+      "sha256": "fc5ffe99a61c72901a5b8da0813cf7943622fd050d864917126d728960396fce"
+    },
+    "memory/memory-052.json": {
+      "bytes": 386,
+      "sha256": "a25a98dc260f3991daa039df04f8306984548cfd7d80e842d9f1b8e2e6435d8a"
+    },
+    "memory/memory-053.json": {
+      "bytes": 216,
+      "sha256": "cf3a7018ca3fc0a36ead0cda87fec7aecbe01e861b6303787669fee2cc757482"
+    },
+    "natural-split-comparison.json": {
+      "bytes": 601,
+      "sha256": "b76fb1eba8f63e3ec04e69921d9a4909e069c62414f8f57bc796b7a8f15d5528"
+    },
+    "natural-split-public-inputs.json": {
+      "bytes": 283,
+      "sha256": "eda774eb44b51ba6caccf223b78e05f56ba25a4cc765ff6da2bb8f05771d3049"
+    },
+    "operational-review.json": {
+      "bytes": 1517,
+      "sha256": "41626cbd1d22ecc81834d7d22288aff48707bf25f49ea0bba35292b249cde728"
+    },
+    "project_result.py": {
+      "bytes": 3153,
+      "sha256": "06d3cb229c80143615d76c3c62029888b3ef62602305e7e24330373ac2ca17b2"
+    },
+    "protocol-source.json": {
+      "bytes": 3173,
+      "sha256": "15d5d71d8bac12dbbffafca0a9afe23c42a1df4e8e8281026b91711e5b107c2e"
+    },
+    "public-replay.json": {
+      "bytes": 999,
+      "sha256": "56127d3324ed5f1c85ec630746cd315a0e499a7df6ad03b5d68f4c15541a86da"
+    },
+    "resource-audit.json": {
+      "bytes": 881,
+      "sha256": "4df843e4e867045b226fe40e5107c5b7cfe1da511022f65cc805819b6f442013"
+    },
+    "resource-profile.json": {
+      "bytes": 11683,
+      "sha256": "d161ee4d21e31c7dc08db81b3e646a451ffaad0e91122ed29d3ea5241fbf6612"
+    },
+    "result-public.json": {
+      "bytes": 92774,
+      "sha256": "1872485fc7007a5c3c748043749e169037594d07991e1d4f37816b74868c1fcf"
+    },
+    "sample-evidence.json": {
+      "bytes": 1891,
+      "sha256": "d315506ad4d46eba63e081e62d0880d11c6a4ed546e85ddbe0d41f978254dc69"
+    },
+    "saved-result-audit.json": {
+      "bytes": 850,
+      "sha256": "e3ec71793d49ba63a0e55846bc5e0c27f7f1c25d7293360d3a89e588b083984d"
+    },
+    "source-audit-05ca.json": {
+      "bytes": 5407,
+      "sha256": "2da7e34902325487e24db277b0bd85746c2fe65485956b814a5e7729c06f727c"
+    },
+    "source-audit-f112.json": {
+      "bytes": 5407,
+      "sha256": "0e1e5886ccd889937f4bfc47cf3d80f7984799f5ab702148c172d77b05ad229a"
+    },
+    "startup-failure-audit.json": {
+      "bytes": 1117,
+      "sha256": "e641b5d4a7e251194dc95f86e559fd52f88174d7095da7170c7e978b0615b8cb"
+    }
+  },
+  "limits": [
+    "README.md and this inventory are omitted to avoid self-reference"
+  ],
+  "schema": "grouped-gpu-public-bundle-inventory-v1"
+}

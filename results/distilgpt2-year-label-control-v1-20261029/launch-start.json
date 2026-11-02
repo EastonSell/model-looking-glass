@@ -1,0 +1,22 @@
+{
+  "cache_prefix_empty_observed": true,
+  "coordination": "Repro reports its full-top cases remain unforwarded and no additional unreserved inputs in that lane; throughput reports no new unreserved inputs known to it. These are scoped reports, not comprehensive live coverage.",
+  "latest_public_exposure_sha256": "32cc4bcbe4b482ded122715c5f96c6c5c765a76a1ef3532360cdf9890827f144",
+  "latest_public_exposure_version": "distilgpt2-development-exposures-v25",
+  "matched_public_file_sha256": {
+    "docs/DISTILGPT2_YEAR_LABEL_CONTROL_V1.md": "5da05c4d35708b420e5843b1eb77fda8699c74755233b510a01683ead2081f4a",
+    "experiments/distilgpt2_year_label_control_v1.json": "07d68842ab7f5195a61e719f4bafd825ab19673971a7e4ea450330838deafa08",
+    "looking_glass/pretrained_exposures_v25.py": "b720a159b2ed5f2eb2769c53cab560b19c27af56e7a3ce4574930ef67cb5a939",
+    "looking_glass/year_label_control.py": "a86105dc6545d2b8136e5f323fbfe163cbfc4923dddc7aaeee057293c8656603",
+    "looking_glass/year_label_intervention.py": "2c811328ba3c3c598b1d7c268a1959defe423ffcbb558906331052792e4514ba",
+    "scripts/year_label_control_v1.py": "1a340fe99fde9bffd70701d798369c7f182af3b69d11aea7df557a5e67dd5f9c",
+    "scripts/year_label_receipt_v1.py": "476b86e599bb7fe968b2b4aa963932dfeceae55078d518c3703db35260ed039f"
+  },
+  "observed_utc": "2026-10-29T09:36:53.281875+00:00",
+  "official_main_observed": "4453c47a888362673432a88a5602080ee0e863fc",
+  "pre_run_sha256": "624590a8a547f32e90cc69ae6ab1583e51fa81306037e8874b90c5cf52f8a972",
+  "prior_observation_sha256": "97aad4e204848e4ff602181e0703c064a4b93f0a366eb9fb9b1ed8dedc737096",
+  "schema": "distilgpt2-year-label-control-launch-start-v1",
+  "scope": "Point-in-time public-source and inventory observation, not authenticated execution or proof of unknown exposure.",
+  "source_revision": "72ff52feca7c102e611023b54f031fbb8ff17bd4"
+}

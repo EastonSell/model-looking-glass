@@ -1,0 +1,471 @@
+{
+  "schema": "model-looking-glass-pretrained-cpu-verification-v1",
+  "date_utc": "2026-10-31",
+  "status": "passed",
+  "source": {
+    "repository": "HuggingFaceTB/SmolLM2-135M",
+    "revision": "93efa2f097d58c2a74874c7e644dbc9b0cee75a2",
+    "url": "https://huggingface.co/HuggingFaceTB/SmolLM2-135M/tree/93efa2f097d58c2a74874c7e644dbc9b0cee75a2",
+    "license": "apache-2.0",
+    "public": true,
+    "gated": false,
+    "downloaded_bytes": 272443805,
+    "registry_file_sizes_and_git_or_lfs_hashes_verified": true,
+    "weight_lfs_sha256": "80521b40281d6ce74e35c9282c22539e75aa0ac8578892b2a59955ef78d55da1",
+    "asset_manifest": {
+      "README.md": {
+        "bytes": 6340,
+        "sha256": "d1ba68cae64a89b6b434b11526e6e2271ee5ffd2c914ec35ed515f9d84c6085c"
+      },
+      "config.json": {
+        "bytes": 704,
+        "sha256": "1d556eab73b69c7f11f64c557a2f9c6f440bd4c6b89bb2584a6b498c92603843"
+      },
+      "generation_config.json": {
+        "bytes": 111,
+        "sha256": "2056c988e990b0d13670f63f2f3b87b3b6d07edaf7a3416998ba27dab2d8a059"
+      },
+      "merges.txt": {
+        "bytes": 466391,
+        "sha256": "0b54e8aa4e53d5383e2e4bc635a56b43f9647f7b13832d5d9ecd8f82dac4f510"
+      },
+      "model.safetensors": {
+        "bytes": 269060552,
+        "sha256": "80521b40281d6ce74e35c9282c22539e75aa0ac8578892b2a59955ef78d55da1"
+      },
+      "special_tokens_map.json": {
+        "bytes": 831,
+        "sha256": "e786b595b9a23148bf1630df78d9037a048ea671e48bfd3549a1e3c233742bb3"
+      },
+      "tokenizer.json": {
+        "bytes": 2104556,
+        "sha256": "9ca9acddb6525a194ec8ac7a87f24fbba7232a9a15ffa1af0c1224fcd888e47c"
+      },
+      "tokenizer_config.json": {
+        "bytes": 3658,
+        "sha256": "4bb9af56a342753d39374f4016a16574cab299fe088e896f425ce3c433f61424"
+      },
+      "vocab.json": {
+        "bytes": 800662,
+        "sha256": "82b84012e3add4d01d12ba14442026e49b8cbbaead1f79ecf3d919784f82dc79"
+      }
+    }
+  },
+  "implementation": {
+    "base_commit_before_tokenizer_fix": "d62dc8eb93ac0f011664b1cdf3f3b4a71d7b2ea6",
+    "sha256": {
+      "looking_glass/app.py": "91f3cd9327650c2755769abea1661715079f8805d8fd53e883fdc9b791632975",
+      "looking_glass/app_runtime.py": "860623e9a56490fc3dd9e194c21eb68d34a11560bd2edc017f7756235d4f77d9",
+      "looking_glass/app_storage.py": "26bd233f83105f2604830ce2ed8f233aca70a60aa6cca5f206c62f10fad9c0d9",
+      "looking_glass/llama_trace.py": "1e9018113408e54ac310c2241ace5eaf71374ce6fa5fd9a2681877ba28da6f77"
+    },
+    "wheel_sha256": "6d6cf84654fb9e84d4ebefc30913ad268679cd2bba9e557a204106db7f63a5df",
+    "scripts_sha256": {
+      "verify_capture.py": "01415f61b61eccf67b9904691e8be88ae99aa6eed88d4ef75dcd757c197cfbe9",
+      "verify_workbench.py": "ae9ba31790016f9a82f7fbf859c35911cd0a7221c85c3f40c431a757961c4aee"
+    }
+  },
+  "independent_capture": {
+    "checkpoint_assets_unchanged": true,
+    "config": {
+      "hidden_size": 576,
+      "intermediate_size": 1536,
+      "max_position_embeddings": 8192,
+      "model_type": "llama",
+      "num_attention_heads": 9,
+      "num_hidden_layers": 30,
+      "num_key_value_heads": 3,
+      "rope_scaling": null,
+      "rope_theta": 100000,
+      "tie_word_embeddings": true,
+      "vocab_size": 49152
+    },
+    "environment": {
+      "cuda_executed": false,
+      "device": "cpu",
+      "dtype": "float32",
+      "python": "3.12.14",
+      "threads": 1,
+      "torch": "2.15.0+cpu",
+      "transformers": "4.57.3"
+    },
+    "implementation_sha256": {
+      "looking_glass/intervention_plan.py": "5bb643c538a1d7dcd97214238c2a996967d4b6ae2e965d3776b3699758491c0a",
+      "looking_glass/llama_trace.py": "1e9018113408e54ac310c2241ace5eaf71374ce6fa5fd9a2681877ba28da6f77",
+      "looking_glass/model_ownership.py": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434",
+      "looking_glass/trace_schema.py": "38e05eb52a59a10ad9f93d19763d60df4c27f9eb626fdefdcba39fc4af3eb92c"
+    },
+    "implementation_unchanged": true,
+    "load_seconds": 0.3197610009992786,
+    "parameter_bytes": 538060032,
+    "prompts": [
+      {
+        "boundary_events": 90,
+        "captured_bytes": 622080,
+        "checks": {
+          "all_boundary_bits_equal": true,
+          "exact_inventory_order_selectors_coordinates": true,
+          "full_logits_bitwise_equal": true,
+          "inputs_unchanged": true,
+          "no_residual_hooks": true,
+          "rotary_bits_unchanged": true
+        },
+        "full_logits_shape": [
+          1,
+          3,
+          49152
+        ],
+        "input_attention_mask": [
+          1,
+          1,
+          1
+        ],
+        "input_token_ids": [
+          22007,
+          6463,
+          314
+        ],
+        "logits_bytes": 589824,
+        "next_token_id": 260,
+        "next_token_text": " the",
+        "prompt": "Gravity is",
+        "seconds": {
+          "adapter": 0.2274516270008462,
+          "independent_hooks": 0.13131346099908114,
+          "plain_forward": 0.12299871800132678
+        }
+      },
+      {
+        "boundary_events": 90,
+        "captured_bytes": 1036800,
+        "checks": {
+          "all_boundary_bits_equal": true,
+          "exact_inventory_order_selectors_coordinates": true,
+          "full_logits_bitwise_equal": true,
+          "inputs_unchanged": true,
+          "no_residual_hooks": true,
+          "rotary_bits_unchanged": true
+        },
+        "full_logits_shape": [
+          1,
+          5,
+          49152
+        ],
+        "input_attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "input_token_ids": [
+          504,
+          3575,
+          282,
+          4649,
+          314
+        ],
+        "logits_bytes": 983040,
+        "next_token_id": 260,
+        "next_token_text": " the",
+        "prompt": "The capital of France is",
+        "seconds": {
+          "adapter": 0.2090293629989901,
+          "independent_hooks": 0.10771903099885094,
+          "plain_forward": 0.111112629998388
+        }
+      }
+    ],
+    "scope": "Actual local pretrained CPU same-model hook/adapter transparency only; no GPU, between-device equivalence, model quality or universal interpretability claim. Wall times are observations, not a benchmark.",
+    "source": {
+      "assets": {
+        "README.md": {
+          "bytes": 6340,
+          "sha256": "d1ba68cae64a89b6b434b11526e6e2271ee5ffd2c914ec35ed515f9d84c6085c"
+        },
+        "config.json": {
+          "bytes": 704,
+          "sha256": "1d556eab73b69c7f11f64c557a2f9c6f440bd4c6b89bb2584a6b498c92603843"
+        },
+        "generation_config.json": {
+          "bytes": 111,
+          "sha256": "2056c988e990b0d13670f63f2f3b87b3b6d07edaf7a3416998ba27dab2d8a059"
+        },
+        "merges.txt": {
+          "bytes": 466391,
+          "sha256": "0b54e8aa4e53d5383e2e4bc635a56b43f9647f7b13832d5d9ecd8f82dac4f510"
+        },
+        "model.safetensors": {
+          "bytes": 269060552,
+          "sha256": "80521b40281d6ce74e35c9282c22539e75aa0ac8578892b2a59955ef78d55da1"
+        },
+        "special_tokens_map.json": {
+          "bytes": 831,
+          "sha256": "e786b595b9a23148bf1630df78d9037a048ea671e48bfd3549a1e3c233742bb3"
+        },
+        "tokenizer.json": {
+          "bytes": 2104556,
+          "sha256": "9ca9acddb6525a194ec8ac7a87f24fbba7232a9a15ffa1af0c1224fcd888e47c"
+        },
+        "tokenizer_config.json": {
+          "bytes": 3658,
+          "sha256": "4bb9af56a342753d39374f4016a16574cab299fe088e896f425ce3c433f61424"
+        },
+        "vocab.json": {
+          "bytes": 800662,
+          "sha256": "82b84012e3add4d01d12ba14442026e49b8cbbaead1f79ecf3d919784f82dc79"
+        }
+      },
+      "repository": "HuggingFaceTB/SmolLM2-135M",
+      "revision": "93efa2f097d58c2a74874c7e644dbc9b0cee75a2",
+      "revision_note": "Requested pinned acquisition; local asset hashes below are execution evidence, not independent remote provenance attestation."
+    },
+    "status": "passed",
+    "tied_weights": true
+  },
+  "installed_workbench": {
+    "status": "passed",
+    "model": "HuggingFaceTB/SmolLM2-135M",
+    "revision": "93efa2f097d58c2a74874c7e644dbc9b0cee75a2",
+    "installed_wheel": true,
+    "device": "cpu",
+    "dtype": "float32",
+    "torch": "2.15.0+cpu",
+    "transformers": "4.57.3",
+    "python": "3.12.14",
+    "prompt": "Gravity is",
+    "answer": " the force that holds",
+    "steps": [
+      {
+        "app_forward_index": 0,
+        "run_id": "368603fcc8714e5da17e2028947e53a9-0",
+        "use_cache": false,
+        "execution": "one full uncached forward",
+        "event_end": 90,
+        "input_token_ids": [
+          22007,
+          6463,
+          314
+        ],
+        "input_attention_mask": [
+          1,
+          1,
+          1
+        ],
+        "decoder_token_ids": null,
+        "top_next_tokens": [
+          {
+            "token_id": 260,
+            "text": " the",
+            "logit": 22.05638885498047
+          },
+          {
+            "token_id": 253,
+            "text": " a",
+            "logit": 22.02391242980957
+          },
+          {
+            "token_id": 441,
+            "text": " not",
+            "logit": 20.377180099487305
+          },
+          {
+            "token_id": 354,
+            "text": " an",
+            "logit": 20.195520401000977
+          },
+          {
+            "token_id": 582,
+            "text": " one",
+            "logit": 19.900869369506836
+          }
+        ],
+        "selected_token_id": 260
+      },
+      {
+        "app_forward_index": 1,
+        "run_id": "368603fcc8714e5da17e2028947e53a9-1",
+        "use_cache": false,
+        "execution": "one full uncached forward",
+        "event_end": 180,
+        "input_token_ids": [
+          22007,
+          6463,
+          314,
+          260
+        ],
+        "input_attention_mask": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "decoder_token_ids": null,
+        "top_next_tokens": [
+          {
+            "token_id": 3075,
+            "text": " force",
+            "logit": 18.096113204956055
+          },
+          {
+            "token_id": 16584,
+            "text": " attraction",
+            "logit": 16.46352767944336
+          },
+          {
+            "token_id": 966,
+            "text": " result",
+            "logit": 16.27874755859375
+          },
+          {
+            "token_id": 6536,
+            "text": " pull",
+            "logit": 15.948273658752441
+          },
+          {
+            "token_id": 977,
+            "text": " effect",
+            "logit": 15.646432876586914
+          }
+        ],
+        "selected_token_id": 3075
+      },
+      {
+        "app_forward_index": 2,
+        "run_id": "368603fcc8714e5da17e2028947e53a9-2",
+        "use_cache": false,
+        "execution": "one full uncached forward",
+        "event_end": 270,
+        "input_token_ids": [
+          22007,
+          6463,
+          314,
+          260,
+          3075
+        ],
+        "input_attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "decoder_token_ids": null,
+        "top_next_tokens": [
+          {
+            "token_id": 338,
+            "text": " that",
+            "logit": 28.509056091308594
+          },
+          {
+            "token_id": 282,
+            "text": " of",
+            "logit": 28.312822341918945
+          },
+          {
+            "token_id": 527,
+            "text": " which",
+            "logit": 26.79806900024414
+          },
+          {
+            "token_id": 411,
+            "text": " by",
+            "logit": 26.643632888793945
+          },
+          {
+            "token_id": 29732,
+            "text": " exerted",
+            "logit": 26.278186798095703
+          }
+        ],
+        "selected_token_id": 338
+      },
+      {
+        "app_forward_index": 3,
+        "run_id": "368603fcc8714e5da17e2028947e53a9-3",
+        "use_cache": false,
+        "execution": "one full uncached forward",
+        "event_end": 360,
+        "input_token_ids": [
+          22007,
+          6463,
+          314,
+          260,
+          3075,
+          338
+        ],
+        "input_attention_mask": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "decoder_token_ids": null,
+        "top_next_tokens": [
+          {
+            "token_id": 6650,
+            "text": " holds",
+            "logit": 26.314319610595703
+          },
+          {
+            "token_id": 26648,
+            "text": " pulls",
+            "logit": 26.293933868408203
+          },
+          {
+            "token_id": 8211,
+            "text": " keeps",
+            "logit": 25.99421501159668
+          },
+          {
+            "token_id": 2981,
+            "text": " causes",
+            "logit": 25.221546173095703
+          },
+          {
+            "token_id": 25756,
+            "text": " attracts",
+            "logit": 24.686206817626953
+          }
+        ],
+        "selected_token_id": 6650
+      }
+    ],
+    "forward_count": 4,
+    "event_count": 360,
+    "vector_count": 1620,
+    "captured_tensor_bytes": 3732480,
+    "all_boundary_inventory_exact": true,
+    "all_vector_values_bits_coordinates_equal_after_reopen": true,
+    "vector_response_sha256": "39873e5c8860864f6be39a75dae265380a1160fe8172ed952961456684bd0072",
+    "ram_only_until_explicit_save": true,
+    "source_files_unchanged": true,
+    "rotary_bits_unchanged": true,
+    "hooks_removed": true,
+    "tied_weights_preserved": true,
+    "auth_and_stale_capture_guards": true,
+    "elapsed_seconds_not_benchmark": 9.017,
+    "source_files": {
+      "README.md": "d1ba68cae64a89b6b434b11526e6e2271ee5ffd2c914ec35ed515f9d84c6085c",
+      "config.json": "1d556eab73b69c7f11f64c557a2f9c6f440bd4c6b89bb2584a6b498c92603843",
+      "generation_config.json": "2056c988e990b0d13670f63f2f3b87b3b6d07edaf7a3416998ba27dab2d8a059",
+      "merges.txt": "0b54e8aa4e53d5383e2e4bc635a56b43f9647f7b13832d5d9ecd8f82dac4f510",
+      "model.safetensors": "80521b40281d6ce74e35c9282c22539e75aa0ac8578892b2a59955ef78d55da1",
+      "special_tokens_map.json": "e786b595b9a23148bf1630df78d9037a048ea671e48bfd3549a1e3c233742bb3",
+      "tokenizer.json": "9ca9acddb6525a194ec8ac7a87f24fbba7232a9a15ffa1af0c1224fcd888e47c",
+      "tokenizer_config.json": "4bb9af56a342753d39374f4016a16574cab299fe088e896f425ce3c433f61424",
+      "vocab.json": "82b84012e3add4d01d12ba14442026e49b8cbbaead1f79ecf3d919784f82dc79"
+    },
+    "limits": "Single short CPU workbench verification; not model-quality, GPU, all-checkpoint or maximum-context validation."
+  },
+  "other_validation": {
+    "focused_tests_passed": 770,
+    "real_cuda_prerequisite_skips": 8,
+    "historical_collection_errors": 47,
+    "historical_error_paths_unchanged": true,
+    "no_all_repository_pass_claim": true
+  },
+  "scope": "One exact public pretrained checkpoint, short CPU float32 prompts and same-device capture/round-trip checks. Not GPU execution, a language-quality/performance benchmark, all-checkpoint compatibility, maximum-context capacity or original BF16 inference equivalence. Raw weights/activations are not committed. Response hashes include run metadata and are not a cross-run hash guarantee."
+}

@@ -1,0 +1,8 @@
+{
+  "reviewed_commit": "72efd7cb4b6125f1c185a1a0f3e1c22638a363f1",
+  "reviewer": "review_trace_budget",
+  "manifest_sha256": "1de77fa0078b71d75606d39001280267adb6ae5d3d3558fdea36283995e9b653",
+  "selection_sha256": "9ea861d89c8ed78c038947dbdb331d6dba1ea8267901ce06e5492dab32e7c11f",
+  "observed_utc": "2026-10-29T08:24:21+00:00",
+  "screen_phase_sha256": "c8e4c87377d57ada69d50b717524fd082a8b5d464b66baf39bc2af5a1e9c53b5"
+}

@@ -1,0 +1,106 @@
+{
+  "additional_exposure_report": {
+    "candidate_continuation_bidirectional_prefix_comparisons": 2304,
+    "conflicts": 0,
+    "evidence_scope": "operator retrospective; exact source bytes, per-call log and logits were not retained",
+    "input_bidirectional_prefix_comparisons": 384,
+    "inventory_status": "not yet included in reviewed v17",
+    "retrospective_sha256": "e087d03ae0cc2c3d0c0c71a241b4dd583fedea4f609364c96ad1ec7c8412e5e4",
+    "token_rows": [
+      [
+        1,
+        2,
+        3,
+        4
+      ],
+      [
+        5,
+        6,
+        7,
+        8
+      ],
+      [
+        9,
+        10,
+        11,
+        12
+      ],
+      [
+        13,
+        14,
+        15,
+        16
+      ],
+      [
+        17,
+        18,
+        19,
+        20
+      ],
+      [
+        21,
+        22,
+        23,
+        24
+      ],
+      [
+        25,
+        26,
+        27,
+        28
+      ],
+      [
+        29,
+        30,
+        31,
+        32
+      ]
+    ]
+  },
+  "case_sha256": "d6177125f8ac835676eebe59c5f65e379cb20d1d782eeeb17edf2e8700ac23d5",
+  "current_exposure_merge_commit": "3d0dfd99a2f9cbb1e79431584e4d23e1f59f7a12",
+  "current_exposure_sha256": "e5734470ccd3b4e2655c91608caf8ffa158fa8650ff0bdd7f5aeaa1028046f3a",
+  "current_exposure_version": "distilgpt2-development-exposures-v17",
+  "intended_execution": {
+    "aten_cpu_capability": null,
+    "attention": "eager",
+    "automatic_retry": false,
+    "cpu_rng_seed": 20261029,
+    "cuda_visible_devices": "-1",
+    "device": "cpu",
+    "dtype": "float32",
+    "gate_only_forwards": 96,
+    "gate_pass_forwards": 336,
+    "hf_hub_offline": "1",
+    "mkl_cbwr": null,
+    "model_id": "distilbert/distilgpt2",
+    "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+    "threads": 1,
+    "tokenizer_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+    "transformers_offline": "1",
+    "use_cache": false,
+    "weights_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+  },
+  "interpretation": "Fixed public non-blind exploratory study; comparator-pattern and preference-transfer gates are evaluated separately.",
+  "natural_private_check": {
+    "receipt_sha256": "3123ddf01f08081b4f91f137913a64feadd2c875ab0fa45e04731fdd7e72ec76",
+    "recorded_utc": "2026-10-29T07:03:09Z",
+    "result": "pass for 48 public inputs against 16 commitment-verified natural rows in both complete-row-prefix directions",
+    "scope": "trusted operator comparison; not an independently source-pinned comparator; no private rows disclosed"
+  },
+  "official_main_observed": "3d8f7bd65244d97bb54cefbc5263f28c4f5dfd9f",
+  "other_exposure": "Outside the reviewed public inventory and described operator report, including pretraining, exposure is unknown.",
+  "protocol_revision": "38ffcab52256e3952315b7bd9b58d6f10d7921c2",
+  "protocol_sha256": "6f31697b09b2b68bf701494b4ceedde185b9f8501aea61caf50b647edac1fee7",
+  "public_inventory_check": "v17 was independently recomputed and preserves v16 ordered token/target/text records and 3247 known prefixes; all 48 fixed inputs remain planned",
+  "recorded_utc": "2026-10-29T07:29:26.195632+00:00",
+  "reservation_merge_commit": "a5f09aebc939ccafa75bae1c83ce57f3213b72a8",
+  "reservation_sha256": "275a16d49a386b1de247bff0f9031e92105d1b76f2493352090bf27c37d58843",
+  "reservation_version": "distilgpt2-development-exposures-v16",
+  "schema": "distilgpt2-year-transfer-launch-v1",
+  "script_sha256": "3b15d689da30c4b84cb4a4b2ee372969583a0f232c6074bad3d8a4bbeffbe8da",
+  "source_merge_commit": "3d8f7bd65244d97bb54cefbc5263f28c4f5dfd9f",
+  "source_pr": "https://github.com/EastonSell/model-looking-glass/pull/391",
+  "source_revision": "d4e17d4a9db796dc48ab76dbe08500cdeff15007",
+  "source_tree": "f99f34b735d917a0e461936e10d2356c051562cb"
+}

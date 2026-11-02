@@ -1,0 +1,8 @@
+{
+  "direct_target_conflict": "none reported",
+  "note": "Fabricated for no-model rehearsal only; not a custody observation.",
+  "refreshed_utc": "2026-10-29T10:13:29.682784+00:00",
+  "schema": "agreement-subject-injection-refresh-v1",
+  "site": "transformer.h.3.attn",
+  "status": "no_protected_rows"
+}

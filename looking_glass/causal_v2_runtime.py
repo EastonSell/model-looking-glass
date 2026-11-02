@@ -98,7 +98,7 @@ def establish_numeric_policy():
 
 def _float32_bits(value):
     if (type(value) is not torch.Tensor or value.layout != torch.strided or
-            value.is_nested or value.is_neg() or value.is_conj() or value.has_names() or
+            value.is_nested or value.is_neg() or value.is_conj() or any(name is not None for name in getattr(value, "names", ())) or
             value.device.type != "cpu" or value.dtype != torch.float32 or
             value.numel() == 0 or value.numel() > 8):
         raise NumericPolicyError("expected a nonempty bounded dense CPU float32 tensor")

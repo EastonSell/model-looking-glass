@@ -1,0 +1,22 @@
+{
+  "schema": "distilgpt2-year-label-control-v2-launch-start-observation-v1",
+  "previous_observation_sha256": "9a38b859f092227e0477ffc82021841acd7c09fec797232595600098f905be8a",
+  "previous_main": "f148c89ac96282d2873cab0293e36cd99b28c89b",
+  "observed_main": "46842b08338fef9fc9aefc2c90aab3a8af63c66c",
+  "observation": "The public compare from previous_main to observed_main is ahead by four commits and changes only the nine listed answer-format documentation, case, and audit paths. The reviewed v27 source Git blob remains 45cdb7e8acce7f763d3f5a5ba6b305c6364ba3a6, v28 was absent, and the eight fixed source/case paths checked in the previous observation are unchanged in this compare.",
+  "changed_paths": [
+    "docs/ANSWER_FORMAT_FEASIBILITY_CASES_V1.md",
+    "docs/ANSWER_FORMAT_FEASIBILITY_CPU_V1.md",
+    "docs/ANSWER_FORMAT_FEASIBILITY_SCOPE_V1.md",
+    "experiments/answer_format_feasibility_case_review_v1.json",
+    "experiments/answer_format_feasibility_cases_v1.json",
+    "experiments/answer_format_feasibility_natural_comparison_v1.json",
+    "scripts/build_answer_format_feasibility_cases.py",
+    "tools/audit_answer_format_cases_v1.py",
+    "tools/audit_answer_format_natural_public_v1.py"
+  ],
+  "current_exposure_version": "distilgpt2-development-exposures-v27",
+  "current_exposure_sha256": "ef42683a664dda450e82c69afedda34a8a34f2daf9f50f2db54f6c9d846f07e5",
+  "pending_inputs": "The editing owner reports the 64 answer-format cases are tokenizer-only and unforwarded; their reservation was not yet published at the time of that report.",
+  "scope": "This is a point-in-time public comparison and an owner report, not continuous monitoring or proof of all exposure. The old sealed split and outside/pretraining exposure remain unchecked. The continuation's 36 inputs were already exposed in v1."
+}

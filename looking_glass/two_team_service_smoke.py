@@ -1,8 +1,8 @@
 """Bounded operator smoke for the reviewed fixed two-team service.
 
 This is not a launcher, profiler, fairness benchmark or general IPC client.
-It accepts only a prepared fixed service and remains gated until its actual
-fair owner declares the reviewed contract.
+Each entry accepts only a prepared fixed service and remains gated until its
+actual direct or fair owner declares the matching reviewed contract.
 """
 from dataclasses import dataclass
 import hashlib
@@ -15,10 +15,11 @@ from weakref import WeakSet
 
 from . import gpu_service as _owner_module
 from .supervisor import SupervisionResult
-from .two_token_service import _PreparedService
+from .two_token_service import _PreparedService, _REQUIRED_COMPLETION_CONTRACT
 
 
 _REQUIRED_FAIR_CONTRACT = 'two-team-fair-service-v1'
+_REQUIRED_DIRECT_CONTRACT = 'two-team-direct-service-v1'
 _REQUEST_ID = 'two-team-service-smoke-v1'
 _SHAPE = (1, 2, 50257)
 _NUM_VALUES = 100514
@@ -73,12 +74,13 @@ def _result_identity(response, team):
 
 def _clean_supervisor(result, marker):
     return (type(result) is SupervisionResult and result.clean is True
-            and result.timed_out is False and result.exit_code == 0
+            and result.timed_out is False and type(result.exit_code) is int
+            and result.exit_code == 0
             and type(result.pid) is int and result.pid > 0 and not os.path.lexists(marker))
 
 
 def _exercise(service, teams):
-    """Trusted internal seam; caller must already have checked the fair gate."""
+    """Trusted internal seam; caller must already have checked its owner gate."""
     handles = [None, None]
     outcome = None
     client = None
@@ -156,18 +158,7 @@ def _exercise(service, teams):
     return outcome
 
 
-def run_two_team_smoke(service):
-    """Exercise two fixed requests and require clean supervised owner exit.
-
-    The caller retains the prepared service for recovery and must separately
-    establish approved exact-path profiles and the coordinated device window.
-    The two submissions are not a fairness or throughput measurement.
-    """
-    if type(service) is not _PreparedService:
-        raise TypeError('a prepared fixed service is required')
-    marker = getattr(_owner_module, 'FAIR_SERVICE_OWNER_CONTRACT', None)
-    if type(marker) is not str or marker != _REQUIRED_FAIR_CONTRACT:
-        raise ServiceSmokeError('reviewed fair service owner is unavailable')
+def _claim_and_exercise(service):
     teams = service._teams
     if type(teams) is not tuple or len(teams) != 2 or teams[0] == teams[1]:
         raise ValueError('the smoke requires exactly two distinct configured teams')
@@ -178,3 +169,37 @@ def run_two_team_smoke(service):
             raise ServiceSmokeError('prepared service was already claimed by a smoke')
         _CLAIMED.add(service)
     return _exercise(service, teams)
+
+
+def run_two_team_smoke(service):
+    """Exercise two fixed requests through the reviewed fair owner.
+
+    The caller retains the prepared service for recovery and must separately
+    establish approved exact-path profiles and the coordinated device window.
+    The two submissions are not a fairness or throughput measurement.
+    """
+    if type(service) is not _PreparedService:
+        raise TypeError('a prepared fixed service is required')
+    marker = getattr(_owner_module, 'FAIR_SERVICE_OWNER_CONTRACT', None)
+    if type(marker) is not str or marker != _REQUIRED_FAIR_CONTRACT:
+        raise ServiceSmokeError('reviewed fair service owner is unavailable')
+    return _claim_and_exercise(service)
+
+
+def run_direct_two_team_smoke(service):
+    """Exercise two fixed requests through the separately reviewed direct owner.
+
+    The prepared controller and supervised child still verify the source,
+    collector, supervisor, exact profiles and completion contracts before
+    model work. This smoke does not establish fairness, throughput, or
+    simultaneous device execution.
+    """
+    if type(service) is not _PreparedService:
+        raise TypeError('a prepared fixed service is required')
+    marker = getattr(_owner_module, 'DIRECT_SERVICE_OWNER_CONTRACT', None)
+    if type(marker) is not str or marker != _REQUIRED_DIRECT_CONTRACT:
+        raise ServiceSmokeError('reviewed direct service owner is unavailable')
+    completion = getattr(_owner_module, 'OWNER_COMPLETION_CUSTODY_CONTRACT', None)
+    if type(completion) is not str or completion != _REQUIRED_COMPLETION_CONTRACT:
+        raise ServiceSmokeError('reviewed completion custody is unavailable')
+    return _claim_and_exercise(service)

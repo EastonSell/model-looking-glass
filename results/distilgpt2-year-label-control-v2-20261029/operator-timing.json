@@ -1,0 +1,12 @@
+{
+  "schema": "distilgpt2-year-label-v2-operator-timing-v1",
+  "direct_child_started_utc": "2026-10-29T10:28:03.491934+00:00",
+  "direct_child_started_pid": 35728,
+  "direct_child_reaped_utc": "2026-10-29T10:29:58.479042+00:00",
+  "direct_child_exit_code": 0,
+  "interrupted": false,
+  "launcher_error_type": null,
+  "process_receipt_sha256": "8e41226e78793580e09985232e8dd68415ac54c5863c4157189e08835d387978",
+  "receipt_recorded_utc": "2026-10-29T10:29:58.123596+00:00",
+  "provenance": "Operator transcription of the direct-launcher's start and reaped progress events returned by the execution tool; the separately retained receipt records its own time and exit. This is not independent synchronized execution, process-tree, or concurrent-work attestation."
+}

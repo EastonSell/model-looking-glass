@@ -1,0 +1,1 @@
+{"directional_prediction": {"mean": 0.2543242772420247, "passed": true, "positive_cases": 6}, "forwards": 448, "status": "complete"}

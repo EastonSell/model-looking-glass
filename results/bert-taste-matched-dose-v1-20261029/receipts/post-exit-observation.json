@@ -1,0 +1,6 @@
+{
+  "direct_process_record_sha256": "2913352a8e8d7427b5ecd135ce61d05491de5d085353adff2ab07ce7cdf4846d",
+  "observed_at_utc": "2026-10-29T07:22:59.5064323Z",
+  "matching_python_commandlines_at_observation": 0,
+  "scope": "operator observation after direct process exit; does not establish whole-process-tree cleanup or exact exit time"
+}

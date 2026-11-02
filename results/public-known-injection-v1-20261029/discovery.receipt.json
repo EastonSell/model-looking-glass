@@ -1,0 +1,76 @@
+{
+  "accepted_complete_phase": true,
+  "exit_code": 0,
+  "failure_file_present": false,
+  "free_bytes_after": {
+    "cache": 2943901696,
+    "output": 397668118528,
+    "source": 2943901696
+  },
+  "freeze_sha256": null,
+  "interrupted": false,
+  "launcher_error_type": null,
+  "phase": "discovery",
+  "pre_run_sha256": "b4f632ed69f0b20ceb82a176ee64047a815771231072ec04bb60dc880c18d6c6",
+  "prefix_empty_after": true,
+  "prefix_sha256": "76e0b1ce7b9530bafd1839183b9f689554fdf3f09c3aefefc626f95223b5a9ab",
+  "reaped_observed_utc": "2026-10-29T11:42:35.832459+00:00",
+  "reservation_sha256": "e5ae202c1e3449a67e92788a83cd0dc62d404a3fa1e052716a11770ee92cc00c",
+  "run_files": {
+    "events.jsonl": {
+      "bytes": 942216,
+      "sha256": "5902378daa10a84b10ddee3bc4f3aa9e8a8161678e8b7aafa0d0be9a8211d06d"
+    },
+    "known-injection-01.f32": {
+      "bytes": 4044540,
+      "sha256": "3d5de9496eb1683e21da6ff8bf55761f5d3d397d40ee9a294d7159d5a40967ed"
+    },
+    "known-injection-02.f32": {
+      "bytes": 4327164,
+      "sha256": "08497c7bb6f582cc2917c291594d807d9ebcbb2e134e7740985146c6c6f4d293"
+    },
+    "known-injection-03.f32": {
+      "bytes": 4327164,
+      "sha256": "0f28c93d5bdd3dcbc73a8659f51f3e069dde82007df238d82d9ba0b957cc33ed"
+    },
+    "known-injection-04.f32": {
+      "bytes": 4044540,
+      "sha256": "4eb9975108e4e9d64853699b678c536d8c1346d150fac0efd658274329d52aca"
+    },
+    "known-injection-05.f32": {
+      "bytes": 4185852,
+      "sha256": "74075d1f08259f32d8d57a4b6db095858b5e544ca8b6c156de6acfc343480362"
+    },
+    "known-injection-06.f32": {
+      "bytes": 4044540,
+      "sha256": "5a8489cfe396d46c4faffdb156653f2a78e2b13b594367fbe84e415b8ce85898"
+    },
+    "known-injection-07.f32": {
+      "bytes": 4044540,
+      "sha256": "290cb2874cc6894686d84caa957c2f2f0fe75f96ddc23f9ba6a289eaec05e77e"
+    },
+    "known-injection-08.f32": {
+      "bytes": 4327164,
+      "sha256": "40bfe44a9f64108355e6579ce45400e3d0ca8377259457e5252392442eeae1fc"
+    },
+    "phase-summary.json": {
+      "bytes": 146,
+      "sha256": "03764e395aa88c5496373c08b4855c699b7181a7a28ff41feef57075b9e33e51"
+    }
+  },
+  "schema": "public-known-injection-direct-receipt-v1",
+  "scope": "cooperative direct-child observation; no descendant or authenticated execution attestation",
+  "source_revision": "ea3f1e78e9074e3455087919d96c84d7c20db0cc",
+  "source_tree": "97d6e126de608c5820b44ad3fce2f3b38fded69a",
+  "stage_dir_sha256": "32f0be80dbe804daf55736ab16f4936489ce3fdc76319f752c6c8357b1942551",
+  "stage_empty_after": true,
+  "start_observed_utc": "2026-10-29T11:42:13.495885+00:00",
+  "stderr": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stdout": {
+    "bytes": 408,
+    "sha256": "1c13d4172dcc2d6b4d9cbf1a0f109fa26900ff5b3f1bd1ba6e53e61ffce098bb"
+  }
+}

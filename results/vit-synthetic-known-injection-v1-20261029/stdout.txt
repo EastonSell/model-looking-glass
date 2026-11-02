@@ -1,0 +1,9 @@
+discovery case 1/4 complete
+discovery case 2/4 complete
+discovery case 3/4 complete
+discovery case 4/4 complete
+held-out case 1/4 complete
+held-out case 2/4 complete
+held-out case 3/4 complete
+held-out case 4/4 complete
+{"status": "complete", "selection": {"directional_hits": 4, "magnitude_hits": 4, "random_hits": 1, "prediction": "pass"}, "restoration": {"eligible": 4, "passes": 4, "prediction": "pass"}}

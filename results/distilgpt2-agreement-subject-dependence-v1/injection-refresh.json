@@ -1,0 +1,9 @@
+{
+  "direct_target_conflict": "none reported",
+  "limitation": "Operator record of the named custodian report; not an authenticated attestation or proof of complete exposure history.",
+  "observation": "Injection custodian reports no injection-heldout claim, allocation marker, nonce or protected rows, and confirms the prior no-direct-target-conflict assessment for the fixed separate-owner L3-final attention-output target. No private-row comparison occurred.",
+  "refreshed_utc": "2026-10-29T10:23:24.301750+00:00",
+  "schema": "agreement-subject-injection-refresh-v1",
+  "site": "transformer.h.3.attn",
+  "status": "no_protected_rows"
+}

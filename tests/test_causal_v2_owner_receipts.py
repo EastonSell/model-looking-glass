@@ -209,6 +209,8 @@ def fake_owner(tmp_path, monkeypatch):
     monkeypatch.setattr(owner, "_launcher", lambda: launcher)
     monkeypatch.setattr(owner, "_registry", lambda *args: object())
     monkeypatch.setattr(owner, "_verified_success", audit)
+    # This fixture simulates a Windows owner; no native process is created.
+    monkeypatch.setattr(owner.subprocess, "DETACHED_PROCESS", 0x00000008, raising=False)
     monkeypatch.setattr(owner.subprocess, "Popen", Child)
     return SimpleNamespace(checkout=checkout, work=work, output=tmp_path / "output", launcher=launcher,
                            events=events, leases=leases, quarantine_type=Quarantine)

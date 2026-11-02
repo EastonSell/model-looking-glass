@@ -1,0 +1,16 @@
+{
+  "checks": {
+    "baseline_rows_checked": 8,
+    "directional_effects_checked": 144,
+    "forwards_checked": 248
+  },
+  "limitations": [
+    "No model execution, dependency identity, publication timing, or process-tree lifetime is authenticated.",
+    "Full-output untouched-coordinate equality and patched full-vocabulary summaries remain owner-observed.",
+    "The public prompts are exploratory and do not establish held-out generalization."
+  ],
+  "observer_sha256": "b87dbdbe9ecf6c3e5b7c2e8f3381e781804eebc577cab7964d0be46ecd2061f3",
+  "result_sha256": "19178494cd26742b6282ed15cbffbc159a836a1433d6fe4183655c7c0c4cd94b",
+  "source_commit": "bb2ccb0d4b674a4e2c90be4952ccff5195e8730a",
+  "status": "saved_public_evidence_consistent"
+}

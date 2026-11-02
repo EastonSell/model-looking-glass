@@ -1,0 +1,242 @@
+{
+  "schema": "bert-taste-public-exposure-v2",
+  "model": "distilbert/distilbert-base-uncased",
+  "revision": "12040accade4e8a0f71eabdb258fecc2e7e948be",
+  "status": "public-exploratory-observed",
+  "scope": "The eight reserved row identifiers have completed-forward records. The journals do not independently retain model-entry token IDs; the published cases and owner code bind identifiers to intended inputs. The records do not authenticate execution. Unknown prior and pretraining exposure is not certified.",
+  "supersedes": {
+    "path": "experiments/bert_taste_public_cases_v1.json",
+    "sha256": "362b84af462e7f5bb4ccbb365c8ab5ee1bc96845ee6021df23d6d08c298acad8"
+  },
+  "source_commit": "bb2ccb0d4b674a4e2c90be4952ccff5195e8730a",
+  "saved_result": {
+    "path": "results/bert-taste-context-v1-20261029/run/result.json",
+    "sha256": "19178494cd26742b6282ed15cbffbc159a836a1433d6fe4183655c7c0c4cd94b"
+  },
+  "rows": [
+    {
+      "id": "tea-sugar",
+      "text": "The tea tasted [MASK] after adding sugar.",
+      "input_ids": [
+        101,
+        1996,
+        5572,
+        12595,
+        103,
+        2044,
+        5815,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "tea-lemon",
+      "text": "The tea tasted [MASK] after adding lemon.",
+      "input_ids": [
+        101,
+        1996,
+        5572,
+        12595,
+        103,
+        2044,
+        5815,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "drink-sugar",
+      "text": "The drink tasted [MASK] because of sugar.",
+      "input_ids": [
+        101,
+        1996,
+        4392,
+        12595,
+        103,
+        2138,
+        1997,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "drink-lemon",
+      "text": "The drink tasted [MASK] because of lemon.",
+      "input_ids": [
+        101,
+        1996,
+        4392,
+        12595,
+        103,
+        2138,
+        1997,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "sauce-sugar",
+      "text": "The sauce tasted [MASK] from the sugar.",
+      "input_ids": [
+        101,
+        1996,
+        12901,
+        12595,
+        103,
+        2013,
+        1996,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "sauce-lemon",
+      "text": "The sauce tasted [MASK] from the lemon.",
+      "input_ids": [
+        101,
+        1996,
+        12901,
+        12595,
+        103,
+        2013,
+        1996,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "water-sugar",
+      "text": "The water tasted [MASK] with some sugar.",
+      "input_ids": [
+        101,
+        1996,
+        2300,
+        12595,
+        103,
+        2007,
+        2070,
+        5699,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "water-lemon",
+      "text": "The water tasted [MASK] with some lemon.",
+      "input_ids": [
+        101,
+        1996,
+        2300,
+        12595,
+        103,
+        2007,
+        2070,
+        14380,
+        1012,
+        102
+      ],
+      "attention_mask": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    }
+  ]
+}

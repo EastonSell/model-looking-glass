@@ -1,0 +1,8 @@
+{
+  "observed_utc": "2026-10-29T08:41:51+00:00",
+  "inventory_sha256": "2549f1430ada47da088d2a909f8aa57ad5c08bf7c6d09f187bd34bb76b99f658",
+  "source_path": "looking_glass/pretrained_exposures_v23.py",
+  "reviewer": "review_trace_budget",
+  "reviewed_commit": "0a167ee5b044f80d52da3813cbc733bf6b498bd3",
+  "source_sha256": "4f3f3057d8212d8e416186d72c63200dd2f5464964002063b57e916eaa907618"
+}

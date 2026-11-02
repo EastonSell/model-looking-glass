@@ -1,0 +1,2494 @@
+{
+  "original_result_sha256": "218e5e7144667f309e82532699c6bac05ecb31da6616c5319da099dd64eefbba",
+  "result": {
+    "evidence_consistency": "verified-saved-records-no-raw-logits",
+    "evidence_inventory": {
+      "asset-verification.json": {
+        "bytes": 1012,
+        "sha256": "6c86b3061b5f9948b4f85b9422518658e5b7cda63fae7059f9e6e76c274624fe"
+      },
+      "candidate.json": {
+        "bytes": 34084,
+        "sha256": "c754cc9e34340fcaaf34f70a8226cb9fb5a6f8b216d1581921e18e09dc7f6e30"
+      },
+      "frozen-policy.json": {
+        "bytes": 2577,
+        "sha256": "8d0c256eacd7966cfdbccc0958368a05dd497f90113e18f8e40ba9e4250b0454"
+      },
+      "memory-000.json": {
+        "bytes": 180,
+        "sha256": "b46333eb3314b5807839c3654ee184cdcab5565f38fa403edce83683e7279b0f"
+      },
+      "memory-001.json": {
+        "bytes": 339,
+        "sha256": "a90955562185e7de7b4983780fcc89a5c9e4a073ff3dcf9700b84cf15e0fa816"
+      },
+      "memory-002.json": {
+        "bytes": 338,
+        "sha256": "84e4b3ae350d4308de6ca620b1d93a609eee223974d5b0ea41ea67c9e801c21b"
+      },
+      "memory-003.json": {
+        "bytes": 211,
+        "sha256": "1333082cb58235f7c54d3dedd8eecf6ddaa6a27cb3efdc80bcf14cbce2216596"
+      },
+      "memory-004.json": {
+        "bytes": 381,
+        "sha256": "de53757672a6cbfcbe40a8420e1f57df07b340b4013f5b437b94f7ea1354495e"
+      },
+      "memory-005.json": {
+        "bytes": 375,
+        "sha256": "eb7b105305ea0f4de316f21d74db0b1d5a65bb997277cffa6c16415742520547"
+      },
+      "memory-006.json": {
+        "bytes": 212,
+        "sha256": "fedb2a5fe5751a6a0da66a34d0a9d34d914322380e31fd7ec9843e7225b05dd5"
+      },
+      "memory-007.json": {
+        "bytes": 381,
+        "sha256": "f115d60b45f36480919840fa951bb697435d8c1e07d054bd3dc57ca0a890768e"
+      },
+      "memory-008.json": {
+        "bytes": 381,
+        "sha256": "17aac53a0e5a1a967fadafad51120ee04a934962457a91108d190facbd651d9a"
+      },
+      "memory-009.json": {
+        "bytes": 211,
+        "sha256": "6a3ee64d7fd714c6713c7e37a13c2f553914e1d2ec1657eae9e090b4290a75fe"
+      },
+      "memory-010.json": {
+        "bytes": 212,
+        "sha256": "f97b6fa8453745472f55477ab8b41770695b87a4ba90639ac626f7e7eb73c253"
+      },
+      "memory-011.json": {
+        "bytes": 381,
+        "sha256": "a2d09e2481c8134627c29520936683f7c856a6e0906531e4687afa3e9507be51"
+      },
+      "memory-012.json": {
+        "bytes": 381,
+        "sha256": "ea27d82217c67dad9db5a866667b7e53d375f0d147ec58ecb00292e6ef2b14dc"
+      },
+      "memory-013.json": {
+        "bytes": 211,
+        "sha256": "b8188f7ebe5f695a101a704f8da509496ebcc8d63e964be4aae463fac07bd1e0"
+      },
+      "memory-014.json": {
+        "bytes": 209,
+        "sha256": "04d46aac157efcf957481919ff03c7dec3b44e87bde4326d32fecd363b88f3b0"
+      },
+      "memory-015.json": {
+        "bytes": 378,
+        "sha256": "f8f8f23810b34a455dcdfe3ec468907d5979ecff912c0860fec2cae27fbf0c0c"
+      },
+      "memory-016.json": {
+        "bytes": 378,
+        "sha256": "125e9edd5284013e0bef9eb7f73d29f5cf813b4109b3c5142177dd1850cf002b"
+      },
+      "memory-017.json": {
+        "bytes": 208,
+        "sha256": "9ffeb3cbc3f22b0546c65e51a1efe06ef352e478338e99d2920f2d41512c67b8"
+      },
+      "memory-018.json": {
+        "bytes": 212,
+        "sha256": "33bb0506aff6a2a56338f6bd38e6aaa817521e8c5f102d6cf03400a79dc4861d"
+      },
+      "memory-019.json": {
+        "bytes": 381,
+        "sha256": "9d25f0588c169d73b2900881940a572dfd9d53cc3057be117d24225d44994d09"
+      },
+      "memory-020.json": {
+        "bytes": 381,
+        "sha256": "b5ea1fb1433b549cf5857f05e4e2d99bdc875b218f1e49dcd5c5a7c4b68d7ad6"
+      },
+      "memory-021.json": {
+        "bytes": 211,
+        "sha256": "3a90a38f780ae4d17a0948b852ace27f66d80836ed2d7059e9314c20c4f0682f"
+      },
+      "memory-022.json": {
+        "bytes": 212,
+        "sha256": "7dc77ccececd7f0695a48827dfeba8f954d797a88fe404ac7039c2645e8de2d1"
+      },
+      "memory-023.json": {
+        "bytes": 381,
+        "sha256": "8d69ac7555eba12c0c72abda61363e0e99e2b818f00f1ccdd58caf11188176f2"
+      },
+      "memory-024.json": {
+        "bytes": 381,
+        "sha256": "c6b4f4c24cac5903afa7eb2b749778feb013cda1250733a30b3495007280bc65"
+      },
+      "memory-025.json": {
+        "bytes": 211,
+        "sha256": "ecfc47c39caab3d210deb9fead37242fd0f1d61d86516cb5972510b91606bac1"
+      },
+      "memory-026.json": {
+        "bytes": 209,
+        "sha256": "6946b4a2979bc389e2ca2cbce933bacaec61fdaf8ea9fcba4a25277efd81e93b"
+      },
+      "memory-027.json": {
+        "bytes": 378,
+        "sha256": "a91113b88703e7a3230f13c70613ca547bd7779ac84d7b24149eedb4e857ab1b"
+      },
+      "memory-028.json": {
+        "bytes": 378,
+        "sha256": "03cb00dd640774f8546731b85103bd47dfb6bc3fd5b5ff26ef4902df756cbc3b"
+      },
+      "memory-029.json": {
+        "bytes": 208,
+        "sha256": "f584d41f9952375a5f877df13a638c8d2d27a4cbe7fa4ff45d01c7128fea19ac"
+      },
+      "memory-030.json": {
+        "bytes": 220,
+        "sha256": "a99cf634ac37f13bcd82cab94307db73656ff43564d9d199a946c25ca1af346c"
+      },
+      "memory-031.json": {
+        "bytes": 389,
+        "sha256": "f3ae47021a184c99d08799b9f8b38cc700f8b5a45f3f0a5ff18f37666e88d3b5"
+      },
+      "memory-032.json": {
+        "bytes": 389,
+        "sha256": "0b500ecb6a252930d8dadd24429393583f11d261b670740bda606a9158b2060a"
+      },
+      "memory-033.json": {
+        "bytes": 219,
+        "sha256": "db0d3e77be3f36cde382482c9e91d3bdaa12ed812df2fc62113163cb45b045b1"
+      },
+      "memory-034.json": {
+        "bytes": 220,
+        "sha256": "81a2c6b66fb9294a472ccb1595d6f2018373f089314db54e4d9ecd714bac62a8"
+      },
+      "memory-035.json": {
+        "bytes": 389,
+        "sha256": "ed43ece1ccb332b52ce0d3d2a243cd3a30e54faec9d773dc63fe43637e3f5548"
+      },
+      "memory-036.json": {
+        "bytes": 389,
+        "sha256": "b13d566dab0dcb14f7edd9492c36bdc244764bf106d3c1600e9b390900998779"
+      },
+      "memory-037.json": {
+        "bytes": 219,
+        "sha256": "9df4830520fe7451e2c74b33fa2b94730cfd8a958a69f00bb513eaa0815f508f"
+      },
+      "memory-038.json": {
+        "bytes": 217,
+        "sha256": "ab232fe8e159c923471441c96439673dee20b18ce8f073baf56973b315c10b00"
+      },
+      "memory-039.json": {
+        "bytes": 386,
+        "sha256": "58905bd830615aae708eb65a8a4a5513fe5fd38d000a5aa5ea8ab294c993ac59"
+      },
+      "memory-040.json": {
+        "bytes": 386,
+        "sha256": "3723335bb14e256032ccc79e82a0bec623fe937bca91afb6b6f8ff5043ee9b12"
+      },
+      "memory-041.json": {
+        "bytes": 216,
+        "sha256": "c132c7131c12cbb6c284173e7c35cddbd66f89f18348855e73e97b847f4a20b8"
+      },
+      "memory-042.json": {
+        "bytes": 220,
+        "sha256": "d16fde075dfa07e9d18c3f4e9b00c76a797bd517122af45f7770f927bc3fca92"
+      },
+      "memory-043.json": {
+        "bytes": 389,
+        "sha256": "1a4207df8bc37fa04aed3c444eeae9d38529016be3f5f19eeb09e5f7fcaf8f43"
+      },
+      "memory-044.json": {
+        "bytes": 389,
+        "sha256": "5cc348840bb2d759879458d75b704aa5c0097a0c814c387219a3027bdbdd1ca2"
+      },
+      "memory-045.json": {
+        "bytes": 219,
+        "sha256": "442fd6fb4220f9d88ffdb8795971e73125a4f483fd72cfab3da4badf6ca5445e"
+      },
+      "memory-046.json": {
+        "bytes": 220,
+        "sha256": "54d365886d7dbe0585fbcb4287b102d890ac9b573668187063e38a5b45fdfb5f"
+      },
+      "memory-047.json": {
+        "bytes": 389,
+        "sha256": "00d4e3802c54fa4d8b500150ca80e25713024c1be4f6848d8c158335151505e6"
+      },
+      "memory-048.json": {
+        "bytes": 389,
+        "sha256": "6677d3770182aeb89da0692c0e327b7f236c41acab65cf54502ca231792ae143"
+      },
+      "memory-049.json": {
+        "bytes": 219,
+        "sha256": "c8a743a99f3fe1fdfad690b90cfb4e284344965dd0af496cb443a0613a9300c3"
+      },
+      "memory-050.json": {
+        "bytes": 217,
+        "sha256": "d8b69f707085be09cd14b7bcdc887328ef5629e0d3de55a1f685b8a6208f94a4"
+      },
+      "memory-051.json": {
+        "bytes": 386,
+        "sha256": "fc5ffe99a61c72901a5b8da0813cf7943622fd050d864917126d728960396fce"
+      },
+      "memory-052.json": {
+        "bytes": 386,
+        "sha256": "a25a98dc260f3991daa039df04f8306984548cfd7d80e842d9f1b8e2e6435d8a"
+      },
+      "memory-053.json": {
+        "bytes": 216,
+        "sha256": "cf3a7018ca3fc0a36ead0cda87fec7aecbe01e861b6303787669fee2cc757482"
+      },
+      "observations.json": {
+        "bytes": 21401,
+        "sha256": "32596f5030f1fc1ce901c5a712affd196e30628791ea2151a4173aad6dee421b"
+      },
+      "owner.json": {
+        "bytes": 235,
+        "sha256": "72c362c9a5b5da393de4a0cb17e9026ce7b2c922a9e317ff4baf2eec50b0d00c"
+      },
+      "private-runtime.json": {
+        "bytes": 1014,
+        "sha256": "09d446e5f3401070882650782b7a8504db3212dc4ad33ead47920e594837b05c"
+      },
+      "private-selected-device.json": {
+        "bytes": 150,
+        "sha256": "bddabe257e06a4205acfd3f7bcd1f21ed8cdc17443b4c051a72a8d3281e42df6"
+      },
+      "protected-manifest/source-manifest.json": {
+        "bytes": 3014,
+        "sha256": "9362d1498a08fa01cb0ce6b2778d311f3009589e8e3c0517e454edd06dd2c7ab"
+      },
+      "protocol-source.json": {
+        "bytes": 3173,
+        "sha256": "15d5d71d8bac12dbbffafca0a9afe23c42a1df4e8e8281026b91711e5b107c2e"
+      },
+      "resource-profile.json": {
+        "bytes": 11683,
+        "sha256": "d161ee4d21e31c7dc08db81b3e646a451ffaad0e91122ed29d3ea5241fbf6612"
+      },
+      "sample-evidence.json": {
+        "bytes": 1891,
+        "sha256": "d315506ad4d46eba63e081e62d0880d11c6a4ed546e85ddbe0d41f978254dc69"
+      },
+      "started.json": {
+        "bytes": 313,
+        "sha256": "aa216bd566aaf76186b3b506bc4150704a6fcde9b225c67cea1e84985fcd16fd"
+      },
+      "supervision.json": {
+        "bytes": 194,
+        "sha256": "1d1b7d916d2e79ec9a14408d5ea934c7accfe18abbd3367d6f63fb1f6c2e8f4c"
+      }
+    },
+    "limitations": [
+      "post-exit process listing is a point observation, not proof of GPU idleness or native cleanup; WDDM limits per-process visibility",
+      "device counters are sequential point observations, not a worst-case capacity bound"
+    ],
+    "measurement": {
+      "cleanup": {
+        "accounting_leases_after": 0,
+        "after": {
+          "allocated_bytes": 0,
+          "reserved_bytes": 0
+        },
+        "api": "PyTorch 2.8.0+cu128 private _cuda_clearCublasWorkspaces",
+        "before": {
+          "allocated_bytes": 33554432,
+          "reserved_bytes": 33554432
+        }
+      },
+      "holdout": [
+        {
+          "comparisons": [
+            {
+              "case_id": "holdout-0-0",
+              "input_row_sha256": "7e134cd7c770f938a39bf2d25c973697ff25606dc59f8455369c236e60a9affb",
+              "job_slot": 0,
+              "other_reference": {
+                "absolute_error_overflow": false,
+                "max_abs_error": 10.463905334472656,
+                "max_relative_error": 0.18397946323904263,
+                "relative_error_nonfinite_reason": null,
+                "status": "mismatch"
+              },
+              "own_reference": {
+                "absolute_error_overflow": false,
+                "max_abs_error": 4.57763671875e-05,
+                "max_relative_error": 7.908119252856709e-07,
+                "relative_error_nonfinite_reason": null,
+                "status": "matched"
+              },
+              "owner": "team-a",
+              "request_id": "heldout-broker-0",
+              "status": "matched"
+            },
+            {
+              "case_id": "holdout-0-1",
+              "input_row_sha256": "080cc34ef1eebc2853abbea8f321bfb2e80d07dae84c92847e64ba12f998841d",
+              "job_slot": 1,
+              "other_reference": {
+                "absolute_error_overflow": false,
+                "max_abs_error": 10.463905334472656,
+                "max_relative_error": 0.21632544491993377,
+                "relative_error_nonfinite_reason": null,
+                "status": "mismatch"
+              },
+              "own_reference": {
+                "absolute_error_overflow": false,
+                "max_abs_error": 4.57763671875e-05,
+                "max_relative_error": 7.571769012585795e-07,
+                "relative_error_nonfinite_reason": null,
+                "status": "matched"
+              },
+              "owner": "team-b",
+              "request_id": "heldout-broker-0",
+              "status": "matched"
+            }
+          ],
+          "entry_shapes": [
+            [
+              2,
+              4
+            ]
+          ],
+          "group_id": "holdout-0",
+          "reference_separation": [
+            {
+              "absolute_error_overflow": false,
+              "max_abs_error": 10.463905334472656,
+              "max_relative_error": 0.2163256139127014,
+              "relative_error_nonfinite_reason": null,
+              "status": "mismatch"
+            },
+            {
+              "absolute_error_overflow": false,
+              "max_abs_error": 10.463905334472656,
+              "max_relative_error": 0.18397946323904263,
+              "relative_error_nonfinite_reason": null,
+              "status": "mismatch"
+            }
+          ],
+          "status": "compared"
+        },
+        {
+          "comparisons": [
+            {
+              "case_id": "holdout-1-0",
+              "input_row_sha256": "976149e4f57600f75d300b43edee20c0f878c44545afe198f87f3c3d807d5888",
+              "job_slot": 2,
+              "other_reference": {
+                "absolute_error_overflow": false,
+                "max_abs_error": 14.835105895996094,
+                "max_relative_error": 0.23115493599354442,
+                "relative_error_nonfinite_reason": null,
+                "status": "mismatch"
+              },
+              "own_reference": {
+                "absolute_error_overflow": false,
+                "max_abs_error": 5.340576171875e-05,
+                "max_relative_error": 7.841752537591122e-07,
+                "relative_error_nonfinite_reason": null,
+                "status": "matched"
+              },
+              "owner": "team-a",
+              "request_id": "heldout-broker-1",
+              "status": "matched"
+            },
+            {
+              "case_id": "holdout-1-1",
+              "input_row_sha256": "ed026c308263a61ddf19f5e792a6e9dc133ecc6864e09b1f07a58cab0bbcb474",
+              "job_slot": 3,
+              "other_reference": {
+                "absolute_error_overflow": false,
+                "max_abs_error": 14.835113525390625,
+                "max_relative_error": 0.30065241643016344,
+                "relative_error_nonfinite_reason": null,
+                "status": "mismatch"
+              },
+              "own_reference": {
+                "absolute_error_overflow": false,
+                "max_abs_error": 4.57763671875e-05,
+                "max_relative_error": 6.911010829784337e-07,
+                "relative_error_nonfinite_reason": null,
+                "status": "matched"
+              },
+              "owner": "team-b",
+              "request_id": "heldout-broker-1",
+              "status": "matched"
+            }
+          ],
+          "entry_shapes": [
+            [
+              2,
+              4
+            ]
+          ],
+          "group_id": "holdout-1",
+          "reference_separation": [
+            {
+              "absolute_error_overflow": false,
+              "max_abs_error": 14.835121154785156,
+              "max_relative_error": 0.3006525710495331,
+              "relative_error_nonfinite_reason": null,
+              "status": "mismatch"
+            },
+            {
+              "absolute_error_overflow": false,
+              "max_abs_error": 14.835121154785156,
+              "max_relative_error": 0.23115517375014918,
+              "relative_error_nonfinite_reason": null,
+              "status": "mismatch"
+            }
+          ],
+          "status": "compared"
+        }
+      ],
+      "limitations": [
+        "input-specific correctness development run; not a throughput benchmark",
+        "the full runtime manifest and selected device identity remain private",
+        "raw logits were not retained and numerical comparisons cannot be independently replayed",
+        "host ledger declarations do not bound process RSS or model-owned allocations"
+      ],
+      "memory": [
+        {
+          "allocated_bytes": 0,
+          "device_free_bytes": 7477395456,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 0,
+          "peak_reserved_bytes": 0,
+          "reserved_bytes": 0,
+          "stage": "before_model_load"
+        },
+        {
+          "admissible_estimate_bytes": 6188954419,
+          "admission_kind": "resident",
+          "allocated_bytes": 0,
+          "committed_incremental_bytes": 0,
+          "device_free_bytes": 7477395456,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 0,
+          "peak_reserved_bytes": 0,
+          "requested_incremental_bytes": 2147483648,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 0,
+          "stage": "admission"
+        },
+        {
+          "admissible_estimate_bytes": 4041470771,
+          "admission_kind": "precopy",
+          "allocated_bytes": 0,
+          "committed_incremental_bytes": 2147483648,
+          "device_free_bytes": 7477395456,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 0,
+          "peak_reserved_bytes": 0,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 0,
+          "stage": "admission"
+        },
+        {
+          "allocated_bytes": 334744576,
+          "device_free_bytes": 7087325184,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 334744576,
+          "peak_reserved_bytes": 373293056,
+          "reserved_bytes": 373293056,
+          "stage": "after_model_load"
+        },
+        {
+          "admissible_estimate_bytes": 3651400499,
+          "admission_kind": "workspace",
+          "allocated_bytes": 334744576,
+          "committed_incremental_bytes": 2147483648,
+          "device_free_bytes": 7087325184,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 334744576,
+          "peak_reserved_bytes": 373293056,
+          "requested_incremental_bytes": 1073741824,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 373293056,
+          "stage": "admission"
+        },
+        {
+          "admissible_estimate_bytes": 2577658675,
+          "admission_kind": "owner-verify",
+          "allocated_bytes": 334744576,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7087325184,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 334744576,
+          "peak_reserved_bytes": 373293056,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 373293056,
+          "stage": "admission"
+        },
+        {
+          "allocated_bytes": 334744576,
+          "device_free_bytes": 7087325184,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 334744576,
+          "peak_reserved_bytes": 373293056,
+          "reserved_bytes": 373293056,
+          "stage": "before-serial-0-0"
+        },
+        {
+          "admissible_estimate_bytes": 2577658675,
+          "admission_kind": "forward-serial-0-0",
+          "allocated_bytes": 334744576,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7087325184,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 334744576,
+          "peak_reserved_bytes": 373293056,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 373293056,
+          "stage": "admission"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-serial-0-0",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "after-serial-0-0"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "before-serial-0-1"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-serial-0-1",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-serial-0-1",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "after-serial-0-1"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "before-mixed-0"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-mixed-0",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-mixed-0",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 370421760,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 370421760,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "after-mixed-0"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "before-serial-1-0"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-serial-1-0",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-serial-1-0",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "after-serial-1-0"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "before-serial-1-1"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-serial-1-1",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-serial-1-1",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "after-serial-1-1"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "before-mixed-1"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-mixed-1",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-mixed-1",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 370421760,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 370421760,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "after-mixed-1"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "before-heldout-serial-0-0"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-heldout-serial-0-0",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-heldout-serial-0-0",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "after-heldout-serial-0-0"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "before-heldout-serial-0-1"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-heldout-serial-0-1",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-heldout-serial-0-1",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "after-heldout-serial-0-1"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "before-heldout-group-0"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-heldout-group-0",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-heldout-group-0",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 370421760,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 370421760,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "after-heldout-group-0"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "before-heldout-serial-1-0"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-heldout-serial-1-0",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-heldout-serial-1-0",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "after-heldout-serial-1-0"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "before-heldout-serial-1-1"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-heldout-serial-1-1",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-heldout-serial-1-1",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 369485824,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "after-heldout-serial-1-1"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "before-heldout-group-1"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-heldout-group-1",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 368299008,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "admissible_estimate_bytes": 2508452659,
+          "admission_kind": "forward-heldout-group-1",
+          "allocated_bytes": 368299008,
+          "committed_incremental_bytes": 3221225472,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 370421760,
+          "peak_reserved_bytes": 406847488,
+          "requested_incremental_bytes": 0,
+          "reserve_bytes": 1288441037,
+          "reserved_bytes": 406847488,
+          "stage": "admission"
+        },
+        {
+          "allocated_bytes": 368299008,
+          "device_free_bytes": 7018119168,
+          "device_total_bytes": 8589606912,
+          "peak_allocated_bytes": 370421760,
+          "peak_reserved_bytes": 406847488,
+          "reserved_bytes": 406847488,
+          "stage": "after-heldout-group-1"
+        }
+      ],
+      "model_entries": [
+        {
+          "entry_shapes": [
+            [
+              1,
+              4
+            ]
+          ],
+          "request_id": "serial-0-0"
+        },
+        {
+          "entry_shapes": [
+            [
+              1,
+              4
+            ]
+          ],
+          "request_id": "serial-0-1"
+        },
+        {
+          "entry_shapes": [
+            [
+              2,
+              4
+            ]
+          ],
+          "request_id": "mixed-0"
+        },
+        {
+          "entry_shapes": [
+            [
+              1,
+              4
+            ]
+          ],
+          "request_id": "serial-1-0"
+        },
+        {
+          "entry_shapes": [
+            [
+              1,
+              4
+            ]
+          ],
+          "request_id": "serial-1-1"
+        },
+        {
+          "entry_shapes": [
+            [
+              2,
+              4
+            ]
+          ],
+          "request_id": "mixed-1"
+        },
+        {
+          "entry_shapes": [
+            [
+              1,
+              4
+            ]
+          ],
+          "request_id": "heldout-serial-0-0"
+        },
+        {
+          "entry_shapes": [
+            [
+              1,
+              4
+            ]
+          ],
+          "request_id": "heldout-serial-0-1"
+        },
+        {
+          "entry_shapes": [
+            [
+              2,
+              4
+            ]
+          ],
+          "request_id": "heldout-group-0"
+        },
+        {
+          "entry_shapes": [
+            [
+              1,
+              4
+            ]
+          ],
+          "request_id": "heldout-serial-1-0"
+        },
+        {
+          "entry_shapes": [
+            [
+              1,
+              4
+            ]
+          ],
+          "request_id": "heldout-serial-1-1"
+        },
+        {
+          "entry_shapes": [
+            [
+              2,
+              4
+            ]
+          ],
+          "request_id": "heldout-group-1"
+        }
+      ],
+      "resource_profile": {
+        "checkpoint_sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b",
+        "comparison_scratch": {
+          "chunk_elements": 4096,
+          "declared_max_bytes": 1048576
+        },
+        "control_host_ledger": {
+          "max_bytes": 33554432,
+          "max_items": 128,
+          "max_operations": 1,
+          "max_requests": 1
+        },
+        "device_limits": {
+          "allocator_cap_bytes": 2147401728,
+          "allocator_fraction": 0.25,
+          "minimum_reserve_bytes": 536870912,
+          "resident_commitment_bytes": 2147483648,
+          "workspace_commitment_bytes": 1073741824
+        },
+        "host_ledger": {
+          "max_bytes": 67108864,
+          "max_items": 256,
+          "max_operations": 16,
+          "max_requests": 8
+        },
+        "limitation": "point-in-time observations, not a worst-case or production capacity bound",
+        "model_load": {
+          "after": {
+            "allocated_bytes": 334744576,
+            "device_free_bytes": 7087325184,
+            "device_total_bytes": 8589606912,
+            "peak_allocated_bytes": 334744576,
+            "peak_reserved_bytes": 373293056,
+            "reserved_bytes": 373293056
+          },
+          "before": {
+            "allocated_bytes": 0,
+            "device_free_bytes": 7477395456,
+            "device_total_bytes": 8589606912,
+            "peak_allocated_bytes": 0,
+            "peak_reserved_bytes": 0,
+            "reserved_bytes": 0
+          }
+        },
+        "protocol_sha256": "011e214dbdc57e29869f41e38082cd1fa4baaf15747169d0d778e6f27b33a6f1",
+        "runtime_sha256": "09d446e5f3401070882650782b7a8504db3212dc4ad33ead47920e594837b05c",
+        "schema": "grouped-gpu-resource-profile-v1",
+        "snapshot_reservation": {
+          "items": 8,
+          "nbytes": 256
+        },
+        "source_sha256": "30e065deb09d1b248a233c8796b62a0a9fd184e3e47a91a2e48f8c061ed8a02c",
+        "stages": [
+          {
+            "baseline": {
+              "allocated_bytes": 334744576,
+              "device_free_bytes": 7087325184,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 334744576,
+              "peak_reserved_bytes": 373293056,
+              "reserved_bytes": 373293056
+            },
+            "endpoint": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 369485824,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "execution_path": "control",
+            "headroom_after": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "headroom_before": {
+              "admissible_estimate_bytes": 2577658675,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "observation": "first-for-path-and-shape",
+            "observed_increment_bytes": {
+              "allocated_increment_bytes": 34741248,
+              "reserved_increment_bytes": 33554432
+            },
+            "request_id": "serial-0-0",
+            "shape": [
+              1,
+              4
+            ]
+          },
+          {
+            "baseline": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 368299008,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "endpoint": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 369485824,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "execution_path": "control",
+            "headroom_after": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "headroom_before": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "observation": "repeat",
+            "observed_increment_bytes": {
+              "allocated_increment_bytes": 1186816,
+              "reserved_increment_bytes": 0
+            },
+            "request_id": "serial-0-1",
+            "shape": [
+              1,
+              4
+            ]
+          },
+          {
+            "baseline": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 368299008,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "endpoint": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 370421760,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "execution_path": "control",
+            "headroom_after": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "headroom_before": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "observation": "first-for-path-and-shape",
+            "observed_increment_bytes": {
+              "allocated_increment_bytes": 2122752,
+              "reserved_increment_bytes": 0
+            },
+            "request_id": "mixed-0",
+            "shape": [
+              2,
+              4
+            ]
+          },
+          {
+            "baseline": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 368299008,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "endpoint": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 369485824,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "execution_path": "control",
+            "headroom_after": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "headroom_before": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "observation": "repeat",
+            "observed_increment_bytes": {
+              "allocated_increment_bytes": 1186816,
+              "reserved_increment_bytes": 0
+            },
+            "request_id": "serial-1-0",
+            "shape": [
+              1,
+              4
+            ]
+          },
+          {
+            "baseline": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 368299008,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "endpoint": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 369485824,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "execution_path": "control",
+            "headroom_after": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "headroom_before": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "observation": "repeat",
+            "observed_increment_bytes": {
+              "allocated_increment_bytes": 1186816,
+              "reserved_increment_bytes": 0
+            },
+            "request_id": "serial-1-1",
+            "shape": [
+              1,
+              4
+            ]
+          },
+          {
+            "baseline": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 368299008,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "endpoint": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 370421760,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "execution_path": "control",
+            "headroom_after": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "headroom_before": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "observation": "repeat",
+            "observed_increment_bytes": {
+              "allocated_increment_bytes": 2122752,
+              "reserved_increment_bytes": 0
+            },
+            "request_id": "mixed-1",
+            "shape": [
+              2,
+              4
+            ]
+          },
+          {
+            "baseline": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 368299008,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "endpoint": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 369485824,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "execution_path": "control",
+            "headroom_after": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "headroom_before": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "observation": "repeat",
+            "observed_increment_bytes": {
+              "allocated_increment_bytes": 1186816,
+              "reserved_increment_bytes": 0
+            },
+            "request_id": "heldout-serial-0-0",
+            "shape": [
+              1,
+              4
+            ]
+          },
+          {
+            "baseline": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 368299008,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "endpoint": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 369485824,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "execution_path": "control",
+            "headroom_after": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "headroom_before": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "observation": "repeat",
+            "observed_increment_bytes": {
+              "allocated_increment_bytes": 1186816,
+              "reserved_increment_bytes": 0
+            },
+            "request_id": "heldout-serial-0-1",
+            "shape": [
+              1,
+              4
+            ]
+          },
+          {
+            "baseline": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 368299008,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "endpoint": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 370421760,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "execution_path": "broker",
+            "headroom_after": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "headroom_before": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "observation": "first-for-path-and-shape",
+            "observed_increment_bytes": {
+              "allocated_increment_bytes": 2122752,
+              "reserved_increment_bytes": 0
+            },
+            "request_id": "heldout-group-0",
+            "shape": [
+              2,
+              4
+            ]
+          },
+          {
+            "baseline": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 368299008,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "endpoint": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 369485824,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "execution_path": "control",
+            "headroom_after": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "headroom_before": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "observation": "repeat",
+            "observed_increment_bytes": {
+              "allocated_increment_bytes": 1186816,
+              "reserved_increment_bytes": 0
+            },
+            "request_id": "heldout-serial-1-0",
+            "shape": [
+              1,
+              4
+            ]
+          },
+          {
+            "baseline": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 368299008,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "endpoint": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 369485824,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "execution_path": "control",
+            "headroom_after": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "headroom_before": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "observation": "repeat",
+            "observed_increment_bytes": {
+              "allocated_increment_bytes": 1186816,
+              "reserved_increment_bytes": 0
+            },
+            "request_id": "heldout-serial-1-1",
+            "shape": [
+              1,
+              4
+            ]
+          },
+          {
+            "baseline": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 368299008,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "endpoint": {
+              "allocated_bytes": 368299008,
+              "device_free_bytes": 7018119168,
+              "device_total_bytes": 8589606912,
+              "peak_allocated_bytes": 370421760,
+              "peak_reserved_bytes": 406847488,
+              "reserved_bytes": 406847488
+            },
+            "execution_path": "broker",
+            "headroom_after": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "headroom_before": {
+              "admissible_estimate_bytes": 2508452659,
+              "committed_incremental_bytes": 3221225472,
+              "reserve_bytes": 1288441037
+            },
+            "observation": "repeat",
+            "observed_increment_bytes": {
+              "allocated_increment_bytes": 2122752,
+              "reserved_increment_bytes": 0
+            },
+            "request_id": "heldout-group-1",
+            "shape": [
+              2,
+              4
+            ]
+          }
+        ],
+        "status": "provisional",
+        "trace_limits": {
+          "device_bytes": 0,
+          "host_bytes": 0
+        },
+        "validation_scratch": {
+          "items": 8,
+          "nbytes": 4194304
+        },
+        "worker_finite_scratch": {
+          "items": 8,
+          "nbytes": 4194304
+        },
+        "worker_path": "GroupedWorkspaceWorker to custody-bound ResidentWorker with guarded RNG"
+      },
+      "runtime_redacted": {
+        "allocator_backend": "native",
+        "allocator_fraction": 0.25,
+        "attention": "eager",
+        "cache": "disabled",
+        "compute_capability": [
+          7,
+          5
+        ],
+        "conversion_overwrite": false,
+        "conversion_swap": false,
+        "cpu_autocast": false,
+        "cublas_workspace_config": ":4096:8",
+        "cuda_autocast": false,
+        "cuda_build": "12.8",
+        "cudnn": 91002,
+        "cudnn_benchmark": false,
+        "cudnn_deterministic": true,
+        "cudnn_tf32": false,
+        "deterministic_algorithms": true,
+        "driver": "616.92",
+        "dtype": "float32",
+        "flash_sdp": false,
+        "float32_matmul_precision": "highest",
+        "math_sdp": true,
+        "matmul_tf32": false,
+        "memory_efficient_sdp": false,
+        "schema": "grouped-gpu-runtime-v1",
+        "torch": "2.8.0+cu128",
+        "torch_interop_threads": 1,
+        "torch_threads": 1,
+        "total_bytes": 8589606912,
+        "transformers": "4.57.3",
+        "transformers_gpt2_source_sha256": "b591253d7acadd39635bbf6f9f6fd0a97d6be5d7cf901074e2d959ff3e478e80"
+      },
+      "runtime_sha256": "09d446e5f3401070882650782b7a8504db3212dc4ad33ead47920e594837b05c",
+      "sample_evidence_sha256": "dce8d13d98f4c293400adeb17cca231063641501efb6f1710de8a52cc3c2e4c7",
+      "sample_status": "passed",
+      "status": "passed"
+    },
+    "nvidia_smi_after": {
+      "driver_version": "616.92",
+      "free_bytes": 7344226304,
+      "timestamp_utc": "2026-10-29T08:08:27.050606+00:00",
+      "total_bytes": 8589934592,
+      "used_bytes": 1033895936
+    },
+    "nvidia_smi_before": {
+      "driver_version": "616.92",
+      "free_bytes": 7380926464,
+      "timestamp_utc": "2026-10-29T08:07:40.996844+00:00",
+      "total_bytes": 8589934592,
+      "used_bytes": 997195776
+    },
+    "owner_presence_after_exit": {
+      "owner_pid_listed": false,
+      "query": "ok"
+    },
+    "partial_memory_observations": [
+      {
+        "allocated_bytes": 0,
+        "device_free_bytes": 7477395456,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 0,
+        "peak_reserved_bytes": 0,
+        "reserved_bytes": 0,
+        "stage": "before_model_load"
+      },
+      {
+        "admissible_estimate_bytes": 6188954419,
+        "admission_kind": "resident",
+        "allocated_bytes": 0,
+        "committed_incremental_bytes": 0,
+        "device_free_bytes": 7477395456,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 0,
+        "peak_reserved_bytes": 0,
+        "requested_incremental_bytes": 2147483648,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 0,
+        "stage": "admission"
+      },
+      {
+        "admissible_estimate_bytes": 4041470771,
+        "admission_kind": "precopy",
+        "allocated_bytes": 0,
+        "committed_incremental_bytes": 2147483648,
+        "device_free_bytes": 7477395456,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 0,
+        "peak_reserved_bytes": 0,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 0,
+        "stage": "admission"
+      },
+      {
+        "allocated_bytes": 334744576,
+        "device_free_bytes": 7087325184,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 334744576,
+        "peak_reserved_bytes": 373293056,
+        "reserved_bytes": 373293056,
+        "stage": "after_model_load"
+      },
+      {
+        "admissible_estimate_bytes": 3651400499,
+        "admission_kind": "workspace",
+        "allocated_bytes": 334744576,
+        "committed_incremental_bytes": 2147483648,
+        "device_free_bytes": 7087325184,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 334744576,
+        "peak_reserved_bytes": 373293056,
+        "requested_incremental_bytes": 1073741824,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 373293056,
+        "stage": "admission"
+      },
+      {
+        "admissible_estimate_bytes": 2577658675,
+        "admission_kind": "owner-verify",
+        "allocated_bytes": 334744576,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7087325184,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 334744576,
+        "peak_reserved_bytes": 373293056,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 373293056,
+        "stage": "admission"
+      },
+      {
+        "allocated_bytes": 334744576,
+        "device_free_bytes": 7087325184,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 334744576,
+        "peak_reserved_bytes": 373293056,
+        "reserved_bytes": 373293056,
+        "stage": "before-serial-0-0"
+      },
+      {
+        "admissible_estimate_bytes": 2577658675,
+        "admission_kind": "forward-serial-0-0",
+        "allocated_bytes": 334744576,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7087325184,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 334744576,
+        "peak_reserved_bytes": 373293056,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 373293056,
+        "stage": "admission"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-serial-0-0",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "after-serial-0-0"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "before-serial-0-1"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-serial-0-1",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-serial-0-1",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "after-serial-0-1"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "before-mixed-0"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-mixed-0",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-mixed-0",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 370421760,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 370421760,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "after-mixed-0"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "before-serial-1-0"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-serial-1-0",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-serial-1-0",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "after-serial-1-0"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "before-serial-1-1"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-serial-1-1",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-serial-1-1",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "after-serial-1-1"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "before-mixed-1"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-mixed-1",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-mixed-1",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 370421760,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 370421760,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "after-mixed-1"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "before-heldout-serial-0-0"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-heldout-serial-0-0",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-heldout-serial-0-0",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "after-heldout-serial-0-0"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "before-heldout-serial-0-1"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-heldout-serial-0-1",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-heldout-serial-0-1",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "after-heldout-serial-0-1"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "before-heldout-group-0"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-heldout-group-0",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-heldout-group-0",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 370421760,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 370421760,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "after-heldout-group-0"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "before-heldout-serial-1-0"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-heldout-serial-1-0",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-heldout-serial-1-0",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "after-heldout-serial-1-0"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "before-heldout-serial-1-1"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-heldout-serial-1-1",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-heldout-serial-1-1",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 369485824,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "after-heldout-serial-1-1"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "before-heldout-group-1"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-heldout-group-1",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 368299008,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "admissible_estimate_bytes": 2508452659,
+        "admission_kind": "forward-heldout-group-1",
+        "allocated_bytes": 368299008,
+        "committed_incremental_bytes": 3221225472,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 370421760,
+        "peak_reserved_bytes": 406847488,
+        "requested_incremental_bytes": 0,
+        "reserve_bytes": 1288441037,
+        "reserved_bytes": 406847488,
+        "stage": "admission"
+      },
+      {
+        "allocated_bytes": 368299008,
+        "device_free_bytes": 7018119168,
+        "device_total_bytes": 8589606912,
+        "peak_allocated_bytes": 370421760,
+        "peak_reserved_bytes": 406847488,
+        "reserved_bytes": 406847488,
+        "stage": "after-heldout-group-1"
+      }
+    ],
+    "partial_sample_evidence": {
+      "complete": true,
+      "status": "passed"
+    },
+    "post_telemetry_error_type": null,
+    "protocol_sha256": "011e214dbdc57e29869f41e38082cd1fa4baaf15747169d0d778e6f27b33a6f1",
+    "schema": "grouped-gpu-development-result-v1",
+    "source_commit": "05ca62b99aa3930eaa91654b2d312024885e20e7",
+    "source_sha256": {
+      "docs/GROUPED_GPU_DEV_PLAN.md": "d78845ebcbc4292e4f6fbe12df3347914b5a87000fab18afb7f3f8df8cd5528c",
+      "experiments/grouped_gpu_dev_v3.json": "011e214dbdc57e29869f41e38082cd1fa4baaf15747169d0d778e6f27b33a6f1",
+      "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+      "looking_glass/agreement_calibration_workspace.py": "eb5c991d025e299efa3731d5be329ebd65f1e06b3622c9e870fdb851207568a3",
+      "looking_glass/batch_validation.py": "214732f79a476e82c325216b118525a9a3bac72860e7e98aab059180e17dda18",
+      "looking_glass/bert_gpu_evidence.py": "08a84c4eee1910f2322687f548501cc3eb0e39daa2714b36a26cf5f85ced3b5e",
+      "looking_glass/budgeted_worker.py": "96c573c0a85c63419c20a9e90d37942fcfb1569fba9d758faa4745ca9d19e35d",
+      "looking_glass/certified_batch_policy.py": "4355979f8655eff414ee763b6a107504503be2e5532654153d88e859f125c08d",
+      "looking_glass/cuda_cleanup.py": "bccde75044bd2ee0ab1c4dfd8826fa214fc497e0d44b0d56493303b2315d73c9",
+      "looking_glass/device_identity.py": "ad08eff6edbb1c94af9abec0d07d8a10944624488b8d723b10c75e8c67e10c45",
+      "looking_glass/device_lease.py": "7f52ad238a1c9e8800c3d1ebf3b6969edd810a02754d1462c34f06cf783b57bf",
+      "looking_glass/fair_queue.py": "af9b1fdf9b8b86483ee446a9d13bce72ff844341266707b757807ea6265ad1fb",
+      "looking_glass/gpu_oneshot.py": "bc994727276a9918741ee80bd1ad8913b01d474015bb8dfdadbbfed1de9e048f",
+      "looking_glass/grouped_broker.py": "a23756ce38dd2ca2af86e90dd0a477effb586c64c4dc5a6ad9812b4101361f8f",
+      "looking_glass/grouped_broker_state.py": "6a74329af5fc2b3e20212a578f834963d3a612e850b4414b5059c1ba0aa2049d",
+      "looking_glass/grouped_gpu_dev.py": "24bcc300d414878ace33a7e1efbf19bf88d090c63ef706579ad439718a68b684",
+      "looking_glass/grouped_observation.py": "24f936fabf37f31ce6428698fa32865c8483e1fce45b64e89f0c6821bde8cf37",
+      "looking_glass/grouped_owner_worker.py": "34fe9ae4cacaf0b0d7b41c396151e450de8c157025524f8d1263b122247e1efc",
+      "looking_glass/grouped_worker.py": "66063be7d1510ce2998ef14b72a6eb4cde27dbb370b827fe5eff4f9fbf02702c",
+      "looking_glass/host_budget.py": "1bab870bba3d7f5d8ccdbf25458c7cb60192248c25506b451859fadcc6340d37",
+      "looking_glass/memory_budget.py": "27d7b1a352815b7a103e1d70a5f8f0a3ccffdd10dacb71a0744a47ad6f66e1b9",
+      "looking_glass/microbatch.py": "c1f50d987cb3cc253f21a46fde696f3443131ab743272685f14a94ad181e5032",
+      "looking_glass/owner_completion.py": "01497e6ecde4ef37362e71c18173b17a4a85b9725841ba86c857aac32336565c",
+      "looking_glass/pretrained.py": "c903a0cbbc83d70b7bbb4b812b637bfbd888fae252c1a38385d1654f4d157b4e",
+      "looking_glass/resident_worker.py": "d796ec9a86ad596e9b654e2e7f2d1ad0ed920ae9ecceb3096014289daceae176",
+      "looking_glass/supervisor.py": "435c998255e894e003e9f2d05a701407a9b58f75aa50de9a63e7cc35bb132a1d",
+      "scripts/grouped_gpu_dev_bootstrap.py": "8df83970b917dba8ce78ac1a7b0c62135a6d62b477ed59e7e49196589c9862b2",
+      "scripts/v2_source_guards.py": "9a9a6c2db19fc5923a1845fb620aebf43135a1cc72150f16b095a019576c7c5c"
+    },
+    "status": "passed",
+    "supervisor": {
+      "clean": true,
+      "exit_code": 0,
+      "timed_out": false
+    },
+    "supervisor_error_type": null,
+    "verified_checkpoint_assets": [
+      {
+        "bytes": 762,
+        "name": "config.json",
+        "sha256": "4ec5947c1d59fee6212cdf3b0ec1a53eac02092554c5ff0a733488cbd2c64f3a"
+      },
+      {
+        "bytes": 124,
+        "name": "generation_config.json",
+        "sha256": "b90eadacf585a743a30ea51e8b5c88b8d282a2a34dc0c7e556d0987cdbd68805"
+      },
+      {
+        "bytes": 456318,
+        "name": "merges.txt",
+        "sha256": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5"
+      },
+      {
+        "bytes": 352824413,
+        "name": "model.safetensors",
+        "sha256": "e1ff18884359fe8beb795a5f414feb85a6ce3d929ad019c0d958c039d2b94a1b"
+      },
+      {
+        "bytes": 1355256,
+        "name": "tokenizer.json",
+        "sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6"
+      },
+      {
+        "bytes": 26,
+        "name": "tokenizer_config.json",
+        "sha256": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f"
+      },
+      {
+        "bytes": 1042301,
+        "name": "vocab.json",
+        "sha256": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783"
+      }
+    ]
+  },
+  "schema": "grouped-gpu-public-projection-v1",
+  "transformations": [
+    "removed private run identity",
+    "replaced broker job identities with verified slots",
+    "removed the already-redacted physical-device identity field"
+  ]
+}

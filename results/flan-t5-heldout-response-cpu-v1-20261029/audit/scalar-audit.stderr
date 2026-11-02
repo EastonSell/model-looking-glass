@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "<local-path>/flan_t5_heldout_scalar_audit.py", line 294, in <module>
+    dose_status = read_dose(index, case, states, saved)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<local-path>/flan_t5_heldout_scalar_audit.py", line 222, in read_dose
+    assert level['achieved'] == achieved
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

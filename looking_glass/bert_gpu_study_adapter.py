@@ -11,7 +11,7 @@ import json
 
 import torch
 from transformers import DistilBertForMaskedLM
-from transformers.models.distilbert.modeling_distilbert import MultiHeadSelfAttention
+from transformers.models.distilbert.modeling_distilbert import DistilBertSelfAttention
 
 from .bert_agreement_runner import Observation, _has_hooks, decode_float32_bits, float32_bytes
 from .intervention_plan import ActivationPlan
@@ -103,7 +103,8 @@ def _observe_owned(model, input_ids, *, layer, token, mask_token, is_id, are_id,
         if any(module.training is not False for module in model.modules()):
             raise RuntimeError('every model module must remain in evaluation mode')
         if (getattr(model.config, '_attn_implementation', None) != 'eager'
-                or any(type(block.attention) is not MultiHeadSelfAttention
+                or any(type(block.attention) is not DistilBertSelfAttention
+                       or block.attention.config._attn_implementation != 'eager'
                        for block in model.distilbert.transformer.layer)
                 or torch.is_autocast_enabled('cpu')
                 or torch.is_autocast_enabled(execution_device.type)):
@@ -203,7 +204,7 @@ def _observe_owned(model, input_ids, *, layer, token, mask_token, is_id, are_id,
         expected_events.append({'name': name, 'operation': operation, 'order': index,
             'module_path': path, 'module_aliases': [path], 'call_site_known': False,
             'forward_index': 0, 'invocation': 0, 'batch_index': 0, 'token_index': token,
-            'output_selector': [0], 'output_shape': [1, 10, hidden], 'selected_shape': [hidden],
+            'output_selector': [], 'output_shape': [1, 10, hidden], 'selected_shape': [hidden],
             'dtype': 'torch.float32', 'device': device,
             'source_capture': 'before' if self_patch and index == 1 else None,
             'preceding_same_site_actions': names[:index]})

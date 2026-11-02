@@ -131,11 +131,24 @@ def prepare_trusted_launch(*, repo_root, site_packages, environment_root, privat
     keep = {"SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "TEMP", "TMP"}
     environment = {key: value for key, value in source.items()
                    if type(key) is str and key.upper() in keep and type(value) is str}
+    program_files = [(key, value) for key, value in source.items()
+                     if type(key) is str and key.upper() == 'PROGRAMFILES']
+    if len(program_files) > 1:
+        raise ValueError('ambiguous PROGRAMFILES environment')
+    if program_files:
+        value = program_files[0][1]
+        try:
+            if type(value) is not str or str(_directory(value)) != value:
+                raise ValueError('PROGRAMFILES must be a canonical directory')
+        except (OSError, RuntimeError) as exc:
+            raise ValueError('PROGRAMFILES must be a canonical directory') from exc
+        environment['PROGRAMFILES'] = value
     prefix = Path(tempfile.mkdtemp(prefix="looking-glass-service-pyc-", dir=private))
     info = prefix.lstat()
     environment.update({
         "PATH": checked_path, "CUDA_VISIBLE_DEVICES": gpu_uuid,
-        "CUDA_DEVICE_ORDER": "PCI_BUS_ID", "PYTORCH_CUDA_ALLOC_CONF": "backend:native",
+        "CUDA_DEVICE_ORDER": "PCI_BUS_ID", "CUDA_MODULE_LOADING": "LAZY",
+        "PYTORCH_CUDA_ALLOC_CONF": "backend:native",
         "CUBLAS_WORKSPACE_CONFIG": ":4096:8", "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1",
         "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1", "HF_HUB_DISABLE_TELEMETRY": "1",
         "HF_HOME": str(home),

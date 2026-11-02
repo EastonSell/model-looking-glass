@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/EastonSell/model-looking-glass/blob/main/SECURITY.md
+    about: Read the private reporting instructions before sharing vulnerability details.
+  - name: Questions and ideas
+    url: https://github.com/EastonSell/model-looking-glass/discussions
+    about: Discuss how to use the app or explore an idea before proposing a change.

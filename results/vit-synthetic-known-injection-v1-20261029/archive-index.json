@@ -1,0 +1,183 @@
+{
+  "archive_bytes": 13736367,
+  "archive_sha256": "71f265035b11c6fbebc38c25f4cafd2793bd620daf73137b8d36eca002998d0e",
+  "members": [
+    {
+      "bytes": 273594,
+      "path": "attempt/completed.json",
+      "sha256": "07b2bddb044457d69a156d3bb93131d42bc2a995462a1c6f0a09fe42eedd541e"
+    },
+    {
+      "bytes": 1536,
+      "path": "attempt/direction.f64le",
+      "sha256": "f8e31bfd94c6365095ebb08a48e7610d2f27723767c7135671ca56b52f30ea75"
+    },
+    {
+      "bytes": 18076,
+      "path": "attempt/discovery-0.json",
+      "sha256": "a6f9a30f18167e2fa66d72dccf8eba0169e76821d5ef231b5384fcf2457742f2"
+    },
+    {
+      "bytes": 18109,
+      "path": "attempt/discovery-1.json",
+      "sha256": "73118c8aedd4a364731b7d7ce4b45d2ad711ed9456af52fe9a3d6a75df6e2669"
+    },
+    {
+      "bytes": 18107,
+      "path": "attempt/discovery-2.json",
+      "sha256": "7185a6860f59f082ec846983b88f27602598781852860c7edee721760d4bd3f5"
+    },
+    {
+      "bytes": 18107,
+      "path": "attempt/discovery-3.json",
+      "sha256": "eea9d0b40477d36ab62c3463f2f9ca5fda6bcc9020cf5fe343242be0bea25bf7"
+    },
+    {
+      "bytes": 89071,
+      "path": "attempt/discovery-freeze.json",
+      "sha256": "bf6f58e0f5aaa805db3b502655c408bd3ad90decb5060e8ada1e865b1c90c3ae"
+    },
+    {
+      "bytes": 6518,
+      "path": "attempt/heldout-0-off_target.json",
+      "sha256": "baaa69b77f9d21004eb24edcc2382658981726a4b89f9c2f2f833d975979f038"
+    },
+    {
+      "bytes": 6512,
+      "path": "attempt/heldout-0-reflected.json",
+      "sha256": "c8cab2dec7ace2f86ddf38797881f37c7056a899b001ba8dc9c0079f8a6d9f4b"
+    },
+    {
+      "bytes": 18814,
+      "path": "attempt/heldout-0-selection.json",
+      "sha256": "f4def58990a9c982938cead0b71ff7f53635ecdc6e11782947a4c92b1250dec3"
+    },
+    {
+      "bytes": 7556,
+      "path": "attempt/heldout-0-self.json",
+      "sha256": "85f2ac42ddae6ebf875ab88dd958152856a28c226840a1f8ec1f7fa13f54281a"
+    },
+    {
+      "bytes": 6485,
+      "path": "attempt/heldout-0-target.json",
+      "sha256": "da7d8d2b652187ad631ae2057efb6c1d00fc675a6ea06d6f2529afff5ead44e9"
+    },
+    {
+      "bytes": 59215,
+      "path": "attempt/heldout-0.json",
+      "sha256": "8a63824b79bc3a871960e143eb493a3fee04d8121598b3ea958872ad80983118"
+    },
+    {
+      "bytes": 6517,
+      "path": "attempt/heldout-1-off_target.json",
+      "sha256": "b200b2df534939074f85d3694c20eee454680b0dab903095ba5d0d2efbc9054e"
+    },
+    {
+      "bytes": 6512,
+      "path": "attempt/heldout-1-reflected.json",
+      "sha256": "91ad349ef5259a60dfa0fe864f493f370466fbf13d5fdb7b241a5ac22a7053e7"
+    },
+    {
+      "bytes": 18810,
+      "path": "attempt/heldout-1-selection.json",
+      "sha256": "17f294433f3ab4b6eaeb9820f71c7aefa061c3cd773c71336b0b795c2d64e39a"
+    },
+    {
+      "bytes": 7556,
+      "path": "attempt/heldout-1-self.json",
+      "sha256": "0e3b099a759333057c31bf8f84f0567794220e11b5efd1fa645e059252868ad1"
+    },
+    {
+      "bytes": 6484,
+      "path": "attempt/heldout-1-target.json",
+      "sha256": "efca243b3ca00e1e210f847787264ed10668655d5a96b656cb832315ff20a769"
+    },
+    {
+      "bytes": 59208,
+      "path": "attempt/heldout-1.json",
+      "sha256": "4c848c0b022c3a11633b32f6acbd7ad3d44cf485b5f51d9fd4cc95566d73ff5e"
+    },
+    {
+      "bytes": 6521,
+      "path": "attempt/heldout-2-off_target.json",
+      "sha256": "e60157304df8c8f7a1b2844e1f6f81bf92209dd2da2579568e79d00d8ff1bf21"
+    },
+    {
+      "bytes": 6515,
+      "path": "attempt/heldout-2-reflected.json",
+      "sha256": "c8bfe8b02c031c514138ba0c1e201627084c9d4883eb856ccb6906d7812d2335"
+    },
+    {
+      "bytes": 18809,
+      "path": "attempt/heldout-2-selection.json",
+      "sha256": "df28fb48b45f4b1f3404bcfc0ca36b47a43b47003bd184e88236e597038444bd"
+    },
+    {
+      "bytes": 7552,
+      "path": "attempt/heldout-2-self.json",
+      "sha256": "5f5269589cfd90d8549f67e4d5b8408fb51ecd33ce0a6b05f80aa9e8d73eb73d"
+    },
+    {
+      "bytes": 6486,
+      "path": "attempt/heldout-2-target.json",
+      "sha256": "85a0f05f89e212a9fb0e420adccaccd2747643fc8a8c089562b19e763f8d9b35"
+    },
+    {
+      "bytes": 59218,
+      "path": "attempt/heldout-2.json",
+      "sha256": "10bda02faf629c06bebdb67eb55df60fdb1990e6bee69b5a125e0882cf4b371e"
+    },
+    {
+      "bytes": 6520,
+      "path": "attempt/heldout-3-off_target.json",
+      "sha256": "c4cda73ba26ac4db18fa3ccfd6f08e6511191f41cb5dee0db35bf88687166ad3"
+    },
+    {
+      "bytes": 6515,
+      "path": "attempt/heldout-3-reflected.json",
+      "sha256": "6b8b63dcb344d02c38c91ef21053d94e4a203d927ac936c6c9cd396f350263af"
+    },
+    {
+      "bytes": 18819,
+      "path": "attempt/heldout-3-selection.json",
+      "sha256": "f07e4c7e66b1aa487ccc0aad4f07454072c3cb94d6c8062cbeaf256670545f16"
+    },
+    {
+      "bytes": 7558,
+      "path": "attempt/heldout-3-self.json",
+      "sha256": "f30ec3cc7fec9b84552e3e695b7a39d6524213ffc1086c4cdad31552419d97b4"
+    },
+    {
+      "bytes": 6487,
+      "path": "attempt/heldout-3-target.json",
+      "sha256": "b0aa29fedffb0e424899aefc9d653ce595de6e794e0fa01c72dce7a2c2419bc0"
+    },
+    {
+      "bytes": 59233,
+      "path": "attempt/heldout-3.json",
+      "sha256": "28de9123fa71c72ec19efd93fc7b8b9fc57e5df784159501e7634892824403a0"
+    },
+    {
+      "bytes": 95,
+      "path": "attempt/load-observation.json",
+      "sha256": "68248f5df4a5083ca8b281235bdf62f7e907c54bf5a09a917a711be2801d1e01"
+    },
+    {
+      "bytes": 2687,
+      "path": "attempt/started.json",
+      "sha256": "e01a7431665f98058ddbeac2803c56f8b8d9c8b0bad0479442de046e3dc7d4e6"
+    },
+    {
+      "bytes": 52893,
+      "path": "attempt/tensor-index.json",
+      "sha256": "eea3f949dd61fbf69469c0395d780038c0b88b642afb7bdac4ae2d711b6a5750"
+    },
+    {
+      "bytes": 14717568,
+      "path": "attempt/tensors.bin",
+      "sha256": "126c8fe843d24938e1008bea9b8e99b24089ff70d6586ced32e135f2b4a32300"
+    }
+  ],
+  "original_bytes": 15630263,
+  "schema": "vit-synthetic-archive-v1"
+}

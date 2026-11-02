@@ -1,0 +1,1405 @@
+{
+  "candidate": {
+    "head": 4,
+    "layer": 3
+  },
+  "cases": [
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            8022,
+            13970,
+            262,
+            35771,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            8022,
+            13970,
+            262,
+            35771,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            8022,
+            13970,
+            262,
+            35771,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            8022,
+            13970,
+            262,
+            35771,
+            547
+          ]
+        }
+      ],
+      "frame": 0,
+      "number": "singular",
+      "subject": "pilot",
+      "subject_token_position": 5,
+      "text": "During the storm, the pilot beside the fences",
+      "token_ids": [
+        7191,
+        262,
+        6388,
+        11,
+        262,
+        8022,
+        13970,
+        262,
+        35771
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            14982,
+            13970,
+            262,
+            35771,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            14982,
+            13970,
+            262,
+            35771,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            14982,
+            13970,
+            262,
+            35771,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            14982,
+            13970,
+            262,
+            35771,
+            547
+          ]
+        }
+      ],
+      "frame": 0,
+      "number": "plural",
+      "subject": "pilots",
+      "subject_token_position": 5,
+      "text": "During the storm, the pilots beside the fences",
+      "token_ids": [
+        7191,
+        262,
+        6388,
+        11,
+        262,
+        14982,
+        13970,
+        262,
+        35771
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            4860,
+            13970,
+            262,
+            35771,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            4860,
+            13970,
+            262,
+            35771,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            4860,
+            13970,
+            262,
+            35771,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            4860,
+            13970,
+            262,
+            35771,
+            547
+          ]
+        }
+      ],
+      "frame": 0,
+      "number": "singular",
+      "subject": "guard",
+      "subject_token_position": 5,
+      "text": "During the storm, the guard beside the fences",
+      "token_ids": [
+        7191,
+        262,
+        6388,
+        11,
+        262,
+        4860,
+        13970,
+        262,
+        35771
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            10942,
+            13970,
+            262,
+            35771,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            10942,
+            13970,
+            262,
+            35771,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            10942,
+            13970,
+            262,
+            35771,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            7191,
+            262,
+            6388,
+            11,
+            262,
+            10942,
+            13970,
+            262,
+            35771,
+            547
+          ]
+        }
+      ],
+      "frame": 0,
+      "number": "plural",
+      "subject": "guards",
+      "subject_token_position": 5,
+      "text": "During the storm, the guards beside the fences",
+      "token_ids": [
+        7191,
+        262,
+        6388,
+        11,
+        262,
+        10942,
+        13970,
+        262,
+        35771
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            15849,
+            1474,
+            262,
+            10580,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            15849,
+            1474,
+            262,
+            10580,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            15849,
+            1474,
+            262,
+            10580,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            15849,
+            1474,
+            262,
+            10580,
+            547
+          ]
+        }
+      ],
+      "frame": 1,
+      "number": "singular",
+      "subject": "nurse",
+      "subject_token_position": 5,
+      "text": "After the concert, the nurse near the tower",
+      "token_ids": [
+        3260,
+        262,
+        10010,
+        11,
+        262,
+        15849,
+        1474,
+        262,
+        10580
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            20669,
+            1474,
+            262,
+            10580,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            20669,
+            1474,
+            262,
+            10580,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            20669,
+            1474,
+            262,
+            10580,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            20669,
+            1474,
+            262,
+            10580,
+            547
+          ]
+        }
+      ],
+      "frame": 1,
+      "number": "plural",
+      "subject": "nurses",
+      "subject_token_position": 5,
+      "text": "After the concert, the nurses near the tower",
+      "token_ids": [
+        3260,
+        262,
+        10010,
+        11,
+        262,
+        20669,
+        1474,
+        262,
+        10580
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            21120,
+            1474,
+            262,
+            10580,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            21120,
+            1474,
+            262,
+            10580,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            21120,
+            1474,
+            262,
+            10580,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            21120,
+            1474,
+            262,
+            10580,
+            547
+          ]
+        }
+      ],
+      "frame": 1,
+      "number": "singular",
+      "subject": "clerk",
+      "subject_token_position": 5,
+      "text": "After the concert, the clerk near the tower",
+      "token_ids": [
+        3260,
+        262,
+        10010,
+        11,
+        262,
+        21120,
+        1474,
+        262,
+        10580
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            44115,
+            1474,
+            262,
+            10580,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            44115,
+            1474,
+            262,
+            10580,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            44115,
+            1474,
+            262,
+            10580,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            3260,
+            262,
+            10010,
+            11,
+            262,
+            44115,
+            1474,
+            262,
+            10580,
+            547
+          ]
+        }
+      ],
+      "frame": 1,
+      "number": "plural",
+      "subject": "clerks",
+      "subject_token_position": 5,
+      "text": "After the concert, the clerks near the tower",
+      "token_ids": [
+        3260,
+        262,
+        10010,
+        11,
+        262,
+        44115,
+        1474,
+        262,
+        10580
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            8022,
+            416,
+            262,
+            25476,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            8022,
+            416,
+            262,
+            25476,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            8022,
+            416,
+            262,
+            25476,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            8022,
+            416,
+            262,
+            25476,
+            547
+          ]
+        }
+      ],
+      "frame": 2,
+      "number": "singular",
+      "subject": "pilot",
+      "subject_token_position": 5,
+      "text": "Before the meeting, the pilot by the gardens",
+      "token_ids": [
+        8421,
+        262,
+        3249,
+        11,
+        262,
+        8022,
+        416,
+        262,
+        25476
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            14982,
+            416,
+            262,
+            25476,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            14982,
+            416,
+            262,
+            25476,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            14982,
+            416,
+            262,
+            25476,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            14982,
+            416,
+            262,
+            25476,
+            547
+          ]
+        }
+      ],
+      "frame": 2,
+      "number": "plural",
+      "subject": "pilots",
+      "subject_token_position": 5,
+      "text": "Before the meeting, the pilots by the gardens",
+      "token_ids": [
+        8421,
+        262,
+        3249,
+        11,
+        262,
+        14982,
+        416,
+        262,
+        25476
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            15849,
+            416,
+            262,
+            25476,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            15849,
+            416,
+            262,
+            25476,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            15849,
+            416,
+            262,
+            25476,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            15849,
+            416,
+            262,
+            25476,
+            547
+          ]
+        }
+      ],
+      "frame": 2,
+      "number": "singular",
+      "subject": "nurse",
+      "subject_token_position": 5,
+      "text": "Before the meeting, the nurse by the gardens",
+      "token_ids": [
+        8421,
+        262,
+        3249,
+        11,
+        262,
+        15849,
+        416,
+        262,
+        25476
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            20669,
+            416,
+            262,
+            25476,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            20669,
+            416,
+            262,
+            25476,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            20669,
+            416,
+            262,
+            25476,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            8421,
+            262,
+            3249,
+            11,
+            262,
+            20669,
+            416,
+            262,
+            25476,
+            547
+          ]
+        }
+      ],
+      "frame": 2,
+      "number": "plural",
+      "subject": "nurses",
+      "subject_token_position": 5,
+      "text": "Before the meeting, the nurses by the gardens",
+      "token_ids": [
+        8421,
+        262,
+        3249,
+        11,
+        262,
+        20669,
+        416,
+        262,
+        25476
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            4860,
+            2157,
+            262,
+            25203,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            4860,
+            2157,
+            262,
+            25203,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            4860,
+            2157,
+            262,
+            25203,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            4860,
+            2157,
+            262,
+            25203,
+            547
+          ]
+        }
+      ],
+      "frame": 3,
+      "number": "singular",
+      "subject": "guard",
+      "subject_token_position": 5,
+      "text": "Throughout the afternoon, the guard behind the barn",
+      "token_ids": [
+        26797,
+        262,
+        6672,
+        11,
+        262,
+        4860,
+        2157,
+        262,
+        25203
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            10942,
+            2157,
+            262,
+            25203,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            10942,
+            2157,
+            262,
+            25203,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            10942,
+            2157,
+            262,
+            25203,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            10942,
+            2157,
+            262,
+            25203,
+            547
+          ]
+        }
+      ],
+      "frame": 3,
+      "number": "plural",
+      "subject": "guards",
+      "subject_token_position": 5,
+      "text": "Throughout the afternoon, the guards behind the barn",
+      "token_ids": [
+        26797,
+        262,
+        6672,
+        11,
+        262,
+        10942,
+        2157,
+        262,
+        25203
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            21120,
+            2157,
+            262,
+            25203,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            21120,
+            2157,
+            262,
+            25203,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            21120,
+            2157,
+            262,
+            25203,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            21120,
+            2157,
+            262,
+            25203,
+            547
+          ]
+        }
+      ],
+      "frame": 3,
+      "number": "singular",
+      "subject": "clerk",
+      "subject_token_position": 5,
+      "text": "Throughout the afternoon, the clerk behind the barn",
+      "token_ids": [
+        26797,
+        262,
+        6672,
+        11,
+        262,
+        21120,
+        2157,
+        262,
+        25203
+      ]
+    },
+    {
+      "continuations": [
+        {
+          "suffix": " is",
+          "token_id": 318,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            44115,
+            2157,
+            262,
+            25203,
+            318
+          ]
+        },
+        {
+          "suffix": " are",
+          "token_id": 389,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            44115,
+            2157,
+            262,
+            25203,
+            389
+          ]
+        },
+        {
+          "suffix": " was",
+          "token_id": 373,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            44115,
+            2157,
+            262,
+            25203,
+            373
+          ]
+        },
+        {
+          "suffix": " were",
+          "token_id": 547,
+          "tokens": [
+            26797,
+            262,
+            6672,
+            11,
+            262,
+            44115,
+            2157,
+            262,
+            25203,
+            547
+          ]
+        }
+      ],
+      "frame": 3,
+      "number": "plural",
+      "subject": "clerks",
+      "subject_token_position": 5,
+      "text": "Throughout the afternoon, the clerks behind the barn",
+      "token_ids": [
+        26797,
+        262,
+        6672,
+        11,
+        262,
+        44115,
+        2157,
+        262,
+        25203
+      ]
+    }
+  ],
+  "comparator": {
+    "head": 8,
+    "layer": 3
+  },
+  "created_unix_ns": 1793276327753173200,
+  "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "pair_selection": [
+    {
+      "forms": [
+        "pilot",
+        "pilots"
+      ],
+      "token_ids": [
+        8022,
+        14982
+      ]
+    },
+    {
+      "forms": [
+        "guard",
+        "guards"
+      ],
+      "token_ids": [
+        4860,
+        10942
+      ]
+    },
+    {
+      "forms": [
+        "nurse",
+        "nurses"
+      ],
+      "token_ids": [
+        15849,
+        20669
+      ]
+    },
+    {
+      "forms": [
+        "clerk",
+        "clerks"
+      ],
+      "token_ids": [
+        21120,
+        44115
+      ]
+    }
+  ],
+  "schema": "distilgpt2-agreement-head-v2-evaluation-cases-v1",
+  "scope": "public prospective cases; tokenizer-only construction, no model forward or exposure reservation",
+  "selection_commit": "c2447f101256c13fe39fdaf2c0be28e1d9d368f2",
+  "selection_sha256": "5936e7f37b425c597fb6ce55a9172445a1d45d41fdbed7c2f196b12f277dba73",
+  "tokenizer_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6"
+}

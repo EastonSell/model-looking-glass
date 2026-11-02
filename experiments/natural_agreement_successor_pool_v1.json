@@ -1,0 +1,31 @@
+{
+  "schema": "mlg-natural-successor-pool-v1",
+  "nouns": [
+    {"id": "n01", "singular": "engineer", "plural": "engineers"},
+    {"id": "n02", "singular": "judge", "plural": "judges"},
+    {"id": "n03", "singular": "captain", "plural": "captains"},
+    {"id": "n04", "singular": "soldier", "plural": "soldiers"},
+    {"id": "n05", "singular": "tourist", "plural": "tourists"},
+    {"id": "n06", "singular": "worker", "plural": "workers"},
+    {"id": "n07", "singular": "officer", "plural": "officers"},
+    {"id": "n08", "singular": "editor", "plural": "editors"},
+    {"id": "n09", "singular": "dancer", "plural": "dancers"},
+    {"id": "n10", "singular": "seller", "plural": "sellers"},
+    {"id": "n11", "singular": "clerk", "plural": "clerks"},
+    {"id": "n12", "singular": "guard", "plural": "guards"},
+    {"id": "n13", "singular": "scientist", "plural": "scientists"},
+    {"id": "n14", "singular": "actor", "plural": "actors"},
+    {"id": "n15", "singular": "author", "plural": "authors"},
+    {"id": "n16", "singular": "coach", "plural": "coaches"}
+  ],
+  "contexts": [
+    {"id": "s01", "number": "singular", "text": "near the market"},
+    {"id": "s02", "number": "singular", "text": "beside the school"},
+    {"id": "s03", "number": "singular", "text": "above the store"},
+    {"id": "s04", "number": "singular", "text": "outside the museum"},
+    {"id": "p01", "number": "plural", "text": "near the markets"},
+    {"id": "p02", "number": "plural", "text": "beside the schools"},
+    {"id": "p03", "number": "plural", "text": "above the stores"},
+    {"id": "p04", "number": "plural", "text": "outside the museums"}
+  ]
+}

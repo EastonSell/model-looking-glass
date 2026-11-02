@@ -1,0 +1,3893 @@
+{
+  "actions": [
+    "self",
+    "year_final",
+    "label_final",
+    "year_at_zero",
+    "rotated_year_final"
+  ],
+  "cases": [
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-01-01-after-alpha-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 0,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        17130,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        2931,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "alpha",
+      "label_donor_case_id": "year-label-01-01-after-beta-low",
+      "label_index": 0,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "local_above_values": [
+        10,
+        11,
+        12
+      ],
+      "local_below_ids": [
+        3312,
+        2998,
+        2919
+      ],
+      "local_below_values": [
+        6,
+        7,
+        8
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 0,
+      "text": "The event tagged alpha took place after the year 1709 in the year 17",
+      "year_donor_case_id": "year-label-01-01-after-alpha-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 9
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-01-01-after-alpha-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 0,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        17130,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        1507,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "alpha",
+      "label_donor_case_id": "year-label-01-01-after-beta-high",
+      "label_index": 0,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "local_above_values": [
+        19,
+        20,
+        21
+      ],
+      "local_below_ids": [
+        1314,
+        1433,
+        1558
+      ],
+      "local_below_values": [
+        15,
+        16,
+        17
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 3,
+      "text": "The event tagged alpha took place after the year 1718 in the year 17",
+      "year_donor_case_id": "year-label-01-01-after-alpha-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 18
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-01-01-after-beta-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 0,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        12159,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        2931,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "beta",
+      "label_donor_case_id": "year-label-01-01-after-alpha-low",
+      "label_index": 1,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "local_above_values": [
+        10,
+        11,
+        12
+      ],
+      "local_below_ids": [
+        3312,
+        2998,
+        2919
+      ],
+      "local_below_values": [
+        6,
+        7,
+        8
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 1,
+      "text": "The event tagged beta took place after the year 1709 in the year 17",
+      "year_donor_case_id": "year-label-01-01-after-beta-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 9
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-01-01-after-beta-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 0,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        12159,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        1507,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "beta",
+      "label_donor_case_id": "year-label-01-01-after-alpha-high",
+      "label_index": 1,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "local_above_values": [
+        19,
+        20,
+        21
+      ],
+      "local_below_ids": [
+        1314,
+        1433,
+        1558
+      ],
+      "local_below_values": [
+        15,
+        16,
+        17
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 4,
+      "text": "The event tagged beta took place after the year 1718 in the year 17",
+      "year_donor_case_id": "year-label-01-01-after-beta-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 18
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-01-01-before-alpha-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 0,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        17130,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        2931,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "alpha",
+      "label_donor_case_id": "year-label-01-01-before-beta-low",
+      "label_index": 0,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "local_above_values": [
+        10,
+        11,
+        12
+      ],
+      "local_below_ids": [
+        3312,
+        2998,
+        2919
+      ],
+      "local_below_values": [
+        6,
+        7,
+        8
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 2,
+      "text": "The event tagged alpha took place before the year 1709 in the year 17",
+      "year_donor_case_id": "year-label-01-01-before-alpha-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 9
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-01-01-before-alpha-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 0,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        17130,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        1507,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "alpha",
+      "label_donor_case_id": "year-label-01-01-before-beta-high",
+      "label_index": 0,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "local_above_values": [
+        19,
+        20,
+        21
+      ],
+      "local_below_ids": [
+        1314,
+        1433,
+        1558
+      ],
+      "local_below_values": [
+        15,
+        16,
+        17
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 0,
+      "text": "The event tagged alpha took place before the year 1718 in the year 17",
+      "year_donor_case_id": "year-label-01-01-before-alpha-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 18
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-01-01-before-beta-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 0,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        12159,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        2931,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "beta",
+      "label_donor_case_id": "year-label-01-01-before-alpha-low",
+      "label_index": 1,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "local_above_values": [
+        10,
+        11,
+        12
+      ],
+      "local_below_ids": [
+        3312,
+        2998,
+        2919
+      ],
+      "local_below_values": [
+        6,
+        7,
+        8
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 3,
+      "text": "The event tagged beta took place before the year 1709 in the year 17",
+      "year_donor_case_id": "year-label-01-01-before-beta-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 9
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-01-01-before-beta-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 0,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        12159,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        1507,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "beta",
+      "label_donor_case_id": "year-label-01-01-before-alpha-high",
+      "label_index": 1,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "local_above_values": [
+        19,
+        20,
+        21
+      ],
+      "local_below_ids": [
+        1314,
+        1433,
+        1558
+      ],
+      "local_below_values": [
+        15,
+        16,
+        17
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 1,
+      "text": "The event tagged beta took place before the year 1718 in the year 17",
+      "year_donor_case_id": "year-label-01-01-before-beta-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 18
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-01-01-near-alpha-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 0,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        17130,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        2931,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "alpha",
+      "label_donor_case_id": "year-label-01-01-near-beta-low",
+      "label_index": 0,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "local_above_values": [
+        10,
+        11,
+        12
+      ],
+      "local_below_ids": [
+        3312,
+        2998,
+        2919
+      ],
+      "local_below_values": [
+        6,
+        7,
+        8
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 4,
+      "text": "The event tagged alpha took place near the year 1709 in the year 17",
+      "year_donor_case_id": "year-label-01-01-near-alpha-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 9
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-01-01-near-alpha-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 0,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        17130,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        1507,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "alpha",
+      "label_donor_case_id": "year-label-01-01-near-beta-high",
+      "label_index": 0,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "local_above_values": [
+        19,
+        20,
+        21
+      ],
+      "local_below_ids": [
+        1314,
+        1433,
+        1558
+      ],
+      "local_below_values": [
+        15,
+        16,
+        17
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 2,
+      "text": "The event tagged alpha took place near the year 1718 in the year 17",
+      "year_donor_case_id": "year-label-01-01-near-alpha-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 18
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-01-01-near-beta-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 0,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        12159,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        2931,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "beta",
+      "label_donor_case_id": "year-label-01-01-near-alpha-low",
+      "label_index": 1,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "local_above_values": [
+        10,
+        11,
+        12
+      ],
+      "local_below_ids": [
+        3312,
+        2998,
+        2919
+      ],
+      "local_below_values": [
+        6,
+        7,
+        8
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 0,
+      "text": "The event tagged beta took place near the year 1709 in the year 17",
+      "year_donor_case_id": "year-label-01-01-near-beta-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 9
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-01-01-near-beta-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 0,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        12159,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        1507,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "beta",
+      "label_donor_case_id": "year-label-01-01-near-alpha-high",
+      "label_index": 1,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "local_above_values": [
+        19,
+        20,
+        21
+      ],
+      "local_below_ids": [
+        1314,
+        1433,
+        1558
+      ],
+      "local_below_values": [
+        15,
+        16,
+        17
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 3,
+      "text": "The event tagged beta took place near the year 1718 in the year 17",
+      "year_donor_case_id": "year-label-01-01-near-beta-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 18
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-01-02-after-red-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 1,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        2266,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        2931,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "red",
+      "label_donor_case_id": "year-label-01-02-after-blue-low",
+      "label_index": 0,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "local_above_values": [
+        10,
+        11,
+        12
+      ],
+      "local_below_ids": [
+        3312,
+        2998,
+        2919
+      ],
+      "local_below_values": [
+        6,
+        7,
+        8
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 1,
+      "text": "The event tagged red took place after the year 1709 in the year 17",
+      "year_donor_case_id": "year-label-01-02-after-red-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 9
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-01-02-after-red-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 1,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        2266,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        1507,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "red",
+      "label_donor_case_id": "year-label-01-02-after-blue-high",
+      "label_index": 0,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "local_above_values": [
+        19,
+        20,
+        21
+      ],
+      "local_below_ids": [
+        1314,
+        1433,
+        1558
+      ],
+      "local_below_values": [
+        15,
+        16,
+        17
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 4,
+      "text": "The event tagged red took place after the year 1718 in the year 17",
+      "year_donor_case_id": "year-label-01-02-after-red-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 18
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-01-02-after-blue-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 1,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        4171,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        2931,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "blue",
+      "label_donor_case_id": "year-label-01-02-after-red-low",
+      "label_index": 1,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "local_above_values": [
+        10,
+        11,
+        12
+      ],
+      "local_below_ids": [
+        3312,
+        2998,
+        2919
+      ],
+      "local_below_values": [
+        6,
+        7,
+        8
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 2,
+      "text": "The event tagged blue took place after the year 1709 in the year 17",
+      "year_donor_case_id": "year-label-01-02-after-blue-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 9
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-01-02-after-blue-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 1,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        4171,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        1507,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "blue",
+      "label_donor_case_id": "year-label-01-02-after-red-high",
+      "label_index": 1,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "local_above_values": [
+        19,
+        20,
+        21
+      ],
+      "local_below_ids": [
+        1314,
+        1433,
+        1558
+      ],
+      "local_below_values": [
+        15,
+        16,
+        17
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 0,
+      "text": "The event tagged blue took place after the year 1718 in the year 17",
+      "year_donor_case_id": "year-label-01-02-after-blue-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 18
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-01-02-before-red-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 1,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        2266,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        2931,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "red",
+      "label_donor_case_id": "year-label-01-02-before-blue-low",
+      "label_index": 0,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "local_above_values": [
+        10,
+        11,
+        12
+      ],
+      "local_below_ids": [
+        3312,
+        2998,
+        2919
+      ],
+      "local_below_values": [
+        6,
+        7,
+        8
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 3,
+      "text": "The event tagged red took place before the year 1709 in the year 17",
+      "year_donor_case_id": "year-label-01-02-before-red-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 9
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-01-02-before-red-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 1,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        2266,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        1507,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "red",
+      "label_donor_case_id": "year-label-01-02-before-blue-high",
+      "label_index": 0,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "local_above_values": [
+        19,
+        20,
+        21
+      ],
+      "local_below_ids": [
+        1314,
+        1433,
+        1558
+      ],
+      "local_below_values": [
+        15,
+        16,
+        17
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 1,
+      "text": "The event tagged red took place before the year 1718 in the year 17",
+      "year_donor_case_id": "year-label-01-02-before-red-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 18
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-01-02-before-blue-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 1,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        4171,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        2931,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "blue",
+      "label_donor_case_id": "year-label-01-02-before-red-low",
+      "label_index": 1,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "local_above_values": [
+        10,
+        11,
+        12
+      ],
+      "local_below_ids": [
+        3312,
+        2998,
+        2919
+      ],
+      "local_below_values": [
+        6,
+        7,
+        8
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 4,
+      "text": "The event tagged blue took place before the year 1709 in the year 17",
+      "year_donor_case_id": "year-label-01-02-before-blue-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 9
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-01-02-before-blue-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 1,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        4171,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        1507,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "blue",
+      "label_donor_case_id": "year-label-01-02-before-red-high",
+      "label_index": 1,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "local_above_values": [
+        19,
+        20,
+        21
+      ],
+      "local_below_ids": [
+        1314,
+        1433,
+        1558
+      ],
+      "local_below_values": [
+        15,
+        16,
+        17
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 2,
+      "text": "The event tagged blue took place before the year 1718 in the year 17",
+      "year_donor_case_id": "year-label-01-02-before-blue-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 18
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-01-02-near-red-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 1,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        2266,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        2931,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "red",
+      "label_donor_case_id": "year-label-01-02-near-blue-low",
+      "label_index": 0,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "local_above_values": [
+        10,
+        11,
+        12
+      ],
+      "local_below_ids": [
+        3312,
+        2998,
+        2919
+      ],
+      "local_below_values": [
+        6,
+        7,
+        8
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 0,
+      "text": "The event tagged red took place near the year 1709 in the year 17",
+      "year_donor_case_id": "year-label-01-02-near-red-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 9
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-01-02-near-red-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 1,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        2266,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        1507,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "red",
+      "label_donor_case_id": "year-label-01-02-near-blue-high",
+      "label_index": 0,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "local_above_values": [
+        19,
+        20,
+        21
+      ],
+      "local_below_ids": [
+        1314,
+        1433,
+        1558
+      ],
+      "local_below_values": [
+        15,
+        16,
+        17
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 3,
+      "text": "The event tagged red took place near the year 1718 in the year 17",
+      "year_donor_case_id": "year-label-01-02-near-red-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 18
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-01-02-near-blue-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 1,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        4171,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        2931,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "blue",
+      "label_donor_case_id": "year-label-01-02-near-red-low",
+      "label_index": 1,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        940,
+        1157,
+        1065
+      ],
+      "local_above_values": [
+        10,
+        11,
+        12
+      ],
+      "local_below_ids": [
+        3312,
+        2998,
+        2919
+      ],
+      "local_below_values": [
+        6,
+        7,
+        8
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 1,
+      "text": "The event tagged blue took place near the year 1709 in the year 17",
+      "year_donor_case_id": "year-label-01-02-near-blue-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 9
+    },
+    {
+      "above_ids": [
+        2481,
+        1828,
+        1954
+      ],
+      "above_values": [
+        21,
+        22,
+        23
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-01-02-near-blue-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 1,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        4171,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        1507,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "blue",
+      "label_donor_case_id": "year-label-01-02-near-red-high",
+      "label_index": 1,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        1129,
+        1238,
+        2481
+      ],
+      "local_above_values": [
+        19,
+        20,
+        21
+      ],
+      "local_below_ids": [
+        1314,
+        1433,
+        1558
+      ],
+      "local_below_values": [
+        15,
+        16,
+        17
+      ],
+      "middle_ids": [
+        1065,
+        1485,
+        1415
+      ],
+      "middle_values": [
+        12,
+        13,
+        14
+      ],
+      "pair_index": 0,
+      "rotation": 4,
+      "text": "The event tagged blue took place near the year 1718 in the year 17",
+      "year_donor_case_id": "year-label-01-02-near-blue-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 18
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-02-01-after-alpha-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 2,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        17130,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        4051,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "alpha",
+      "label_donor_case_id": "year-label-02-01-after-beta-low",
+      "label_index": 0,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        2816,
+        3980,
+        3553
+      ],
+      "local_above_values": [
+        55,
+        56,
+        57
+      ],
+      "local_below_ids": [
+        4349,
+        4309,
+        4310
+      ],
+      "local_below_values": [
+        51,
+        52,
+        53
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 2,
+      "text": "The event tagged alpha took place after the year 1754 in the year 17",
+      "year_donor_case_id": "year-label-02-01-after-alpha-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 54
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-02-01-after-alpha-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 2,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        17130,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        5066,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "alpha",
+      "label_donor_case_id": "year-label-02-01-after-beta-high",
+      "label_index": 0,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        2414,
+        2996,
+        2791
+      ],
+      "local_above_values": [
+        64,
+        65,
+        66
+      ],
+      "local_below_ids": [
+        1899,
+        5333,
+        5237
+      ],
+      "local_below_values": [
+        60,
+        61,
+        62
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 0,
+      "text": "The event tagged alpha took place after the year 1763 in the year 17",
+      "year_donor_case_id": "year-label-02-01-after-alpha-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 63
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-02-01-after-beta-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 2,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        12159,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        4051,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "beta",
+      "label_donor_case_id": "year-label-02-01-after-alpha-low",
+      "label_index": 1,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        2816,
+        3980,
+        3553
+      ],
+      "local_above_values": [
+        55,
+        56,
+        57
+      ],
+      "local_below_ids": [
+        4349,
+        4309,
+        4310
+      ],
+      "local_below_values": [
+        51,
+        52,
+        53
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 3,
+      "text": "The event tagged beta took place after the year 1754 in the year 17",
+      "year_donor_case_id": "year-label-02-01-after-beta-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 54
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-02-01-after-beta-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 2,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        12159,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        5066,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "beta",
+      "label_donor_case_id": "year-label-02-01-after-alpha-high",
+      "label_index": 1,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        2414,
+        2996,
+        2791
+      ],
+      "local_above_values": [
+        64,
+        65,
+        66
+      ],
+      "local_below_ids": [
+        1899,
+        5333,
+        5237
+      ],
+      "local_below_values": [
+        60,
+        61,
+        62
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 1,
+      "text": "The event tagged beta took place after the year 1763 in the year 17",
+      "year_donor_case_id": "year-label-02-01-after-beta-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 63
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-02-01-before-alpha-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 2,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        17130,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        4051,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "alpha",
+      "label_donor_case_id": "year-label-02-01-before-beta-low",
+      "label_index": 0,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        2816,
+        3980,
+        3553
+      ],
+      "local_above_values": [
+        55,
+        56,
+        57
+      ],
+      "local_below_ids": [
+        4349,
+        4309,
+        4310
+      ],
+      "local_below_values": [
+        51,
+        52,
+        53
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 4,
+      "text": "The event tagged alpha took place before the year 1754 in the year 17",
+      "year_donor_case_id": "year-label-02-01-before-alpha-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 54
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-02-01-before-alpha-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 2,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        17130,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        5066,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "alpha",
+      "label_donor_case_id": "year-label-02-01-before-beta-high",
+      "label_index": 0,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        2414,
+        2996,
+        2791
+      ],
+      "local_above_values": [
+        64,
+        65,
+        66
+      ],
+      "local_below_ids": [
+        1899,
+        5333,
+        5237
+      ],
+      "local_below_values": [
+        60,
+        61,
+        62
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 2,
+      "text": "The event tagged alpha took place before the year 1763 in the year 17",
+      "year_donor_case_id": "year-label-02-01-before-alpha-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 63
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-02-01-before-beta-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 2,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        12159,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        4051,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "beta",
+      "label_donor_case_id": "year-label-02-01-before-alpha-low",
+      "label_index": 1,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        2816,
+        3980,
+        3553
+      ],
+      "local_above_values": [
+        55,
+        56,
+        57
+      ],
+      "local_below_ids": [
+        4349,
+        4309,
+        4310
+      ],
+      "local_below_values": [
+        51,
+        52,
+        53
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 0,
+      "text": "The event tagged beta took place before the year 1754 in the year 17",
+      "year_donor_case_id": "year-label-02-01-before-beta-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 54
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-02-01-before-beta-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 2,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        12159,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        5066,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "beta",
+      "label_donor_case_id": "year-label-02-01-before-alpha-high",
+      "label_index": 1,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        2414,
+        2996,
+        2791
+      ],
+      "local_above_values": [
+        64,
+        65,
+        66
+      ],
+      "local_below_ids": [
+        1899,
+        5333,
+        5237
+      ],
+      "local_below_values": [
+        60,
+        61,
+        62
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 3,
+      "text": "The event tagged beta took place before the year 1763 in the year 17",
+      "year_donor_case_id": "year-label-02-01-before-beta-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 63
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-02-01-near-alpha-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 2,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        17130,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        4051,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "alpha",
+      "label_donor_case_id": "year-label-02-01-near-beta-low",
+      "label_index": 0,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        2816,
+        3980,
+        3553
+      ],
+      "local_above_values": [
+        55,
+        56,
+        57
+      ],
+      "local_below_ids": [
+        4349,
+        4309,
+        4310
+      ],
+      "local_below_values": [
+        51,
+        52,
+        53
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 1,
+      "text": "The event tagged alpha took place near the year 1754 in the year 17",
+      "year_donor_case_id": "year-label-02-01-near-alpha-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 54
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-02-01-near-alpha-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 2,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        17130,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        5066,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "alpha",
+      "label_donor_case_id": "year-label-02-01-near-beta-high",
+      "label_index": 0,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        2414,
+        2996,
+        2791
+      ],
+      "local_above_values": [
+        64,
+        65,
+        66
+      ],
+      "local_below_ids": [
+        1899,
+        5333,
+        5237
+      ],
+      "local_below_values": [
+        60,
+        61,
+        62
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 4,
+      "text": "The event tagged alpha took place near the year 1763 in the year 17",
+      "year_donor_case_id": "year-label-02-01-near-alpha-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 63
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-02-01-near-beta-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 2,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        12159,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        4051,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "beta",
+      "label_donor_case_id": "year-label-02-01-near-alpha-low",
+      "label_index": 1,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        2816,
+        3980,
+        3553
+      ],
+      "local_above_values": [
+        55,
+        56,
+        57
+      ],
+      "local_below_ids": [
+        4349,
+        4309,
+        4310
+      ],
+      "local_below_values": [
+        51,
+        52,
+        53
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 2,
+      "text": "The event tagged beta took place near the year 1754 in the year 17",
+      "year_donor_case_id": "year-label-02-01-near-beta-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 54
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-02-01-near-beta-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 2,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        12159,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        5066,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "beta",
+      "label_donor_case_id": "year-label-02-01-near-alpha-high",
+      "label_index": 1,
+      "label_pair_index": 0,
+      "label_position": 3,
+      "local_above_ids": [
+        2414,
+        2996,
+        2791
+      ],
+      "local_above_values": [
+        64,
+        65,
+        66
+      ],
+      "local_below_ids": [
+        1899,
+        5333,
+        5237
+      ],
+      "local_below_values": [
+        60,
+        61,
+        62
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 0,
+      "text": "The event tagged beta took place near the year 1763 in the year 17",
+      "year_donor_case_id": "year-label-02-01-near-beta-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 63
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-02-02-after-red-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 3,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        2266,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        4051,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "red",
+      "label_donor_case_id": "year-label-02-02-after-blue-low",
+      "label_index": 0,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        2816,
+        3980,
+        3553
+      ],
+      "local_above_values": [
+        55,
+        56,
+        57
+      ],
+      "local_below_ids": [
+        4349,
+        4309,
+        4310
+      ],
+      "local_below_values": [
+        51,
+        52,
+        53
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 3,
+      "text": "The event tagged red took place after the year 1754 in the year 17",
+      "year_donor_case_id": "year-label-02-02-after-red-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 54
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-02-02-after-red-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 3,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        2266,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        5066,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "red",
+      "label_donor_case_id": "year-label-02-02-after-blue-high",
+      "label_index": 0,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        2414,
+        2996,
+        2791
+      ],
+      "local_above_values": [
+        64,
+        65,
+        66
+      ],
+      "local_below_ids": [
+        1899,
+        5333,
+        5237
+      ],
+      "local_below_values": [
+        60,
+        61,
+        62
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 1,
+      "text": "The event tagged red took place after the year 1763 in the year 17",
+      "year_donor_case_id": "year-label-02-02-after-red-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 63
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-02-02-after-blue-low",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 3,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        4171,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        4051,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "blue",
+      "label_donor_case_id": "year-label-02-02-after-red-low",
+      "label_index": 1,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        2816,
+        3980,
+        3553
+      ],
+      "local_above_values": [
+        55,
+        56,
+        57
+      ],
+      "local_below_ids": [
+        4349,
+        4309,
+        4310
+      ],
+      "local_below_values": [
+        51,
+        52,
+        53
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 4,
+      "text": "The event tagged blue took place after the year 1754 in the year 17",
+      "year_donor_case_id": "year-label-02-02-after-blue-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 54
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-02-02-after-blue-high",
+      "condition": "after",
+      "condition_index": 0,
+      "condition_position": 6,
+      "family_index": 3,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        4171,
+        1718,
+        1295,
+        706,
+        262,
+        614,
+        1596,
+        5066,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "blue",
+      "label_donor_case_id": "year-label-02-02-after-red-high",
+      "label_index": 1,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        2414,
+        2996,
+        2791
+      ],
+      "local_above_values": [
+        64,
+        65,
+        66
+      ],
+      "local_below_ids": [
+        1899,
+        5333,
+        5237
+      ],
+      "local_below_values": [
+        60,
+        61,
+        62
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 2,
+      "text": "The event tagged blue took place after the year 1763 in the year 17",
+      "year_donor_case_id": "year-label-02-02-after-blue-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 63
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-02-02-before-red-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 3,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        2266,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        4051,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "red",
+      "label_donor_case_id": "year-label-02-02-before-blue-low",
+      "label_index": 0,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        2816,
+        3980,
+        3553
+      ],
+      "local_above_values": [
+        55,
+        56,
+        57
+      ],
+      "local_below_ids": [
+        4349,
+        4309,
+        4310
+      ],
+      "local_below_values": [
+        51,
+        52,
+        53
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 0,
+      "text": "The event tagged red took place before the year 1754 in the year 17",
+      "year_donor_case_id": "year-label-02-02-before-red-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 54
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-02-02-before-red-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 3,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        2266,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        5066,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "red",
+      "label_donor_case_id": "year-label-02-02-before-blue-high",
+      "label_index": 0,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        2414,
+        2996,
+        2791
+      ],
+      "local_above_values": [
+        64,
+        65,
+        66
+      ],
+      "local_below_ids": [
+        1899,
+        5333,
+        5237
+      ],
+      "local_below_values": [
+        60,
+        61,
+        62
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 3,
+      "text": "The event tagged red took place before the year 1763 in the year 17",
+      "year_donor_case_id": "year-label-02-02-before-red-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 63
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-02-02-before-blue-low",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 3,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        4171,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        4051,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "blue",
+      "label_donor_case_id": "year-label-02-02-before-red-low",
+      "label_index": 1,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        2816,
+        3980,
+        3553
+      ],
+      "local_above_values": [
+        55,
+        56,
+        57
+      ],
+      "local_below_ids": [
+        4349,
+        4309,
+        4310
+      ],
+      "local_below_values": [
+        51,
+        52,
+        53
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 1,
+      "text": "The event tagged blue took place before the year 1754 in the year 17",
+      "year_donor_case_id": "year-label-02-02-before-blue-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 54
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-02-02-before-blue-high",
+      "condition": "before",
+      "condition_index": 1,
+      "condition_position": 6,
+      "family_index": 3,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        4171,
+        1718,
+        1295,
+        878,
+        262,
+        614,
+        1596,
+        5066,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "blue",
+      "label_donor_case_id": "year-label-02-02-before-red-high",
+      "label_index": 1,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        2414,
+        2996,
+        2791
+      ],
+      "local_above_values": [
+        64,
+        65,
+        66
+      ],
+      "local_below_ids": [
+        1899,
+        5333,
+        5237
+      ],
+      "local_below_values": [
+        60,
+        61,
+        62
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 4,
+      "text": "The event tagged blue took place before the year 1763 in the year 17",
+      "year_donor_case_id": "year-label-02-02-before-blue-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 63
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-02-02-near-red-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 3,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        2266,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        4051,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "red",
+      "label_donor_case_id": "year-label-02-02-near-blue-low",
+      "label_index": 0,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        2816,
+        3980,
+        3553
+      ],
+      "local_above_values": [
+        55,
+        56,
+        57
+      ],
+      "local_below_ids": [
+        4349,
+        4309,
+        4310
+      ],
+      "local_below_values": [
+        51,
+        52,
+        53
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 2,
+      "text": "The event tagged red took place near the year 1754 in the year 17",
+      "year_donor_case_id": "year-label-02-02-near-red-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 54
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-02-02-near-red-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 3,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        2266,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        5066,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "red",
+      "label_donor_case_id": "year-label-02-02-near-blue-high",
+      "label_index": 0,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        2414,
+        2996,
+        2791
+      ],
+      "local_above_values": [
+        64,
+        65,
+        66
+      ],
+      "local_below_ids": [
+        1899,
+        5333,
+        5237
+      ],
+      "local_below_values": [
+        60,
+        61,
+        62
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 0,
+      "text": "The event tagged red took place near the year 1763 in the year 17",
+      "year_donor_case_id": "year-label-02-02-near-red-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 63
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 0,
+      "case_id": "year-label-02-02-near-blue-low",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 3,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        4171,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        4051,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "blue",
+      "label_donor_case_id": "year-label-02-02-near-red-low",
+      "label_index": 1,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        2816,
+        3980,
+        3553
+      ],
+      "local_above_values": [
+        55,
+        56,
+        57
+      ],
+      "local_below_ids": [
+        4349,
+        4309,
+        4310
+      ],
+      "local_below_values": [
+        51,
+        52,
+        53
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 3,
+      "text": "The event tagged blue took place near the year 1754 in the year 17",
+      "year_donor_case_id": "year-label-02-02-near-blue-high",
+      "year_position": 10,
+      "year_role": "low",
+      "year_suffix": 54
+    },
+    {
+      "above_ids": [
+        2791,
+        3134,
+        3104
+      ],
+      "above_values": [
+        66,
+        67,
+        68
+      ],
+      "anchor_index": 1,
+      "case_id": "year-label-02-02-near-blue-high",
+      "condition": "near",
+      "condition_index": 2,
+      "condition_position": 6,
+      "family_index": 3,
+      "final_position": 14,
+      "input_ids": [
+        464,
+        1785,
+        30509,
+        4171,
+        1718,
+        1295,
+        1474,
+        262,
+        614,
+        1596,
+        5066,
+        287,
+        262,
+        614,
+        1596
+      ],
+      "label": "blue",
+      "label_donor_case_id": "year-label-02-02-near-red-high",
+      "label_index": 1,
+      "label_pair_index": 1,
+      "label_position": 3,
+      "local_above_ids": [
+        2414,
+        2996,
+        2791
+      ],
+      "local_above_values": [
+        64,
+        65,
+        66
+      ],
+      "local_below_ids": [
+        1899,
+        5333,
+        5237
+      ],
+      "local_below_values": [
+        60,
+        61,
+        62
+      ],
+      "middle_ids": [
+        3553,
+        3365,
+        3270
+      ],
+      "middle_values": [
+        57,
+        58,
+        59
+      ],
+      "pair_index": 1,
+      "rotation": 1,
+      "text": "The event tagged blue took place near the year 1763 in the year 17",
+      "year_donor_case_id": "year-label-02-02-near-blue-low",
+      "year_position": 10,
+      "year_role": "high",
+      "year_suffix": 63
+    }
+  ],
+  "conditions": [
+    "after",
+    "before",
+    "near"
+  ],
+  "known_exposure_sha256": "877fa0376925be34ac3de14ff066e5465a67953660bce81011e9c8fd87810bd3",
+  "known_exposure_version": "distilgpt2-development-exposures-v24",
+  "label_pairs": [
+    [
+      "alpha",
+      "beta"
+    ],
+    [
+      "red",
+      "blue"
+    ]
+  ],
+  "max_block_snapshot_bytes": 56623104,
+  "max_logit_bytes": 77194752,
+  "model_id": "distilbert/distilgpt2",
+  "model_revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "numeric_ids": [
+    405,
+    486,
+    2999,
+    3070,
+    3023,
+    2713,
+    3312,
+    2998,
+    2919,
+    2931,
+    940,
+    1157,
+    1065,
+    1485,
+    1415,
+    1314,
+    1433,
+    1558,
+    1507,
+    1129,
+    1238,
+    2481,
+    1828,
+    1954,
+    1731,
+    1495,
+    2075,
+    1983,
+    2078,
+    1959,
+    1270,
+    3132,
+    2624,
+    2091,
+    2682,
+    2327,
+    2623,
+    2718,
+    2548,
+    2670,
+    1821,
+    3901,
+    3682,
+    3559,
+    2598,
+    2231,
+    3510,
+    2857,
+    2780,
+    2920,
+    1120,
+    4349,
+    4309,
+    4310,
+    4051,
+    2816,
+    3980,
+    3553,
+    3365,
+    3270,
+    1899,
+    5333,
+    5237,
+    5066,
+    2414,
+    2996,
+    2791,
+    3134,
+    3104,
+    3388,
+    2154,
+    4869,
+    4761,
+    4790,
+    4524,
+    2425,
+    4304,
+    3324,
+    3695,
+    3720,
+    1795,
+    6659,
+    6469,
+    5999,
+    5705,
+    5332,
+    4521,
+    5774,
+    3459,
+    4531,
+    3829,
+    6420,
+    5892,
+    6052,
+    5824,
+    3865,
+    4846,
+    5607,
+    4089,
+    2079
+  ],
+  "pairs": [
+    [
+      9,
+      18
+    ],
+    [
+      54,
+      63
+    ]
+  ],
+  "planned_forwards": 384,
+  "protocol_revision": "d35d685950e36e91fc5cf576c03fe65e8d02aac3",
+  "protocol_sha256": "5da05c4d35708b420e5843b1eb77fda8699c74755233b510a01683ead2081f4a",
+  "schema": "distilgpt2-year-label-control-cases-v1",
+  "tokenizer_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6"
+}

@@ -1,0 +1,19 @@
+{
+  "admission_observations": 28,
+  "limitations": [
+    "saved-record consistency only; no execution or native-cleanup attestation",
+    "per-forward peaks were reset; memory counters are sampled observations",
+    "raw logits were not retained, so numerical comparisons cannot be independently replayed",
+    "broker rows are held out from this policy sample, with prior/outside exposure unknown",
+    "resource observations do not establish a worst-case or production capacity bound"
+  ],
+  "maximum_recorded_peak_allocated_bytes": 370421760,
+  "maximum_recorded_peak_reserved_bytes": 406847488,
+  "memory_observations": 54,
+  "minimum_sampled_free_bytes": 7018119168,
+  "model_entries": 12,
+  "singleton_entries": 8,
+  "source_commit": "05ca62b99aa3930eaa91654b2d312024885e20e7",
+  "status": "passed",
+  "two_row_entries": 4
+}

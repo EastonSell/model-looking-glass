@@ -91,6 +91,36 @@ class CustodyServiceProfileTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.module.build_custody_service_identity(object(), object(), object(), object())
 
+    def test_profile_from_before_owner_markers_cannot_authorize_changed_source(self):
+        identity = self.custody_identity()
+        runtime = json.loads(identity.runtime_manifest)
+        source = json.loads(identity.source_manifest)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'looking_glass').mkdir()
+            (root / 'docs').mkdir()
+            (root / 'looking_glass' / '__init__.py').write_text('', encoding='utf-8')
+            owner = root / 'looking_glass' / 'gpu_service.py'
+            owner.write_text('# owner gates are absent\n', encoding='utf-8')
+            (root / 'docs' / 'TRUSTED_SERVICE_PROFILE_V1.md').write_text('protocol', encoding='utf-8')
+
+            def with_current_source():
+                source['base']['repository_files'] = self.trusted._collect_source_files(root)
+                manifest = canonical(source)
+                return dataclasses.replace(identity, source_manifest=manifest,
+                    keys=self.module._make_workload_keys(hashlib.sha256(manifest).hexdigest(), runtime))
+
+            before = with_current_source()
+            registry, pins = self.registry_for(before)
+            self.module.resolve_custody_service_profiles(registry, before, pins)
+            owner.write_text("OWNER_COMPLETION_CUSTODY_CONTRACT = 'service-result-retirement-v1'\n"
+                             "DIRECT_SERVICE_OWNER_CONTRACT = 'two-team-direct-service-v1'\n",
+                             encoding='utf-8')
+            after = with_current_source()
+            self.assertNotEqual(before.source_manifest, after.source_manifest)
+            with self.assertRaises(ProfileUnavailable):
+                self.module.resolve_custody_service_profiles(registry, after, pins)
+
     def test_exact_versioned_protocol_document_is_required(self):
         source = Path(__file__).resolve().parents[1] / 'docs' / 'CUSTODY_SERVICE_PROFILE_V1.md'
         with tempfile.TemporaryDirectory() as directory:

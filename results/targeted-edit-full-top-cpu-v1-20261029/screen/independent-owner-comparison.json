@@ -1,0 +1,20 @@
+{
+  "comparator_sha256": "9c8ab84414f91c248f0eaf87dff76dcfa9541fda60a04838a02a93d8028dffee",
+  "decision": {
+    "calibration_offsets": [],
+    "discovery_offset": null,
+    "evaluation_offsets": [],
+    "fact_id": null,
+    "fact_index": null,
+    "status": "ineligible"
+  },
+  "decoded_top_sha256": "4eeb4114a7e10f535618d2806268090da21bb3938bcc4a82dbf45ef9f885d797",
+  "independent_report_sha256": "27f6d8bd9e7c307ac92e0f79044d4af9ea947c49ec14ea088bd295d92aedf085",
+  "journal_sha256": "28f29deac63fab2599a67ebf4537f14723e374377f2205c2cfe08300f7de7e57",
+  "max_absolute_logp_difference": 8.881784197001252e-16,
+  "rows_checked": 36,
+  "schema": "full-top-screen-owner-comparison-v1",
+  "scope": "Saved-logit, selection and journal consistency only; not proof of execution, cleanup, chronology or unknown exposure.",
+  "selection_sha256": "b41bc1240a8b43fa3810ab7bd27412d7a07341df4b79e7fbdef61d32d4f9ead9",
+  "status": "passed"
+}

@@ -1,0 +1,11 @@
+{
+  "scope": "direct launched process and saved files; whole process tree is not authenticated",
+  "source_commit": "74227e9909e4a485296065aced0368a1ccafba64",
+  "observer_sha256": "64553741dfe735f482ec0541ea1aa1b85195236f0edd8ddd6be7449b5012a760",
+  "status": "observed-zero-exit",
+  "exit_code": 0,
+  "result_sha256": "cad47fbb5599f5ec44161d59ddbfc6d26bd904b399f23c68089b709921ec194e",
+  "parent_prefix_empty": true,
+  "original_sha256": "2913352a8e8d7427b5ecd135ce61d05491de5d085353adff2ab07ce7cdf4846d",
+  "scope_note": "PID omitted from this public projection; the original remains in operator custody."
+}

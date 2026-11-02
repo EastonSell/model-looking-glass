@@ -9,7 +9,7 @@ from enum import Enum
 import sys
 from threading import Condition, Event, Lock, Thread, current_thread
 from time import monotonic, perf_counter_ns
-from types import MappingProxyType
+from types import MappingProxyType, TracebackType
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -27,6 +27,14 @@ _mapping_proxy_type = type(MappingProxyType({}))
 _input_names = frozenset(('input_ids', 'attention_mask', 'token_type_ids', 'position_ids'))
 _forward_request_fields = frozenset(('request_id', 'inputs', 'seed'))
 _forward_result_fields = frozenset(('request_id', 'logits'))
+
+
+def _supports_bound_owner_thread_hook():
+    """Restrict the private per-thread hook to reviewed CPython runtimes."""
+    if sys.implementation.name != 'cpython' or not (3, 10) <= sys.version_info[:2] <= (3, 13):
+        return False
+    gil_enabled = getattr(sys, '_is_gil_enabled', None)
+    return gil_enabled is None or gil_enabled() is True
 
 
 def _has_exact_fields(value, fields):
@@ -339,15 +347,42 @@ class Broker:
     """
 
     def __init__(self, worker, *, max_pending, max_pending_per_team, completion_authority=None):
+        from .owner_completion import OwnerCompletionAuthority
         try:
-            self._initialize(worker, max_pending=max_pending, max_pending_per_team=max_pending_per_team,
-                             completion_authority=completion_authority)
+            self._initialize_guarded(worker, max_pending=max_pending,
+                                     max_pending_per_team=max_pending_per_team,
+                                     completion_authority=completion_authority)
             return
         except BaseException as exc:
-            if not getattr(self, '_quarantine_latched', False):
+            if (type(completion_authority) is OwnerCompletionAuthority
+                    and completion_authority._broker is self):
+                try:
+                    if completion_authority._broker_construction_error is None:
+                        original = BaseException.__getattribute__(exc, '__context__')
+                        completion_authority._broker_construction_error = (
+                            original if isinstance(original, BaseException) else exc)
+                    elif completion_authority._broker_construction_error is not exc:
+                        completion_authority._broker_construction_cleanup_error = exc
+                finally:
+                    completion_authority._unsafe = True
+            elif not getattr(self, '_quarantine_latched', False):
                 raise
             public_error = _sanitized_failure(exc, BrokerUnavailable)
         _raise_sanitized(public_error)
+
+    def _initialize_guarded(self, worker, *, max_pending, max_pending_per_team, completion_authority):
+        from .owner_completion import OwnerCompletionAuthority
+        try:
+            self._initialize(worker, max_pending=max_pending, max_pending_per_team=max_pending_per_team,
+                             completion_authority=completion_authority)
+        except BaseException as exc:
+            if (type(completion_authority) is OwnerCompletionAuthority
+                    and completion_authority._broker is self):
+                try:
+                    completion_authority._broker_construction_error = exc
+                finally:
+                    completion_authority._unsafe = True
+            raise
 
     def _initialize(self, worker, *, max_pending, max_pending_per_team, completion_authority):
         from .owner_completion import LifetimeWorkspaceWorker, OwnerCompletionAuthority
@@ -357,9 +392,14 @@ class Broker:
                 raise ValueError('fixed-workspace worker requires its completion authority')
             if worker._cold_pending:
                 raise ValueError('cold warmup must finish before broker startup')
+            if not _supports_bound_owner_thread_hook():
+                raise RuntimeError('fixed worker requires a supported owner thread failure hook')
         elif completion_authority is not None:
             raise ValueError('completion authority requires the fixed-workspace worker')
-        self._completion_authority = completion_authority
+        # Retain the original authority as an invariant of this broker. An
+        # attempted replacement must not turn later decisions into unbound
+        # publication or retirement.
+        self._completion_authority_binding = completion_authority
         self._serial_observation = None
         self._observation_owner = (worker._cpu_observation if completion_authority is not None else None)
         self._observation_failure_owner = None
@@ -408,6 +448,10 @@ class Broker:
         # another thread holds the admission condition indefinitely.
         self._owner_failure = None
         self._owner_escaping_failure = None
+        self._owner_hook_failure = None
+        self._owner_hook_traceback = None
+        self._owner_hook_capture_complete = False
+        self._owner_hook_recovery_failure = None
         self._startup_decided = False
         # Every rooted job can have a concurrent cleanup exception and a
         # detached input whose disposal was interrupted. Reserve separate
@@ -415,6 +459,13 @@ class Broker:
         self._quarantine_empty = object()
         self._quarantine_objects = [self._quarantine_empty] * (3 * (max_pending + 1) + 4)
         self._thread = Thread(target=self._run, name='looking-glass-worker', daemon=True)
+        if completion_authority is not None:
+            # CPython invokes this per-thread hook when an exception escapes
+            # the target, including at its return boundary. Keep the exact
+            # failure private; an application hook could mutate its traceback.
+            if not hasattr(self._thread, '_invoke_excepthook'):
+                raise RuntimeError('the owner thread failure hook is unavailable')
+            self._thread._invoke_excepthook = self._capture_owner_thread_failure
         with _owner_registry_lock:
             _owner_registry.add(self)
         try:
@@ -438,6 +489,94 @@ class Broker:
     def broker_id(self):
         """Unique identifier for this broker lifetime, for artifact correlation."""
         return self._identity_prefix
+
+    @property
+    def _completion_authority(self):
+        return self._completion_authority_binding
+
+    @_completion_authority.setter
+    def _completion_authority(self, value):
+        authority = self._completion_authority_binding
+        if value is authority:
+            return
+        try:
+            if authority is not None:
+                authority._unsafe = True
+        finally:
+            self._quarantine_latched = True
+            if authority is not None:
+                authority._unsafe = True
+        raise RuntimeError('broker completion authority cannot be replaced')
+
+    @_completion_authority.deleter
+    def _completion_authority(self):
+        authority = self._completion_authority_binding
+        try:
+            if authority is not None:
+                authority._unsafe = True
+        finally:
+            self._quarantine_latched = True
+            if authority is not None:
+                authority._unsafe = True
+
+    def _capture_owner_thread_failure(self, thread):
+        """Root an escaped bound-owner failure before thread completion."""
+        try:
+            self._capture_owner_thread_failure_inner(thread)
+        except BaseException as interrupted:
+            # If capture itself is interrupted before sys.exc_info() returns,
+            # the original target exception is the interruption's context.
+            # Use base descriptors so an exception subclass cannot spoof it.
+            try:
+                self._owner_hook_recovery_failure = interrupted
+                original = BaseException.__dict__['__context__'].__get__(interrupted, BaseException)
+                if not isinstance(original, BaseException):
+                    original = interrupted
+                if self._owner_escaping_failure is None:
+                    self._owner_escaping_failure = original
+                elif self._owner_escaping_failure is not original and self._owner_hook_failure is None:
+                    self._owner_hook_failure = original
+                traceback = BaseException.__dict__['__traceback__'].__get__(original, BaseException)
+                if type(traceback) is TracebackType:
+                    self._owner_hook_traceback = traceback
+            finally:
+                self._quarantine_latched = True
+                authority = self._completion_authority_binding
+                if authority is not None:
+                    authority._unsafe = True
+
+    def _capture_owner_thread_failure_inner(self, thread):
+        """Capture from the active CPython exception context before notification."""
+        exc = None
+        captured_traceback = None
+        try:
+            _, exc, captured_traceback = sys.exc_info()
+            if not isinstance(exc, BaseException) or type(captured_traceback) is not TracebackType:
+                raise RuntimeError('owner thread failure capture is unavailable')
+            if self._owner_escaping_failure is None:
+                self._owner_escaping_failure = exc
+            else:
+                self._owner_hook_failure = exc
+            self._owner_hook_traceback = captured_traceback
+            self._owner_hook_capture_complete = True
+        finally:
+            authority = self._completion_authority_binding
+            try:
+                try:
+                    if authority is not None:
+                        authority._unsafe = True
+                finally:
+                    self._quarantine_latched = True
+            finally:
+                if authority is not None:
+                    authority._unsafe = True
+                self._quarantine_latched = True
+                if self._owner_escaping_failure is None:
+                    self._owner_escaping_failure = exc
+                elif self._owner_escaping_failure is not exc and self._owner_hook_failure is None:
+                    self._owner_hook_failure = exc
+                if type(captured_traceback) is TracebackType and self._owner_hook_traceback is None:
+                    self._owner_hook_traceback = captured_traceback
 
     def _wait_condition_locked(self, predicate, timeout=None):
         """Poll the lock-free owner signal without blocking its publisher."""
@@ -1084,7 +1223,9 @@ class Broker:
                 else:
                     # An interrupted error handler must leave the owner rooted
                     # until the outer guard can latch and retain the failure.
-                    if not self.quarantined:
+                    # A bound owner stays registered through process exit,
+                    # including after an external caller joins its thread.
+                    if not self.quarantined and self._completion_authority is None:
                         with _owner_registry_lock:
                             _owner_registry.discard(self)
 
@@ -1312,6 +1453,11 @@ class Broker:
             raise BrokerShutdownError('broker cleanup failed; request status and accounting are unknown')
         if stopped and self._shutdown_error is not None:
             raise BrokerShutdownError(f'worker close failed: {self._shutdown_error[0]}: {self._shutdown_error[1]}')
+        if stopped and self._completion_authority is not None:
+            authority = self._completion_authority
+            with authority._decision_lock:
+                if self._quarantine_latched or authority.unsafe:
+                    raise BrokerShutdownError('broker owner exit is uncertain')
         return stopped
 
     def __enter__(self):

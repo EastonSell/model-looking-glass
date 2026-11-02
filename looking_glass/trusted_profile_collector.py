@@ -526,6 +526,53 @@ def _bounded_read(path, *, limit=32 * 1024 ** 2):
     return data
 
 
+def _private_text(value, limit):
+    """Bound private diagnostic text in UTF-8 bytes, including broken output."""
+    if type(value) is str:
+        raw = value[:limit + 1].encode('utf-8', errors='replace')
+        truncated = len(value) > limit or len(raw) > limit
+    elif type(value) is bytes:
+        raw = value[:limit + 1].decode('utf-8', errors='replace').encode('utf-8')
+        truncated = len(value) > limit or len(raw) > limit
+    else:
+        return {'text': None, 'truncated': False}
+    return {'text': raw[:limit].decode('utf-8', errors='ignore'), 'truncated': truncated}
+
+
+def _private_driver_failure(error):
+    """Extract bounded nvidia-smi failure details for the private artifact only."""
+    if type(error) is not ValueError or str(error) != 'driver inventory is unavailable':
+        return None
+    cause = error.__cause__
+    command = ['nvidia-smi', '--query-gpu=uuid,driver_version', '--format=csv,noheader,nounits']
+    if isinstance(cause, (subprocess.CalledProcessError, subprocess.TimeoutExpired)):
+        if cause.cmd != command:
+            return None
+    elif not isinstance(cause, OSError):
+        return None
+    allowed = ('PATH', 'PATHEXT', 'SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'PROGRAMFILES',
+               'CUDA_VISIBLE_DEVICES', 'CUDA_DEVICE_ORDER')
+    return {'failure_type': type(cause).__name__, 'command': command,
+            'returncode': getattr(cause, 'returncode', None),
+            'errno': getattr(cause, 'errno', None),
+            'winerror': getattr(cause, 'winerror', None),
+            'stdout': _private_text(getattr(cause, 'stdout', None), 4096),
+            'stderr': _private_text(getattr(cause, 'stderr', None), 4096),
+            'environment': {key: _private_text(os.environ.get(key), 1024) for key in allowed}}
+
+
+def _private_runtime_environment_failure(error):
+    """Recover the bounded key, including when unsafe sync wrapped the failure."""
+    from .resource_profile import ProfilingSynchronizationError
+    original = error.original_error if type(error) is ProfilingSynchronizationError else error
+    if type(original) is not ValueError:
+        return None
+    key = getattr(original, '_private_runtime_environment_key', None)
+    if type(key) is not str:
+        return None
+    return {'key': _private_text(key, 128)}
+
+
 def _owner_main(config):
     """Short-lived child; failed execution never attests or releases ownership."""
     from .device_lease import DeviceLease
@@ -574,9 +621,22 @@ def _owner_main(config):
         # Keep traceback/model/ledger roots alive until this dedicated process exits.
         _PROCESS_CUSTODY[2] = exc
         try:
-            _write_json(run_dir / 'failure.json', {'schema': 'trusted-profile-failure-v1',
-                        'run_id': config['run_id'], 'error_type': type(exc).__name__,
-                        'private_traceback': traceback.format_exc()[-8192:]})
+            failure = {'schema': 'trusted-profile-failure-v1', 'run_id': config['run_id'],
+                       'error_type': type(exc).__name__,
+                       'private_traceback': traceback.format_exc()[-8192:]}
+            try:
+                diagnostic = _private_driver_failure(exc)
+            except BaseException:
+                diagnostic = {'capture': 'unavailable'}
+            if diagnostic is not None:
+                failure['private_driver_query'] = diagnostic
+            try:
+                environment_diagnostic = _private_runtime_environment_failure(exc)
+            except BaseException:
+                environment_diagnostic = {'capture': 'unavailable'}
+            if environment_diagnostic is not None:
+                failure['private_runtime_environment'] = environment_diagnostic
+            _write_json(run_dir / 'failure.json', failure)
         except BaseException:
             pass
         return 1

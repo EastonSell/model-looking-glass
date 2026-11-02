@@ -1,0 +1,14 @@
+{
+  "candidate_eligible": {
+    "banana": false,
+    "lemon": false,
+    "strawberry": false
+  },
+  "independent_report_sha256": "757e948accddeb86e26a1cb8df9c055e5bfdf180c5d1b2ad220c172b3871d983",
+  "journal_sha256": "3e55c8eebf990e930f73f902a635d7866f0a7f314b30dc62f41e43277b97fb83",
+  "owner_result_sha256": "1852609621972c1434c7d5ccf4e8935828e3e55149ba2ef5f0185fc28b0b9742",
+  "rows": 9,
+  "scope": "Saved full-vocabulary rank/selected-logit consistency, not execution attestation.",
+  "selected_object": null,
+  "status": "baseline-ineligible"
+}

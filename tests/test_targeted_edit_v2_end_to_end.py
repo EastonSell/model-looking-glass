@@ -20,6 +20,7 @@ from looking_glass import targeted_edit_v2_manifest as manifest_module
 
 
 ROOT = Path(__file__).resolve().parents[1]
+HISTORICAL_PRETRAINED = ROOT / "tests/fixtures/targeted-edit-v1-pretrained/pretrained.py"
 
 
 def git(repo, *args):
@@ -128,8 +129,9 @@ def test_real_source_manifest_custody_selection_git_handoff(tmp_path, monkeypatc
     for name in manifest_module.SOURCE_PATHS:
         target = repo / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        if (ROOT / name).exists():
-            shutil.copyfile(ROOT / name, target)
+        source_path = HISTORICAL_PRETRAINED if name == "looking_glass/pretrained.py" else ROOT / name
+        if source_path.exists():
+            shutil.copyfile(source_path, target)
         else:
             target.write_text("# synthetic owner placeholder\n", encoding="utf-8")
     git(repo, "add", ".")

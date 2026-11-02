@@ -155,7 +155,7 @@ def input_sha256(value):
     """
     if (type(value) is not torch.Tensor or tuple(value.shape) != (1, 8) or
             value.layout != torch.strided or value.is_nested or value.is_neg() or value.is_conj() or
-            value.has_names() or value.dtype != torch.float32 or value.device.type != "cpu"):
+            any(name is not None for name in getattr(value, "names", ())) or value.dtype != torch.float32 or value.device.type != "cpu"):
         raise DevelopmentInvalid("input identity requires a CPU float32 [1,8] tensor")
     bits = _bits(value)
     if any((bit & 0x7f800000) == 0x7f800000 for bit in bits):
@@ -177,7 +177,7 @@ def _target_sha256(target, value, metadata):
 
 def _validate_cached_tensor(value, shape, policy):
     if (type(value) is not torch.Tensor or tuple(value.shape) != shape or value.layout != torch.strided or
-            value.is_nested or value.is_neg() or value.is_conj() or value.has_names() or
+            value.is_nested or value.is_neg() or value.is_conj() or any(name is not None for name in getattr(value, "names", ())) or
             value.dtype != torch.float32 or value.device.type != "cpu"):
         raise DevelopmentInvalid("cached tensor shape, dtype or layout differs")
     if not _equal(value, value, policy):

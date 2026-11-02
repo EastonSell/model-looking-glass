@@ -1,0 +1,1304 @@
+{
+  "status": "pass",
+  "scope": "direct-process receipt and externally supplied source/exposure pins checked; not execution attestation or an independent reconstruction of exposure snapshots or private comparisons",
+  "forwards": 336,
+  "raw_bytes": 86714688,
+  "clean_summary": {
+    "pairs": [
+      {
+        "pair_index": 0,
+        "event": "war",
+        "local_scores": {
+          "after": {
+            "low": 1.5766018588455846,
+            "high": 0.42097302544598925
+          },
+          "before": {
+            "low": 1.5595321316973134,
+            "high": 0.4964046500278998
+          },
+          "near": {
+            "low": 1.3090238290784408,
+            "high": 0.27271791317689875
+          }
+        },
+        "local_wording_differences": {
+          "after_minus_before": {
+            "low": 0.017069727148271152,
+            "high": -0.07543162458191055
+          },
+          "after_minus_near": {
+            "low": 0.26757802976714373,
+            "high": 0.1482551122690905
+          },
+          "before_minus_near": {
+            "low": 0.2505083026188726,
+            "high": 0.22368673685100104
+          }
+        },
+        "fixed_band_D": {
+          "after": 2.3085962116202996,
+          "before": 2.3205832696473,
+          "near": 1.920055259725436
+        },
+        "fixed_band_wording_differences": {
+          "after_minus_before": -0.011987058027000508,
+          "after_minus_near": 0.3885409518948637,
+          "before_minus_near": 0.4005280099218642
+        },
+        "checks": {
+          "after_low": true,
+          "after_high": false,
+          "before_low": false,
+          "before_high": false,
+          "D_after": true,
+          "D_before": false
+        },
+        "comparator_pass": false
+      },
+      {
+        "pair_index": 0,
+        "event": "reign",
+        "local_scores": {
+          "after": {
+            "low": 1.3625843145990073,
+            "high": 0.21427980126755553
+          },
+          "before": {
+            "low": 1.3284655025266372,
+            "high": 0.2696534398339804
+          },
+          "near": {
+            "low": 1.1672937216439012,
+            "high": 0.17576890362542885
+          }
+        },
+        "local_wording_differences": {
+          "after_minus_before": {
+            "low": 0.03411881207237011,
+            "high": -0.055373638566424854
+          },
+          "after_minus_near": {
+            "low": 0.1952905929551061,
+            "high": 0.038510897642126674
+          },
+          "before_minus_near": {
+            "low": 0.16117178088273598,
+            "high": 0.09388453620855153
+          }
+        },
+        "fixed_band_D": {
+          "after": 2.060666286775734,
+          "before": 2.045285966832447,
+          "near": 1.7986320311533786
+        },
+        "fixed_band_wording_differences": {
+          "after_minus_before": 0.015380319943287368,
+          "after_minus_near": 0.2620342556223556,
+          "before_minus_near": 0.24665393567906824
+        },
+        "checks": {
+          "after_low": true,
+          "after_high": false,
+          "before_low": false,
+          "before_high": false,
+          "D_after": true,
+          "D_before": false
+        },
+        "comparator_pass": false
+      },
+      {
+        "pair_index": 1,
+        "event": "war",
+        "local_scores": {
+          "after": {
+            "low": 0.42626069430474267,
+            "high": 1.6682607674345904
+          },
+          "before": {
+            "low": 0.4453162125434629,
+            "high": 1.6911550565767177
+          },
+          "near": {
+            "low": 0.3069525587715194,
+            "high": 1.4836077763814897
+          }
+        },
+        "local_wording_differences": {
+          "after_minus_before": {
+            "low": -0.019055518238720204,
+            "high": -0.022894289142127322
+          },
+          "after_minus_near": {
+            "low": 0.11930813553322328,
+            "high": 0.18465299105310073
+          },
+          "before_minus_near": {
+            "low": 0.13836365377194348,
+            "high": 0.20754728019522806
+          }
+        },
+        "fixed_band_D": {
+          "after": 2.1733905886579477,
+          "before": 2.251285104470315,
+          "near": 1.9891371704490128
+        },
+        "fixed_band_wording_differences": {
+          "after_minus_before": -0.07789451581236717,
+          "after_minus_near": 0.18425341820893482,
+          "before_minus_near": 0.262147934021302
+        },
+        "checks": {
+          "after_low": false,
+          "after_high": true,
+          "before_low": false,
+          "before_high": false,
+          "D_after": true,
+          "D_before": false
+        },
+        "comparator_pass": false
+      },
+      {
+        "pair_index": 1,
+        "event": "reign",
+        "local_scores": {
+          "after": {
+            "low": 0.4257259704966859,
+            "high": 1.572221539756203
+          },
+          "before": {
+            "low": 0.4642343093479322,
+            "high": 1.6409853606353715
+          },
+          "near": {
+            "low": 0.34849733651249015,
+            "high": 1.4542999452131549
+          }
+        },
+        "local_wording_differences": {
+          "after_minus_before": {
+            "low": -0.03850833885124627,
+            "high": -0.06876382087916855
+          },
+          "after_minus_near": {
+            "low": 0.07722863398419577,
+            "high": 0.11792159454304807
+          },
+          "before_minus_near": {
+            "low": 0.11573697283544204,
+            "high": 0.18668541542221662
+          }
+        },
+        "fixed_band_D": {
+          "after": 2.0906354712446378,
+          "before": 2.2522127521381075,
+          "near": 2.044781143559705
+        },
+        "fixed_band_wording_differences": {
+          "after_minus_before": -0.16157728089346968,
+          "after_minus_near": 0.045854327684932805,
+          "before_minus_near": 0.20743160857840248
+        },
+        "checks": {
+          "after_low": false,
+          "after_high": true,
+          "before_low": false,
+          "before_high": false,
+          "D_after": true,
+          "D_before": false
+        },
+        "comparator_pass": false
+      },
+      {
+        "pair_index": 2,
+        "event": "war",
+        "local_scores": {
+          "after": {
+            "low": 1.2908425682103686,
+            "high": 0.7310146723976998
+          },
+          "before": {
+            "low": 1.4100745041432738,
+            "high": 0.5980852534552673
+          },
+          "near": {
+            "low": 1.2579637199570612,
+            "high": 0.45141820045947345
+          }
+        },
+        "local_wording_differences": {
+          "after_minus_before": {
+            "low": -0.11923193593290526,
+            "high": 0.1329294189424325
+          },
+          "after_minus_near": {
+            "low": 0.032878848253307336,
+            "high": 0.27959647193822634
+          },
+          "before_minus_near": {
+            "low": 0.1521107841862126,
+            "high": 0.14666705299579386
+          }
+        },
+        "fixed_band_D": {
+          "after": 2.9563964298853267,
+          "before": 3.044234810675948,
+          "near": 2.908702775710072
+        },
+        "fixed_band_wording_differences": {
+          "after_minus_before": -0.08783838079062134,
+          "after_minus_near": 0.04769365417525462,
+          "before_minus_near": 0.13553203496587596
+        },
+        "checks": {
+          "after_low": true,
+          "after_high": true,
+          "before_low": false,
+          "before_high": false,
+          "D_after": true,
+          "D_before": false
+        },
+        "comparator_pass": false
+      },
+      {
+        "pair_index": 2,
+        "event": "reign",
+        "local_scores": {
+          "after": {
+            "low": 1.2018058558498024,
+            "high": 0.5889652197189356
+          },
+          "before": {
+            "low": 1.3132123906822435,
+            "high": 0.5175916065817487
+          },
+          "near": {
+            "low": 1.202667520737942,
+            "high": 0.37906362542676
+          }
+        },
+        "local_wording_differences": {
+          "after_minus_before": {
+            "low": -0.11140653483244112,
+            "high": 0.07137361313718682
+          },
+          "after_minus_near": {
+            "low": -0.0008616648881396571,
+            "high": 0.2099015942921756
+          },
+          "before_minus_near": {
+            "low": 0.11054486994430146,
+            "high": 0.13852798115498877
+          }
+        },
+        "fixed_band_D": {
+          "after": 2.8173917491871086,
+          "before": 3.005097458154114,
+          "near": 2.892953145665082
+        },
+        "fixed_band_wording_differences": {
+          "after_minus_before": -0.18770570896700534,
+          "after_minus_near": -0.07556139647797355,
+          "before_minus_near": 0.11214431248903178
+        },
+        "checks": {
+          "after_low": true,
+          "after_high": true,
+          "before_low": false,
+          "before_high": false,
+          "D_after": true,
+          "D_before": false
+        },
+        "comparator_pass": false
+      },
+      {
+        "pair_index": 3,
+        "event": "war",
+        "local_scores": {
+          "after": {
+            "low": 1.7027709914897775,
+            "high": 1.8740192938886473
+          },
+          "before": {
+            "low": 1.7670275599416532,
+            "high": 1.9129267905559464
+          },
+          "near": {
+            "low": 1.4037571233265411,
+            "high": 1.7709414583112189
+          }
+        },
+        "local_wording_differences": {
+          "after_minus_before": {
+            "low": -0.06425656845187566,
+            "high": -0.03890749666729909
+          },
+          "after_minus_near": {
+            "low": 0.2990138681632364,
+            "high": 0.10307783557742844
+          },
+          "before_minus_near": {
+            "low": 0.36327043661511205,
+            "high": 0.14198533224472754
+          }
+        },
+        "fixed_band_D": {
+          "after": 3.45303021010638,
+          "before": 3.5124179148445727,
+          "near": 3.161868530704302
+        },
+        "fixed_band_wording_differences": {
+          "after_minus_before": -0.05938770473819277,
+          "after_minus_near": 0.29116167940207793,
+          "before_minus_near": 0.3505493841402707
+        },
+        "checks": {
+          "after_low": true,
+          "after_high": true,
+          "before_low": false,
+          "before_high": false,
+          "D_after": true,
+          "D_before": false
+        },
+        "comparator_pass": false
+      },
+      {
+        "pair_index": 3,
+        "event": "reign",
+        "local_scores": {
+          "after": {
+            "low": 1.6456921058875906,
+            "high": 1.9150920553742792
+          },
+          "before": {
+            "low": 1.6901942403192394,
+            "high": 1.984377571106276
+          },
+          "near": {
+            "low": 1.3511249904478777,
+            "high": 1.831840908427918
+          }
+        },
+        "local_wording_differences": {
+          "after_minus_before": {
+            "low": -0.04450213443164874,
+            "high": -0.06928551573199693
+          },
+          "after_minus_near": {
+            "low": 0.2945671154397129,
+            "high": 0.08325114694636127
+          },
+          "before_minus_near": {
+            "low": 0.33906924987136167,
+            "high": 0.1525366626783582
+          }
+        },
+        "fixed_band_D": {
+          "after": 3.2788351523508674,
+          "before": 3.338192570941587,
+          "near": 3.051385356399858
+        },
+        "fixed_band_wording_differences": {
+          "after_minus_before": -0.059357418590719746,
+          "after_minus_near": 0.22744979595100956,
+          "before_minus_near": 0.2868072145417293
+        },
+        "checks": {
+          "after_low": true,
+          "after_high": true,
+          "before_low": false,
+          "before_high": false,
+          "D_after": true,
+          "D_before": false
+        },
+        "comparator_pass": false
+      }
+    ],
+    "comparator_gate_count": 0,
+    "comparator_gate_passed": false,
+    "check_counts": {
+      "after_low": 6,
+      "after_high": 6,
+      "before_low": 0,
+      "before_high": 0,
+      "D_after": 8,
+      "D_before": 0
+    }
+  },
+  "intervention_summary": {
+    "pairs": [
+      {
+        "pair_index": 0,
+        "event": "war",
+        "conditions": {
+          "after": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.8964542371760329,
+              "high_E": 0.20438867504662084,
+              "low_donorward": 0.8964542371760329,
+              "high_donorward": 0.20438867504662084,
+              "donorward_mean": 0.5504214561113269
+            },
+            "year_at_zero": {
+              "low_E": 0.014313145846572395,
+              "high_E": -0.01764742318386947,
+              "low_donorward": -0.014313145846572395,
+              "high_donorward": -0.01764742318386947,
+              "donorward_mean": -0.015980284515220933
+            },
+            "rotated_final": {
+              "low_E": 0.20383874519688572,
+              "high_E": 0.06938234392919373,
+              "low_donorward": -0.20383874519688572,
+              "high_donorward": 0.06938234392919373,
+              "donorward_mean": -0.06722820063384599
+            }
+          },
+          "before": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.8890585053723827,
+              "high_E": 0.22744580180057883,
+              "low_donorward": 0.8890585053723827,
+              "high_donorward": 0.22744580180057883,
+              "donorward_mean": 0.5582521535864808
+            },
+            "year_at_zero": {
+              "low_E": 0.013226567489616814,
+              "high_E": -0.017710837418819625,
+              "low_donorward": -0.013226567489616814,
+              "high_donorward": -0.017710837418819625,
+              "donorward_mean": -0.01546870245421822
+            },
+            "rotated_final": {
+              "low_E": 0.23647325435122846,
+              "high_E": 0.11155409805524552,
+              "low_donorward": -0.23647325435122846,
+              "high_donorward": 0.11155409805524552,
+              "donorward_mean": -0.06245957814799147
+            }
+          },
+          "near": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.8080507654743095,
+              "high_E": 0.22823186855650324,
+              "low_donorward": 0.8080507654743095,
+              "high_donorward": 0.22823186855650324,
+              "donorward_mean": 0.5181413170154063
+            },
+            "year_at_zero": {
+              "low_E": 0.01817573598877864,
+              "high_E": -0.017826085038916917,
+              "low_donorward": -0.01817573598877864,
+              "high_donorward": -0.017826085038916917,
+              "donorward_mean": -0.01800091051384778
+            },
+            "rotated_final": {
+              "low_E": 0.16954667198625128,
+              "high_E": 0.03496801774777236,
+              "low_donorward": -0.16954667198625128,
+              "high_donorward": 0.03496801774777236,
+              "donorward_mean": -0.06728932711923946
+            }
+          }
+        },
+        "after_minus_before": {
+          "self": 0.0,
+          "year_final": -0.00783069747515397,
+          "year_at_zero": -0.0005115820610027133,
+          "rotated_final": -0.004768622485854523
+        },
+        "generic_pattern": true,
+        "comparator_direction": false,
+        "comparator_control": false
+      },
+      {
+        "pair_index": 0,
+        "event": "reign",
+        "conditions": {
+          "after": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.7902749423857229,
+              "high_E": 0.24362896192860162,
+              "low_donorward": 0.7902749423857229,
+              "high_donorward": 0.24362896192860162,
+              "donorward_mean": 0.5169519521571623
+            },
+            "year_at_zero": {
+              "low_E": 0.013425443010793181,
+              "high_E": -0.01794051038331279,
+              "low_donorward": -0.013425443010793181,
+              "high_donorward": -0.01794051038331279,
+              "donorward_mean": -0.015682976697052986
+            },
+            "rotated_final": {
+              "low_E": 0.18622712549048615,
+              "high_E": 0.06696365581910846,
+              "low_donorward": -0.18622712549048615,
+              "high_donorward": 0.06696365581910846,
+              "donorward_mean": -0.05963173483568884
+            }
+          },
+          "before": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.7771478329397019,
+              "high_E": 0.2704061926112614,
+              "low_donorward": 0.7771478329397019,
+              "high_donorward": 0.2704061926112614,
+              "donorward_mean": 0.5237770127754817
+            },
+            "year_at_zero": {
+              "low_E": 0.012152382330013145,
+              "high_E": -0.017764216929248455,
+              "low_donorward": -0.012152382330013145,
+              "high_donorward": -0.017764216929248455,
+              "donorward_mean": -0.0149582996296308
+            },
+            "rotated_final": {
+              "low_E": 0.2320491134384597,
+              "high_E": 0.09418417067146334,
+              "low_donorward": -0.2320491134384597,
+              "high_donorward": 0.09418417067146334,
+              "donorward_mean": -0.06893247138349817
+            }
+          },
+          "near": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.7433779874824871,
+              "high_E": 0.25744933551526406,
+              "low_donorward": 0.7433779874824871,
+              "high_donorward": 0.25744933551526406,
+              "donorward_mean": 0.5004136614988756
+            },
+            "year_at_zero": {
+              "low_E": 0.01740982763345489,
+              "high_E": -0.01749876636918557,
+              "low_donorward": -0.01740982763345489,
+              "high_donorward": -0.01749876636918557,
+              "donorward_mean": -0.01745429700132023
+            },
+            "rotated_final": {
+              "low_E": 0.17685932158599482,
+              "high_E": 0.03720584302071572,
+              "low_donorward": -0.17685932158599482,
+              "high_donorward": 0.03720584302071572,
+              "donorward_mean": -0.06982673928263955
+            }
+          }
+        },
+        "after_minus_before": {
+          "self": 0.0,
+          "year_final": -0.006825060618319445,
+          "year_at_zero": -0.0007246770674221858,
+          "rotated_final": 0.00930073654780933
+        },
+        "generic_pattern": true,
+        "comparator_direction": false,
+        "comparator_control": false
+      },
+      {
+        "pair_index": 1,
+        "event": "war",
+        "conditions": {
+          "after": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.4036545312294262,
+              "high_E": 0.3437784209696977,
+              "low_donorward": 0.4036545312294262,
+              "high_donorward": 0.3437784209696977,
+              "donorward_mean": 0.37371647609956193
+            },
+            "year_at_zero": {
+              "low_E": 0.000530770757677379,
+              "high_E": -0.0052064877385458175,
+              "low_donorward": -0.000530770757677379,
+              "high_donorward": -0.0052064877385458175,
+              "donorward_mean": -0.0028686292481115983
+            },
+            "rotated_final": {
+              "low_E": 0.06458505244515345,
+              "high_E": 0.05769474340041647,
+              "low_donorward": -0.06458505244515345,
+              "high_donorward": 0.05769474340041647,
+              "donorward_mean": -0.0034451545223684876
+            }
+          },
+          "before": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.43592092491574697,
+              "high_E": 0.34782101992464187,
+              "low_donorward": 0.43592092491574697,
+              "high_donorward": 0.34782101992464187,
+              "donorward_mean": 0.3918709724201944
+            },
+            "year_at_zero": {
+              "low_E": 0.000379389829505139,
+              "high_E": -0.005203139644930355,
+              "low_donorward": -0.000379389829505139,
+              "high_donorward": -0.005203139644930355,
+              "donorward_mean": -0.002791264737217747
+            },
+            "rotated_final": {
+              "low_E": 0.0542835416280838,
+              "high_E": 0.0749546488491124,
+              "low_donorward": -0.0542835416280838,
+              "high_donorward": 0.0749546488491124,
+              "donorward_mean": 0.010335553610514303
+            }
+          },
+          "near": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.3796543143052056,
+              "high_E": 0.31820246992667434,
+              "low_donorward": 0.3796543143052056,
+              "high_donorward": 0.31820246992667434,
+              "donorward_mean": 0.34892839211593996
+            },
+            "year_at_zero": {
+              "low_E": 0.0029209684970437078,
+              "high_E": -0.0071822240329977305,
+              "low_donorward": -0.0029209684970437078,
+              "high_donorward": -0.0071822240329977305,
+              "donorward_mean": -0.005051596265020719
+            },
+            "rotated_final": {
+              "low_E": 0.007062367280438631,
+              "high_E": 0.08075117395083642,
+              "low_donorward": -0.007062367280438631,
+              "high_donorward": 0.08075117395083642,
+              "donorward_mean": 0.036844403335198894
+            }
+          }
+        },
+        "after_minus_before": {
+          "self": 0.0,
+          "year_final": -0.018154496320632485,
+          "year_at_zero": -7.736451089385143e-05,
+          "rotated_final": -0.01378070813288279
+        },
+        "generic_pattern": true,
+        "comparator_direction": false,
+        "comparator_control": false
+      },
+      {
+        "pair_index": 1,
+        "event": "reign",
+        "conditions": {
+          "after": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.4211399570786478,
+              "high_E": 0.3274823578600097,
+              "low_donorward": 0.4211399570786478,
+              "high_donorward": 0.3274823578600097,
+              "donorward_mean": 0.37431115746932875
+            },
+            "year_at_zero": {
+              "low_E": -0.00042822866968772466,
+              "high_E": -0.006304031961591017,
+              "low_donorward": 0.00042822866968772466,
+              "high_donorward": -0.006304031961591017,
+              "donorward_mean": -0.002937901645951646
+            },
+            "rotated_final": {
+              "low_E": 0.05860279917487454,
+              "high_E": 0.08915182080904005,
+              "low_donorward": -0.05860279917487454,
+              "high_donorward": 0.08915182080904005,
+              "donorward_mean": 0.015274510817082754
+            }
+          },
+          "before": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.4530271417370315,
+              "high_E": 0.35285269783833106,
+              "low_donorward": 0.4530271417370315,
+              "high_donorward": 0.35285269783833106,
+              "donorward_mean": 0.4029399197876813
+            },
+            "year_at_zero": {
+              "low_E": -0.001050308965611313,
+              "high_E": -0.006208403482461211,
+              "low_donorward": 0.001050308965611313,
+              "high_donorward": -0.006208403482461211,
+              "donorward_mean": -0.002579047258424949
+            },
+            "rotated_final": {
+              "low_E": 0.04453658085995538,
+              "high_E": 0.11280343809748405,
+              "low_donorward": -0.04453658085995538,
+              "high_donorward": 0.11280343809748405,
+              "donorward_mean": 0.03413342861876434
+            }
+          },
+          "near": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.41320901993104675,
+              "high_E": 0.33509272099109366,
+              "low_donorward": 0.41320901993104675,
+              "high_donorward": 0.33509272099109366,
+              "donorward_mean": 0.3741508704610702
+            },
+            "year_at_zero": {
+              "low_E": 0.0018906307197197325,
+              "high_E": -0.008164903455402328,
+              "low_donorward": -0.0018906307197197325,
+              "high_donorward": -0.008164903455402328,
+              "donorward_mean": -0.00502776708756103
+            },
+            "rotated_final": {
+              "low_E": 0.004713570190964189,
+              "high_E": 0.11569492864024733,
+              "low_donorward": -0.004713570190964189,
+              "high_donorward": 0.11569492864024733,
+              "donorward_mean": 0.05549067922464157
+            }
+          }
+        },
+        "after_minus_before": {
+          "self": 0.0,
+          "year_final": -0.02862876231835254,
+          "year_at_zero": -0.00035885438752669696,
+          "rotated_final": -0.018858917801681585
+        },
+        "generic_pattern": true,
+        "comparator_direction": false,
+        "comparator_control": false
+      },
+      {
+        "pair_index": 2,
+        "event": "war",
+        "conditions": {
+          "after": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.9444406649631438,
+              "high_E": 0.4229950694118352,
+              "low_donorward": 0.9444406649631438,
+              "high_donorward": 0.4229950694118352,
+              "donorward_mean": 0.6837178671874895
+            },
+            "year_at_zero": {
+              "low_E": 0.007896810534343768,
+              "high_E": 0.006876102786459448,
+              "low_donorward": -0.007896810534343768,
+              "high_donorward": 0.006876102786459448,
+              "donorward_mean": -0.0005103538739421598
+            },
+            "rotated_final": {
+              "low_E": 0.08665740942137079,
+              "high_E": 0.1811094032871785,
+              "low_donorward": -0.08665740942137079,
+              "high_donorward": 0.1811094032871785,
+              "donorward_mean": 0.04722599693290386
+            }
+          },
+          "before": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.9593385433145547,
+              "high_E": 0.4111806519304173,
+              "low_donorward": 0.9593385433145547,
+              "high_donorward": 0.4111806519304173,
+              "donorward_mean": 0.685259597622486
+            },
+            "year_at_zero": {
+              "low_E": 0.008820607422684645,
+              "high_E": 0.008428723585085507,
+              "low_donorward": -0.008820607422684645,
+              "high_donorward": 0.008428723585085507,
+              "donorward_mean": -0.00019594191879956924
+            },
+            "rotated_final": {
+              "low_E": 0.09001194845411264,
+              "high_E": 0.18243849119917765,
+              "low_donorward": -0.09001194845411264,
+              "high_donorward": 0.18243849119917765,
+              "donorward_mean": 0.046213271372532505
+            }
+          },
+          "near": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.9317408154525528,
+              "high_E": 0.46303840266361407,
+              "low_donorward": 0.9317408154525528,
+              "high_donorward": 0.46303840266361407,
+              "donorward_mean": 0.6973896090580834
+            },
+            "year_at_zero": {
+              "low_E": 0.00890762715007365,
+              "high_E": 0.00721400031243169,
+              "low_donorward": -0.00890762715007365,
+              "high_donorward": 0.00721400031243169,
+              "donorward_mean": -0.0008468134188209797
+            },
+            "rotated_final": {
+              "low_E": 0.06004251749233891,
+              "high_E": 0.11159931834767844,
+              "low_donorward": -0.06004251749233891,
+              "high_donorward": 0.11159931834767844,
+              "donorward_mean": 0.025778400427669768
+            }
+          }
+        },
+        "after_minus_before": {
+          "self": 0.0,
+          "year_final": -0.0015417304349965022,
+          "year_at_zero": -0.00031441195514259057,
+          "rotated_final": 0.0010127255603713525
+        },
+        "generic_pattern": true,
+        "comparator_direction": false,
+        "comparator_control": false
+      },
+      {
+        "pair_index": 2,
+        "event": "reign",
+        "conditions": {
+          "after": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.968388806537164,
+              "high_E": 0.4033181148320637,
+              "low_donorward": 0.968388806537164,
+              "high_donorward": 0.4033181148320637,
+              "donorward_mean": 0.6858534606846138
+            },
+            "year_at_zero": {
+              "low_E": 0.010345375128699486,
+              "high_E": 0.01028706699385773,
+              "low_donorward": -0.010345375128699486,
+              "high_donorward": 0.01028706699385773,
+              "donorward_mean": -2.9154067420877894e-05
+            },
+            "rotated_final": {
+              "low_E": 0.05381393441022442,
+              "high_E": 0.15999692630661566,
+              "low_donorward": -0.05381393441022442,
+              "high_donorward": 0.15999692630661566,
+              "donorward_mean": 0.05309149594819562
+            }
+          },
+          "before": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -1.0060461007245542,
+              "high_E": 0.41491905472733415,
+              "low_donorward": 1.0060461007245542,
+              "high_donorward": 0.41491905472733415,
+              "donorward_mean": 0.7104825777259443
+            },
+            "year_at_zero": {
+              "low_E": 0.012994220412306134,
+              "high_E": 0.011701010213775787,
+              "low_donorward": -0.012994220412306134,
+              "high_donorward": 0.011701010213775787,
+              "donorward_mean": -0.000646605099265174
+            },
+            "rotated_final": {
+              "low_E": 0.07057637267100647,
+              "high_E": 0.16599780614884785,
+              "low_donorward": -0.07057637267100647,
+              "high_donorward": 0.16599780614884785,
+              "donorward_mean": 0.04771071673892069
+            }
+          },
+          "near": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.9658901378600778,
+              "high_E": 0.45019596768849635,
+              "low_donorward": 0.9658901378600778,
+              "high_donorward": 0.45019596768849635,
+              "donorward_mean": 0.7080430527742871
+            },
+            "year_at_zero": {
+              "low_E": 0.012809049807876338,
+              "high_E": 0.010980269967283185,
+              "low_donorward": -0.012809049807876338,
+              "high_donorward": 0.010980269967283185,
+              "donorward_mean": -0.0009143899202965766
+            },
+            "rotated_final": {
+              "low_E": 0.04057457041960655,
+              "high_E": 0.10656666580559304,
+              "low_donorward": -0.04057457041960655,
+              "high_donorward": 0.10656666580559304,
+              "donorward_mean": 0.03299604769299325
+            }
+          }
+        },
+        "after_minus_before": {
+          "self": 0.0,
+          "year_final": -0.024629117041330417,
+          "year_at_zero": 0.0006174510318442961,
+          "rotated_final": 0.005380779209274933
+        },
+        "generic_pattern": true,
+        "comparator_direction": false,
+        "comparator_control": false
+      },
+      {
+        "pair_index": 3,
+        "event": "war",
+        "conditions": {
+          "after": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.48831886467281116,
+              "high_E": 0.6415427354981007,
+              "low_donorward": 0.48831886467281116,
+              "high_donorward": 0.6415427354981007,
+              "donorward_mean": 0.5649308000854559
+            },
+            "year_at_zero": {
+              "low_E": 0.009071710248935272,
+              "high_E": -0.018907365718268565,
+              "low_donorward": -0.009071710248935272,
+              "high_donorward": -0.018907365718268565,
+              "donorward_mean": -0.013989537983601918
+            },
+            "rotated_final": {
+              "low_E": -0.03542945630027261,
+              "high_E": 0.26073566352766653,
+              "low_donorward": 0.03542945630027261,
+              "high_donorward": 0.26073566352766653,
+              "donorward_mean": 0.14808255991396957
+            }
+          },
+          "before": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.49025790592966023,
+              "high_E": 0.6393816711411087,
+              "low_donorward": 0.49025790592966023,
+              "high_donorward": 0.6393816711411087,
+              "donorward_mean": 0.5648197885353845
+            },
+            "year_at_zero": {
+              "low_E": 0.010571024286016195,
+              "high_E": -0.02042828562818677,
+              "low_donorward": -0.010571024286016195,
+              "high_donorward": -0.02042828562818677,
+              "donorward_mean": -0.015499654957101483
+            },
+            "rotated_final": {
+              "low_E": -0.04602278584103625,
+              "high_E": 0.25975505170540636,
+              "low_donorward": 0.04602278584103625,
+              "high_donorward": 0.25975505170540636,
+              "donorward_mean": 0.1528889187732213
+            }
+          },
+          "near": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.4175350382081965,
+              "high_E": 0.6158686499964547,
+              "low_donorward": 0.4175350382081965,
+              "high_donorward": 0.6158686499964547,
+              "donorward_mean": 0.5167018441023257
+            },
+            "year_at_zero": {
+              "low_E": 0.011916670108630623,
+              "high_E": -0.019749733960995552,
+              "low_donorward": -0.011916670108630623,
+              "high_donorward": -0.019749733960995552,
+              "donorward_mean": -0.015833202034813088
+            },
+            "rotated_final": {
+              "low_E": -0.0342937523516782,
+              "high_E": 0.24459507454349838,
+              "low_donorward": 0.0342937523516782,
+              "high_donorward": 0.24459507454349838,
+              "donorward_mean": 0.1394444134475883
+            }
+          }
+        },
+        "after_minus_before": {
+          "self": 0.0,
+          "year_final": 0.00011101155007142705,
+          "year_at_zero": 0.0015101169734995645,
+          "rotated_final": -0.004806358859251736
+        },
+        "generic_pattern": true,
+        "comparator_direction": false,
+        "comparator_control": false
+      },
+      {
+        "pair_index": 3,
+        "event": "reign",
+        "conditions": {
+          "after": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.48082346866262693,
+              "high_E": 0.6369463834681341,
+              "low_donorward": 0.48082346866262693,
+              "high_donorward": 0.6369463834681341,
+              "donorward_mean": 0.5588849260653805
+            },
+            "year_at_zero": {
+              "low_E": 0.010041518576100916,
+              "high_E": -0.019994556902661387,
+              "low_donorward": -0.010041518576100916,
+              "high_donorward": -0.019994556902661387,
+              "donorward_mean": -0.015018037739381151
+            },
+            "rotated_final": {
+              "low_E": -0.026118436262901668,
+              "high_E": 0.22236556081831704,
+              "low_donorward": 0.026118436262901668,
+              "high_donorward": 0.22236556081831704,
+              "donorward_mean": 0.12424199854060936
+            }
+          },
+          "before": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.47955108867423735,
+              "high_E": 0.6283077066685641,
+              "low_donorward": 0.47955108867423735,
+              "high_donorward": 0.6283077066685641,
+              "donorward_mean": 0.5539293976714007
+            },
+            "year_at_zero": {
+              "low_E": 0.01169405980483651,
+              "high_E": -0.02208474688379658,
+              "low_donorward": -0.01169405980483651,
+              "high_donorward": -0.02208474688379658,
+              "donorward_mean": -0.016889403344316545
+            },
+            "rotated_final": {
+              "low_E": -0.043266389999957244,
+              "high_E": 0.22261654096816175,
+              "low_donorward": 0.043266389999957244,
+              "high_donorward": 0.22261654096816175,
+              "donorward_mean": 0.1329414654840595
+            }
+          },
+          "near": {
+            "self": {
+              "low_E": 0.0,
+              "high_E": 0.0,
+              "low_donorward": -0.0,
+              "high_donorward": 0.0,
+              "donorward_mean": 0.0
+            },
+            "year_final": {
+              "low_E": -0.40835488003030873,
+              "high_E": 0.5974281531573662,
+              "low_donorward": 0.40835488003030873,
+              "high_donorward": 0.5974281531573662,
+              "donorward_mean": 0.5028915165938375
+            },
+            "year_at_zero": {
+              "low_E": 0.012276166303424318,
+              "high_E": -0.020584085031018606,
+              "low_donorward": -0.012276166303424318,
+              "high_donorward": -0.020584085031018606,
+              "donorward_mean": -0.016430125667221462
+            },
+            "rotated_final": {
+              "low_E": -0.032761987511468194,
+              "high_E": 0.19237726426202184,
+              "low_donorward": 0.032761987511468194,
+              "high_donorward": 0.19237726426202184,
+              "donorward_mean": 0.11256962588674502
+            }
+          }
+        },
+        "after_minus_before": {
+          "self": 0.0,
+          "year_final": 0.004955528393979836,
+          "year_at_zero": 0.0018713656049353933,
+          "rotated_final": -0.00869946694345014
+        },
+        "generic_pattern": true,
+        "comparator_direction": false,
+        "comparator_control": false
+      }
+    ],
+    "mean_donorward_by_condition_and_action": {
+      "after": {
+        "self": 0.0,
+        "year_final": 0.5385985119825399,
+        "year_at_zero": -0.008377109471335409,
+        "rotated_final": 0.03220143402010723
+      },
+      "before": {
+        "self": 0.0,
+        "year_final": 0.5489164275156317,
+        "year_at_zero": -0.00862861492487181,
+        "rotated_final": 0.036603913133315374
+      },
+      "near": {
+        "self": 0.0,
+        "year_final": 0.5208325329524782,
+        "year_at_zero": -0.009944887738612733,
+        "rotated_final": 0.03325093795161972
+      }
+    },
+    "mean_after_minus_before_by_action": {
+      "self": 0.0,
+      "year_final": -0.010317915533091762,
+      "year_at_zero": 0.00025150545353640197,
+      "rotated_final": -0.004402479113208145
+    },
+    "generic_pattern_count": 8,
+    "generic_pattern_supported": true,
+    "comparator_direction_count": 0,
+    "comparator_direction_supported": null,
+    "comparator_control_count": 0,
+    "comparator_control_supported": null
+  }
+}

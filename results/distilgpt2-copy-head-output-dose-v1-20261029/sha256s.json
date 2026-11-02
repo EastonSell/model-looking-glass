@@ -1,0 +1,17 @@
+{
+  "files": {
+    "README.md": "3e8ff44c5cb0361f8be106ebdb90475c8beca2ca3c83d1e2c860c397f0a1a62c",
+    "attempt.jsonl.gz": "d55825694ba593f2aff47e8903db8639acaf58b6de0def4b7f18acd183b45df9",
+    "build_result_tables.py": "4628672abfd99ff18b56053a5088bdc8b8c41b2e8ed6cf5a78ddf49a8b51c908",
+    "family-metrics.csv": "b308b4887fbd6f198a09b732466a2223a1a96a2a6abac585f19a91d8c7390780",
+    "independent-audit.json.gz": "79ee8ae8ab8ba72b2819e3398dfc5dda61beb317e6fc406c5e3d67c0137aaa24",
+    "prelaunch-boundary.json": "dbfbb1f0319a81a556d05df346a1c6f282fae8fb3b189b103255a476ca5d079b",
+    "process-projection.json": "ec6899576180f83e4871705dba942bc83eb0ac017a28432f2f5efae556ee5ca0",
+    "prompt-metrics.csv": "db0e59cdd13ee367d20b477ffdf9bb571a74150868234cbd17bdc39213ea491f",
+    "result.json.gz": "a8552d2e6b770bfcc7e865892ab985efd53bcde45d2165901003eed7b80d3df8",
+    "run-manifest.json": "1f4b9d3c7d7cdd34c58ac5c4cb050bb8a971c6eb58747e0a9d23e000693cfbbe"
+  },
+  "original_audit_sha256": "9d486f754d89003b5d0df492621673c69448a43bc7cecfc3e66514765dd67c61",
+  "original_journal_sha256": "b4f4b1a74dfb372d0bf3ea5c44f8d6b163e3d4c9e4c214374344c8eba0fbe6d0",
+  "original_result_sha256": "c6347a9ff6ca606387c4fd799bf4bdd5455d6019b9494b59c226198aa7130e23"
+}

@@ -2,6 +2,15 @@
 
 This draft needs an independently reviewed GroupedWorker, live-runtime
 collector, whole-batch profiles and supervised process custody before use.
+HostBudget covers the declared logical snapshot, group and validation tensor
+envelopes, not caller-owned inputs, Python metadata, arbitrary exception
+contents, native allocations or process RSS. With a lifetime job limit L and
+per-job delivery limit D, at most L*D delivery objects can be registered or
+retained by failed creation. Callers must keep their own input and exception
+aliases charged until disposed. ``quarantined`` and ``failed`` report the
+last completed sticky observation; ``unavailable`` also reports an in-flight
+health decision. Supervisors must not attest clean while unavailable: they
+must wait for a definitive observation or replace the process on timeout.
 """
 
 from dataclasses import dataclass
@@ -13,7 +22,7 @@ from uuid import uuid4
 
 from .certified_batch_policy import CertifiedBatchPolicy
 from .fair_queue import FairTeamQueue, QueueEmpty
-from .grouped_broker_state import CohortMember, CohortState, _Open
+from .grouped_broker_state import CohortMember, CohortPublication, CohortState, _Open
 from .grouped_observation import GroupedObservation
 from .grouped_worker import GroupedWorker
 from .host_budget import HostBudget, HostBusy
@@ -23,6 +32,14 @@ from .resident_worker import ForwardRequest, WorkerOutOfMemory
 
 class GroupedBrokerUnavailable(RuntimeError):
     """The grouped coordinator cannot safely accept or resolve work."""
+
+
+class _ConfigurationRejected(ValueError):
+    """A checked configuration rejection before construction takes custody."""
+
+
+class _HealthPending(HostBusy):
+    """A nonterminal health observation has not yet completed."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +84,15 @@ class _Job:
         self.deliveries = set()
         self.cancel_active = False
         self.dispose_active = False
+        self._submission_failure = self._notification_failure = None
+        self._latch_notification_failure = self._fail_notification_failure = None
+        self._outer_submission_failure = self._outer_submission_notification_failure = None
+        self._outer_submission_fail_notification_failure = None
+        self._cancel_failure = self._cancel_notification_failure = None
+        self._cancel_fail_notification_failure = None
+        self._dispose_failure = self._dispose_notification_failure = None
+        self._delivery_failure = self._delivery_notification_failure = None
+        self._delivery_fail_notification_failure = None
         self.selection_ns = self.terminal_ns = None
 
 
@@ -81,6 +107,8 @@ class _Group:
         self.retiring = self.retired = False
         self.quarantined = False
         self.selection_ns = None
+        self._execution_failure = self._retirement_failure = None
+        self._retirement_notification_failure = None
 
 
 _owners = set()
@@ -93,14 +121,14 @@ def _name(value, limit=128):
 
 def _positive(value, label):
     if type(value) is not int or value <= 0:
-        raise ValueError(f'{label} must be a positive integer')
+        raise _ConfigurationRejected(f'{label} must be a positive integer')
 
 
 def _reservation(record, expected_type, key):
     if type(record) is not expected_type or type(record.compatibility_key) is not bytes or record.compatibility_key != key:
-        raise ValueError('reservation must match the exact policy key')
+        raise _ConfigurationRejected('reservation must match the exact policy key')
     if type(record.profile_id) is not str or re.fullmatch(r'[0-9a-f]{64}', record.profile_id) is None:
-        raise ValueError('reservation requires a separately verified profile digest')
+        raise _ConfigurationRejected('reservation requires a separately verified profile digest')
     _positive(record.nbytes, 'reservation bytes')
     _positive(record.items, 'reservation items')
 
@@ -134,6 +162,8 @@ class GroupedDelivery:
         self._consumer_thread = None
         self._delivered = False
         self._receipt = None
+        self._failure = self._notification_failure = None
+        self._fail_notification_failure = None
         self._confirmed = self._abandoned = False
         self._released = False
 
@@ -159,46 +189,158 @@ class GroupedBroker:
                  snapshot_reservation, validation_reservations, max_pending,
                  max_pending_per_team, max_coalesce_wait, max_lifetime_jobs,
                  max_active_deliveries_per_job=4, observation=None):
+        from .grouped_owner_worker import GroupedWorkspaceWorker, _GroupedBindingBusy
+        owner = worker._worker if type(worker) is GroupedWorker else None
+        if type(owner) is not GroupedWorkspaceWorker:
+            self._initialize(worker, profile, policy, host_budget=host_budget, identity=identity,
+                             collect_runtime=collect_runtime, snapshot_reservation=snapshot_reservation,
+                             validation_reservations=validation_reservations, max_pending=max_pending,
+                             max_pending_per_team=max_pending_per_team, max_coalesce_wait=max_coalesce_wait,
+                             max_lifetime_jobs=max_lifetime_jobs,
+                             max_active_deliveries_per_job=max_active_deliveries_per_job, observation=observation)
+            return
+        failed = False
+        busy = False
+        rejected = None
+        complete = False
+        try:
+            try:
+                with owner._broker_construction_lock:
+                    if owner._authority.unsafe or owner._broker_construction_failure is not None:
+                        raise GroupedBrokerUnavailable('owner is unavailable for broker construction')
+                    self._construction_started = True
+                    self._binding_busy = False
+                    acquired = False
+                    attempting = False
+                    try:
+                        # A control request and broker construction share one exact
+                        # execution gate. Never run a runtime callback or publish a
+                        # binding while an earlier control still owns its handoff.
+                        attempting = True
+                        acquired = owner._preflight_lock.acquire(blocking=False)
+                        attempting = False
+                        if not acquired:
+                            busy = True
+                            raise _GroupedBindingBusy('grouped worker execution is still active')
+                        options = dict(host_budget=host_budget, identity=identity, collect_runtime=collect_runtime,
+                                       snapshot_reservation=snapshot_reservation, validation_reservations=validation_reservations,
+                                       max_pending=max_pending, max_pending_per_team=max_pending_per_team,
+                                       max_coalesce_wait=max_coalesce_wait, max_lifetime_jobs=max_lifetime_jobs,
+                                       max_active_deliveries_per_job=max_active_deliveries_per_job, observation=observation)
+                        self._construction_started = False
+                        self._initialize(worker, profile, policy, **options)
+                    except BaseException as exc:
+                        if (type(exc) is _GroupedBindingBusy and not attempting
+                                and (busy or self._binding_busy)):
+                            busy = True
+                        elif not self._construction_started and type(exc) is _ConfigurationRejected:
+                            rejected = exc
+                        else:
+                            try:
+                                try:
+                                    if owner._broker_construction_failure is None:
+                                        owner._broker_construction_failure = exc
+                                finally:
+                                    if owner._broker_construction_failure is None:
+                                        owner._broker_construction_failure = exc
+                                    owner._authority._unsafe = True
+                            except BaseException as notification_error:
+                                if owner._broker_construction_notification_failure is None:
+                                    owner._broker_construction_notification_failure = notification_error
+                            failed = True
+                    finally:
+                        # If acquire returned but its result was not recorded, lock
+                        # ownership is unknown. Quarantine without releasing a lock
+                        # that might belong to a competing control request.
+                        if attempting:
+                            owner._authority._unsafe = True
+                            failed = True
+                        if acquired:
+                            try:
+                                owner._preflight_lock.release()
+                            except BaseException as exc:
+                                if owner._broker_construction_notification_failure is None:
+                                    owner._broker_construction_notification_failure = exc
+                                owner._authority._unsafe = True
+                                failed = True
+                complete = True
+            except BaseException as exc:
+                try:
+                    if owner._broker_construction_failure is None:
+                        owner._broker_construction_failure = exc
+                finally:
+                    owner._authority._unsafe = True
+                failed = True
+            finally:
+                if not complete:
+                    owner._authority._unsafe = True
+        except BaseException as notification_error:
+            # Preserve a one-shot interruption of the primary failure path
+            # and its original context in distinct preallocated owner slots.
+            original = notification_error.__context__
+            if owner._broker_construction_failure is None and original is not None:
+                owner._broker_construction_failure = original
+            if owner._broker_construction_notification_failure is None:
+                owner._broker_construction_notification_failure = notification_error
+            owner._authority._unsafe = True
+            failed = True
+        if failed:
+            raise GroupedBrokerUnavailable('broker construction is uncertain; replace the owner')
+        if busy:
+            raise HostBusy('grouped worker has an active operation or result custody')
+        if rejected is not None:
+            raise rejected
+
+    def _initialize(self, worker, profile, policy, *, host_budget, identity, collect_runtime,
+                    snapshot_reservation, validation_reservations, max_pending,
+                    max_pending_per_team, max_coalesce_wait, max_lifetime_jobs,
+                    max_active_deliveries_per_job=4, observation=None):
         if observation is not None and type(observation) is not GroupedObservation:
-            raise ValueError('an exact trusted grouped observation is required')
+            raise _ConfigurationRejected('an exact trusted grouped observation is required')
         if (type(worker) is not GroupedWorker or type(profile) is not BatchProfile
                 or type(policy) is not CertifiedBatchPolicy or type(host_budget) is not HostBudget):
-            raise ValueError('exact grouped worker, profile, evidence policy and host ledger are required')
+            raise _ConfigurationRejected('exact grouped worker, profile, evidence policy and host ledger are required')
+        from .grouped_owner_worker import GroupedWorkspaceWorker, _GroupedBindingBusy
+        if type(worker._worker) is GroupedWorkspaceWorker and observation is not None:
+            raise _ConfigurationRejected('timing observation is not reviewed for the session-bound grouped owner')
         if worker._host is not host_budget or worker._profiles.get(profile.profile_id) != profile:
-            raise ValueError('worker must use this exact ledger and configured profile')
+            raise _ConfigurationRejected('worker must use this exact ledger and configured profile')
         if (type(identity) is not dict or set(identity) !=
                 {'model_fingerprint', 'checkpoint_sha256', 'adapter_sha256', 'backend'}
                 or not callable(collect_runtime)):
-            raise ValueError('trusted live identity and runtime collector are required')
+            raise _ConfigurationRejected('trusted live identity and runtime collector are required')
         for value, label in ((max_pending, 'max_pending'), (max_pending_per_team, 'max_pending_per_team'),
                              (max_lifetime_jobs, 'max_lifetime_jobs'),
                              (max_active_deliveries_per_job, 'max_active_deliveries_per_job')):
             _positive(value, label)
         if max_active_deliveries_per_job > 32:
-            raise ValueError('at most 32 active deliveries per job are supported')
+            raise _ConfigurationRejected('at most 32 active deliveries per job are supported')
         if (type(max_coalesce_wait) not in (int, float) or not math.isfinite(max_coalesce_wait)
                 or not 0 <= max_coalesce_wait <= 60):
-            raise ValueError('coalescing interval must be finite and at most 60 seconds')
+            raise _ConfigurationRejected('coalescing interval must be finite and at most 60 seconds')
         _reservation(snapshot_reservation, SnapshotReservation, policy.compatibility_key)
         logical_input = math.prod(profile.input_shape) * sum(_DTYPE_BYTES[dtype] for _, dtype in profile.input_schema)
         if snapshot_reservation.nbytes < logical_input or snapshot_reservation.items < len(profile.input_schema):
-            raise ValueError('snapshot reservation cannot cover its logical input')
+            raise _ConfigurationRejected('snapshot reservation cannot cover its logical input')
         if type(validation_reservations) is not tuple or not validation_reservations:
-            raise ValueError('profiled validation reservations are required')
+            raise _ConfigurationRejected('profiled validation reservations are required')
         validation = {}
         for record in validation_reservations:
             _reservation(record, ValidationReservation, policy.compatibility_key)
-            policy.require_count(record.request_count)
+            try:
+                policy.require_count(record.request_count)
+            except ValueError as exc:
+                raise _ConfigurationRejected(str(exc)) from None
             logical_scratch = math.prod(profile.input_shape) * profile.output_width + 1
             if record.nbytes < logical_scratch or record.items < 2:
-                raise ValueError('validation reservation cannot cover its minimum logical scratch')
+                raise _ConfigurationRejected('validation reservation cannot cover its minimum logical scratch')
             if record.request_count in validation:
-                raise ValueError('duplicate validation reservation')
+                raise _ConfigurationRejected('duplicate validation reservation')
             validation[record.request_count] = record
         if set(validation) != set(policy.allowed_request_counts):
-            raise ValueError('every admitted size requires a validation reservation')
+            raise _ConfigurationRejected('every admitted size requires a validation reservation')
         if any(size > max_pending for size in policy.allowed_request_counts):
-            raise ValueError('queue cannot hold an admitted cohort')
+            raise _ConfigurationRejected('queue cannot hold an admitted cohort')
         # Jobs occupy slots until all cohort-owned input/output tensors are
         # disposed.  Thus floor(max_pending / minimum cohort size) bounds
         # simultaneously retained groups, even if callers retain old results.
@@ -207,8 +349,9 @@ class GroupedBroker:
         # trusted integration requirement, not an OS/RSS limit.
         max_groups = max_pending // min(policy.allowed_request_counts)
         group_bytes, group_items = worker.required_host_capacity(profile.profile_id)
-        _positive(group_bytes, 'group reservation bytes')
-        _positive(group_items, 'group reservation items')
+        if (type(group_bytes) is not int or group_bytes <= 0
+                or type(group_items) is not int or group_items <= 0):
+            raise ValueError('worker returned an invalid group reservation')
         required = (
             max_pending * snapshot_reservation.nbytes
             + max_groups * (group_bytes + max(v.nbytes for v in validation.values())),
@@ -219,14 +362,21 @@ class GroupedBroker:
         )
         if any(need > cap for need, cap in zip(required, (host_budget.max_bytes, host_budget.max_items,
                                                            host_budget.max_requests, host_budget.max_operations))):
-            raise ValueError('host ledger cannot cover pending snapshots and retained cohorts')
+            raise _ConfigurationRejected('host ledger cannot cover pending snapshots and retained cohorts')
+        # From this point a trusted runtime callback may acquire resources;
+        # the session-bound constructor wrapper owns all subsequent failures.
+        self._construction_started = True
         policy.require_live_binding(profile, runtime_manifest=collect_runtime(), **identity)
         self._worker, self._profile, self._policy, self._host = worker, profile, policy, host_budget
+        self._authority = worker._worker._authority if type(worker._worker) is GroupedWorkspaceWorker else None
         self._identity, self._collect_runtime = dict(identity), collect_runtime
         self._snapshot_reservation, self._validation = snapshot_reservation, validation
         self._queue = FairTeamQueue(max_pending, max_pending_per_team)
         self._condition = threading.Condition()
         self._owner_lock = threading.Lock()
+        self._runtime_lock = threading.Lock()
+        self._health_lock = threading.Lock()
+        self._admission_lock = threading.Lock()
         self._broker_id = uuid4().hex
         self._observation = observation
         if observation is not None:
@@ -244,6 +394,15 @@ class GroupedBroker:
         self._fatal = self._quarantined = False
         self._closed = False
         self._failure = None
+        self._notification_failure = None
+        self._runtime_failure = self._runtime_notification_failure = None
+        self._dispatch_failure = self._dispatch_notification_failure = None
+        self._dispatch_fail_notification_failure = None
+        self._admission_failure = self._admission_notification_failure = None
+        self._admission_fail_notification_failure = None
+        self._outer_admission_failure = self._outer_admission_notification_failure = None
+        self._outer_admission_fail_notification_failure = None
+        self._health_failure = self._health_notification_failure = None
         with _owners_lock:
             _owners.add(self)
         with host_budget._lock:
@@ -252,126 +411,372 @@ class GroupedBroker:
                 with _owners_lock:
                     _owners.discard(self)
                 raise ValueError('host ledger must be empty and exclusive to this broker')
+            if self._authority is not None:
+                binding = worker._worker._bind_grouped_broker(self)
+                if binding is False:
+                    self._binding_busy = True
+                    with _owners_lock:
+                        _owners.discard(self)
+                    raise _GroupedBindingBusy('previous grouped producer custody remains live')
+                if binding is not True:
+                    raise RuntimeError('invalid grouped binding decision')
             host_budget._grouped_broker_owner = self
 
     @property
     def quarantined(self):
         # A health probe must not wait for a damaged condition or cohort lock.
-        if self._quarantined:
+        if self._quarantined or (self._authority is not None and self._authority.unsafe):
+            if self._authority is not None:
+                self._authority._unsafe = True
+            self._quarantined = True
             return True
+        if not self._health_lock.acquire(blocking=False):
+            # Return the last completed observation. Decision paths use
+            # ``unavailable`` or hold the health gate through their commit.
+            return bool(self._quarantined or (self._authority is not None and self._authority.unsafe))
         try:
             if self._worker._worker.quarantined:
+                if self._authority is not None:
+                    self._authority._unsafe = True
                 self._quarantined = True
         except BaseException as exc:
             # Unknown device state cannot become healthy merely because a
             # later read succeeds.  Keep the signal and first diagnostic.
-            self._quarantined = True
-            if self._failure is None:
-                self._failure = exc
-        return self._quarantined
+            try:
+                try:
+                    if self._health_failure is None:
+                        self._health_failure = exc
+                finally:
+                    if self._health_failure is None:
+                        self._health_failure = exc
+                    if self._authority is not None:
+                        self._authority._unsafe = True
+                    self._quarantined = True
+                    if self._failure is None:
+                        self._failure = exc
+            except BaseException as notification_error:
+                if self._health_notification_failure is None:
+                    self._health_notification_failure = notification_error
+        finally:
+            self._health_lock.release()
+        return bool(self._quarantined or (self._authority is not None and self._authority.unsafe))
 
     @property
     def failed(self):
         """Nonblocking health signal; an unreadable device state is quarantined."""
         if self._fatal or self.quarantined:
             return True
+        if not self._health_lock.acquire(blocking=False):
+            return bool(self._fatal or self._quarantined
+                        or (self._authority is not None and self._authority.unsafe))
         try:
-            return bool(self._worker._worker.failed)
+            unavailable = bool(self._worker._worker.failed)
+            if unavailable and self._authority is not None:
+                self._authority._unsafe = True
+                self._quarantined = True
+            return bool(unavailable or self._fatal or self._quarantined
+                        or (self._authority is not None and self._authority.unsafe))
         except BaseException as exc:
-            self._quarantined = True
-            if self._failure is None:
-                self._failure = exc
+            try:
+                try:
+                    if self._health_failure is None:
+                        self._health_failure = exc
+                finally:
+                    if self._health_failure is None:
+                        self._health_failure = exc
+                    if self._authority is not None:
+                        self._authority._unsafe = True
+                    self._quarantined = True
+                    if self._failure is None:
+                        self._failure = exc
+            except BaseException as notification_error:
+                if self._health_notification_failure is None:
+                    self._health_notification_failure = notification_error
             return True
+        finally:
+            self._health_lock.release()
+
+    @property
+    def unavailable(self):
+        """Nonblocking decision signal; an in-flight health read is unknown."""
+        if self._health_lock.locked():
+            return True
+        observed = self.failed
+        return bool(observed or self._health_lock.locked() or self._fatal or self._quarantined
+                    or (self._authority is not None and self._authority.unsafe))
 
     def _check_live(self):
-        if self.failed:
-            raise GroupedBrokerUnavailable('the underlying device owner is unavailable')
-        self._policy.require_live_binding(self._profile, runtime_manifest=self._collect_runtime(), **self._identity)
+        # Serialize the only potentially allocating pre-job callback. This
+        # bounds its failure custody to one root and does not hold the broker
+        # condition while trusted runtime checks run.
+        with self._runtime_lock:
+            if self._health_lock.locked():
+                raise _HealthPending('owner health is being checked')
+            if self.failed:
+                raise GroupedBrokerUnavailable('the underlying device owner is unavailable')
+            if self._health_lock.locked():
+                raise _HealthPending('owner health is being checked')
+            if self._authority is None:
+                self._policy.require_live_binding(self._profile, runtime_manifest=self._collect_runtime(), **self._identity)
+                return
+            failed = False
+            try:
+                self._policy.require_live_binding(self._profile, runtime_manifest=self._collect_runtime(), **self._identity)
+            except BaseException as exc:
+                try:
+                    try:
+                        self._runtime_failure = exc
+                        self._fail_closed(exc)
+                    finally:
+                        if self._runtime_failure is None:
+                            self._runtime_failure = exc
+                        if self._authority is not None:
+                            self._authority._unsafe = True
+                        self._fatal = self._quarantined = True
+                        if self._failure is None:
+                            self._failure = exc
+                except BaseException as notification_error:
+                    self._runtime_notification_failure = notification_error
+                    self._notification_failure = notification_error
+                failed = True
+            if failed:
+                raise GroupedBrokerUnavailable('live owner binding is uncertain; replace the owner')
+
+    def _await_health(self):
+        # A staged job remains charged while another thread checks health.
+        # This wait holds no broker/authority condition; an external process
+        # watchdog must replace an owner whose probe cannot make progress.
+        while self._health_lock.locked():
+            if (self._fatal or self._quarantined
+                    or (self._authority is not None and self._authority.unsafe)):
+                raise GroupedBrokerUnavailable('the underlying device owner is unavailable')
+            acquired = self._health_lock.acquire(timeout=.05)
+            if acquired:
+                self._health_lock.release()
+
+    def _latch_owner_unsafe(self):
+        # Allocation-free, nonblocking publication before any cohort or host
+        # lock. All authority-bound sources share this same sticky flag.
+        if self._authority is not None:
+            self._authority._unsafe = True
 
     def _fail_closed(self, exc, *, quarantine=True):
         # Publish the sticky health signal before taking any potentially
         # damaged lock or touching a cohort's failure path.
-        self._fatal = True
-        if quarantine:
-            self._quarantined = True
-        if self._failure is None:
-            self._failure = exc  # Retain traceback and potentially live buffers.
+        try:
+            self._latch_owner_unsafe()
+        finally:
+            if self._authority is not None:
+                self._authority._unsafe = True
+            self._fatal = True
+            if quarantine:
+                self._quarantined = True
+            if self._failure is None:
+                self._failure = exc  # Retain traceback and potentially live buffers.
         with self._condition:
             for group in self._groups.values():
                 group.state.mark_unknown()
             self._condition.notify_all()
 
     def submit(self, team_id, request):
-        if not _name(team_id) or type(request) is not ForwardRequest:
-            raise ValueError('a bounded team ID and exact forward request are required')
-        self._check_live()
-        self._policy.require_request(request)
-        token = team_id, request.request_id
-        with self._condition:
-            if self._fatal or self.quarantined or self._closed:
-                raise GroupedBrokerUnavailable('grouped coordinator is unavailable')
-            if token in self._tokens:
-                raise ValueError('team/request identity has already been used')
-            if self._next_job >= self._max_lifetime_jobs:
-                raise GroupedBrokerUnavailable('lifetime job limit reached; replace the owner')
-            if self._slots >= self._max_pending or self._team_slots.get(team_id, 0) >= self._max_pending_per_team:
-                raise GroupedBrokerUnavailable('pending capacity is exhausted')
-            sequence = self._next_job
-            self._next_job += 1
-            job_id = f'{self._broker_id}-j-{sequence}'
-            job = _Job(job_id, team_id, request.request_id, f'{self._broker_id}-r-{sequence}')
-            handle = GroupedHandle(self, job)
-            self._jobs[job_id] = job
-            self._tokens[token] = handle
-            self._slots += 1
-            self._team_slots[team_id] = self._team_slots.get(team_id, 0) + 1
-        failed = False
-        ready_ns = None
+        # The outer boundary starts before registration and remains in force
+        # until the snapshot is queued or the rejection is established.
+        job = rejected = None
+        admission_failed = failed = False
+        unexpected = False
+        registered = False
         try:
-            job.request_guard = self._host.request_guard(job_id)
-            job.request_guard.open()
-            job.host_request = job.request_guard.adopt()
-            reserve = self._snapshot_reservation
-            job.claim_guard = job.host_request.claim_guard(job_id, 'input-snapshot', reserve.nbytes,
-                                                            items=reserve.items)
-            job.claim_guard.reserve()
-            job.claim = job.claim_guard.adopt()
-            internal = ForwardRequest(job.worker_request_id, request.inputs, request.seed)
-            snapshot = self._worker.snapshot_request(internal)
-            self._policy.require_request(snapshot)
-            if snapshot.request_id != job.worker_request_id:
-                raise ValueError('worker snapshot identity mismatch')
-            for tensor in snapshot.inputs.values():
-                logical_bytes = tensor.numel() * tensor.element_size()
-                if (not tensor.is_contiguous() or tensor.storage_offset() != 0
-                        or tensor.untyped_storage().nbytes() != logical_bytes):
-                    raise ValueError('worker snapshot must own exact contiguous tensor storage')
-            job.snapshot = snapshot
-            # Queue publication permits another thread to complete and retire
-            # this job immediately.  The submit frame must not keep additional
-            # aliases to its owned snapshot after that point.
-            tensor = snapshot = internal = None
-            with self._condition:
-                if self._fatal or self.quarantined or self._closed:
-                    raise GroupedBrokerUnavailable('owner became unavailable during snapshot')
-                self._queue.put(team_id, job_id, job, compatibility_key=self._policy.compatibility_key)
+            # At most one submission can be between validation and its bounded job
+            # record. A failure in that interval has its own preallocated root;
+            # do not retain the broker condition while policy or health runs.
+            rejected = None
+            admission_failed = False
+            with self._admission_lock:
+                try:
+                    if not _name(team_id) or type(request) is not ForwardRequest:
+                        rejected = ValueError('a bounded team ID and exact forward request are required')
+                    else:
+                        try:
+                            self._check_live()
+                        except (GroupedBrokerUnavailable, _HealthPending) as exc:
+                            rejected = exc
+                        if rejected is None:
+                            try:
+                                self._policy.require_request(request)
+                            except ValueError as exc:
+                                # This is a pure request rejection before any job
+                                # or snapshot is admitted.
+                                rejected = exc
+                        if rejected is None:
+                            token = team_id, request.request_id
+                            with self._condition:
+                                if self._fatal or self.unavailable or self._closed:
+                                    rejected = GroupedBrokerUnavailable('grouped coordinator is unavailable')
+                                elif token in self._tokens:
+                                    rejected = ValueError('team/request identity has already been used')
+                                elif self._next_job >= self._max_lifetime_jobs:
+                                    rejected = GroupedBrokerUnavailable('lifetime job limit reached; replace the owner')
+                                elif (self._slots >= self._max_pending
+                                      or self._team_slots.get(team_id, 0) >= self._max_pending_per_team):
+                                    rejected = GroupedBrokerUnavailable('pending capacity is exhausted')
+                                else:
+                                    sequence = self._next_job
+                                    self._next_job += 1
+                                    job_id = f'{self._broker_id}-j-{sequence}'
+                                    job = _Job(job_id, team_id, request.request_id, f'{self._broker_id}-r-{sequence}')
+                                    handle = GroupedHandle(self, job)
+                                    self._jobs[job_id] = job
+                                    self._tokens[token] = handle
+                                    self._slots += 1
+                                    self._team_slots[team_id] = self._team_slots.get(team_id, 0) + 1
+                except BaseException as exc:
+                    try:
+                        try:
+                            if self._admission_failure is None:
+                                self._admission_failure = exc
+                        finally:
+                            if self._admission_failure is None:
+                                self._admission_failure = exc
+                            if self._authority is not None:
+                                self._authority._unsafe = True
+                            self._fatal = self._quarantined = True
+                            if self._failure is None:
+                                self._failure = exc
+                    except BaseException as notification_error:
+                        if self._admission_notification_failure is None:
+                            self._admission_notification_failure = notification_error
+                    admission_failed = True
+            if admission_failed:
+                try:
+                    self._fail_closed(self._admission_failure)
+                except BaseException as notification_error:
+                    if self._admission_fail_notification_failure is None:
+                        self._admission_fail_notification_failure = notification_error
+                raise GroupedBrokerUnavailable('submission admission is uncertain; replace the owner')
+            if rejected is not None:
+                raise rejected
+            failed = False
+            ready_ns = None
+            try:
+                job.request_guard = self._host.request_guard(job_id)
+                job.request_guard.open()
+                job.host_request = job.request_guard.adopt()
+                reserve = self._snapshot_reservation
+                job.claim_guard = job.host_request.claim_guard(job_id, 'input-snapshot', reserve.nbytes,
+                                                                items=reserve.items)
+                job.claim_guard.reserve()
+                job.claim = job.claim_guard.adopt()
+                internal = ForwardRequest(job.worker_request_id, request.inputs, request.seed)
+                snapshot = self._worker.snapshot_request(internal)
+                self._policy.require_request(snapshot)
+                if snapshot.request_id != job.worker_request_id:
+                    raise ValueError('worker snapshot identity mismatch')
+                for tensor in snapshot.inputs.values():
+                    logical_bytes = tensor.numel() * tensor.element_size()
+                    if (not tensor.is_contiguous() or tensor.storage_offset() != 0
+                            or tensor.untyped_storage().nbytes() != logical_bytes):
+                        raise ValueError('worker snapshot must own exact contiguous tensor storage')
+                job.snapshot = snapshot
+                # Queue publication permits another thread to complete and retire
+                # this job immediately.  The submit frame must not keep additional
+                # aliases to its owned snapshot after that point.
+                tensor = snapshot = internal = None
+                while True:
+                    self._await_health()
+                    with self._condition:
+                        if (self._fatal or self._quarantined or self._closed
+                                or (self._authority is not None and self._authority.unsafe)):
+                            raise GroupedBrokerUnavailable('owner became unavailable during snapshot')
+                        if self._health_lock.locked():
+                            continue
+                        self._queue.put(team_id, job_id, job, compatibility_key=self._policy.compatibility_key)
+                        if self._observation is not None:
+                            ready_ns = self._observation._ready_stamp(job)
+                        job.status = 'queued'
+                        job.ready_at = perf_counter()
+                        self._condition.notify_all()
+                        break
                 if self._observation is not None:
-                    ready_ns = self._observation._ready_stamp(job)
-                job.status = 'queued'
-                job.ready_at = perf_counter()
-                self._condition.notify_all()
-            if self._observation is not None:
-                self._observation._ready(job, ready_ns)
+                    self._observation._ready(job, ready_ns)
+            except BaseException as exc:
+                try:
+                    try:
+                        job._submission_failure = exc
+                    finally:
+                        if job._submission_failure is None:
+                            job._submission_failure = exc
+                        if self._authority is not None:
+                            self._authority._unsafe = True
+                        self._fatal = self._quarantined = True
+                except BaseException as notification_error:
+                    job._latch_notification_failure = notification_error
+                    self._notification_failure = notification_error
+                try:
+                    try:
+                        self._latch_owner_unsafe()
+                    finally:
+                        if self._authority is not None:
+                            self._authority._unsafe = True
+                        self._fatal = self._quarantined = True
+                        if self._failure is None:
+                            self._failure = exc
+                except BaseException as notification_error:
+                    job._notification_failure = notification_error
+                    self._notification_failure = notification_error
+                if self._observation is not None:
+                    self._observation._fault()
+                try:
+                    self._fail_closed(exc)
+                except BaseException as notification_error:
+                    job._fail_notification_failure = notification_error
+                    self._notification_failure = notification_error
+                failed = True
+            if failed:
+                # Raise outside the exception handler: `from None` alone still
+                # exposes the original exception through __context__.
+                raise GroupedBrokerUnavailable('submission outcome is uncertain; replace the owner')
+            return handle
+
         except BaseException as exc:
-            if self._observation is not None:
-                self._observation._fault()
-            self._fail_closed(exc)
-            failed = True
-        if failed:
-            # Raise outside the exception handler: `from None` alone still
-            # exposes the original exception through __context__.
-            raise GroupedBrokerUnavailable('submission outcome is uncertain; replace the owner')
-        return handle
+            if exc is rejected or (type(exc) is GroupedBrokerUnavailable and (admission_failed or failed)):
+                raise
+            # A registered job supplies a distinct bounded root even when
+            # another submission or dispatcher has already failed. Before
+            # registration, the serialized admission root owns this frame.
+            registered = type(job) is _Job and self._jobs.get(job.job_id) is job
+            try:
+                try:
+                    if registered:
+                        if job._outer_submission_failure is None:
+                            job._outer_submission_failure = exc
+                    elif self._outer_admission_failure is None:
+                        self._outer_admission_failure = exc
+                finally:
+                    if registered and job._outer_submission_failure is None:
+                        job._outer_submission_failure = exc
+                    elif not registered and self._outer_admission_failure is None:
+                        self._outer_admission_failure = exc
+                    if self._authority is not None:
+                        self._authority._unsafe = True
+                    self._fatal = self._quarantined = True
+                    if self._failure is None:
+                        self._failure = exc
+            except BaseException as notification_error:
+                if registered and job._outer_submission_fail_notification_failure is None:
+                    job._outer_submission_fail_notification_failure = notification_error
+                elif not registered and self._outer_admission_fail_notification_failure is None:
+                    self._outer_admission_fail_notification_failure = notification_error
+            unexpected = True
+        if unexpected:
+            root = job._outer_submission_failure if registered else self._outer_admission_failure
+            try:
+                self._fail_closed(root)
+            except BaseException as notification_error:
+                if registered and job._outer_submission_notification_failure is None:
+                    job._outer_submission_notification_failure = notification_error
+                elif not registered and self._outer_admission_notification_failure is None:
+                    self._outer_admission_notification_failure = notification_error
+            raise GroupedBrokerUnavailable('submission handoff is uncertain; replace the owner')
 
     def lookup(self, team_id, request_id):
         """Recover a handle after an ambiguous submit return in this owner epoch."""
@@ -384,6 +789,8 @@ class GroupedBroker:
     def _release_job(self, job):
         # No local tensor alias may survive the claim release; callers must
         # already have retired every group/consumer reference.
+        if self._authority is not None:
+            self._worker._worker._allow_retirement()
         job.snapshot = None
         if job.claim is not None:
             job.claim.release()
@@ -404,12 +811,15 @@ class GroupedBroker:
         cleanup = False
         failed = False
         group = None
-        expected_busy = False
+        expected_busy = expected_unavailable = False
         try:
             with self._condition:
                 if job.disposed:
                     return False
-                if self._fatal or self.quarantined:
+                if job._cancel_failure is not None:
+                    raise GroupedBrokerUnavailable('failed cancellation custody requires process teardown')
+                if self._fatal or self.unavailable:
+                    expected_unavailable = True
                     raise GroupedBrokerUnavailable('job status is unknown')
                 if job.group is not None:
                     if job.cancel_active or job.dispose_active:
@@ -440,14 +850,29 @@ class GroupedBroker:
                 with self._condition:
                     job.cancel_active = False
                     self._condition.notify_all()
-        except HostBusy as exc:
-            # A concurrent, already-pinned control operation is normal.
-            if expected_busy:
-                raise
-            self._fail_closed(exc)
-            failed = True
         except BaseException as exc:
-            self._fail_closed(exc)
+            # A concurrent, already-pinned control operation is normal.
+            if isinstance(exc, HostBusy) and expected_busy:
+                raise
+            if type(exc) is GroupedBrokerUnavailable and expected_unavailable:
+                raise
+            try:
+                try:
+                    if job._cancel_failure is None:
+                        job._cancel_failure = exc
+                    self._fail_closed(exc)
+                finally:
+                    if job._cancel_failure is None:
+                        if job._cancel_failure is None:
+                            job._cancel_failure = exc
+                    if self._authority is not None:
+                        self._authority._unsafe = True
+                    self._fatal = self._quarantined = True
+                    if self._failure is None:
+                        self._failure = exc
+            except BaseException as notification_error:
+                job._cancel_notification_failure = notification_error
+                self._notification_failure = notification_error
             failed = True
         if failed:
             raise GroupedBrokerUnavailable('cancellation outcome is uncertain; replace the owner')
@@ -457,9 +882,28 @@ class GroupedBroker:
                     self._observation._terminal(job, 'cancelled', job.terminal_ns)
                 self._release_job(job)
             except BaseException as exc:
+                try:
+                    try:
+                        job._cancel_failure = exc
+                        self._latch_owner_unsafe()
+                    finally:
+                        if job._cancel_failure is None:
+                            job._cancel_failure = exc
+                        if self._authority is not None:
+                            self._authority._unsafe = True
+                        self._fatal = self._quarantined = True
+                        if self._failure is None:
+                            self._failure = exc
+                except BaseException as notification_error:
+                    job._cancel_notification_failure = notification_error
+                    self._notification_failure = notification_error
                 if self._observation is not None:
                     self._observation._fault()
-                self._fail_closed(exc)
+                try:
+                    self._fail_closed(exc)
+                except BaseException as notification_error:
+                    job._cancel_fail_notification_failure = notification_error
+                    self._notification_failure = notification_error
                 failed = True
             if failed:
                 raise GroupedBrokerUnavailable('cancel cleanup failed')
@@ -469,8 +913,15 @@ class GroupedBroker:
         deadline = None if timeout is None else perf_counter() + timeout
         with self._condition:
             while True:
-                if self._fatal or self.quarantined or self._closed:
+                if (self._fatal or self._quarantined or self._closed
+                        or (self._authority is not None and self._authority.unsafe)):
                     raise GroupedBrokerUnavailable('grouped coordinator is unavailable')
+                if self._health_lock.locked():
+                    remaining = None if deadline is None else deadline - perf_counter()
+                    if remaining is not None and remaining <= 0:
+                        return None
+                    self._condition.wait(.05 if remaining is None else min(.05, remaining))
+                    continue
                 now = perf_counter()
                 try:
                     head_id = self._queue.peek_head_id()
@@ -506,7 +957,9 @@ class GroupedBroker:
                                             for job in jobs)
                             group_id = f'{self._broker_id}-g-{self._next_claim}'
                             state = CohortState(group_id, members, self._profile,
-                                                observation=self._observation)
+                                                observation=self._observation,
+                                                completion_authority=self._authority,
+                                                completion_broker=self if self._authority is not None else None)
                             claimed = _Group(group_id, jobs, state)
                             self._groups[group_id] = claimed
                             for job in jobs:
@@ -553,14 +1006,35 @@ class GroupedBroker:
             except BaseException as exc:
                 # Root and latch before optional observer cleanup.  A second
                 # interrupt in that cleanup must not skip broker quarantine.
-                self._fatal = self._quarantined = True
-                if self._failure is None:
-                    self._failure = exc
+                try:
+                    try:
+                        if self._dispatch_failure is None:
+                            self._dispatch_failure = exc
+                        self._latch_owner_unsafe()
+                    finally:
+                        if self._dispatch_failure is None:
+                            self._dispatch_failure = exc
+                        if self._authority is not None:
+                            self._authority._unsafe = True
+                        self._fatal = self._quarantined = True
+                        if self._failure is None:
+                            self._failure = exc
+                        elif self._failure is not exc and self._notification_failure is None:
+                            self._notification_failure = exc
+                except BaseException as notification_error:
+                    if self._dispatch_notification_failure is None:
+                        self._dispatch_notification_failure = notification_error
+                    self._notification_failure = notification_error
                 try:
                     if self._observation is not None:
                         self._observation._abandon_forward(None)
                 finally:
-                    self._fail_closed(exc)
+                    try:
+                        self._fail_closed(exc)
+                    except BaseException as notification_error:
+                        if self._dispatch_fail_notification_failure is None:
+                            self._dispatch_fail_notification_failure = notification_error
+                        self._notification_failure = notification_error
                 failed = True
         finally:
             self._owner_lock.release()
@@ -568,7 +1042,12 @@ class GroupedBroker:
             raise GroupedBrokerUnavailable('dispatch outcome is uncertain; replace the owner')
 
     def _execute(self, group):
-        self._check_live()
+        while True:
+            try:
+                self._check_live()
+                break
+            except _HealthPending:
+                self._await_health()
         self._policy.require_count(len(group.jobs))
         count = len(group.jobs)
         group.request_guard = self._host.request_guard(group.group_id)
@@ -607,10 +1086,16 @@ class GroupedBroker:
                 scope = self._observation._start_forward(group, group.launch)
             outcome = self._worker.execute(group.plan, group.launch, cancel_event=None)
         except WorkerOutOfMemory as exc:
+            group._execution_failure = exc
             group.quarantined = True
-            self._fatal = self._quarantined = True
-            if self._failure is None:
-                self._failure = exc
+            try:
+                self._latch_owner_unsafe()
+            finally:
+                if self._authority is not None:
+                    self._authority._unsafe = True
+                self._fatal = self._quarantined = True
+                if self._failure is None:
+                    self._failure = exc
             with self._condition:
                 self._condition.notify_all()
             publication = group.state.publish_failure('out_of_memory', quarantine_required=True)
@@ -618,7 +1103,16 @@ class GroupedBroker:
                 self._observation._finish_forward(scope)
                 self._observation._publication(group, publication)
             return
-        except BaseException:
+        except BaseException as exc:
+            group._execution_failure = exc
+            try:
+                self._latch_owner_unsafe()
+            finally:
+                if self._authority is not None:
+                    self._authority._unsafe = True
+                self._fatal = self._quarantined = True
+                if self._failure is None:
+                    self._failure = exc
             if self._observation is not None:
                 self._observation._abandon_forward(scope)
             raise
@@ -628,7 +1122,12 @@ class GroupedBroker:
             raise ValueError('group outcome is not the exact plan-issued object')
         if outcome.quarantine_required:
             group.quarantined = True
-            self._fatal = self._quarantined = True
+            try:
+                self._latch_owner_unsafe()
+            finally:
+                if self._authority is not None:
+                    self._authority._unsafe = True
+                self._fatal = self._quarantined = True
             with self._condition:
                 self._condition.notify_all()
             publication = group.state.publish_failure('execution_failed', quarantine_required=True)
@@ -641,23 +1140,59 @@ class GroupedBroker:
         publication = None
         outcome = None
         group.launch = None
-        group.validation_claim.release()
-        group.validation_claim = None
+        if self._authority is None:
+            group.validation_claim.release()
+            group.validation_claim = None
+        # A session-bound cohort retains its separately charged scratch until
+        # authority-ordered retirement, including after a late unsafe signal.
         with self._condition:
             group.execution_finished = True
             self._condition.notify_all()
         self._maybe_retire(group)
 
     def _new_delivery(self, job):
+        failure = None
         with self._condition:
             if type(job) is not _Job or self._jobs.get(job.job_id) is not job:
                 raise ValueError('job belongs to another broker')
             if job.disposed or job.dispose_active:
                 raise GroupedBrokerUnavailable('job is disposed')
+            if job._delivery_failure is not None:
+                raise GroupedBrokerUnavailable('failed delivery creation requires process teardown')
+            if self._authority is not None and (self._fatal or self.unavailable):
+                state = None if job.group is None else job.group.state._state
+                if not (type(state) is CohortPublication and state.error_code is not None
+                        and state.quarantine_required):
+                    raise GroupedBrokerUnavailable('unsafe owner cannot create a success delivery')
             if len(job.deliveries) >= self._max_active_deliveries_per_job:
                 raise HostBusy('delivery limit reached for this job')
-            ticket = GroupedDelivery(self, job)
-            job.deliveries.add(ticket)
+            try:
+                ticket = GroupedDelivery(self, job)
+                job.deliveries.add(ticket)
+            except BaseException as exc:
+                # The constructor or set insertion may have produced aliases
+                # before raising. Retain this job's original traceback and
+                # publish the shared unsafe latch before leaving the lock.
+                try:
+                    try:
+                        job._delivery_failure = exc
+                    finally:
+                        if job._delivery_failure is None:
+                            job._delivery_failure = exc
+                        if self._authority is not None:
+                            self._authority._unsafe = True
+                        self._fatal = self._quarantined = True
+                        if self._failure is None:
+                            self._failure = exc
+                except BaseException as notification_error:
+                    job._delivery_notification_failure = notification_error
+                failure = job._delivery_failure
+        if failure is not None:
+            try:
+                self._fail_closed(failure)
+            except BaseException as notification_error:
+                job._delivery_fail_notification_failure = notification_error
+            raise GroupedBrokerUnavailable('delivery creation is uncertain; replace the owner')
         return ticket
 
     def _active_deliveries(self, job):
@@ -680,6 +1215,8 @@ class GroupedBroker:
                 raise ValueError('delivery is forged or unregistered')
             if ticket._wait_token is not None:
                 raise HostBusy('delivery wait is in progress')
+            if ticket._failure is not None:
+                raise GroupedBrokerUnavailable('failed delivery custody requires process teardown')
             if ticket._consumer_thread is not None and ticket._consumer_thread is not threading.current_thread():
                 raise HostBusy('delivery must be released by its consumer thread')
             if ticket._delivered and not (ticket._confirmed or ticket._abandoned):
@@ -730,13 +1267,16 @@ class GroupedBroker:
         job = ticket._job
         deadline = None if timeout is None else perf_counter() + timeout
         token = object()
-        publication = None
+        publication = member = None
+        clear_complete = True
         failed = False
         try:
             with self._condition:
                 if (ticket._broker is not self or ticket._released or ticket not in job.deliveries
                         or job.disposed):
                     raise GroupedBrokerUnavailable('delivery is unavailable')
+                if ticket._failure is not None:
+                    raise GroupedBrokerUnavailable('failed delivery custody requires process teardown')
                 if ticket._wait_token is not None or ticket._delivered:
                     raise HostBusy('delivery is already waiting or was delivered')
                 current = threading.current_thread()
@@ -745,12 +1285,14 @@ class GroupedBroker:
                 ticket._consumer_thread = current
                 ticket._wait_token = token
                 while job.group is None and job.single is None:
-                    if self._fatal or self.quarantined:
+                    if self._fatal or self.unavailable:
                         raise GroupedBrokerUnavailable('job status is unknown')
                     remaining = None if deadline is None else deadline - perf_counter()
                     if remaining is not None and remaining <= 0:
                         raise TimeoutError('job is still pending')
-                    self._condition.wait(remaining)
+                    # The shared owner can become unsafe without a broker
+                    # notification while a native forward is still running.
+                    self._condition.wait(0.1 if remaining is None else min(0.1, remaining))
                 group, single = job.group, job.single
             if single is not None:
                 result = single
@@ -765,6 +1307,8 @@ class GroupedBroker:
                 state = group.state
                 with state._condition:
                     while type(state._state) is _Open:
+                        if self._fatal or self.unavailable:
+                            raise GroupedBrokerUnavailable('job status is unknown')
                         remaining = None if deadline is None else deadline - perf_counter()
                         if remaining is not None and remaining <= 0:
                             timed_out = True
@@ -772,23 +1316,70 @@ class GroupedBroker:
                         state._condition.wait(0.1 if remaining is None else min(0.1, remaining))
                     if not timed_out:
                         publication = state._state
+                        clear_complete = False
                         state._check_state(publication)
                 if timed_out:
                     raise TimeoutError('cohort has not been published')
                 member = next(result for result in publication.members if result.member.job_id == job.job_id)
                 result = GroupedResult(job.job_id, job.team_id, job.request_id, member.status,
                                        member.cancel_requested, publication.error_code, member.logits)
+            if self._authority is not None and result.status == 'ok':
+                self._authority._before_device()
             with self._condition:
-                ticket._receipt = result
-                ticket._delivered = True
+                if self._authority is not None and result.status == 'ok':
+                    if not self._health_lock.acquire(blocking=False):
+                        # This exception can be retained by the caller even
+                        # after all claims are retired. Its traceback must not
+                        # hold any direct reference to the private result.
+                        result = publication = member = None
+                        clear_complete = True
+                        raise HostBusy('owner health is being checked; retry delivery')
+                    try:
+                        with self._authority._decision_lock:
+                            if self._authority.unsafe or self._quarantined or self._fatal:
+                                raise GroupedBrokerUnavailable('owner became unsafe before delivery')
+                            ticket._receipt = result
+                            ticket._delivered = True
+                    finally:
+                        self._health_lock.release()
+                else:
+                    ticket._receipt = result
+                    ticket._delivered = True
             return result
         except BaseException as exc:
             # Once a publication was obtained, any construction or handoff
             # error can keep its logits alive in an exception traceback.  Keep
             # every claim and expose only a fresh error, not that traceback.
-            if publication is None and type(exc) in (TimeoutError, HostBusy, GroupedBrokerUnavailable):
+            if (publication is None and clear_complete
+                    and type(exc) in (TimeoutError, HostBusy, GroupedBrokerUnavailable)):
                 raise
-            self._fail_closed(exc)
+            # Each bounded ticket retains its own exception. Multiple waits
+            # can fail concurrently, and a single broker-level root is not
+            # sufficient to retain all tensor-bearing traceback graphs.
+            try:
+                try:
+                    ticket._failure = exc
+                finally:
+                    if ticket._failure is None:
+                        ticket._failure = exc
+                    if self._authority is not None:
+                        self._authority._unsafe = True
+                    self._fatal = self._quarantined = True
+            except BaseException as notification_error:
+                ticket._notification_failure = notification_error
+                self._notification_failure = notification_error
+            try:
+                try:
+                    self._fail_closed(exc)
+                finally:
+                    if self._authority is not None:
+                        self._authority._unsafe = True
+                    self._fatal = self._quarantined = True
+                    if self._failure is None:
+                        self._failure = exc
+            except BaseException as notification_error:
+                ticket._fail_notification_failure = notification_error
+                self._notification_failure = notification_error
             failed = True
         finally:
             with self._condition:
@@ -806,7 +1397,7 @@ class GroupedBroker:
             with self._condition:
                 if job.disposed:
                     group, already_disposed = job.group, True
-                elif self._fatal or self.quarantined:
+                elif self._fatal or self.unavailable:
                     expected_error = GroupedBrokerUnavailable('unhealthy owner requires process teardown')
                 elif job.cancel_active or job.dispose_active:
                     expected_error = HostBusy('a control handoff is still active or uncertain')
@@ -823,7 +1414,7 @@ class GroupedBroker:
             if expected_error is None and group is not None and not already_disposed:
                 phase = group.state.phase
                 with self._condition:
-                    if self._fatal or self.quarantined or group.quarantined:
+                    if self._fatal or self.unavailable or group.quarantined:
                         expected_error = GroupedBrokerUnavailable('quarantined group requires process teardown')
                     elif phase != 'terminal':
                         job.dispose_active = False
@@ -831,7 +1422,22 @@ class GroupedBroker:
                     else:
                         job.disposed, job.dispose_active = True, False
         except BaseException as exc:
-            self._fail_closed(exc)
+            try:
+                try:
+                    if job._dispose_failure is None:
+                        job._dispose_failure = exc
+                    self._fail_closed(exc)
+                finally:
+                    if job._dispose_failure is None:
+                        job._dispose_failure = exc
+                    if self._authority is not None:
+                        self._authority._unsafe = True
+                    self._fatal = self._quarantined = True
+                    if self._failure is None:
+                        self._failure = exc
+            except BaseException as notification_error:
+                job._dispose_notification_failure = notification_error
+                self._notification_failure = notification_error
             failed = True
         if failed:
             raise GroupedBrokerUnavailable('disposal state is uncertain; replace the owner')
@@ -847,11 +1453,13 @@ class GroupedBroker:
         failed = False
         try:
             with self._condition:
-                if (self._fatal or self.quarantined or group.retiring or group.retired
+                if (self._fatal or self.unavailable or group.retiring or group.retired
                         or group.quarantined or not group.execution_finished
                         or not all(job.disposed for job in group.jobs)):
                     return
                 group.retiring = True
+            if self._authority is not None:
+                self._worker._worker._allow_retirement()
             group.state.retire()
             if group.plan is not None:
                 group.plan.dispose()
@@ -871,7 +1479,22 @@ class GroupedBroker:
                 group.retired = True
                 self._condition.notify_all()
         except BaseException as exc:
-            self._fail_closed(exc)
+            try:
+                try:
+                    if group._retirement_failure is None:
+                        group._retirement_failure = exc
+                    self._fail_closed(exc)
+                finally:
+                    if group._retirement_failure is None:
+                        group._retirement_failure = exc
+                    if self._authority is not None:
+                        self._authority._unsafe = True
+                    self._fatal = self._quarantined = True
+                    if self._failure is None:
+                        self._failure = exc
+            except BaseException as notification_error:
+                group._retirement_notification_failure = notification_error
+                self._notification_failure = notification_error
             failed = True
         if failed:
             raise GroupedBrokerUnavailable('group disposal is uncertain')
@@ -888,7 +1511,7 @@ class GroupedBroker:
             with self._condition:
                 if self._closed:
                     return False
-                if self._fatal or self.quarantined:
+                if self._fatal or self.unavailable:
                     raise GroupedBrokerUnavailable('unhealthy owner requires process teardown')
                 if (self._slots or any(not job.disposed or job.deliveries for job in self._jobs.values())
                         or any(not group.retired for group in self._groups.values())):
@@ -896,7 +1519,12 @@ class GroupedBroker:
                 with self._host._lock:
                     if (getattr(self._host, '_grouped_broker_owner', None) is not self
                             or self._host._requests or self._host._claims or self._host._operations):
-                        self._fatal = self._quarantined = True
+                        try:
+                            self._latch_owner_unsafe()
+                        finally:
+                            if self._authority is not None:
+                                self._authority._unsafe = True
+                            self._fatal = self._quarantined = True
                         raise GroupedBrokerUnavailable('exclusive ledger state is uncertain')
                     self._closed = True
                     self._host._grouped_broker_owner = None

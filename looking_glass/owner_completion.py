@@ -43,6 +43,8 @@ class OwnerCompletionAuthority:
         self._worker_bound = False
         self._worker_retired = False
         self._broker = None
+        self._broker_construction_error = None
+        self._broker_construction_cleanup_error = None
 
     def mark_unsafe(self):
         self._unsafe = True
@@ -98,9 +100,27 @@ class OwnerCompletionAuthority:
         self._worker = worker
 
     def _bind_broker(self, broker, worker):
-        if self._worker is not worker or self._broker is not None or self._unsafe:
-            raise ValueError('completion authority does not match this worker')
-        self._broker = broker
+        if not worker._execution_gate.acquire(blocking=False):
+            raise WorkerUnavailable('worker execution must stop before broker binding')
+        try:
+            if not worker._lock.acquire(blocking=False):
+                raise WorkerUnavailable('worker cleanup must stop before broker binding')
+            try:
+                if self._worker is not worker or self._broker is not None or self._unsafe:
+                    raise ValueError('completion authority does not match this worker')
+                if (any(getattr(worker._custody, name) is not None
+                        for name in ('request', 'logits', 'result', 'error', 'producer_error',
+                                     'forward_error', 'state_error'))
+                        or worker._warmup_result is not None or worker._retiring_cancel is not None
+                        or worker._retiring_transfer is not None
+                        or worker._cancel_cleanup_error is not None
+                        or worker._transfer_cleanup_error is not None):
+                    raise WorkerUnavailable('worker custody must be transferred before broker binding')
+                self._broker = broker
+            finally:
+                worker._lock.release()
+        finally:
+            worker._execution_gate.release()
 
     def retire_unbrokered_worker(self, worker):
         """Detach one closed collector worker after its producers have stopped.
@@ -113,36 +133,40 @@ class OwnerCompletionAuthority:
         """
         if type(worker) is not LifetimeWorkspaceWorker or self._worker is not worker:
             raise ValueError('worker does not belong to this completion authority')
-        if not worker._lock.acquire(blocking=False):
+        if not worker._execution_gate.acquire(blocking=False):
             raise WorkerUnavailable('worker execution has not stopped')
         try:
             try:
-                with self._decision_lock:
-                    if worker._worker.poisoned:
-                        # Resident/process poison is an unsafe source even if
-                        # another signaler has not yet marked this authority.
-                        self._unsafe = True
-                    if (self._unsafe or self._broker is not None or self._worker_retired
-                            or not worker._closed or not worker._worker._closed
-                            or worker._worker._model is not None or worker._worker._drain_pending
-                            or worker._worker._snapshot_error is not None
-                            or any(value is not None for value in worker._worker._live_buffers)
-                            or any(value is not None for value in worker._worker._retiring_buffers)
-                            or any(getattr(worker._custody, name) is not None
-                                   for name in ('request', 'logits', 'result', 'error', 'producer_error',
-                                                'forward_error', 'state_error'))
-                            or worker._warmup_result is not None
-                            or worker._retiring_cancel is not None
-                            or worker._retiring_transfer is not None
-                            or worker._cancel_cleanup_error is not None
-                            or worker._transfer_cleanup_error is not None):
-                        raise WorkerUnavailable('unbrokered worker custody is not fully retired')
-                    # The exact worker argument is a strong root while this lock is
-                    # held; permanent one-shot binding survives detachment.
-                    self._worker_retired = True
-                    self._worker = None
+                if not worker._lock.acquire(blocking=False):
+                    raise WorkerUnavailable('worker execution has not stopped')
+                try:
+                    with self._decision_lock:
+                        if worker._worker.poisoned:
+                            # Resident/process poison is an unsafe source even if
+                            # another signaler has not yet marked this authority.
+                            self._unsafe = True
+                        if (self._unsafe or self._broker is not None or self._worker_retired
+                                or not worker._closed or not worker._worker._closed
+                                or worker._worker._model is not None or worker._worker._drain_pending
+                                or worker._worker._snapshot_error is not None
+                                or any(value is not None for value in worker._worker._live_buffers)
+                                or any(value is not None for value in worker._worker._retiring_buffers)
+                                or any(getattr(worker._custody, name) is not None
+                                       for name in ('request', 'logits', 'result', 'error', 'producer_error',
+                                                    'forward_error', 'state_error'))
+                                or worker._warmup_result is not None
+                                or worker._retiring_cancel is not None
+                                or worker._retiring_transfer is not None
+                                or worker._cancel_cleanup_error is not None
+                                or worker._transfer_cleanup_error is not None):
+                            raise WorkerUnavailable('unbrokered worker custody is not fully retired')
+                        # The argument roots the worker until the lock is released.
+                        self._worker_retired = True
+                        self._worker = None
+                finally:
+                    worker._lock.release()
             finally:
-                worker._lock.release()
+                worker._execution_gate.release()
         except BaseException:
             if self._worker_retired:
                 try:
@@ -215,6 +239,7 @@ class LifetimeWorkspaceWorker:
             raise ValueError('cold and warm profiles must cover the same signature')
         self._cold_pending = len(profiles) == 2
         self._warmup_result = None
+        self._execution_gate = threading.Lock()
         self._lock = threading.Lock()
         self._closed = False
         self._custody = _ResidentResultCustody()
@@ -326,7 +351,18 @@ class LifetimeWorkspaceWorker:
         self._check_available()
         return self._worker.snapshot_request(request)
 
+    def _assert_execution_owner(self):
+        broker = self._authority._broker
+        if broker is not None and threading.current_thread() is not getattr(broker, '_thread', None):
+            raise WorkerUnavailable('fixed worker execution belongs to its broker owner')
+
     def execute(self, request, cancel_event=None):
+        self._assert_execution_owner()
+        with self._execution_gate:
+            self._assert_execution_owner()
+            return self._execute_owned(request, cancel_event)
+
+    def _execute_owned(self, request, cancel_event=None):
         if cancel_event is not None and type(cancel_event) is not threading.Event:
             raise InvalidRequest('cancel_event must be a threading.Event')
         _require_no_autocast()
@@ -415,6 +451,12 @@ class LifetimeWorkspaceWorker:
 
     def _transfer_result(self, result):
         """Drop producer custody only after the broker roots this exact result."""
+        self._assert_execution_owner()
+        with self._execution_gate:
+            self._assert_execution_owner()
+            return self._transfer_result_owned(result)
+
+    def _transfer_result_owned(self, result):
         try:
             with self._authority._decision_lock:
                 self._stage_transfer_locked(result)
@@ -443,6 +485,12 @@ class LifetimeWorkspaceWorker:
 
     def _finish_cold(self, result):
         """Advance to the warm profile after private cold-result validation."""
+        with self._execution_gate:
+            if self._authority._broker is not None:
+                raise WorkerUnavailable('cold warmup cannot finish after broker binding')
+            return self._finish_cold_owned(result)
+
+    def _finish_cold_owned(self, result):
         with self._lock:
             self._warmup_result = result
             try:

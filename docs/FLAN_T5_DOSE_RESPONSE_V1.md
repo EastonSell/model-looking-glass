@@ -1,0 +1,55 @@
+# FLAN-T5 matched-dose response: public CPU protocol draft
+
+Status: the pairs and decision criteria were proposed before tokenizer-only case assembly. The resulting public case manifest has SHA-256 `629036188d62403669fe33291fa9e2a8759145be828918db25fa3ea7c0555a18`; all six source alignments pass, and no pretrained model has been loaded or forwarded on these study cases. The wording and case manifest must be independently reviewed, committed and publicly readable at an immutable source revision before the run. The public examples are exploratory and are not a blind or pretraining-independent holdout.
+
+## Question and fixed examples
+
+At the encoder's final layer normalization output, does a word-position replacement produce a donor-directed two-target score-margin response that increases with dose and exceeds the responses at two matched control positions? This is an operational, finite-example prediction, not an assertion that translation is localized uniquely to one token or direction.
+
+Use `google/flan-t5-small` revision `0fc9ddf78a1e988dac52e2dac162b0ede4fd74ab` and the seven-file asset manifest with SHA-256 `d369e3095dc35c52608f40fbd2715d7a2ff80a02fd71f0692c24af2cf3402083`, as in the preceding CPU study. Fix these pairs before tokenizer preflight and do not replace any ineligible or baseline-unsupported case:
+
+| Pair | First English / fixed German target | Second English / fixed German target |
+|---|---|---|
+| 0 | sun / Sonne | moon / Mond |
+| 1 | milk / Milch | bread / Brot |
+| 2 | tree / Baum | flower / Blume |
+
+For each pair use both `Translate English to German: {word}` and `What is the German word for {word}?`, with context-only prompts `Translate English to German:` and `What is the German word for` respectively. The proposed controls are the non-special instruction token at position 0 and the unchanged punctuation token, at position 5 for the translate template and 7 for the question template. The instruction position is a partial written word for the translate template; punctuation and instruction positions may carry contextual information. The word site is the single aligned differing word token, position 6 if alignment passes.
+
+The fixed targets tokenize as Sonne `[19854,1]` versus Mond `[2963,26,1]`, Milch `[23126,1]` versus Brot `[4027,17,1]`, and Baum `[19935,1]` versus Blume `[10689,526,1]`. In all three pairs the first target has one lexical token plus EOS and the second has two plus EOS. This systematic asymmetry can influence the clean margins and eligibility; the context-only scores and both target lengths are retained, and the examples are not replaced.
+
+Tokenize all texts using the same pinned `T5TokenizerFast` in local-only mode. Save exact token IDs, strings, masks, offsets and special-token flags; independently re-tokenize before the first forward. The tokenizer's pad ID and the model config's pad/decoder-start IDs must be 0; the tokenizer and model config's EOS IDs must be 1. Source pairs must have the same length, attention mask and special-token mask, differ only at one word token at position 6, and have the same non-special word, instruction and punctuation positions with the latter two token IDs unchanged. The word token's offset slice, stripped of surrounding whitespace, must equal its word. Source length must not exceed 32; all input masks must be ones and every source and context input must have exactly one final EOS. Targets must be distinct, each two or three IDs including at least one lexical token and exactly one final EOS. A failure of these declared per-case alignment/length rules is `alignment-ineligible`: record it, run no model forward for that cell, and proceed with the other fixed cells. A mismatch with saved tokenization, pinned assets or model identity aborts the attempt instead of changing cases. No prompt or target may be changed after baseline observation.
+
+## Scores and eligibility
+
+For each eligible cell run context-only and both clean source sentences against both fixed targets. With target IDs `y`, use decoder IDs `[0]+y[:-1]`, all-ones decoder mask and full EOS-inclusive teacher-forced sequence score `S(y)=math.fsum(float32_log_softmax(logits)[position, target_id])`. Record each token value, target length, full logits and decoder inputs. Let the margin `m(source)=S(first German target)-S(second German target)`. Context-only scores are descriptive prior/context measurements, not a causal correction.
+
+For a cell, set `m_A`, `m_B` from the unhooked clean forwards and `Δ=m_A-m_B`. It is baseline-supported only if `m_A>0`, `m_B<0` and `Δ>=1.0` nat. Otherwise record `baseline-unsupported`, retain the six clean/context forwards, skip all patches for that cell and continue unchanged. Unsupported is not a demonstrated failure of greedy generation.
+
+## Matched doses and hypotheses
+
+Obtain unpatched encoder states independently of decoder target and require the two target-conditioned copies for each source to match bit-for-bit. For site `s` in {word, instruction, punctuation}, let `d_s` be the binary64 L2 distance between source A and source B vectors at that same position, computed from the saved float32 states. Set `q=min_s d_s`; if `q/3<=1e-6`, record `dose-ineligible` and run no patches for that cell. Otherwise the exact ordered dose fractions are `f_0=0`, `f_1=1/3`, `f_2=2/3`, `f_3=1` evaluated in binary64. For side `i`, site `s` and nonzero fraction `f_j`, the proposed replacement is `float32(own + (f_j*q/d_s)*(donor-own))`, with binary64 intermediate operations and one final float32 cast. There is no extrapolation.
+
+For each of the three nonzero levels, verify all six actual float32 L2 displacements against `q_j=f_j*q`. Each must be positive and differ from `q_j` by at most `min(max(1e-5,1e-5*q_j),0.01*q_j)`; within each source direction, each control's actual dose must also differ from the word dose by at most 1% of the actual word dose. If any level/site/direction fails, save the computed vectors and record `dose-unmatchable`; do not proceed to patches for that cell. Report `q`, every natural distance, fraction, actual dose and receiver norm.
+
+At each nonzero level run the word, instruction and punctuation replacement for both directions and both targets. The resulting margin changes, measured toward the donor, are `w_A(j)=m_A-m_A,word(j)` and `w_B(j)=m_B,word(j)-m_B`, with corresponding signed `c_instruction` and `c_punctuation` defined the same way. Set all three site movements to zero at `j=0`; it is the clean unhooked reference, not a new stochastic sample.
+
+The preregistered cell is **positive** only when, in each source direction:
+
+1. `w(j+1)>=w(j)-0.0001` nat for `j=0,1,2` (the fixed numerical ordering tolerance allows very small reversals).
+2. `w(3)>=0.05*Δ` nat.
+3. For every `j=1,2,3`, `w(j)>=max(abs(c_instruction(j)),abs(c_punctuation(j)))+0.02*f_j*Δ` nat.
+
+A supported, matchable cell is **negative** if any of these inequalities fails. Report all applicable flags rather than selecting one explanation: `reversed` if any nonzero word movement is below `-0.0001` nat; `nonmonotone` if an adjacent ordered step decreases by more than `0.0001` nat; `weak_endpoint` if criterion 2 fails; and `control_comparison` if criterion 3 fails. The first two flags may overlap. A value exactly at a boundary follows the inequalities above. Record the full signed and absolute response curves, not only flags.
+
+The 0.05 endpoint and dose-scaled 0.02 comparison margins are fixed minimum operational effects chosen before these model outputs; they are not a null distribution, confidence threshold or claim of statistical significance. The 0.0001-nat allowance is a numerical ordering tolerance, not a significance test. The prior matched-dose result motivates inspecting a curve because its common q was smaller than the natural word displacement; it does not tune the present examples, thresholds or imply a general dose-response law.
+
+## Controls, run bounds and interpretation
+
+Keep separate unhooked clean references, nonmutating Looking Glass capture repeat, null word action, token-self patches at all three positions, full-state self, full-state donor swap, full natural word-position donor swap, and word zero action, each in both directions and for both targets. The full natural word swap can have a larger L2 dose and is a descriptive anchor, not a dose-matched control. Require exact clean/repeat/null/self full-logit equality and full-state-swap donor-logit equality. Use the real ordered same-forward capture/action/capture intervention path. Persist and check actual pre-action and post-action vectors against the clean state and intended replacement, the selected output position against the post-action witness, and all untouched positions bit-for-bit. Validate and restore hooks and verify parameter/buffer and source/asset identity before and after. Place the captured clean repeat after interventions so it can also detect residual state drift. Control, model, identity or evidence failures make the whole attempt incomplete and must never be interpreted as a negative cell.
+
+For a lexical pair, both templates must be evaluable; the pair is positive if both are positive and negative if at least one is negative. Otherwise it is unevaluable. Across the three fixed lexical pairs, aggregate positive requires at least two positive pairs, aggregate negative requires at least two negative pairs, and all other combinations are inconclusive.
+
+Maximum root forwards are 468: six cells times six context/clean forwards, 36 intervention anchors/control forwards (including the last captured repeat) and 36 matched-dose forwards. Caps are independent of the scientific outcome. Run CPU float32, one thread, deterministic eager attention and offline cache with CUDA hidden; require `MKL_CBWR=COMPATIBLE`, `OMP_NUM_THREADS=1`, `MKL_NUM_THREADS=1`, `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1`. Record actual runtime settings and an independently observed process exit. Start a fresh process with `-B -X pycache_prefix=<fresh-empty-directory>`; the operator creates and verifies the empty prefix before startup and checks it again after exit. Use a quiescent checkout and a source-observation JSON, as in the prior study, that binds the immutable published source commit, commit URL and source hashes; the observation is not a trusted timestamp or independent proof of execution. Before loading weights, require at least 1 GiB free on the output filesystem; cap retained run evidence, including failures and partial records, at 512 MiB and never silently discard a returned bounded tensor. Preserve full raw logits, encoder states and same-forward witnesses with hashes and a bounded failure record. No model weights need be copied into the result.
+
+The target log-score margin includes EOS and can be sensitive to target lengths and lexical priors; it is not a greedy decoded response. Equal L2 is not equal functional dose, and control-position activations may contain information about the word. Results apply to these fixed public inputs and chosen layer, site, doses, score and criteria, without evidence of broad generalization.

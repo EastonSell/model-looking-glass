@@ -1,0 +1,7 @@
+{
+  "original_child_exit_record_sha256": "4556da856baaf9574a12653e20890380ce5e5312c942ec0e20f9307222f6345f",
+  "result_sha256": "b7667ad827ff7e9a1380acfcfcad3dd14150be49751a129348f92b5f829276a3",
+  "scope": "Interactive operator observation; not an authenticated execution or whole-process-tree attestation.",
+  "source_commit": "05e55bffacbf5019d181546286c2743b8ccbf487",
+  "wrapper_exit_code": 0
+}

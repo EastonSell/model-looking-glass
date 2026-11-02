@@ -1,0 +1,81 @@
+{
+  "schema": "grouped-cpu-unreserved-exposure-retrospective-v1",
+  "recorded_at_local": "2026-10-29T00:27:33-07:00",
+  "execution_time": "not recorded; completed shortly before record creation",
+  "status": "completed",
+  "evidence_kind": "operator retrospective from terminal test outcome and test control flow; no raw logits or per-forward logs retained",
+  "source_base_commit": "479b41fa3ab1b3131644fa14d68d761ce9672f42",
+  "source_state": "uncommitted evolving working tree; exact executed file bytes were not recorded",
+  "model": "distilbert/distilgpt2",
+  "revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
+  "device": "CPU, CUDA_VISIBLE_DEVICES=-1",
+  "seed": 2026102808,
+  "mask": "[1,1,1,1] per row",
+  "rows": [
+    [
+      1,
+      2,
+      3,
+      4
+    ],
+    [
+      5,
+      6,
+      7,
+      8
+    ],
+    [
+      9,
+      10,
+      11,
+      12
+    ],
+    [
+      13,
+      14,
+      15,
+      16
+    ],
+    [
+      17,
+      18,
+      19,
+      20
+    ],
+    [
+      21,
+      22,
+      23,
+      24
+    ],
+    [
+      25,
+      26,
+      27,
+      28
+    ],
+    [
+      29,
+      30,
+      31,
+      32
+    ]
+  ],
+  "expected_forward_order": [
+    "serial-0-0",
+    "serial-0-1",
+    "mixed-0",
+    "serial-1-0",
+    "serial-1-1",
+    "mixed-1",
+    "heldout-serial-0-0",
+    "heldout-serial-0-1",
+    "heldout-group-0",
+    "heldout-serial-1-0",
+    "heldout-serial-1-1",
+    "heldout-group-1"
+  ],
+  "outcome": "pytest reported 1 passed in 11.43s; the asserted passed result and 12 model entries imply all rows were processed and their outputs met the test comparison",
+  "command": "CUDA_VISIBLE_DEVICES=-1 HF_HUB_OFFLINE=1 LOOKING_GLASS_TEST_CACHE=<work/hf-cache/hub> work/.venv/Scripts/python.exe -m pytest tests/test_grouped_gpu_dev.py::GroupedGpuDevelopmentTests::test_pinned_cpu_grouped_chain_disposes_model_without_cyclic_gc -q --tb=short",
+  "caveat": "Retrospective report is not a frozen source or independently replayable numerical evidence. This was not authorized by the prior exposure coordination; no GPU was used."
+}
