@@ -1,0 +1,13 @@
+{
+  "independent_replay_sha256": "c2dcb34990c562530c01bc9ff6416c3ffba2b298e7a0d282a70fea9db70cef54",
+  "model_load_or_forward": "not started (custodian report)",
+  "pool_card_sha256": "f6e174110bcca104c9ec0cf3ba0abce986dbf7f7e5aadcbcda089418b6419563",
+  "qualifying_units": 1,
+  "required_units": 4,
+  "schema": "flan-sentiment-selection-incomplete-v1",
+  "scope": "Fixed selection failed; no replacement or pretrained attempt. This receipt and process observations do not independently authenticate execution or timing.",
+  "screened_rows": 96,
+  "screened_units": 12,
+  "selection_card_sha256": "05574d7c513716d946d70c67f190886a81b221cef0b17220c7f7b6135b411eca",
+  "status": "selection-incomplete"
+}

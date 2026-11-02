@@ -90,9 +90,13 @@ class ExposureV12Tests(unittest.TestCase):
                         candidate[:2] + [50256]):
             changed = copy.deepcopy(original)
             changed["records"][0]["token_ids"] = old_row
+            # Pin the synthetic predecessor to exercise the independent prefix guard.
+            synthetic_digest = hashlib.sha256(json.dumps(changed, sort_keys=True, separators=(",", ":"),
+                ensure_ascii=True, allow_nan=False).encode("utf-8")).hexdigest()
             with self.subTest(old_row=old_row), \
                     mock.patch.object(v11, "inventory_payload", return_value=changed), \
-                    mock.patch.object(v11, "inventory_digest", return_value=v11.INVENTORY_SHA256):
+                    mock.patch.object(v11, "INVENTORY_SHA256", synthetic_digest), \
+                    mock.patch.object(v12, "PREDECESSOR_SHA256", synthetic_digest):
                 with self.assertRaisesRegex(ValueError, "prefix"):
                     v12.inventory_payload()
         rows = list(v12.FACTORIAL_ROWS)

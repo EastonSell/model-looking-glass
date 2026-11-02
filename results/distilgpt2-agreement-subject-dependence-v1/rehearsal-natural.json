@@ -1,0 +1,11 @@
+{
+  "case_sha256": "5f3a2c850454e74da2bdc3819d492357f829994c126e1ac95d90ca3813b0643e",
+  "note": "Fabricated for no-model rehearsal only; not a custody observation.",
+  "refreshed_utc": "2026-10-29T10:13:29.682784+00:00",
+  "schema": "agreement-subject-natural-refresh-v1",
+  "scope": "public support comparison; sealed-split coverage conditional on source-bound preparation; no private membership queried",
+  "status": "clear",
+  "successor_status": "undrawn",
+  "successor_support_sha256": "6303eb0713d64b020eea3fe491a686c9020ea424754443372aef73749bc87bc4",
+  "support_receipt_sha256": "61d1f8555ad901924364fb89c731b0870ff057d6caeebcf4b5d293e819be1753"
+}

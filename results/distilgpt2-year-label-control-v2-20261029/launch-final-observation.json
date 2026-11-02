@@ -1,0 +1,17 @@
+{
+  "schema": "distilgpt2-year-label-control-v2-final-local-observation-v1",
+  "observed_utc": "2026-10-29T10:27:26Z",
+  "observed_main": "ac93491058880c46db7831a4afe288fb851d3026",
+  "prior_observation_main": "46842b08338fef9fc9aefc2c90aab3a8af63c66c",
+  "prior_public_observation_sha256": "1afdccab420857feae2eb2dd4ab172d847ebe47274febd0b9d89cb24a13818e0",
+  "pre_run_sha256": "cf0e84371a7e516861006ab26aaab42c3d5c7ba8f8a514cfee609cb70e863abe",
+  "current_exposure_version": "distilgpt2-development-exposures-v27",
+  "current_exposure_sha256": "ef42683a664dda450e82c69afedda34a8a34f2daf9f50f2db54f6c9d846f07e5",
+  "current_exposure_source_blob": "45cdb7e8acce7f763d3f5a5ba6b305c6364ba3a6",
+  "execution_source_revision": "b256a6846ad2386d0c0c306003026bbd9b2893a8",
+  "execution_source_tree": "f23aa6799a145b9168677563da91d5ec78abc9b7",
+  "checks": "The eight source/case/v26 Git blobs recorded in launch-observation.json and v27 source all matched the reviewed identities at observed_main. V28 was absent, and the execution checkout's git status was clean. The compare from d20375440ffe3d1c25ec0f3454834edb63b415ef to observed_main changes only the four launch/comparison files merged by PR #540; the earlier advance from prior_observation_main to d2037544 contained only the vision study paths.",
+  "answer_format_public_check_sha256": "240f9dae02a6bc5b1e7197403a4a9cc33cc735f65d2f2a5718005ed5673f5df1",
+  "coordination": "The most recent scoped reports from the agreement-subject, editing and throughput lanes state no unreserved DistilGPT2 forwards since v27 in their respective lanes. They are cooperative reports, not complete live coverage.",
+  "scope": "Point-in-time public and cooperative observation only. The old sealed split and outside/pretraining exposure are unknown. The 36 inputs were already exposed in v1. A lost child handle or uncertain receipt does not prove the child stopped; no automatic retry."
+}

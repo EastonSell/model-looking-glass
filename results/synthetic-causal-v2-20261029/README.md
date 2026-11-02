@@ -70,7 +70,7 @@ population; no significance or population confidence interval is claimed.
 
 ## Evidence and chronology
 
-[`public-evidence.zip`](public-evidence.zip) contains the nine public artifacts,
+[`public-evidence.zip`](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/synthetic-causal-v2-20261029/public-evidence.zip) contains the nine public artifacts,
 public registry manifest and outcome, and registry metadata as their exact
 saved bytes, with `public/` as the extraction root. Its SHA-256 is
 `f80b01e1d3e0ffea13e454c1202814e1015ea2d4d6c21a3a6b3eb7736ba7ef04`.

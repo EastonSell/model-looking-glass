@@ -1,0 +1,25 @@
+{
+  "exposure_report": "The exposure owner reports no unreserved DistilGPT2 forwards in its lane since v27. A separate year continuation is running only already-reserved previously exposed rows; answer-format and two-attractor inputs have been checked without model forwards.",
+  "injection_custody": "Custodian reconfirmed no injection claim, nonce, protected rows or allocation marker, and the fixed separate-owner L3-final site has the previously scoped no-direct-target conflict. No private comparison occurred.",
+  "latest_reviewed_exposure_sha256": "ef42683a664dda450e82c69afedda34a8a34f2daf9f50f2db54f6c9d846f07e5",
+  "latest_reviewed_exposure_version": "distilgpt2-development-exposures-v27",
+  "natural_custody": "Custodian reconfirmed original commitment/support and exact public receipt unchanged under the stated preparation assumption; successor has no claim or split and no other natural pool is known.",
+  "official_main_observed_revision": "1f692c6f35b965a1efacd7b253a3bc1b627909b7",
+  "owner_revision": "cc4937690db8e0ea8532d3f89f14b6e95465ac65",
+  "owner_tree": "31b882ea1fcb221c26f20eff044aa89db19e34aa",
+  "pending_input_comparison_sha256": "657b28c111d8c2d260e3529893a11b64c5accc796f0ca86af322902fc9e4000e",
+  "prelaunch_publication_revision": "248fa8032cf80de02e99920f59b6356edd931eff",
+  "prelaunch_sha256": "da8cd8e61200837a5e602ae24cee3effe791c68a8358529784be688e18557bce",
+  "recorded_utc": "2026-10-29T10:29:52.140075+00:00",
+  "schema": "agreement-subject-launch-boundary-v1",
+  "scope": "Point-in-time operator and custodian observations, not authenticated chronology, private membership or complete exposure history.",
+  "storage": {
+    "cache_free_bytes": 26252046336,
+    "output_free_bytes": 26252046336,
+    "required_cache_free_bytes": 536870912,
+    "required_output_free_bytes": 2147483648,
+    "same_volume": true,
+    "temporary_cache_staging_bytes": 355679200
+  },
+  "v27_source_blob": "45cdb7e8acce7f763d3f5a5ba6b305c6364ba3a6"
+}

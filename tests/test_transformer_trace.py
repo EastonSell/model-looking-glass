@@ -467,9 +467,10 @@ class GPT2TraceTests(unittest.TestCase):
                            use_cache=True, output_attentions=True)
         self.assertTrue(torch.equal(baseline_prefill_logits, prefill.logits))
         self.assertTrue(torch.equal(baseline_decode.logits, decode.logits))
-        for expected_layer, actual_layer in zip(baseline_decode.past_key_values,
-                                                decode.past_key_values):
-            for expected, actual in zip(expected_layer, actual_layer):
+        for expected_layer, actual_layer in zip(baseline_decode.past_key_values.layers,
+                                                decode.past_key_values.layers):
+            for expected, actual in ((expected_layer.keys, actual_layer.keys),
+                                     (expected_layer.values, actual_layer.values)):
                 self.assertTrue(torch.equal(expected, actual))
         self.assertEqual([e.forward_index for e in trace.events], [0, 0, 1, 1])
         self.assertEqual([e.token_positions for e in trace.events],
@@ -531,17 +532,17 @@ class GPT2TraceTests(unittest.TestCase):
         model = self.make_model()
         prefix = torch.tensor([[1, 2, 3]])
         cache = model(prefix, use_cache=True).past_key_values
-        before = [key.shape[-2] for key, _value in cache]
+        before = [layer.keys.shape[-2] for layer in cache.layers]
         with self.assertRaises(RuntimeError):
             with self.session(model, targets=('attn', 'block'), max_events=1):
                 model(torch.tensor([[4]]), past_key_values=cache, use_cache=True)
-        after = [key.shape[-2] for key, _value in cache]
+        after = [layer.keys.shape[-2] for layer in cache.layers]
         self.assertEqual(before, [3, 3])
         self.assertEqual(after, [4, 3])
         # Re-prefill, rather than retrying with the partially updated cache.
         clean_cache = model(prefix, use_cache=True).past_key_values
         clean = model(torch.tensor([[4]]), past_key_values=clean_cache, use_cache=True)
-        self.assertEqual([key.shape[-2] for key, _value in clean.past_key_values], [4, 4])
+        self.assertEqual([layer.keys.shape[-2] for layer in clean.past_key_values.layers], [4, 4])
 
     def test_overlapping_sessions_are_rejected(self):
         model = self.make_model()

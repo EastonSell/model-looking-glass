@@ -62,6 +62,52 @@ class ProbeTests(unittest.TestCase):
             p(torch.ones(2)); p(torch.zeros(2))
         self.assertEqual([e.occurrence for e in s.events], [0, 1])
 
+    def test_removing_events_does_not_replenish_capacity(self):
+        for mode in ('direct', 'gradient', 'id'):
+            for removal in ('pop', 'clear'):
+                with self.subTest(mode=mode, removal=removal):
+                    p = TapPoint('point')
+                    session = TraceSession(p, mode=mode, max_events=1)
+                    with self.assertRaisesRegex(RuntimeError, 'trace capacity exceeded'):
+                        with session:
+                            p(torch.ones(1))
+                            getattr(session.events, removal)()
+                            p(torch.ones(1))
+                    self.assertTrue(session.failed)
+                    self.assertEqual(len(p._forward_hooks), 0)
+                    self.assertEqual(len(p._forward_pre_hooks), 0)
+
+    def test_sequence_numbers_survive_public_event_list_edits(self):
+        p = TapPoint('point')
+        produced = []
+        with TraceSession(p, max_events=4) as session:
+            p(torch.ones(1))
+            produced.append(session.events.pop())
+            p(torch.ones(1))
+            produced.append(session.events[-1])
+            session.events.clear()
+            p(torch.ones(1))
+            produced.append(session.events[-1])
+            # An inserted entry is caller-owned, not another capture. It must
+            # neither consume capture capacity nor alter the next sequence.
+            session.events.insert(0, produced[0])
+            p(torch.ones(1))
+            produced.append(session.events[-1])
+        self.assertFalse(session.failed)
+        self.assertEqual([event.sequence for event in produced], [0, 1, 2, 3])
+        self.assertEqual([event.occurrence for event in produced], [0, 1, 2, 3])
+
+    def test_inserted_events_do_not_consume_capture_capacity(self):
+        p = TapPoint('point')
+        with TraceSession(p, max_events=2) as session:
+            p(torch.ones(1))
+            session.events.append(session.events[0])
+            p(torch.ones(1))
+        self.assertFalse(session.failed)
+        self.assertEqual(session.events[-1].sequence, 1)
+        self.assertEqual(session.events[-1].occurrence, 1)
+        self.assertEqual(len(session.events), 3)
+
     def test_sparse_filters_group(self):
         model = nn.Sequential(TapPoint('a', 'dense'), TapPoint('b', 'sparse'))
         with TraceSession(model, placement='sparse') as s:

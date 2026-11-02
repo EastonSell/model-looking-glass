@@ -1,0 +1,671 @@
+{
+  "status": "passed",
+  "model": "HuggingFaceTB/SmolLM2-135M",
+  "revision": "93efa2f097d58c2a74874c7e644dbc9b0cee75a2",
+  "device": "cpu",
+  "dtype": "float32",
+  "python": "3.12.14",
+  "torch": "2.15.0+cpu",
+  "transformers": "4.57.3",
+  "loaded_once_no_restart": true,
+  "warmup_runs": 3,
+  "measured_runs": 60,
+  "measured_cycles": 20,
+  "sequence": [
+    "Gravity is",
+    "Electricity is",
+    "Gravity is"
+  ],
+  "settings": {
+    "max_new_tokens": 2,
+    "max_trace_bytes": 16777216
+  },
+  "same_input_output_and_all_capture_bits_equal": true,
+  "model_parameter_and_buffer_hashes_unchanged": true,
+  "no_residual_hooks": true,
+  "released_capture_tensors_verified_by_weakref": 11340,
+  "recoverable_preflight_failures_followed_by_success": 2,
+  "explicit_clear_releases_last_capture_without_retiring_model": true,
+  "checkpoint_assets_unchanged": true,
+  "implementation_sha256": {
+    "looking_glass/agreement_numeric.py": "f9a5a9ee3627162d843c0dc0d8c6ea9d98c000a4b6d472fb55254fb3395d07dc",
+    "looking_glass/app.py": "a2edd2b4063083d051b4e49e8fb44c842bd2671629b1e220f3bd207118e9f664",
+    "looking_glass/app_interventions.py": "06eabfd7393f4afa26c1e6a7f39744ba15f62127717adfb28faa18fb65c02477",
+    "looking_glass/app_reference.py": "74ba9815d651627ec58942cc48f93cb08b291c242be8b68243dbfdcd64833a63",
+    "looking_glass/app_runtime.py": "860623e9a56490fc3dd9e194c21eb68d34a11560bd2edc017f7756235d4f77d9",
+    "looking_glass/app_selftest.py": "e422d0d5fbecf5e0f56e21fa8d662d4b28a5f1d93ffb38637720fa7692f32010",
+    "looking_glass/app_storage.py": "e32752639fc4ad6048e475b5c3ff8c127058962888980788ce8ed89468609634",
+    "looking_glass/intervention_plan.py": "5bb643c538a1d7dcd97214238c2a996967d4b6ae2e965d3776b3699758491c0a",
+    "looking_glass/llama_trace.py": "7051a525f62e68c8f48a5215d3f3f4908b41d44f69181e971a0fd5afa180b75a",
+    "looking_glass/model_ownership.py": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434",
+    "looking_glass/trace_schema.py": "38e05eb52a59a10ad9f93d19763d60df4c27f9eb626fdefdcba39fc4af3eb92c"
+  },
+  "verification_script_sha256": {
+    "verify_repeat_runs.py": "6d3aca92e4594a82b135b0f0654d388df79f277cb228ca73854207276f3ff651",
+    "verify_reference_vectors.py": "81bbf7607b47d4b572bc43942f44f8972f029f4fbdf3c6c2686dddb00ccb4003"
+  },
+  "historical_manifest_record_sha256": "d2425a1bd3848f1378570be7262c138c883be076070dab533ad19b5a279cfe32",
+  "checkpoint_file_sha256": {
+    "README.md": "d1ba68cae64a89b6b434b11526e6e2271ee5ffd2c914ec35ed515f9d84c6085c",
+    "config.json": "1d556eab73b69c7f11f64c557a2f9c6f440bd4c6b89bb2584a6b498c92603843",
+    "generation_config.json": "2056c988e990b0d13670f63f2f3b87b3b6d07edaf7a3416998ba27dab2d8a059",
+    "merges.txt": "0b54e8aa4e53d5383e2e4bc635a56b43f9647f7b13832d5d9ecd8f82dac4f510",
+    "model.safetensors": "80521b40281d6ce74e35c9282c22539e75aa0ac8578892b2a59955ef78d55da1",
+    "special_tokens_map.json": "e786b595b9a23148bf1630df78d9037a048ea671e48bfd3549a1e3c233742bb3",
+    "tokenizer.json": "9ca9acddb6525a194ec8ac7a87f24fbba7232a9a15ffa1af0c1224fcd888e47c",
+    "tokenizer_config.json": "4bb9af56a342753d39374f4016a16574cab299fe088e896f425ce3c433f61424",
+    "vocab.json": "82b84012e3add4d01d12ba14442026e49b8cbbaead1f79ecf3d919784f82dc79"
+  },
+  "baseline_fingerprints": {
+    "Gravity is": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a",
+    "Electricity is": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+  },
+  "rss_observation": {
+    "source": "Linux /proc/self/statm current process RSS after GC",
+    "first_bytes": 977334272,
+    "last_bytes": 977424384,
+    "min_bytes": 977334272,
+    "max_bytes": 977424384,
+    "last_minus_first_bytes": 90112,
+    "interpretation": "Finite observational trace; allocator caching/RSS is not a leak proof or total-memory guarantee."
+  },
+  "samples": [
+    {
+      "cycle": 1,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977334272,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 1,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977350656,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 1,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977350656,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 2,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977350656,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 2,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977362944,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 2,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977362944,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 3,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977362944,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 3,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977375232,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 3,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977375232,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 4,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977375232,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 4,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977375232,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 4,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977375232,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 5,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977375232,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 5,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977375232,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 5,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977379328,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 6,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977379328,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 6,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977379328,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 6,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977379328,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 7,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977379328,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 7,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977379328,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 7,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977379328,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 8,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977379328,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 8,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977379328,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 8,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977379328,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 9,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977379328,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 9,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977379328,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 9,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977379328,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 10,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977379328,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 10,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977395712,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 10,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977408000,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 11,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 11,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 11,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 12,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 12,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 12,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 13,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 13,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 13,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 14,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 14,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 14,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 15,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 15,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 15,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 16,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 16,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 16,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 17,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 17,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 17,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 18,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 18,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 18,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 19,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 19,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 19,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 20,
+      "position": 0,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    },
+    {
+      "cycle": 20,
+      "position": 1,
+      "prompt": "Electricity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "0b92e11e9685c8fdd1126c1354957735db6372b75d68b91926b8228e5a5c15ce"
+    },
+    {
+      "cycle": 20,
+      "position": 2,
+      "prompt": "Gravity is",
+      "rss_bytes_after_gc": 977424384,
+      "event_count": 180,
+      "capture_bytes": 1451520,
+      "fingerprint_sha256": "f0384f1a562787d8cd0fdeb57ce2d8de95ae64d8997655ff6e931f4d7053111a"
+    }
+  ],
+  "elapsed_seconds_not_benchmark": 39.882,
+  "scope": "One pinned CPU checkpoint and short deterministic prompts in one process. No quality, unlimited-session, GPU, browser, or restart-free recovery-from-quarantine claim.",
+  "schema": "mlg.repeated_runs.v1",
+  "tested_parent_commit": "1b95cbb6b7f1b368c2fd2dd5de0bea167e26abc8",
+  "execution_source": "Installed freshly built wheel; import origins asserted, same source bytes as checkout",
+  "wheel": {
+    "filename": "model_looking_glass-0.1.0-py3-none-any.whl",
+    "sha256": "ce12fcd59ecb2fecb230ec20d5b6868e6bbc43ec44bf80167778f1ae7a2db0cb",
+    "package_version": "0.1.0",
+    "published_as_release_asset": false
+  },
+  "validation": {
+    "focused_suite": {
+      "passed": 949,
+      "skipped": 12,
+      "skip_reason": "Actual CUDA device/build prerequisites unavailable",
+      "elapsed_seconds": 73.31,
+      "log_sha256": "19893804c8d59ff8f27711991a86ffae9bbb8381f3eb285c88acf8c33cec3371"
+    },
+    "installed_wheel_selected_tests": {
+      "passed": 14,
+      "elapsed_seconds": 20.8,
+      "import_origins_and_static_asset_bytes_verified": true,
+      "log_sha256": "63d1289e4b71cd5bf043f978ed7f780dded74b4aaad7caa87b741a4c9974728c"
+    },
+    "ui_contract": {
+      "mocked_authenticated_requests": 414,
+      "actual_browser_rendering": false,
+      "log_sha256": "6389b8c07f78d36c3b6a99e81351179ec65d57715b9ded716badd5cab75de5a1"
+    },
+    "optimized_script_rejected_before_argument_parsing": true,
+    "bare_default_suite": {
+      "exit_code": 2,
+      "collection_errors": 17,
+      "duplicate_basename_import_mismatches": 14,
+      "missing_historical_fixture_or_source_errors": 3,
+      "all_repository_pass": false,
+      "log_sha256": "6a6316959b6a2e89c5ba0584964ea2690efe971f9d2b24be21d9bb8c01b23ab3"
+    }
+  },
+  "test_and_ui_sha256": {
+    "tests/test_app_repeat_runs.py": "f84b6671ce12522ff027abb6ead3c87364b4b0b11c71e66fccbe5bec35c56cb5",
+    "tests/app_ui_contract.cjs": "6d7027815ca8a8dc8ad299f03a74877562f06ceca27371fa0d3359b6a8bc489d",
+    "looking_glass/app_static/index.html": "8bea4e3f09dbb3800584e8780a46b50d5b1b086b36627edbf1e09bd63bbe1cac",
+    "looking_glass/app_static/app.js": "32fae3af4b50d5b60266cc948b12bc9eb7162d1a5da1bda7685812261b86f431",
+    "looking_glass/app_static/app.css": "b4ddc18900c6caa0b7930f5e088420d69e1020675500e6f626117a8a4b039981"
+  },
+  "installed_dependency_versions": {
+    "torch": "2.15.0+cpu",
+    "transformers": "4.57.3",
+    "safetensors": "0.8.0",
+    "numpy": "2.5.4",
+    "Pillow": "11.3.0",
+    "pytest": "8.4.2",
+    "tokenizers": "0.22.2",
+    "huggingface-hub": "0.36.2"
+  }
+}

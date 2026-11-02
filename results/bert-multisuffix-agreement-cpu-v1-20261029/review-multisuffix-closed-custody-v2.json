@@ -1,0 +1,41 @@
+{
+  "checkpoint_asset_files": 5,
+  "child_admission": {
+    "attempt_free_bytes": 383377375232,
+    "available_physical_bytes": 12012646400,
+    "controller_free_bytes": 383377375232,
+    "host_minimum_bytes": 2147483648,
+    "output_volume_minimum_bytes": 1073741824,
+    "scope": "point-in-time measurements, not reservations or peak-memory guarantees"
+  },
+  "complete_sha256": "eb8d5d0af89363046512936e62f26e024659c6a39a0b192eff7b5991e804d460",
+  "outer_admission": {
+    "available_physical_bytes": 12701970432,
+    "host_minimum_bytes": 2147483648,
+    "output_free_bytes": 383377772544,
+    "output_minimum_bytes": 1073741824,
+    "scope": "point-in-time read-only observations; not a reservation",
+    "source_commit": "42519c13a5b33ce3601b89ba65d67b07ebd2f78d",
+    "stage_receipt_sha256": "d8f0d8415492fba043204499d66694f5d0a109401967c61245baf7943d1461f8",
+    "system_free_bytes": 1273303040,
+    "system_minimum_bytes": 268435456
+  },
+  "outer_observation_sha256": "86897fe8a359ee97c22dc84e93ba85a9958051a467c07befc9f6880cfb5c48a4",
+  "receipt_sha256": "4f85c2794bb45a6e598069c97be1a089d0203c80c5c625ac325eeceb25d42347",
+  "reported_child_pid": 34416,
+  "reported_eligible_cases": 32,
+  "reported_events": 1088,
+  "reported_observer_pid": 38532,
+  "saved_attempt_files": 10,
+  "saved_controller_files": 4,
+  "schema": "independent-multisuffix-closed-custody-v1",
+  "scope": [
+    "Hashes and observations reconcile the saved cooperative records and current staged bytes.",
+    "They do not independently attest execution, all live memory, public exposure, source chronology or process-tree drain.",
+    "The outer observer process itself requires a separate operator exit observation."
+  ],
+  "source_commit": "42519c13a5b33ce3601b89ba65d67b07ebd2f78d",
+  "source_files": 8,
+  "stage_receipt_sha256": "d8f0d8415492fba043204499d66694f5d0a109401967c61245baf7943d1461f8",
+  "status": "record_consistency"
+}

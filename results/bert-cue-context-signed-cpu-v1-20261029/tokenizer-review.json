@@ -1,0 +1,1 @@
+{"aligned_positions": [2, 4, 5, 6, 9], "manifest_sha256": "843649c3f105e26185d96f31d769b0585d219bb7a45ba445cf2c2548598927df", "model_forward": false, "pairs": 4, "rows": 32, "status": "pass", "tokenizer_only": true, "tokenizer_sha256": "ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98"}

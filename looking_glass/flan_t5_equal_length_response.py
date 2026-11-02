@@ -38,7 +38,7 @@ _TERMINAL_LIMIT = 1024 * 1024
 def source_identity():
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip()
     paths = ('looking_glass/flan_t5_equal_length_response.py', 'looking_glass/flan_t5_dose_response.py',
-             'looking_glass/flan_t5_equal_dose.py', 'looking_glass/flan_t5_feasibility.py',
+             'looking_glass/flan_t5_equal_dose.py', 'looking_glass/flan_t5_feasibility.py', 'looking_glass/t5_compat.py',
              'looking_glass/interventions.py', 'looking_glass/intervention_plan.py',
              'looking_glass/model_ownership.py', 'docs/FLAN_T5_EQUAL_LENGTH_RESPONSE_V1.md',
              'docs/FLAN_T5_EQUAL_LENGTH_SELECTION_V1.md', 'docs/FLAN_T5_EQUAL_LENGTH_SCREEN_V1.json',
@@ -211,6 +211,8 @@ def run(asset_dir, output, publication_observation):
         model, load_info = T5ForConditionalGeneration.from_pretrained(
             str(asset_dir), local_files_only=True, use_safetensors=True, trust_remote_code=False,
             output_loading_info=True, dtype=torch.float32)
+        from .t5_compat import validate_t5_checkpoint_contract
+        validate_t5_checkpoint_contract(model, {"tie_word_embeddings": False})
         if any(load_info.get(key) for key in ('missing_keys', 'unexpected_keys', 'mismatched_keys', 'error_msgs')):
             raise ValueError('model loading diagnostics are not empty')
         model.eval()

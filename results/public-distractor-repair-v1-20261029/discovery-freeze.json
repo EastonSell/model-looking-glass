@@ -1,0 +1,227 @@
+{
+  "case_sha256": "811a1f0251ff21ddaa1869ee96c80dfa47beb87a6b6c2f1e3b6505728fee1825",
+  "discovery": {
+    "1": {
+      "causal_mask_reference": [
+        "Q1",
+        "Q3",
+        "Q4"
+      ],
+      "constant": "Q3",
+      "first_changed": "Q2",
+      "first_changed_votes": [
+        0,
+        8,
+        0,
+        0
+      ],
+      "magnitude": "Q3",
+      "magnitude_scores": [
+        2.459287933685658,
+        4.000000003958121,
+        4.000000066123903,
+        0.0
+      ],
+      "random": "Q1",
+      "selector": {
+        "abstained": false,
+        "max_tie": [
+          "Q3"
+        ],
+        "mean_absolute_effects": [
+          0.03653383255004883,
+          0.0,
+          0.06423807144165039,
+          0.0
+        ],
+        "ranking": [
+          "Q3",
+          "Q1",
+          "Q2",
+          "Q4"
+        ],
+        "selected": "Q3",
+        "signed_predictions": [
+          -0.035863399505615234,
+          0.0,
+          -0.006591320037841797,
+          0.0
+        ]
+      },
+      "uniform_site_reference": 0.25
+    },
+    "2": {
+      "causal_mask_reference": [
+        "Q1",
+        "Q2",
+        "Q4"
+      ],
+      "constant": "Q3",
+      "first_changed": "Q3",
+      "first_changed_votes": [
+        0,
+        0,
+        8,
+        0
+      ],
+      "magnitude": "Q3",
+      "magnitude_scores": [
+        3.9999999813735485,
+        0.0,
+        4.000000003958121,
+        2.2794206343958474
+      ],
+      "random": "Q1",
+      "selector": {
+        "abstained": false,
+        "max_tie": [
+          "Q1"
+        ],
+        "mean_absolute_effects": [
+          0.058582305908203125,
+          0.0,
+          0.0,
+          0.04926919937133789
+        ],
+        "ranking": [
+          "Q1",
+          "Q4",
+          "Q2",
+          "Q3"
+        ],
+        "selected": "Q1",
+        "signed_predictions": [
+          0.029771804809570312,
+          0.0,
+          0.0,
+          -0.04926919937133789
+        ]
+      },
+      "uniform_site_reference": 0.25
+    },
+    "3": {
+      "causal_mask_reference": [
+        "Q1",
+        "Q2",
+        "Q3"
+      ],
+      "constant": "Q3",
+      "first_changed": "Q4",
+      "first_changed_votes": [
+        0,
+        0,
+        0,
+        8
+      ],
+      "magnitude": "Q4",
+      "magnitude_scores": [
+        0.0,
+        2.1474555991861553,
+        3.9999999925494194,
+        4.000000003958121
+      ],
+      "random": "Q4",
+      "selector": {
+        "abstained": false,
+        "max_tie": [
+          "Q3"
+        ],
+        "mean_absolute_effects": [
+          0.0,
+          0.0320281982421875,
+          0.09715604782104492,
+          0.0
+        ],
+        "ranking": [
+          "Q3",
+          "Q2",
+          "Q1",
+          "Q4"
+        ],
+        "selected": "Q3",
+        "signed_predictions": [
+          0.0,
+          0.0030517578125,
+          0.09715604782104492,
+          0.0
+        ]
+      },
+      "uniform_site_reference": 0.25
+    }
+  },
+  "discovery_receipt_sha256": "da8d176c76418cacc6d82c80bdd1f545cbbeeb00ca13fa086dfe7077e6c297ab",
+  "evidence": {
+    "actions": 224,
+    "events_sha256": "4f15b75602a14c8ab2e1d69aa123fa95924126de88f45fbdbd3c7e2fedc0f624",
+    "raw_bytes": 122973952,
+    "raw_files": {
+      "distractor-repair-01.f32": {
+        "bytes": 16102112,
+        "sha256": "7e8382f926ce37f9d17f59e99d1006422f0ce51e5af992afdb68fa4b1cc716bc"
+      },
+      "distractor-repair-01.f64": {
+        "bytes": 18432,
+        "sha256": "3fa2f5d368917269efba7d016d8612c4a004d8f8cc7ce0aa8606b163d29c8c57"
+      },
+      "distractor-repair-02.f32": {
+        "bytes": 15303392,
+        "sha256": "0159e19d2a18cb8691e40231f2f30f065c334cffb68ecab8c5224ae709045d22"
+      },
+      "distractor-repair-02.f64": {
+        "bytes": 18432,
+        "sha256": "392981a586e00b22b74fad4abdacdd0f1cb542b1740fbf8fa8dc10aadd5b27ea"
+      },
+      "distractor-repair-03.f32": {
+        "bytes": 15303392,
+        "sha256": "f4dbc164037ed7742bd16a7d3868e808e97a45a70451e0fef4aa225fe1fe2a07"
+      },
+      "distractor-repair-03.f64": {
+        "bytes": 18432,
+        "sha256": "5d952aa0715b36f01a3736afa76574b586167568960f04c3b9094b6191bfa203"
+      },
+      "distractor-repair-04.f32": {
+        "bytes": 15303392,
+        "sha256": "8ae753010ab569a98f668837a36a8d7cc945c708053173cec4fdf8a9ad5bbc6c"
+      },
+      "distractor-repair-04.f64": {
+        "bytes": 18432,
+        "sha256": "35a3d4f1f25224cd95fd99f5072bf27f3361637accd2ac5ac090c101609f9d6f"
+      },
+      "distractor-repair-05.f32": {
+        "bytes": 14904032,
+        "sha256": "1301619e61e0d2689347081878424eace8801806e441faae6c2c6926f48fa2fd"
+      },
+      "distractor-repair-05.f64": {
+        "bytes": 18432,
+        "sha256": "d42a23ba377c7097eca759cc2ac40a2ac81fcfc2f612f169f8b7efe69ba0d567"
+      },
+      "distractor-repair-06.f32": {
+        "bytes": 15303392,
+        "sha256": "3e3ad7a4c8348d91e4baf6037cd8a39e9fcc693c6fc1cfcd411d4584cc8554d9"
+      },
+      "distractor-repair-06.f64": {
+        "bytes": 18432,
+        "sha256": "9fa1aa3fb927237ac8a7df5ecf13e042e4884ef97a545c7aacc781d217486aec"
+      },
+      "distractor-repair-07.f32": {
+        "bytes": 15702752,
+        "sha256": "ccb1dd77bf3e8935aa0b894fd04a302c0f99d07cca26ff6bcb98db0fc702d8d7"
+      },
+      "distractor-repair-07.f64": {
+        "bytes": 18432,
+        "sha256": "6eb12620078b1f07480d10aa42c1a41e423f6549eebcfde7542665d36262f553"
+      },
+      "distractor-repair-08.f32": {
+        "bytes": 14904032,
+        "sha256": "c1aba96276ad05835850a6b4328530ff46cf6b2955486b02cc964ffad6a28415"
+      },
+      "distractor-repair-08.f64": {
+        "bytes": 18432,
+        "sha256": "d36de0e4aa2984531c133b0d1043d542054d2d8578d90ab7a9ab8910ad961c32"
+      }
+    }
+  },
+  "pre_run_sha256": "3cffd5c7ebedc35506fc2c64a14d00eb8a5dd8c4f9c94d59446c00c1943cb33f",
+  "reservation_sha256": "f3a500dc02d85b8f004275ba2edd74febf9cec138e83755568e5be31045898a9",
+  "schema": "public-distractor-discovery-freeze-v1"
+}

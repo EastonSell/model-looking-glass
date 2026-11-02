@@ -1,0 +1,19 @@
+{
+  "attempt_inventory": {
+    "bytes": 140229912,
+    "files": 10
+  },
+  "controller_inventory": {
+    "bytes": 2004,
+    "files": 4
+  },
+  "direct_child_exit_code": 0,
+  "outer_exit_code": 0,
+  "outer_sha256": "86897fe8a359ee97c22dc84e93ba85a9958051a467c07befc9f6880cfb5c48a4",
+  "pending_marker_absent": true,
+  "receipt_sha256": "4f85c2794bb45a6e598069c97be1a089d0203c80c5c625ac325eeceb25d42347",
+  "recorded_times_nondecreasing": true,
+  "schema": "independent-multisuffix-outer-inventory-v1",
+  "scope": "Recorded exact direct-child and observer exits and top-level file inventory only; cooperative records, not an OS process-tree, launch chronology or execution attestation. Nested directories are not inventoried here.",
+  "source_commit": "42519c13a5b33ce3601b89ba65d67b07ebd2f78d"
+}

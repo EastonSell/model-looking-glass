@@ -1,0 +1,130 @@
+{
+  "files": [
+    {
+      "bytes": 8541,
+      "path": "README.md",
+      "sha256": "b6dbae5f2a4551a15e3b731b293af6247d724651ed5862a50bcc009d6579512c"
+    },
+    {
+      "bytes": 23715,
+      "path": "audit-full.py",
+      "sha256": "9fc602148b8afb39187752b0cbce22963d86faa114137283da748a6dd0cbec4a"
+    },
+    {
+      "bytes": 11127,
+      "path": "baselines.csv",
+      "sha256": "5e30bd42f697ca2c5242f404a5d7a9f15592e313cd63dd6c1f7a9abf24cbdf3f"
+    },
+    {
+      "bytes": 37131,
+      "path": "bert-cue-context-score-tv-subset-40752bde.jsonl.gz",
+      "sha256": "1d5cb23b1a8156c2a621de9c351253eba76c21c6346039df6267fe47dee3297a"
+    },
+    {
+      "bytes": 7969,
+      "path": "bert-cue-context-subset-audit-40752bde.json",
+      "sha256": "1c279cc71977be39b0904a7a5be0e5d83700bce6cb884824161e88c68e6da958"
+    },
+    {
+      "bytes": 634,
+      "path": "bert-cue-context-subset-derivation-40752bde.json",
+      "sha256": "b3cf655332831854999e53f995a4cb11ae11cc43d6622f892f9609518ca19222"
+    },
+    {
+      "bytes": 7146,
+      "path": "derive_bert_cue_context_subset.py",
+      "sha256": "67ded2f3be1282efaa09ced8350d0e5a1203ca5ba4ca0aae974b2863e33104b3"
+    },
+    {
+      "bytes": 122434,
+      "path": "effects.csv",
+      "sha256": "550a65dce2d5b6ecbe20d6b84dedf7b07b0f65054ca0225c79bf195b6cb170bf"
+    },
+    {
+      "bytes": 389,
+      "path": "exit.json",
+      "sha256": "c9bc0923bff50ad131e8bb4fb7a19e2166429b619827818adb586e4cf9fb24bf"
+    },
+    {
+      "bytes": 4025,
+      "path": "exposure-check.json",
+      "sha256": "1c04ca6e268b0b84337ed47cbaf037ef4790766c2861dc773820abd6c70100b9"
+    },
+    {
+      "bytes": 5035,
+      "path": "full-witness-audit.json",
+      "sha256": "ceea44bd177f80990c62e7d85c129ae73364223a6b738b4daadd0e01e76a1044"
+    },
+    {
+      "bytes": 6213,
+      "path": "independent-exposure-check.json",
+      "sha256": "afcbccb6360ade55bc959818ddbcea1768c0e5a4a74c9df694ac307baeab3a1c"
+    },
+    {
+      "bytes": 4235,
+      "path": "make-tables.py",
+      "sha256": "c2b8f9d4765aa986395f77e36c8afcf5c213929dee5a93a67c9e425a5e99cadb"
+    },
+    {
+      "bytes": 19389,
+      "path": "manifest.json",
+      "sha256": "4fb31c4b49c24e78f6a4b0b59d928ebb6204a55ecdc2c9c4cd55528700d592a7"
+    },
+    {
+      "bytes": 673,
+      "path": "pairs.csv",
+      "sha256": "16c7352066c01afcc71fb73d5d26cbbee178122dbb6f3b9dbf7cf15315be7408"
+    },
+    {
+      "bytes": 3200,
+      "path": "preflight.json",
+      "sha256": "9d2724bf1d4c2502111203cf9ce3e92fbc4f9baec462ebf6229ab5d430d03c19"
+    },
+    {
+      "bytes": 11605,
+      "path": "protocol.md",
+      "sha256": "2404699a8c626572c11567a56169d5ae95267bbf7b30b8e617368520653f217e"
+    },
+    {
+      "bytes": 2427,
+      "path": "recipients.csv",
+      "sha256": "b2e5e1436615c65862a16de94bf1533a0e4f8218a515f90520e96d71baed5ad4"
+    },
+    {
+      "bytes": 461728,
+      "path": "result.json",
+      "sha256": "4f3eca14fffea1df6d8504d79017c2980ba03f8f31fd3fd7b7d1812f3697cbc8"
+    },
+    {
+      "bytes": 16217,
+      "path": "review_bert_cue_context_scores.py",
+      "sha256": "50837eaa286f33b05160e6dac51fa98cb82decdd860bbfeea7bb623a864f3771"
+    },
+    {
+      "bytes": 12978,
+      "path": "review_bert_cue_context_subset.py",
+      "sha256": "b7daac0eee7727febb595b7e4b8e0704c4daa93f5daf9e3664459378bc322bbc"
+    },
+    {
+      "bytes": 7868,
+      "path": "score-tv-audit.json",
+      "sha256": "b44b268248647276d5f3a9119c0e1f5e138840f1d9fea37341a6b19bd9f23abe"
+    },
+    {
+      "bytes": 3285,
+      "path": "started.json",
+      "sha256": "218914aded4d864304d444759aad20985d4e68072bbba05922ef43965e288116"
+    },
+    {
+      "bytes": 305,
+      "path": "tokenizer-review.json",
+      "sha256": "64c6c81a6b51c764851b412d02413339c6c892d41c123bab83ec12f0ffa80acd"
+    },
+    {
+      "bytes": 1818,
+      "path": "tv_summary.csv",
+      "sha256": "f93393823288f89389e31c60fbee4f0517fd1906ca0b2426a6382323ae40036b"
+    }
+  ],
+  "schema": "bert-cue-context-public-inventory-v1"
+}

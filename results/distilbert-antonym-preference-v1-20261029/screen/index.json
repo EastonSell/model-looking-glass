@@ -1,0 +1,55 @@
+{
+  "archive": {
+    "bytes": 1472144,
+    "sha256": "d4d14562ef02e486299951b2b1159f79c4d6933eadbcfedc7dc29b0c46463e2b"
+  },
+  "files": {
+    "claim.json": {
+      "bytes": 5305,
+      "sha256": "74d4c6a14b24efd0cb4aefa94919a8825f418bdb171b862bbf51d5973c58f8da"
+    },
+    "events.jsonl": {
+      "bytes": 1962332,
+      "sha256": "7ed70ebfe6e3d05d45cf7e7f5cf6904b936faf7eefcffced7ceb63540132982e"
+    },
+    "exit.json": {
+      "bytes": 870,
+      "sha256": "04b0371c64d3f68390ed1bb9600a0b3e45bc8354582329898344f9eef9b45770"
+    },
+    "prelaunch.json": {
+      "bytes": 8266,
+      "sha256": "61815c5a738c981701456b1bc6f170df391edfaaf7dc87334d52f9f1862c6eff"
+    },
+    "result.json": {
+      "bytes": 17672,
+      "sha256": "ef66b2aadf515856c02ef24edd53735a20bde86f529e6e319797124d1adb5538"
+    },
+    "supervisor-observation.json": {
+      "bytes": 556,
+      "sha256": "1cd8ebb242fa64083d371d59654cbd225513a1713188bb561343dd86d105cbe9"
+    },
+    "validated.json": {
+      "bytes": 798,
+      "sha256": "7262f49509dcd3d277b02a1d18e31b8ce99da9147bed34b88402613fe9e27d56"
+    },
+    "worker-start.json": {
+      "bytes": 139,
+      "sha256": "893b67d95e5082ae0767e4f11ba6cf2e5c91bf36c6a829578060c978336a53fa"
+    }
+  },
+  "parts": [
+    {
+      "bytes": 1472144,
+      "name": "part-0000.gzchunk",
+      "sha256": "d4d14562ef02e486299951b2b1159f79c4d6933eadbcfedc7dc29b0c46463e2b"
+    }
+  ],
+  "phase": "screen",
+  "run": {
+    "bytes": 226,
+    "name": "run.json",
+    "sha256": "128ea99295dcfadaa5b40cdcdfd7e485fcfb6d700c1de41e20bac728ecb6d821"
+  },
+  "schema": "distilbert-color-stage-archive-v1",
+  "scope": "Compressed exact copies of cooperative stage records; not execution attestation."
+}

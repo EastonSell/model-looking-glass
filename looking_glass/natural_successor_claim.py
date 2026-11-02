@@ -126,3 +126,28 @@ def claim_phase(*, root, root_path_sha256, root_device, root_inode, operation_sh
              'operation_sha256': operation_sha256, 'query_claim_sha256': query_claim_sha256,
              'pool_clearance_sha256': pool_clearance_sha256, 'inventory_sha256': inventory_sha256}
     return _publish(root, root_path_sha256, root_device, root_inode, 'phase-claim.json', value)
+
+
+def claim_public_phase(*, root, root_path_sha256, root_device, root_inode, operation_sha256,
+                       public_clearance_sha256, inventory_sha256, amendment_sha256):
+    """Consume a new phase following an independently verified public-support check.
+
+    This marker binds the stated public receipt, inventory and amendment; it
+    does not authenticate their contents, publication or currentness. A
+    source-bound owner must verify them and hold their leases through this
+    exclusive claim. Any old/partial query or phase artifact stops the attempt.
+    The cooperative owner must also establish exclusive control of this root
+    and no legacy query process in flight: checking different filenames cannot
+    serialize a concurrent query and phase claim by itself.
+    """
+    _sha_values(operation_sha256, public_clearance_sha256, inventory_sha256, amendment_sha256)
+    path = _root(root, root_path_sha256, root_device, root_inode)
+    forbidden = ('pool-query-invocation.json', 'pool-query-claim.json', 'pool-query-receipt.json',
+                 'pool-query-observation.json', 'pool-query-supervisor', 'pool-query-outer',
+                 'phase-claim.json', 'nonce.bin', 'heldout-record.json', 'commitment.json', 'owner-started.json')
+    if any(os.path.lexists(path / name) for name in forbidden):
+        raise ValueError('earlier or uncertain query/phase state prevents a new claim')
+    value = {'schema': 'mlg-natural-successor-claim-v1', 'kind': 'phase-public-support',
+             'operation_sha256': operation_sha256, 'public_clearance_sha256': public_clearance_sha256,
+             'inventory_sha256': inventory_sha256, 'amendment_sha256': amendment_sha256}
+    return _publish(root, root_path_sha256, root_device, root_inode, 'phase-claim.json', value)

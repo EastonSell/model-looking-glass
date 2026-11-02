@@ -1,0 +1,290 @@
+{
+  "answer_ids": {
+    " a": 257,
+    " are": 389,
+    " in": 287,
+    " is": 318,
+    " on": 319,
+    " the": 262,
+    " was": 373,
+    " were": 547
+  },
+  "candidate_forms": {
+    "discovery": [
+      {
+        "answer_boundaries_preserved": true,
+        "determiner_only_difference": true,
+        "leading_noun_ids": [
+          15900
+        ],
+        "noun": "sheep",
+        "single_noun_token": true,
+        "these_ids": [
+          777,
+          15900
+        ],
+        "this_ids": [
+          428,
+          15900
+        ]
+      },
+      {
+        "answer_boundaries_preserved": true,
+        "determiner_only_difference": true,
+        "leading_noun_ids": [
+          20096
+        ],
+        "noun": "deer",
+        "single_noun_token": true,
+        "these_ids": [
+          777,
+          20096
+        ],
+        "this_ids": [
+          428,
+          20096
+        ]
+      },
+      {
+        "answer_boundaries_preserved": true,
+        "determiner_only_difference": true,
+        "leading_noun_ids": [
+          5916
+        ],
+        "noun": "fish",
+        "single_noun_token": true,
+        "these_ids": [
+          777,
+          5916
+        ],
+        "this_ids": [
+          428,
+          5916
+        ]
+      },
+      {
+        "answer_boundaries_preserved": true,
+        "determiner_only_difference": true,
+        "leading_noun_ids": [
+          6941,
+          577
+        ],
+        "noun": "moose",
+        "single_noun_token": false,
+        "these_ids": [
+          777,
+          6941,
+          577
+        ],
+        "this_ids": [
+          428,
+          6941,
+          577
+        ]
+      },
+      {
+        "answer_boundaries_preserved": true,
+        "determiner_only_difference": true,
+        "leading_noun_ids": [
+          1288,
+          74
+        ],
+        "noun": "elk",
+        "single_noun_token": false,
+        "these_ids": [
+          777,
+          1288,
+          74
+        ],
+        "this_ids": [
+          428,
+          1288,
+          74
+        ]
+      },
+      {
+        "answer_boundaries_preserved": true,
+        "determiner_only_difference": true,
+        "leading_noun_ids": [
+          14873
+        ],
+        "noun": "cod",
+        "single_noun_token": true,
+        "these_ids": [
+          777,
+          14873
+        ],
+        "this_ids": [
+          428,
+          14873
+        ]
+      }
+    ],
+    "evaluation": [
+      {
+        "answer_boundaries_preserved": true,
+        "determiner_only_difference": true,
+        "leading_noun_ids": [
+          275,
+          1653
+        ],
+        "noun": "bison",
+        "single_noun_token": false,
+        "these_ids": [
+          777,
+          275,
+          1653
+        ],
+        "this_ids": [
+          428,
+          275,
+          1653
+        ]
+      },
+      {
+        "answer_boundaries_preserved": true,
+        "determiner_only_difference": true,
+        "leading_noun_ids": [
+          45126
+        ],
+        "noun": "squid",
+        "single_noun_token": true,
+        "these_ids": [
+          777,
+          45126
+        ],
+        "this_ids": [
+          428,
+          45126
+        ]
+      },
+      {
+        "answer_boundaries_preserved": true,
+        "determiner_only_difference": true,
+        "leading_noun_ids": [
+          30060
+        ],
+        "noun": "shrimp",
+        "single_noun_token": true,
+        "these_ids": [
+          777,
+          30060
+        ],
+        "this_ids": [
+          428,
+          30060
+        ]
+      },
+      {
+        "answer_boundaries_preserved": true,
+        "determiner_only_difference": true,
+        "leading_noun_ids": [
+          39465
+        ],
+        "noun": "carp",
+        "single_noun_token": true,
+        "these_ids": [
+          777,
+          39465
+        ],
+        "this_ids": [
+          428,
+          39465
+        ]
+      },
+      {
+        "answer_boundaries_preserved": true,
+        "determiner_only_difference": true,
+        "leading_noun_ids": [
+          6215
+        ],
+        "noun": "aircraft",
+        "single_noun_token": true,
+        "these_ids": [
+          777,
+          6215
+        ],
+        "this_ids": [
+          428,
+          6215
+        ]
+      },
+      {
+        "answer_boundaries_preserved": true,
+        "determiner_only_difference": true,
+        "leading_noun_ids": [
+          16807
+        ],
+        "noun": "spacecraft",
+        "single_noun_token": true,
+        "these_ids": [
+          777,
+          16807
+        ],
+        "this_ids": [
+          428,
+          16807
+        ]
+      },
+      {
+        "answer_boundaries_preserved": true,
+        "determiner_only_difference": true,
+        "leading_noun_ids": [
+          1509,
+          500
+        ],
+        "noun": "swine",
+        "single_noun_token": false,
+        "these_ids": [
+          777,
+          1509,
+          500
+        ],
+        "this_ids": [
+          428,
+          1509,
+          500
+        ]
+      },
+      {
+        "answer_boundaries_preserved": true,
+        "determiner_only_difference": true,
+        "leading_noun_ids": [
+          20791
+        ],
+        "noun": "offspring",
+        "single_noun_token": true,
+        "these_ids": [
+          777,
+          20791
+        ],
+        "this_ids": [
+          428,
+          20791
+        ]
+      }
+    ]
+  },
+  "determiners": {
+    "these": [
+      777
+    ],
+    "this": [
+      428
+    ]
+  },
+  "model_feasibility_from_existing_evidence": {
+    "prior_baseline_correct": {
+      "correct": 48,
+      "total": 48
+    },
+    "prior_delivery_count": 324,
+    "prior_science_sha256": "a3bc57be6506e1464e2cfb3d4fcc534a44c06a958c01086cdf98964aa4a09a94",
+    "prior_valid_deliveries": 324,
+    "scope": "Prior subject-form and intervention feasibility only; it did not test invariant nouns or this/these."
+  },
+  "model_forwards": 0,
+  "schema": "agreement-invariant-tokenizer-feasibility-v1",
+  "scope": "Tokenizer fragments and previously saved evidence only; no evaluation sentence, model load or new forward.",
+  "tokenizer_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6"
+}

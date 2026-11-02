@@ -1,0 +1,17 @@
+{"stage":"admission","value":{"allocated_bytes":0,"free_bytes":7477395456,"reserved_bytes":0,"total_bytes":8589606912}}
+{"stage":"after_model_transfer","value":{"allocated_bytes":23040,"free_bytes":7475298304,"reserved_bytes":2097152,"total_bytes":8589606912}}
+{"stage":"trace_0","value":{"capture_released":true,"capture_retained_until_sync":true,"event_bytes":64,"outcome":"success","trace_claim_released":true,"trace_resources_released":true,"trace_resources_retained_until_sync":true}}
+{"stage":"after_trace_0","value":{"allocated_bytes":33577472,"free_bytes":7389315072,"reserved_bytes":35651584,"total_bytes":8589606912}}
+{"stage":"trace_1","value":{"capture_released":true,"capture_retained_until_sync":true,"event_bytes":64,"outcome":"synthetic_trace_cancellation","trace_claim_released":true,"trace_resources_released":true,"trace_resources_retained_until_sync":true}}
+{"stage":"after_trace_1","value":{"allocated_bytes":33577472,"free_bytes":7389315072,"reserved_bytes":35651584,"total_bytes":8589606912}}
+{"stage":"trace_2","value":{"capture_released":true,"capture_retained_until_sync":true,"event_bytes":64,"outcome":"success","trace_claim_released":true,"trace_resources_released":true,"trace_resources_retained_until_sync":true}}
+{"stage":"after_trace_2","value":{"allocated_bytes":33577472,"free_bytes":7389315072,"reserved_bytes":35651584,"total_bytes":8589606912}}
+{"stage":"before_worker","value":{"allocated_bytes":33577472,"free_bytes":7389315072,"reserved_bytes":35651584,"total_bytes":8589606912}}
+{"stage":"baseline","value":{"outcome":"succeeded"}}
+{"stage":"after_baseline","value":{"allocated_bytes":67131904,"free_bytes":7322206208,"reserved_bytes":69206016,"total_bytes":8589606912}}
+{"stage":"cancellation","value":{"accepted":true,"outcome":"cancelled"}}
+{"stage":"after_cancellation","value":{"allocated_bytes":67131904,"free_bytes":7322206208,"reserved_bytes":69206016,"total_bytes":8589606912}}
+{"stage":"post_cancel","value":{"outcome":"succeeded"}}
+{"stage":"after_post_cancel","value":{"allocated_bytes":67131904,"free_bytes":7322206208,"reserved_bytes":69206016,"total_bytes":8589606912}}
+{"stage":"before_simulated_oom","value":{"allocated_bytes":67131904,"free_bytes":7322206208,"reserved_bytes":69206016,"total_bytes":8589606912}}
+{"stage":"simulated_oom","value":{"active_claim_count":2,"injection_reached":true,"no_explicit_checkpoint_after_unsafe":true,"outcome":"failed","private_forward_error_type":"OutOfMemoryError","public_error_type":"WorkerSynchronizationError","subsequent_work_refused":true,"worker_unsafe":true}}

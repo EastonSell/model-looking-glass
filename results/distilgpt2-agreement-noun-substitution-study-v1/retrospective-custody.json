@@ -1,0 +1,12 @@
+{
+  "cross_model": "Cross-model owner reports its 32 v36 cases remained tokenizer-only and unforwarded throughout the interval.",
+  "injection": "Injection custodian reports no held-out claim, nonce, split, protected rows or held-out forward during the interval; no private comparison was made.",
+  "natural": "Natural custodian reports original commitment and public-support assumption unchanged during this interval and no successor claim, nonce, record or split; the successor-root metadata check remains empty.",
+  "observer_interval_utc": [
+    "2026-10-29T11:52:38.611903+00:00",
+    "2026-10-29T11:55:18.135637+00:00"
+  ],
+  "recorded_utc": "2026-10-29T11:57:34.695295+00:00",
+  "schema": "agreement-substitution-retrospective-custody-v1",
+  "scope": "Retrospective cooperative lane reports, not authenticated timestamps or continuous independent monitoring."
+}

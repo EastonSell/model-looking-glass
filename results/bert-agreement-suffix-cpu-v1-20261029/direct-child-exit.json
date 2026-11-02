@@ -1,0 +1,14 @@
+{
+  "attempt_name": "bert-agreement-suffix-cpu-v1-20261029-01",
+  "child_pid": 56352,
+  "complete_sha256": "de0d88d3f28463bdbf778cc83f00c3da91eaf1dc7996554f39de7f514c5d6214",
+  "controller_name": "bert-agreement-suffix-controller-v1-20261029-01",
+  "end_unix": 1793279287.7548368,
+  "exit_code": 0,
+  "interrupted": null,
+  "metadata_sha256": "9953488bb0a253ef109e3539a5af91c0684cb9df41d48ee65103a53ee160e31b",
+  "schema": "bert-agreement-suffix-direct-child-exit-v1",
+  "source_commit": "7dbf6e9ea498770e389cbf7fbc1eba5bc2303662",
+  "start_unix": 1793279212.0161011,
+  "status": "complete"
+}

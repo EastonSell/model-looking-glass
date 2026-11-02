@@ -1,0 +1,186 @@
+{
+  "candidate_eligible": {
+    "banana": false,
+    "lemon": false,
+    "strawberry": false
+  },
+  "independent_report_sha256": "757e948accddeb86e26a1cb8df9c055e5bfdf180c5d1b2ad220c172b3871d983",
+  "journal_sha256": "3e55c8eebf990e930f73f902a635d7866f0a7f314b30dc62f41e43277b97fb83",
+  "rows": [
+    {
+      "case_id": "banana-discovery",
+      "eligible": false,
+      "factual_id": 3756,
+      "factual_probability": 0.09591849035377811,
+      "factual_rank": 2,
+      "factual_token": "yellow",
+      "object": "banana",
+      "role": "discovery",
+      "top_five_tokens": [
+        "orange",
+        "yellow",
+        "purple",
+        "blue",
+        "pink"
+      ],
+      "unique_top_id": 4589,
+      "unique_top_token": "orange"
+    },
+    {
+      "case_id": "banana-calibration-01",
+      "eligible": false,
+      "factual_id": 3756,
+      "factual_probability": 0.0002587650590456729,
+      "factual_rank": 180,
+      "factual_token": "yellow",
+      "object": "banana",
+      "role": "calibration-01",
+      "top_five_tokens": [
+        "eaten",
+        "consumed",
+        "edible",
+        "harvested",
+        "cultivated"
+      ],
+      "unique_top_id": 8828,
+      "unique_top_token": "eaten"
+    },
+    {
+      "case_id": "banana-calibration-02",
+      "eligible": false,
+      "factual_id": 3756,
+      "factual_probability": 0.012210058740017848,
+      "factual_rank": 17,
+      "factual_token": "yellow",
+      "object": "banana",
+      "role": "calibration-02",
+      "top_five_tokens": [
+        "smooth",
+        "edible",
+        "hairy",
+        "whitish",
+        "sticky"
+      ],
+      "unique_top_id": 5744,
+      "unique_top_token": "smooth"
+    },
+    {
+      "case_id": "strawberry-discovery",
+      "eligible": false,
+      "factual_id": 2417,
+      "factual_probability": 0.020299150981013064,
+      "factual_rank": 13,
+      "factual_token": "red",
+      "object": "strawberry",
+      "role": "discovery",
+      "top_five_tokens": [
+        "orange",
+        "purple",
+        "yellow",
+        "pink",
+        "blue"
+      ],
+      "unique_top_id": 4589,
+      "unique_top_token": "orange"
+    },
+    {
+      "case_id": "strawberry-calibration-01",
+      "eligible": false,
+      "factual_id": 2417,
+      "factual_probability": 0.00071087533581982,
+      "factual_rank": 133,
+      "factual_token": "red",
+      "object": "strawberry",
+      "role": "calibration-01",
+      "top_five_tokens": [
+        "eaten",
+        "edible",
+        "cultivated",
+        "consumed",
+        "harvested"
+      ],
+      "unique_top_id": 8828,
+      "unique_top_token": "eaten"
+    },
+    {
+      "case_id": "strawberry-calibration-02",
+      "eligible": false,
+      "factual_id": 2417,
+      "factual_probability": 0.007938339837377241,
+      "factual_rank": 23,
+      "factual_token": "red",
+      "object": "strawberry",
+      "role": "calibration-02",
+      "top_five_tokens": [
+        "smooth",
+        "whitish",
+        "hairy",
+        "edible",
+        "rough"
+      ],
+      "unique_top_id": 5744,
+      "unique_top_token": "smooth"
+    },
+    {
+      "case_id": "lemon-discovery",
+      "eligible": false,
+      "factual_id": 3756,
+      "factual_probability": 0.0982521909216363,
+      "factual_rank": 2,
+      "factual_token": "yellow",
+      "object": "lemon",
+      "role": "discovery",
+      "top_five_tokens": [
+        "orange",
+        "yellow",
+        "blue",
+        "purple",
+        "pink"
+      ],
+      "unique_top_id": 4589,
+      "unique_top_token": "orange"
+    },
+    {
+      "case_id": "lemon-calibration-01",
+      "eligible": false,
+      "factual_id": 3756,
+      "factual_probability": 0.0006863883017967452,
+      "factual_rank": 110,
+      "factual_token": "yellow",
+      "object": "lemon",
+      "role": "calibration-01",
+      "top_five_tokens": [
+        "eaten",
+        "consumed",
+        "used",
+        "preferred",
+        "edible"
+      ],
+      "unique_top_id": 8828,
+      "unique_top_token": "eaten"
+    },
+    {
+      "case_id": "lemon-calibration-02",
+      "eligible": false,
+      "factual_id": 3756,
+      "factual_probability": 0.019967103854614938,
+      "factual_rank": 11,
+      "factual_token": "yellow",
+      "object": "lemon",
+      "role": "calibration-02",
+      "top_five_tokens": [
+        "smooth",
+        "edible",
+        "whitish",
+        "hairy",
+        "pink"
+      ],
+      "unique_top_id": 5744,
+      "unique_top_token": "smooth"
+    }
+  ],
+  "scope": "Token labels from pinned vocabulary; saved-logit consistency, not model execution attestation.",
+  "selected_object": null,
+  "status": "baseline-ineligible",
+  "vocab_sha256": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+}

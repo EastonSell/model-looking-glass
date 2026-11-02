@@ -1,0 +1,1344 @@
+{
+  "case_sha256": "811a1f0251ff21ddaa1869ee96c80dfa47beb87a6b6c2f1e3b6505728fee1825",
+  "discovery": {
+    "1": {
+      "causal_mask_reference": [
+        "Q1",
+        "Q3",
+        "Q4"
+      ],
+      "constant": "Q3",
+      "first_changed": "Q2",
+      "first_changed_votes": [
+        0,
+        8,
+        0,
+        0
+      ],
+      "magnitude": "Q3",
+      "magnitude_scores": [
+        2.459287933685658,
+        4.000000003958121,
+        4.000000066123903,
+        0.0
+      ],
+      "random": "Q1",
+      "selector": {
+        "abstained": false,
+        "max_tie": [
+          "Q3"
+        ],
+        "mean_absolute_effects": [
+          0.03653383255004883,
+          0.0,
+          0.06423807144165039,
+          0.0
+        ],
+        "ranking": [
+          "Q3",
+          "Q1",
+          "Q2",
+          "Q4"
+        ],
+        "selected": "Q3",
+        "signed_predictions": [
+          -0.035863399505615234,
+          0.0,
+          -0.006591320037841797,
+          0.0
+        ]
+      },
+      "uniform_site_reference": 0.25
+    },
+    "2": {
+      "causal_mask_reference": [
+        "Q1",
+        "Q2",
+        "Q4"
+      ],
+      "constant": "Q3",
+      "first_changed": "Q3",
+      "first_changed_votes": [
+        0,
+        0,
+        8,
+        0
+      ],
+      "magnitude": "Q3",
+      "magnitude_scores": [
+        3.9999999813735485,
+        0.0,
+        4.000000003958121,
+        2.2794206343958474
+      ],
+      "random": "Q1",
+      "selector": {
+        "abstained": false,
+        "max_tie": [
+          "Q1"
+        ],
+        "mean_absolute_effects": [
+          0.058582305908203125,
+          0.0,
+          0.0,
+          0.04926919937133789
+        ],
+        "ranking": [
+          "Q1",
+          "Q4",
+          "Q2",
+          "Q3"
+        ],
+        "selected": "Q1",
+        "signed_predictions": [
+          0.029771804809570312,
+          0.0,
+          0.0,
+          -0.04926919937133789
+        ]
+      },
+      "uniform_site_reference": 0.25
+    },
+    "3": {
+      "causal_mask_reference": [
+        "Q1",
+        "Q2",
+        "Q3"
+      ],
+      "constant": "Q3",
+      "first_changed": "Q4",
+      "first_changed_votes": [
+        0,
+        0,
+        0,
+        8
+      ],
+      "magnitude": "Q4",
+      "magnitude_scores": [
+        0.0,
+        2.1474555991861553,
+        3.9999999925494194,
+        4.000000003958121
+      ],
+      "random": "Q4",
+      "selector": {
+        "abstained": false,
+        "max_tie": [
+          "Q3"
+        ],
+        "mean_absolute_effects": [
+          0.0,
+          0.0320281982421875,
+          0.09715604782104492,
+          0.0
+        ],
+        "ranking": [
+          "Q3",
+          "Q2",
+          "Q1",
+          "Q4"
+        ],
+        "selected": "Q3",
+        "signed_predictions": [
+          0.0,
+          0.0030517578125,
+          0.09715604782104492,
+          0.0
+        ]
+      },
+      "uniform_site_reference": 0.25
+    }
+  },
+  "discovery_freeze_sha256": "6f93c91430ff7c5cd1dcc7a764e34e52b9cbd854cdea12a30bce7a1b7b88b6e4",
+  "discovery_receipt_sha256": "da8d176c76418cacc6d82c80bdd1f545cbbeeb00ca13fa086dfe7077e6c297ab",
+  "heldout": {
+    "cells": {
+      "1": {
+        "candidates": {
+          "Q1": {
+            "accuracy": {
+              "improved": false,
+              "mae": 0.08530747890472412,
+              "zero_mae": 0.07739639282226562
+            },
+            "cases": [
+              {
+                "case_id": "distractor-repair-09",
+                "distance_to_clean": 35.28241748092757,
+                "effect": -0.00421905517578125
+              },
+              {
+                "case_id": "distractor-repair-10",
+                "distance_to_clean": 55.820183685888544,
+                "effect": -0.07523345947265625
+              },
+              {
+                "case_id": "distractor-repair-11",
+                "distance_to_clean": 47.2288580130533,
+                "effect": 0.024913787841796875
+              },
+              {
+                "case_id": "distractor-repair-12",
+                "distance_to_clean": 40.01992986684688,
+                "effect": -0.19360733032226562
+              },
+              {
+                "case_id": "distractor-repair-13",
+                "distance_to_clean": 61.748033729470514,
+                "effect": 0.07170867919921875
+              },
+              {
+                "case_id": "distractor-repair-14",
+                "distance_to_clean": 31.654595509629456,
+                "effect": -0.22491455078125
+              },
+              {
+                "case_id": "distractor-repair-15",
+                "distance_to_clean": 110.4006927209093,
+                "effect": 0.01515960693359375
+              },
+              {
+                "case_id": "distractor-repair-16",
+                "distance_to_clean": 56.73803324788673,
+                "effect": 0.0094146728515625
+              }
+            ],
+            "prediction": -0.035863399505615234
+          },
+          "Q2": {
+            "accuracy": {
+              "improved": false,
+              "mae": 0.0,
+              "zero_mae": 0.0
+            },
+            "cases": [
+              {
+                "case_id": "distractor-repair-09",
+                "distance_to_clean": 16.765550965755434,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-10",
+                "distance_to_clean": 81.39895100037077,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-11",
+                "distance_to_clean": 76.3966465959312,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-12",
+                "distance_to_clean": 119.44240284645366,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-13",
+                "distance_to_clean": 146.18155124005412,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-14",
+                "distance_to_clean": 28.993629692065152,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-15",
+                "distance_to_clean": 189.05332606343646,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-16",
+                "distance_to_clean": 112.79098102345672,
+                "effect": 0.0
+              }
+            ],
+            "prediction": 0.0
+          },
+          "Q3": {
+            "accuracy": {
+              "improved": false,
+              "mae": 0.09427475929260254,
+              "zero_mae": 0.09230470657348633
+            },
+            "cases": [
+              {
+                "case_id": "distractor-repair-09",
+                "distance_to_clean": 0.0,
+                "effect": 0.080322265625
+              },
+              {
+                "case_id": "distractor-repair-10",
+                "distance_to_clean": 0.0,
+                "effect": 0.006511688232421875
+              },
+              {
+                "case_id": "distractor-repair-11",
+                "distance_to_clean": 0.0,
+                "effect": 0.026386260986328125
+              },
+              {
+                "case_id": "distractor-repair-12",
+                "distance_to_clean": 0.0,
+                "effect": -0.1904449462890625
+              },
+              {
+                "case_id": "distractor-repair-13",
+                "distance_to_clean": 0.0,
+                "effect": 0.2763557434082031
+              },
+              {
+                "case_id": "distractor-repair-14",
+                "distance_to_clean": 0.0,
+                "effect": -0.14150238037109375
+              },
+              {
+                "case_id": "distractor-repair-15",
+                "distance_to_clean": 0.0,
+                "effect": -0.00530242919921875
+              },
+              {
+                "case_id": "distractor-repair-16",
+                "distance_to_clean": 0.0,
+                "effect": 0.0116119384765625
+              }
+            ],
+            "prediction": -0.006591320037841797
+          },
+          "Q4": {
+            "accuracy": {
+              "improved": false,
+              "mae": 0.0,
+              "zero_mae": 0.0
+            },
+            "cases": [
+              {
+                "case_id": "distractor-repair-09",
+                "distance_to_clean": 16.765550965755434,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-10",
+                "distance_to_clean": 81.39895100037077,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-11",
+                "distance_to_clean": 76.3966465959312,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-12",
+                "distance_to_clean": 119.44240284645366,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-13",
+                "distance_to_clean": 146.18155124005412,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-14",
+                "distance_to_clean": 28.993629692065152,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-15",
+                "distance_to_clean": 189.05332606343646,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-16",
+                "distance_to_clean": 112.79098102345672,
+                "effect": 0.0
+              }
+            ],
+            "prediction": 0.0
+          }
+        },
+        "cases": [
+          {
+            "case_id": "distractor-repair-09",
+            "combined_distance": 16.765550965755434,
+            "combined_final_vs_target": 15.765343727313336,
+            "decoy_final_distance": 15.629813461402534,
+            "downstream_distance": 35.28241748092757,
+            "downstream_reduction": -1.1044591706525995,
+            "rotation": {
+              "clean_norm": 2.344645651594852,
+              "cosine": -0.003605165815315489,
+              "matched": true,
+              "rotated_norm": 2.34464567719103
+            },
+            "rotation_distance": 66.74410873154865,
+            "rotation_reduction": -2.9810268608456223,
+            "target_contrast_effect": -0.080322265625,
+            "target_full_logit_distance": 16.765550965755434
+          },
+          {
+            "case_id": "distractor-repair-10",
+            "combined_distance": 81.39895100037077,
+            "combined_final_vs_target": 14.650974227853606,
+            "decoy_final_distance": 14.941354568446993,
+            "downstream_distance": 55.820183685888544,
+            "downstream_reduction": 0.31423952029020275,
+            "rotation": {
+              "clean_norm": 2.538660686447116,
+              "cosine": -0.008992393275979097,
+              "matched": true,
+              "rotated_norm": 2.5386606936677407
+            },
+            "rotation_distance": 196.16491137222437,
+            "rotation_reduction": -1.409919402663197,
+            "target_contrast_effect": -0.006511688232421875,
+            "target_full_logit_distance": 81.39895100037077
+          },
+          {
+            "case_id": "distractor-repair-11",
+            "combined_distance": 76.3966465959312,
+            "combined_final_vs_target": 23.35438404601704,
+            "decoy_final_distance": 21.4872626021867,
+            "downstream_distance": 47.2288580130533,
+            "downstream_reduction": 0.38179409545485665,
+            "rotation": {
+              "clean_norm": 2.45803513022873,
+              "cosine": 0.015059483778038925,
+              "matched": true,
+              "rotated_norm": 2.4580351279354233
+            },
+            "rotation_distance": 33.64138270208196,
+            "rotation_reduction": 0.5596484374502158,
+            "target_contrast_effect": -0.026386260986328125,
+            "target_full_logit_distance": 76.3966465959312
+          },
+          {
+            "case_id": "distractor-repair-12",
+            "combined_distance": 119.44240284645366,
+            "combined_final_vs_target": 75.40916026983871,
+            "decoy_final_distance": 78.9259071281362,
+            "downstream_distance": 40.01992986684688,
+            "downstream_reduction": 0.6649436974380568,
+            "rotation": {
+              "clean_norm": 2.8380663905189034,
+              "cosine": -0.001106967704570094,
+              "matched": true,
+              "rotated_norm": 2.8380663891720848
+            },
+            "rotation_distance": 204.27222872755442,
+            "rotation_reduction": -0.7102153327420224,
+            "target_contrast_effect": 0.1904449462890625,
+            "target_full_logit_distance": 119.44240284645366
+          },
+          {
+            "case_id": "distractor-repair-13",
+            "combined_distance": 146.18155124005412,
+            "combined_final_vs_target": 40.93822082370304,
+            "decoy_final_distance": 41.28403792273867,
+            "downstream_distance": 61.748033729470514,
+            "downstream_reduction": 0.577593525272761,
+            "rotation": {
+              "clean_norm": 2.028537991272407,
+              "cosine": 0.055119786458761776,
+              "matched": true,
+              "rotated_norm": 2.0285379885604753
+            },
+            "rotation_distance": 165.1706768723419,
+            "rotation_reduction": -0.12990097225815123,
+            "target_contrast_effect": -0.2763557434082031,
+            "target_full_logit_distance": 146.18155124005412
+          },
+          {
+            "case_id": "distractor-repair-14",
+            "combined_distance": 28.993629692065152,
+            "combined_final_vs_target": 50.38827990418791,
+            "decoy_final_distance": 53.528427339232415,
+            "downstream_distance": 31.654595509629456,
+            "downstream_reduction": -0.09177760238458665,
+            "rotation": {
+              "clean_norm": 2.2598829267629,
+              "cosine": -0.011598701473026607,
+              "matched": true,
+              "rotated_norm": 2.2598829220261387
+            },
+            "rotation_distance": 45.359927221745636,
+            "rotation_reduction": -0.5644790839747649,
+            "target_contrast_effect": 0.14150238037109375,
+            "target_full_logit_distance": 28.993629692065152
+          },
+          {
+            "case_id": "distractor-repair-15",
+            "combined_distance": 189.05332606343646,
+            "combined_final_vs_target": 17.84161262776104,
+            "decoy_final_distance": 19.057278636987327,
+            "downstream_distance": 110.4006927209093,
+            "downstream_reduction": 0.41603411577184,
+            "rotation": {
+              "clean_norm": 2.6829235891047527,
+              "cosine": 0.023778016655609253,
+              "matched": true,
+              "rotated_norm": 2.682923580234882
+            },
+            "rotation_distance": 293.3895189598412,
+            "rotation_reduction": -0.5518876343989576,
+            "target_contrast_effect": 0.00530242919921875,
+            "target_full_logit_distance": 189.05332606343646
+          },
+          {
+            "case_id": "distractor-repair-16",
+            "combined_distance": 112.79098102345672,
+            "combined_final_vs_target": 13.707219285838574,
+            "decoy_final_distance": 13.862216816045478,
+            "downstream_distance": 56.73803324788673,
+            "downstream_reduction": 0.4969630307933297,
+            "rotation": {
+              "clean_norm": 2.660120571118683,
+              "cosine": 0.007264080298799247,
+              "matched": true,
+              "rotated_norm": 2.660120557990097
+            },
+            "rotation_distance": 158.11451768493748,
+            "rotation_reduction": -0.4018365320544113,
+            "target_contrast_effect": -0.0116119384765625,
+            "target_full_logit_distance": 112.79098102345672
+          }
+        ],
+        "rotation_reduction": -0.5082004204902684,
+        "selected_source": true,
+        "target_effect_count": 8
+      },
+      "2": {
+        "candidates": {
+          "Q1": {
+            "accuracy": {
+              "improved": true,
+              "mae": 0.06850671768188477,
+              "zero_mae": 0.07226896286010742
+            },
+            "cases": [
+              {
+                "case_id": "distractor-repair-09",
+                "distance_to_clean": 0.0,
+                "effect": 0.0850830078125
+              },
+              {
+                "case_id": "distractor-repair-10",
+                "distance_to_clean": 0.0,
+                "effect": 0.10381317138671875
+              },
+              {
+                "case_id": "distractor-repair-11",
+                "distance_to_clean": 0.0,
+                "effect": -0.00630950927734375
+              },
+              {
+                "case_id": "distractor-repair-12",
+                "distance_to_clean": 0.0,
+                "effect": 0.007854461669921875
+              },
+              {
+                "case_id": "distractor-repair-13",
+                "distance_to_clean": 0.0,
+                "effect": 0.21844863891601562
+              },
+              {
+                "case_id": "distractor-repair-14",
+                "distance_to_clean": 0.0,
+                "effect": 0.12766647338867188
+              },
+              {
+                "case_id": "distractor-repair-15",
+                "distance_to_clean": 0.0,
+                "effect": -0.02178192138671875
+              },
+              {
+                "case_id": "distractor-repair-16",
+                "distance_to_clean": 0.0,
+                "effect": 0.00719451904296875
+              }
+            ],
+            "prediction": 0.029771804809570312
+          },
+          "Q2": {
+            "accuracy": {
+              "improved": false,
+              "mae": 0.0,
+              "zero_mae": 0.0
+            },
+            "cases": [
+              {
+                "case_id": "distractor-repair-09",
+                "distance_to_clean": 26.33853886821057,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-10",
+                "distance_to_clean": 50.459410448474564,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-11",
+                "distance_to_clean": 25.944215468031604,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-12",
+                "distance_to_clean": 37.44529144796337,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-13",
+                "distance_to_clean": 57.65077489378638,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-14",
+                "distance_to_clean": 22.36778448542323,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-15",
+                "distance_to_clean": 123.29833882676148,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-16",
+                "distance_to_clean": 37.481766639344094,
+                "effect": 0.0
+              }
+            ],
+            "prediction": 0.0
+          },
+          "Q3": {
+            "accuracy": {
+              "improved": false,
+              "mae": 0.0,
+              "zero_mae": 0.0
+            },
+            "cases": [
+              {
+                "case_id": "distractor-repair-09",
+                "distance_to_clean": 26.33853886821057,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-10",
+                "distance_to_clean": 50.459410448474564,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-11",
+                "distance_to_clean": 25.944215468031604,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-12",
+                "distance_to_clean": 37.44529144796337,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-13",
+                "distance_to_clean": 57.65077489378638,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-14",
+                "distance_to_clean": 22.36778448542323,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-15",
+                "distance_to_clean": 123.29833882676148,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-16",
+                "distance_to_clean": 37.481766639344094,
+                "effect": 0.0
+              }
+            ],
+            "prediction": 0.0
+          },
+          "Q4": {
+            "accuracy": {
+              "improved": true,
+              "mae": 0.047182440757751465,
+              "zero_mae": 0.06682586669921875
+            },
+            "cases": [
+              {
+                "case_id": "distractor-repair-09",
+                "distance_to_clean": 105.96057398515609,
+                "effect": -0.008941650390625
+              },
+              {
+                "case_id": "distractor-repair-10",
+                "distance_to_clean": 17.167956270620063,
+                "effect": -0.057216644287109375
+              },
+              {
+                "case_id": "distractor-repair-11",
+                "distance_to_clean": 64.00416849888825,
+                "effect": -0.02036285400390625
+              },
+              {
+                "case_id": "distractor-repair-12",
+                "distance_to_clean": 30.55205929542222,
+                "effect": -0.12316513061523438
+              },
+              {
+                "case_id": "distractor-repair-13",
+                "distance_to_clean": 81.28796558885777,
+                "effect": 0.076904296875
+              },
+              {
+                "case_id": "distractor-repair-14",
+                "distance_to_clean": 90.02885681780744,
+                "effect": -0.09814071655273438
+              },
+              {
+                "case_id": "distractor-repair-15",
+                "distance_to_clean": 14.210885472684772,
+                "effect": -0.07487869262695312
+              },
+              {
+                "case_id": "distractor-repair-16",
+                "distance_to_clean": 14.974177282696564,
+                "effect": -0.0749969482421875
+              }
+            ],
+            "prediction": -0.04926919937133789
+          }
+        },
+        "cases": [
+          {
+            "case_id": "distractor-repair-09",
+            "combined_distance": 26.33853886821057,
+            "combined_final_vs_target": 15.58915505772312,
+            "decoy_final_distance": 15.629813461402534,
+            "downstream_distance": 105.96057398515609,
+            "downstream_reduction": -3.023023999749877,
+            "rotation": {
+              "clean_norm": 2.1864546897883184,
+              "cosine": 0.0030448109737575197,
+              "matched": true,
+              "rotated_norm": 2.186454705583786
+            },
+            "rotation_distance": 28.719619553209768,
+            "rotation_reduction": -0.09040291479012352,
+            "target_contrast_effect": -0.0850830078125,
+            "target_full_logit_distance": 26.33853886821057
+          },
+          {
+            "case_id": "distractor-repair-10",
+            "combined_distance": 50.459410448474564,
+            "combined_final_vs_target": 14.402512522797048,
+            "decoy_final_distance": 14.941354568446993,
+            "downstream_distance": 17.167956270620063,
+            "downstream_reduction": 0.6597670064308279,
+            "rotation": {
+              "clean_norm": 2.322749181437677,
+              "cosine": -0.013178446532318417,
+              "matched": true,
+              "rotated_norm": 2.322749184717938
+            },
+            "rotation_distance": 18.119858888508443,
+            "rotation_reduction": 0.6409022870568195,
+            "target_contrast_effect": -0.10381317138671875,
+            "target_full_logit_distance": 50.459410448474564
+          },
+          {
+            "case_id": "distractor-repair-11",
+            "combined_distance": 25.944215468031604,
+            "combined_final_vs_target": 22.14737651332575,
+            "decoy_final_distance": 21.4872626021867,
+            "downstream_distance": 64.00416849888825,
+            "downstream_reduction": -1.4669918648245126,
+            "rotation": {
+              "clean_norm": 2.2045101211752405,
+              "cosine": -0.016690410089353618,
+              "matched": true,
+              "rotated_norm": 2.204510163736001
+            },
+            "rotation_distance": 37.09556737808505,
+            "rotation_reduction": -0.4298203552847497,
+            "target_contrast_effect": 0.00630950927734375,
+            "target_full_logit_distance": 25.944215468031604
+          },
+          {
+            "case_id": "distractor-repair-12",
+            "combined_distance": 37.44529144796337,
+            "combined_final_vs_target": 79.77206898437328,
+            "decoy_final_distance": 78.9259071281362,
+            "downstream_distance": 30.55205929542222,
+            "downstream_reduction": 0.18408808920930608,
+            "rotation": {
+              "clean_norm": 2.955962258333857,
+              "cosine": -0.052597541858292594,
+              "matched": true,
+              "rotated_norm": 2.9559622737088147
+            },
+            "rotation_distance": 49.545586014516815,
+            "rotation_reduction": -0.3231459577065616,
+            "target_contrast_effect": -0.007854461669921875,
+            "target_full_logit_distance": 37.44529144796337
+          },
+          {
+            "case_id": "distractor-repair-13",
+            "combined_distance": 57.65077489378638,
+            "combined_final_vs_target": 41.80226112599906,
+            "decoy_final_distance": 41.28403792273867,
+            "downstream_distance": 81.28796558885777,
+            "downstream_reduction": -0.4100064697936787,
+            "rotation": {
+              "clean_norm": 2.246933151857409,
+              "cosine": 0.026487178419287796,
+              "matched": true,
+              "rotated_norm": 2.2469331701568143
+            },
+            "rotation_distance": 141.55535202858758,
+            "rotation_reduction": -1.4553937443058458,
+            "target_contrast_effect": -0.21844863891601562,
+            "target_full_logit_distance": 57.65077489378638
+          },
+          {
+            "case_id": "distractor-repair-14",
+            "combined_distance": 22.36778448542323,
+            "combined_final_vs_target": 54.47597933212196,
+            "decoy_final_distance": 53.528427339232415,
+            "downstream_distance": 90.02885681780744,
+            "downstream_reduction": -3.024934024041495,
+            "rotation": {
+              "clean_norm": 2.5946707551556982,
+              "cosine": -0.007970415293786767,
+              "matched": true,
+              "rotated_norm": 2.5946707612609705
+            },
+            "rotation_distance": 72.16426858027185,
+            "rotation_reduction": -2.2262591150813478,
+            "target_contrast_effect": -0.12766647338867188,
+            "target_full_logit_distance": 22.36778448542323
+          },
+          {
+            "case_id": "distractor-repair-15",
+            "combined_distance": 123.29833882676148,
+            "combined_final_vs_target": 20.459929026469855,
+            "decoy_final_distance": 19.057278636987327,
+            "downstream_distance": 14.210885472684772,
+            "downstream_reduction": 0.8847439015974776,
+            "rotation": {
+              "clean_norm": 2.6082273232296895,
+              "cosine": 0.01599987026681669,
+              "matched": true,
+              "rotated_norm": 2.6082273330613543
+            },
+            "rotation_distance": 94.3437432409864,
+            "rotation_reduction": 0.2348336227502409,
+            "target_contrast_effect": 0.02178192138671875,
+            "target_full_logit_distance": 123.29833882676148
+          },
+          {
+            "case_id": "distractor-repair-16",
+            "combined_distance": 37.481766639344094,
+            "combined_final_vs_target": 13.601754341824359,
+            "decoy_final_distance": 13.862216816045478,
+            "downstream_distance": 14.974177282696564,
+            "downstream_reduction": 0.6004943569821393,
+            "rotation": {
+              "clean_norm": 2.3141479537482916,
+              "cosine": 0.008606244880802994,
+              "matched": true,
+              "rotated_norm": 2.3141479437659176
+            },
+            "rotation_distance": 42.764910072542165,
+            "rotation_reduction": -0.140952359157277,
+            "target_contrast_effect": -0.00719451904296875,
+            "target_full_logit_distance": 37.481766639344094
+          }
+        ],
+        "rotation_reduction": -0.27119829033761733,
+        "selected_source": true,
+        "target_effect_count": 8
+      },
+      "3": {
+        "candidates": {
+          "Q1": {
+            "accuracy": {
+              "improved": false,
+              "mae": 0.0,
+              "zero_mae": 0.0
+            },
+            "cases": [
+              {
+                "case_id": "distractor-repair-09",
+                "distance_to_clean": 80.89856497672461,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-10",
+                "distance_to_clean": 16.272456130416256,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-11",
+                "distance_to_clean": 46.76613682064017,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-12",
+                "distance_to_clean": 18.536836361195547,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-13",
+                "distance_to_clean": 76.81595075657104,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-14",
+                "distance_to_clean": 88.42099659347018,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-15",
+                "distance_to_clean": 33.549278110351224,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-16",
+                "distance_to_clean": 36.93138157232465,
+                "effect": 0.0
+              }
+            ],
+            "prediction": 0.0
+          },
+          "Q2": {
+            "accuracy": {
+              "improved": true,
+              "mae": 0.03758859634399414,
+              "zero_mae": 0.03835153579711914
+            },
+            "cases": [
+              {
+                "case_id": "distractor-repair-09",
+                "distance_to_clean": 15.880295645372538,
+                "effect": 0.03734588623046875
+              },
+              {
+                "case_id": "distractor-repair-10",
+                "distance_to_clean": 38.527164869076564,
+                "effect": 0.062397003173828125
+              },
+              {
+                "case_id": "distractor-repair-11",
+                "distance_to_clean": 11.868079825460473,
+                "effect": -0.004241943359375
+              },
+              {
+                "case_id": "distractor-repair-12",
+                "distance_to_clean": 15.194121329941684,
+                "effect": 0.065277099609375
+              },
+              {
+                "case_id": "distractor-repair-13",
+                "distance_to_clean": 16.006530691597135,
+                "effect": 0.004909515380859375
+              },
+              {
+                "case_id": "distractor-repair-14",
+                "distance_to_clean": 24.0272828670614,
+                "effect": 0.09774398803710938
+              },
+              {
+                "case_id": "distractor-repair-15",
+                "distance_to_clean": 13.152370287376847,
+                "effect": -0.01673126220703125
+              },
+              {
+                "case_id": "distractor-repair-16",
+                "distance_to_clean": 43.173690230454696,
+                "effect": -0.01816558837890625
+              }
+            ],
+            "prediction": 0.0030517578125
+          },
+          "Q3": {
+            "accuracy": {
+              "improved": true,
+              "mae": 0.06097519397735596,
+              "zero_mae": 0.12051105499267578
+            },
+            "cases": [
+              {
+                "case_id": "distractor-repair-09",
+                "distance_to_clean": 0.0,
+                "effect": 0.103546142578125
+              },
+              {
+                "case_id": "distractor-repair-10",
+                "distance_to_clean": 0.0,
+                "effect": 0.18459320068359375
+              },
+              {
+                "case_id": "distractor-repair-11",
+                "distance_to_clean": 0.0,
+                "effect": 0.01566314697265625
+              },
+              {
+                "case_id": "distractor-repair-12",
+                "distance_to_clean": 0.0,
+                "effect": 0.17513275146484375
+              },
+              {
+                "case_id": "distractor-repair-13",
+                "distance_to_clean": 0.0,
+                "effect": 0.12706375122070312
+              },
+              {
+                "case_id": "distractor-repair-14",
+                "distance_to_clean": 0.0,
+                "effect": 0.23276519775390625
+              },
+              {
+                "case_id": "distractor-repair-15",
+                "distance_to_clean": 0.0,
+                "effect": 0.034610748291015625
+              },
+              {
+                "case_id": "distractor-repair-16",
+                "distance_to_clean": 0.0,
+                "effect": 0.0907135009765625
+              }
+            ],
+            "prediction": 0.09715604782104492
+          },
+          "Q4": {
+            "accuracy": {
+              "improved": false,
+              "mae": 0.0,
+              "zero_mae": 0.0
+            },
+            "cases": [
+              {
+                "case_id": "distractor-repair-09",
+                "distance_to_clean": 80.89856497672461,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-10",
+                "distance_to_clean": 16.272456130416256,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-11",
+                "distance_to_clean": 46.76613682064017,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-12",
+                "distance_to_clean": 18.536836361195547,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-13",
+                "distance_to_clean": 76.81595075657104,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-14",
+                "distance_to_clean": 88.42099659347018,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-15",
+                "distance_to_clean": 33.549278110351224,
+                "effect": 0.0
+              },
+              {
+                "case_id": "distractor-repair-16",
+                "distance_to_clean": 36.93138157232465,
+                "effect": 0.0
+              }
+            ],
+            "prediction": 0.0
+          }
+        },
+        "cases": [
+          {
+            "case_id": "distractor-repair-09",
+            "combined_distance": 80.89856497672461,
+            "combined_final_vs_target": 15.620001678448315,
+            "decoy_final_distance": 15.629813461402534,
+            "downstream_distance": 15.880295645372538,
+            "downstream_reduction": 0.8037011453795074,
+            "rotation": {
+              "clean_norm": 1.94921893296217,
+              "cosine": 0.04588285233714657,
+              "matched": true,
+              "rotated_norm": 1.9492189422710917
+            },
+            "rotation_distance": 44.6414294809185,
+            "rotation_reduction": 0.44818020574577166,
+            "target_contrast_effect": -0.103546142578125,
+            "target_full_logit_distance": 80.89856497672461
+          },
+          {
+            "case_id": "distractor-repair-10",
+            "combined_distance": 16.272456130416256,
+            "combined_final_vs_target": 15.036519439858324,
+            "decoy_final_distance": 14.941354568446993,
+            "downstream_distance": 38.527164869076564,
+            "downstream_reduction": -1.3676305875584513,
+            "rotation": {
+              "clean_norm": 2.118528580513991,
+              "cosine": -0.034319731465582946,
+              "matched": true,
+              "rotated_norm": 2.118528633681469
+            },
+            "rotation_distance": 73.65989190475446,
+            "rotation_reduction": -3.526660960976283,
+            "target_contrast_effect": -0.18459320068359375,
+            "target_full_logit_distance": 16.272456130416256
+          },
+          {
+            "case_id": "distractor-repair-11",
+            "combined_distance": 46.76613682064017,
+            "combined_final_vs_target": 21.79991783056818,
+            "decoy_final_distance": 21.4872626021867,
+            "downstream_distance": 11.868079825460473,
+            "downstream_reduction": 0.7462249261473632,
+            "rotation": {
+              "clean_norm": 1.784856950892948,
+              "cosine": -0.014269468302953477,
+              "matched": true,
+              "rotated_norm": 1.7848569526839126
+            },
+            "rotation_distance": 12.900239150278715,
+            "rotation_reduction": 0.724154270006215,
+            "target_contrast_effect": -0.01566314697265625,
+            "target_full_logit_distance": 46.76613682064017
+          },
+          {
+            "case_id": "distractor-repair-12",
+            "combined_distance": 18.536836361195547,
+            "combined_final_vs_target": 80.28153738404859,
+            "decoy_final_distance": 78.9259071281362,
+            "downstream_distance": 15.194121329941684,
+            "downstream_reduction": 0.1803282375762567,
+            "rotation": {
+              "clean_norm": 2.717886370609029,
+              "cosine": -0.002026949219084316,
+              "matched": true,
+              "rotated_norm": 2.7178863112539875
+            },
+            "rotation_distance": 117.93019571968065,
+            "rotation_reduction": -5.361937572397853,
+            "target_contrast_effect": -0.17513275146484375,
+            "target_full_logit_distance": 18.536836361195547
+          },
+          {
+            "case_id": "distractor-repair-13",
+            "combined_distance": 76.81595075657104,
+            "combined_final_vs_target": 41.38369514076455,
+            "decoy_final_distance": 41.28403792273867,
+            "downstream_distance": 16.006530691597135,
+            "downstream_reduction": 0.7916249094888942,
+            "rotation": {
+              "clean_norm": 2.19385109537138,
+              "cosine": 0.01384902644860388,
+              "matched": true,
+              "rotated_norm": 2.1938512044928222
+            },
+            "rotation_distance": 51.39440113043524,
+            "rotation_reduction": 0.33094102690594074,
+            "target_contrast_effect": -0.12706375122070312,
+            "target_full_logit_distance": 76.81595075657104
+          },
+          {
+            "case_id": "distractor-repair-14",
+            "combined_distance": 88.42099659347018,
+            "combined_final_vs_target": 52.59312594708578,
+            "decoy_final_distance": 53.528427339232415,
+            "downstream_distance": 24.0272828670614,
+            "downstream_reduction": 0.7282627001193991,
+            "rotation": {
+              "clean_norm": 2.404142750241212,
+              "cosine": 0.04524135546965148,
+              "matched": true,
+              "rotated_norm": 2.404142707001989
+            },
+            "rotation_distance": 44.90942335734846,
+            "rotation_reduction": 0.49209548537632086,
+            "target_contrast_effect": -0.23276519775390625,
+            "target_full_logit_distance": 88.42099659347018
+          },
+          {
+            "case_id": "distractor-repair-15",
+            "combined_distance": 33.549278110351224,
+            "combined_final_vs_target": 19.293394258241616,
+            "decoy_final_distance": 19.057278636987327,
+            "downstream_distance": 13.152370287376847,
+            "downstream_reduction": 0.607968605341799,
+            "rotation": {
+              "clean_norm": 2.0912144101957675,
+              "cosine": -0.030285214240494938,
+              "matched": true,
+              "rotated_norm": 2.0912144466303477
+            },
+            "rotation_distance": 75.42107982431494,
+            "rotation_reduction": -1.2480686343306053,
+            "target_contrast_effect": -0.034610748291015625,
+            "target_full_logit_distance": 33.549278110351224
+          },
+          {
+            "case_id": "distractor-repair-16",
+            "combined_distance": 36.93138157232465,
+            "combined_final_vs_target": 13.509769031060982,
+            "decoy_final_distance": 13.862216816045478,
+            "downstream_distance": 43.173690230454696,
+            "downstream_reduction": -0.16902450957339377,
+            "rotation": {
+              "clean_norm": 2.261055102557522,
+              "cosine": -0.0334728645140805,
+              "matched": true,
+              "rotated_norm": 2.2610550921857286
+            },
+            "rotation_distance": 57.512745798401895,
+            "rotation_reduction": -0.5572866042330877,
+            "target_contrast_effect": -0.0907135009765625,
+            "target_full_logit_distance": 36.93138157232465
+          }
+        ],
+        "rotation_reduction": -0.20135483716459568,
+        "selected_source": true,
+        "target_effect_count": 8
+      }
+    },
+    "primary": {
+      "cells": [
+        {
+          "mean_combined_distance": 96.37787992844044,
+          "mean_patched_distance": 54.86159303182654,
+          "passes": true,
+          "per_case_reductions": [
+            -1.1044591706525995,
+            0.31423952029020275,
+            0.38179409545485665,
+            0.6649436974380568,
+            0.577593525272761,
+            -0.09177760238458665,
+            0.41603411577184,
+            0.4969630307933297
+          ],
+          "reduction": 0.43076572059314133
+        },
+        {
+          "mean_combined_distance": 47.62326513474941,
+          "mean_patched_distance": 52.273330401516645,
+          "passes": false,
+          "per_case_reductions": [
+            -3.023023999749877,
+            0.6597670064308279,
+            -1.4669918648245126,
+            0.18408808920930608,
+            -0.4100064697936787,
+            -3.024934024041495,
+            0.8847439015974776,
+            0.6004943569821393
+          ],
+          "reduction": -0.09764272259808182
+        },
+        {
+          "mean_combined_distance": 49.77395016521171,
+          "mean_patched_distance": 22.228691968292665,
+          "passes": true,
+          "per_case_reductions": [
+            0.8037011453795074,
+            -1.3676305875584513,
+            0.7462249261473632,
+            0.1803282375762567,
+            0.7916249094888942,
+            0.7282627001193991,
+            0.607968605341799,
+            -0.16902450957339377
+          ],
+          "reduction": 0.5534071156797824
+        }
+      ],
+      "supported": true
+    }
+  },
+  "heldout_evidence": {
+    "actions": 224,
+    "events_sha256": "c9fac03fb8f272a385d68ccc7bbd3c4d47b9259e55b3a948d0ec3c7b768d66ad",
+    "raw_bytes": 125370112,
+    "raw_files": {
+      "distractor-repair-09.f32": {
+        "bytes": 16102112,
+        "sha256": "ac2008bad54ac589188016a0ef797c1e2bf68dd65b30b0ff6c4b1239721acaa0"
+      },
+      "distractor-repair-09.f64": {
+        "bytes": 18432,
+        "sha256": "6c3a831e0a4d6fd0336bd7ec98f1e2fed240c5fc61403c2a3f972bfcced84ae4"
+      },
+      "distractor-repair-10.f32": {
+        "bytes": 16102112,
+        "sha256": "5182437451a20399bce535c5388853757f1f30b1759c4a45a09d6a8968e4c0ba"
+      },
+      "distractor-repair-10.f64": {
+        "bytes": 18432,
+        "sha256": "b70d2e3c4711a96aa4a3498a4e43ffe8acf8d0609ffb2c2113fc6bd9eae26339"
+      },
+      "distractor-repair-11.f32": {
+        "bytes": 15303392,
+        "sha256": "78983b62aed90d46be86ac8c9be10dcec66a4d23671359844dfa8748e491839a"
+      },
+      "distractor-repair-11.f64": {
+        "bytes": 18432,
+        "sha256": "a493a23820227a8c44d6a6dc83406de2f043f7bf271876910e49ca8203357eff"
+      },
+      "distractor-repair-12.f32": {
+        "bytes": 15702752,
+        "sha256": "c849e09c11e5500fedd6bc045776a732a2dc32ea1339d60293d26889469e1b5e"
+      },
+      "distractor-repair-12.f64": {
+        "bytes": 18432,
+        "sha256": "24761f5f90bb4174d8d00cba966d88e3bf42e1c39d5c1f4dd5b11c732108b995"
+      },
+      "distractor-repair-13.f32": {
+        "bytes": 15702752,
+        "sha256": "57f6665a3ced80cfa5a5101c63884da0d460376635c811323dea7542be502c08"
+      },
+      "distractor-repair-13.f64": {
+        "bytes": 18432,
+        "sha256": "78dc7464a4e18f69f2e3ddd4df77531e68900e683a3efa4b0604a2dbdbeed4fb"
+      },
+      "distractor-repair-14.f32": {
+        "bytes": 14904032,
+        "sha256": "69ced018c726cede0b30c699dbd14ede96e3874a5f6fa5b8f5e0c36b8526054b"
+      },
+      "distractor-repair-14.f64": {
+        "bytes": 18432,
+        "sha256": "e3ee1feb071c65f7aa4377a5aa1f0483f2b799b8fa628e4cb8a21c975a9701dd"
+      },
+      "distractor-repair-15.f32": {
+        "bytes": 16102112,
+        "sha256": "f305e27f13fb9de47e3150ef06231d1e3326380afe5a38a1b7cb3d3ec1b3704c"
+      },
+      "distractor-repair-15.f64": {
+        "bytes": 18432,
+        "sha256": "5ad19690b35dcffcecd2070e0fe7588ff3470a32afe0782bee51279ea9b6750a"
+      },
+      "distractor-repair-16.f32": {
+        "bytes": 15303392,
+        "sha256": "b05ced523d8e4e718194c520e817d61cd943a0b2f836c43493681e48a32d239f"
+      },
+      "distractor-repair-16.f64": {
+        "bytes": 18432,
+        "sha256": "e46b250f145a07a529a2c2ba9c73b0d67fc7f8e0054366e60ed7505489a23930"
+      }
+    }
+  },
+  "heldout_receipt_sha256": "19928d29ae432c14da6d87c5b504ee160496799c2d89197c5f2235ceff4e1c3e",
+  "pre_run_sha256": "3cffd5c7ebedc35506fc2c64a14d00eb8a5dd8c4f9c94d59446c00c1943cb33f",
+  "schema": "public-distractor-repair-result-v1"
+}

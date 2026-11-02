@@ -1,0 +1,32 @@
+{
+  "schema": "distilgpt2-year-label-control-v2-launch-observation-v1",
+  "observed_utc": "2026-10-29T10:24:14Z",
+  "observed_main": "f148c89ac96282d2873cab0293e36cd99b28c89b",
+  "pre_run_merge": "f148c89ac96282d2873cab0293e36cd99b28c89b",
+  "pre_run_sha256": "cf0e84371a7e516861006ab26aaab42c3d5c7ba8f8a514cfee609cb70e863abe",
+  "execution_source_revision": "b256a6846ad2386d0c0c306003026bbd9b2893a8",
+  "execution_source_tree": "f23aa6799a145b9168677563da91d5ec78abc9b7",
+  "current_exposure_version": "distilgpt2-development-exposures-v27",
+  "current_exposure_merge": "baff8872b35193bcaf767c9e260ad4820e36332e",
+  "current_exposure_canonical_sha256": "ef42683a664dda450e82c69afedda34a8a34f2daf9f50f2db54f6c9d846f07e5",
+  "current_exposure_source_blob": "45cdb7e8acce7f763d3f5a5ba6b305c6364ba3a6",
+  "observed_absent_modules": "pretrained_exposures_v28.py through pretrained_exposures_v39.py",
+  "checked_matching_git_blobs": {
+    "experiments/distilgpt2_year_label_control_v1.json": "c779c3b48bd2cac6a065cfd94d593d7dfe5f6349",
+    "docs/DISTILGPT2_YEAR_LABEL_CONTROL_V2.md": "d70fbc874195cf7764a074794c101395e01e24cb",
+    "scripts/year_label_control_v2.py": "212b0f80f80174874a9557f278da24aa69c4790e",
+    "scripts/year_label_receipt_v2.py": "8e8b4712628f432a432a306ca64091304066d7f5",
+    "looking_glass/year_label_control_v2.py": "e3f97f0c8b90612a02c49fcea6454f1bf28f9dd5",
+    "looking_glass/year_label_intervention_v2.py": "2e47825d50e9968abc4839e752ab8960f88f30a1",
+    "docs/YEAR_LABEL_CONTROL_RUNNER_V2.md": "7e67f32785a6a7825a4432e06871af35cf6e6487",
+    "looking_glass/pretrained_exposures_v26.py": "7bcc01162a45b84b2a13b60bd3e07543b1a36154"
+  },
+  "public_comparison_report_sha256": "096f62206526a2bf413633c7a3ebd5a2a3c661d444ef5e0ffd7883f42f7bd981",
+  "scoped_coordinator_reports": [
+    "The year/label lane knows of no unreserved DistilGPT2 forwards since v27; its v2 run has not started.",
+    "The agreement-subject lane reports no unreserved DistilGPT2 forwards since v27 and no forward on its 80 reserved subject inputs.",
+    "The editing lane reports no DistilGPT2 forwards since v27; its 64 answer-format inputs are tokenizer-only and pending reservation in PR #527.",
+    "The throughput lane reports no DistilGPT2 inputs, forwards or inventory successors in its lane and lacks firsthand coverage of other lanes."
+  ],
+  "scope": "The source-blob and inventory checks describe the observed public main at this point in time. Lane reports are cooperative and not complete live monitoring or execution attestation. The 36 v2 rows were already exposed in v1; the old sealed split and outside/pretraining exposure were not checked. A lost child handle, absent receipt or forced owner death does not establish that the child stopped; no automatic retry."
+}

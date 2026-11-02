@@ -110,3 +110,54 @@ def test_concurrent_query_announcements_have_one_winner(identity):
         outcomes = list(executor.map(lambda _: attempt(), range(2)))
     assert len([value for value in outcomes if value is not None]) == 1
     assert hashlib.sha256((identity['root'] / 'pool-query-claim.json').read_bytes()).hexdigest() in outcomes
+
+
+def test_public_support_phase_is_exclusive_without_a_query(identity):
+    digest = claim.claim_public_phase(**identity, public_clearance_sha256='5' * 64,
+                                      inventory_sha256='6' * 64, amendment_sha256='7' * 64)
+    path = identity['root'] / 'phase-claim.json'
+    value = json.loads(path.read_bytes())
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == digest
+    assert value['kind'] == 'phase-public-support' and value['public_clearance_sha256'] == '5' * 64
+    assert not (identity['root'] / 'pool-query-claim.json').exists()
+    with pytest.raises((ValueError, RuntimeError, FileExistsError)):
+        claim.claim_public_phase(**identity, public_clearance_sha256='5' * 64,
+                                 inventory_sha256='6' * 64, amendment_sha256='7' * 64)
+
+
+@pytest.mark.parametrize('orphan', ['nonce.bin', 'heldout-record.json', 'commitment.json',
+                                    'pool-query-claim.json', 'pool-query-invocation.json'])
+def test_public_phase_rejects_earlier_or_uncertain_private_state(identity, orphan):
+    (identity['root'] / orphan).write_bytes(b'fabricated')
+    with pytest.raises((ValueError, RuntimeError, OSError)):
+        claim.claim_public_phase(**identity, public_clearance_sha256='5' * 64,
+                                 inventory_sha256='6' * 64, amendment_sha256='7' * 64)
+    assert not (identity['root'] / 'phase-claim.json').exists()
+
+
+def test_interrupted_public_phase_marker_cannot_be_retried(identity, monkeypatch):
+    original = claim._write_new
+    def interrupted(path, data):
+        original(path, data)
+        raise OSError('fabricated lost return')
+    monkeypatch.setattr(claim, '_write_new', interrupted)
+    with pytest.raises(OSError):
+        claim.claim_public_phase(**identity, public_clearance_sha256='5' * 64,
+                                 inventory_sha256='6' * 64, amendment_sha256='7' * 64)
+    assert (identity['root'] / 'phase-claim.json').exists()
+    with pytest.raises((FileExistsError, ValueError, RuntimeError)):
+        claim.claim_public_phase(**identity, public_clearance_sha256='5' * 64,
+                                 inventory_sha256='6' * 64, amendment_sha256='7' * 64)
+
+
+def test_concurrent_public_phase_claims_have_one_winner(identity):
+    def attempt():
+        try:
+            return claim.claim_public_phase(**identity, public_clearance_sha256='5' * 64,
+                                            inventory_sha256='6' * 64, amendment_sha256='7' * 64)
+        except (FileExistsError, ValueError):
+            return None
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(lambda _: attempt(), range(2)))
+    assert len([item for item in results if item is not None]) == 1
+    assert hashlib.sha256((identity['root'] / 'phase-claim.json').read_bytes()).hexdigest() in results

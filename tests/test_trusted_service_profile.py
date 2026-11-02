@@ -240,6 +240,7 @@ class TrustedServiceProfileTests(unittest.TestCase):
             other = (Path(directory) / 'other').resolve()
             other.mkdir()
             required = {'CUDA_VISIBLE_DEVICES': UUID, 'CUDA_DEVICE_ORDER': 'PCI_BUS_ID',
+                        'CUDA_MODULE_LOADING': 'LAZY',
                         'PYTORCH_CUDA_ALLOC_CONF': 'backend:native', 'CUBLAS_WORKSPACE_CONFIG': ':4096:8',
                         'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1', 'HF_HOME': str(home),
                         'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
@@ -282,6 +283,7 @@ class TrustedServiceProfileTests(unittest.TestCase):
             preflight = module.TrustedServiceSource(str(root), str(cache), b'source', b'assets', ())
             identity = SimpleNamespace(gpu_uuid=UUID)
             env = {'CUDA_VISIBLE_DEVICES': UUID, 'CUDA_DEVICE_ORDER': 'PCI_BUS_ID',
+                   'CUDA_MODULE_LOADING': 'LAZY',
                    'PYTORCH_CUDA_ALLOC_CONF': 'backend:native', 'CUBLAS_WORKSPACE_CONFIG': ':4096:8',
                    'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1', 'HF_HOME': str(home),
                    'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
@@ -328,6 +330,7 @@ class TrustedServiceProfileTests(unittest.TestCase):
             home, cache = root / 'home', root / 'home' / 'hub'
             cache.mkdir(parents=True)
             required = {'CUDA_VISIBLE_DEVICES': UUID, 'CUDA_DEVICE_ORDER': 'PCI_BUS_ID',
+                        'CUDA_MODULE_LOADING': 'LAZY',
                         'PYTORCH_CUDA_ALLOC_CONF': 'backend:native', 'CUBLAS_WORKSPACE_CONFIG': ':4096:8',
                         'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1', 'HF_HUB_OFFLINE': '1',
                         'TRANSFORMERS_OFFLINE': '1', 'HF_HUB_DISABLE_TELEMETRY': '1'}
@@ -362,6 +365,7 @@ class TrustedServiceProfileTests(unittest.TestCase):
             first.mkdir()
             second.mkdir()
             required = {'CUDA_VISIBLE_DEVICES': UUID, 'CUDA_DEVICE_ORDER': 'PCI_BUS_ID',
+                        'CUDA_MODULE_LOADING': 'LAZY',
                         'PYTORCH_CUDA_ALLOC_CONF': 'backend:native', 'CUBLAS_WORKSPACE_CONFIG': ':4096:8',
                         'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1', 'HF_HUB_OFFLINE': '1',
                         'TRANSFORMERS_OFFLINE': '1', 'HF_HUB_DISABLE_TELEMETRY': '1', 'HF_HOME': str(home)}

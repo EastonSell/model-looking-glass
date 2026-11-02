@@ -1,0 +1,14 @@
+{
+  "candidate_counts": {
+    "cat": 32,
+    "dog": 32
+  },
+  "manifest_sha256": "d2fa15c4287f15f78ff5f1a1cc1eab2551d73ee2ac876b5f7bb956f31b1d2931",
+  "mask_qualified_sites": 1707,
+  "model_forwards": 0,
+  "prior_exposures": 107,
+  "scope": "selected rows only; complete rank population, upstream authenticity, pretraining exposure, execution and chronology not attested",
+  "selected_images": 64,
+  "source_revision": "c05bc3905de37e1cc92119e5a350492482c6ee13",
+  "status": "selected-input-consistency-verified"
+}

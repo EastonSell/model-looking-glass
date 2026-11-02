@@ -1,0 +1,111 @@
+{
+  "schema": "vit-synthetic-public-source-readback-v1",
+  "observed_utc": "2026-10-29 11:56:15 UTC",
+  "repository": "EastonSell/model-looking-glass",
+  "pull_request": "https://github.com/EastonSell/model-looking-glass/pull/625",
+  "github_head": "42a7ea04411f07210aaa9efc2e47956b16f4590c",
+  "github_state": "open",
+  "github_draft": true,
+  "source": {
+    "commit": "42a7ea04411f07210aaa9efc2e47956b16f4590c",
+    "files": [
+      {
+        "git_blob_sha1": "7c546ad0cb6f96287e1536589528638776ddc71c",
+        "length": 8532,
+        "path": "docs/VIT_SYNTHETIC_INJECTION_V1.md",
+        "sha256": "f5f2216708ac89ab5ff3cb9a6c2a1df212292b9bb34faecb4787485baa6b755b"
+      },
+      {
+        "git_blob_sha1": "66db8d6bfba486757013d1bfd87946f1a0084d5c",
+        "length": 3400,
+        "path": "examples/vit_synthetic_injection_bootstrap.py",
+        "sha256": "8706eae2f824cbff6ac0e7cd04c5f235b5fd7ec529a3fe04fa0fa2ffc18117a6"
+      },
+      {
+        "git_blob_sha1": "f3d6de62acf70cf01cbdcd158c8491b2684dea54",
+        "length": 17691,
+        "path": "examples/vit_synthetic_injection_cpu.py",
+        "sha256": "de8882097e57194388b42f2c23186a727a667f572c2abd5e5b7842af1ed142e9"
+      },
+      {
+        "git_blob_sha1": "77fbb616980042135d953f088b0eda05379d4a6a",
+        "length": 78,
+        "path": "looking_glass/__init__.py",
+        "sha256": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0"
+      },
+      {
+        "git_blob_sha1": "b33bfd83634dce1dea61e49a620edd05db4d4e76",
+        "length": 13473,
+        "path": "looking_glass/vit_synthetic_injection_v1.py",
+        "sha256": "d3efbcb58352b5f55ffc6b265d65a59b799b59d3ed25477c6cbab3ed1f7b0a25"
+      },
+      {
+        "git_blob_sha1": "111d6f34aa0c3d79d5fd520cf9cc3e9ce3c543d3",
+        "length": 14646,
+        "path": "looking_glass/vit_trace.py",
+        "sha256": "6a90995de60c2ac12e2e40047773a1f4013100e5f48bf3f4466a8bcbaaffc8f9"
+      },
+      {
+        "git_blob_sha1": "db5e838bc85c1ac2c9d65c6c55b66cf9ab3c466f",
+        "length": 12205,
+        "path": "looking_glass/vit_trace_comparison.py",
+        "sha256": "d89a81614ccb977f7c92b5cf0a6fd3d2e1f013662c3d5bd92c333e2f31ebd7a3"
+      },
+      {
+        "git_blob_sha1": "db044faa4e547a96278607efabca82ea4aa14384",
+        "length": 34518,
+        "path": "looking_glass/intervention_plan.py",
+        "sha256": "5bb643c538a1d7dcd97214238c2a996967d4b6ae2e965d3776b3699758491c0a"
+      },
+      {
+        "git_blob_sha1": "931eaaadf0d032c814868dcbeae221cf73f79517",
+        "length": 22870,
+        "path": "looking_glass/interventions.py",
+        "sha256": "71cbcf4776660d2dd883b82815f710b0c909228fd1762504f9e3f984f7f6c60f"
+      },
+      {
+        "git_blob_sha1": "e4ef2e47de9bbe36631fe50deb0b89b63b2a3af2",
+        "length": 10535,
+        "path": "looking_glass/model_ownership.py",
+        "sha256": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434"
+      },
+      {
+        "git_blob_sha1": "86ea048c2e704cf6877691fc64fc1a1ef70f9420",
+        "length": 15271,
+        "path": "looking_glass/localization.py",
+        "sha256": "48f7141f5f2c1c6e7491fada748cad795990f5de87f70c2b63cda7cf0cc58006"
+      },
+      {
+        "git_blob_sha1": "df3c3d8ef9eb3d6c365bc941c71a4925048eb466",
+        "length": 10738,
+        "path": "looking_glass/trace_schema.py",
+        "sha256": "38e05eb52a59a10ad9f93d19763d60df4c27f9eb626fdefdcba39fc4af3eb92c"
+      },
+      {
+        "git_blob_sha1": "141cb32184c0ced5876ce5c0dd7975cf0dafec7a",
+        "length": 2271,
+        "path": "looking_glass/agreement_numeric.py",
+        "sha256": "f9a5a9ee3627162d843c0dc0d8c6ea9d98c000a4b6d472fb55254fb3395d07dc"
+      },
+      {
+        "git_blob_sha1": "f7c21b953cd69df701feb6c54e52ba8ea0a84792",
+        "length": 6919,
+        "path": "looking_glass/bert_matched_numeric.py",
+        "sha256": "320a2975f4243a74133ef35bf063e297074bc41a7eebec472fc74c10f1a16a64"
+      },
+      {
+        "git_blob_sha1": "7a084e1ac11debd331b267189828d784c03557bd",
+        "length": 10577,
+        "path": "looking_glass/vision_coco_cases.py",
+        "sha256": "ce00351296e1624709dd684c8e77d43b952cc76c217c1ac38aaa83e5715c1857"
+      },
+      {
+        "git_blob_sha1": "59371fd99c83e084453954addd88b2df38c9ea44",
+        "length": 9255,
+        "path": "tests/test_vit_synthetic_injection_v1.py",
+        "sha256": "5d514874a9f2774aa144fbde8d537674c9ac369eda962c65bbf2c09a55754ce7"
+      }
+    ]
+  },
+  "scope": "Local source bytes were compared with a locally fetched commit whose SHA was the GitHub pull-request head. This is a reviewer observation, not proof of first-forward ordering, actual executed code, or a trusted timestamp."
+}

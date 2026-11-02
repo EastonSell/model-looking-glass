@@ -1,0 +1,109 @@
+{
+  "status": "passed",
+  "model": "HuggingFaceTB/SmolLM2-135M",
+  "revision": "93efa2f097d58c2a74874c7e644dbc9b0cee75a2",
+  "device": "cpu",
+  "dtype": "float32",
+  "python": "3.12.14",
+  "torch": "2.15.0+cpu",
+  "transformers": "4.57.3",
+  "prompt": "Gravity is",
+  "forward_count": 2,
+  "captured_events": 180,
+  "retained_tensor_bytes": 1451520,
+  "captured_layers_per_forward": 30,
+  "exact_nodes_per_forward": 90,
+  "representative_vectors_checked_before_and_after_reopen": 180,
+  "features_per_vector": 576,
+  "all_retained_tensor_hashes_unchanged": true,
+  "parameters_and_buffers_unchanged": true,
+  "first_representative_self_reference_exact": true,
+  "stale_capture_revision_rejected": true,
+  "map_metadata_identical_after_reopen": true,
+  "checkpoint_assets_unchanged": true,
+  "checkpoint_file_sha256": {
+    "README.md": "d1ba68cae64a89b6b434b11526e6e2271ee5ffd2c914ec35ed515f9d84c6085c",
+    "config.json": "1d556eab73b69c7f11f64c557a2f9c6f440bd4c6b89bb2584a6b498c92603843",
+    "generation_config.json": "2056c988e990b0d13670f63f2f3b87b3b6d07edaf7a3416998ba27dab2d8a059",
+    "merges.txt": "0b54e8aa4e53d5383e2e4bc635a56b43f9647f7b13832d5d9ecd8f82dac4f510",
+    "model.safetensors": "80521b40281d6ce74e35c9282c22539e75aa0ac8578892b2a59955ef78d55da1",
+    "special_tokens_map.json": "e786b595b9a23148bf1630df78d9037a048ea671e48bfd3549a1e3c233742bb3",
+    "tokenizer.json": "9ca9acddb6525a194ec8ac7a87f24fbba7232a9a15ffa1af0c1224fcd888e47c",
+    "tokenizer_config.json": "4bb9af56a342753d39374f4016a16574cab299fe088e896f425ce3c433f61424",
+    "vocab.json": "82b84012e3add4d01d12ba14442026e49b8cbbaead1f79ecf3d919784f82dc79"
+  },
+  "implementation_sha256": {
+    "looking_glass/agreement_numeric.py": "f9a5a9ee3627162d843c0dc0d8c6ea9d98c000a4b6d472fb55254fb3395d07dc",
+    "looking_glass/app.py": "ab19810b56d1e6a0f8f647ba1f8cb9c49982fc78b370eb4cbc692a98eafab65e",
+    "looking_glass/app_interventions.py": "06eabfd7393f4afa26c1e6a7f39744ba15f62127717adfb28faa18fb65c02477",
+    "looking_glass/app_reference.py": "74ba9815d651627ec58942cc48f93cb08b291c242be8b68243dbfdcd64833a63",
+    "looking_glass/app_runtime.py": "860623e9a56490fc3dd9e194c21eb68d34a11560bd2edc017f7756235d4f77d9",
+    "looking_glass/app_selftest.py": "e422d0d5fbecf5e0f56e21fa8d662d4b28a5f1d93ffb38637720fa7692f32010",
+    "looking_glass/app_storage.py": "31c861d43db8dda87348fe844b8216bca71c0d88d8bd799a95819964e75cdfc7",
+    "looking_glass/intervention_plan.py": "5bb643c538a1d7dcd97214238c2a996967d4b6ae2e965d3776b3699758491c0a",
+    "looking_glass/llama_trace.py": "7051a525f62e68c8f48a5215d3f3f4908b41d44f69181e971a0fd5afa180b75a",
+    "looking_glass/model_ownership.py": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434",
+    "looking_glass/trace_schema.py": "38e05eb52a59a10ad9f93d19763d60df4c27f9eb626fdefdcba39fc4af3eb92c"
+  },
+  "static_asset_sha256": {
+    "app.css": "99d830e69fc0db015037edab80a8687e6072889d1347166e88e5e85fdd24ff7c",
+    "app.js": "9e25e0d5e59dd98a77b734ca44f3378d2e9705496128bf1e53a6fe12e1111579",
+    "index.html": "753653096151151dc43deb07628c2461d1168c82ed68c14454cd133045c21f7a"
+  },
+  "verification_script_sha256": {
+    "verify_layer_map.py": "f8ecab15dd855aebb70edb78ff537b541a2d9eff88abeb4e43c8eb9b19c578dd",
+    "verify_reference_vectors.py": "81bbf7607b47d4b572bc43942f44f8972f029f4fbdf3c6c2686dddb00ccb4003"
+  },
+  "historical_manifest_record_sha256": "d2425a1bd3848f1378570be7262c138c883be076070dab533ad19b5a279cfe32",
+  "map_response_sha256_with_execution_ids_not_portable": "e262a1b76b39003172f4e8937f309d5cf1cba4f79a4d146dcce513a9f65323f9",
+  "scope": "Authenticated HTTP and captured metadata/values from one CPU checkpoint. No browser rendering, GPU, neuron connectivity, semantic layout, or causal explanation claim.",
+  "schema": "mlg.layer_map.v1",
+  "tested_parent_commit": "44f58a6ec1a4c7125db62c83bc6f6b2b8ead897f",
+  "execution_source": "Fresh installed wheel from reviewed working tree; explicit import-origin checks",
+  "wheel": {
+    "filename": "model_looking_glass-0.1.0-py3-none-any.whl",
+    "sha256": "a3dff49afcb9246eb94b65a04726507eac883fbbe71a4bd1b66dc2153ba0b4b7",
+    "package_version": "0.1.0",
+    "published_as_release_asset": false
+  },
+  "validation": {
+    "focused_suite": {
+      "passed": 988,
+      "skipped": 12,
+      "skip_reason": "Actual CUDA device/build prerequisites unavailable",
+      "elapsed_seconds": 79.97,
+      "log_sha256": "e6044d8d5080a0ea5d425546f1629f394fd9e466edfb70b263f123b4f5e9d0fa"
+    },
+    "installed_wheel_selected_tests": {
+      "passed": 36,
+      "elapsed_seconds": 6.58,
+      "import_origins_and_static_asset_bytes_verified": true,
+      "log_sha256": "7e0f251566f7f3c645d615363393e83fe5db6bd195e8d9c99f0673754fef448c"
+    },
+    "ui_contract": {
+      "mocked_authenticated_requests": 443,
+      "structural_html_css_checks": 9,
+      "actual_browser_rendering": false,
+      "log_sha256": "44c92124841e39507abdc1c149c4525069777998a64e580e802bf725a0710933"
+    },
+    "browser_probe": {
+      "rendering_completed": false,
+      "reason": "Sandboxed Chromium failed before page rendering because executor local sockets were unavailable; elevated execution also failed during environment setup. Browser sandbox was not disabled."
+    },
+    "optimized_script_rejected_before_argument_parsing": true,
+    "bare_default_suite": {
+      "exit_code": 2,
+      "collection_errors": 17,
+      "duplicate_basename_import_mismatches": 14,
+      "missing_historical_fixture_or_source_errors": 3,
+      "all_repository_pass": false,
+      "log_sha256": "691046a4ecfdce366286f44628007f49b43df0175af40e5909a216f5c6d400b9"
+    }
+  },
+  "test_sha256": {
+    "tests/test_app_layer_map.py": "e55a02800299e8b25fb2da4bb0d05bed020167890b8a47ccdd3157961b763993",
+    "tests/test_app_layer_map_http.py": "262d6ffb44cd15105a97eb56ce85c9402cd1eb67f1328203c750bc613fd8fbe6",
+    "tests/test_app_layout.py": "79259220cfe5340b86c901fd07eadb6a066493adfcaeaa0522cdc7e2f10120eb",
+    "tests/app_ui_contract.cjs": "2a46afdb1b42905d609d11017b1510c4fc592ae68016bdf11214dea8494edc23"
+  }
+}

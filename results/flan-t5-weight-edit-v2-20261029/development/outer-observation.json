@@ -1,0 +1,12 @@
+{
+  "schema": "flan-weight-edit-outer-operator-observation-v1",
+  "phase": "development",
+  "observation_utc": "2026-10-29T13:16:54.6051853+00:00",
+  "outer_exit_code": 0,
+  "reported_status": "complete_candidate",
+  "reported_phase_sha256": "1cd8e44c5294a2d0074d352f4280eaa365947d572cfd959ae29ab9fc12703a2b",
+  "outer_launch_observation_utc": "2026-10-29T13:09:40.0139304+00:00",
+  "launch_observed_c_free_bytes": 1745305600,
+  "launch_observed_e_free_bytes": 384624975872,
+  "scope": "Operator observation from the tool session; cooperative record, not an authenticated process or whole-tree attestation."
+}

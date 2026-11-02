@@ -1,0 +1,37 @@
+{
+  "auditor_sha256": "1b662434659c178de44128a515cb4c8dc16610e88fbb54a812c69b592024af90",
+  "development": {
+    "contrasts": 8,
+    "journal_rows": 32,
+    "matrix_sha256": "2cbe55c3abf6bccb612c39403f423668ed2b38cde4452d4df22e0a56b85056fa",
+    "max_absolute_differences": {
+      "kl": 1.7763568394002505e-15,
+      "label_logp": 1.7763568394002505e-15,
+      "paired_logp_delta": 1.7763568394002505e-15,
+      "tv": 2.7755575615628914e-16
+    },
+    "pairs": 48,
+    "result_sha256": "f72ec335c563c6810280a1e08a998e08bf81c61170bd22d0b2c3e69201660d0a",
+    "status": "ineligible",
+    "top_tokens_sha256": "aa5901efa797e952b10945c7edbe10baa6cace307241325040f8096a9055b18e"
+  },
+  "heldout": {
+    "contrasts": 8,
+    "journal_rows": 32,
+    "matrix_sha256": "42ff684b479fee277005106d65ebdc946648411f87a098d086665be77dcd7f46",
+    "max_absolute_differences": {
+      "kl": 8.881784197001252e-16,
+      "label_logp": 1.7763568394002505e-15,
+      "paired_logp_delta": 4.440892098500626e-16,
+      "tv": 2.220446049250313e-16
+    },
+    "pairs": 48,
+    "result_sha256": "3846f6298f3180c24372284d2c148ad5055c7bfe88b8b1e60a303d212bc99eb8",
+    "status": "ineligible",
+    "top_tokens_sha256": "1d24c188cc4670e63dd1c0bbcee5613d6d39637c3bb20c3e524ddb0eaa94b518"
+  },
+  "independent_report_sha256": "4a2e17cfab8ae990c983dd8e94ae5fb496efef4781f5b57536d4f90653e6a833",
+  "schema": "independent-answer-format-owner-comparison-v1",
+  "scope": "Saved raw rows, journal-to-case bindings, decoded tops, numerical scores and internal artifact hashes; not proof of forward provenance, custody, cleanup or chronology.",
+  "status": "passed"
+}

@@ -74,6 +74,11 @@ class ActivationPlan:
         self._borrow_cleanup_owner = None
         self._registration_uncertain = False
         self._in_forward = False
+        self._sync_forward = None
+        self._sync_unsafe = False
+        self._sync_hook_pending = False
+        self._sync_observation_pending = False
+        self._sync_observed = None
         self._forward_count = 0
         self._completed = False
         self._invalid = False
@@ -236,6 +241,9 @@ class ActivationPlan:
     def _before_forward(self, module, inputs):
         self._check_owner()
         if self._forward_count or self._in_forward:
+            with self._lifecycle_lock:
+                if self._sync_forward is not None:
+                    self._sync_unsafe = True
             self._mark_invalid()
             raise RuntimeError("plan permits exactly one root model forward")
         self._verify_tree()
@@ -250,6 +258,9 @@ class ActivationPlan:
             self._verify_tree()
             key = id(module)
             if key in self._active_sites:
+                with self._lifecycle_lock:
+                    if self._sync_forward is not None:
+                        self._sync_unsafe = True
                 raise RuntimeError("reentrant target modules are not supported")
             invocation = self._counts.get(key, 0)
             if invocation >= self.max_invocations:
@@ -264,6 +275,8 @@ class ActivationPlan:
     def _target_hook(self, module, inputs, output):
         try:
             self._check_owner()
+            self._begin_synchronous_hook()
+            self._check_synchronous_value(output)
             self._verify_tree()
             key = id(module)
             if not self._in_forward or key not in self._pending:
@@ -272,6 +285,7 @@ class ActivationPlan:
             group_index = self._group_by_site.get(site)
             if group_index is None:
                 self._processed_sites.add(key)
+                self._end_synchronous_hook()
                 return None
             if group_index != self._next_group:
                 raise RuntimeError("model execution differs from the declared plan order")
@@ -284,9 +298,16 @@ class ActivationPlan:
                 preceding.append(step["name"])
             self._next_group += 1
             self._processed_sites.add(key)
+            self._end_synchronous_hook()
             return result if changed else None
-        except BaseException:
-            self._mark_invalid()
+        except BaseException as original:
+            try:
+                try:
+                    self._fail_synchronous_hook()
+                finally:
+                    self._mark_invalid()
+            except BaseException as secondary:
+                raise original.with_traceback(original.__traceback__) from secondary
             raise
 
     def _apply_step(self, step, output, preceding):
@@ -398,9 +419,146 @@ class ActivationPlan:
             if current_thread() is not self._owner_thread:
                 self._invalid = True
                 self._committed = False
+                if self._sync_forward is not None:
+                    self._sync_unsafe = True
                 raise RuntimeError("activation plan must run in its owning thread")
             if self._invalid:
                 raise RuntimeError("activation plan is already invalid")
+
+    def run_synchronous_cpu(self, *args, **kwargs):
+        """Call the leased model once under an exclusive, synchronous CPU contract.
+
+        Call only inside this plan's context on its owning thread. The caller
+        must ensure that the model, inputs, native operations and any other
+        threads do not start or retain asynchronous or device work. CPU checks
+        reject known non-CPU tensors but cannot establish that precondition.
+        This is only Python hook/lease cleanup, not device or tensor recovery.
+        """
+        with self._lifecycle_lock:
+            self._check_synchronous_entry()
+        self._reject_known_non_cpu(args, kwargs)
+        token = object()
+        with self._lifecycle_lock:
+            self._check_synchronous_entry()
+            self._sync_forward = token
+        try:
+            output = self.model(*args, **kwargs)
+        except BaseException as original:
+            try:
+                self._finish_synchronous(token, failed=True)
+            except BaseException as secondary:
+                raise original.with_traceback(original.__traceback__) from secondary
+            raise
+        self._check_synchronous_value(output)
+        self._finish_synchronous(token, failed=False)
+        return output
+
+    def _check_synchronous_entry(self):
+        # The lifecycle lock is held by the caller. Only an active wrapper's
+        # owner can retire its marker; rejected attempts never acquire it.
+        if current_thread() is not self._owner_thread:
+            if self._entered or self._entering or self._closing:
+                self._invalid = True
+                self._committed = False
+                self._sync_unsafe = True
+            raise RuntimeError("synchronous forward must run on the owning thread")
+        if not self._entered or self._entering or self._closing:
+            raise RuntimeError("synchronous forward requires an entered plan")
+        if self._sync_forward is not None or self._in_forward:
+            self._invalid = True
+            self._committed = False
+            self._sync_unsafe = True
+            raise RuntimeError("another forward may be active")
+        if self._sync_unsafe or self._invalid or self._forward_count:
+            self._invalid = True
+            self._committed = False
+            raise RuntimeError("plan cannot begin another forward")
+
+    def _reject_known_non_cpu(self, args, kwargs):
+        pending = [args, kwargs, tuple(self.model.parameters()),
+                   tuple(self.model.buffers()), tuple(self._sources.values())]
+        self._reject_non_cpu_values(pending)
+
+    @staticmethod
+    def _reject_non_cpu_values(pending):
+        visited = set()
+        while pending:
+            value = pending.pop()
+            if isinstance(value, torch.Tensor):
+                if value.device.type != "cpu":
+                    raise ValueError("synchronous CPU forward rejects known non-CPU tensors")
+            elif (type(value) in (tuple, list) or isinstance(value, dict)) and id(value) not in visited:
+                visited.add(id(value))
+                if isinstance(value, dict):
+                    pending.extend(dict.keys(value))
+                    pending.extend(dict.values(value))
+                else:
+                    pending.extend(value)
+
+    def _check_synchronous_value(self, value):
+        # Keep a pending marker during inspection. If a transition is
+        # interrupted, the trusted owner must also retain the exception graph.
+        with self._lifecycle_lock:
+            if self._sync_forward is None:
+                return
+            if self._sync_observation_pending:
+                self._sync_unsafe = True
+                raise RuntimeError("synchronous output observation is uncertain")
+            self._sync_observation_pending = True
+            self._sync_observed = value
+        self._reject_non_cpu_values([value])
+        with self._lifecycle_lock:
+            if self._sync_unsafe:
+                raise RuntimeError("synchronous output observation is uncertain")
+            self._sync_observed = None
+            self._sync_observation_pending = False
+
+    def _begin_synchronous_hook(self):
+        with self._lifecycle_lock:
+            if self._sync_forward is None:
+                return
+            if self._sync_hook_pending:
+                self._sync_unsafe = True
+                raise RuntimeError("synchronous target hook is reentrant")
+            self._sync_hook_pending = True
+
+    def _end_synchronous_hook(self):
+        with self._lifecycle_lock:
+            if self._sync_forward is None:
+                return
+            if self._sync_unsafe:
+                raise RuntimeError("synchronous target hook is uncertain")
+            self._sync_hook_pending = False
+
+    def _fail_synchronous_hook(self):
+        with self._lifecycle_lock:
+            if self._sync_forward is not None:
+                self._sync_unsafe = True
+
+    def _finish_synchronous(self, token, *, failed):
+        # This method is reached only after this wrapper's direct model call
+        # returned or raised. Publish token retirement last: an interrupted
+        # transition must leave the context unable to release the lease.
+        with self._lifecycle_lock:
+            if (current_thread() is not self._owner_thread or self._sync_forward is not token
+                    or not self._entered or self._entering or self._closing or self._sync_unsafe
+                    or self._sync_hook_pending or self._sync_observation_pending):
+                self._invalid = True
+                self._committed = False
+                self._sync_unsafe = True
+                if failed:
+                    return
+                raise RuntimeError("synchronous forward retirement is uncertain")
+            if failed:
+                self._invalid = True
+                self._committed = False
+                self._in_forward = False
+            elif self._in_forward or not self._completed:
+                self._invalid = True
+                self._committed = False
+                self._sync_unsafe = True
+                raise RuntimeError("synchronous forward completion is uncertain")
+            self._sync_forward = None
 
     def _cleanup(self):
         owner = current_thread()
@@ -438,6 +596,9 @@ class ActivationPlan:
     def _borrow_cleanup_complete(self):
         return (self._borrow_cleanup_owner is current_thread()
                 and not self._in_forward and not self._registration_uncertain
+                and self._sync_forward is None and not self._sync_unsafe
+                and not self._sync_hook_pending
+                and not self._sync_observation_pending and self._sync_observed is None
                 and all(handle is None for handle in self._handles))
 
     def close(self):
@@ -447,7 +608,12 @@ class ActivationPlan:
             with self._lifecycle_lock:
                 if not self._used:
                     raise RuntimeError("close is only available after plan entry was attempted")
-                if self._entering or self._entered or self._closing or self._in_forward:
+                if self._sync_forward is not None:
+                    self._invalid = True
+                    self._committed = False
+                    self._sync_unsafe = True
+                if (self._entering or self._entered or self._closing or self._in_forward
+                        or self._sync_forward is not None or self._sync_unsafe):
                     raise RuntimeError("cannot close an active plan")
                 self._closing = token
             self._cleanup()
@@ -463,12 +629,16 @@ class ActivationPlan:
                 if self._entering or self._entered or self._closing:
                     self._invalid = True
                     self._committed = False
+                    if self._sync_forward is not None:
+                        self._sync_unsafe = True
                 raise RuntimeError("only the owning thread can abort an activation plan")
             if not self._entered or self._entering or self._closing:
                 raise RuntimeError("no entered activation plan to abort")
-            if self._in_forward:
+            if self._in_forward or self._sync_forward is not None or self._sync_unsafe:
                 self._invalid = True
                 self._committed = False
+                if self._sync_forward is not None:
+                    self._sync_unsafe = True
                 raise RuntimeError("cannot abort while a forward may be active")
             self._invalid = True
             self._committed = False
@@ -486,17 +656,23 @@ class ActivationPlan:
                     if current_thread() is not self._owner_thread:
                         self._invalid = True
                         self._committed = False
+                        if self._sync_forward is not None:
+                            self._sync_unsafe = True
                     raise RuntimeError("activation plan cleanup is in progress")
                 if not self._entering and not self._entered:
                     raise RuntimeError("activation plan is not in an active context")
                 if current_thread() is not self._owner_thread:
                     self._invalid = True
+                    if self._sync_forward is not None:
+                        self._sync_unsafe = True
                     raise RuntimeError("activation plan must exit in its owning thread")
                 if self._entering:
                     raise RuntimeError("activation plan is not in an active context")
-                if self._in_forward:
+                if self._in_forward or self._sync_forward is not None or self._sync_unsafe:
                     self._invalid = True
                     self._committed = False
+                    if self._sync_forward is not None:
+                        self._sync_unsafe = True
                     if exc is not None:
                         return False
                     raise RuntimeError("cannot exit while a forward may be active; quarantine the worker")

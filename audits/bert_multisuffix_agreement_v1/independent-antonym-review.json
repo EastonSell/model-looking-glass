@@ -1,0 +1,24 @@
+{
+  "candidate_rows": 160,
+  "candidate_sha256": "bc8d1af844c52f46bf068c04257280ed37e4302028885540ea498103d6ce125e",
+  "collisions": [],
+  "noun_surface_token_pending_rows": {
+    "guest": [],
+    "guests": [],
+    "hunter": [],
+    "hunters": [],
+    "neighbor": [],
+    "neighbors": [],
+    "rider": [],
+    "riders": [],
+    "runner": [],
+    "runners": [],
+    "scholar": [],
+    "scholars": []
+  },
+  "pairs_compared": 8800,
+  "pending_rows": 55,
+  "pending_sha256": "284fc9adc0cc3caa52ea5d122c1f08db50c8dda2d881297e2dcd1f2229cb6386",
+  "scope": "One fixed local pending tokenizer-only proposal; no statement about model execution, unknown or private inputs, semantic similarity, or pretraining.",
+  "status": "pass"
+}

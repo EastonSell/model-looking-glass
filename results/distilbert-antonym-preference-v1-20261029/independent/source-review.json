@@ -1,0 +1,10 @@
+{
+  "asset_records_checked": 5,
+  "claim_sha256": "74d4c6a14b24efd0cb4aefa94919a8825f418bdb171b862bbf51d5973c58f8da",
+  "result_sha256": "ef66b2aadf515856c02ef24edd53735a20bde86f529e6e319797124d1adb5538",
+  "saved_git_checkout_hashes_match": true,
+  "schema": "antonym-independent-closed-source-review-v1",
+  "scope": "Saved source hashes and present Git, checkout and cache bytes; not loaded-byte or model-execution attestation.",
+  "source_commit": "cbfa224f0d2d8f1ac6f5e16942b58bb7821345e1",
+  "source_records_checked": 38
+}

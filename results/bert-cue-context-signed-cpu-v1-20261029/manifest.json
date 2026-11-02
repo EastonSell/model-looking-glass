@@ -1,0 +1,1153 @@
+{
+  "cue_groups": {
+    "affirmative_high_frequency": [
+      "always",
+      "often"
+    ],
+    "negative_low_frequency": [
+      "never",
+      "rarely"
+    ]
+  },
+  "cue_ids": {
+    "always": 2467,
+    "never": 2196,
+    "often": 2411,
+    "rarely": 6524
+  },
+  "indices": {
+    "cue": 4,
+    "mask": 6,
+    "object": 9
+  },
+  "model": "distilbert/distilbert-base-uncased",
+  "model_revision": "12040accade4e8a0f71eabdb258fecc2e7e948be",
+  "pairs": [
+    {
+      "contexts": [
+        {
+          "id": "discovery-01-a",
+          "indices": {
+            "cue": 4,
+            "mask": 6,
+            "object": 9
+          },
+          "object": "patients",
+          "role": "doctor",
+          "rows": {
+            "always": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                3460,
+                2038,
+                2467,
+                5845,
+                103,
+                1997,
+                1996,
+                5022,
+                1012,
+                102
+              ],
+              "text": "The doctor has always treated [MASK] of the patients."
+            },
+            "never": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                3460,
+                2038,
+                2196,
+                5845,
+                103,
+                1997,
+                1996,
+                5022,
+                1012,
+                102
+              ],
+              "text": "The doctor has never treated [MASK] of the patients."
+            },
+            "often": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                3460,
+                2038,
+                2411,
+                5845,
+                103,
+                1997,
+                1996,
+                5022,
+                1012,
+                102
+              ],
+              "text": "The doctor has often treated [MASK] of the patients."
+            },
+            "rarely": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                3460,
+                2038,
+                6524,
+                5845,
+                103,
+                1997,
+                1996,
+                5022,
+                1012,
+                102
+              ],
+              "text": "The doctor has rarely treated [MASK] of the patients."
+            }
+          },
+          "verb": "treated"
+        },
+        {
+          "id": "discovery-01-b",
+          "indices": {
+            "cue": 4,
+            "mask": 6,
+            "object": 9
+          },
+          "object": "seeds",
+          "role": "farmer",
+          "rows": {
+            "always": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                7500,
+                2038,
+                2467,
+                8461,
+                103,
+                1997,
+                1996,
+                8079,
+                1012,
+                102
+              ],
+              "text": "The farmer has always planted [MASK] of the seeds."
+            },
+            "never": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                7500,
+                2038,
+                2196,
+                8461,
+                103,
+                1997,
+                1996,
+                8079,
+                1012,
+                102
+              ],
+              "text": "The farmer has never planted [MASK] of the seeds."
+            },
+            "often": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                7500,
+                2038,
+                2411,
+                8461,
+                103,
+                1997,
+                1996,
+                8079,
+                1012,
+                102
+              ],
+              "text": "The farmer has often planted [MASK] of the seeds."
+            },
+            "rarely": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                7500,
+                2038,
+                6524,
+                8461,
+                103,
+                1997,
+                1996,
+                8079,
+                1012,
+                102
+              ],
+              "text": "The farmer has rarely planted [MASK] of the seeds."
+            }
+          },
+          "verb": "planted"
+        }
+      ],
+      "id": "discovery-01",
+      "split": "discovery"
+    },
+    {
+      "contexts": [
+        {
+          "id": "evaluation-01-a",
+          "indices": {
+            "cue": 4,
+            "mask": 6,
+            "object": 9
+          },
+          "object": "coins",
+          "role": "clerk",
+          "rows": {
+            "always": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                7805,
+                2038,
+                2467,
+                8897,
+                103,
+                1997,
+                1996,
+                7824,
+                1012,
+                102
+              ],
+              "text": "The clerk has always counted [MASK] of the coins."
+            },
+            "never": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                7805,
+                2038,
+                2196,
+                8897,
+                103,
+                1997,
+                1996,
+                7824,
+                1012,
+                102
+              ],
+              "text": "The clerk has never counted [MASK] of the coins."
+            },
+            "often": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                7805,
+                2038,
+                2411,
+                8897,
+                103,
+                1997,
+                1996,
+                7824,
+                1012,
+                102
+              ],
+              "text": "The clerk has often counted [MASK] of the coins."
+            },
+            "rarely": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                7805,
+                2038,
+                6524,
+                8897,
+                103,
+                1997,
+                1996,
+                7824,
+                1012,
+                102
+              ],
+              "text": "The clerk has rarely counted [MASK] of the coins."
+            }
+          },
+          "verb": "counted"
+        },
+        {
+          "id": "evaluation-01-b",
+          "indices": {
+            "cue": 4,
+            "mask": 6,
+            "object": 9
+          },
+          "object": "questions",
+          "role": "student",
+          "rows": {
+            "always": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                3076,
+                2038,
+                2467,
+                4660,
+                103,
+                1997,
+                1996,
+                3980,
+                1012,
+                102
+              ],
+              "text": "The student has always answered [MASK] of the questions."
+            },
+            "never": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                3076,
+                2038,
+                2196,
+                4660,
+                103,
+                1997,
+                1996,
+                3980,
+                1012,
+                102
+              ],
+              "text": "The student has never answered [MASK] of the questions."
+            },
+            "often": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                3076,
+                2038,
+                2411,
+                4660,
+                103,
+                1997,
+                1996,
+                3980,
+                1012,
+                102
+              ],
+              "text": "The student has often answered [MASK] of the questions."
+            },
+            "rarely": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                3076,
+                2038,
+                6524,
+                4660,
+                103,
+                1997,
+                1996,
+                3980,
+                1012,
+                102
+              ],
+              "text": "The student has rarely answered [MASK] of the questions."
+            }
+          },
+          "verb": "answered"
+        }
+      ],
+      "id": "evaluation-01",
+      "split": "evaluation"
+    },
+    {
+      "contexts": [
+        {
+          "id": "evaluation-02-a",
+          "indices": {
+            "cue": 4,
+            "mask": 6,
+            "object": 9
+          },
+          "object": "players",
+          "role": "coach",
+          "rows": {
+            "always": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                2873,
+                2038,
+                2467,
+                3479,
+                103,
+                1997,
+                1996,
+                2867,
+                1012,
+                102
+              ],
+              "text": "The coach has always selected [MASK] of the players."
+            },
+            "never": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                2873,
+                2038,
+                2196,
+                3479,
+                103,
+                1997,
+                1996,
+                2867,
+                1012,
+                102
+              ],
+              "text": "The coach has never selected [MASK] of the players."
+            },
+            "often": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                2873,
+                2038,
+                2411,
+                3479,
+                103,
+                1997,
+                1996,
+                2867,
+                1012,
+                102
+              ],
+              "text": "The coach has often selected [MASK] of the players."
+            },
+            "rarely": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                2873,
+                2038,
+                6524,
+                3479,
+                103,
+                1997,
+                1996,
+                2867,
+                1012,
+                102
+              ],
+              "text": "The coach has rarely selected [MASK] of the players."
+            }
+          },
+          "verb": "selected"
+        },
+        {
+          "id": "evaluation-02-b",
+          "indices": {
+            "cue": 4,
+            "mask": 6,
+            "object": 9
+          },
+          "object": "tomatoes",
+          "role": "chef",
+          "rows": {
+            "always": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                10026,
+                2038,
+                2467,
+                15920,
+                103,
+                1997,
+                1996,
+                12851,
+                1012,
+                102
+              ],
+              "text": "The chef has always sliced [MASK] of the tomatoes."
+            },
+            "never": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                10026,
+                2038,
+                2196,
+                15920,
+                103,
+                1997,
+                1996,
+                12851,
+                1012,
+                102
+              ],
+              "text": "The chef has never sliced [MASK] of the tomatoes."
+            },
+            "often": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                10026,
+                2038,
+                2411,
+                15920,
+                103,
+                1997,
+                1996,
+                12851,
+                1012,
+                102
+              ],
+              "text": "The chef has often sliced [MASK] of the tomatoes."
+            },
+            "rarely": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                10026,
+                2038,
+                6524,
+                15920,
+                103,
+                1997,
+                1996,
+                12851,
+                1012,
+                102
+              ],
+              "text": "The chef has rarely sliced [MASK] of the tomatoes."
+            }
+          },
+          "verb": "sliced"
+        }
+      ],
+      "id": "evaluation-02",
+      "split": "evaluation"
+    },
+    {
+      "contexts": [
+        {
+          "id": "evaluation-03-a",
+          "indices": {
+            "cue": 4,
+            "mask": 6,
+            "object": 9
+          },
+          "object": "cases",
+          "role": "judge",
+          "rows": {
+            "always": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                3648,
+                2038,
+                2467,
+                8182,
+                103,
+                1997,
+                1996,
+                3572,
+                1012,
+                102
+              ],
+              "text": "The judge has always reviewed [MASK] of the cases."
+            },
+            "never": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                3648,
+                2038,
+                2196,
+                8182,
+                103,
+                1997,
+                1996,
+                3572,
+                1012,
+                102
+              ],
+              "text": "The judge has never reviewed [MASK] of the cases."
+            },
+            "often": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                3648,
+                2038,
+                2411,
+                8182,
+                103,
+                1997,
+                1996,
+                3572,
+                1012,
+                102
+              ],
+              "text": "The judge has often reviewed [MASK] of the cases."
+            },
+            "rarely": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                3648,
+                2038,
+                6524,
+                8182,
+                103,
+                1997,
+                1996,
+                3572,
+                1012,
+                102
+              ],
+              "text": "The judge has rarely reviewed [MASK] of the cases."
+            }
+          },
+          "verb": "reviewed"
+        },
+        {
+          "id": "evaluation-03-b",
+          "indices": {
+            "cue": 4,
+            "mask": 6,
+            "object": 9
+          },
+          "object": "walls",
+          "role": "painter",
+          "rows": {
+            "always": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                5276,
+                2038,
+                2467,
+                4993,
+                103,
+                1997,
+                1996,
+                3681,
+                1012,
+                102
+              ],
+              "text": "The painter has always painted [MASK] of the walls."
+            },
+            "never": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                5276,
+                2038,
+                2196,
+                4993,
+                103,
+                1997,
+                1996,
+                3681,
+                1012,
+                102
+              ],
+              "text": "The painter has never painted [MASK] of the walls."
+            },
+            "often": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                5276,
+                2038,
+                2411,
+                4993,
+                103,
+                1997,
+                1996,
+                3681,
+                1012,
+                102
+              ],
+              "text": "The painter has often painted [MASK] of the walls."
+            },
+            "rarely": {
+              "attention_mask": [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "input_ids": [
+                101,
+                1996,
+                5276,
+                2038,
+                6524,
+                4993,
+                103,
+                1997,
+                1996,
+                3681,
+                1012,
+                102
+              ],
+              "text": "The painter has rarely painted [MASK] of the walls."
+            }
+          },
+          "verb": "painted"
+        }
+      ],
+      "id": "evaluation-03",
+      "split": "evaluation"
+    }
+  ],
+  "schema": "bert-cue-context-signed-cases-v1",
+  "scored_tokens": {
+    "any": 2151,
+    "some": 2070
+  },
+  "template": "The {role} has {cue} {verb} [MASK] of the {object}."
+}

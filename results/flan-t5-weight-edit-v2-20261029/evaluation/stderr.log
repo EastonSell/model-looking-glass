@@ -1,0 +1,2 @@
+C:\Users\easto\Documents\Codex\2026-10-28\https-github-com-eastonsell-model-looking\work\.venv\Lib\site-packages\transformers\utils\hub.py:110: FutureWarning: Using `TRANSFORMERS_CACHE` is deprecated and will be removed in v5 of Transformers. Use `HF_HOME` instead.
+  warnings.warn(

@@ -1,0 +1,9 @@
+{
+  "injection": "Injection custodian reports no protected injection claim, nonce or rows generated during the interval; immediately afterwards the cooperative ledger showed zero injection-heldout claims and no gate markers.",
+  "natural": "Natural custodian reports no successor claim, nonce or split during the interval; the original sealed commitment and public-support assumption remained unchanged.",
+  "observer_end_utc": "2026-10-29T10:34:06.275993+00:00",
+  "observer_start_utc": "2026-10-29T10:30:15.211079+00:00",
+  "recorded_utc": "2026-10-29T10:45:24.588899+00:00",
+  "schema": "agreement-subject-retrospective-custody-observation-v1",
+  "scope": "Retrospective custodian/operator reports, not an independently timestamped continuous monitor or proof of private membership."
+}

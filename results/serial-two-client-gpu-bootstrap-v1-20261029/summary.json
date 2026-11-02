@@ -1,0 +1,51 @@
+{
+  "schema": "serial-two-client-gpu-bootstrap-result-v1",
+  "source_commit": "dd819b8731861794ae917d6126e1ae0c35c80103",
+  "workload": {
+    "model": "distilbert/distilgpt2",
+    "input_shape": [1, 2],
+    "teams": 2,
+    "requests_per_team": 1,
+    "seeds": [29, 43],
+    "requested_cancellations": 0,
+    "activation_trace": false
+  },
+  "outcome": {
+    "successful_requests": 2,
+    "outstanding_requests_overlapped": true,
+    "broker_service_intervals_overlapped": false,
+    "queueing_observed": true,
+    "output_digests_equal": true,
+    "independent_numerical_correctness_check": false,
+    "independent_model_load_count": null,
+    "independent_forward_count": null
+  },
+  "broker_intervals_ms": [
+    {"request": "first", "ready_to_selected": 0.0693, "selected_to_terminal": 751.0538},
+    {"request": "second", "ready_to_selected": 732.7922, "selected_to_terminal": 751.2538}
+  ],
+  "host": {
+    "sample_count": 161,
+    "maximum_sample_gap_ms": 243.279,
+    "owner_lifetime_peak_working_set_bytes": 1693908992,
+    "owner_lifetime_peak_commit_charge_bytes": 2545704960,
+    "controller_lifetime_peak_working_set_bytes": 99704832,
+    "controller_lifetime_peak_commit_charge_bytes": 90468352,
+    "logical_host_commitment_bytes": 8589934592,
+    "initial_headroom_reserve_bytes": 2147483648
+  },
+  "serving_gpu_memory_trace_recorded": false,
+  "matched_sequential_baseline_recorded": false,
+  "supervisor_reported_owner_exit": 0,
+  "retained_direct_controller_wait_exit": 0,
+  "operator_tool_observed_outer_parent_exit": 0,
+  "separate_outer_parent_exit_receipt": false,
+  "limitations": [
+    "Single small serial-execution bootstrap; no sustained fairness or throughput claim.",
+    "Matching output digests do not independently establish numerical correctness.",
+    "Source defines one model construction and cold warmup; actual model loads and forwards were not independently counted.",
+    "Host samples and per-process lifetime peaks are observations, not operating-system reservations or worst-case bounds.",
+    "No serving-time GPU free-memory or allocator series was recorded.",
+    "The saved records do not independently prove descendant drainage or native CUDA teardown."
+  ]
+}

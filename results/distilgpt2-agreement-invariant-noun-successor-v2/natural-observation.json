@@ -1,0 +1,12 @@
+{
+  "case_sha256": "188782606abd576cde029408bb34975e7fd7ac2113bf17299dbb7e1aa2ddd76b",
+  "observation": "Timestamp is the operator public-source review; no protected state or membership was queried. Protected history and target relation are unverified.",
+  "protected_history": "unverified",
+  "refreshed_utc": "2026-10-29T14:01:01.822078+00:00",
+  "schema": "agreement-invariant-natural-refresh-v1",
+  "scope": "public support comparison; sealed-split coverage conditional on source-bound preparation; no private membership queried",
+  "status": "public_support_clear_protected_unknown",
+  "successor_status": "unknown",
+  "successor_support_sha256": "6303eb0713d64b020eea3fe491a686c9020ea424754443372aef73749bc87bc4",
+  "support_receipt_sha256": "618bc2fa245572e410aa1f32cb0c984f6c92b66a44f2b20cb71bdd21511a637f"
+}

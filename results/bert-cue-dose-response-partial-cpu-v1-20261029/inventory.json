@@ -1,0 +1,90 @@
+{
+  "files": [
+    {
+      "bytes": 27546,
+      "path": "audit_full.py",
+      "sha256": "bd7a2cba0cb38c5def0e6642d479aeab6c2d1aec373a545651ee7e552d027c2d"
+    },
+    {
+      "bytes": 16567,
+      "path": "audit_prefix.py",
+      "sha256": "fff0f0bf3ece903b4b4fa339568387a5705d17eba9b9dbe4f59712bd8802ea39"
+    },
+    {
+      "bytes": 12840,
+      "path": "audit_subset.py",
+      "sha256": "4aece4ad41172ab87e7f97c7d0362d4e9cb12984884d525071468c1e7d9ac484"
+    },
+    {
+      "bytes": 967,
+      "path": "calibration-audit.json",
+      "sha256": "188e28db0e1af49f23446099ff522aefe83c2e1db947aabe869efc12d199a048"
+    },
+    {
+      "bytes": 4806,
+      "path": "compare_calibration.py",
+      "sha256": "9e5d258125e4667a7e79822dec0ac0d9e0d1d09a15fca9fb097f3f2805fbe78b"
+    },
+    {
+      "bytes": 248,
+      "path": "controller-exit.json",
+      "sha256": "f5499d680cbd2ea1d2ebdfdb7268ce30598ad8aa7d6af9ad8ef0ff806ed54f34"
+    },
+    {
+      "bytes": 5596,
+      "path": "derive_subset.py",
+      "sha256": "100169ccd5dcbadc42b5865a22a3e9328a33f7539e04472b3d8472fa409e0c5e"
+    },
+    {
+      "bytes": 1013,
+      "path": "failure-summary.json",
+      "sha256": "ec9cfff2ce012c4896cb85b8de5de24bca30abf63ed268ae7314f23213783c42"
+    },
+    {
+      "bytes": 22785,
+      "path": "manifest.json",
+      "sha256": "6205dc2c1c2e779e98df2366410221c04845758549f9e79cd5fa15e51a8fb07a"
+    },
+    {
+      "bytes": 45196,
+      "path": "prefix-audit.json",
+      "sha256": "510a79781a37bd6df254d64845911cd63d950bf3b237abaf7d5c447fdd7b6d33"
+    },
+    {
+      "bytes": 3125,
+      "path": "preflight.json",
+      "sha256": "02c5f2769c51daaee380c2f0b87bf50649afa0c68a3e6974d3d3366822c3b4af"
+    },
+    {
+      "bytes": 10447,
+      "path": "protocol.md",
+      "sha256": "a4af23e2c3fd678dbd0af1329e305edcf68b11a29a36d362f1652aaf0dec22e0"
+    },
+    {
+      "bytes": 8372,
+      "path": "public-exposure-check.json",
+      "sha256": "88033d47752b7803bdb13fcac1fa0c820d9e39c7f59548d25878caf04df346cb"
+    },
+    {
+      "bytes": 7623,
+      "path": "README.md",
+      "sha256": "9fe73e2fc3444891c50bf8da242d17bda97b80896fb111dcb4da5be8a2ef2836"
+    },
+    {
+      "bytes": 40513,
+      "path": "score-report.json",
+      "sha256": "d011caa3dc30d76cc7196f396eee9741dc7a600874b17e3d4dddb0e3a1c70a26"
+    },
+    {
+      "bytes": 9206,
+      "path": "score-subset.jsonl.gz",
+      "sha256": "cc2c40a30b55d9c3e150405a9b5c100c13cea0e6da99299d8a620c7a9708da13"
+    },
+    {
+      "bytes": 3094,
+      "path": "started.json",
+      "sha256": "19baa22fc6b6fe3da139bf22b125a4f3122a39e6e82dc9ec38604389127bd9e7"
+    }
+  ],
+  "schema": "bert-cue-dose-partial-public-inventory-v1"
+}

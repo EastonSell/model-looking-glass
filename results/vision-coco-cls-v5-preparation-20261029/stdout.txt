@@ -1,0 +1,1 @@
+{"manifest_sha256": "d2fa15c4287f15f78ff5f1a1cc1eab2551d73ee2ac876b5f7bb956f31b1d2931", "images": 64, "model_forwards": 0}

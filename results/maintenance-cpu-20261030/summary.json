@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "date_utc": "2026-10-30",
+  "scope": "One complete serial default CPU pytest run; not an all-green result",
+  "tested_tree": "7173c3011c356ca533c227b7933e8b5a3716106c",
+  "published_equivalent_commit": "8ff2551d11ba2440e8de94b880a4e365524b00ca",
+  "source_unchanged": true,
+  "collected": 8430,
+  "unique_terminal_nodes": 8430,
+  "counts": {
+    "passed": 8144,
+    "skipped": 285,
+    "failed": 1
+  },
+  "exit_status": 1,
+  "duration_seconds": 1517.79,
+  "skip_breakdown": {
+    "experimental_opcode_exclusions": 57,
+    "other_platform_runtime_cache_or_opt_in_prerequisites": 228
+  },
+  "runtime": {
+    "python": "3.12.14",
+    "torch": "2.15.0+cpu",
+    "transformers": "4.57.3",
+    "pytest": "8.4.2",
+    "numpy": "2.5.4",
+    "Pillow": "11.3.0"
+  },
+  "conditions": {
+    "serial": true,
+    "cuda_hidden": true,
+    "cpu_threads": 1,
+    "hugging_face_offline": true,
+    "git_transports_forbidden": true,
+    "automatic_pytest_plugins_disabled": true,
+    "model_downloads": false
+  },
+  "pytest_arguments": [
+    "tests",
+    "-q",
+    "-ra",
+    "--tb=short",
+    "--continue-on-collection-errors",
+    "-p",
+    "no:cacheprovider"
+  ],
+  "failed_node": "tests/test_screened_locality_posthoc.py::test_published_rows_reproduce_the_known_locality_anchor",
+  "failure_classification": "Required archived input files absent; download/restore pending. No hash or scientific guard was relaxed.",
+  "missing_archive_source_commit": "3cbdec78134855532811a58a64e8dd5d4d457185",
+  "missing_files": [
+    {
+      "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/matched.f32",
+      "blob_sha": "3265dd1361141f03dc50ee2ae89fc93ad0a7e876",
+      "size": 4020560
+    },
+    {
+      "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/nuisance.f32",
+      "blob_sha": "631c1020c250b766149ce056d3a2fc5e752a33d9",
+      "size": 4020560
+    },
+    {
+      "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/opposite.f32",
+      "blob_sha": "8f5221c784bca53494cddf17e7c0f9189fd77269",
+      "size": 4020560
+    },
+    {
+      "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/original.f32",
+      "blob_sha": "c0a046c7bb43468b58fac82311e1b3f7ca5205f2",
+      "size": 4020560
+    },
+    {
+      "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/projected.f32",
+      "blob_sha": "070c3ad86deb740c4c641fe91072f7ebc35d010d",
+      "size": 4020560
+    },
+    {
+      "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/projected_random.f32",
+      "blob_sha": "bc94f6f43b7789fd7aeb0aa32ac0250d1f5d373d",
+      "size": 4020560
+    },
+    {
+      "path": "results/targeted-edit-screened-matched-v1-20261029/evaluation/evaluation/unprojected.f32",
+      "blob_sha": "7cdc19b68e7c4a3c881f8ecd077ecf550bd6e71a",
+      "size": 4020560
+    }
+  ],
+  "missing_bytes": 28143920,
+  "checkpoint_log_sha256": "2d30aee412c6705c6888ca76d63215bb1b1cbc7ea16f0ac18c4cc6811edbd21f",
+  "raw_checkpoint_log_included": false,
+  "limitations": [
+    "57 original opcode-exception experiments were excluded explicitly, not passed.",
+    "228 other prerequisite skips are not validated behavior.",
+    "No real GPU, Windows, downloaded pretrained model, or historical pinned-runtime replay was established.",
+    "Earlier native tracing crashes remain unexplained; this default run completed without a native crash."
+  ]
+}

@@ -52,7 +52,9 @@ effect for the same recipient and dose. In the reverse direction, however,
 the absolute `also`-to-negative effect was at least the absolute
 `just`-to-negative effect in **11/12** comparisons. These are descriptive
 active-control comparisons, not additional predeclared success criteria.
-They limit a claim of specificity to negation.
+The reverse effect is not unique to the `just` donor. Because `also` and
+`just` are both affirmative donors here, this comparison does not isolate
+polarity-class information or refute a polarity-class effect.
 
 The same bidirectional score averaged −0.015173 at the contextual object
 position and +0.087488 at the mask position after block 2; these are active

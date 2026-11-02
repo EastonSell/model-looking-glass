@@ -1,0 +1,15 @@
+{
+  "bidirectional_sequence_pairs": 3047148,
+  "case_sha256": "50ef3aea53a21a76ecf1bc4910882f78939a4d2fcca12528013ea56eaa586827",
+  "distinct_inventory_sequences": 4979,
+  "inventory_records": 1183,
+  "inventory_revision": "a27cd1dfeadb3c1e434a5e524ccbd5d305f4c883",
+  "inventory_sha256": "5e593d1b5a0ac35aba2791cd5eafe7114f7e93ba4bb1c90706e385d2fab0cadc",
+  "inventory_version": "distilgpt2-development-exposures-v39",
+  "own_base_answer_prefix_exempt": true,
+  "proposed_cases": 68,
+  "proposed_sequences": 612,
+  "relations": 0,
+  "schema": "agreement-invariant-public-inventory-comparison-v1",
+  "scope": "Public inventory comparison; not a private or unknown-exposure attestation."
+}
