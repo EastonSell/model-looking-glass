@@ -21,9 +21,9 @@ Changing the code? Start with the [code map](../looking_glass/README.md) and [co
 | Apply controlled changes | [Intervention primitives](INTERVENTIONS.md), [ordered plans](INTERVENTION_PLANS.md), [causal metrics](CAUSAL_METRICS.md), [behavioral evaluation](BEHAVIORAL_EDIT_EVALUATION.md) |
 | Load a pinned model | [Pretrained loader and asset checks](PRETRAINED_MODEL.md) |
 | GPT-2 | [Trace reference](TRANSFORMER_TRACE.md), [head slices](GPT2_HEAD_SLICE.md) |
-| DistilBERT | [Trace reference](DISTILBERT_TRACE.md), [intervention workflow](DISTILBERT_INTERVENTION_WORKFLOW.md) |
-| T5 | [Trace reference](FLAN_T5_TRACE.md), [comparison](FLAN_T5_TRACE_COMPARISON.md), [intervention workflow](FLAN_T5_INTERVENTION_WORKFLOW.md) |
-| ViT | [Trace reference](VIT_TRACE.md), [comparison](VIT_TRACE_COMPARISON.md), [donor patches](VIT_DONOR_PATCH.md) |
+| DistilBERT | [Tracing and interventions](DISTILBERT_TRACE.md) |
+| T5 | [Tracing, comparison and interventions](FLAN_T5_TRACE.md) |
+| ViT | [Tracing, comparison and donor patches](VIT_TRACE.md) |
 | Interpret measurements | [Mathematics](MATHEMATICS.md), [denormal counterexample](GRADIENT_DENORMAL_V1.md), [stored-float arithmetic](AGREEMENT_NUMERIC.md), [factorial metrics](AGREEMENT_METRICS.md) |
 | Design a study | [Methods synthesis](CAUSAL_INTERVENTION_METHODS_NOTE_20261029.md), [literature and experimental choices](CAUSAL_LITERATURE.md), [original protocol](../PROTOCOL.md) |
 | Check validation | [Actual CPU validation and limitations](MAINTENANCE_2026-10-29.md), [experimental opcode boundary](EXPERIMENTAL_OPCODE_TESTS.md) |
