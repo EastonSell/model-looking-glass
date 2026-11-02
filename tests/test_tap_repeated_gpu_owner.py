@@ -1,4 +1,4 @@
-"""CPU-only tests for the disabled fixed owner orchestration."""
+"""CPU-only tests for the fixed owner orchestration."""
 
 import gc
 import hashlib
@@ -290,6 +290,13 @@ def _synthetic_execution(monkeypatch, tmp_path, *, fail_second_sample, version_e
     monkeypatch.setattr(subject, '_dependency_versions', lambda: versions)
     monkeypatch.setattr(subject, '_clock', lambda: (fixture.CLOCK, {'platform': 'win32',
         'implementation': 'cpython', 'python_version': '3.11.15'}))
+    # This fake orchestration exercises control flow on any host; only the
+    # platform identity is synthetic, while the remaining runtime checks run.
+    runtime_record = subject._runtime_record
+    def fake_runtime_record(*args):
+        return {**runtime_record(*args), 'platform': 'win32',
+                'implementation': 'cpython', 'python_version': '3.11.15'}
+    monkeypatch.setattr(subject, '_runtime_record', fake_runtime_record)
     monkeypatch.setattr(subject, '_OWNER_ENABLED', True)
     monkeypatch.setattr(subject, '_CUSTODY', dict(subject._CUSTODY, entered=False, directory=None, failure=None,
                                                   diagnostic_failure=None))

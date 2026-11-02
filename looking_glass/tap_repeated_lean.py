@@ -157,24 +157,34 @@ class _LeanTimedSample:
         if type(ended) is not int or not completion <= ended < 2 ** 63:
             raise ValueError('lean disposal completion clock is invalid')
         self.partial.update(stage='postcheck_pending', ended_ns=ended)
+        self.partial['diagnostic_step'] = 'peak_allocated_query'
         peak_a = operations.call(runtime.peak_allocated_bytes)
         if (type(peak_a) is not int
                 or not before['allocated_bytes'] <= peak_a <= operations.admitted.cap_bytes - HEADROOM):
             raise ValueError('invalid lean peak allocation')
         self.partial['peak_allocated_bytes'] = peak_a
+        self.partial['diagnostic_step'] = 'peak_reserved_query'
         peak_r = operations.call(runtime.peak_reserved_bytes)
         if (type(peak_r) is not int
                 or not max(before['reserved_bytes'], peak_a) <= peak_r <= operations.admitted.cap_bytes - HEADROOM):
             raise ValueError('invalid lean peak reservation')
         self.partial['peak_reserved_bytes'] = peak_r
+        self.partial['diagnostic_step'] = 'final_memory_snapshot'
         after = sample._snapshot()
         self.partial['memory_after'] = after
+        self.partial['diagnostic_step'] = 'peak_comparison'
         if peak_a < after['allocated_bytes'] or peak_r < after['reserved_bytes']:
             raise ValueError('lean peak counters precede the final snapshot')
+        self.partial['diagnostic_step'] = 'postcheck_clock_query'
         postcheck = operations.call(sample.clock)
+        if type(postcheck) is int and 0 <= postcheck < 2 ** 63:
+            self.partial['postcheck_completed_ns'] = postcheck
+        self.partial['diagnostic_step'] = 'postcheck_time_validation'
         if type(postcheck) is not int or not ended <= postcheck <= ended + FINAL_POSTCHECK_MAX_NS:
             raise ValueError('lean postcheck timing is invalid')
+        self.partial['diagnostic_step'] = 'guarded_end_clock_query'
         guarded_ended = sample.clock()
+        self.partial['diagnostic_step'] = 'guarded_end_time_validation'
         if (type(guarded_ended) is not int or not postcheck <= guarded_ended < 2 ** 63
                 or guarded_started > started):
             raise ValueError('guarded sample interval is invalid')
