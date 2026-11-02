@@ -1,8 +1,8 @@
 """Disabled parent identity and barriers for the repeated tap experiment.
 
-This draft does not launch an owner. The final integration must bind the live
-handle and barriers to strict supervision, fresh parent telemetry, durable
-partial evidence and an independently reviewed owner before enabling it.
+The proposed controller binds the live handle and barriers to strict
+supervision, fresh parent telemetry and durable partial evidence. All entry
+gates remain disabled pending a separately reviewed enablement.
 The private cooperative frame and files are not a hostile-process boundary.
 """
 
