@@ -313,7 +313,10 @@ os._exit(31)
 '''
     command = [sys._base_executable, '-c', textwrap.dedent(program), str(stop)]
     env = dict(os.environ)
-    env['PYTHONPATH'] = os.pathsep.join((str(repo), sysconfig.get_paths()['purelib']))
+    # Keep the standard library ahead of third-party packages when passing the
+    # current environment to the base interpreter (which may leave a venv).
+    env['PYTHONPATH'] = os.pathsep.join((str(repo), sysconfig.get_paths()['stdlib'],
+                                        sysconfig.get_paths()['purelib']))
     env['CUDA_VISIBLE_DEVICES'] = ''
     controller = control._prepare_owner_controller(stop)
     service._controller = controller
