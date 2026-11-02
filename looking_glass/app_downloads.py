@@ -13,11 +13,13 @@ import os
 from pathlib import Path
 import re
 import shutil
+import socket
+import ssl
 import tempfile
 import threading
 import time
 from urllib.parse import urlsplit, quote
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, build_opener, ProxyHandler, HTTPRedirectHandler, HTTPSHandler
 import uuid
 
@@ -279,6 +281,23 @@ class _DownloadError(ValueError):
     pass
 
 
+def _network_error(exc):
+    """Describe known transport failures without exposing remote exception text."""
+    reason=exc.reason if isinstance(exc,URLError) else exc
+    if isinstance(reason,ssl.SSLCertVerificationError):
+        return ('TLS certificate verification failed. Check the Python environment\'s trusted '
+                'certificates and network security settings; no model was published.')
+    if isinstance(reason,ssl.SSLError):
+        return 'A secure connection could not be established. Check TLS and network security settings; no model was published.'
+    if isinstance(reason,socket.gaierror):
+        return 'The model host could not be resolved. Check DNS and connectivity; no model was published.'
+    if isinstance(reason,TimeoutError):
+        return 'Download timed out. No model was published; retry explicitly when ready.'
+    if isinstance(reason,ConnectionError):
+        return 'The connection to the model host failed. Check connectivity and network restrictions; no model was published.'
+    return 'The model host could not be reached. Check connectivity and network restrictions; no model was published.'
+
+
 class DownloadManager:
     """One explicit job; only start() writes/uses the network. No automatic retries.
 
@@ -380,6 +399,7 @@ class DownloadManager:
             elif isinstance(exc,_Cancelled): error=None
             elif isinstance(exc,_DownloadError): error=str(exc)
             elif isinstance(exc,HTTPError): error=f'Public snapshot request returned HTTP {exc.code}. No credentials were used; check that the pinned public source remains available.'
+            elif isinstance(exc,(URLError,ssl.SSLError,socket.gaierror,ConnectionError)): error=_network_error(exc)
             elif isinstance(exc,TimeoutError): error='Download timed out. No model was published; retry explicitly when ready.'
             else: error=f'Download failed ({type(exc).__name__}). No model was published; check connectivity, disk space and source availability.'
             self._update(state='cancelled' if isinstance(exc,_Cancelled) and not cleanup_error else 'failed',error=error,file=None,path=None)
