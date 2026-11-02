@@ -169,6 +169,7 @@
       $('run-status').textContent = quarantined ? 'Restart required before another model run.' : 'Stopped. See the message above.';
     }
     finally { state.busy = false; syncButtons(); if (completed && state.run?.capture_id && $('layer-map-options').open && state.mapAutoCapture !== state.run.capture_id) { state.mapAutoCapture = state.run.capture_id; await loadLayerMap(); } }
+    return completed;
   }
   function applyLimits(limits) {
     if (Number.isSafeInteger(limits?.max_vram_bytes) && limits.max_vram_bytes >= 1048576) { const max = Math.floor(limits.max_vram_bytes / 1048576); $('vram-mib').max = String(max); if (Number($('vram-mib').value) > max) $('vram-mib').value = String(max); }
@@ -592,7 +593,7 @@
           enter.type = 'button'; enter.className = 'quiet'; enter.textContent = folder.name + (folder.is_checkpoint ? ' · checkpoint candidate' : ' /');
           description.textContent = candidateLabel(folder); const main = document.createElement('div'); main.className = 'folder-entry'; main.append(enter, description); row.append(main);
           enter.addEventListener('click', () => { if (current()) return action('Checking selected local folder…', () => browse(folder.path, result.root)); });
-          if (folder.is_checkpoint || ['candidate','unverified','incomplete'].includes(folder.candidate?.status)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'secondary'; use.textContent = 'Use path'; use.addEventListener('click', () => { if (current()) { $('model-path').value = folder.path; invalidateInspection(); $('browse-status').textContent = 'Folder selected. Inspect or Load.'; } }); row.append(use); }
+          if (folder.is_checkpoint || ['candidate','unverified','incomplete'].includes(folder.candidate?.status)) { const use = document.createElement('button'); use.type = 'button'; use.className = 'secondary'; use.textContent = 'Use path'; use.addEventListener('click', () => { if (current()) { $('model-path').value = folder.path; invalidateInspection(); $('browse-status').textContent = 'Folder selected. Inspect or Load.'; $('model-path').focus({preventScroll:true}); $('model-path').scrollIntoView({block:'nearest',behavior:'instant'}); } }); row.append(use); }
           $('folder-list').append(row);
         }
         if (!(result.folders || []).length) $('folder-list').textContent = 'No visible subfolders.';
@@ -731,7 +732,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('browse-button').addEventListener('click', () => action('Browsing local folders…', () => browse($('model-path').value.trim())));
   $('browse-go').addEventListener('click', () => action('Browsing local folders…', () => browse($('browse-path').value.trim(), state.browse?.root)));
   $('browse-parent').addEventListener('click', () => action('Browsing parent folder…', async () => { if (state.browseFresh && state.browse?.parent) await browse(state.browse.parent, state.browse.root); }));
-  $('browse-select').addEventListener('click', () => { if (!state.busy && state.browseFresh && typeof state.browse?.path === 'string' && state.browse.path) { $('model-path').value = state.browse.path; invalidateInspection(); $('browse-status').textContent = 'Folder selected. Inspect or Load.'; } });
+  $('browse-select').addEventListener('click', () => { if (!state.busy && state.browseFresh && typeof state.browse?.path === 'string' && state.browse.path) { $('model-path').value = state.browse.path; invalidateInspection(); $('browse-status').textContent = 'Folder selected. Inspect or Load.'; $('model-path').focus({preventScroll:true}); $('model-path').scrollIntoView({block:'nearest',behavior:'instant'}); } });
   $('refresh-saved').addEventListener('click', () => action('Listing saved captures…', refreshSaved));
   $('saved-runs').addEventListener('change', () => { const run = state.saved.find((item) => item.path === $('saved-runs').value && item.status === 'complete_unverified'); if (run) $('open-path').value = run.path; });
   $('unload-button').addEventListener('click', () => action('Releasing the model owner; keeping captured vectors…', async () => { await api('unload', {}); const current = await api('status'); setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
@@ -745,17 +746,23 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     try { showInspection(await api('inspect', {path}), path); }
     catch(error) { revealOptions('model-options'); $('inspection-panel').hidden=false; $('inspection-path').textContent=`Requested folder: ${path}`; $('inspection-status').textContent=`Inspection failed: ${error.message || String(error)}. Check the complete local snapshot: config.json, matching safetensors and matching tokenizer or processor assets. No download was started.`; throw error; }
   }));
-  $('demo-button').addEventListener('click', () => action('Building the tiny untrained CPU demo in RAM…', async () => {
+  $('demo-button').addEventListener('click', async () => { if (await action('Building the tiny untrained CPU demo in RAM…', async () => {
     const result = await api('demo', {}); clearView(); setModel(result.model);
     $('capture-mode').value = 'auto'; $('custom-capture').hidden = true; $('layers').value = '';
     for (const [id, maximum] of [['max-output', 8], ['max-input', 120]]) { const current = Number($(id).value); $(id).value = String(Number.isSafeInteger(current) && current >= Number($(id).min) ? Math.min(current, maximum) : maximum); }
     if (!$('prompt').value.trim()) $('prompt').value = 'Hello, tiny model!'; await refreshReferenceOptional();
-  }));
-  $('load-button').addEventListener('click', () => action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); const info = await api('load', {path, ...execution}); clearView(); setModel(info); await refreshReferenceOptional(); }));
+  }) && $('session-options').open) focusModelInput(); });
+  $('load-button').addEventListener('click', async () => { if (await action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); const info = await api('load', {path, ...execution}); clearView(); setModel(info); await refreshReferenceOptional(); }) && $('session-options').open) focusModelInput(); });
   $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); const opened = await api('open', {path}); clearView(); showRun(opened); await loadEvents(); $('saved-status').textContent = 'Selected capture opened and validated. Other listed exports remain unverified.'; await refreshReferenceOptional(); }));
   $('scene-view').value = 'scene'; $('layer-map-body').setAttribute('data-view', 'scene');
   $('scene-view').addEventListener('change', () => { const view = $('scene-view').value; if (!['scene','list'].includes(view)||sceneFailed) $('scene-view').value = 'list'; $('layer-map-body').setAttribute('data-view',$('scene-view').value);syncSceneVisibility(); });
-  $('open-settings').addEventListener('click', () => { if (state.busy) return; if (state.model && state.model.state !== 'quarantined') { setDock('query', true); const field = String(state.model.family || '').toLowerCase().includes('vit') ? $('image-file') : $('prompt'); field.focus({preventScroll:true}); $('query-dock').scrollIntoView({block:'nearest',behavior:'instant'}); return; } state.settingsOpener = 'open-settings'; $('session-options').open = true; $('model-path').focus(); });
+  function focusModelInput() {
+    if (!state.model || state.model.state === 'quarantined') return;
+    setDock('query', true); $('session-options').open = false;
+    const field = String(state.model.family || '').toLowerCase().includes('vit') ? $('image-file') : $('prompt');
+    field.focus({preventScroll:true}); $('query-dock').scrollIntoView({block:'nearest',behavior:'instant'});
+  }
+  $('open-settings').addEventListener('click', () => { if (state.busy) return; if (state.model && state.model.state !== 'quarantined') { focusModelInput(); return; } state.settingsOpener = 'open-settings'; $('session-options').open = true; $('model-path').focus(); });
   $('scene-reset').addEventListener('click', () => { if (state.busy || sceneFailed || !sceneApi || !state.mapCapture || $('scene-view').value !== 'scene') return; try { if(sceneApi.fitView)sceneApi.fitView();else sceneApi.resize(); } catch (_) { sceneUnavailable('3D framing unavailable. Use the captured-site list.'); } });
   for(const mode of ['select','orbit','pan'])$('scene-mode-'+mode).addEventListener('click',()=>{if(state.busy||sceneFailed||!sceneApi||!state.mapCapture||$('scene-view').value!=='scene')return;if(sceneApi.setMode?.(mode)===false)return;sceneMode=mode;syncSceneControls();});
   for(const [id,direction] of [['scene-layer-prev',-1],['scene-layer-next',1]])$(id).addEventListener('click',()=>{if(state.busy||sceneFailed||!sceneApi||!state.mapCapture||$('scene-view').value!=='scene')return;sceneApi.navigateLayers?.(direction);});
@@ -763,7 +770,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   function restoreSettingsFocus() { const opener = state.settingsOpener === 'open-settings' && !$('scene-empty').hidden ? 'open-settings' : 'session-summary'; $(opener).focus(); }
   $('session-summary').addEventListener('click', () => { state.settingsOpener = 'session-summary'; });
   $('session-options').addEventListener('keydown', event => { if (event.key === 'Escape' && $('session-options').open) { event.preventDefault(); $('session-options').open = false; restoreSettingsFocus(); } });
-  $('session-options').addEventListener('toggle', () => { if (!$('session-options').open) restoreSettingsFocus(); });
+  $('session-options').addEventListener('toggle', () => { if (!$('session-options').open && $('session-options').contains(document.activeElement)) restoreSettingsFocus(); });
   $('dock-exact').addEventListener('click', () => { if (!state.event || state.busy) return; revealOptions('feature-values-options'); $('feature-values-options').scrollIntoView({block:'nearest'}); });
   $('dock-edit').addEventListener('click', () => { if (!state.event || state.busy) return; revealOptions('intervention-options'); $('intervention-operation').focus(); });
   $('dock-reference').addEventListener('click', () => { if (!state.event || state.busy) return; revealOptions('reference-options'); $('reference-options').scrollIntoView({block:'nearest'}); });
