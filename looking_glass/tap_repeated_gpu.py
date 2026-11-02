@@ -29,6 +29,7 @@ _SOURCE_PATHS = (
     'scripts/tap_repeated_gpu_bootstrap.py', 'scripts/v2_source_guards.py',
     'evidence/gpu-tap-latency-repeated-v1/schedule.json',
     'docs/GPU_TAP_LATENCY_REPEATED_V1_3_DRAFT.md',
+    'docs/GPU_TAP_EVIDENCE_STORAGE_AMENDMENT_V1.md',
     'looking_glass/__init__.py', 'looking_glass/tap_repeated_gpu.py',
     'looking_glass/tap_repeated_gpu_owner.py', 'looking_glass/tap_repeated_gpu_evidence.py',
     'looking_glass/tap_repeated_parent.py', 'looking_glass/tap_repeated_child_barrier.py',
@@ -74,7 +75,7 @@ def _publish_result(path, value):
 
 
 def _check_output_destination(output):
-    """Reserve a fresh result name and its related create-only records."""
+    """Check that the result name and related records are currently absent."""
     destination = Path(output)
     related = (destination, *(Path(str(destination) + suffix) for suffix in
                               ('.private.json', '.partial', '.incomplete.json')))
@@ -82,6 +83,23 @@ def _check_output_destination(output):
             or any(os.path.lexists(path) for path in related)):
         raise ValueError('output and its related records must be absent at an absolute path')
     return destination
+
+
+def _evidence_parent(destination):
+    """Require the output parent to be an existing canonical directory."""
+    parent = Path(destination).parent
+    if not parent.is_absolute() or not parent.is_dir() or parent.resolve(strict=True) != parent:
+        raise ValueError('the evidence parent must be an existing canonical directory')
+    return parent
+
+
+def _make_run_directory(destination):
+    """Place private run, temp and bytecode evidence beside the result."""
+    parent = _evidence_parent(destination)
+    run_dir = Path(tempfile.mkdtemp(prefix='tap-repeated-v12-', dir=parent))
+    if run_dir.parent != parent or run_dir.resolve(strict=True) != run_dir:
+        raise RuntimeError('the private run directory does not match its evidence parent')
+    return run_dir
 
 
 def _read_bounded(path, maximum=256 * 1024):
@@ -246,6 +264,7 @@ def _run_session(*, workspace_root, cache_dir, output, session, cpu_context, coo
     git = Path(os.environ.get(_PREFIX + 'GIT_EXE', '')).resolve(strict=True)
     commit = os.environ.get(_PREFIX + 'SOURCE_COMMIT', '')
     destination = _check_output_destination(output)
+    _evidence_parent(destination)
     private_receipt = Path(str(destination) + '.private.json')
     tree, files = _source_identity(repo, git, commit)
     from .gpu_oneshot import _smi_snapshot, _verify_offline_cache
@@ -263,7 +282,7 @@ def _run_session(*, workspace_root, cache_dir, output, session, cpu_context, coo
     _require_smi_environment()
     smi = (Path(os.environ.get('SYSTEMROOT', 'C:/Windows')) / 'System32/nvidia-smi.exe').resolve(strict=True)
     uuid, before = _smi_snapshot(str(smi))
-    run_dir = Path(tempfile.mkdtemp(prefix='tap-repeated-v12-', dir=root / 'work')).resolve(strict=True)
+    run_dir = _make_run_directory(destination)
     _ROOTS.update(run_dir=run_dir, stage='created')
     run_id, challenge = secrets.token_hex(16), secrets.token_hex(32)
     _write_new(private_receipt, {'schema': 'tap-repeated-private-launch-v1',
