@@ -20,7 +20,11 @@ The canonical checkout, offline model cache, workspace identity and physical
 device lock/unsafe marker remain in the workspace. The proposed storage change
 does not alter slot, seeds, paired schedule, timing definitions, activity
 screen, status or availability rules. Available free space is a point
-observation, not a reservation. Any new observation must retain its own source
+observation, not a reservation. The controller does not measure output-volume
+free space or verify parent-directory access controls. Before enablement, the
+operator must check capacity and provide private, trusted, stable storage; a
+supported Windows rehearsal must verify volume, junction and access-control
+behavior. Any new observation must retain its own source
 identity and limitations and must not be pooled with or relabeled as a prior
 isolated result.
 
