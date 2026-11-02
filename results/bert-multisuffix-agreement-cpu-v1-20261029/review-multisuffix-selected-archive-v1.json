@@ -1,0 +1,16 @@
+{
+  "float_values_checked": 4352,
+  "full_logits_sha256": "623c173a2c0244a3b3aac7978a2fb83a41cf8d1d9de892945b3f8b111d5d2149",
+  "rows": 1088,
+  "schema": "independent-multisuffix-selected-archive-v1",
+  "scope": "All selected float32 bytes and original included records match; the compact archive excludes full logits, hidden witnesses and independent process attestation.",
+  "selected_logits_sha256": "dd187ccee3d70d80189b986b0516f6ee09942a5e5c280cda5063c99cc1b575db",
+  "status": "saved_byte_consistency",
+  "token_ids": [
+    2003,
+    2024,
+    2001,
+    2020
+  ],
+  "zip_sha256": "47b8106c4d71ce91b618f27f03a441af70f42911dcea75dddded70dd78194bb9"
+}

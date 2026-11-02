@@ -3,3 +3,16 @@ targeted_edit_projected_public_cases_v1.json -text
 bert_taste_propagation_public_cases_v1.json -text
 bert_taste_propagation_selection_observation_v1.json -text
 bert_taste_propagation_public_exposures_v2.json -text
+bert_color_edit_public_cases_v1.json -text
+bert_color_edit_public_exposure_check_v1.json -text
+bert_color_edit_public_exposures_v2.json -text
+bert_color_preference_public_cases_v2.json -text
+bert_color_preference_public_comparison_v2.json -text
+bert_color_preference_public_exposures_v1.json -text
+bert_color_preference_public_exposures_v2.json -text
+bert_antonym_preference_public_cases_v1.json -text
+bert_antonym_preference_public_comparison_v1.json -text
+bert_antonym_preference_public_exposures_v1.json -text
+bert_antonym_preference_first_draft_v1.json -text
+bert_antonym_preference_first_comparison_v1.json -text
+bert_antonym_preference_public_exposures_v2.json -text

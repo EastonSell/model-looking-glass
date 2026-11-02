@@ -1,0 +1,202 @@
+{
+  "candidate_rows": 55,
+  "candidate_sha256": "3938d487e98068b0d515edbb16ee34d6d8c590f248ad28c81e8cad60dbda5e52",
+  "public_commit": "88666f1f0d4ad9c2f543983dea5efc6b22921b72",
+  "related_pairs": [
+    {
+      "case_id": "unrelated-relation-02",
+      "source": "experiments/bert_color_edit_public_cases_v1.json",
+      "source_row": 34
+    },
+    {
+      "case_id": "unrelated-relation-02",
+      "source": "experiments/bert_color_edit_public_exposures_v2.json",
+      "source_row": 34
+    }
+  ],
+  "row_pairs_compared": 76615,
+  "scope": "Named public BERT and cross-model case/exposure JSON rows; both prefix directions with each final SEP present or removed. No private, unknown-history or pretraining claim.",
+  "source_row_references": 1393,
+  "sources": [
+    {
+      "git_blob": "cc05cda7cc08ec698e476c49e8a152e346597a96",
+      "path": "experiments/bert_agreement_exposures_v2.json",
+      "rows": 96,
+      "sha256": "224d683291b5b4f3a617697c8f9811351cf63bef19958fff9870c943e88fcdbc"
+    },
+    {
+      "git_blob": "33f39cbae8c9b2b5b3fd8d2ae43587ee5b959c32",
+      "path": "experiments/bert_agreement_exposures_v3.json",
+      "rows": 96,
+      "sha256": "6945a478e3af37083af055bf20bf65628fa979e0ee8b253ea8bacb475cb9e9f2"
+    },
+    {
+      "git_blob": "26932fa96fcc1a3957dc293b88354028a715708e",
+      "path": "experiments/bert_agreement_exposures_v4.json",
+      "rows": 96,
+      "sha256": "1f9ae67040646341097414f5ef6da1f66d0ccc5f0be47deeee36cfe66550e32e"
+    },
+    {
+      "git_blob": "6922a6890e89dc33ca9bd13682522514576408fa",
+      "path": "experiments/bert_agreement_exposures_v5.json",
+      "rows": 96,
+      "sha256": "34db577a211d6036e7803b8cdb6aaab35687b56974de8cf1ac6bccbf3272fb3c"
+    },
+    {
+      "git_blob": "f672b0775360434126b76bacb3a734b83a125bf8",
+      "path": "experiments/bert_agreement_exposures_v6.json",
+      "rows": 160,
+      "sha256": "0d0b37539c30c8ff25ea5b1cfa95ecd4587f048434348a1c91ec010418553afb"
+    },
+    {
+      "git_blob": "c02dee95e647546d7cca46897657c3540d06997c",
+      "path": "experiments/bert_agreement_public_cases_v1.json",
+      "rows": 96,
+      "sha256": "20a8ce96bab80c1f3b19ca86ac43e5d32f62c4b4a9bbd3c23e1a3fc9abfd91e5"
+    },
+    {
+      "git_blob": "9f282b6f93b71c34d83f0b45c7ef5e033dc04c7f",
+      "path": "experiments/bert_agreement_suffix_cases_v1.json",
+      "rows": 64,
+      "sha256": "1da4f8e4773009fedc750480c21597fc60ecaa0c990dcff0af15a5c7101c3dca"
+    },
+    {
+      "git_blob": "fe570c8622be55f881104846167845196767724c",
+      "path": "experiments/bert_color_edit_public_cases_v1.json",
+      "rows": 37,
+      "sha256": "4f00000cf205137347d551fc2837e082ac632a515e92c1e5893b3312f1f71623"
+    },
+    {
+      "git_blob": "053edefe5af0ba43da644ecb2ada596916a2e582",
+      "path": "experiments/bert_color_edit_public_exposures_v2.json",
+      "rows": 37,
+      "sha256": "2129d9642548b69928e9e3f4bcb8d044e0383b9671a3f01fe9bb0754ef3a7824"
+    },
+    {
+      "git_blob": "8a197477757731339f468191e76bc30471a487b7",
+      "path": "experiments/bert_color_preference_public_cases_v2.json",
+      "rows": 37,
+      "sha256": "f938cee4acab09d70f3d827e6172a62d273a5c621c35b6e3e47bd46303aa5a10"
+    },
+    {
+      "git_blob": "e3378f9b7638660578721b7ff18890669a9e1620",
+      "path": "experiments/bert_color_preference_public_exposures_v1.json",
+      "rows": 37,
+      "sha256": "069516b19b575a13daa140afeca421bf8d8d99184dfc3cf833b715436ce4d6db"
+    },
+    {
+      "git_blob": "af3b3c4d5fd8000945a9aa6734bbaf090d461044",
+      "path": "experiments/bert_color_preference_public_exposures_v2.json",
+      "rows": 37,
+      "sha256": "6948d97d5c2d103f8f9bd08b5a512d071bfaa9ac00063f83f9411ec1e92e210d"
+    },
+    {
+      "git_blob": "eb5d19163cb4122ce8e29057e41ae6bd95cf5fe3",
+      "path": "experiments/bert_cue_class_public_cases_v1.json",
+      "rows": 48,
+      "sha256": "57a55d89097ab1b955eb4e6bab38d48a4108aa24608b96827f3d27830fc7bf8c"
+    },
+    {
+      "git_blob": "40a77260c9529d85fefaf09a15b38b4adb9b602d",
+      "path": "experiments/bert_cue_context_signed_cases_v1.json",
+      "rows": 32,
+      "sha256": "843649c3f105e26185d96f31d769b0585d219bb7a45ba445cf2c2548598927df"
+    },
+    {
+      "git_blob": "2901f15db99021ca92b675ed472e30f50b1a3882",
+      "path": "experiments/bert_cue_context_transfer_cases_v1.json",
+      "rows": 24,
+      "sha256": "4fb31c4b49c24e78f6a4b0b59d928ebb6204a55ecdc2c9c4cd55528700d592a7"
+    },
+    {
+      "git_blob": "b47c0f2d037d6d7e990b5885a2af0bb25bab068d",
+      "path": "experiments/bert_cue_dose_response_cases_v1.json",
+      "rows": 32,
+      "sha256": "6205dc2c1c2e779e98df2366410221c04845758549f9e79cd5fa15e51a8fb07a"
+    },
+    {
+      "git_blob": "0ad421cdcfa76c1d9c7b2806160b31d43f4c6aab",
+      "path": "experiments/bert_cue_dose_response_public_exposures_v2.json",
+      "rows": 32,
+      "sha256": "61988985ca06c0a4113c4791792b1e2760b5139a1cc8aeaa1fe37f207f35f6ad"
+    },
+    {
+      "git_blob": "2b653aaa94b91bf564af4ddeb30e2fe07c15d16b",
+      "path": "experiments/bert_cue_factorial_cases_v1.json",
+      "rows": 48,
+      "sha256": "b91eba1e0a52f6a183a59b0bfbb365dd54d67341bd74a4fb56325e72a7f45d4f"
+    },
+    {
+      "git_blob": "90b9aa32be8ccbae5e5b0f628d87e8258e63ccc5",
+      "path": "experiments/bert_cue_heldout_frames_cases_v1.json",
+      "rows": 24,
+      "sha256": "7a10dbcb598e48c2e8f56e2b75d8c03188ec04ca7a21ac071aea4b1e8294162c"
+    },
+    {
+      "git_blob": "85e54c4376334885345aeae0c1f433650b51e860",
+      "path": "experiments/bert_matched_public_cases_v1.json",
+      "rows": 64,
+      "sha256": "5b708600dba78db9e4ee676650bc5e1f6b3269d52179a8e45d5d45fee55219bb"
+    },
+    {
+      "git_blob": "582fb297ffca48b741d01c0d94ff53fc72313e49",
+      "path": "experiments/bert_negation_public_cases_v1.json",
+      "rows": 32,
+      "sha256": "4308e7977e36eb731948193cce27ffa399421bf1bd8bbdd4e42dfa7cc6f4a8ff"
+    },
+    {
+      "git_blob": "af750385dc926ccd69747371081f32ebe05f1655",
+      "path": "experiments/bert_taste_matched_dose_public_cases_v1.json",
+      "rows": 12,
+      "sha256": "983be330b6691ce23986f26e50a345f77ca5cf46dd28a660a3a012a2cf598a7c"
+    },
+    {
+      "git_blob": "9f4a248be7831ede7fd12b8ed036bba64013e033",
+      "path": "experiments/bert_taste_matched_dose_public_exposures_v2.json",
+      "rows": 12,
+      "sha256": "9b08e38927187c6f43d8659603e27e0f5397034e01143e665ab01a139a64e845"
+    },
+    {
+      "git_blob": "c3aa5ff9918cb9c267862b3d7433f9c2c4bfe84f",
+      "path": "experiments/bert_taste_propagation_public_cases_v1.json",
+      "rows": 24,
+      "sha256": "341300932b0dab6d4004c3dd7007d73500162f8d945a91ca50538b9e2802c979"
+    },
+    {
+      "git_blob": "ef517dff7c771db0177fecbdb7338a9c8b5bfa43",
+      "path": "experiments/bert_taste_propagation_public_exposures_v2.json",
+      "rows": 24,
+      "sha256": "7978b729aedb2b01b93c9c86e115d2f2d95cdb0e50480edb59db6d5bebb080bf"
+    },
+    {
+      "git_blob": "9500325bec5f8d78749581eabeb033f01950dc94",
+      "path": "experiments/bert_taste_public_cases_v1.json",
+      "rows": 8,
+      "sha256": "362b84af462e7f5bb4ccbb365c8ab5ee1bc96845ee6021df23d6d08c298acad8"
+    },
+    {
+      "git_blob": "e11d3c0ec93ae89cc7c88b5f301a5e36bb5a5802",
+      "path": "experiments/bert_taste_public_exposures_v2.json",
+      "rows": 8,
+      "sha256": "a766d20778191280122a6b498b9bcb34907bfac761152ae7c3cf4df0fb9c5aa1"
+    },
+    {
+      "git_blob": "71197321cea2e46b7071a10ac28d5454d3b2209f",
+      "path": "experiments/bert_taste_template_direction_public_cases_v1.json",
+      "rows": 24,
+      "sha256": "e59f5e1da0b3ce8c99ea9c231b4998e1c1e685d09c20bff4fdb734dc4910256f"
+    },
+    {
+      "git_blob": "0c934bb9540920dd09603dae22cbcbac8a273c16",
+      "path": "experiments/bert_taste_template_direction_public_exposures_v2.json",
+      "rows": 24,
+      "sha256": "bf4d67ca16519a133f263d2da4b7a270bcd7a259a7cab4b8e8c85a04baa4f424"
+    },
+    {
+      "git_blob": "5802a5f80bb6b1c769f78b6cae18a2d1cdeb6396",
+      "path": "experiments/cross_model_agreement_cases_v1.json",
+      "rows": 32,
+      "sha256": "b1d6dbad76240f07be3a55196ace982767400b60e497d4e7fc75aaae82c8c503"
+    }
+  ]
+}

@@ -183,8 +183,8 @@ class LocalTransformersFixtureTests(unittest.TestCase):
                                      vocab_size=257, min_frequency=1,
                                      special_tokens=["<|endoftext|>"])
         byte_bpe.save_model(str(self.source))
-        tokenizer = GPT2TokenizerFast(vocab_file=str(self.source / "vocab.json"),
-                                      merges_file=str(self.source / "merges.txt"))
+        tokenizer = GPT2TokenizerFast(vocab=str(self.source / "vocab.json"),
+                                      merges=str(self.source / "merges.txt"))
         tokenizer.save_pretrained(self.source)
         config = GPT2Config(vocab_size=len(tokenizer), n_positions=128, n_embd=8,
                             n_layer=1, n_head=2)

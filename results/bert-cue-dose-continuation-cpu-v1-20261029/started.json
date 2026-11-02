@@ -1,0 +1,79 @@
+{
+  "assets": {
+    "config.json": {
+      "bytes": 483,
+      "sha256": "69c94b0222d5d1f4b0ad027ca7416cdafb98378cbbb8305d0bf47c9365c60c83"
+    },
+    "model.safetensors": {
+      "bytes": 267954768,
+      "sha256": "5e3f1108e3cb34ee048634875d8482665b65ac713291a7e32396fb18f6ff0063"
+    },
+    "tokenizer.json": {
+      "bytes": 466062,
+      "sha256": "ce64fce797c24f68df90b40a3f74f579b336a493db14bd583fd520ea0d8c9a98"
+    },
+    "tokenizer_config.json": {
+      "bytes": 48,
+      "sha256": "a025160ef0431f1a392f6f050c1310f4c5d9fb6f275932dbccba73c4d214bf10"
+    },
+    "vocab.txt": {
+      "bytes": 231508,
+      "sha256": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+    }
+  },
+  "case_ids": [
+    "fresh-02-prior",
+    "fresh-02-new",
+    "fresh-03-prior",
+    "fresh-03-new"
+  ],
+  "cpu_environment": {
+    "ATEN_CPU_CAPABILITY": {
+      "present": false,
+      "value": null
+    },
+    "MKL_CBWR": {
+      "present": false,
+      "value": null
+    }
+  },
+  "maximum_forwards": 480,
+  "original_sha256": {
+    "events": "ef3d75a34903e8c2fae9f69cf3d3f71d9c77c59ec171d72cbf07c9e67e9d0e05",
+    "failure": "12b861407be2e4050b7f5e7b792847867f7b7c588cf75857783fc36d1bb8317a",
+    "receipt": "f5499d680cbd2ea1d2ebdfdb7268ce30598ad8aa7d6af9ad8ef0ff806ed54f34",
+    "started": "19baa22fc6b6fe3da139bf22b125a4f3122a39e6e82dc9ec38604389127bd9e7"
+  },
+  "original_source_commit": "b75e5bcc3a866a9af56ac1ac3ba54c6abe1691a4",
+  "seed": 2026102905,
+  "source_commit": "cdc9630e24542fed84b0c9556bb7f37c60d722d1",
+  "source_sha256": {
+    "docs/BERT_CUE_DOSE_CONTINUATION_V1.md": "cb17169645a5830c96dbd4988c150f60c7b145182a10c8aeb037c043ee0d5d21",
+    "docs/BERT_CUE_DOSE_RESPONSE_V1.md": "a4af23e2c3fd678dbd0af1329e305edcf68b11a29a36d362f1652aaf0dec22e0",
+    "docs/BERT_NEGATION_CUE_V1.md": "624210b55973b79b421256481da231b3c7ae5268ef43c9fd8d30f6b6caf5d96d",
+    "experiments/bert_cue_dose_response_cases_v1.json": "6205dc2c1c2e779e98df2366410221c04845758549f9e79cd5fa15e51a8fb07a",
+    "experiments/bert_cue_dose_response_public_exposure_check_v1.json": "88033d47752b7803bdb13fcac1fa0c820d9e39c7f59548d25878caf04df346cb",
+    "experiments/bert_cue_factorial_cases_v1.json": "b91eba1e0a52f6a183a59b0bfbb365dd54d67341bd74a4fb56325e72a7f45d4f",
+    "experiments/bert_negation_public_cases_v1.json": "4308e7977e36eb731948193cce27ffa399421bf1bd8bbdd4e42dfa7cc6f4a8ff",
+    "looking_glass/__init__.py": "9e937f02ec3e4ce0908849aa1741d8afafe378e64212362dbf67af73e11a4fe0",
+    "looking_glass/bert_cue_class.py": "41c596d3a22434592279c1a1075c0bce36fa84e14adf97777d6197b895cd676e",
+    "looking_glass/bert_cue_dose_response.py": "fea564457fc403f21745a1762df8301559a754b15771dae27b6f2d780210d247",
+    "looking_glass/bert_cue_factorial.py": "8fde76425176c7c09214a4b73e8d6186087b3545c7882ced0098afb0d1704955",
+    "looking_glass/bert_negation_cue.py": "2757bd3d7d694dec5a62e4c8e9fc03aae53150d522e5132b77f636ccbda8a6e4",
+    "looking_glass/intervention_plan.py": "6470676938e73e48234128c30ba1d10a49104ee8513434871bc6e973c55d6120",
+    "looking_glass/interventions.py": "71cbcf4776660d2dd883b82815f710b0c909228fd1762504f9e3f984f7f6c60f",
+    "looking_glass/model_ownership.py": "99fee108f56ff8b7b7361e39de982c242cff590cc06c5d7a640cc12123cfe434",
+    "scripts/bert_cue_dose_continuation_v1.py": "38941345de356ed0d25a8b1687ee8675e3c8a20fb918983e490056deb236b265",
+    "scripts/bert_cue_dose_response_v1.py": "f2e1443c0d3e169b67b95e54cb47febd9e107120100c72b2ccfc478afea7e307",
+    "scripts/bert_negation_cue_v1.py": "7580c4041901a567f2693c8609b939984ed5632afa30ac297af0f463c4c5e204",
+    "scripts/build_bert_cue_dose_manifest.py": "f93be6eb9c14db0f1ac9d8cc052c5734cf61e446f18caf912fd4c9551c0370dc",
+    "scripts/compare_bert_cue_dose_continuation_v1.py": "9fa19c1481aab9d234fb146798d142d71241ee26d48c288286a9ea98f57163e8"
+  },
+  "versions": {
+    "numpy": "2.4.6",
+    "safetensors": "0.8.0",
+    "tokenizers": "0.22.2",
+    "torch": "2.8.0+cu128",
+    "transformers": "4.57.3"
+  }
+}

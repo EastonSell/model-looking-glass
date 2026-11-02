@@ -1,0 +1,81 @@
+{
+  "attempt_inventory": [
+    {
+      "bytes": 883,
+      "path": "complete.json",
+      "sha256": "de0d88d3f28463bdbf778cc83f00c3da91eaf1dc7996554f39de7f514c5d6214"
+    },
+    {
+      "bytes": 219094,
+      "path": "events.jsonl",
+      "sha256": "6a875ceba8b7eb64f6543e6f0364ee9c4d2f576a96c1a14645e78ef61455400c"
+    },
+    {
+      "bytes": 95,
+      "path": "loading.json",
+      "sha256": "68248f5df4a5083ca8b281235bdf62f7e907c54bf5a09a917a711be2801d1e01"
+    },
+    {
+      "bytes": 50788608,
+      "path": "logits.f32",
+      "sha256": "c6ab009a59b6e0bcc2695bf15399f49ad8b4c1444a305de31864a48b92bbc8ff"
+    },
+    {
+      "bytes": 14034,
+      "path": "memory.jsonl",
+      "sha256": "2055043673138a60e46d38f314be20486b2e944e7d61bc044e6983dff75964ac"
+    },
+    {
+      "bytes": 2246,
+      "path": "metadata.json",
+      "sha256": "9953488bb0a253ef109e3539a5af91c0684cb9df41d48ee65103a53ee160e31b"
+    },
+    {
+      "bytes": 0,
+      "path": "retention-errors.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 108832,
+      "path": "starts.jsonl",
+      "sha256": "dc79c43ea59a8b471e36cc2b66df0f165b18ca3adbc93c2c013caa1c2a127e2d"
+    },
+    {
+      "bytes": 2555904,
+      "path": "witness.f32",
+      "sha256": "1bdf4a4cdd1f34c29cd53d7d65f880f65f15b9f70c03abd496ccb67be2a48bec"
+    }
+  ],
+  "controller_inventory": [
+    {
+      "bytes": 291,
+      "path": "admission.json",
+      "sha256": "eee13611dc3465fa13bfabafd9bf1a55a411f42960b5518eed99bacf980ea5e0"
+    },
+    {
+      "bytes": 907,
+      "path": "child.log",
+      "sha256": "370598f87113a2af65dc1bf9a2a499685c9cd6739db0f49a0dcc55c548fd242e"
+    },
+    {
+      "bytes": 593,
+      "path": "exit-observation.json",
+      "sha256": "aba62af990b2ff1752de77ae5d6a76779383c331931df50bebd043152921c7fa"
+    },
+    {
+      "bytes": 118,
+      "path": "spawn.json",
+      "sha256": "8d21b10c7e0602cf6a6564af389651ddaeb1f65cc23a190579a6a8990eaac1b5"
+    }
+  ],
+  "end_unix": 1793279297.9451072,
+  "exit_code": 0,
+  "interrupted": null,
+  "observer_pid": 16220,
+  "pending_marker_present": false,
+  "receipt_sha256": "aba62af990b2ff1752de77ae5d6a76779383c331931df50bebd043152921c7fa",
+  "schema": "bert-suffix-outer-observer-exit-v1",
+  "scope": "direct observer process and original closed-directory inventory, not process-tree attestation",
+  "source_commit": "7dbf6e9ea498770e389cbf7fbc1eba5bc2303662",
+  "start_unix": 1793279206.3990784
+}

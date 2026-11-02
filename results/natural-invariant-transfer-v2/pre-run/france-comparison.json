@@ -1,0 +1,11 @@
+{
+  "bidirectional_pairs": 44676,
+  "bundle_schema": "france-full-top-fixed-cases-v3",
+  "bundle_sha256": "c8dd418bea948c8ca2b4d1e39e696374a28bd2f911bb16707415c38170fbba82",
+  "case_sha256": "188782606abd576cde029408bb34975e7fd7ac2113bf17299dbb7e1aa2ddd76b",
+  "foreign_sequences": 73,
+  "own_sequences": 612,
+  "relations": 0,
+  "schema": "natural-invariant-transfer-pending-comparison-v1",
+  "scope": "Public fixed pending bundle only; no model use or private exposure is established."
+}

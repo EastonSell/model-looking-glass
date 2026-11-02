@@ -91,8 +91,12 @@ def aggregate_same_site(rows):
     return {'status': status, 'selected': len(rows), 'evaluable': len(eligible), 'positive': positive}
 
 
-def run_same_site(model, pairs, pixel_by_id, evidence):
-    """Run the fixed same-site comparison, retaining every finite case."""
+def run_same_site(model, pairs, pixel_by_id, evidence, *, check_clean=None, numeric_guard=None):
+    """Run the fixed same-site comparison, retaining every finite case.
+
+    A caller may additionally bind every repeated clean output before any
+    intervention; the original v3 path leaves ``check_clean`` unset.
+    """
     target_ids = [pair[side]['image_id'] for pair in pairs for side in ('cat', 'dog')]
     donor_ids = [pair[side + '_donor']['image_id'] for pair in pairs for side in ('cat', 'dog')]
     if (len(target_ids) != len(set(target_ids)) or set(target_ids) & set(donor_ids) or
@@ -105,12 +109,16 @@ def run_same_site(model, pairs, pixel_by_id, evidence):
             if image_id in clean:
                 continue
             logits, captures, row = forward(model, pixel_by_id[image_id], evidence,
-                                            f"{pair['pair_id']}:{role}:initial")
+                                            f"{pair['pair_id']}:{role}:initial", numeric_guard=numeric_guard)
+            if check_clean is not None:
+                check_clean(image_id, logits)
             _, reference = score(logits)
             clean[image_id] = {'logits': logits, 'early': captures['early'], 'late': captures['late'],
                                'score': row['score'], 'off_reference': reference}
     output = []
     for pair in pairs:
+        if numeric_guard is not None:
+            numeric_guard()
         pair_id, inside = pair['pair_id'], pair['box_tokens']
         base = baseline_status(clean[pair['cat']['image_id']]['score'],
                                clean[pair['dog']['image_id']]['score'])
@@ -121,13 +129,15 @@ def run_same_site(model, pairs, pixel_by_id, evidence):
             other = clean[pair[other_side]['image_id']]
             same = clean[pair[side + '_donor']['image_id']]
             pixels = pixel_by_id[image_id]
+            if numeric_guard is not None:
+                numeric_guard()
             dose, requested = prepare_same_site_dose(own['early'], other['early'], inside,
                                                     pair_id, side, same['early'])
             info = {'image_id': image_id, 'baseline': own['score'], 'dose': dose,
                     'same_species_donor_id': pair[side + '_donor']['image_id'],
                     'same_species_baseline': same['score'], 'conditions': {}}
             logits, captures, row = forward(model, pixels, evidence, f'{pair_id}:{side}:repeat',
-                                            reference=own['off_reference'])
+                                            reference=own['off_reference'], numeric_guard=numeric_guard)
             if not all((_same(logits, own['logits']), _same(captures['early'], own['early']),
                         _same(captures['late'], own['late']))):
                 raise ValueError('clean repeat failed')
@@ -146,7 +156,8 @@ def run_same_site(model, pairs, pixel_by_id, evidence):
             for name, path, tokens, replacement, action, expected in plans:
                 logits, captures, row = forward(model, pixels, evidence, f'{pair_id}:{side}:{name}',
                                                 path=path, tokens=tokens, replacement=replacement,
-                                                action=action, reference=own['off_reference'])
+                                                action=action, reference=own['off_reference'],
+                                                numeric_guard=numeric_guard)
                 state = own['early'] if path == EARLY else own['late']
                 check_landing(captures, state, tokens, replacement, action=action)
                 if expected is not None and not _same(logits, expected):
@@ -171,7 +182,7 @@ def run_same_site(model, pairs, pixel_by_id, evidence):
                             raise ValueError('actual matched doses differ')
                 info['conditions'][name] = saved
             logits, captures, row = forward(model, pixels, evidence, f'{pair_id}:{side}:post_clean',
-                                            reference=own['off_reference'])
+                                            reference=own['off_reference'], numeric_guard=numeric_guard)
             if not all((_same(logits, own['logits']), _same(captures['early'], own['early']),
                         _same(captures['late'], own['late']))):
                 raise ValueError('post-clean control failed')
@@ -183,6 +194,8 @@ def run_same_site(model, pairs, pixel_by_id, evidence):
             movements = {side: {name: results[side]['conditions']['matched_' + name]['annotation_oriented_change']
                                 for name in ('opposite', 'same_species', 'random')}
                          for side in ('cat', 'dog')}
+        if numeric_guard is not None:
+            numeric_guard()
         status = classify_same_site(base, dose_statuses, movements)
         row = {'pair_id': pair_id, 'split': pair['split'], 'baseline_eligibility': base,
                'dose_matchability': dose_statuses, 'status': status, 'sides': results,

@@ -1,0 +1,12 @@
+{
+  "launch_main": "7673846d29f6534bedc6fa25ba591ab1acdd32cc",
+  "pairs_compared": 46250,
+  "prefix_relations": 0,
+  "public_sources": 26,
+  "row_references": 1250,
+  "scan_sha256": "45e7ac6d45740386288e12c0f8059c958e27e678f32f4ac75321703b125c9e9e",
+  "schema": "color-v2-launch-scan-source-bound-replay-v1",
+  "scope": "Frozen study scanner replayed against recorded public Git tree; does not establish unknown, private or pretraining exposure.",
+  "source_commit": "dc3914af4df43135cc701e425514046790d63f3a",
+  "unique_rows": 561
+}

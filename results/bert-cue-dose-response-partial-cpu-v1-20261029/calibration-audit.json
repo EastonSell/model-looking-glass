@@ -1,0 +1,32 @@
+{
+  "current_journal_sha256": "ef3d75a34903e8c2fae9f69cf3d3f71d9c77c59ec171d72cbf07c9e67e9d0e05",
+  "event_kinds": {
+    "clean": 8,
+    "repeat": 8,
+    "self": 32,
+    "transfer": 96
+  },
+  "events": 144,
+  "fields_checked": {
+    "actual_norm": 96,
+    "after_f32le": 128,
+    "before_f32le": 128,
+    "captures_f32le.cue2": 16,
+    "captures_f32le.cue5": 16,
+    "captures_f32le.mask2": 16,
+    "captures_f32le.object2": 16,
+    "full_after_f32le": 128,
+    "full_before_f32le": 128,
+    "input_ids": 144,
+    "mask_logits_f32le": 144,
+    "planned_norm": 96,
+    "relative_error": 96,
+    "requested_fraction": 96,
+    "requested_radius": 96,
+    "submitted_f32le": 96
+  },
+  "mismatch_count": 0,
+  "mismatches": [],
+  "previous_journal_sha256": "667004f67abfae1fc97f66dd6a1061e352fc03a6d90c8ad47a49e862903520d9",
+  "scope": "Exposed calibration only; equality is descriptive saved-byte consistency, not execution attestation."
+}

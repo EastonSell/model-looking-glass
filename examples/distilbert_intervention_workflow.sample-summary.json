@@ -1,0 +1,134 @@
+{
+  "model": "distilbert/distilbert-base-uncased",
+  "requested_revision": "12040accade4e8a0f71eabdb258fecc2e7e948be",
+  "text": "The painter beside the artist [MASK] ready.",
+  "torch_version": "2.8.0+cu128",
+  "transformers_version": "4.57.3",
+  "result": {
+    "schema": "distilbert-known-intervention-v1",
+    "run_id": "public-agreement-example",
+    "input_ids": [
+      101,
+      1996,
+      5276,
+      3875,
+      1996,
+      3063,
+      103,
+      3201,
+      1012,
+      102
+    ],
+    "attention_mask": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "injection": {
+      "module_path": "distilbert.transformer.layer.0",
+      "layer": 0,
+      "invocation": 0,
+      "batch_index": 0,
+      "token_index": 2,
+      "coordinate": 0,
+      "requested_addition": 5.0,
+      "realized_l2": 4.9999998807907104,
+      "float32_addition": 5.0,
+      "before": 0.664260983467102,
+      "after": 5.6642608642578125,
+      "status": "nonzero"
+    },
+    "restoration": {
+      "module_path": "distilbert.transformer.layer.1",
+      "layer": 1,
+      "invocation": 0,
+      "batch_index": 0,
+      "token_index": 2,
+      "realized_l2": 3.8122610954060643,
+      "status": "nonzero"
+    },
+    "off_target": {
+      "module_path": "distilbert.transformer.layer.1",
+      "layer": 1,
+      "invocation": 0,
+      "batch_index": 0,
+      "token_index": 5,
+      "realized_l2": 0.44550331213433775,
+      "status": "active"
+    },
+    "readout": {
+      "input_position": 6,
+      "vocabulary_id": 2003,
+      "injected_vector_changed": true,
+      "injected_selected_logit_changed": true,
+      "measurements": {
+        "clean": {
+          "selected_logit": 8.45614242553711,
+          "selected_logit_float32_bits": 1090997340,
+          "max_absolute_distance_from_clean": 0.0,
+          "max_absolute_distance_from_injected": 0.2956418991088867
+        },
+        "injected": {
+          "selected_logit": 8.365339279174805,
+          "selected_logit_float32_bits": 1090902126,
+          "max_absolute_distance_from_clean": 0.2956418991088867,
+          "max_absolute_distance_from_injected": 0.0
+        },
+        "self": {
+          "selected_logit": 8.365339279174805,
+          "selected_logit_float32_bits": 1090902126,
+          "max_absolute_distance_from_clean": 0.2956418991088867,
+          "max_absolute_distance_from_injected": 0.0
+        },
+        "target": {
+          "selected_logit": 8.434226989746094,
+          "selected_logit_float32_bits": 1090974360,
+          "max_absolute_distance_from_clean": 0.07271003723144531,
+          "max_absolute_distance_from_injected": 0.30284547805786133
+        },
+        "off_target": {
+          "selected_logit": 8.365019798278809,
+          "selected_logit_float32_bits": 1090901791,
+          "max_absolute_distance_from_clean": 0.29779529571533203,
+          "max_absolute_distance_from_injected": 0.03777456283569336
+        },
+        "undo": {
+          "selected_logit": 8.45614242553711,
+          "selected_logit_float32_bits": 1090997340,
+          "max_absolute_distance_from_clean": 0.0,
+          "max_absolute_distance_from_injected": 0.2956418991088867
+        }
+      }
+    },
+    "restoration_comparison": {
+      "status": "descriptive",
+      "reasons": []
+    },
+    "controls": {
+      "clean_trace_matches_unhooked": true,
+      "self_patch_matches_injected_logits": true,
+      "immediate_undo_matches_clean_activation": true,
+      "immediate_undo_matches_clean_logits": true,
+      "clean_repeat_matches": true,
+      "injected_repeat_matches": true
+    },
+    "plan_limits": {
+      "max_tensor_bytes": 30720,
+      "max_capture_bytes": 125952,
+      "max_source_bytes": 6144,
+      "max_steps": 7,
+      "max_invocations": 1
+    },
+    "retained_tensor_bytes": 1303920,
+    "retained_tensor_byte_bound": 1303920,
+    "interpretation": "An artificial intervention and selected readout are measured; the off-target patch is descriptive and not assumed dose-matched. Immediate undo is a by-construction mechanics check, not a unique causal localization."
+  },
+  "summary_scope": "Illustrative summary; detailed event and plan metadata and tensor witnesses are omitted."
+}

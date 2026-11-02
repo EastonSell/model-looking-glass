@@ -33,6 +33,7 @@ REFERENCE_SHA = "3df19e35e8550f456015f3af3a9ce5536d0387fbf19cca7c58f6dd25fa975fa
 STATE_SHA = "d1bfb26b30f847366de6388385d547fc29cc3c20b330c4faad993891e165eccd"
 TOKENS = (161, 162, 175, 176)
 SITE = "vit.encoder.layer.2"
+_CURRENT_SITE = "vit.layers.2"
 LABELS = ("cat-clean", "dog-clean", "cat-self", "cat-gpu-donor", "cat-cpu-donor", "cat-repeat")
 _SOURCE_PATHS = ("looking_glass/__init__.py", "looking_glass/vision_vit_cuda_observer.py",
     "looking_glass/bert_gpu_exposed_pair.py", "looking_glass/bert_gpu_evidence.py",
@@ -199,15 +200,22 @@ def observe(model, pixels, *, label, output, index, replacement=None, self_patch
         raise TypeError("invalid observation custody")
     custody.pixels, custody.replacement = pixels, replacement
     patch = self_patch or replacement is not None
-    steps = [{"name": "before_all", "operation": "capture", "module_path": SITE}]
+    # Preserve historical receipts; new captures record the actual module path.
+    try:
+        model.get_submodule(_CURRENT_SITE)
+        module_path = _CURRENT_SITE
+    except AttributeError:
+        model.get_submodule(SITE)
+        module_path = SITE
+    steps = [{"name": "before_all", "operation": "capture", "module_path": module_path}]
     if patch:
         for i, token in enumerate(TOKENS):
-            site = {"module_path": SITE, "batch_index": 0, "token_index": token}
+            site = {"module_path": module_path, "batch_index": 0, "token_index": token}
             steps.append(dict(name=f"before_{i}", operation="capture", **site))
             action = dict(name=f"action_{i}", operation="patch", **site)
             action["source_capture" if self_patch else "value"] = f"before_{i}" if self_patch else replacement[i]
             steps.extend((action, dict(name=f"after_{i}", operation="capture", **site)))
-        steps.append({"name": "after_all", "operation": "capture", "module_path": SITE})
+        steps.append({"name": "after_all", "operation": "capture", "module_path": module_path})
     if _unexpected_hooks(model):
         raise RuntimeError("unexpected hooks before observation")
     check()
@@ -589,10 +597,13 @@ def _saved_forward(directory, index, expected, device="cuda:0"):
     events = row.get("metadata", {}).get("steps")
     if type(events) is not list or len(events) != len(planned):
         raise ValueError("saved action inventory differs")
+    module_path = events[0].get("module_path") if type(events[0]) is dict else None
+    if module_path not in (SITE, _CURRENT_SITE):
+        raise ValueError("saved action module path differs")
     for order, ((name, operation, token), event) in enumerate(zip(planned, events)):
         if (type(event) is not dict or event.get("name") != name or event.get("operation") != operation
                 or type(event.get("order")) is not int or event["order"] != order
-                or event.get("module_path") != SITE or type(event.get("forward_index")) is not int
+                or event.get("module_path") != module_path or type(event.get("forward_index")) is not int
                 or event["forward_index"] != 0 or type(event.get("invocation")) is not int
                 or event["invocation"] != 0
                 or (token is None and (event.get("batch_index") is not None or event.get("token_index") is not None))

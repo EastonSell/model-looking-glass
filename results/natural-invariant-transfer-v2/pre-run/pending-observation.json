@@ -1,0 +1,32 @@
+{
+  "bundles": [
+    {
+      "bidirectional_pairs": 44676,
+      "bundle_sha256": "c8dd418bea948c8ca2b4d1e39e696374a28bd2f911bb16707415c38170fbba82",
+      "relations": 0,
+      "report_sha256": "25e0f0e2fad873ca723f8df79deeeeb6462b91bd4018f90a5d1c575c0d9f37ac"
+    },
+    {
+      "bidirectional_pairs": 117504,
+      "bundle_sha256": "68b567718209285a9adedd588d0c0d269efb4b7d8ed9d278a2fb8201d672d1dd",
+      "relations": 0,
+      "report_sha256": "d5d90c35d032888b7789382a774d4a58cc959857a3b1da6ae64c6fbdf7d45566"
+    }
+  ],
+  "case_sha256": "188782606abd576cde029408bb34975e7fd7ac2113bf17299dbb7e1aa2ddd76b",
+  "inventory_sha256": "8c0e09c2a1bf276e931f3cd7580cbb5076ad696b3371002307cf8cc76e4e4b37",
+  "schema": "natural-invariant-transfer-pending-observation-v1",
+  "scope": "Time-specific public inputs only; unknown, protected and pretraining exposure unverified.",
+  "supplementary_observations": [
+    {
+      "bidirectional_pairs": 48960,
+      "bundle_sha256": "b7af3e83fd1e8d08ba8d926ee0561c6e440322df074a3c73959ee15d7cfa8ab3",
+      "foreign_sequences": 80,
+      "kind": "public propagation proposal, independently compared",
+      "own_sequences": 612,
+      "relations": 0,
+      "report_sha256": "1e853683297a011797469ec875052210adf51c446bd16fd3f0d7ff5f4a1747c7",
+      "scope": "independent operator-reported comparison; no model forward asserted"
+    }
+  ]
+}

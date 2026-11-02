@@ -12,7 +12,8 @@ from test_natural_successor_query import canonical, query, run, setup, sha
 def arguments(value):
     config = json.loads(value['config_path'].read_bytes())
     source_sha = sha(Path(config['sources']['caller']).read_bytes())
-    return {'interpreter': sys._base_executable, 'interpreter_sha256': sha(Path(sys._base_executable).read_bytes()),
+    return {'interpreter': str(value['synthetic_interpreter']),
+            'interpreter_sha256': sha(value['synthetic_interpreter'].read_bytes()),
             'bootstrap': query._BOOTSTRAP,
             'query_source_sha256': source_sha}
 
@@ -24,7 +25,7 @@ def completed(setup):
     args = arguments(setup)
     inner = handoff.verify_inner(setup['config_path'], setup['config_sha256'], setup['operation_sha256'], **args)
     config = json.loads(setup['config_path'].read_bytes())
-    command = [sys._base_executable, '-I', '-S', '-B', '-c', query._BOOTSTRAP,
+    command = [args['interpreter'], '-I', '-S', '-B', '-c', query._BOOTSTRAP,
                config['sources']['caller'], args['query_source_sha256'], '--config', str(setup['config_path']),
                '--config-sha256', setup['config_sha256'], '--operation-sha256', setup['operation_sha256']]
     command_sha = sha(canonical(command))

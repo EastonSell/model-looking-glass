@@ -385,7 +385,7 @@ class _TorchServiceBackend:
 
     def __init__(self, *, session, device_lease, cache_dir, team_ids,
                  live_key_builder, verify_loaded_model, verify_device_model,
-                 shutdown_timeout=10):
+                 shutdown_timeout=10, serving_memory_path=None, serving_memory_binding=None):
         from .ipc import _identifier
 
         cache_dir = Path(cache_dir)
@@ -404,12 +404,20 @@ class _TorchServiceBackend:
             raise TypeError('a device model verifier is required')
         if type(shutdown_timeout) not in (int, float) or not 0 < shutdown_timeout <= 300:
             raise ValueError('invalid shutdown timeout')
+        if serving_memory_path is not None:
+            serving_memory_path = Path(serving_memory_path)
+            if not serving_memory_path.is_absolute():
+                raise ValueError('serving-memory path must be absolute')
         self.session, self.device_lease = session, device_lease
         self._owner_session_binding, self._owner_lease_binding = session, device_lease
         self.cache_dir, self.team_ids = cache_dir, team_ids
         self.live_key_builder, self.shutdown_timeout = live_key_builder, shutdown_timeout
         self.verify_loaded_model = verify_loaded_model
         self.verify_device_model = verify_device_model
+        self._serving_memory_path = serving_memory_path
+        self._serving_memory_binding = serving_memory_binding
+        self._serving_memory = None
+        self._serving_memory_guard = self._check_owner_lease
         self._resolved_keys = None
         # These slots are allocated while still CPU-only.  Filling a fixed slot
         # avoids allocating an ever-growing failure-time retention list.
@@ -477,23 +485,70 @@ class _TorchServiceBackend:
         return load, cold, warm
 
     def telemetry(self):
-        self._check_owner_lease()
         from .memory_budget import CudaMemorySnapshot, TelemetryError
         import torch
+        observer = self._serving_memory
+        guard = (self._serving_memory_guard if observer is not None and observer.active
+                 else self._check_owner_lease)
         try:
+            guard()
             available = torch.cuda.is_available()
-            self._check_owner_lease()
+            guard()
             if not available:
                 raise RuntimeError('CUDA is not available')
             free, total = torch.cuda.mem_get_info(0)
-            self._check_owner_lease()
+            guard()
+            if (type(free) is not int or type(total) is not int or total <= 0
+                    or not 0 <= free <= total
+                    or (self._resolved_keys and any(total != key.device_total_bytes
+                                                    for key in self._resolved_keys))):
+                raise ValueError('invalid device memory telemetry')
             allocated = torch.cuda.memory_allocated(0)
-            self._check_owner_lease()
+            guard()
+            if type(allocated) is not int or not 0 <= allocated <= total:
+                raise ValueError('invalid allocated memory telemetry')
             reserved = torch.cuda.memory_reserved(0)
-            self._check_owner_lease()
-            return CudaMemorySnapshot(free, total, allocated, reserved)
+            guard()
+            snapshot = CudaMemorySnapshot(free, total, allocated, reserved)
+            if observer is not None and observer.active:
+                observer.record(snapshot)
+            return snapshot
         except Exception as exc:
+            _mark_unsafe()
             raise TelemetryError(f'cannot read CUDA memory telemetry: {exc}') from exc
+
+    def _start_serving_memory(self):
+        if self._serving_memory_path is None:
+            return
+        import torch
+        from .service_memory_observation import ServingMemoryObservation
+        if not self._resolved_keys:
+            raise RuntimeError('serving-memory observation requires resolved workload keys')
+        self._serving_memory = ServingMemoryObservation(
+            cuda=torch.cuda, guard=self._serving_memory_guard, mark_unsafe=_mark_unsafe,
+            expected_total_bytes=self._resolved_keys[0].device_total_bytes)
+        self._serving_memory.start()
+
+    def _finish_serving_memory(self):
+        if self._serving_memory_path is None:
+            return
+        import json
+        if self._serving_memory is None:
+            raise RuntimeError('serving-memory observation did not start')
+        record = self._serving_memory.finish()
+        record['binding'] = self._serving_memory_binding
+        payload = json.dumps(record, separators=(',', ':'), allow_nan=False).encode('utf-8')
+        if len(payload) > 256 * 1024:
+            raise ValueError('serving-memory record exceeds its bound')
+        self._serving_memory_guard()
+        fd = os.open(self._serving_memory_path,
+                     os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_BINARY', 0), 0o600)
+        with os.fdopen(fd, 'wb') as stream:
+            if stream.write(payload) != len(payload):
+                raise OSError('serving-memory record was not fully written')
+            stream.flush()
+            os.fsync(stream.fileno())
+        self._serving_memory_guard()
 
     def synchronize(self):
         self._check_owner_lease(allow_pending=True)
@@ -765,6 +820,31 @@ def _run_bound_owner_inner(session, device_lease, *, backend, registry,
     _OWNER_CUSTODY[7] = broker
     _OWNER_CUSTODY[8] = server
     _require_unquarantined()
+    if isinstance(backend, _TorchServiceBackend):
+        if backend._serving_memory_path is not None:
+            def serving_memory_guard():
+                from .owner_completion import LifetimeWorkspaceWorker
+                from .trusted_service_profile import JOB_COMMITMENT
+                backend._check_owner_lease()
+                if type(worker) is LifetimeWorkspaceWorker:
+                    if (worker._resident_lease is not resident_lease
+                            or worker._resident_bytes != LOAD_COMMITMENT
+                            or worker._workspace_bytes != JOB_COMMITMENT):
+                        raise RuntimeError('serving-memory worker claims changed')
+                    expected = (resident_lease, worker._workspace_lease)
+                    expected_bytes = (LOAD_COMMITMENT, JOB_COMMITMENT)
+                else:
+                    expected, expected_bytes = (resident_lease,), (LOAD_COMMITMENT,)
+                active = budget.active_leases()
+                if (len(active) != len(expected) or set(active) != set(expected)
+                        or any(item.released or item.estimated_incremental_bytes != expected_bytes[index]
+                               or item.trace_bytes('gpu') or item.trace_bytes('host')
+                               or item._trace_limits != {'gpu': 0, 'host': 0}
+                               for index, item in enumerate(expected))):
+                    raise RuntimeError('serving-memory retained claims changed')
+                backend._check_owner_lease()
+            backend._serving_memory_guard = serving_memory_guard
+        backend._start_serving_memory()
 
     def verify_drain():
         global _OWNER_DRAIN_PENDING
@@ -864,6 +944,8 @@ def _run_bound_owner_inner(session, device_lease, *, backend, registry,
         _quarantine(session, device_lease, backend, registry, budget,
                     resident_lease, worker, broker, server, result)
         return GpuOwnerResult('quarantined', False)
+    if isinstance(backend, _TorchServiceBackend):
+        backend._finish_serving_memory()
     session.attest_clean(device_lease)
     return GpuOwnerResult(status, True, getattr(result, 'error_type', None),
                           getattr(result, 'error_message', None))

@@ -1,0 +1,1821 @@
+{
+  "affirmative_class": [
+    "always",
+    "often"
+  ],
+  "cases": [
+    {
+      "frame": "main",
+      "id": "dev-main",
+      "indices": {
+        "cue": 3,
+        "mask": 5,
+        "object": 8
+      },
+      "object": "plants",
+      "role": "gardener",
+      "rows": {
+        "always": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            19785,
+            2467,
+            27129,
+            103,
+            1997,
+            1996,
+            4264,
+            1012,
+            102
+          ],
+          "text": "The gardener always watered [MASK] of the plants."
+        },
+        "never": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            19785,
+            2196,
+            27129,
+            103,
+            1997,
+            1996,
+            4264,
+            1012,
+            102
+          ],
+          "text": "The gardener never watered [MASK] of the plants."
+        },
+        "often": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            19785,
+            2411,
+            27129,
+            103,
+            1997,
+            1996,
+            4264,
+            1012,
+            102
+          ],
+          "text": "The gardener often watered [MASK] of the plants."
+        },
+        "rarely": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            19785,
+            6524,
+            27129,
+            103,
+            1997,
+            1996,
+            4264,
+            1012,
+            102
+          ],
+          "text": "The gardener rarely watered [MASK] of the plants."
+        }
+      },
+      "split": "development",
+      "verb": "watered"
+    },
+    {
+      "frame": "embedded",
+      "id": "dev-embedded",
+      "indices": {
+        "cue": 7,
+        "mask": 9,
+        "object": 10
+      },
+      "object": "records",
+      "role": "nurse",
+      "rows": {
+        "always": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            6821,
+            2467,
+            7039,
+            103,
+            2636,
+            1012,
+            102
+          ],
+          "text": "The manager said that the nurse always checked [MASK] records."
+        },
+        "never": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            6821,
+            2196,
+            7039,
+            103,
+            2636,
+            1012,
+            102
+          ],
+          "text": "The manager said that the nurse never checked [MASK] records."
+        },
+        "often": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            6821,
+            2411,
+            7039,
+            103,
+            2636,
+            1012,
+            102
+          ],
+          "text": "The manager said that the nurse often checked [MASK] records."
+        },
+        "rarely": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            6821,
+            6524,
+            7039,
+            103,
+            2636,
+            1012,
+            102
+          ],
+          "text": "The manager said that the nurse rarely checked [MASK] records."
+        }
+      },
+      "split": "development",
+      "verb": "checked"
+    },
+    {
+      "frame": "relative",
+      "id": "dev-relative",
+      "indices": {
+        "cue": 7,
+        "mask": 9,
+        "object": 12
+      },
+      "object": "cakes",
+      "role": "baker",
+      "rows": {
+        "always": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            6243,
+            2040,
+            2777,
+            1996,
+            7805,
+            2467,
+            12595,
+            103,
+            1997,
+            1996,
+            22619,
+            1012,
+            102
+          ],
+          "text": "The baker who met the clerk always tasted [MASK] of the cakes."
+        },
+        "never": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            6243,
+            2040,
+            2777,
+            1996,
+            7805,
+            2196,
+            12595,
+            103,
+            1997,
+            1996,
+            22619,
+            1012,
+            102
+          ],
+          "text": "The baker who met the clerk never tasted [MASK] of the cakes."
+        },
+        "often": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            6243,
+            2040,
+            2777,
+            1996,
+            7805,
+            2411,
+            12595,
+            103,
+            1997,
+            1996,
+            22619,
+            1012,
+            102
+          ],
+          "text": "The baker who met the clerk often tasted [MASK] of the cakes."
+        },
+        "rarely": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            6243,
+            2040,
+            2777,
+            1996,
+            7805,
+            6524,
+            12595,
+            103,
+            1997,
+            1996,
+            22619,
+            1012,
+            102
+          ],
+          "text": "The baker who met the clerk rarely tasted [MASK] of the cakes."
+        }
+      },
+      "split": "development",
+      "verb": "tasted"
+    },
+    {
+      "frame": "main",
+      "id": "eval-main-01",
+      "indices": {
+        "cue": 3,
+        "mask": 5,
+        "object": 8
+      },
+      "object": "engines",
+      "role": "mechanic",
+      "rows": {
+        "always": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            15893,
+            2467,
+            13671,
+            103,
+            1997,
+            1996,
+            5209,
+            1012,
+            102
+          ],
+          "text": "The mechanic always repaired [MASK] of the engines."
+        },
+        "never": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            15893,
+            2196,
+            13671,
+            103,
+            1997,
+            1996,
+            5209,
+            1012,
+            102
+          ],
+          "text": "The mechanic never repaired [MASK] of the engines."
+        },
+        "often": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            15893,
+            2411,
+            13671,
+            103,
+            1997,
+            1996,
+            5209,
+            1012,
+            102
+          ],
+          "text": "The mechanic often repaired [MASK] of the engines."
+        },
+        "rarely": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            15893,
+            6524,
+            13671,
+            103,
+            1997,
+            1996,
+            5209,
+            1012,
+            102
+          ],
+          "text": "The mechanic rarely repaired [MASK] of the engines."
+        }
+      },
+      "split": "evaluation",
+      "verb": "repaired"
+    },
+    {
+      "frame": "main",
+      "id": "eval-main-02",
+      "indices": {
+        "cue": 3,
+        "mask": 5,
+        "object": 8
+      },
+      "object": "papers",
+      "role": "teacher",
+      "rows": {
+        "always": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3836,
+            2467,
+            21976,
+            103,
+            1997,
+            1996,
+            4981,
+            1012,
+            102
+          ],
+          "text": "The teacher always graded [MASK] of the papers."
+        },
+        "never": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3836,
+            2196,
+            21976,
+            103,
+            1997,
+            1996,
+            4981,
+            1012,
+            102
+          ],
+          "text": "The teacher never graded [MASK] of the papers."
+        },
+        "often": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3836,
+            2411,
+            21976,
+            103,
+            1997,
+            1996,
+            4981,
+            1012,
+            102
+          ],
+          "text": "The teacher often graded [MASK] of the papers."
+        },
+        "rarely": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3836,
+            6524,
+            21976,
+            103,
+            1997,
+            1996,
+            4981,
+            1012,
+            102
+          ],
+          "text": "The teacher rarely graded [MASK] of the papers."
+        }
+      },
+      "split": "evaluation",
+      "verb": "graded"
+    },
+    {
+      "frame": "main",
+      "id": "eval-main-03",
+      "indices": {
+        "cue": 3,
+        "mask": 5,
+        "object": 8
+      },
+      "object": "books",
+      "role": "librarian",
+      "rows": {
+        "always": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            13850,
+            2467,
+            4114,
+            103,
+            1997,
+            1996,
+            2808,
+            1012,
+            102
+          ],
+          "text": "The librarian always organized [MASK] of the books."
+        },
+        "never": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            13850,
+            2196,
+            4114,
+            103,
+            1997,
+            1996,
+            2808,
+            1012,
+            102
+          ],
+          "text": "The librarian never organized [MASK] of the books."
+        },
+        "often": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            13850,
+            2411,
+            4114,
+            103,
+            1997,
+            1996,
+            2808,
+            1012,
+            102
+          ],
+          "text": "The librarian often organized [MASK] of the books."
+        },
+        "rarely": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            13850,
+            6524,
+            4114,
+            103,
+            1997,
+            1996,
+            2808,
+            1012,
+            102
+          ],
+          "text": "The librarian rarely organized [MASK] of the books."
+        }
+      },
+      "split": "evaluation",
+      "verb": "organized"
+    },
+    {
+      "frame": "embedded",
+      "id": "eval-embedded-01",
+      "indices": {
+        "cue": 7,
+        "mask": 9,
+        "object": 10
+      },
+      "object": "charts",
+      "role": "doctor",
+      "rows": {
+        "always": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            3460,
+            2467,
+            8182,
+            103,
+            6093,
+            1012,
+            102
+          ],
+          "text": "The manager said that the doctor always reviewed [MASK] charts."
+        },
+        "never": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            3460,
+            2196,
+            8182,
+            103,
+            6093,
+            1012,
+            102
+          ],
+          "text": "The manager said that the doctor never reviewed [MASK] charts."
+        },
+        "often": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            3460,
+            2411,
+            8182,
+            103,
+            6093,
+            1012,
+            102
+          ],
+          "text": "The manager said that the doctor often reviewed [MASK] charts."
+        },
+        "rarely": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            3460,
+            6524,
+            8182,
+            103,
+            6093,
+            1012,
+            102
+          ],
+          "text": "The manager said that the doctor rarely reviewed [MASK] charts."
+        }
+      },
+      "split": "evaluation",
+      "verb": "reviewed"
+    },
+    {
+      "frame": "embedded",
+      "id": "eval-embedded-02",
+      "indices": {
+        "cue": 7,
+        "mask": 9,
+        "object": 10
+      },
+      "object": "eggs",
+      "role": "farmer",
+      "rows": {
+        "always": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            7500,
+            2467,
+            5067,
+            103,
+            6763,
+            1012,
+            102
+          ],
+          "text": "The manager said that the farmer always collected [MASK] eggs."
+        },
+        "never": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            7500,
+            2196,
+            5067,
+            103,
+            6763,
+            1012,
+            102
+          ],
+          "text": "The manager said that the farmer never collected [MASK] eggs."
+        },
+        "often": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            7500,
+            2411,
+            5067,
+            103,
+            6763,
+            1012,
+            102
+          ],
+          "text": "The manager said that the farmer often collected [MASK] eggs."
+        },
+        "rarely": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            7500,
+            6524,
+            5067,
+            103,
+            6763,
+            1012,
+            102
+          ],
+          "text": "The manager said that the farmer rarely collected [MASK] eggs."
+        }
+      },
+      "split": "evaluation",
+      "verb": "collected"
+    },
+    {
+      "frame": "embedded",
+      "id": "eval-embedded-03",
+      "indices": {
+        "cue": 7,
+        "mask": 9,
+        "object": 10
+      },
+      "object": "letters",
+      "role": "writer",
+      "rows": {
+        "always": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            3213,
+            2467,
+            2741,
+            103,
+            4144,
+            1012,
+            102
+          ],
+          "text": "The manager said that the writer always sent [MASK] letters."
+        },
+        "never": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            3213,
+            2196,
+            2741,
+            103,
+            4144,
+            1012,
+            102
+          ],
+          "text": "The manager said that the writer never sent [MASK] letters."
+        },
+        "often": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            3213,
+            2411,
+            2741,
+            103,
+            4144,
+            1012,
+            102
+          ],
+          "text": "The manager said that the writer often sent [MASK] letters."
+        },
+        "rarely": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3208,
+            2056,
+            2008,
+            1996,
+            3213,
+            6524,
+            2741,
+            103,
+            4144,
+            1012,
+            102
+          ],
+          "text": "The manager said that the writer rarely sent [MASK] letters."
+        }
+      },
+      "split": "evaluation",
+      "verb": "sent"
+    },
+    {
+      "frame": "relative",
+      "id": "eval-relative-01",
+      "indices": {
+        "cue": 7,
+        "mask": 9,
+        "object": 12
+      },
+      "object": "buses",
+      "role": "driver",
+      "rows": {
+        "always": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            4062,
+            2040,
+            2777,
+            1996,
+            7805,
+            2467,
+            20456,
+            103,
+            1997,
+            1996,
+            7793,
+            1012,
+            102
+          ],
+          "text": "The driver who met the clerk always inspected [MASK] of the buses."
+        },
+        "never": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            4062,
+            2040,
+            2777,
+            1996,
+            7805,
+            2196,
+            20456,
+            103,
+            1997,
+            1996,
+            7793,
+            1012,
+            102
+          ],
+          "text": "The driver who met the clerk never inspected [MASK] of the buses."
+        },
+        "often": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            4062,
+            2040,
+            2777,
+            1996,
+            7805,
+            2411,
+            20456,
+            103,
+            1997,
+            1996,
+            7793,
+            1012,
+            102
+          ],
+          "text": "The driver who met the clerk often inspected [MASK] of the buses."
+        },
+        "rarely": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            4062,
+            2040,
+            2777,
+            1996,
+            7805,
+            6524,
+            20456,
+            103,
+            1997,
+            1996,
+            7793,
+            1012,
+            102
+          ],
+          "text": "The driver who met the clerk rarely inspected [MASK] of the buses."
+        }
+      },
+      "split": "evaluation",
+      "verb": "inspected"
+    },
+    {
+      "frame": "relative",
+      "id": "eval-relative-02",
+      "indices": {
+        "cue": 7,
+        "mask": 9,
+        "object": 12
+      },
+      "object": "meals",
+      "role": "chef",
+      "rows": {
+        "always": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            10026,
+            2040,
+            2777,
+            1996,
+            7805,
+            2467,
+            4810,
+            103,
+            1997,
+            1996,
+            12278,
+            1012,
+            102
+          ],
+          "text": "The chef who met the clerk always prepared [MASK] of the meals."
+        },
+        "never": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            10026,
+            2040,
+            2777,
+            1996,
+            7805,
+            2196,
+            4810,
+            103,
+            1997,
+            1996,
+            12278,
+            1012,
+            102
+          ],
+          "text": "The chef who met the clerk never prepared [MASK] of the meals."
+        },
+        "often": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            10026,
+            2040,
+            2777,
+            1996,
+            7805,
+            2411,
+            4810,
+            103,
+            1997,
+            1996,
+            12278,
+            1012,
+            102
+          ],
+          "text": "The chef who met the clerk often prepared [MASK] of the meals."
+        },
+        "rarely": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            10026,
+            2040,
+            2777,
+            1996,
+            7805,
+            6524,
+            4810,
+            103,
+            1997,
+            1996,
+            12278,
+            1012,
+            102
+          ],
+          "text": "The chef who met the clerk rarely prepared [MASK] of the meals."
+        }
+      },
+      "split": "evaluation",
+      "verb": "prepared"
+    },
+    {
+      "frame": "relative",
+      "id": "eval-relative-03",
+      "indices": {
+        "cue": 7,
+        "mask": 9,
+        "object": 12
+      },
+      "object": "sketches",
+      "role": "artist",
+      "rows": {
+        "always": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3063,
+            2040,
+            2777,
+            1996,
+            7805,
+            2467,
+            15826,
+            103,
+            1997,
+            1996,
+            12741,
+            1012,
+            102
+          ],
+          "text": "The artist who met the clerk always copied [MASK] of the sketches."
+        },
+        "never": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3063,
+            2040,
+            2777,
+            1996,
+            7805,
+            2196,
+            15826,
+            103,
+            1997,
+            1996,
+            12741,
+            1012,
+            102
+          ],
+          "text": "The artist who met the clerk never copied [MASK] of the sketches."
+        },
+        "often": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3063,
+            2040,
+            2777,
+            1996,
+            7805,
+            2411,
+            15826,
+            103,
+            1997,
+            1996,
+            12741,
+            1012,
+            102
+          ],
+          "text": "The artist who met the clerk often copied [MASK] of the sketches."
+        },
+        "rarely": {
+          "attention_mask": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "input_ids": [
+            101,
+            1996,
+            3063,
+            2040,
+            2777,
+            1996,
+            7805,
+            6524,
+            15826,
+            103,
+            1997,
+            1996,
+            12741,
+            1012,
+            102
+          ],
+          "text": "The artist who met the clerk rarely copied [MASK] of the sketches."
+        }
+      },
+      "split": "evaluation",
+      "verb": "copied"
+    }
+  ],
+  "cue_ids": {
+    "always": 2467,
+    "never": 2196,
+    "often": 2411,
+    "rarely": 6524
+  },
+  "frames": {
+    "embedded": {
+      "indices": {
+        "cue": 7,
+        "mask": 9,
+        "object": 10
+      },
+      "template": "The manager said that the {role} {cue} {verb} [MASK] {object}."
+    },
+    "main": {
+      "indices": {
+        "cue": 3,
+        "mask": 5,
+        "object": 8
+      },
+      "template": "The {role} {cue} {verb} [MASK] of the {object}."
+    },
+    "relative": {
+      "indices": {
+        "cue": 7,
+        "mask": 9,
+        "object": 12
+      },
+      "template": "The {role} who met the clerk {cue} {verb} [MASK] of the {object}."
+    }
+  },
+  "negative_class": [
+    "never",
+    "rarely"
+  ],
+  "prior_exposure": "Selected after observing the original negation study and a preliminary unverified full-vocabulary analysis of it.",
+  "schema": "bert-cue-class-cases-v1",
+  "scored_tokens": {
+    "any": 2151,
+    "some": 2070
+  },
+  "selection": "Fixed public convenience cases selected before any follow-up model forward; no claim of hidden pretraining exposure.",
+  "tokenizer_only_rejections": [
+    {
+      "candidate": "writer mailed letters",
+      "reason": "mailed split into two wordpieces; replaced by sent before any follow-up model forward"
+    }
+  ]
+}

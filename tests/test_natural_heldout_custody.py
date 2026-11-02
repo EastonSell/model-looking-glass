@@ -1,5 +1,6 @@
 """Fabricated pools/nonces only: no real study cases or model forwards."""
 import hashlib
+from functools import wraps
 import inspect
 import io
 import json
@@ -29,6 +30,18 @@ NONCE = bytes(range(32))
 
 def outer_command(inner):
     return inner[:7] + [custody.OUTER_BOOTSTRAP] + inner[8:9] + ['supervise-prepare'] + inner[10:]
+
+
+def synthetic_windows_observer(test):
+    """Exercise fake process/Job custody without claiming Windows integration."""
+    @wraps(test)
+    def run(*args, **kwargs):
+        simulated_os = SimpleNamespace(**dict(vars(os), name='nt'))
+        simulated_process = SimpleNamespace(**dict(vars(custody.subprocess), DETACHED_PROCESS=8))
+        with mock.patch.object(custody, 'os', simulated_os), \
+             mock.patch.object(custody, 'subprocess', simulated_process):
+            return test(*args, **kwargs)
+    return run
 
 
 class FakeTokenizer:
@@ -154,6 +167,22 @@ class CustodyTests(unittest.TestCase):
         self.validation_root = self.root / ('natural-heldout-validation-' + hashlib.sha256(self.operation).hexdigest())
         self.validation_root.mkdir()
         (self.validation_root / 'validation-config.json').write_bytes(b'{"schema":"fabricated-validation"}')
+
+    def test_posix_observers_reject_before_process_or_job_creation(self):
+        simulated_os = SimpleNamespace(**dict(vars(os), name='posix'))
+        with mock.patch.object(custody, 'os', simulated_os), \
+             mock.patch.object(custody.subprocess, 'Popen', side_effect=AssertionError('spawned')) as spawn:
+            def job():
+                self.fail('job created')
+            with self.assertRaisesRegex(custody.CustodyError, 'invalid outer process observation'):
+                custody.observe_supervisor_process(['fake'], self.root, self.root, self.public,
+                    self.wrapper, config_path=self.config_path, config_sha256='a' * 64,
+                    job_factory=job, protect_process=lambda _: None)
+            with self.assertRaisesRegex(custody.CustodyError, 'invalid validation process observation'):
+                custody.observe_validation_process(['fake'], self.root, self.public,
+                    owner_path=self.root / 'owner', config_path=self.config_path, config_sha256='a' * 64,
+                    verify_inner=lambda _: None, job_factory=job, protect_process=lambda _: None)
+            spawn.assert_not_called()
 
     def reader(self, url, suffix):
         self.calls.append('published')
@@ -584,6 +613,7 @@ class CustodyTests(unittest.TestCase):
                     custody.verify_preparation_supervisor(attempt, supervisor, self.public, self.wrapper)
                 path.write_bytes(original)
 
+    @synthetic_windows_observer
     def test_outer_observer_gates_reaps_and_binds_real_process_identity(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)
@@ -671,6 +701,7 @@ class CustodyTests(unittest.TestCase):
         self.assertTrue(saved['outer_job_drained'] and saved['outer_job_closed'])
         self.assertGreater(saved['supervisor_birth_100ns'], 0)
 
+    @synthetic_windows_observer
     def test_outer_observer_nonzero_or_interrupt_never_grants_success(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)
@@ -720,6 +751,7 @@ class CustodyTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'already claimed'):
             self.prepare()
 
+    @synthetic_windows_observer
     def test_outer_preparation_observer_rejects_active_job_member(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)
@@ -748,6 +780,7 @@ class CustodyTests(unittest.TestCase):
         self.assertEqual(state[2:], [True, False])
         self.assertFalse(observation.exists())
 
+    @unittest.skipUnless(os.name == 'nt', 'requires a real Windows detached process')
     def test_lost_popen_return_cannot_open_the_outer_gate(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)
@@ -812,6 +845,7 @@ class CustodyTests(unittest.TestCase):
                     if marker.exists():
                         marker.unlink()
 
+    @synthetic_windows_observer
     def test_observer_preserves_cancellation_when_cleanup_also_fails(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)
@@ -836,6 +870,7 @@ class CustodyTests(unittest.TestCase):
                     job_factory=Job)
         self.assertIsInstance(caught.exception.__cause__, OSError)
 
+    @synthetic_windows_observer
     def test_uncertain_cleanup_after_gate_roots_quarantine_handles(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)
@@ -876,6 +911,7 @@ class CustodyTests(unittest.TestCase):
              mock.patch.object(sys, 'stderr', broken):
             custody._hold_unverified_process(state, _test_release=lambda retained: retained is state)
 
+    @synthetic_windows_observer
     def test_later_cleanup_cancellation_takes_precedence(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)
@@ -900,6 +936,7 @@ class CustodyTests(unittest.TestCase):
                     config_sha256=hashlib.sha256(self.config_bytes).hexdigest(), job_factory=lambda: job)
         self.assertIsInstance(caught.exception.__cause__, ValueError)
 
+    @synthetic_windows_observer
     def test_primary_cancellation_precedes_later_system_exit(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)
@@ -923,6 +960,7 @@ class CustodyTests(unittest.TestCase):
                     config_sha256=hashlib.sha256(self.config_bytes).hexdigest(), job_factory=Job)
         self.assertIsInstance(caught.exception.__cause__, SystemExit)
 
+    @synthetic_windows_observer
     def test_invalid_inner_receipt_after_outer_exit_keeps_lease_custody(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)
@@ -1058,6 +1096,7 @@ class CustodyTests(unittest.TestCase):
                     job_factory=lambda: None)
             spawn.assert_not_called()
 
+    @synthetic_windows_observer
     def test_source_duplication_failure_stops_before_outer_gate(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)
@@ -1087,6 +1126,7 @@ class CustodyTests(unittest.TestCase):
         self.assertFalse(state[2])
         self.assertEqual(calls, ['assign', 'drain', 'close', 'kill', 'wait'])
 
+    @synthetic_windows_observer
     def test_failed_pre_gate_cleanup_keeps_partial_duplication_in_custody(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)
@@ -1113,6 +1153,7 @@ class CustodyTests(unittest.TestCase):
         self.assertEqual(process.stdin.getvalue(), b'')
         self.assertEqual(state, [job, process, True, False])
 
+    @synthetic_windows_observer
     def test_lost_outer_spawn_return_keeps_uncertain_process_in_custody(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)
@@ -1132,6 +1173,7 @@ class CustodyTests(unittest.TestCase):
                     job_factory=lambda: job, custody_state=state)
         self.assertEqual(state, [job, None, True, False])
 
+    @synthetic_windows_observer
     def test_interrupt_at_pre_gate_cleanup_entry_keeps_custody_rooted(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)
@@ -1193,6 +1235,7 @@ class CustodyTests(unittest.TestCase):
                    '-c', custody.OUTER_BOOTSTRAP, str(owner), '--validate-only', str(config)]
         return root, config, owner, command
 
+    @synthetic_windows_observer
     def test_validation_observer_binds_reaped_parent_and_exact_files(self):
         root, config, owner, command = self.validation_observer_fixture()
         calls = []
@@ -1230,6 +1273,7 @@ class CustodyTests(unittest.TestCase):
         self.assertEqual(observation['operational_binding_sha256'], hashlib.sha256(self.operation).hexdigest())
         self.assertEqual(raw, custody._json_bytes(observation))
 
+    @synthetic_windows_observer
     def test_validation_observer_rejects_and_drains_live_outer_member(self):
         root, config, owner, command = self.validation_observer_fixture()
         calls = []
@@ -1254,6 +1298,7 @@ class CustodyTests(unittest.TestCase):
         self.assertEqual(state[2:], [True, False])
         self.assertFalse((root / 'parent-observation.json').exists())
 
+    @synthetic_windows_observer
     def test_validation_observer_retains_unknown_spawn(self):
         root, config, owner, command = self.validation_observer_fixture()
         class Job:
@@ -1317,6 +1362,7 @@ class CustodyTests(unittest.TestCase):
             custody.verify_preparation_supervisor(attempt, output, self.public, self.wrapper,
                                                   require_outer_observation=False)
 
+    @synthetic_windows_observer
     def test_complete_observation_after_write_error_is_recoverable_without_redraw(self):
         attempt, _ = self.prepare()
         supervisor = self.supervised(attempt)

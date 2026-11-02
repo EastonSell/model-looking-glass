@@ -119,7 +119,12 @@ def test_context_table_uses_published_rows_without_selection():
         assert expected in note
 
 
-def test_changed_journal_is_rejected_before_any_tensor_is_read(tmp_path):
+def test_changed_journal_is_rejected_before_any_tensor_is_read(tmp_path, monkeypatch):
     (tmp_path / 'events.jsonl').write_bytes(b'{}\n')
+
+    def unexpected_tensor_load(*args, **kwargs):
+        raise AssertionError('direction tensors must not load before the journal pin')
+
+    monkeypatch.setattr(posthoc.saved, 'load_frozen_inputs', unexpected_tensor_load)
     with pytest.raises(ValueError, match='independent pin'):
         posthoc.load_evidence(ROOT, tmp_path)

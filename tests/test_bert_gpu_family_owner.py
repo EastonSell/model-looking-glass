@@ -18,7 +18,8 @@ from looking_glass.memory_budget import CudaMemorySnapshot
 
 
 def _workspace():
-    repo = Path(__file__).resolve().parents[1]
+    from looking_glass import bert_gpu_family_owner as subject
+    repo = Path(subject.__file__).resolve().parents[1]
     work = [parent for parent in repo.parents if parent.name == 'work']
     return work[0].parent if work else repo
 
@@ -30,6 +31,19 @@ def _session_stub():
 
 
 class FamilyOwnerPrimitiveTests(unittest.TestCase):
+    def setUp(self):
+        # Exercise the real namespace validator without assuming the checkout
+        # executing these CPU unit tests is installed under a directory named work.
+        from looking_glass import bert_gpu_family_owner as subject
+        temporary = tempfile.TemporaryDirectory(prefix='family-owner-layout-')
+        self.addCleanup(temporary.cleanup)
+        module = Path(temporary.name).resolve() / 'work' / 'checkout' / 'looking_glass' / 'bert_gpu_family_owner.py'
+        module.parent.mkdir(parents=True)
+        module.touch()
+        location = patch.object(subject, '__file__', str(module))
+        location.start()
+        self.addCleanup(location.stop)
+
     def test_shared_disabled_gate_stops_direct_owner_before_session_or_device(self):
         import looking_glass.bert_gpu_family_owner as subject
         with tempfile.TemporaryDirectory() as directory, \

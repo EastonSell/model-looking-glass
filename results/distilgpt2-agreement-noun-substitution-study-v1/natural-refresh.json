@@ -1,0 +1,12 @@
+{
+  "case_sha256": "94910e59415936a09c18f81478e0eaffb790c9b69d0962ab3f6b70947fbe1dfe",
+  "limitation": "Cooperative point-in-time operator record of a custodian report; old split coverage is conditional on its published source-bound preparation; no private membership was queried.",
+  "observation": "Natural custodian reports the original commitment and published 128-row support assumption unchanged, the successor root empty with no claim, nonce or split, and no additional natural protected pool known in that lane. The fixed public 54-case bundle and its eight extensions were compared against the public 128/256 supports.",
+  "refreshed_utc": "2026-10-29T11:49:01.810673+00:00",
+  "schema": "agreement-substitution-natural-refresh-v1",
+  "scope": "public support comparison; sealed-split coverage conditional on source-bound preparation; no private membership queried",
+  "status": "clear",
+  "successor_status": "undrawn",
+  "successor_support_sha256": "6303eb0713d64b020eea3fe491a686c9020ea424754443372aef73749bc87bc4",
+  "support_receipt_sha256": "e1b23472b466ad52006c36f90b0038035841274a3afffebbe45f7b81a2661fe6"
+}

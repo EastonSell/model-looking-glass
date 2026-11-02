@@ -40,9 +40,13 @@ FOLLOWUP_ROWS = tuple(
 
 
 def inventory_payload():
-    if v8.inventory_digest() != PREDECESSOR_SHA256:
+    predecessor = v8.inventory_payload()
+    canonical = json.dumps(predecessor, sort_keys=True, separators=(",", ":"),
+                           ensure_ascii=True, allow_nan=False).encode("utf-8")
+    if (v8.INVENTORY_SHA256 != PREDECESSOR_SHA256
+            or hashlib.sha256(canonical).hexdigest() != PREDECESSOR_SHA256):
         raise ValueError("predecessor exposure inventory does not match")
-    payload = copy.deepcopy(v8.inventory_payload())
+    payload = copy.deepcopy(predecessor)
     payload["version"] = INVENTORY_VERSION
     payload["predecessor"] = {"version": v8.INVENTORY_VERSION, "sha256": PREDECESSOR_SHA256}
     payload["update"] = {"planned_public_copying_followup_rows": 32}

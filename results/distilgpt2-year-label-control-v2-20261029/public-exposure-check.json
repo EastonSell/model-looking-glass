@@ -1,0 +1,19 @@
+{
+  "cases_sha256": "07d68842ab7f5195a61e719f4bafd825ab19673971a7e4ea450330838deafa08",
+  "foreign_input_and_extension_entries": 2532,
+  "foreign_prefix_relations": 0,
+  "foreign_records": 687,
+  "inventory_sha256": "ef42683a664dda450e82c69afedda34a8a34f2daf9f50f2db54f6c9d846f07e5",
+  "inventory_version": "distilgpt2-development-exposures-v27",
+  "own_record_statuses": {
+    "planned": 36
+  },
+  "public_successor_input_and_extension_entries": 1280,
+  "public_successor_prefix_relations": 0,
+  "schema": "year-label-v2-public-exposure-check-v1",
+  "scope": "Public inputs and recorded extensions only; own rows already observed in v1. No protected split or unknown outside/pretraining exposure is checked.",
+  "selected_input_and_continuation_entries": 468,
+  "selected_input_prefix_relations": 0,
+  "selected_inputs": 36,
+  "successor_inputs_sha256": "6303eb0713d64b020eea3fe491a686c9020ea424754443372aef73749bc87bc4"
+}

@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import sysconfig
 
 import pytest
 
@@ -14,7 +15,10 @@ except ImportError:
 
 
 def run(tmp_path, source, digest, *, site=None, mode='-I', extra=(), overrides=None):
-    actual_site = Path(sys.prefix) / 'Lib' / 'site-packages'
+    # Fabricated owners use stdlib only; exercise the pinned Windows layout
+    # without depending on this host's installed dependency layout.
+    actual_site = tmp_path / 'Lib' / 'site-packages'
+    actual_site.mkdir(parents=True, exist_ok=True)
     chosen_site = str(actual_site.resolve()) if site is None else site
     env = os.environ.copy()
     env['MLG_NATURAL_SITE'] = str(actual_site.resolve())
@@ -61,6 +65,7 @@ def test_optimized_bootstrap_rejects_before_source(tmp_path, flag):
     assert result.returncode != 0 and not marker.exists()
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="frozen Windows startup integration")
 def test_actual_frozen_startup_passes_only_in_no_model_validation(tmp_path):
     assert launch is not None
     frozen = os.environ.get('MLG_FROZEN_STARTUP_SOURCE')
@@ -70,7 +75,7 @@ def test_actual_frozen_startup_passes_only_in_no_model_validation(tmp_path):
     assert hashlib.sha256(frozen_path.read_bytes()).hexdigest() == (
         '1325af599ffce4f44963a23d14623938e1e038fb66fd65fc8003e7f50a478b5c')
     owner = Path(__file__).resolve().parents[1] / 'tools/natural_successor_startup_probe.py'
-    site = str((Path(sys.prefix) / 'Lib' / 'site-packages').resolve())
+    site = str((Path(sysconfig.get_path('purelib'))).resolve())
     env = os.environ.copy()
     env.update({'MLG_NATURAL_SITE': site, 'CUDA_VISIBLE_DEVICES': '-1', 'OMP_NUM_THREADS': '1'})
     command = [sys._base_executable, '-I', '-S', '-B', '-X', 'pycache_prefix=' + str(tmp_path / 'unused'),

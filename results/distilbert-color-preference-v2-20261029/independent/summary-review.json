@@ -1,0 +1,14 @@
+{
+  "candidate_eligible": {
+    "banana": false,
+    "lemon": false,
+    "strawberry": false
+  },
+  "independent_report_sha256": "657f41521515edfbd2bb8aa05df25252adf9f3b89426ff35e484982cef3a5241",
+  "journal_sha256": "deab8b0abb0a5a6df3ea754b4f8c45df042b8c9f47d73417e516eaa381c1140e",
+  "owner_result_sha256": "15e4c8d0f36387a0a162e6651db4164efca88170bb0f0021aedeabecef12b16b",
+  "rows": 9,
+  "scope": "Saved full-logit selection and numeric-summary consistency only; execution, source and process identity require separate evidence.",
+  "selected_object": null,
+  "status": "baseline-ineligible"
+}

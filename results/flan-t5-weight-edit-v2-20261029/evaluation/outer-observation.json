@@ -1,0 +1,10 @@
+{
+  "schema": "flan-weight-edit-outer-operator-observation-v1",
+  "phase": "evaluation",
+  "observation_utc": "2026-10-29T13:33:09.4021376+00:00",
+  "outer_exit_code": 0,
+  "outer_launch_observation_utc": "2026-10-29T13:29:17.6305104+00:00",
+  "launch_observed_c_free_bytes": 1980919808,
+  "launch_observed_e_free_bytes": 383494590464,
+  "scope": "operator observation from the directly waited process; cooperative record, not an authenticated process or whole-tree attestation"
+}

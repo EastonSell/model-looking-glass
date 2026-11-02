@@ -218,7 +218,7 @@ class TraceHandoffRecoveryTests(unittest.TestCase):
         def interrupt_return(method, call):
             code = method.__code__
             offsets = [item.offset for item in dis.get_instructions(code)
-                       if item.opname == "RETURN_VALUE"]
+                       if item.opname in {"RETURN_VALUE", "RETURN_CONST"}]
             self.assertTrue(offsets)
 
             def interrupt(frame, event, arg):
@@ -257,9 +257,11 @@ class TraceHandoffRecoveryTests(unittest.TestCase):
         code = type(recovery).drain.__code__
         instructions = list(dis.get_instructions(code))
         offsets = [instructions[index].offset for index in range(1, len(instructions))
-                   if instructions[index].opname == "RETURN_VALUE"
-                   and instructions[index - 1].opname == "LOAD_CONST"
-                   and instructions[index - 1].argval is True]
+                   if (instructions[index].opname == "RETURN_CONST"
+                       and instructions[index].argval is True)
+                   or (instructions[index].opname == "RETURN_VALUE"
+                       and instructions[index - 1].opname == "LOAD_CONST"
+                       and instructions[index - 1].argval is True)]
         self.assertTrue(offsets)
 
         def interrupt(frame, event, arg):
@@ -398,7 +400,7 @@ class TraceHandoffRecoveryTests(unittest.TestCase):
         module = importlib.import_module("looking_glass.trace_handoff_recovery")
         code = module.register_recovery.__code__
         offsets = [item.offset for item in dis.get_instructions(code)
-                   if item.opname == "RETURN_VALUE"]
+                   if item.opname in {"RETURN_VALUE", "RETURN_CONST"}]
         self.assertTrue(offsets)
 
         def interrupt(frame, event, arg):

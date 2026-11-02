@@ -119,9 +119,13 @@ class ExposureV11Tests(unittest.TestCase):
         old = copy.deepcopy(v10.inventory_payload())
         row = next(r for r in old["records"] if r["record_id"].startswith("planned-copy-followup-"))
         row["target_token_id"] += 1
+        # Coherent synthetic pin reaches the downstream record-identity guard.
+        synthetic_digest = hashlib.sha256(json.dumps(old, sort_keys=True, separators=(",", ":"),
+            ensure_ascii=True, allow_nan=False).encode("utf-8")).hexdigest()
         with mock.patch.object(v10, "inventory_payload", return_value=old), \
-                mock.patch.object(v10, "inventory_digest", return_value=v10.INVENTORY_SHA256):
-            with self.assertRaises(ValueError):
+                mock.patch.object(v10, "INVENTORY_SHA256", synthetic_digest), \
+                mock.patch.object(v11, "PREDECESSOR_SHA256", synthetic_digest):
+            with self.assertRaisesRegex(ValueError, "copying follow-up"):
                 v11.inventory_payload()
         with mock.patch.object(v10, "INVENTORY_SHA256", "0" * 64):
             with self.assertRaises(ValueError):

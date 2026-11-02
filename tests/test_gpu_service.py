@@ -1167,7 +1167,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
                 if event == 'call':
                     frame.f_trace_opcodes = True
                     offsets[frame.f_code] = {item.offset for item in dis.get_instructions(frame.f_code)
-                                             if item.opname == 'RETURN_VALUE'}
+                                             if item.opname in {'RETURN_VALUE', 'RETURN_CONST'}}
                 elif (event == 'opcode' and frame.f_lasti in offsets.get(frame.f_code, ())
                       and frame.f_locals['startup_terminal'][0] and not fired):
                     fired.append(True)
@@ -1215,7 +1215,13 @@ class ConcreteBackendContractTests(unittest.TestCase):
                 except BrokerShutdownError:
                     broker._thread.join(5)
 
-    def test_lifecycle_hook_retains_target_failure_when_capture_is_interrupted(self):
+    def test_lifecycle_hook_retains_target_failure_when_capture_entry_is_interrupted(self):
+        self._assert_lifecycle_hook_retains_target_failure("entry")
+
+    def test_lifecycle_hook_retains_target_failure_when_capture_unpack_is_interrupted(self):
+        self._assert_lifecycle_hook_retains_target_failure("unpack")
+
+    def _assert_lifecycle_hook_retains_target_failure(self, boundary):
         import torch
         from looking_glass import service
         from looking_glass.owner_completion import OwnerCompletionAuthority
@@ -1227,7 +1233,7 @@ class ConcreteBackendContractTests(unittest.TestCase):
         unpack = {item.offset for item in dis.get_instructions(code) if item.opname == 'UNPACK_SEQUENCE'}
         self.assertTrue(unpack)
         previous_trace = threading.gettrace()
-        for boundary in ('entry', 'unpack'):
+        for boundary in (boundary,):
             with self.subTest(boundary=boundary):
                 authority = OwnerCompletionAuthority()
                 slot = service._ServiceLifecycleCustody(authority).startup
@@ -2097,6 +2103,161 @@ class OwnerOrderTests(unittest.TestCase):
                                   stop_event=threading.Event(), announce=lambda server: None,
                                   before_attest=lambda: True)
         self.assertTrue(result.teardown_verified)
+
+    def test_opt_in_memory_window_is_started_after_warmup_and_finished_before_attestation(self):
+        events, session, fake = self.setup_run()
+        lease = object()
+        backend = _TorchServiceBackend(session=session, device_lease=lease,
+            cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True,
+            serving_memory_path=Path.cwd() / 'unused-memory.json')
+        for name in ('runtime_binding', 'live_keys', 'resolve_profiles', 'telemetry',
+                     'construct', 'synchronize', 'serve'):
+            setattr(backend, name, getattr(fake, name))
+        backend._start_serving_memory = lambda: events.append('memory-start')
+        backend._finish_serving_memory = lambda: events.append('memory-finish')
+        result = _run_bound_owner(session, lease, backend=backend, registry=object(),
+                                  stop_event=threading.Event(), announce=lambda server: None,
+                                  before_attest=lambda: events.append('barrier') or True)
+        self.assertTrue(result.teardown_verified)
+        self.assertLess(events.index('load-and-warmup'), events.index('memory-start'))
+        self.assertLess(events.index('memory-start'), events.index('serve-and-stop'))
+        self.assertLess(events.index('barrier'), events.index('memory-finish'))
+        self.assertLess(events.index('memory-finish'), events.index('attest'))
+
+    def test_failed_memory_finish_prevents_clean_attestation(self):
+        events, session, fake = self.setup_run()
+        lease = object()
+        backend = _TorchServiceBackend(session=session, device_lease=lease,
+            cache_dir=Path.cwd(), team_ids=('alpha',), live_key_builder=lambda identity: (),
+            verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True,
+            serving_memory_path=Path.cwd() / 'unused-memory.json')
+        for name in ('runtime_binding', 'live_keys', 'resolve_profiles', 'telemetry',
+                     'construct', 'synchronize', 'serve'):
+            setattr(backend, name, getattr(fake, name))
+        backend._start_serving_memory = lambda: None
+        def fail():
+            raise OSError('memory observation could not be saved')
+        backend._finish_serving_memory = fail
+        with self.assertRaisesRegex(OSError, 'memory observation'):
+            _run_bound_owner(session, lease, backend=backend, registry=object(),
+                             stop_event=threading.Event(), announce=lambda server: None,
+                             before_attest=lambda: True)
+        self.assertNotIn('attest', events)
+        self.assertTrue(gpu_service._owner_is_unsafe())
+
+    def test_opt_in_owner_writes_points_from_real_budget_snapshots(self):
+        import torch
+        events, session, fake = self.setup_run()
+        lease = object()
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / 'serving-memory.json'
+            binding = {'source_base_sha256': 'a' * 64}
+            backend = _TorchServiceBackend(session=session, device_lease=lease,
+                cache_dir=Path(tmp), team_ids=('alpha',), live_key_builder=lambda identity: (),
+                verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True,
+                serving_memory_path=output, serving_memory_binding=binding)
+            backend._resolved_keys = service_keys()
+            for name in ('runtime_binding', 'live_keys', 'resolve_profiles', 'construct', 'synchronize'):
+                setattr(backend, name, getattr(fake, name))
+            def serve(server, broker, worker, stop_event, announce, verify_drain):
+                fake.budget.snapshot()
+                fake.budget.snapshot()
+                return FakeResult('clean', verify_drain())
+            backend.serve = serve
+            calls = {'is_available': lambda: True,
+                     'synchronize': lambda _: None,
+                     'reset_peak_memory_stats': lambda _: None,
+                     'mem_get_info': lambda _: (7 * GIB, 8 * GIB),
+                     'memory_allocated': lambda _: 1024,
+                     'memory_reserved': lambda _: 2048,
+                     'max_memory_allocated': lambda _: 4096,
+                     'max_memory_reserved': lambda _: 8192}
+            with patch.multiple(torch.cuda, **calls):
+                result = _run_bound_owner(session, lease, backend=backend, registry=object(),
+                    stop_event=threading.Event(), announce=lambda server: None,
+                    before_attest=lambda: True)
+            record = json.loads(output.read_text())
+            self.assertTrue(result.teardown_verified)
+            self.assertEqual(record['binding'], binding)
+            self.assertEqual(len(record['samples']), 2)
+            self.assertEqual(record['process_peak_reserved_bytes'], 8192)
+            self.assertIn('attest', events)
+
+    def test_observation_stops_if_retained_claim_disappears_during_final_sync(self):
+        import torch
+        events, session, fake = self.setup_run()
+        lease = object()
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / 'serving-memory.json'
+            backend = _TorchServiceBackend(session=session, device_lease=lease,
+                cache_dir=Path(tmp), team_ids=('alpha',), live_key_builder=lambda identity: (),
+                verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True,
+                serving_memory_path=output, serving_memory_binding={'source': 'fixture'})
+            backend._resolved_keys = service_keys()
+            for name in ('runtime_binding', 'live_keys', 'resolve_profiles', 'construct', 'synchronize', 'serve'):
+                setattr(backend, name, getattr(fake, name))
+            syncs = []
+            memory_queries = []
+            def sync(_):
+                syncs.append(1)
+                if len(syncs) == 2:
+                    fake.load_lease.release()
+            def memory(_):
+                memory_queries.append(1)
+                return 7 * GIB, 8 * GIB
+            calls = {'is_available': lambda: True, 'synchronize': sync,
+                     'reset_peak_memory_stats': lambda _: None, 'mem_get_info': memory,
+                     'memory_allocated': lambda _: 1024, 'memory_reserved': lambda _: 2048,
+                     'max_memory_allocated': lambda _: 4096, 'max_memory_reserved': lambda _: 8192}
+            with patch.multiple(torch.cuda, **calls):
+                with self.assertRaises(RuntimeError):
+                    _run_bound_owner(session, lease, backend=backend, registry=object(),
+                        stop_event=threading.Event(), announce=lambda server: None,
+                        before_attest=lambda: True)
+            self.assertEqual(len(memory_queries), 2)  # admission and baseline only
+            self.assertNotIn('attest', events)
+            self.assertFalse(output.exists())
+            self.assertTrue(gpu_service._owner_is_unsafe())
+
+    def test_observation_stops_worker_sampling_when_a_retained_claim_disappears(self):
+        import torch
+        events, session, fake = self.setup_run()
+        lease = object()
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / 'serving-memory.json'
+            backend = _TorchServiceBackend(session=session, device_lease=lease,
+                cache_dir=Path(tmp), team_ids=('alpha',), live_key_builder=lambda identity: (),
+                verify_loaded_model=lambda model: True, verify_device_model=lambda *args: True,
+                serving_memory_path=output, serving_memory_binding={'source': 'fixture'})
+            backend._resolved_keys = service_keys()
+            for name in ('runtime_binding', 'live_keys', 'resolve_profiles', 'construct', 'synchronize'):
+                setattr(backend, name, getattr(fake, name))
+            def serve(server, broker, worker, stop_event, announce, verify_drain):
+                fake.budget.snapshot()
+                return FakeResult('clean', verify_drain())
+            backend.serve = serve
+            memory_queries, allocated_queries = [], []
+            def memory(_):
+                memory_queries.append(1)
+                if len(memory_queries) == 3:
+                    fake.load_lease.release()
+                return 7 * GIB, 8 * GIB
+            calls = {'is_available': lambda: True, 'synchronize': lambda _: None,
+                     'reset_peak_memory_stats': lambda _: None, 'mem_get_info': memory,
+                     'memory_allocated': lambda _: allocated_queries.append(1) or 1024,
+                     'memory_reserved': lambda _: 2048,
+                     'max_memory_allocated': lambda _: 4096, 'max_memory_reserved': lambda _: 8192}
+            with patch.multiple(torch.cuda, **calls):
+                with self.assertRaises(RuntimeError):
+                    _run_bound_owner(session, lease, backend=backend, registry=object(),
+                        stop_event=threading.Event(), announce=lambda server: None,
+                        before_attest=lambda: True)
+            self.assertEqual(len(memory_queries), 3)
+            self.assertEqual(len(allocated_queries), 2)  # admission and baseline only
+            self.assertNotIn('attest', events)
+            self.assertFalse(output.exists())
+            self.assertTrue(gpu_service._owner_is_unsafe())
 
     def test_concrete_backend_must_use_the_owner_session_and_lease(self):
         events, session, _ = self.setup_run()

@@ -54,8 +54,16 @@ class PairGuards(unittest.TestCase):
             load.assert_not_called()
 
     def test_workspace_is_checked_before_lease_and_again_before_torch(self):
-        repo = Path(__file__).resolve().parents[1]
-        workspace = next(parent.parent for parent in repo.parents if parent.name == "work")
+        temporary = tempfile.TemporaryDirectory(prefix="pair-owner-layout-")
+        self.addCleanup(temporary.cleanup)
+        workspace = Path(temporary.name).resolve()
+        repo = workspace / "work" / "checkout"
+        module = repo / "looking_glass" / "bert_gpu_exposed_pair.py"
+        module.parent.mkdir(parents=True)
+        module.touch()
+        location = patch.object(pair, "__file__", str(module))
+        location.start()
+        self.addCleanup(location.stop)
         self.assertEqual(pair._workspace_root(repo, workspace), workspace)
         with tempfile.TemporaryDirectory() as directory:
             wrong = Path(directory).resolve()

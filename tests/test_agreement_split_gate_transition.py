@@ -111,10 +111,29 @@ class TransitionTests(unittest.TestCase):
         trusted = (RELEASE / 'tools' / 'agreement_split_gate_allocation.py').read_bytes()
         marker = self.root.parent / 'executed'
         changed = self.root.parent / 'helper.py'
-        changed.write_bytes(trusted + ("\nopen(%r,'w').write('bad')\n" % str(marker)).encode())
-        with self.assertRaises(ValueError):
-            self.transition.load_helper(changed, reader=lambda url: trusted)
-        self.assertFalse(marker.exists())
+        # A standalone executable replacement exercises the same rejection path
+        # without copying the published helper source into a temporary output.
+        candidate = ("open(%r, 'w').write('bad')\n" % str(marker)).encode()
+        changed.write_bytes(candidate)
+        for remote in (trusted, candidate):
+            with self.subTest(remote_matches_candidate=remote == candidate):
+                with self.assertRaisesRegex(ValueError, 'helper source differs'):
+                    self.transition.load_helper(changed, reader=lambda url: remote)
+                self.assertFalse(marker.exists())
+
+    def test_pinned_helper_still_requires_matching_published_bytes(self):
+        source = RELEASE / 'tools' / 'agreement_split_gate_allocation.py'
+        with self.assertRaisesRegex(ValueError, 'helper source differs'):
+            self.transition.load_helper(source, reader=lambda url: b'changed public source')
+
+    def test_exact_pinned_helper_loads(self):
+        source = RELEASE / 'tools' / 'agreement_split_gate_allocation.py'
+        published = source.read_bytes()
+        self.assertEqual(hashlib.sha256(published).hexdigest(), self.transition.HELPER_SHA256)
+        loaded = self.transition.load_helper(source, reader=lambda url: published)
+        self.assertEqual(loaded.SOURCE_HASHES, self.helper.SOURCE_HASHES)
+        self.assertEqual(loaded.FREEZES, self.helper.FREEZES)
+        self.assertTrue(callable(loaded.operate))
 
     def test_commitment_publication_requires_immutable_exact_public_bytes(self):
         url = 'https://raw.githubusercontent.com/EastonSell/model-looking-glass/' + 'a' * 40 + '/results/x.json'

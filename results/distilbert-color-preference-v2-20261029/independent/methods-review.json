@@ -1,0 +1,172 @@
+{
+  "candidate_eligibility": {
+    "banana": false,
+    "lemon": false,
+    "strawberry": false
+  },
+  "cases_sha256": "f938cee4acab09d70f3d827e6172a62d273a5c621c35b6e3e47bd46303aa5a10",
+  "eligible_rows": 4,
+  "events_sha256": "deab8b0abb0a5a6df3ea754b4f8c45df042b8c9f47d73417e516eaa381c1140e",
+  "factual_unique_top_rows": 2,
+  "max_pair_mass": 0.21136463404458267,
+  "min_pair_mass": 0.08675115804260625,
+  "purple_unique_top_rows": 3,
+  "result_sha256": "15e4c8d0f36387a0a162e6651db4164efca88170bb0f0021aedeabecef12b16b",
+  "rows": [
+    {
+      "case_id": "banana-discovery",
+      "eligible": true,
+      "factual_id": 3756,
+      "factual_plus_purple_probability": 0.13279057833319743,
+      "factual_rank": 2,
+      "margin": 0.3154611587524414,
+      "margin_fraction": [
+        330785,
+        1048576
+      ],
+      "object": "banana",
+      "purple_id": 6379,
+      "top_ids": [
+        14182
+      ]
+    },
+    {
+      "case_id": "banana-calibration-01",
+      "eligible": true,
+      "factual_id": 3756,
+      "factual_plus_purple_probability": 0.20901269536619474,
+      "factual_rank": 1,
+      "margin": 0.5116329193115234,
+      "margin_fraction": [
+        268243,
+        524288
+      ],
+      "object": "banana",
+      "purple_id": 6379,
+      "top_ids": [
+        3756
+      ]
+    },
+    {
+      "case_id": "banana-calibration-02",
+      "eligible": false,
+      "factual_id": 3756,
+      "factual_plus_purple_probability": 0.1849719549507261,
+      "factual_rank": 4,
+      "margin": -0.6374244689941406,
+      "margin_fraction": [
+        -167097,
+        262144
+      ],
+      "object": "banana",
+      "purple_id": 6379,
+      "top_ids": [
+        6379
+      ]
+    },
+    {
+      "case_id": "strawberry-discovery",
+      "eligible": false,
+      "factual_id": 2417,
+      "factual_plus_purple_probability": 0.08675115804260625,
+      "factual_rank": 14,
+      "margin": -1.5162506103515625,
+      "margin_fraction": [
+        -99369,
+        65536
+      ],
+      "object": "strawberry",
+      "purple_id": 6379,
+      "top_ids": [
+        14182
+      ]
+    },
+    {
+      "case_id": "strawberry-calibration-01",
+      "eligible": false,
+      "factual_id": 2417,
+      "factual_plus_purple_probability": 0.12133809168567486,
+      "factual_rank": 10,
+      "margin": -1.0046195983886719,
+      "margin_fraction": [
+        -263355,
+        262144
+      ],
+      "object": "strawberry",
+      "purple_id": 6379,
+      "top_ids": [
+        3756
+      ]
+    },
+    {
+      "case_id": "strawberry-calibration-02",
+      "eligible": false,
+      "factual_id": 2417,
+      "factual_plus_purple_probability": 0.15144087363588762,
+      "factual_rank": 11,
+      "margin": -1.469651222229004,
+      "margin_fraction": [
+        -1541041,
+        1048576
+      ],
+      "object": "strawberry",
+      "purple_id": 6379,
+      "top_ids": [
+        6379
+      ]
+    },
+    {
+      "case_id": "lemon-discovery",
+      "eligible": true,
+      "factual_id": 3756,
+      "factual_plus_purple_probability": 0.11914265320645434,
+      "factual_rank": 2,
+      "margin": 0.14653682708740234,
+      "margin_fraction": [
+        153655,
+        1048576
+      ],
+      "object": "lemon",
+      "purple_id": 6379,
+      "top_ids": [
+        14182
+      ]
+    },
+    {
+      "case_id": "lemon-calibration-01",
+      "eligible": true,
+      "factual_id": 3756,
+      "factual_plus_purple_probability": 0.21136463404458267,
+      "factual_rank": 1,
+      "margin": 0.5106849670410156,
+      "margin_fraction": [
+        133873,
+        262144
+      ],
+      "object": "lemon",
+      "purple_id": 6379,
+      "top_ids": [
+        3756
+      ]
+    },
+    {
+      "case_id": "lemon-calibration-02",
+      "eligible": false,
+      "factual_id": 3756,
+      "factual_plus_purple_probability": 0.17050297686388552,
+      "factual_rank": 4,
+      "margin": -0.5138044357299805,
+      "margin_fraction": [
+        -538763,
+        1048576
+      ],
+      "object": "lemon",
+      "purple_id": 6379,
+      "top_ids": [
+        6379
+      ]
+    }
+  ],
+  "scope": "Independent model-free replay of cooperative saved records; no execution attestation.",
+  "selected_object": null
+}

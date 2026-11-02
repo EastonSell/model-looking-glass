@@ -1,0 +1,38 @@
+{
+  "schema": "flan-multitoken-tokenizer-feasibility-candidates-v1",
+  "status": "outcome-informed development proposals; not a frozen model experiment",
+  "source": "Locally authored candidate adjectives, not an external word list; polarity is provisional and has not received independent semantic review.",
+  "development_reveal_commit": "461a6d44f180e4cf924a0ad47e3f624a9d5191ad",
+  "checkpoint_revision": "0fc9ddf78a1e988dac52e2dac162b0ede4fd74ab",
+  "asset_manifest_sha256": "d369e3095dc35c52608f40fbd2715d7a2ff80a02fd71f0692c24af2cf3402083",
+  "templates": [
+    "Classify the sentiment of this review as positive or negative: The story was {word}.",
+    "Is this review positive or negative? The story was {word}.",
+    "Classify the sentiment of this review as positive or negative: The concert was {word}.",
+    "Is this review positive or negative? The concert was {word}."
+  ],
+  "positive": [
+    "captivating", "mesmerizing", "breathtaking", "refreshing", "marvelous", "flawless", "masterful", "heartwarming",
+    "remarkable", "magical", "glorious", "pleasing", "unforgettable", "astonishing", "satisfying", "exquisite",
+    "wondrous", "gorgeous", "hilarious", "amazing", "brilliant", "charming", "uplifting", "engaging",
+    "absorbing", "inventive", "entertaining", "enjoyable", "gripping", "enthralling", "electrifying", "imaginative",
+    "inspiring", "memorable", "lovely", "outstanding", "beautiful", "delightful", "excellent", "wonderful",
+    "spectacular", "terrific", "superb", "fantastic", "joyous", "joyful", "enchanting", "immersive",
+    "insightful", "profound", "thoughtful", "compelling", "moving", "radiant", "lively", "spirited",
+    "original", "innovative", "creative", "exceptional", "impeccable", "riveting", "sensational", "entrancing",
+    "fascinating", "heavenly", "sublime", "celebratory", "rewarding", "gladdening", "commendable", "exhilarating",
+    "magnificent", "phenomenal", "splendid", "incredible", "felicitous", "invigorating", "artful", "heartening"
+  ],
+  "negative": [
+    "abysmal", "atrocious", "horrible", "terrible", "boring", "tedious", "unpleasant", "disappointing",
+    "distressing", "unwatchable", "appalling", "inferior", "mediocre", "unconvincing", "annoying", "exhausting",
+    "painful", "distasteful", "poor", "insipid", "ludicrous", "clumsy", "ridiculous", "lackluster",
+    "unsatisfying", "forgettable", "irritating", "excruciating", "repetitive", "uninteresting", "unimpressive", "dreadful",
+    "miserable", "confusing", "mindless", "soulless", "pointless", "unoriginal", "uninspired", "sluggish",
+    "pretentious", "awkward", "lifeless", "dull", "unbearable", "offensive", "awful", "disastrous",
+    "banal", "predictable", "shoddy", "tiresome", "amateurish", "displeasing", "unspeakable", "grating",
+    "dreary", "horrendous", "dismal", "aggravating", "lacklustre", "unexciting", "wearisome", "unappealing",
+    "disheartening", "overrated", "sloppy", "disjointed", "uninvolving", "monotonous", "worthless", "frustrating",
+    "nonsensical", "repulsive", "ghastly", "gruesome", "lamentable", "disgraceful", "cringeworthy", "substandard"
+  ]
+}

@@ -1,0 +1,292 @@
+{
+  "schema": "public-known-injection-cases-v1",
+  "protocol_sha256": "9eeca112d06f998037bea9d5a7a6b7097307f76634565441c62b24e5f2855cfd",
+  "protocol_commit": "c353969d02d767371cfafb3dc9b1327c8ea8e4b0",
+  "tokenizer_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+  "model_forward": false,
+  "cases": [
+    {
+      "case_id": "known-injection-01",
+      "split": "discovery",
+      "public_text": "The silver compass beside the harbor",
+      "token_ids": [
+        464,
+        8465,
+        31855,
+        13970,
+        262,
+        25451
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-02",
+      "split": "discovery",
+      "public_text": "The quiet kettle beneath the walnut tree",
+      "token_ids": [
+        464,
+        5897,
+        40231,
+        11061,
+        262,
+        6514,
+        14930,
+        5509
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-03",
+      "split": "discovery",
+      "public_text": "The linen satchel near the stone bridge",
+      "token_ids": [
+        464,
+        41822,
+        3332,
+        29232,
+        1474,
+        262,
+        7815,
+        7696
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-04",
+      "split": "discovery",
+      "public_text": "The yellow lantern beside the mill",
+      "token_ids": [
+        464,
+        7872,
+        41207,
+        13970,
+        262,
+        3939
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-05",
+      "split": "discovery",
+      "public_text": "The bronze pitcher beyond the orchard",
+      "token_ids": [
+        464,
+        22101,
+        18086,
+        3675,
+        262,
+        393,
+        30215
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-06",
+      "split": "discovery",
+      "public_text": "The faded journal under the window",
+      "token_ids": [
+        464,
+        24887,
+        3989,
+        739,
+        262,
+        4324
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-07",
+      "split": "discovery",
+      "public_text": "The woven basket behind the barn",
+      "token_ids": [
+        464,
+        36932,
+        7988,
+        2157,
+        262,
+        25203
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-08",
+      "split": "discovery",
+      "public_text": "The small sundial above the meadow",
+      "token_ids": [
+        464,
+        1402,
+        37437,
+        498,
+        2029,
+        262,
+        502,
+        4584
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-09",
+      "split": "held-out",
+      "public_text": "The copper anchor near the lighthouse",
+      "token_ids": [
+        464,
+        15317,
+        18021,
+        1474,
+        262,
+        46371
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-10",
+      "split": "held-out",
+      "public_text": "The painted violin inside the cabin",
+      "token_ids": [
+        464,
+        13055,
+        38283,
+        2641,
+        262,
+        9351
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-11",
+      "split": "held-out",
+      "public_text": "The narrow ladder beside the garden",
+      "token_ids": [
+        464,
+        7135,
+        18002,
+        13970,
+        262,
+        11376
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-12",
+      "split": "held-out",
+      "public_text": "The paper envelope beneath the table",
+      "token_ids": [
+        464,
+        3348,
+        22878,
+        11061,
+        262,
+        3084
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-13",
+      "split": "held-out",
+      "public_text": "The marble statue beyond the fountain",
+      "token_ids": [
+        464,
+        30623,
+        15207,
+        3675,
+        262,
+        29420
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-14",
+      "split": "held-out",
+      "public_text": "The blue teapot behind the curtain",
+      "token_ids": [
+        464,
+        4171,
+        573,
+        499,
+        313,
+        2157,
+        262,
+        29461
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-15",
+      "split": "held-out",
+      "public_text": "The glass bottle above the hearth",
+      "token_ids": [
+        464,
+        5405,
+        9294,
+        2029,
+        262,
+        3285,
+        400
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    },
+    {
+      "case_id": "known-injection-16",
+      "split": "held-out",
+      "public_text": "The scarlet flag outside the station",
+      "token_ids": [
+        464,
+        10153,
+        1616,
+        6056,
+        2354,
+        262,
+        4429
+      ],
+      "candidate_token_ids": [
+        318,
+        389
+      ]
+    }
+  ]
+}

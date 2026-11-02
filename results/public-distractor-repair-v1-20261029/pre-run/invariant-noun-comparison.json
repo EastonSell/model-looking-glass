@@ -1,0 +1,10 @@
+{
+  "bidirectional_pairs": 39168,
+  "conflicts": 0,
+  "distractor_case_sha256": "811a1f0251ff21ddaa1869ee96c80dfa47beb87a6b6c2f1e3b6505728fee1825",
+  "distractor_sequences": 64,
+  "other_case_sha256": "50ef3aea53a21a76ecf1bc4910882f78939a4d2fcca12528013ea56eaa586827",
+  "other_sequences": 612,
+  "schema": "public-distractor-vs-invariant-noun-v1",
+  "scope": "public tokenizer-only inputs and fixed single-token alternatives; not protected or unknown exposure"
+}

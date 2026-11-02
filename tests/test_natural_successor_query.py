@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -24,10 +25,96 @@ def sha(value):
     return hashlib.sha256(value).hexdigest()
 
 
+class SyntheticLease:
+    """Recorded test resource; deliberately NOT a Windows source lock."""
+    def __init__(self, root, paths, events):
+        self.root, self.paths, self.events = Path(root), list(paths), events
+        self.entered = self.closed = False
+    def __enter__(self):
+        assert not self.entered and not self.closed
+        self.entered = True
+        self.events.append(('enter', self))
+        return self
+    def handles(self):
+        assert self.entered and not self.closed
+        return [id(self)]
+    def close(self):
+        assert self.entered and not self.closed
+        self.closed = True
+        self.events.append(('close', self))
+
+
+def install_synthetic_query_custody(monkeypatch, events):
+    """Keep real query/parser logic; simulate only Windows custody boundaries.
+
+    The comparator runs against fabricated rows in a portable isolated child.
+    Saved Job/handle fields are synthetic schema fixtures, not OS evidence.
+    """
+    original = query._project_modules
+    def project(captured, paths):
+        prior, guards, supervisor = original(captured, paths)
+        guards.SourceFileLease = lambda root, files: SyntheticLease(root, files, events)
+        class Handles(SyntheticLease):
+            def __init__(self, handles):
+                super().__init__('.', [], events)
+                self.values = list(handles)
+            def __enter__(self):
+                super().__enter__()
+                return self.values
+        guards.InheritableHandles = Handles
+        def supervise(command, output, environment, *, audit_result, timeout, inherited_handles):
+            assert inherited_handles and all(lease.entered and not lease.closed
+                                            for action, lease in events if action == 'enter')
+            output.mkdir()
+            portable = ('import hashlib,sys; p=sys.argv.pop(1); h=sys.argv.pop(1); '
+                        'raw=open(p,"rb").read(1000001); '
+                        'assert len(raw)<=1000000 and hashlib.sha256(raw).hexdigest()==h; '
+                        'sys.argv[0]=p; exec(compile(raw,p,"exec"),'
+                        '{"__name__":"__main__","__file__":p})')
+            assert command[5] == query._BOOTSTRAP
+            actual = [sys._base_executable] + command[1:5] + [portable] + command[6:]
+            child = subprocess.Popen(actual, env=environment, stdin=subprocess.DEVNULL,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            try:
+                stdout, stderr = child.communicate(timeout=timeout)
+            except BaseException:
+                child.kill()
+                child.communicate()
+                raise
+            (output / 'stdout.txt').write_bytes(stdout)
+            (output / 'stderr.txt').write_bytes(stderr)
+            assert child.returncode == 0, (stdout, stderr)
+            verdict = {'status': 'incomplete', 'command': command, 'exit_code': child.returncode,
+                'child_pid': child.pid, 'cleanup_verified': True, 'child_reaped': True,
+                'job_drained': True, 'job_closed': True, 'logs_complete': True,
+                'postexit_active_processes': 0, 'supervisor_error': None, 'log_overflow': False,
+                'audit_error_type': None, 'cancellation_requested': False, 'quarantined': False,
+                'retry_safe': False, 'stdout_sha256': sha(stdout), 'stderr_sha256': sha(stderr),
+                'retained_tensor_files': {'accounting_complete': True, 'total_bytes': 0, 'files': []},
+                'test_only_custody': 'synthetic Windows fields; portable comparator subprocess only'}
+            verdict['audit'] = audit_result(output, child.returncode, True)
+            (output / 'supervisor.json').write_bytes(canonical(verdict))
+            return verdict
+        supervisor.supervise_heldout = supervise
+        return prior, guards, supervisor
+    monkeypatch.setattr(query, '_project_modules', project)
+
+
+def project_module_snapshot():
+    return {name: module for name, module in sys.modules.items()
+            if name in ('looking_glass', 'scripts') or name.startswith(('looking_glass.', 'scripts.'))}
+
+
 @pytest.fixture
-def setup(tmp_path, request):
+def setup(tmp_path, request, monkeypatch):
     if query is None:
         return None
+    # Identity-only fixture: never execute this file or weaken the reader's size bound.
+    interpreter = tmp_path / 'synthetic-interpreter'
+    interpreter.write_bytes(b'fabricated interpreter identity; not executable')
+    monkeypatch.setattr(query, 'sys', SimpleNamespace(**dict(vars(sys), _base_executable=str(interpreter))))
+    events = []
+    install_synthetic_query_custody(monkeypatch, events)
     repo = Path(__file__).resolve().parents[1]
     root, cache, parent = (tmp_path / name for name in ('root', 'cache', 'old-parent'))
     old, supervisor = parent / 'old', parent / 'supervisor'
@@ -134,14 +221,29 @@ def setup(tmp_path, request):
     (parent / 'old-ledger').write_bytes(b'old ledger')
     (parent / 'old-gate').mkdir()
     (parent / 'old-gate' / 'old-marker').write_bytes(b'old gate')
-    return {'root': root, 'old_parent': parent, 'config_path': config_path, 'config_sha256': sha(config_raw),
+    return {'synthetic_interpreter': interpreter, 'synthetic_custody_events': events, 'root': root, 'old_parent': parent, 'config_path': config_path, 'config_sha256': sha(config_raw),
             'operation_sha256': sha(operation_raw), 'remote': remote, 'observe': observe}
 
 
 def run(value):
-    return query.run_query(value['config_path'], config_sha256=value['config_sha256'],
-                           operation_sha256=value['operation_sha256'], reader=value['remote'].__getitem__,
-                           observe_current=value['observe'])
+    before = project_module_snapshot()
+    active = list(query._ACTIVE_OWNER)
+    events = value['synthetic_custody_events']
+    start = len(events)
+    try:
+        return query.run_query(value['config_path'], config_sha256=value['config_sha256'],
+                               operation_sha256=value['operation_sha256'], reader=value['remote'].__getitem__,
+                               observe_current=value['observe'])
+    finally:
+        # Assert restoration; never clear real quarantine or repair modules silently.
+        after = project_module_snapshot()
+        assert after.keys() == before.keys()
+        assert all(after[name] is module for name, module in before.items())
+        assert query._ACTIVE_OWNER == active
+        entered = [lease for action, lease in events[start:] if action == 'enter']
+        closed = [lease for action, lease in events[start:] if action == 'close']
+        assert closed == list(reversed(entered))
+        assert all(lease.closed for lease in entered)
 
 
 def old_snapshot(parent):

@@ -250,7 +250,10 @@ assert input_sha256(x)==expected
 positive=x.clone(); positive.view(torch.int32)[0,0]=0
 negative=x.clone(); negative.view(torch.int32)[0,0]=-2147483648
 assert input_sha256(positive)!=input_sha256(negative)
-for bad in (torch.zeros(8), torch.full((1,8),float('nan')), x.refine_names('batch','hidden')):
+bad_inputs = [torch.zeros(8), torch.full((1,8),float('nan'))]
+if hasattr(x, 'refine_names'):
+    bad_inputs.append(x.refine_names('batch','hidden'))
+for bad in bad_inputs:
     try: input_sha256(bad)
     except DevelopmentInvalid: pass
     else: raise AssertionError('unsupported input identity accepted')

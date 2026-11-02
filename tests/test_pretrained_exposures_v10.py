@@ -89,9 +89,13 @@ class ExposureV10Tests(unittest.TestCase):
         for old_row in (candidate[:-1], candidate + [123]):
             old = copy.deepcopy(v9.inventory_payload())
             old["records"][0]["token_ids"] = old_row
+            # Pin this deliberately synthetic payload so the prefix guard is exercised.
+            synthetic_digest = hashlib.sha256(json.dumps(old, sort_keys=True, separators=(",", ":"),
+                ensure_ascii=True, allow_nan=False).encode("utf-8")).hexdigest()
             with self.subTest(old_row=old_row), \
                     mock.patch.object(v9, "inventory_payload", return_value=old), \
-                    mock.patch.object(v9, "inventory_digest", return_value=v9.INVENTORY_SHA256):
+                    mock.patch.object(v9, "INVENTORY_SHA256", synthetic_digest), \
+                    mock.patch.object(v10, "PREDECESSOR_SHA256", synthetic_digest):
                 with self.assertRaisesRegex(ValueError, "prefix"):
                     v10.inventory_payload()
         cases = list(v10.PROJECTED_CASES)

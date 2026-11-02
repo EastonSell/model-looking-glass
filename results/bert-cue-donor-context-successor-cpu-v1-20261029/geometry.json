@@ -1,0 +1,1420 @@
+{
+  "events": 1096,
+  "journal_sha256": "cde003fb88e17fa4b9af3215e8e0ccbef23fb2d5df83e1ef859715b4bc5c17de",
+  "manifest_sha256": "917bad800f72a9613e69d8feae3faf90ffbae5cc446bbeb3e2c8df1d03678dc9",
+  "matched_edges": 64,
+  "result_sha256": "3674c152b3c6e24383f191443ca50d2697baaf0c9334c22fa7766f759ace05c4",
+  "rows": [
+    {
+      "alternate_distance": 13.788237603109524,
+      "alternate_transfer": [
+        0.5,
+        0.03626279256220824,
+        0.49999997964480364,
+        4.071039272357524e-08
+      ],
+      "direction_cosine": 0.9503539215545264,
+      "donor_cue": "always",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 0,
+      "target_cue": "never",
+      "within_distance": 13.412676482171303,
+      "within_transfer": [
+        0.5,
+        0.03727816746080628,
+        0.5000000194072771,
+        3.881455423737634e-08
+      ]
+    },
+    {
+      "alternate_distance": 16.27200222317812,
+      "alternate_transfer": [
+        0.5,
+        0.030727626086960055,
+        0.49999999742273105,
+        5.154537907614554e-09
+      ],
+      "direction_cosine": 0.9640605627903605,
+      "donor_cue": "often",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 0,
+      "target_cue": "never",
+      "within_distance": 15.880403946943103,
+      "within_transfer": [
+        0.5,
+        0.03148534518835382,
+        0.5000000269225143,
+        5.384502865801721e-08
+      ]
+    },
+    {
+      "alternate_distance": 14.914501483845804,
+      "alternate_transfer": [
+        0.5,
+        0.033524419206472304,
+        0.5000000065553379,
+        1.3110675878280631e-08
+      ],
+      "direction_cosine": 0.9575549265933209,
+      "donor_cue": "always",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 0,
+      "target_cue": "rarely",
+      "within_distance": 14.135026272235482,
+      "within_transfer": [
+        0.5,
+        0.03537312137736296,
+        0.5000000043121119,
+        8.624223779563067e-09
+      ]
+    },
+    {
+      "alternate_distance": 12.379033518961284,
+      "alternate_transfer": [
+        0.5,
+        0.04039087536471544,
+        0.4999999877799074,
+        2.444018520897373e-08
+      ],
+      "direction_cosine": 0.937010857369685,
+      "donor_cue": "often",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 0,
+      "target_cue": "rarely",
+      "within_distance": 11.773384802813087,
+      "within_transfer": [
+        0.5,
+        0.04246867051185925,
+        0.49999999251399846,
+        1.4972003081759055e-08
+      ]
+    },
+    {
+      "alternate_distance": 14.545971623609534,
+      "alternate_transfer": [
+        0.5,
+        0.034373778042331056,
+        0.5000000125683635,
+        2.5136726922170283e-08
+      ],
+      "direction_cosine": 0.9676811850037068,
+      "donor_cue": "never",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 0,
+      "target_cue": "always",
+      "within_distance": 13.412676482171303,
+      "within_transfer": [
+        0.5,
+        0.03727816746080628,
+        0.5000000124437237,
+        2.4887447436228172e-08
+      ]
+    },
+    {
+      "alternate_distance": 15.016699756817943,
+      "alternate_transfer": [
+        0.5,
+        0.03329626403251407,
+        0.49999999319774846,
+        1.36045030796339e-08
+      ],
+      "direction_cosine": 0.9600219409409332,
+      "donor_cue": "rarely",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 0,
+      "target_cue": "always",
+      "within_distance": 14.135026272235482,
+      "within_transfer": [
+        0.5,
+        0.03537312137736296,
+        0.5000000036936249,
+        7.3872497008409255e-09
+      ]
+    },
+    {
+      "alternate_distance": 16.811694120051975,
+      "alternate_transfer": [
+        0.5,
+        0.02974120254803055,
+        0.49999997386476824,
+        5.227046351308218e-08
+      ],
+      "direction_cosine": 0.9756010641182676,
+      "donor_cue": "never",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 0,
+      "target_cue": "often",
+      "within_distance": 15.880403946943103,
+      "within_transfer": [
+        0.5,
+        0.03148534518835382,
+        0.5000000040307943,
+        8.061588507857209e-09
+      ]
+    },
+    {
+      "alternate_distance": 13.052805217314264,
+      "alternate_transfer": [
+        0.5,
+        0.038305942031277754,
+        0.5000000010803771,
+        2.1607542421975268e-09
+      ],
+      "direction_cosine": 0.9475778119103894,
+      "donor_cue": "rarely",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 0,
+      "target_cue": "often",
+      "within_distance": 11.773384802813087,
+      "within_transfer": [
+        0.5,
+        0.04246867051185925,
+        0.4999999867702118,
+        2.6459576418780273e-08
+      ]
+    },
+    {
+      "alternate_distance": 14.545971623609534,
+      "alternate_transfer": [
+        0.5,
+        0.034373778042331056,
+        0.5000000331378488,
+        6.627569759665164e-08
+      ],
+      "direction_cosine": 0.9553782782061118,
+      "donor_cue": "always",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 1,
+      "target_cue": "never",
+      "within_distance": 14.103166816405963,
+      "within_transfer": [
+        0.5,
+        0.03545303026681631,
+        0.49999998248658756,
+        3.5026824884987207e-08
+      ]
+    },
+    {
+      "alternate_distance": 16.811694120051975,
+      "alternate_transfer": [
+        0.5,
+        0.02974120254803055,
+        0.49999994450029034,
+        1.109994193226882e-07
+      ],
+      "direction_cosine": 0.9665157241650344,
+      "donor_cue": "often",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 1,
+      "target_cue": "never",
+      "within_distance": 16.590292689841206,
+      "within_transfer": [
+        0.5,
+        0.03013810602064705,
+        0.5000000237254054,
+        4.74508108361249e-08
+      ]
+    },
+    {
+      "alternate_distance": 15.016699756817943,
+      "alternate_transfer": [
+        0.5,
+        0.03329626403251407,
+        0.4999999858768404,
+        2.8246319172531287e-08
+      ],
+      "direction_cosine": 0.9587291395641133,
+      "donor_cue": "always",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 1,
+      "target_cue": "rarely",
+      "within_distance": 14.921052923655582,
+      "within_transfer": [
+        0.5,
+        0.03350969952042115,
+        0.5000000198017276,
+        3.9603455181946856e-08
+      ]
+    },
+    {
+      "alternate_distance": 13.052805217314264,
+      "alternate_transfer": [
+        0.5,
+        0.038305942031277754,
+        0.5000000092698104,
+        1.8539620727509032e-08
+      ],
+      "direction_cosine": 0.9436486530247534,
+      "donor_cue": "often",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 1,
+      "target_cue": "rarely",
+      "within_distance": 12.5751380153175,
+      "within_transfer": [
+        0.5,
+        0.039760995019773225,
+        0.5000000039260363,
+        7.852072547720468e-09
+      ]
+    },
+    {
+      "alternate_distance": 13.788237603109524,
+      "alternate_transfer": [
+        0.5,
+        0.03626279256220824,
+        0.5000000027110995,
+        5.4221989120861736e-09
+      ],
+      "direction_cosine": 0.9645269960554572,
+      "donor_cue": "never",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 1,
+      "target_cue": "always",
+      "within_distance": 14.103166816405963,
+      "within_transfer": [
+        0.5,
+        0.03545303026681631,
+        0.5000000145982944,
+        2.9196588702262716e-08
+      ]
+    },
+    {
+      "alternate_distance": 14.914501483845804,
+      "alternate_transfer": [
+        0.5,
+        0.033524419206472304,
+        0.5000000016971401,
+        3.3942801902497877e-09
+      ],
+      "direction_cosine": 0.9601219979203108,
+      "donor_cue": "rarely",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 1,
+      "target_cue": "always",
+      "within_distance": 14.921052923655582,
+      "within_transfer": [
+        0.5,
+        0.03350969952042115,
+        0.5000000083768167,
+        1.6753633369503973e-08
+      ]
+    },
+    {
+      "alternate_distance": 16.27200222317812,
+      "alternate_transfer": [
+        0.5,
+        0.030727626086960055,
+        0.5000000350831896,
+        7.016637915135959e-08
+      ],
+      "direction_cosine": 0.9744517404926347,
+      "donor_cue": "never",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 1,
+      "target_cue": "often",
+      "within_distance": 16.590292689841206,
+      "within_transfer": [
+        0.5,
+        0.03013810602064705,
+        0.5000000125892782,
+        2.5178556350979875e-08
+      ]
+    },
+    {
+      "alternate_distance": 12.379033518961284,
+      "alternate_transfer": [
+        0.5,
+        0.04039087536471544,
+        0.49999997283484415,
+        5.433031169399527e-08
+      ],
+      "direction_cosine": 0.9431145575264073,
+      "donor_cue": "rarely",
+      "pair_id": "discovery-01",
+      "split": "discovery",
+      "target_context": 1,
+      "target_cue": "often",
+      "within_distance": 12.5751380153175,
+      "within_transfer": [
+        0.5,
+        0.039760995019773225,
+        0.49999999363054676,
+        1.2738906485232349e-08
+      ]
+    },
+    {
+      "alternate_distance": 13.775598480329839,
+      "alternate_transfer": [
+        0.5,
+        0.036296063703798384,
+        0.5000000156811464,
+        3.136229276279323e-08
+      ],
+      "direction_cosine": 0.936567371420118,
+      "donor_cue": "always",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "never",
+      "within_distance": 13.213199433162586,
+      "within_transfer": [
+        0.5,
+        0.037840948555207324,
+        0.4999999790022148,
+        4.1995570354558254e-08
+      ]
+    },
+    {
+      "alternate_distance": 15.950942862741359,
+      "alternate_transfer": [
+        0.5,
+        0.03134610939945835,
+        0.4999999802776227,
+        3.944475457373642e-08
+      ],
+      "direction_cosine": 0.9394176651476585,
+      "donor_cue": "often",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "never",
+      "within_distance": 15.275986219902622,
+      "within_transfer": [
+        0.5,
+        0.03273111096084684,
+        0.4999999876382134,
+        2.472357318872298e-08
+      ]
+    },
+    {
+      "alternate_distance": 14.214029671892003,
+      "alternate_transfer": [
+        0.5,
+        0.03517651303266528,
+        0.4999999679372715,
+        6.412545705547501e-08
+      ],
+      "direction_cosine": 0.9406073922384092,
+      "donor_cue": "always",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "rarely",
+      "within_distance": 13.718758115701329,
+      "within_transfer": [
+        0.5,
+        0.036446447687399804,
+        0.5000000100231581,
+        2.0046316162591893e-08
+      ]
+    },
+    {
+      "alternate_distance": 12.25849447368572,
+      "alternate_transfer": [
+        0.5,
+        0.04078804302382384,
+        0.500000037378328,
+        7.475665597667103e-08
+      ],
+      "direction_cosine": 0.8953712850930278,
+      "donor_cue": "often",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "rarely",
+      "within_distance": 11.399110863194027,
+      "within_transfer": [
+        0.5,
+        0.04386307019913483,
+        0.5000000203180118,
+        4.0636023657114606e-08
+      ]
+    },
+    {
+      "alternate_distance": 13.64807912503645,
+      "alternate_transfer": [
+        0.5,
+        0.03663519206030868,
+        0.499999961962281,
+        7.60754379491857e-08
+      ],
+      "direction_cosine": 0.9394206633025778,
+      "donor_cue": "never",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "always",
+      "within_distance": 13.213199433162586,
+      "within_transfer": [
+        0.5,
+        0.037840948555207324,
+        0.499999986793747,
+        2.6412505960138333e-08
+      ]
+    },
+    {
+      "alternate_distance": 15.19170815563538,
+      "alternate_transfer": [
+        0.5,
+        0.03291269124430385,
+        0.5000000133734465,
+        2.674689292270216e-08
+      ],
+      "direction_cosine": 0.9160847542453354,
+      "donor_cue": "rarely",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "always",
+      "within_distance": 13.718758115701329,
+      "within_transfer": [
+        0.5,
+        0.036446447687399804,
+        0.4999999882181743,
+        2.3563651363467386e-08
+      ]
+    },
+    {
+      "alternate_distance": 15.997605344078268,
+      "alternate_transfer": [
+        0.5,
+        0.031254677762449105,
+        0.5000000023984026,
+        4.79680517528891e-09
+      ],
+      "direction_cosine": 0.9559751599548236,
+      "donor_cue": "never",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "often",
+      "within_distance": 15.275986219902622,
+      "within_transfer": [
+        0.5,
+        0.03273111096084684,
+        0.49999998202881757,
+        3.594236486215152e-08
+      ]
+    },
+    {
+      "alternate_distance": 13.146515734394923,
+      "alternate_transfer": [
+        0.5,
+        0.03803289100334484,
+        0.5000000314651206,
+        6.293024124026658e-08
+      ],
+      "direction_cosine": 0.886246292083914,
+      "donor_cue": "rarely",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "often",
+      "within_distance": 11.399110863194027,
+      "within_transfer": [
+        0.5,
+        0.04386307019913483,
+        0.5000000119904041,
+        2.398080822807458e-08
+      ]
+    },
+    {
+      "alternate_distance": 13.64807912503645,
+      "alternate_transfer": [
+        0.5,
+        0.03663519206030868,
+        0.5000000287498564,
+        5.7499712768915856e-08
+      ],
+      "direction_cosine": 0.9351950629628331,
+      "donor_cue": "always",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "never",
+      "within_distance": 12.982950823645087,
+      "within_transfer": [
+        0.5,
+        0.038512046051147275,
+        0.4999999994673393,
+        1.0653213866618216e-09
+      ]
+    },
+    {
+      "alternate_distance": 15.997605344078268,
+      "alternate_transfer": [
+        0.5,
+        0.031254677762449105,
+        0.49999998480276386,
+        3.0394472272377016e-08
+      ],
+      "direction_cosine": 0.9405666038288072,
+      "donor_cue": "often",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "never",
+      "within_distance": 15.726914722765212,
+      "within_transfer": [
+        0.5,
+        0.03179263121941101,
+        0.5000000171478355,
+        3.429567096979724e-08
+      ]
+    },
+    {
+      "alternate_distance": 15.19170815563538,
+      "alternate_transfer": [
+        0.5,
+        0.03291269124430385,
+        0.500000000587109,
+        1.17421805612139e-09
+      ],
+      "direction_cosine": 0.9479327126420222,
+      "donor_cue": "always",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "rarely",
+      "within_distance": 14.370229774961073,
+      "within_transfer": [
+        0.5,
+        0.03479415484860293,
+        0.500000009930749,
+        1.9861498001816358e-08
+      ]
+    },
+    {
+      "alternate_distance": 13.146515734394923,
+      "alternate_transfer": [
+        0.5,
+        0.03803289100334484,
+        0.5000000171321864,
+        3.426437289455464e-08
+      ],
+      "direction_cosine": 0.9091487284845914,
+      "donor_cue": "often",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "rarely",
+      "within_distance": 11.997433459385547,
+      "within_transfer": [
+        0.5,
+        0.04167558017242862,
+        0.5000000056565205,
+        1.1313040948479625e-08
+      ]
+    },
+    {
+      "alternate_distance": 13.775598480329839,
+      "alternate_transfer": [
+        0.5,
+        0.036296063703798384,
+        0.49999997755548564,
+        4.488902871635503e-08
+      ],
+      "direction_cosine": 0.9401448045645191,
+      "donor_cue": "never",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "always",
+      "within_distance": 12.982950823645087,
+      "within_transfer": [
+        0.5,
+        0.038512046051147275,
+        0.4999999482081953,
+        1.035836093565834e-07
+      ]
+    },
+    {
+      "alternate_distance": 14.214029671892003,
+      "alternate_transfer": [
+        0.5,
+        0.03517651303266528,
+        0.49999999559603425,
+        8.807931495269372e-09
+      ],
+      "direction_cosine": 0.9091276538019746,
+      "donor_cue": "rarely",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "always",
+      "within_distance": 14.370229774961073,
+      "within_transfer": [
+        0.5,
+        0.03479415484860293,
+        0.4999999965057475,
+        6.988504996918721e-09
+      ]
+    },
+    {
+      "alternate_distance": 15.950942862741359,
+      "alternate_transfer": [
+        0.5,
+        0.03134610939945835,
+        0.499999970704191,
+        5.859161800181312e-08
+      ],
+      "direction_cosine": 0.9561744934985631,
+      "donor_cue": "never",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "often",
+      "within_distance": 15.726914722765212,
+      "within_transfer": [
+        0.5,
+        0.03179263121941101,
+        0.5000000353728148,
+        7.074562957676278e-08
+      ]
+    },
+    {
+      "alternate_distance": 12.25849447368572,
+      "alternate_transfer": [
+        0.5,
+        0.04078804302382384,
+        0.499999999085884,
+        1.828232010225861e-09
+      ],
+      "direction_cosine": 0.873940665617268,
+      "donor_cue": "rarely",
+      "pair_id": "evaluation-01",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "often",
+      "within_distance": 11.997433459385547,
+      "within_transfer": [
+        0.5,
+        0.04167558017242862,
+        0.4999999776241466,
+        4.475170678475138e-08
+      ]
+    },
+    {
+      "alternate_distance": 14.25355542737993,
+      "alternate_transfer": [
+        0.5,
+        0.035078966967044614,
+        0.5000000033943874,
+        6.788774875587933e-09
+      ],
+      "direction_cosine": 0.9608624141903087,
+      "donor_cue": "always",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "never",
+      "within_distance": 13.85982848416186,
+      "within_transfer": [
+        0.5,
+        0.0360754825048065,
+        0.49999997579512706,
+        4.8409745878608135e-08
+      ]
+    },
+    {
+      "alternate_distance": 16.33978042198136,
+      "alternate_transfer": [
+        0.5,
+        0.03060016640905203,
+        0.49999998679374585,
+        2.6412508291606684e-08
+      ],
+      "direction_cosine": 0.9727693396950777,
+      "donor_cue": "often",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "never",
+      "within_distance": 16.22858330289988,
+      "within_transfer": [
+        0.5,
+        0.030809836611594747,
+        0.4999999943584212,
+        1.1283157630437302e-08
+      ]
+    },
+    {
+      "alternate_distance": 15.159146996197094,
+      "alternate_transfer": [
+        0.5,
+        0.032983386210677465,
+        0.4999999643658836,
+        7.126823275971361e-08
+      ],
+      "direction_cosine": 0.9654448647877415,
+      "donor_cue": "always",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "rarely",
+      "within_distance": 14.529034990860968,
+      "within_transfer": [
+        0.5,
+        0.03441384787871385,
+        0.4999999953016272,
+        9.396745603851286e-09
+      ]
+    },
+    {
+      "alternate_distance": 12.629799860329166,
+      "alternate_transfer": [
+        0.5,
+        0.039588909209125715,
+        0.5000000228629313,
+        4.5725862651835314e-08
+      ],
+      "direction_cosine": 0.9539189532692851,
+      "donor_cue": "often",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "rarely",
+      "within_distance": 12.350668741788331,
+      "within_transfer": [
+        0.5,
+        0.04048363780564014,
+        0.4999999729688825,
+        5.406223502202323e-08
+      ]
+    },
+    {
+      "alternate_distance": 14.598834910335771,
+      "alternate_transfer": [
+        0.5,
+        0.034249308459951625,
+        0.5000000234768909,
+        4.695378175156861e-08
+      ],
+      "direction_cosine": 0.97855271644906,
+      "donor_cue": "never",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "always",
+      "within_distance": 13.85982848416186,
+      "within_transfer": [
+        0.5,
+        0.0360754825048065,
+        0.499999976180625,
+        4.763874994484496e-08
+      ]
+    },
+    {
+      "alternate_distance": 15.147494232891203,
+      "alternate_transfer": [
+        0.5,
+        0.03300875988546688,
+        0.5000000142368399,
+        2.847367985836513e-08
+      ],
+      "direction_cosine": 0.9750933076988003,
+      "donor_cue": "rarely",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "always",
+      "within_distance": 14.529034990860968,
+      "within_transfer": [
+        0.5,
+        0.03441384787871385,
+        0.5000000085374612,
+        1.707492236491248e-08
+      ]
+    },
+    {
+      "alternate_distance": 16.72183672931872,
+      "alternate_transfer": [
+        0.5,
+        0.02990102152614254,
+        0.5000000016679447,
+        3.335889342537257e-09
+      ],
+      "direction_cosine": 0.9834507359649602,
+      "donor_cue": "never",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "often",
+      "within_distance": 16.22858330289988,
+      "within_transfer": [
+        0.5,
+        0.030809836611594747,
+        0.49999998488532993,
+        3.0229340142184924e-08
+      ]
+    },
+    {
+      "alternate_distance": 13.092456512656156,
+      "alternate_transfer": [
+        0.5,
+        0.03818993017213097,
+        0.500000006512581,
+        1.3025162060031903e-08
+      ],
+      "direction_cosine": 0.9666201089167781,
+      "donor_cue": "rarely",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "often",
+      "within_distance": 12.350668741788331,
+      "within_transfer": [
+        0.5,
+        0.04048363780564014,
+        0.5000000135781024,
+        2.715620484039505e-08
+      ]
+    },
+    {
+      "alternate_distance": 14.598834910335771,
+      "alternate_transfer": [
+        0.5,
+        0.034249308459951625,
+        0.5000000098897355,
+        1.9779470949998768e-08
+      ],
+      "direction_cosine": 0.9629883540822269,
+      "donor_cue": "always",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "never",
+      "within_distance": 14.42469248515575,
+      "within_transfer": [
+        0.5,
+        0.03466278400836226,
+        0.4999999915786073,
+        1.6842785388604398e-08
+      ]
+    },
+    {
+      "alternate_distance": 16.72183672931872,
+      "alternate_transfer": [
+        0.5,
+        0.02990102152614254,
+        0.49999996712354566,
+        6.575290867338879e-08
+      ],
+      "direction_cosine": 0.9738404071276238,
+      "donor_cue": "often",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "never",
+      "within_distance": 16.410191226059887,
+      "within_transfer": [
+        0.5,
+        0.030468871027290935,
+        0.49999998089258574,
+        3.8214828523841504e-08
+      ]
+    },
+    {
+      "alternate_distance": 15.147494232891203,
+      "alternate_transfer": [
+        0.5,
+        0.03300875988546688,
+        0.5000000149379169,
+        2.987583380686942e-08
+      ],
+      "direction_cosine": 0.9660456289514583,
+      "donor_cue": "always",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "rarely",
+      "within_distance": 15.182283198743795,
+      "within_transfer": [
+        0.5,
+        0.03293312299966653,
+        0.5000000087420744,
+        1.7484148795432475e-08
+      ]
+    },
+    {
+      "alternate_distance": 13.092456512656156,
+      "alternate_transfer": [
+        0.5,
+        0.03818993017213097,
+        0.5000000094700867,
+        1.894017342962684e-08
+      ],
+      "direction_cosine": 0.9569173884110095,
+      "donor_cue": "often",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "rarely",
+      "within_distance": 12.57662317394298,
+      "within_transfer": [
+        0.5,
+        0.03975629969067775,
+        0.49999996744496294,
+        6.511007411003078e-08
+      ]
+    },
+    {
+      "alternate_distance": 14.25355542737993,
+      "alternate_transfer": [
+        0.5,
+        0.035078966967044614,
+        0.49999997667462426,
+        4.665075148402309e-08
+      ],
+      "direction_cosine": 0.9776364919979238,
+      "donor_cue": "never",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "always",
+      "within_distance": 14.42469248515575,
+      "within_transfer": [
+        0.5,
+        0.03466278400836226,
+        0.5000000068025494,
+        1.3605098825308914e-08
+      ]
+    },
+    {
+      "alternate_distance": 15.159146996197094,
+      "alternate_transfer": [
+        0.5,
+        0.032983386210677465,
+        0.4999999993292372,
+        1.3415255573079321e-09
+      ],
+      "direction_cosine": 0.975353492516282,
+      "donor_cue": "rarely",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "always",
+      "within_distance": 15.182283198743795,
+      "within_transfer": [
+        0.5,
+        0.03293312299966653,
+        0.5000000229643162,
+        4.592863245278522e-08
+      ]
+    },
+    {
+      "alternate_distance": 16.33978042198136,
+      "alternate_transfer": [
+        0.5,
+        0.03060016640905203,
+        0.5000000119116639,
+        2.3823327754968204e-08
+      ],
+      "direction_cosine": 0.982806774713746,
+      "donor_cue": "never",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "often",
+      "within_distance": 16.410191226059887,
+      "within_transfer": [
+        0.5,
+        0.030468871027290935,
+        0.49999997876354657,
+        4.2472906858215254e-08
+      ]
+    },
+    {
+      "alternate_distance": 12.629799860329166,
+      "alternate_transfer": [
+        0.5,
+        0.039588909209125715,
+        0.5000000251548872,
+        5.030977434650197e-08
+      ],
+      "direction_cosine": 0.9642958289867749,
+      "donor_cue": "rarely",
+      "pair_id": "evaluation-02",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "often",
+      "within_distance": 12.57662317394298,
+      "within_transfer": [
+        0.5,
+        0.03975629969067775,
+        0.5000000059578544,
+        1.1915708864052021e-08
+      ]
+    },
+    {
+      "alternate_distance": 14.731554573169971,
+      "alternate_transfer": [
+        0.5,
+        0.03394074926149555,
+        0.5000000445737367,
+        8.914747340327267e-08
+      ],
+      "direction_cosine": 0.9714812608844824,
+      "donor_cue": "always",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "never",
+      "within_distance": 14.315186597954446,
+      "within_transfer": [
+        0.5,
+        0.03492794149616234,
+        0.5000000093518185,
+        1.8703637083561375e-08
+      ]
+    },
+    {
+      "alternate_distance": 16.882212763703834,
+      "alternate_transfer": [
+        0.5,
+        0.029616970654165815,
+        0.4999999701508418,
+        5.9698316401402e-08
+      ],
+      "direction_cosine": 0.9756631527430906,
+      "donor_cue": "often",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "never",
+      "within_distance": 16.568727048495397,
+      "within_transfer": [
+        0.5,
+        0.030177333390582043,
+        0.5000000297498707,
+        5.949974135610603e-08
+      ]
+    },
+    {
+      "alternate_distance": 15.227795990986357,
+      "alternate_transfer": [
+        0.5,
+        0.032834692577702,
+        0.499999990011592,
+        1.9976815979205753e-08
+      ],
+      "direction_cosine": 0.973434983114649,
+      "donor_cue": "always",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "rarely",
+      "within_distance": 15.035992556725,
+      "within_transfer": [
+        0.5,
+        0.03325354133514584,
+        0.5000000108250161,
+        2.1650032211439907e-08
+      ]
+    },
+    {
+      "alternate_distance": 13.115994746960194,
+      "alternate_transfer": [
+        0.5,
+        0.0381213937369014,
+        0.4999999956958495,
+        8.608300960943893e-09
+      ],
+      "direction_cosine": 0.9593289617483812,
+      "donor_cue": "often",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "rarely",
+      "within_distance": 12.64933411175537,
+      "within_transfer": [
+        0.5,
+        0.03952777241731139,
+        0.5000000007671553,
+        1.5343106785081773e-09
+      ]
+    },
+    {
+      "alternate_distance": 14.276937692331202,
+      "alternate_transfer": [
+        0.5,
+        0.03502151587231293,
+        0.5000000311473753,
+        6.229475069119417e-08
+      ],
+      "direction_cosine": 0.9691616976668799,
+      "donor_cue": "never",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "always",
+      "within_distance": 14.315186597954446,
+      "within_transfer": [
+        0.5,
+        0.03492794149616234,
+        0.49999995723758367,
+        8.552483266033306e-08
+      ]
+    },
+    {
+      "alternate_distance": 14.970632415811481,
+      "alternate_transfer": [
+        0.5,
+        0.03339872265328729,
+        0.5000000132637735,
+        2.6527547047905387e-08
+      ],
+      "direction_cosine": 0.9696357543239064,
+      "donor_cue": "rarely",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "always",
+      "within_distance": 15.035992556725,
+      "within_transfer": [
+        0.5,
+        0.03325354133514584,
+        0.5000000016318349,
+        3.2636697788746005e-09
+      ]
+    },
+    {
+      "alternate_distance": 16.46575352237493,
+      "alternate_transfer": [
+        0.5,
+        0.03036605639216946,
+        0.49999997211224717,
+        5.5775505658495206e-08
+      ],
+      "direction_cosine": 0.9769146348591101,
+      "donor_cue": "never",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "often",
+      "within_distance": 16.568727048495397,
+      "within_transfer": [
+        0.5,
+        0.030177333390582043,
+        0.49999999135715956,
+        1.7285680886658383e-08
+      ]
+    },
+    {
+      "alternate_distance": 12.74354346538581,
+      "alternate_transfer": [
+        0.5,
+        0.03923555495832905,
+        0.5000000079531282,
+        1.5906256312092637e-08
+      ],
+      "direction_cosine": 0.9576132029925465,
+      "donor_cue": "rarely",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 0,
+      "target_cue": "often",
+      "within_distance": 12.64933411175537,
+      "within_transfer": [
+        0.5,
+        0.03952777241731139,
+        0.50000000136656,
+        2.7331199525804095e-09
+      ]
+    },
+    {
+      "alternate_distance": 14.276937692331202,
+      "alternate_transfer": [
+        0.5,
+        0.03502151587231293,
+        0.5000000102438349,
+        2.048766978290928e-08
+      ],
+      "direction_cosine": 0.9697564767408374,
+      "donor_cue": "always",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "never",
+      "within_distance": 14.0880812502124,
+      "within_transfer": [
+        0.5,
+        0.03549099349440944,
+        0.4999999618594253,
+        7.628114939706165e-08
+      ]
+    },
+    {
+      "alternate_distance": 16.46575352237493,
+      "alternate_transfer": [
+        0.5,
+        0.03036605639216946,
+        0.5000000121702528,
+        2.43405056110646e-08
+      ],
+      "direction_cosine": 0.9745271077621888,
+      "donor_cue": "often",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "never",
+      "within_distance": 16.32303595294906,
+      "within_transfer": [
+        0.5,
+        0.030631556619812855,
+        0.5000000379953936,
+        7.599078721831631e-08
+      ]
+    },
+    {
+      "alternate_distance": 14.970632415811481,
+      "alternate_transfer": [
+        0.5,
+        0.03339872265328729,
+        0.5000000168448329,
+        3.368966572381282e-08
+      ],
+      "direction_cosine": 0.9724041929572389,
+      "donor_cue": "always",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "rarely",
+      "within_distance": 14.610857412792008,
+      "within_transfer": [
+        0.5,
+        0.03422112651391992,
+        0.5000000028327539,
+        5.665507840646455e-09
+      ]
+    },
+    {
+      "alternate_distance": 12.74354346538581,
+      "alternate_transfer": [
+        0.5,
+        0.03923555495832905,
+        0.500000032642325,
+        6.528464990829264e-08
+      ],
+      "direction_cosine": 0.9570050278689016,
+      "donor_cue": "often",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "rarely",
+      "within_distance": 12.416404935944636,
+      "within_transfer": [
+        0.5,
+        0.04026930521189225,
+        0.5000000024703366,
+        4.9406732038903556e-09
+      ]
+    },
+    {
+      "alternate_distance": 14.731554573169971,
+      "alternate_transfer": [
+        0.5,
+        0.03394074926149555,
+        0.5000000412723924,
+        8.2544784785199e-08
+      ],
+      "direction_cosine": 0.9706256021228994,
+      "donor_cue": "never",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "always",
+      "within_distance": 14.0880812502124,
+      "within_transfer": [
+        0.5,
+        0.03549099349440944,
+        0.4999999812092596,
+        3.758148081622892e-08
+      ]
+    },
+    {
+      "alternate_distance": 15.227795990986357,
+      "alternate_transfer": [
+        0.5,
+        0.032834692577702,
+        0.5000000151746116,
+        3.034922313460697e-08
+      ],
+      "direction_cosine": 0.970125689007663,
+      "donor_cue": "rarely",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "always",
+      "within_distance": 14.610857412792008,
+      "within_transfer": [
+        0.5,
+        0.03422112651391992,
+        0.5000000180054828,
+        3.601096554284311e-08
+      ]
+    },
+    {
+      "alternate_distance": 16.882212763703834,
+      "alternate_transfer": [
+        0.5,
+        0.029616970654165815,
+        0.49999997738964563,
+        4.5220708733140214e-08
+      ],
+      "direction_cosine": 0.9776933056726208,
+      "donor_cue": "never",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "often",
+      "within_distance": 16.32303595294906,
+      "within_transfer": [
+        0.5,
+        0.030631556619812855,
+        0.5000000245862759,
+        4.917255180814095e-08
+      ]
+    },
+    {
+      "alternate_distance": 13.115994746960194,
+      "alternate_transfer": [
+        0.5,
+        0.0381213937369014,
+        0.49999997546683883,
+        4.906632233847574e-08
+      ],
+      "direction_cosine": 0.9595196691462414,
+      "donor_cue": "rarely",
+      "pair_id": "evaluation-03",
+      "split": "evaluation",
+      "target_context": 1,
+      "target_cue": "often",
+      "within_distance": 12.416404935944636,
+      "within_transfer": [
+        0.5,
+        0.04026930521189225,
+        0.5000000070953724,
+        1.4190744801467758e-08
+      ]
+    }
+  ],
+  "scope": "Saved capture directions and recorded dose fields; full witness replay checks landing and execution is not attested.",
+  "source_commit": "b6667ad5bfcadac6e0f45d4ad6530cca1f4584ca",
+  "status": "passed"
+}
