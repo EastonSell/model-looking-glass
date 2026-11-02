@@ -95,7 +95,7 @@
       </details>
     </section>
     <section class="privacy-note"><p><strong>RAM-only. Save explicitly to keep a capture.</strong></p><details id="privacy-options" class="options"><summary>Privacy &amp; memory notes</summary><p>Prompts, outputs, and captures stay in this local process unless you choose <strong>Save capture</strong>. Approximate viewing does not discard the original vectors. Clearing a run releases the app’s references; it is not secure memory erasure.</p></details></section>
-  </aside></details><button id="run-button" type="button" disabled title="Run &amp; capture →">Run &amp; capture <span aria-hidden="true">→</span></button></div>
+  </aside></details></div>
 </header>
 <div class="app-layout">
 
@@ -115,7 +115,7 @@
         <details id="input-tokens-options" class="options"><summary>Explore input tokens</summary><div class="token-heading"><h3>Captured inputs</h3><label class="sr-only" for="input-token-stack">Captured input stack</label><select id="input-token-stack"><option value="input">Input</option></select></div>
         <p id="input-token-note" class="hint"></p><div id="input-token-strip" class="token-strip" aria-label="Recorded input token positions"></div>
         <div class="pager"><button id="input-tokens-prev" type="button" class="quiet" title="← Inputs">← Inputs</button><span id="input-token-page" class="hint"></span><button id="input-tokens-next" type="button" class="quiet" title="Inputs →">Inputs →</button></div></details>
-      <div class="query-footer"><span id="run-status" class="muted" aria-live="polite">Ready when you are.</span></div>
+      <div class="query-footer"><button id="run-button" type="button" disabled title="Run &amp; capture →">Run &amp; capture <span aria-hidden="true">→</span></button><span id="run-status" class="muted" aria-live="polite">Ready when you are.</span></div>
     </section>
     <section id="result-panel" class="panel" aria-labelledby="result-heading" hidden>
       <div class="panel-heading"><div><h2 id="result-heading">Response</h2></div><span id="task-badge" class="status-text"></span></div>
@@ -146,8 +146,9 @@
       </details>
     </section>
     </div></aside>
+    <div id="scene-ui" class="scene-ui">
     <section id="trace-panel" class="panel" aria-labelledby="trace-heading" hidden>
-      <div class="panel-heading"><div><h2 id="trace-heading">Captured layers</h2></div><span id="event-total" class="status-text"></span></div>
+      <div class="panel-heading sr-only"><div><h2 id="trace-heading">Captured layers</h2></div><span id="event-total" class="status-text"></span></div>
 
       <div id="explorer-grid" class="explorer-grid">
       <details id="layer-map-options" class="options layer-stage" open>
@@ -155,7 +156,7 @@
         <details id="map-tools-options" class="options"><summary>Map options &amp; details</summary><p class="hint">Planes are actual captured layers; selectable bands are recorded sites, not neurons. The 3D view is navigation—not a neuron graph, model topology, or causal explanation. Independent of table filters. A module button opens its first captured vector; use the source picker to choose another position. Unknown observations remain available in the exact table.</p>
         <div class="row layer-map-toolbar"><label for="layer-map-forward">Forward</label><input id="layer-map-forward" type="number" min="0" step="1" value="0"><button id="layer-map-load" type="button" title="Load / refresh">Load / refresh</button></div>
         <p id="layer-map-status" class="hint" role="status">Open or refresh to list captured sites. No tensor values are read to build the map.</p>
-        </details><div class="scene-view-switch"><label class="sr-only" for="scene-view">View</label><select id="scene-view"><option value="scene">3D scene</option><option value="list">List</option></select><button id="scene-reset" type="button" class="quiet" disabled title="Fit the captured layers in view">Reset view</button><span class="hint">Captured sites · not neurons</span></div>
+        </details>
         <p id="scene-render-status" class="hint" role="status"></p>
         <p id="scene-selection-status" class="hint" role="status"></p>
         <div id="layer-map-body" class="layer-map" data-view="scene"></div>
@@ -172,7 +173,9 @@
       <div class="pager"><button id="events-prev" class="quiet" type="button" title="← Previous events">← Previous events</button><span id="event-page" class="hint"></span><button id="events-next" class="quiet" type="button" title="Next events →">Next events →</button></div>
       </details>
     </section>
-    <aside id="selection-dock" class="workspace-dock selection-dock" aria-label="Selected capture"><div class="dock-toolbar"><span>selected capture</span><button id="selection-dock-toggle" type="button" aria-label="Collapse selected capture" aria-controls="selection-dock-body" aria-expanded="true" title="Collapse selected capture ([)">‹</button></div><div id="selection-dock-body"><p id="selection-empty" class="hint">Select a captured site in the scene or list.</p>
+    <div id="scene-toolbar" class="scene-view-switch scene-toolbar" role="group" aria-label="Scene navigation" hidden><label class="sr-only" for="scene-view">View</label><select id="scene-view"><option value="scene">3D scene</option><option value="list">List</option></select><button id="scene-reset" type="button" class="quiet" disabled title="Fit the captured layers in view">Fit view</button><span class="hint">Captured sites · not neurons</span></div>
+    </div>
+    <aside id="selection-dock" class="workspace-dock selection-dock" aria-label="Selected capture"><div class="dock-toolbar"><span>captured site</span><button id="selection-dock-toggle" type="button" aria-label="Collapse selected capture" aria-controls="selection-dock-body" aria-expanded="true" title="Collapse selected capture ([)">‹</button></div><div id="selection-dock-body"><p id="selection-empty" class="hint">Select a captured site in the scene or list.</p>
       <div id="vector-panel" class="vector-panel source-dock" hidden>
         <div class="panel-heading"><h3 id="vector-heading" tabindex="-1">Selected observation</h3><span id="dtype-badge" class="status-text"></span></div>
         <div id="source-readable" class="source-readable" role="status">Choose a captured module and source position.</div>

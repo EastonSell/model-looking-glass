@@ -191,14 +191,14 @@ def test_workspace_has_local_dark_presentation_and_truthful_readout():
 
 def test_scene_composition_and_accessible_controls_preserve_truth():
     ids = page().ids
-    assert ids["header-controls"] in list(ids["run-button"].ancestors())
+    assert ids["input-card"] in list(ids["run-button"].ancestors())
     assert ids["header-controls"] in list(ids["model-badge"].ancestors())
     assert ids["input-card"] in list(ids["input-token-strip"].ancestors())
     assert ids["result-panel"] in list(ids["output-readout"].ancestors())
     assert ids["scene-workspace"] in list(ids["vector-panel"].ancestors())
     assert not any(n.tag == "details" for n in ids["demo-model-warning"].ancestors())
     assert ids["scene-view"].tag == "select"
-    assert "not neurons" in ids["layer-map-options"].text
+    assert "not neurons" in ids["scene-toolbar"].text
     assert "Choose a model" in ids["scene-empty"].text
     for name in ("dock-exact", "dock-edit", "dock-reference"):
         assert ids[name].tag == "button"
@@ -235,7 +235,7 @@ def test_discovery_is_explicit_and_wireframe_is_not_fake_model_data():
     assert "immediate subfolders" in ids["folder-browser"].text
     assert "Inspect" in ids["folder-browser"].text
     css = (ROOT / "looking_glass/app_static/app.css").read_text()
-    assert "#04050a" in css and "rgba(18,20,28,.78)" in css
+    assert "#04050a" in css and "rgba(10,13,19,.82)" in css
     assert "radial-gradient" not in css
     assert "rotateY(" not in css  # Real scene geometry lives in app_scene.js, not CSS illusions.
 
@@ -327,7 +327,7 @@ def test_alerts_and_scene_docks_keep_accessible_neutral_chrome():
         assert ids['selection-dock-body'] not in ids[name].ancestors()
         assert ids['query-dock-body'] not in ids[name].ancestors()
     css=(ROOT/'looking_glass/app_static/app.css').read_text()
-    assert 'height:calc(94.7dvh - 8px)' in css
+    assert 'max-height:calc(100dvh - 76px)' in css
     assert 'text-align:center' not in css and 'text-align:right' not in css
     assert '--error-text:#e8eaf0' in css and '--warning-text:#e8eaf0' in css
     assert '::-webkit-scrollbar{width:4px;height:4px}' in css
@@ -353,6 +353,71 @@ def test_reset_view_is_a_native_scene_action_not_hidden_in_map_details():
     button = ids["scene-reset"]
     assert button.tag == "button" and button.attrs.get("type") == "button"
     assert "disabled" in button.attrs
-    assert "Reset view" in button.text
+    assert "Fit view" in button.text
     assert ids["map-tools-options"] not in button.ancestors()
-    assert ids["layer-map-options"] in button.ancestors()
+    assert ids["scene-toolbar"] in button.ancestors()
+
+
+def test_collapsed_docks_release_grid_tracks_without_changing_mobile_stack():
+    # Structural CSS contract only; actual rendered widths require browser QA.
+    import re
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    workspace = re.search(r"\.scene-workspace\s*\{([^}]+)\}", css).group(1)
+    assert "grid-template-columns:var(--selection-width) minmax(0,1fr) var(--query-width)" in workspace
+    for side in ("selection", "query"):
+        rule = re.search(r"\.scene-workspace\[data-" + side + r"-collapsed=true\]\s*\{([^}]+)\}", css)
+        assert rule, side
+        assert f"--{side}-width:30px" in rule.group(1)
+    assert "@media(max-width:1279px){.scene-workspace{grid-template-columns:minmax(0,1fr) minmax(0,1fr)" in css
+    assert "@media(max-width:700px)" in css
+
+
+def test_scene_controls_float_in_scene_row_not_in_collapsible_map_details():
+    ids = page().ids
+    toolbar = ids["scene-toolbar"]
+    assert toolbar.parent is ids["scene-ui"]
+    assert ids["scene-ui"].parent is ids["scene-workspace"]
+    assert toolbar.attrs.get("aria-label") == "Scene navigation"
+    for identifier in ("scene-view", "scene-reset"):
+        assert toolbar in ids[identifier].ancestors()
+        assert not any(node.tag == "details" for node in ids[identifier].ancestors())
+    assert "hidden" in toolbar.attrs
+    assert ids["input-card"] in ids["run-button"].ancestors()
+    assert not any(node.tag == "details" for node in ids["run-button"].ancestors())
+
+
+def test_scene_first_layout_has_bounded_docks_and_shared_scene_geometry():
+    import re
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    workspace = re.search(r"\.scene-workspace\s*\{([^}]+)\}", css).group(1)
+    assert "--selection-width:clamp(240px,18vw,280px)" in workspace
+    assert "--query-width:clamp(280px,22vw,340px)" in workspace
+    canvas = re.search(r"#scene-canvas\s*\{([^}]+)\}", css).group(1)
+    assert "grid-row:3" in canvas and "grid-column:1/-1" in canvas
+    assert "position:relative" in canvas
+    toolbar = re.search(r"\.scene-toolbar\s*\{([^}]+)\}", css).group(1)
+    assert "grid-row:2" in toolbar and "align-self:end" in toolbar
+    dock = re.search(r"\.workspace-dock\s*\{([^}]+)\}", css).group(1)
+    assert "height:auto" in dock and "overflow:auto" in dock
+
+
+def test_scrollable_trace_region_reserves_actual_toolbar_height():
+    # Layout constraints, not a substitute for browser viewport QA.
+    import re
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    wrapper_match = re.search(r"\.scene-ui\s*\{([^}]+)\}", css)
+    assert wrapper_match, "scene UI must reserve a separate toolbar row"
+    wrapper = wrapper_match.group(1)
+    assert "grid-area:scene" in wrapper and "height:100%" in wrapper
+    assert "min-height:0" in wrapper
+    assert "grid-template-rows:minmax(0,1fr) auto" in wrapper
+    assert "pointer-events:none" in wrapper
+    trace = re.search(r"#trace-panel\s*\{([^}]+)\}", css).group(1)
+    assert "grid-row:1" in trace and "max-height:100%" in trace
+    assert "overflow:auto" in trace and "pointer-events:auto" in trace
+    assert "overscroll-behavior:contain" in trace
+    toolbar = re.search(r"\.scene-toolbar\s*\{([^}]+)\}", css).group(1)
+    assert "grid-row:2" in toolbar and "pointer-events:auto" in toolbar
+    assert "flex-wrap:wrap" in toolbar
+    layer = re.search(r"\.layer-map\s*\{([^}]+)\}", css).group(1)
+    assert "max-height" not in layer and "overflow:auto" not in layer
