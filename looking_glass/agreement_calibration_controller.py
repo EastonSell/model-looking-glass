@@ -592,7 +592,7 @@ def _run_with_protected_source(root, cache, work, repo, site, git, recheck,
         WindowsJob.__init__(process_job)
         _CONTROLLER['launch_started'] = True
         supervision = run_supervised(command, device_lease_path=identity.lock_path,
-            marker_path=identity.marker_path, identity=identity, timeout=900, lease_timeout=30,
+            marker_path=identity.marker_path, identity=identity, timeout=2400, lease_timeout=30,
             cwd=repo, env=environment, inherit_environment=False, process_job=process_job,
             require_zero_exit=True)
     except BaseException as error:

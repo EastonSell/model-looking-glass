@@ -702,6 +702,7 @@ def test_exact_process_job_is_rooted_before_initialization_and_supervision(tmp_p
         assert kwargs['process_job'] is jobs[0] is controller._CONTROLLER['process_job']
         assert kwargs['inherit_environment'] is False
         assert kwargs['require_zero_exit'] is True
+        assert kwargs['timeout'] == 2400
         return SimpleNamespace(pid=123, run_id='f' * 32, exit_code=0,
                                clean=clean, timed_out=False)
     monkeypatch.setattr(controller, 'run_supervised', supervise)
