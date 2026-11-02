@@ -1,0 +1,55 @@
+{
+  "schema": "tap-v13-source-ref-movement-v1",
+  "historical_source": {
+    "commit": "0c14778447ed6dcbc4890984641370659a09ffef",
+    "tree": "0ff3b037d19a5bc839e634524d480b6eace5d7c2",
+    "archival_tag": "archive/tap-v13-original-0c147784",
+    "binding": "public-binding.json"
+  },
+  "merged_storage_head": {
+    "commit": "1b7cc475c46bb623c0ec87a6f8f026454756270d",
+    "tree": "cf197b5923397f96997beb45e05241b28a8e872d"
+  },
+  "merge": {
+    "pull_request": 699,
+    "commit": "a23fb638a259b2744bc4f4c3e260f85faf1e1d5c",
+    "tree": "cf197b5923397f96997beb45e05241b28a8e872d",
+    "parents": [
+      "0c14778447ed6dcbc4890984641370659a09ffef",
+      "1b7cc475c46bb623c0ec87a6f8f026454756270d"
+    ],
+    "base_branch": "research/tap-v13-bounded-grant-enabled",
+    "ready_at_utc": "2026-11-02T05:24:52Z",
+    "merged_at_utc": "2026-11-02T05:24:57Z",
+    "ready_actor": "EastonSell",
+    "merge_actor": "EastonSell",
+    "merge_committer": "web-flow",
+    "performed_via_github_app": null,
+    "archival_tag": "archive/tap-v13-storage-merge-a23fb638"
+  },
+  "changed_paths_from_historical_source": [
+    "docs/GPU_TAP_EVIDENCE_STORAGE_AMENDMENT_V1.md",
+    "looking_glass/tap_repeated_gpu.py",
+    "tests/test_tap_repeated_gpu_controller.py"
+  ],
+  "evidence_urls": [
+    "https://api.github.com/repos/EastonSell/model-looking-glass/pulls/699",
+    "https://api.github.com/repos/EastonSell/model-looking-glass/issues/699/timeline?per_page=100",
+    "https://api.github.com/repos/EastonSell/model-looking-glass/commits/a23fb638a259b2744bc4f4c3e260f85faf1e1d5c"
+  ],
+  "correction": {
+    "shared_branch_reset": false,
+    "history_rewritten": false,
+    "original_evidence_changed": false,
+    "native_or_torch_workload_run_during_correction": false,
+    "archival_refs_are_execution_authorization": false,
+    "disabled_storage_successor_pull_request": 782
+  },
+  "limitations": [
+    "GitHub account attribution does not identify the initiating person, session, thread, browser or API client.",
+    "The arithmetic replay binds its protocol and evidence bytes, not the moved branch's complete controller or source tree.",
+    "Archived historical execution gates remain enabled; neither a branch nor an archival tag authorizes a run.",
+    "Archival tag names are navigation aids; the full recorded commit and tree IDs remain canonical.",
+    "Native/Torch tests remain paused; supported Windows rehearsal and source/currentness/enablement/admission gates remain required for future execution."
+  ]
+}
