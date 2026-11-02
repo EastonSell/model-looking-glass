@@ -79,7 +79,7 @@ both full masks, input shapes and IDs, the declared changes, and the complete
 selected layer/module/sample/token event policy. Matching local positions do
 not prove semantic or tokenizer alignment. Context and model provenance are
 producer/caller claims, not execution or weight-integrity attestations; see
-[transformer comparisons](TRANSFORMER_LOCALIZATION.md) for the full contract.
+[transformer comparisons](LOCALIZATION.md#transformer-observations) for the full contract.
 Without it, unknown generation metadata remains inconclusive.
 
 ## Running the cached example
