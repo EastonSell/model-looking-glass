@@ -1,7 +1,7 @@
 # Repeated tap owner admission draft
 
 This is a CPU-tested component for the proposed
-[repeated tap study](GPU_TAP_LATENCY_REPEATED_V1.md), not a GPU owner or an
+[repeated tap study](https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GPU_TAP_LATENCY_REPEATED_V1.md), not a GPU owner or an
 authorization to run it. The study's CUDA entry remains disabled. The earlier
 contaminated benchmark remains separate.
 

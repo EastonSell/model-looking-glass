@@ -1,7 +1,7 @@
 # Repeated tap benchmark v1.1 quiet-window clarification, prospective draft
 
 This prospective clarification changes the coordination rule in the proposed
-[v1 protocol](GPU_TAP_LATENCY_REPEATED_V1.md). It does not alter the earlier
+[v1 protocol](https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/GPU_TAP_LATENCY_REPEATED_V1.md). It does not alter the earlier
 contaminated pilot or describe an observed benchmark. No v1.1 GPU run is
 authorized by this document. Before execution, the owner, controller and replay
 must bind this clarification and the exact frozen implementation under a new
