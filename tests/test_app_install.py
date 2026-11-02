@@ -83,11 +83,34 @@ def test_cpu_backend_dry_run_and_unknown_backend(tmp_path):
     assert bad.returncode != 0 and not (tmp_path / ".venv").exists()
 
 
-def test_gpu_check_entrypoint_and_installer_hint():
+def test_gpu_check_entrypoint_and_backend_specific_installer_hint(tmp_path):
     project = (ROOT / "pyproject.toml").read_text()
     assert 'model-looking-glass-gpu-check = "looking_glass.app_selftest:main"' in project
-    out = subprocess.run([sys.executable, str(ROOT / "install.py"), "--dry-run", "--backend", "cpu"], capture_output=True, text=True, check=True)
-    assert "looking_glass.app_selftest" in out.stdout
+    script = tmp_path / "install.py"
+    script.write_bytes((ROOT / "install.py").read_bytes())
+    for backend in ("cpu", "cuda") if sys.platform in ("linux", "win32") else ("cpu",):
+        out = subprocess.run([sys.executable, str(script), "--dry-run", "--backend", backend], capture_output=True, text=True, check=True)
+        assert ("looking_glass.app_selftest" in out.stdout) == (backend == "cuda")
+        assert "Load model" in out.stdout and "docs/LOCAL_APP.md#device-selection-and-gpu-semantics" in out.stdout
+        if backend == "cuda":
+            assert "not verified" in out.stdout and "Auto may use CPU" in out.stdout
+        else:
+            assert "CPU or Auto" in out.stdout
+        assert not (tmp_path / ".venv").exists()
+
+
+def test_successful_install_guidance_matches_selected_backend(tmp_path, monkeypatch, capsys):
+    for backend in ("cpu", "cuda") if sys.platform in ("linux", "win32") else ("cpu",):
+        location = tmp_path / backend; location.mkdir()
+        module, _ = installer(location, monkeypatch)
+        monkeypatch.setattr(module, "probe_environment", lambda *args: {})
+        # Installation is external; exercise real main() output without downloading packages.
+        monkeypatch.setattr(module.subprocess, "run", lambda *args, **kwargs: None)
+        assert module.main(["--reuse-venv", "--backend", backend, "--no-launch"]) == 0
+        output = capsys.readouterr().out
+        assert "Installed. Restart:" in output
+        assert ("looking_glass.app_selftest" in output) == (backend == "cuda")
+        assert "Load model" in output and "docs/LOCAL_APP.md#device-selection-and-gpu-semantics" in output
 
 
 def installer(tmp_path, monkeypatch):

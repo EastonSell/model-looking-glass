@@ -134,6 +134,15 @@ def plan(root, executable, backend="cuda", *, platform=None):
     ]
 
 
+def first_run_guidance(executable, backend):
+    if backend == "cuda":
+        print("First run: choose CUDA, then Load model to require GPU execution; Auto may use CPU. GPU execution is not verified by installation.", flush=True)
+        print("Optional GPU validation (local synthetic models only):", command_text([executable, "-m", "looking_glass.app_selftest"]), flush=True)
+    else:
+        print("First run: choose CPU or Auto, then Load model. The tiny demo always uses CPU.", flush=True)
+    print("GPU/CPU help: docs/LOCAL_APP.md#device-selection-and-gpu-semantics", flush=True)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--backend", choices=("cuda", "cpu"), default="cuda" if sys.platform in ("linux", "win32") else "cpu", help="PyTorch build: CUDA 13.2 (Linux/Windows default; NVIDIA driver required) or CPU")
@@ -151,7 +160,7 @@ def main(argv=None):
         print("Pip child policy: ignore inherited PIP_/PYTHON settings and all pip config files; no configuration files are edited.")
         for command in commands: print(command_text(command))
         print("Launch:", executable, "-m looking_glass.app")
-        print("Optional GPU validation:", executable, "-m looking_glass.app_selftest")
+        first_run_guidance(executable, args.backend)
         return 0
     if env.is_symlink() or getattr(env, "is_junction", lambda: False)() or env.resolve() != ROOT.resolve() / ".venv":
         parser.error("Refusing a symlinked or redirected .venv")
@@ -169,7 +178,7 @@ def main(argv=None):
             stage = f"{('installer tools', 'PyTorch', 'app')[number - 1]} dependency installation stage {number}/{len(commands)}"
             subprocess.run(command, cwd=ROOT, check=True, env=pip_environment())
         print("Installed. Restart:", command_text([executable, "-m", "looking_glass.app"]), flush=True)
-        print("Optional GPU validation (local synthetic models only):", command_text([executable, "-m", "looking_glass.app_selftest"]), flush=True)
+        first_run_guidance(executable, args.backend)
         if not args.no_launch:
             stage = "application launch"
             status = subprocess.call([str(executable), "-m", "looking_glass.app"], cwd=ROOT)

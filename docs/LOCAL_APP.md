@@ -218,6 +218,13 @@ The export directory must be new. These are short CPU transparency/round-trip ch
 
 **Auto** prefers available CUDA for all five supported families and chooses CPU when CUDA is unavailable, reporting why. An explicit `cuda:N` request never silently falls back; unavailable devices and unsupported model families are rejected. Choose the device beside the checkpoint path. It applies to the next **Load model**, not the model already loaded; the status and Run tooltip show that model's actual device. Device indices follow PyTorch visibility (including `CUDA_VISIBLE_DEVICES`), not necessarily physical card numbering.
 
+| What you see | What to do |
+|---|---|
+| CPU after choosing CUDA | Save your capture, then **Load model** again; the selector does not move an already-loaded model. The tiny demo always uses CPU. |
+| CUDA unavailable or Auto chooses CPU | Run the [GPU check](#run-the-standalone-gpu-check) with this app's `.venv`, not another Python. A CPU build cannot run CUDA; only intentionally [change the installed backend](#open-again-without-reinstalling). A CUDA build still needs a compatible visible NVIDIA GPU and driver. |
+| GPU check exits with code 2 | Read the JSON reason: prerequisites are unavailable, not a passing GPU result. CPU-only users can skip this GPU check and load with **CPU**. |
+| Memory allowance or out-of-memory error | Try a smaller model, shorter input or fewer captured layers. Model, trace and GPU allowances are separate; raising a limit does not create memory. Restart if the app says the model is unsafe to reuse. |
+
 The app uses **direct forward hooks**: it copies the boundary values that the model actually computed. It does not implement a rounding-based gate, reconstruct hidden values from rounding error, or use the experimental auxiliary-gradient reporting channel. GPU arithmetic can differ from CPU arithmetic even at float32 (kernels, reduction order, TF32 settings and subnormal behavior); exact offload/save means preserving the observed values, **not** promising CPU/GPU-identical outputs. The run records device and numeric settings rather than silently changing global precision settings. See the [gradient-channel counterexample](GRADIENT_DENORMAL_V1.md).
 
 GPU captures are moved synchronously to CPU RAM without dtype reduction. GPT-2 offloads at each selected hook; T5, DistilBERT, ViT and Llama first retain one forward's complete selected captures on the GPU, then the app offloads and releases them. DistilBERT predicts all supplied mask positions in one forward, not autoregressive generation. This is deliberately conservative and can be slower than asynchronous/pinned-memory pipelines. No lossy compression, sampling or dropped vectors is hidden in the transfer.
@@ -477,12 +484,16 @@ A prerequisite skip is not a pass. No GPU speedup, VRAM measurement, rounding-ga
 
 ### Run the standalone GPU check
 
-In the installed app environment:
+From the extracted app or checkout folder, use its installed environment directly (no activation needed):
+
+```powershell
+# Windows
+.\.venv\Scripts\python.exe -m looking_glass.app_selftest --device cuda:0 --max-vram-mib 1024
+```
 
 ```bash
-python -m looking_glass.app_selftest --device cuda:0 --max-vram-mib 1024
-# The installed console entry point is equivalent:
-model-looking-glass-gpu-check --device cuda:0 --max-vram-mib 1024
+# Linux
+./.venv/bin/python -m looking_glass.app_selftest --device cuda:0 --max-vram-mib 1024
 ```
 
 This is an explicit, bounded diagnostic, not a background test when the app starts. It creates tiny deterministic synthetic GPT-2/T5/DistilBERT/ViT/Llama checkpoints in a temporary directory, uses only local dependencies, and never reads a user checkpoint or downloads a model. The Llama fixture uses static `llama3` RoPE. All 25 ordered family/stage checks must pass for overall success. It checks actual device placement, same-device baseline versus traced full-logit bits, selected boundary bits, CPU offload, temporary export/reopen with token/patch coordinates, repeated runs, hook cleanup and allocator-policy restoration. A failure stops further device work when ownership is uncertain rather than reporting recovery as success.
