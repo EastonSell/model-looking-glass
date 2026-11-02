@@ -1,4 +1,4 @@
-"""Disabled fixed owner for one supervised v1.2 repeated-tap session.
+"""Disabled fixed owner for one prospective v1.3 repeated-tap session.
 
 The source-bound bootstrap must verify this module and hard-exit after this
 entrypoint returns. No GPU launch is enabled by importing this module. The

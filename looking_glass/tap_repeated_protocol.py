@@ -16,7 +16,10 @@ import statistics
 
 PROTOCOL = 'gpu-tap-latency-repeated-v1'
 PREVIOUS_EXPERIMENT_PROTOCOL = 'gpu-tap-latency-repeated-v1.1'
-EXPERIMENT_PROTOCOL = 'gpu-tap-latency-repeated-v1.2'
+PREVIOUS_LEAN_PROTOCOL = 'gpu-tap-latency-repeated-v1.2'
+EXPERIMENT_PROTOCOL = 'gpu-tap-latency-repeated-v1.3'
+LEAN_PROTOCOLS = (PREVIOUS_LEAN_PROTOCOL, EXPERIMENT_PROTOCOL)
+START_GRANT_MAX_NS = 1_000_000_000
 SCHEDULE_SHA256 = 'ce2f990a6937da86565a21c52f13ad54f11b1e683421a8a2060e544694fe6bf9'
 _SCHEDULE_CANONICAL_SHA256 = '5eee2638129632d7113fd136bdd54bd3f5ca116e54ff4d748b191439c4011787'
 MODES = ('none', 'direct', 'gradient')
@@ -161,7 +164,7 @@ def _verify_rows(schedule, session, rows, clock, total, cap, device, run_protoco
     order = session_order(schedule, session)
     if type(rows) is not list or len(rows) != 2 * (len(order) + 1):
         raise ValueError('missing, extra or partial observation/postcheck')
-    if run_protocol in (PREVIOUS_EXPERIMENT_PROTOCOL, EXPERIMENT_PROTOCOL) and not _postchecks_ordered(rows):
+    if run_protocol in (PREVIOUS_EXPERIMENT_PROTOCOL, *LEAN_PROTOCOLS) and not _postchecks_ordered(rows):
         raise ValueError('postcheck completion order is invalid')
     previous_end = None
     previous_completed = None
@@ -189,7 +192,7 @@ def _verify_rows(schedule, session, rows, clock, total, cap, device, run_protoco
             if (not _valid_preflight(row, device, session, run_protocol) or type(pre_start) is not int or type(pre_end) is not int
                     or not 0 <= pre_start < pre_end < 2 ** 63):
                 raise ValueError('preflight differs from the fixed tap contract')
-            if run_protocol == EXPERIMENT_PROTOCOL:
+            if run_protocol in LEAN_PROTOCOLS:
                 memory_start, memory_end, gate_start, gate_end = (row.get(k) for k in
                     ('memory_snapshot_started_ns', 'memory_snapshot_ended_ns', 'gate_lower_ns', 'gate_upper_ns'))
                 if (any(type(value) is not int for value in (memory_start, memory_end, gate_start, gate_end))
@@ -204,7 +207,7 @@ def _verify_rows(schedule, session, rows, clock, total, cap, device, run_protoco
         if type(row.get('session')) is not int or row['session'] != session:
             raise ValueError('sample session identity differs')
         start, end, wall, event = (row.get(k) for k in ('started_ns', 'ended_ns', 'wall_ns', 'device_event_ms'))
-        if run_protocol == EXPERIMENT_PROTOCOL:
+        if run_protocol in LEAN_PROTOCOLS:
             check_memory(row.get('memory_after'), expected_total=total, cap_bytes=cap)
             if (type(row.get('postcheck_completed_ns')) is not int
                     or row['postcheck_completed_ns'] != post.get('completed_ns')
@@ -262,7 +265,7 @@ def _verify_rows(schedule, session, rows, clock, total, cap, device, run_protoco
 
 def summarize_session(schedule, session, rows, *, clock, total_bytes, cap_bytes, device, run_protocol=PROTOCOL):
     """Recompute a complete journal's paired statistics; no screen is inferred."""
-    if type(run_protocol) is not str or run_protocol not in (PROTOCOL, PREVIOUS_EXPERIMENT_PROTOCOL, EXPERIMENT_PROTOCOL):
+    if type(run_protocol) is not str or run_protocol not in (PROTOCOL, PREVIOUS_EXPERIMENT_PROTOCOL, *LEAN_PROTOCOLS):
         raise ValueError('unsupported experiment identity')
     rows = _verify_rows(schedule, session, rows, clock, total_bytes, cap_bytes, device, run_protocol)
     groups = {}
@@ -278,7 +281,7 @@ def summarize_session(schedule, session, rows, *, clock, total_bytes, cap_bytes,
                        'direct_over_none': direct / none,
                        'gradient_minus_direct_ms': (gradient - direct) / 1_000_000,
                        'direct_minus_none_ms': (direct - none) / 1_000_000})
-        if run_protocol == EXPERIMENT_PROTOCOL:
+        if run_protocol in LEAN_PROTOCOLS:
             paired[-1]['guarded_wall_ns'] = {mode: group[mode]['guarded_wall_ns'] for mode in MODES}
     result = {'session': session, 'warmup_samples': 6, 'measured_samples': len(rows),
             'paired_rounds': paired,
@@ -290,7 +293,7 @@ def summarize_session(schedule, session, rows, *, clock, total_bytes, cap_bytes,
                                      for mode in MODES},
             'mode_device_event_ms_medians': {mode: statistics.median(row['device_event_ms'] for row in rows
                                                                       if row['mode'] == mode) for mode in MODES}}
-    if run_protocol == EXPERIMENT_PROTOCOL:
+    if run_protocol in LEAN_PROTOCOLS:
         result['mode_guarded_wall_ns_medians'] = {mode: statistics.median(row['guarded_wall_ns'] for row in rows
                                                                            if row['mode'] == mode) for mode in MODES}
     return result

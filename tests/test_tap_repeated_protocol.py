@@ -518,6 +518,25 @@ def test_lean_summary_reports_guarded_costs_separately():
     assert all(set(row['guarded_wall_ns']) == set(protocol.MODES) for row in result['paired_rounds'])
 
 
+def test_v13_does_not_pool_prior_v12_but_can_replay_its_lean_journal():
+    schedule = protocol.load_schedule(SCHEDULE)
+    binding = {'source_commit': 'a' * 40, 'source_tree': 'b' * 40, 'model_sha256': 'c' * 64,
+               'runtime_sha256': 'd' * 64, 'device_sha256': 'e' * 64}
+    attempt = _attempt(schedule, 0, binding)
+    old = 'gpu-tap-latency-repeated-v1.2'
+    attempt['protocol'] = old
+    attempt['journal'][0]['checks']['run_id'] = f'{old}-session-0'
+    for row in attempt['journal']:
+        if row.get('trace_run_id') is not None:
+            row['trace_run_id'] = f'{old}-session-0'
+    direct = protocol.summarize_session(schedule, 0, attempt['journal'], clock=CLOCK,
+        total_bytes=TOTAL, cap_bytes=CAP, device='cuda:0', run_protocol=old)
+    assert direct['measured_samples'] == 36 and 'mode_guarded_wall_ns_medians' in direct
+    replay = protocol.summarize_attempts(schedule, [attempt], trusted_binding=binding)
+    assert replay['protocol'] == 'gpu-tap-latency-repeated-v1.3'
+    assert replay['slots'][0]['state'] == 'incomplete'
+
+
 def test_previous_diagnostic_session_keeps_its_original_wall_semantics():
     schedule = protocol.load_schedule(SCHEDULE)
     rows = _journal(schedule)
