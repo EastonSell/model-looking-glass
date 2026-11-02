@@ -881,7 +881,12 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   });
   $('refresh-download').addEventListener('click',()=>{if(!downloads.pending)return refreshDownload();});
   $('cancel-download').addEventListener('click',()=>{if(!state.busy&&!downloads.pending&&downloads.fresh&&downloads.job?.state==='running')return downloadRequest('cancel-download',{job_id:downloads.job.job_id});});
-  $('use-download').addEventListener('click',()=>{if(state.busy||downloads.pending||!downloads.fresh||downloads.job?.state!=='complete'||typeof downloads.job.path!=='string'||!downloads.job.path)return;$('model-path').value=downloads.job.path;invalidateInspection();invalidateBrowse(true);$('download-status').textContent='Folder selected. Inspect or Load when ready; your current model and capture are unchanged.';});
+  $('use-download').addEventListener('click',()=>{
+    if(state.busy||downloads.pending||!downloads.fresh||downloads.job?.state!=='complete'||typeof downloads.job.path!=='string'||!downloads.job.path)return;
+    const field=$('model-path');field.value=downloads.job.path;invalidateInspection();invalidateBrowse(true);
+    $('download-status').textContent='Folder selected. Inspect or Load when ready; your current model and capture are unchanged.';
+    $('session-options').open=true;field.focus({preventScroll:true});field.scrollIntoView({block:'nearest',behavior:'instant'});
+  });
 
   for(const side of ['selection','query']){
     $(`${side}-dock-toggle`).addEventListener('click',()=>setDock(side,$(`${side}-dock-body`).hidden));
