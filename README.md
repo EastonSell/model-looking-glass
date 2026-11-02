@@ -2,6 +2,10 @@
 
 A local PyTorch model debugger. Explore captured layers, inspect full activation vectors, compare prompts, and try temporary edits—without changing checkpoint files.
 
+![Model Looking Glass showing two captured layers, a selected activation, model chat, and the icon toolbar.](docs/images/model-looking-glass-ui.png)
+
+*Untrained CPU demo — real local UI with synthetic output.*
+
 **[Download the app](https://github.com/EastonSell/model-looking-glass/releases/latest)** · [App guide](docs/LOCAL_APP.md) · [Discussions](https://github.com/EastonSell/model-looking-glass/discussions)
 
 <a id="model-looking-glass--local-model-debugger"></a>
