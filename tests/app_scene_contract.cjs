@@ -9,7 +9,7 @@ let reduced=true,renderFailure=false,constructFailure=false;
 let renders=[],disposed=0,raf=new Map(),serial=0;
 class Renderer {constructor(){if(constructFailure)throw Error('GPU unavailable');this.domElement=new El();this.domElement.ownerDocument=document;}setPixelRatio(){}setSize(){}render(scene,camera){if(renderFailure)throw Error('GPU lost');renders.push({scene,camera});}dispose(){disposed++;}}
 const document=new El();document.createElement=()=>new El();document.hidden=false;
-const context={THREE:{...THREE,WebGLRenderer:Renderer},document,console,performance:{now:()=>0},matchMedia:()=>({matches:reduced,addEventListener(){},removeEventListener(){}}),requestAnimationFrame:f=>{raf.set(++serial,f);return serial;},cancelAnimationFrame:id=>raf.delete(id),devicePixelRatio:1,getComputedStyle:()=>({getPropertyValue:n=>({'--accent':'#112233','--muted':'#445566','--text-3':'#778899'}[n]||'')})};context.window=context;
+const context={THREE:{...THREE,WebGLRenderer:Renderer},document,console,performance:{now:()=>0},matchMedia:()=>({matches:reduced,addEventListener(){},removeEventListener(){}}),requestAnimationFrame:f=>{raf.set(++serial,f);return serial;},cancelAnimationFrame:id=>raf.delete(id),devicePixelRatio:1,getComputedStyle:()=>({getPropertyValue:n=>({'--accent':'#112233','--selected':'#eeddaa','--muted':'#445566','--text-3':'#778899'}[n]||'')})};context.window=context;
 vm.runInNewContext(fs.readFileSync(path.join(root,'vendor/OrbitControls-0.128.0.js'),'utf8'),context);
 vm.runInNewContext(fs.readFileSync(path.join(root,'app_scene.js'),'utf8'),context);
 let viewInsets={left:360,right:560};
@@ -71,6 +71,7 @@ assert(Math.abs(parseFloat(layerLabel.style.left)-(labelCorner.x+1)*800)<1e-6,'l
 assert(Math.abs(parseFloat(layerLabel.style.top)-(1-labelCorner.y)*450)<1e-6);
 assert(parseFloat(layerLabel.style.left)+6>=360 && parseFloat(layerLabel.style.left)+6<1040,'layer label anchor remains in dock gap');assert(parseFloat(layerLabel.style.top)+6>=0 && parseFloat(layerLabel.style.top)+6<900,'layer label anchor remains in scene height');
 assert.equal(layerLabel.style.transform,'translate(6px, 6px)');assert.equal(siteLabel.style.transform,'translate(-50%, -50%)','module labels remain centered on pick targets');
+assert.equal(siteLabel.style.display,'none','unselected module text must not crowd the wireframe');
 assert.equal(layerLabel.style.color,'var(--text-3)');assert(!layerLabel.style.textShadow,'no label glow/shadow');
 const clickCanvas=el.children.find(e=>e.listeners.webglcontextlost);
 function pointFor(object){camera.updateMatrixWorld();scene.updateMatrixWorld(true);const p=object.getWorldPosition(new THREE.Vector3()).project(camera);return {clientX:(p.x+1)*800,clientY:(1-p.y)*450};}
@@ -82,6 +83,14 @@ assert.deepEqual(selected,['a'],'raycast returns exact captured site key');
 clickCanvas.listeners.pointerdown(click);clickCanvas.listeners.pointerup({...click,clientX:click.clientX+30});assert.equal(selected.length,1,'drag is not selection');
 let released=0;for(const o of objects){if(o.geometry)o.geometry.addEventListener('dispose',()=>released++);if(o.material)o.material.addEventListener('dispose',()=>released++);}
 assert.equal(api.selectSite('a'),true);frame();frame();assert.equal(api.selectSite('a'),true);assert.equal(raf.size,0,'same-key UI synchronization must not restart focus');assert.equal(api.selectSite('missing'),false);
+assert.equal(siteLabel.style.display,'','selected module label becomes readable');
+assert.equal(sites[0].material.color.getHexString(),'eeddaa','selected actual site uses the warm selection token');
+assert.equal(sites[1].material.color.getHexString(),'112233','unselected sites keep the neutral plane token');
+api.selectSite('b');frame();assert.equal(siteLabel.style.display,'none','old module label hides when selection moves');
+assert.equal(el.children[1].children[2].style.display,'','new selected module label is visible');
+assert.equal(sites[0].material.color.getHexString(),'112233','previous selected site loses the warm fill');
+api.selectSite(null);frame();assert.equal(el.children[1].children[2].style.display,'none','clear hides module labels');
+api.selectSite('a');frame();
 const selectedOpacity=sites[0].material.opacity,sceneObjects=scene.children.slice();camera.position.set(80,40,-20);camera.lookAt(new THREE.Vector3(0,0,0));api.resize();frame();camera.updateMatrixWorld();assert.deepEqual(scene.children,sceneObjects);assert.equal(sites[0].material.opacity,selectedOpacity,'reset framing preserves selected-site highlight');for(const plane of planes)for(const x of [-.5,.5])for(const y of [-.65,.65]){const p=new THREE.Vector3(x,y,0).applyMatrix4(plane.matrixWorld).project(camera);assert((p.x+1)*800>=360&&(p.x+1)*800<=1040);assert((1-p.y)*450>=0&&(1-p.y)*450<=900);}assert.equal(selected.length,1,'reset does not select or read a site');
 assert.throws(()=>api.setLayers([{key:'x',sites:[{key:'same'},{key:'same'}]}]),/unique/i);
 assert.throws(()=>api.setLayers(Array.from({length:13},(_,i)=>({key:String(i),sites:[]}))),/12/);

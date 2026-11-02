@@ -6,7 +6,7 @@
     const T = global.THREE;
     const style = global.getComputedStyle ? global.getComputedStyle(container) : null;
     const token = (name, fallback) => style && style.getPropertyValue(name).trim() || fallback;
-    const palette = {ice:token('--accent','#bfe6ff'),neutral:token('--muted','#9aa0b0')};
+    const palette = {ice:token('--accent','#bfe6ff'),neutral:token('--muted','#9aa0b0'),selected:token('--selected','#eed9a0')};
     let renderer, controls, dead = false, failed = false, active = true, raf = 0;
     let content, keys = new Map(), labels = [], down = null, generation = 0, selected = null;
     let width = 1, height = 1, animation = null;
@@ -38,7 +38,7 @@
       controls.update(); camera.updateMatrixWorld();
       for (const label of labels) {
         const p = label.position.clone().project(camera);
-        label.element.style.display = p.z < -1 || p.z > 1 ? 'none' : '';
+        label.element.style.display = (label.siteKey && label.siteKey !== selected) || p.z < -1 || p.z > 1 ? 'none' : '';
         label.element.style.left = ((p.x+1)*width/2)+'px';
         label.element.style.top = ((1-p.y)*height/2)+'px';
       }
@@ -50,10 +50,10 @@
       for (const label of labels) label.element.remove();
       labels = []; keys.clear(); content = null; animation = null; down = null;
     }
-    function label(text, position, corner) {
+    function label(text, position, corner, siteKey=null) {
       const element=document.createElement('span'); element.textContent=text.length>64?text.slice(0,63)+'…':text; element.title=text;
-      Object.assign(element.style,{position:'absolute',font:'400 11px "JetBrains Mono", monospace',color:'var(--text-3)',whiteSpace:'nowrap',transform:corner?'translate(6px, 6px)':'translate(-50%, -50%)'});
-      overlay.appendChild(element); labels.push({element,position});
+      Object.assign(element.style,{position:'absolute',font:'400 11px "JetBrains Mono", monospace',color:siteKey?'var(--selected)':'var(--text-3)',whiteSpace:'nowrap',transform:corner?'translate(6px, 6px)':'translate(-50%, -50%)'});
+      overlay.appendChild(element); labels.push({element,position,siteKey});
     }
     function validate(layers) {
       if (!Array.isArray(layers) || layers.length > 12) throw new Error('Scene accepts at most 12 captured layers.');
@@ -85,7 +85,7 @@
           const target=new T.Mesh(new T.PlaneGeometry(0.82,Math.min(0.22,0.8/layer.sites.length)),new T.MeshBasicMaterial({color:palette.ice,transparent:true,opacity:0.035,depthWrite:false,side:T.DoubleSide}));
           target.position.set(x,y,z+0.004);target.userData.siteKey=site.key;content.add(target);
           const outline=new T.LineSegments(new T.EdgesGeometry(target.geometry),new T.LineBasicMaterial({color:palette.neutral,transparent:true,opacity:0.55,depthWrite:false}));outline.position.copy(target.position);content.add(outline);
-          keys.set(site.key,{target,outline});label(String(site.label || site.key),target.position.clone().add(new T.Vector3(0,0,0.008)));
+          keys.set(site.key,{target,outline});label(String(site.label || site.key),target.position.clone().add(new T.Vector3(0,0,0.008)),false,site.key);
         });
       });
       resize();
@@ -118,7 +118,7 @@
       if(key!==null && !entry)return false;
       if(selected===key)return true;
       selected=key; animation=null;
-      for(const [k,item] of keys){item.outline.material.color.set(k===key?palette.ice:palette.neutral);item.target.material.opacity=k===key?0.18:0.035;}
+      for(const [k,item] of keys){item.outline.material.color.set(k===key?palette.selected:palette.neutral);item.target.material.color.set(k===key?palette.selected:palette.ice);item.target.material.opacity=k===key?0.18:0.035;}
       if(entry){
         if(media.matches){const delta=entry.target.position.clone().sub(controls.target);controls.target.copy(entry.target.position);camera.position.add(delta);animation=null;}
         else animation={start:global.performance.now(),from:controls.target.clone(),to:entry.target.position.clone(),camera:camera.position.clone()};

@@ -80,6 +80,7 @@
   }
   function syncButtons() {
     syncDownloads(); syncDeviceChoice();
+    $('scene-toolbar').hidden = !state.run;
     $('scene-reset').disabled = state.busy || sceneFailed || !sceneApi || !state.mapCapture || $('scene-view').value !== 'scene';
     const ready = state.model && state.model.state !== 'quarantined', vision = String(state.model?.family || '').toLowerCase().includes('vit');
     $('scene-empty-message').textContent = ready ? (vision ? 'Choose an image, then Run.' : 'Enter a prompt, then Run.') : state.model?.state === 'quarantined' ? 'Restart required for another model run. Saved captures can still be opened.' : 'Choose a model, write a prompt, then Run.';
