@@ -1,6 +1,6 @@
 # Model Looking Glass
 
-A local PyTorch model debugger. Explore captured layers, inspect full activation vectors, compare prompts, and try temporary edits—without changing checkpoint files.
+A local PyTorch debugger for mechanistic interpretability. Explore captured layers, inspect full activation vectors, compare prompts, and try temporary edits—without changing checkpoint files.
 
 ![Model Looking Glass showing two captured layers, a selected activation, model chat, and the icon toolbar.](docs/images/model-looking-glass-ui.png)
 
