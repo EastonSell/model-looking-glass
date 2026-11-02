@@ -1,0 +1,14 @@
+{
+  "schema": "france-tokenizer-operator-observation-v2",
+  "source_sha256": "9ccdfcc214d4855ded301ce860ab7a9e1c8ba7051d8ba02beea1c419d4ca3ead",
+  "source_after_sha256": "9ccdfcc214d4855ded301ce860ab7a9e1c8ba7051d8ba02beea1c419d4ca3ead",
+  "protocol_sha256": "6401093b4b80ee041a4799fbdfcc9f428c64ea5250df5108b2a96b5518600c51",
+  "tokenizer_sha256": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+  "output_sha256": "c8dd418bea948c8ca2b4d1e39e696374a28bd2f911bb16707415c38170fbba82",
+  "public_source_head_observed": "cfc5fad64d6f871e0cb8308dba0718753e0e0cd9",
+  "direct_child_exit": 0,
+  "observed_start_utc": "2026-10-29T13:50:23.0950695Z",
+  "observed_end_utc": "2026-10-29T13:50:33.1719118Z",
+  "prefix_empty_after": true,
+  "scope": "cooperative operator observation, not authenticated execution or publication chronology"
+}
