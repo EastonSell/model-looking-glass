@@ -75,17 +75,44 @@ assert.equal(siteLabel.style.display,'none','unselected module text must not cro
 assert.equal(layerLabel.style.color,'var(--text-3)');assert(!layerLabel.style.textShadow,'no label glow/shadow');
 const clickCanvas=el.children.find(e=>e.listeners.webglcontextlost);
 function pointFor(object){camera.updateMatrixWorld();scene.updateMatrixWorld(true);const p=object.getWorldPosition(new THREE.Vector3()).project(camera);return {clientX:(p.x+1)*800,clientY:(1-p.y)*450};}
+// Hover discovers real captured sites without selection, camera motion, or an idle loop.
+assert.equal(typeof clickCanvas.listeners.pointermove,'function','captured-site hover must be discoverable');
+assert.equal(typeof clickCanvas.listeners.pointerleave,'function');
+const hoverPoint=pointFor(sites[0]),hoverCamera=camera.position.clone();
+let hoverRays=0;const originalIntersect=THREE.Raycaster.prototype.intersectObjects;
+THREE.Raycaster.prototype.intersectObjects=function(...args){hoverRays++;return originalIntersect.apply(this,args);};
+for(let i=0;i<20;i++)clickCanvas.listeners.pointermove({...hoverPoint,pointerType:'mouse',buttons:0,isPrimary:true});
+assert.equal(hoverRays,0,'pointer events only queue hover');assert.equal(raf.size,1,'pointer bursts coalesce into one frame');frame();
+assert.equal(hoverRays,1,'one real raycast per frame');assert.equal(siteLabel.style.display,'','hover reveals existing module label');
+assert.equal(clickCanvas.style.cursor,'pointer');assert.equal(siteLabel.style.color,'var(--accent)','hover is not warm selected state');
+assert.equal(selected.length,0,'hover must not request exact selection/data');assert(camera.position.distanceTo(hoverCamera)<1e-8,'hover does not move camera');assert.equal(raf.size,0,'hover settles without an idle loop');
+clickCanvas.listeners.pointerleave();frame();assert.equal(siteLabel.style.display,'none');assert.equal(clickCanvas.style.cursor,'');
+clickCanvas.listeners.pointerdown({...hoverPoint,pointerId:7});clickCanvas.listeners.pointerleave();
+// The release occurs on ownerDocument/outside the canvas; our pointerup is never called.
+clickCanvas.listeners.pointermove({...hoverPoint,pointerId:7,pointerType:'mouse',buttons:0});frame();
+assert.equal(siteLabel.style.display,'','hover recovers after dragging out and releasing outside the canvas');assert.equal(selected.length,0);
+clickCanvas.listeners.pointerup({...hoverPoint,pointerId:7});assert.equal(selected.length,0,'leaving cancels the old click candidate');clickCanvas.listeners.pointerleave();frame();
+clickCanvas.listeners.pointermove({...hoverPoint,pointerType:'mouse'});frame();clickCanvas.listeners.pointermove({...hoverPoint,pointerType:'touch'});frame();assert.equal(siteLabel.style.display,'none','touch clears any previous mouse hover');
+clickCanvas.listeners.pointermove({...hoverPoint,pointerType:'mouse',isPrimary:false});frame();assert.equal(siteLabel.style.display,'none','secondary pointer must not preview');
+clickCanvas.listeners.pointermove({clientX:-500,clientY:-500,pointerType:'mouse'});frame();assert.equal(siteLabel.style.display,'none','off-canvas pointer clears hover');
+clickCanvas.listeners.pointerdown({...hoverPoint,pointerId:8});clickCanvas.listeners.pointermove({...hoverPoint,pointerId:8,pointerType:'mouse',buttons:0});frame();assert.equal(siteLabel.style.display,'','released-button movement recovers even when pointerup was missed');clickCanvas.listeners.pointerup({...hoverPoint,pointerId:8});assert.equal(selected.length,0,'recovered hover must not revive the missed gesture');clickCanvas.listeners.pointerleave();frame();
+THREE.Raycaster.prototype.intersectObjects=originalIntersect;
 const click=pointFor(sites[0]);clickCanvas.listeners.pointerdown({...click,button:2});clickCanvas.listeners.pointerup({...click,button:2});assert.equal(selected.length,0,'secondary button must not select');
 clickCanvas.listeners.pointerdown({...click,pointerId:1});clickCanvas.listeners.pointerup({...click,pointerId:2});assert.equal(selected.length,0,'different pointer must not select');
 clickCanvas.listeners.pointerdown(click);clickCanvas.listeners.pointercancel();clickCanvas.listeners.pointerup(click);assert.equal(selected.length,0,'cancelled pointer must not select');
 clickCanvas.listeners.pointerdown(click);clickCanvas.listeners.pointerup(click);
 assert.deepEqual(selected,['a'],'raycast returns exact captured site key');
 clickCanvas.listeners.pointerdown(click);clickCanvas.listeners.pointerup({...click,clientX:click.clientX+30});assert.equal(selected.length,1,'drag is not selection');
+clickCanvas.listeners.pointerdown(click);clickCanvas.listeners.pointermove({...click,clientX:click.clientX+12,buttons:1});clickCanvas.listeners.pointermove({...click,buttons:1});clickCanvas.listeners.pointerup(click);assert.equal(selected.length,1,'a drag returning to its origin is not selection');frame();assert.equal(siteLabel.style.display,'none','drag does not preview');
 let released=0;for(const o of objects){if(o.geometry)o.geometry.addEventListener('dispose',()=>released++);if(o.material)o.material.addEventListener('dispose',()=>released++);}
 assert.equal(api.selectSite('a'),true);frame();frame();assert.equal(api.selectSite('a'),true);assert.equal(raf.size,0,'same-key UI synchronization must not restart focus');assert.equal(api.selectSite('missing'),false);
 assert.equal(siteLabel.style.display,'','selected module label becomes readable');
 assert.equal(sites[0].material.color.getHexString(),'eeddaa','selected actual site uses the warm selection token');
 assert.equal(sites[1].material.color.getHexString(),'112233','unselected sites keep the neutral plane token');
+clickCanvas.listeners.pointermove({...pointFor(sites[1]),pointerType:'pen',buttons:0});frame();
+assert.equal(siteLabel.style.display,'','selection stays visible during another hover');assert.equal(siteLabel.style.color,'var(--selected)');
+assert.equal(el.children[1].children[2].style.display,'','hovered second module becomes readable');assert.equal(sites[0].material.color.getHexString(),'eeddaa','hover cannot recolor selected site');assert.equal(selected.length,1,'hover cannot replace selected site');
+clickCanvas.listeners.pointerleave();frame();assert.equal(el.children[1].children[2].style.display,'none');
 api.selectSite('b');frame();assert.equal(siteLabel.style.display,'none','old module label hides when selection moves');
 assert.equal(el.children[1].children[2].style.display,'','new selected module label is visible');
 assert.equal(sites[0].material.color.getHexString(),'112233','previous selected site loses the warm fill');
@@ -97,8 +124,23 @@ assert.throws(()=>api.setLayers(Array.from({length:13},(_,i)=>({key:String(i),si
 clickCanvas.listeners.pointerdown(click);
 api.setLayers([{key:'new',label:'Replacement',sites:[{key:'fresh',label:'Fresh'}]}]);assert.equal(api.selectSite('a'),false);clickCanvas.listeners.pointerup(click);assert.equal(selected.length,1,'replacement invalidates in-flight pointer');assert(released>0,'replaced geometry and material disposed');frame();
 assert.equal(raf.size,0,'reduced motion settles without an idle render loop');
-api.setActive(false);assert.equal(raf.size,0);api.setActive(true);frame();api.resize();
-const canvas=el.children.find(e=>e.listeners.webglcontextlost);assert(canvas);canvas.listeners.webglcontextlost({preventDefault(){}});assert.equal(fail.length,1);assert.equal(raf.size,0);assert.equal(api.selectSite('fresh'),false);
+let freshSite;scene.traverse(o=>{if(o.userData.siteKey==='fresh')freshSite=o;});
+const freshHover=pointFor(freshSite);clickCanvas.listeners.pointermove({...freshHover,pointerType:'mouse'});
+api.setLayers([{key:'new',label:'Replacement',sites:[{key:'fresh',label:'Fresh'}]}]);frame();assert.equal(el.children[1].children[1].style.display,'none','queued hover cannot cross layer replacement even when keys repeat');assert.equal(clickCanvas.style.cursor,'');
+function cancelledGestureBoundary(hide,show,label){
+ const count=selected.length;clickCanvas.listeners.pointerdown({...freshHover,pointerId:9});hide();show();frame();
+ clickCanvas.listeners.pointerup({...freshHover,pointerId:9});assert.equal(selected.length,count,label+' cancels the old selection gesture');
+ clickCanvas.listeners.pointermove({...freshHover,pointerId:9,pointerType:'mouse',buttons:0});frame();assert.equal(clickCanvas.style.cursor,'pointer',label+' still permits fresh hover');clickCanvas.listeners.pointerleave();frame();
+}
+cancelledGestureBoundary(()=>api.setActive(false),()=>api.setActive(true),'inactive scene');
+cancelledGestureBoundary(()=>{document.hidden=true;document.listeners.visibilitychange();},()=>{document.hidden=false;document.listeners.visibilitychange();},'hidden document');
+cancelledGestureBoundary(()=>api.resize(),()=>{},'resize');
+clickCanvas.listeners.pointermove({...freshHover,pointerType:'mouse'});frame();assert.equal(clickCanvas.style.cursor,'pointer');
+api.resize();frame();assert.equal(clickCanvas.style.cursor,'','resizing invalidates pointer projection');
+clickCanvas.listeners.pointermove({...freshHover,pointerType:'mouse'});frame();
+document.hidden=true;document.listeners.visibilitychange();assert.equal(clickCanvas.style.cursor,'','hidden document clears hover');assert.equal(raf.size,0);clickCanvas.listeners.pointermove({...freshHover,pointerType:'mouse'});assert.equal(raf.size,0,'background documents cannot schedule hover');document.hidden=false;document.listeners.visibilitychange();frame();assert.equal(el.children[1].children[1].style.display,'none','hover does not revive on visibility');
+clickCanvas.listeners.pointermove({...freshHover,pointerType:'mouse'});frame();api.setActive(false);assert.equal(raf.size,0);assert.equal(clickCanvas.style.cursor,'');clickCanvas.listeners.pointermove({...freshHover,pointerType:'mouse'});assert.equal(raf.size,0,'hidden scene does no hover work');api.setActive(true);frame();assert.equal(el.children[1].children[1].style.display,'none');api.resize();
+const canvas=el.children.find(e=>e.listeners.webglcontextlost);assert(canvas);canvas.listeners.pointermove({...freshHover,pointerType:'mouse'});frame();canvas.listeners.webglcontextlost({preventDefault(){}});assert.equal(canvas.style.cursor,'','lost WebGL clears hover cursor');assert.equal(fail.length,1);assert.equal(raf.size,0);assert.equal(api.selectSite('fresh'),false);
 api.dispose();api.dispose();assert.equal(disposed,1);assert.equal(el.children.length,0);
 // Animated focus uses real OrbitControls and a 600 ms transition when motion is permitted.
 reduced=false;

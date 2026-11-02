@@ -8,7 +8,7 @@
     const token = (name, fallback) => style && style.getPropertyValue(name).trim() || fallback;
     const palette = {ice:token('--accent','#bfe6ff'),neutral:token('--muted','#9aa0b0'),selected:token('--selected','#eed9a0')};
     let renderer, controls, dead = false, failed = false, active = true, raf = 0;
-    let content, keys = new Map(), labels = [], down = null, generation = 0, selected = null;
+    let content, keys = new Map(), labels = [], down = null, generation = 0, selected = null, hovered = null, hoverPoint = null;
     let width = 1, height = 1, animation = null;
     const media = global.matchMedia ? global.matchMedia('(prefers-reduced-motion: reduce)') : {matches:true};
     const scene = T ? new T.Scene() : null;
@@ -26,6 +26,27 @@
       if (options.onUnavailable) options.onUnavailable(reason);
     }
     function schedule() { if (!dead && !failed && active && !document.hidden && !raf) raf = global.requestAnimationFrame(draw); }
+    function styleSites() {
+      for(const [key,item] of keys){
+        const chosen=key===selected,preview=key===hovered;
+        item.outline.material.color.set(chosen?palette.selected:preview?palette.ice:palette.neutral);
+        item.target.material.color.set(chosen?palette.selected:palette.ice);
+        item.target.material.opacity=chosen?0.18:preview?0.08:0.035;
+      }
+    }
+    function setHovered(key) {
+      if(hovered===key)return false;
+      hovered=key;styleSites();if(renderer)renderer.domElement.style.cursor=key?'pointer':'';return true;
+    }
+    function clearHover() { hoverPoint=null;if(setHovered(null))schedule(); }
+    function hitSite(point) {
+      const rect=renderer.domElement.getBoundingClientRect();
+      if(!rect.width || !rect.height || !Number.isFinite(point.x) || !Number.isFinite(point.y) || point.x<rect.left || point.x>rect.left+rect.width || point.y<rect.top || point.y>rect.top+rect.height)return null;
+      const ray=new T.Raycaster();camera.updateMatrixWorld();scene.updateMatrixWorld(true);
+      ray.setFromCamera(new T.Vector2((point.x-rect.left)/rect.width*2-1,-(point.y-rect.top)/rect.height*2+1),camera);
+      const hit=ray.intersectObjects(Array.from(keys.values(),v=>v.target),false)[0];
+      return hit && keys.has(hit.object.userData.siteKey)?hit.object.userData.siteKey:null;
+    }
     function draw(now) {
       raf = 0;
       if (dead || failed || !active || document.hidden) return;
@@ -36,9 +57,12 @@
         if (t === 1) animation = null;
       }
       controls.update(); camera.updateMatrixWorld();
+      const preview=hoverPoint;hoverPoint=null;
+      if(preview)setHovered(!down && !animation && preview.generation===generation?hitSite(preview):null);
       for (const label of labels) {
         const p = label.position.clone().project(camera);
-        label.element.style.display = (label.siteKey && label.siteKey !== selected) || p.z < -1 || p.z > 1 ? 'none' : '';
+        label.element.style.display = (label.siteKey && label.siteKey !== selected && label.siteKey !== hovered) || p.z < -1 || p.z > 1 ? 'none' : '';
+        if(label.siteKey)label.element.style.color=label.siteKey===selected?'var(--selected)':'var(--accent)';
         label.element.style.left = ((p.x+1)*width/2)+'px';
         label.element.style.top = ((1-p.y)*height/2)+'px';
       }
@@ -48,7 +72,7 @@
     function releaseContent() {
       if (content) { content.traverse(o => { if(o.geometry)o.geometry.dispose(); if(o.material) { const ms=Array.isArray(o.material)?o.material:[o.material]; ms.forEach(m=>m.dispose()); } }); scene.remove(content); }
       for (const label of labels) label.element.remove();
-      labels = []; keys.clear(); content = null; animation = null; down = null;
+      labels = []; keys.clear(); content = null; animation = null; down = null; hovered=null;hoverPoint=null;if(renderer)renderer.domElement.style.cursor='';
     }
     function label(text, position, corner, siteKey=null) {
       const element=document.createElement('span'); element.textContent=text.length>64?text.slice(0,63)+'…':text; element.title=text;
@@ -92,6 +116,7 @@
     }
     function resize() {
       if(dead || failed)return;
+      pointerCancel();
       const rect=container.getBoundingClientRect();width=Math.max(1,rect.width);height=Math.max(1,rect.height);
       renderer.setPixelRatio(Math.min(global.devicePixelRatio || 1,2));renderer.setSize(width,height,false);
       const insets=options.getViewInsets?options.getViewInsets():null;
@@ -117,31 +142,34 @@
       const entry=keys.get(key);
       if(key!==null && !entry)return false;
       if(selected===key)return true;
-      selected=key; animation=null;
-      for(const [k,item] of keys){item.outline.material.color.set(k===key?palette.selected:palette.neutral);item.target.material.color.set(k===key?palette.selected:palette.ice);item.target.material.opacity=k===key?0.18:0.035;}
+      clearHover();selected=key; animation=null;styleSites();
       if(entry){
         if(media.matches){const delta=entry.target.position.clone().sub(controls.target);controls.target.copy(entry.target.position);camera.position.add(delta);animation=null;}
         else animation={start:global.performance.now(),from:controls.target.clone(),to:entry.target.position.clone(),camera:camera.position.clone()};
       }
       schedule();return true;
     }
-    function pointerDown(event){down=null;if(event.isPrimary===false || (event.button!==undefined && event.button!==0))return;down={x:event.clientX,y:event.clientY,id:event.pointerId,generation};}
-    function pointerCancel(){down=null;}
+    function pointerDown(event){clearHover();down=null;if(event.isPrimary===false || (event.button!==undefined && event.button!==0))return;down={x:event.clientX,y:event.clientY,id:event.pointerId,generation,moved:false};}
+    function pointerMove(event){
+      if(down && down.id===event.pointerId && event.buttons===0)down=null;
+      if(down){if(down.id===event.pointerId && Math.hypot(event.clientX-down.x,event.clientY-down.y)>5)down.moved=true;clearHover();return;}
+      if(dead || failed || !active || document.hidden || animation || event.pointerType==='touch' || event.isPrimary===false || event.buttons){clearHover();return;}
+      hoverPoint={x:event.clientX,y:event.clientY,generation};schedule();
+    }
+    function pointerCancel(){down=null;clearHover();}
     function pointerUp(event){
       const start=down;down=null;
-      if(!start || start.id!==event.pointerId || event.isPrimary===false || (event.button!==undefined && event.button!==0) || start.generation!==generation || !active || failed || dead || Math.hypot(event.clientX-start.x,event.clientY-start.y)>5)return;
-      const rect=renderer.domElement.getBoundingClientRect();
-      const ray=new T.Raycaster();camera.updateMatrixWorld();scene.updateMatrixWorld(true);
-      ray.setFromCamera(new T.Vector2((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1),camera);
-      const hit=ray.intersectObjects(Array.from(keys.values(),v=>v.target),false)[0];
-      if(hit && keys.has(hit.object.userData.siteKey) && options.onSelect)options.onSelect(hit.object.userData.siteKey);
+      if(!start || start.id!==event.pointerId || event.isPrimary===false || (event.button!==undefined && event.button!==0) || start.generation!==generation || start.moved || !active || failed || dead || Math.hypot(event.clientX-start.x,event.clientY-start.y)>5)return;
+      const key=hitSite({x:event.clientX,y:event.clientY});
+      if(key && options.onSelect)options.onSelect(key);
     }
     function lost(event){event.preventDefault();unavailable('WebGL context lost. Use the captured-site list.');}
-    function visibility(){stop();animation=null;schedule();}
-    function motion(){animation=null;controls.enableDamping=!media.matches;schedule();}
-    function interaction(){animation=null;schedule();}
-    function setActive(value){active=!!value;if(controls)controls.enabled=active&&!failed;if(renderer)renderer.domElement.style.display=active&&!failed?'':'none';overlay.style.display=active&&!failed?'':'none';stop();if(active)schedule();}
-    function dispose(){if(dead)return;dead=true;stop();releaseContent();document.removeEventListener('visibilitychange',visibility);if(media.removeEventListener)media.removeEventListener('change',motion);if(controls)controls.dispose();if(renderer){renderer.domElement.removeEventListener('pointerdown',pointerDown);renderer.domElement.removeEventListener('pointerup',pointerUp);renderer.domElement.removeEventListener('pointercancel',pointerCancel);renderer.domElement.removeEventListener('webglcontextlost',lost);renderer.dispose();renderer.domElement.remove();}overlay.remove();}
+    function visibility(){stop();animation=null;pointerCancel();schedule();}
+    function motion(){animation=null;clearHover();controls.enableDamping=!media.matches;schedule();}
+    function interaction(){animation=null;clearHover();schedule();}
+    function cameraChanged(){clearHover();schedule();}
+    function setActive(value){active=!!value;if(!active)pointerCancel();if(controls)controls.enabled=active&&!failed;if(renderer)renderer.domElement.style.display=active&&!failed?'':'none';overlay.style.display=active&&!failed?'':'none';stop();if(active)schedule();}
+    function dispose(){if(dead)return;dead=true;stop();releaseContent();document.removeEventListener('visibilitychange',visibility);if(media.removeEventListener)media.removeEventListener('change',motion);if(controls)controls.dispose();if(renderer){renderer.domElement.removeEventListener('pointerdown',pointerDown);renderer.domElement.removeEventListener('pointerup',pointerUp);renderer.domElement.removeEventListener('pointercancel',pointerCancel);renderer.domElement.removeEventListener('pointermove',pointerMove);renderer.domElement.removeEventListener('pointerleave',pointerCancel);renderer.domElement.removeEventListener('webglcontextlost',lost);renderer.dispose();renderer.domElement.remove();}overlay.remove();}
     const api={setLayers,selectSite,setActive,resize,dispose};
     try {
       if(!T || !T.OrbitControls)throw new Error('Local Three.js assets unavailable.');
@@ -150,8 +178,8 @@
       renderer.domElement.setAttribute('aria-hidden','true');
       container.appendChild(renderer.domElement);container.appendChild(overlay);
       controls=new T.OrbitControls(camera,renderer.domElement);controls.enablePan=false;controls.enableDamping=!media.matches;controls.dampingFactor=0.08;
-      controls.addEventListener('change',schedule);controls.addEventListener('start',interaction);
-      renderer.domElement.addEventListener('pointerdown',pointerDown);renderer.domElement.addEventListener('pointerup',pointerUp);renderer.domElement.addEventListener('pointercancel',pointerCancel);renderer.domElement.addEventListener('webglcontextlost',lost);
+      controls.addEventListener('change',cameraChanged);controls.addEventListener('start',interaction);
+      renderer.domElement.addEventListener('pointerdown',pointerDown);renderer.domElement.addEventListener('pointerup',pointerUp);renderer.domElement.addEventListener('pointercancel',pointerCancel);renderer.domElement.addEventListener('pointermove',pointerMove);renderer.domElement.addEventListener('pointerleave',pointerCancel);renderer.domElement.addEventListener('webglcontextlost',lost);
       document.addEventListener('visibilitychange',visibility);if(media.addEventListener)media.addEventListener('change',motion);
       resize();
     } catch(error){unavailable('WebGL unavailable. Use the captured-site list.');}
