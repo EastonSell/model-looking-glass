@@ -377,7 +377,8 @@ def test_escaped_client_return_fault_cannot_be_a_clean_report(contracts, live_cp
     service, model, _, _, _, _ = live_cpu_owner
     fired = threading.Event()
     offsets = {item.offset for item in dis.get_instructions(clients.ConcurrentClients._run)
-               if item.opname == 'RETURN_VALUE'}
+               if item.opname in {'RETURN_VALUE', 'RETURN_CONST'}}
+    assert offsets, 'client return fault requires an identified return instruction'
     def trace(frame, event, arg):
         if frame.f_code is clients.ConcurrentClients._run.__code__:
             if event == 'call':

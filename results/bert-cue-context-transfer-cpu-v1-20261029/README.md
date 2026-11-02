@@ -88,7 +88,7 @@ The complete 161,286,491-byte compressed journal is retained locally on E:
 scratch, SHA-256 `93ff93b3b7a563b16a14cb24c81e52e188cca4c98ea4abefbb0fd509f797fbd9`.
 It is not included in this repository copy and has no public download location.
 The available journal hash is a commitment, not the journal itself. The
-37,131-byte operator-derived [score subset](bert-cue-context-score-tv-subset-40752bde.jsonl.gz)
+37,131-byte operator-derived [score subset](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/bert-cue-context-transfer-cpu-v1-20261029/bert-cue-context-score-tv-subset-40752bde.jsonl.gz)
 retains all selected float32 `any`/`some` pairs and copies the independently
 audited full/excluded TV and target-mass values from the result. Its reader
 replays selected scores, the fixed eligibility and decision, and the arithmetic

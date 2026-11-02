@@ -25,6 +25,7 @@ def tiny_t5():
                           num_layers=2, num_decoder_layers=2, num_heads=2,
                           dropout_rate=0.0, decoder_start_token_id=0,
                           pad_token_id=0, eos_token_id=1)
+        config._attn_implementation = "eager"
         return T5ForConditionalGeneration(config).eval()
 
 

@@ -1,0 +1,10 @@
+{
+  "schema": "flan-weight-edit-evaluation-outer-admission-v1",
+  "observed_utc": "2026-10-29T13:29:17.6305104+00:00",
+  "source_free": 1980919808,
+  "output_free": 383494590464,
+  "passed": true,
+  "scope_sha256": "95cbe0d53aae495d984c387d403e9086c071e5e6228eaa3ba4d2db62325d9cb1",
+  "handoff_sha256": "de65e284b8b8047b6641acbe77d2a07d4a0986e4a28b66446267137be28dbda9",
+  "scope": "operator point observation; C floor is a heuristic, not a reservation"
+}

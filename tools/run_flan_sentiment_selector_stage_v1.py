@@ -68,12 +68,33 @@ def _dependency_site(venv):
                 raise ValueError('duplicate venv configuration entry')
             entries[name] = value
     home = entries.get('home', '')
-    if (not home or not Path(home).is_absolute()
-            or Path(home).resolve() != Path(sys.base_prefix).resolve()
-            or entries.get('implementation') != 'CPython'
-            or entries.get('version_info') != '.'.join(map(str, sys.version_info[:3]))
-            or entries.get('include-system-site-packages', '').lower() != 'false'
-            or Path(sys.executable).resolve() != Path(sys._base_executable).resolve()):
+    version = '.'.join(map(str, sys.version_info[:3]))
+    base_executable = Path(sys._base_executable).resolve()
+    common_valid = (home and Path(home).is_absolute()
+                    and sys.implementation.name == 'cpython'
+                    and entries.get('include-system-site-packages', '').lower() == 'false'
+                    and Path(sys.executable).resolve() == base_executable)
+    if 'implementation' in entries or 'version_info' in entries:
+        # virtualenv's explicit implementation/version schema.
+        schema_valid = (entries.get('implementation') == 'CPython'
+                        and entries.get('version_info') == version
+                        and Path(home).resolve() == Path(sys.base_prefix).resolve())
+    else:
+        # stdlib venv records the base binary's directory, not its prefix.
+        executable = entries.get('executable', '')
+        schema_valid = (entries.get('version') == version
+                        and executable and Path(executable).is_absolute()
+                        and Path(executable).resolve() == base_executable
+                        and Path(home).resolve() == base_executable.parent)
+    # Reject contradictory optional identity fields rather than selecting the
+    # convenient schema and silently ignoring a conflicting base binary/version.
+    if 'version' in entries and entries['version'] != version:
+        schema_valid = False
+    for field in ('executable', 'base-executable'):
+        if field in entries and (not Path(entries[field]).is_absolute()
+                                 or Path(entries[field]).resolve() != base_executable):
+            schema_valid = False
+    if not common_valid or not schema_valid:
         raise ValueError('venv does not match the direct base interpreter')
     site = venv / ('Lib/site-packages' if os.name == 'nt' else
                    'lib/python%d.%d/site-packages' % sys.version_info[:2])

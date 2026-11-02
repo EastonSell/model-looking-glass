@@ -93,9 +93,13 @@ def _related(left, right):
 
 
 def inventory_payload():
-    if v9.inventory_digest() != PREDECESSOR_SHA256:
+    predecessor = v9.inventory_payload()
+    canonical = json.dumps(predecessor, sort_keys=True, separators=(",", ":"),
+                           ensure_ascii=True, allow_nan=False).encode("utf-8")
+    if (v9.INVENTORY_SHA256 != PREDECESSOR_SHA256
+            or hashlib.sha256(canonical).hexdigest() != PREDECESSOR_SHA256):
         raise ValueError("predecessor exposure inventory does not match")
-    payload = copy.deepcopy(v9.inventory_payload())
+    payload = copy.deepcopy(predecessor)
     payload["version"] = INVENTORY_VERSION
     payload["predecessor"] = {"version": v9.INVENTORY_VERSION, "sha256": PREDECESSOR_SHA256}
     payload["update"] = {"planned_public_projected_edit_rows": 13}

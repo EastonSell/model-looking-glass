@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 import sys
+import subprocess
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -33,8 +34,43 @@ class ReservationTests(unittest.TestCase):
         cls.digest = hashlib.sha256(mod._canonical(cls.payload)).hexdigest()
         if cls.digest != mod.INVENTORY_SHA256:
             raise AssertionError('canonical digest differs')
-        if 'torch' in sys.modules:
-            raise AssertionError('model library imported in no-model test')
+
+    def test_inventory_runs_without_importing_model_libraries(self):
+        # Other tests legitimately import torch. Check this contract in a fresh
+        # interpreter, blocking attempted imports as well as retained modules.
+        code = r"""
+import importlib.abc
+import importlib.util
+import pathlib
+import sys
+
+root, module_path = sys.argv[1:]
+sys.path.insert(0, root)
+blocked = {"torch", "transformers", "tensorflow", "jax"}
+class RejectModelImport(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split(".", 1)[0] in blocked:
+            raise AssertionError("model library import attempted: " + fullname)
+sys.meta_path.insert(0, RejectModelImport())
+assert not blocked.intersection(sys.modules)
+spec = importlib.util.spec_from_file_location(
+    "looking_glass.pretrained_exposures_v38", module_path)
+subject = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(subject)
+assert pathlib.Path(subject.__file__).resolve() == pathlib.Path(module_path).resolve()
+assert subject.inventory_digest() == subject.INVENTORY_SHA256
+assert not blocked.intersection(sys.modules)
+print("NO_MODEL_IMPORT_VERIFIED")
+"""
+        result = subprocess.run(
+            [sys.executable, '-I', '-c', code,
+             str(Path(__file__).resolve().parents[1]), str(Path(mod.__file__).resolve())],
+            capture_output=True, text=True, timeout=120,
+            env={**os.environ, 'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
+                 'CUDA_VISIBLE_DEVICES': ''},
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout.strip(), 'NO_MODEL_IMPORT_VERIFIED')
 
     def test_preserves_predecessor_and_exact_rows(self):
         self.assertEqual(self.payload['records'][:len(self.prior['records'])], self.prior['records'])

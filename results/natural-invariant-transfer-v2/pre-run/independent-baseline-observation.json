@@ -1,0 +1,39 @@
+{
+  "audit_entry_source_revision": "1c1f7ebf729c12ff8882af21e440f51ac26102ca",
+  "audit_observation_sha256": "3f35bdf1f6f4f22f097489e31ebde5edaef5f1742af5c4780ffbc6d52ea6ee8e",
+  "audit_report_sha256": "9660ba045f12f86f74f2e4b526730cbab14f7caf2ef836ca674210c67ca5225c",
+  "bootstrap_sha256": "9352abe7801b22f6fed8eacdd69f40076669778918b8d56390c2cff9cfb0b7ca",
+  "checks": {
+    "audit_exit_zero": true,
+    "audit_input_hashes_stable": true,
+    "audit_sources_match_public_git_blobs": true,
+    "baseline_owner_supervision_match_public_git_blobs": true,
+    "bootstrap_and_command_options_match": true,
+    "command_file_operands_match": true,
+    "public_projection_matches": true,
+    "receipt_complete": true,
+    "saved_audit_and_journal_match": true
+  },
+  "input_sha256": {
+    "cases": "188782606abd576cde029408bb34975e7fd7ac2113bf17299dbb7e1aa2ddd76b",
+    "entry": "8933b8e3058b7acf7cea97ef05011f3ca8133d16c32227a9a8cf3d67717682f8",
+    "events": "ffe761e9a02338bf6f9afbcb066197ed83a2488d02cf79986585ea8225e3fd10",
+    "numeric": "917694d448b796359db0002a630877e5226a2583d273092871892fade7a38ac4",
+    "owner_exit": "1be9853f35b32c7f035dffbc870adcb1276ce9c9ccea910ea432a3d2f5953f03",
+    "reader": "a342b41ead06c80a859133d4491b6045867fd19481f014b3005c566865dc116f",
+    "started": "218f1721ebb8354f9ed374baa6f3353d9b2f7fde24bee8144c5e26035169a7ac",
+    "supervisor": "80e9256aaa28ff2bc5addcde8b7a8938c859f1f803afc1ad1fbd18baa373d6e8",
+    "terminal": "3184ed42ee8171ffc29c56251912df19c03b04c71b48d35522baf649dd52fdfb",
+    "u": "d1ddf7d4ee3103400ca6c23f25536e615135beebb24f2d326ad6fe5d46728be0",
+    "v1": "4a08130c4fd2c3557f9e40b92865c23411d395123c53251a286b63c796b476bb",
+    "v2": "4ca1f10e411e0476bcee76b98bc8515705e61035cfa6e8d71608e15af80f4b02"
+  },
+  "observation_kind": "independent saved-record readback",
+  "observed_utc": "2026-10-29T14:23:56.275555+00:00",
+  "owner_receipt_sha256": "1be9853f35b32c7f035dffbc870adcb1276ce9c9ccea910ea432a3d2f5953f03",
+  "owner_source_revision": "ac35e97c250aeefa683d9fd4be7a3761d2fee3f9",
+  "owner_source_tree": "b00804887c958ebe9c9b6cf3a2f72c6b81e6d4b7",
+  "public_audit_observation_sha256": "6b18b2cb225ff4cb7cdd23879fe1d2ac892246c41defe664535755286e862abd",
+  "schema": "natural-transfer-independent-baseline-observation-v1",
+  "scope": "Path-redacted cooperative observations and saved-byte/source identity; no model forward, authenticated execution, protected-history clearance or cryptographic signature."
+}

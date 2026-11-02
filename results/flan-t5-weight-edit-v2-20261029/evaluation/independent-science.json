@@ -1,0 +1,1416 @@
+{
+  "calls": 419,
+  "case_sha256": "a118dde671351d21c519b6a61957e9478c9501bac52d55aa34e8394772e933d5",
+  "comparisons": {
+    "broad": {
+      "development_dose": 2.0,
+      "development_matched": true,
+      "eligible": false,
+      "reason": "evaluation-imbalance"
+    },
+    "opposite": {
+      "development_dose": 4.0,
+      "development_matched": false,
+      "eligible": false,
+      "reason": "calibration-unmatched"
+    },
+    "random": {
+      "development_dose": 4.0,
+      "development_matched": false,
+      "eligible": false,
+      "reason": "calibration-unmatched"
+    }
+  },
+  "development_phase_sha256": "1cd8e44c5294a2d0074d352f4280eaa365947d572cfd959ae29ab9fc12703a2b",
+  "events_sha256": "baa2ef56c3e84c9bef4aa4c83df614271b639e25fc908add2ea50d98585e53d3",
+  "exit_sha256": "235b5c934840462ef5595e2849eed0cb4d974ab7475f60e9de28ed63f805cc5e",
+  "localities": [
+    {
+      "arm": "primary",
+      "baseline_correct": true,
+      "baseline_ids": [
+        2841,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-1",
+      "changed_correct": true,
+      "changed_ids": [
+        2841,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "negative",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "same",
+      "baseline_correct": true,
+      "baseline_ids": [
+        2841,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-1",
+      "changed_correct": true,
+      "changed_ids": [
+        2841,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "negative",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "broad",
+      "baseline_correct": true,
+      "baseline_ids": [
+        2841,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-1",
+      "changed_correct": true,
+      "changed_ids": [
+        17141,
+        1528,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "5.713219332234396819781801051989908166496521064810299849359994507800584423172376123924520310341478735190716251975351937844238302193239331947697291368335319055587681832381207367204624046308208070567247576184473682012205316",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.973088493170017523150662852175102286341470006770025670691446168627268632323620319016157541424757145076914050999818954570937517951664483558720425888431539225116723727463917075902109279685369996127274433206219198727400480"
+      },
+      "expected": "negative",
+      "input_contains_edited_token": false,
+      "owner_kl": 5.713219332234398,
+      "owner_tv": 0.9730884931700176,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "random",
+      "baseline_correct": true,
+      "baseline_ids": [
+        2841,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-1",
+      "changed_correct": true,
+      "changed_ids": [
+        2841,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "negative",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "opposite",
+      "baseline_correct": true,
+      "baseline_ids": [
+        2841,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-1",
+      "changed_correct": true,
+      "changed_ids": [
+        2841,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "negative",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "primary",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1465,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-2",
+      "changed_correct": true,
+      "changed_ids": [
+        1465,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "positive",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "same",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1465,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-2",
+      "changed_correct": true,
+      "changed_ids": [
+        1465,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "positive",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "broad",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1465,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-2",
+      "changed_correct": false,
+      "changed_ids": [
+        2841,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "4.348219552079260771280998401380031887059397228237046269067805949364689711422363926674894847976898775059604885207311623953958722240888052339528262368456907510179343398082097143292793619279428574193311325746570997279463666",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.976965203931908342709225824760083792906849641407275787402944216297701819486736463284081497427948345476439025881450000241096762348635961463109638088568027176499979342875592620998652565860248638064581769720333511022275668"
+      },
+      "expected": "positive",
+      "input_contains_edited_token": false,
+      "owner_kl": 4.348219552079261,
+      "owner_tv": 0.9769652039319083,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "random",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1465,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-2",
+      "changed_correct": true,
+      "changed_ids": [
+        1465,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "positive",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "opposite",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1465,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-2",
+      "changed_correct": true,
+      "changed_ids": [
+        1465,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "positive",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "primary",
+      "baseline_correct": true,
+      "baseline_ids": [
+        2841,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-3",
+      "changed_correct": true,
+      "changed_ids": [
+        2841,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "negative",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "same",
+      "baseline_correct": true,
+      "baseline_ids": [
+        2841,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-3",
+      "changed_correct": true,
+      "changed_ids": [
+        2841,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "negative",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "broad",
+      "baseline_correct": true,
+      "baseline_ids": [
+        2841,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-3",
+      "changed_correct": false,
+      "changed_ids": [
+        1465,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "3.589983803962646523120833215530517261437791356531704425304509492243993616865056947074631368508233287615913096027550388289043322055408828474365954126307339174628970496714153904161981991813433565844330236130321513315049903",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.9302259340611537664796348155877196170024351065230096918480056427046481415307962539769761877755388741504732898682687110387410157781423379452940318885629228366340109219531903544483100486952561318575576837024285186691757195"
+      },
+      "expected": "negative",
+      "input_contains_edited_token": false,
+      "owner_kl": 3.589983803962647,
+      "owner_tv": 0.9302259340611538,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "random",
+      "baseline_correct": true,
+      "baseline_ids": [
+        2841,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-3",
+      "changed_correct": true,
+      "changed_ids": [
+        2841,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "negative",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "opposite",
+      "baseline_correct": true,
+      "baseline_ids": [
+        2841,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-3",
+      "changed_correct": true,
+      "changed_ids": [
+        2841,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "negative",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "primary",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1465,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-4",
+      "changed_correct": true,
+      "changed_ids": [
+        1465,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "positive",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "same",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1465,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-4",
+      "changed_correct": true,
+      "changed_ids": [
+        1465,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "positive",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "broad",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1465,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-4",
+      "changed_correct": false,
+      "changed_ids": [
+        2841,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "4.398231706289966015871652028636265808958679773725460112339316116798641854638966193567588844053506047860115285836337651568598000281710039136361753933037701043974004930834883711139853643944901012254649656728464594426688513",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.9781044015540232995982929356776126678096751797598583548425942845080320667783655925048510260380179016657526798718311273817772803455713509683402613005877021645812212089191038912070769440366513665372872202254419778585288545"
+      },
+      "expected": "positive",
+      "input_contains_edited_token": false,
+      "owner_kl": 4.398231706289966,
+      "owner_tv": 0.9781044015540232,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "random",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1465,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-4",
+      "changed_correct": true,
+      "changed_ids": [
+        1465,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "positive",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "opposite",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1465,
+        1
+      ],
+      "candidate_teacher_prefix": null,
+      "case_id": "locality-4",
+      "changed_correct": true,
+      "changed_ids": [
+        1465,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "positive",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 4
+    },
+    {
+      "arm": "primary",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1627,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        1627
+      ],
+      "case_id": "locality-5",
+      "changed_correct": false,
+      "changed_ids": [
+        3,
+        9,
+        210,
+        1329
+      ],
+      "decimal": {
+        "kl_decimal": "3.042999970766894815020380222257116003941354663931954982400675006959536783636604724271749756398596763598906235428531505111542699124379907964731999699505425531996080585733404659469797529507429624836173262240689007448246622",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.7337831485348004251508736227203962828017339341941384278596444561194419218530994052948124217762298305845017574111633506867476193326906815310146059087070908833884406232833566250835387640915563176626898825318377853165647875"
+      },
+      "expected": "wonderful",
+      "input_contains_edited_token": true,
+      "owner_kl": 3.042999970766895,
+      "owner_tv": 0.7337831485348004,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "same",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1627,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        1627
+      ],
+      "case_id": "locality-5",
+      "changed_correct": false,
+      "changed_ids": [
+        3,
+        9,
+        248,
+        800
+      ],
+      "decimal": {
+        "kl_decimal": "1.139072526821885491009671774898360650767470696877540342614570811490880992383496375277448517375949933836546657467800651231855130582555901187572899071490865748652089498664942373698186293034977538213200407363650564599894507",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.532781296278539033695957124530121557044782229563410243053657246263900521848916360357834109361629927478461808493615068150980974961571627504740268872715226667656293635848929005654578535791905870839442759821775157256377610"
+      },
+      "expected": "wonderful",
+      "input_contains_edited_token": true,
+      "owner_kl": 1.1390725268218855,
+      "owner_tv": 0.532781296278539,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "broad",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1627,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        1627
+      ],
+      "case_id": "locality-5",
+      "changed_correct": true,
+      "changed_ids": [
+        1627,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0.02924890563185480284804086846318273595094783591319874692548748176941426530614735436357998075616403383937365340670241763560777910061529658612330932975496266652328111421337284634312790116940183515216012971953705250617525871",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.02895238752292509893281740717228219985824690014948193061769781909883173408094302429729990182114545722338441576324229471660131736065435438724417993833625907192653020070042475937865963942177164859490207625480323584031412458"
+      },
+      "expected": "wonderful",
+      "input_contains_edited_token": true,
+      "owner_kl": 0.029248905631854758,
+      "owner_tv": 0.02895238752292509,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "random",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1627,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        1627
+      ],
+      "case_id": "locality-5",
+      "changed_correct": false,
+      "changed_ids": [
+        3,
+        23,
+        208,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "3.418942968043491695330933364664775592433510226905087042932564590915195052841109829371399425237562234546885014916999827381897460827113410009648766427604437593300042239641016280373151461851553779361513968668304297308356372",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.7369096382696940477541829693980569105017502745127479483279448153002274912543083816051921352544664920052672100897538950767150217203613926945752850724585340300555256610069555823666689352493311556438050238850077693254333135"
+      },
+      "expected": "wonderful",
+      "input_contains_edited_token": true,
+      "owner_kl": 3.4189429680434915,
+      "owner_tv": 0.7369096382696941,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "opposite",
+      "baseline_correct": true,
+      "baseline_ids": [
+        1627,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        1627
+      ],
+      "case_id": "locality-5",
+      "changed_correct": false,
+      "changed_ids": [
+        3,
+        9,
+        3,
+        7
+      ],
+      "decimal": {
+        "kl_decimal": "1.653192788383468653731285079946929035062310442492201937270331554921883417320703564358432436143943820811769419095035860328631565675754983009255610457507043886751374328984865896579856128425790803888846987834303730461877491",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.621860678815175891963667892487893327831461524181735333812178664359279218673296127327708585564175596142170560831372776660062605151545767677360640249501428771380178432566447421697300655524448842664886750211641651624937244"
+      },
+      "expected": "wonderful",
+      "input_contains_edited_token": true,
+      "owner_kl": 1.6531927883834687,
+      "owner_tv": 0.6218606788151759,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "primary",
+      "baseline_correct": false,
+      "baseline_ids": [
+        314,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        220
+      ],
+      "case_id": "locality-6",
+      "changed_correct": false,
+      "changed_ids": [
+        314,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0.01614312405881555423182860173978119961387655617704886114134660378558840378385626146547349615857221652898979969247702247886457161158154663342418158179321021794577263227016033338239297368330804598200630705467463702592600280",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.06927831389133353014027341063429890472930645597401535157433388460903069784683785615171757725805032043537045949155518499411992662062978292705953534707331082114504183670883574363776328802877978038894552536199560679255593345"
+      },
+      "expected": "3",
+      "input_contains_edited_token": true,
+      "owner_kl": 0.016143124058815697,
+      "owner_tv": 0.06927831389133352,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "same",
+      "baseline_correct": false,
+      "baseline_ids": [
+        314,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        220
+      ],
+      "case_id": "locality-6",
+      "changed_correct": false,
+      "changed_ids": [
+        314,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0.01705211826849885595996828094039209136108265707110845715915829085689803412288950586216350483900849068027154561531770111101608974422952388503978957700779366427598904605828014703365466853856597186086197737703734652182274023",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.08096713955580879411946754026253333907045051848781607209520648374631563964405974866744177666687911189317700428678934962983979430410046311359950152544426944140397306040649265709897494908675265670450311974055885811899894445"
+      },
+      "expected": "3",
+      "input_contains_edited_token": true,
+      "owner_kl": 0.017052118268499044,
+      "owner_tv": 0.0809671395558088,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "broad",
+      "baseline_correct": false,
+      "baseline_ids": [
+        314,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        220
+      ],
+      "case_id": "locality-6",
+      "changed_correct": false,
+      "changed_ids": [
+        314,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "5.987883579639298851719944366278568342188698645795529577429553353760479503439167588726853494603582933059369510949361517493788656571828504856522970583328546756050418387714559765113406157932336681981613472479031857542099823E-7",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.000001114998201888307234984656224854549874591981380923553754927680282362697262778418602643630540499769506052780352740890478322401571879122896667600214080310407137880610314441249056417358486908579187966704202555270881754477160"
+      },
+      "expected": "3",
+      "input_contains_edited_token": true,
+      "owner_kl": 5.987883579069278e-07,
+      "owner_tv": 1.1149982018448515e-06,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "random",
+      "baseline_correct": false,
+      "baseline_ids": [
+        314,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        220
+      ],
+      "case_id": "locality-6",
+      "changed_correct": false,
+      "changed_ids": [
+        314,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0.04874598579444470846467173796735475835589558151418955486071857519863152453385418347634494975794952230698987955016382755725251385500016874954625872884808409536473050198028085975679525494387742440333611310795495409106435638",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.1070026890525184732668753558126033641628654555815403184897885041694051045570914718949270563846772128166449490107173992108934872862255615236353452475785438877754993517856165772807325583202901400520653338689253526059684369"
+      },
+      "expected": "3",
+      "input_contains_edited_token": true,
+      "owner_kl": 0.048745985794444585,
+      "owner_tv": 0.10700268905251849,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "opposite",
+      "baseline_correct": false,
+      "baseline_ids": [
+        314,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        220
+      ],
+      "case_id": "locality-6",
+      "changed_correct": false,
+      "changed_ids": [
+        314,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0.02838822484737741904406787817460780188807395495346788339972204625910223480233249638925500357726975365611840260229695810907780331270454749891361614564451034936233732496326090679101773072602060286513689429752318487745583169",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.1054619983517224740549593676860388577189390556447883624531678102450720345038296660690870657665216444263718847978164331888701053001471931955990035039417145256634941173058883966932420314866336095704610175677158682806881990"
+      },
+      "expected": "3",
+      "input_contains_edited_token": true,
+      "owner_kl": 0.02838822484737757,
+      "owner_tv": 0.10546199835172247,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "primary",
+      "baseline_correct": true,
+      "baseline_ids": [
+        314,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        314
+      ],
+      "case_id": "locality-7",
+      "changed_correct": true,
+      "changed_ids": [
+        314,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "4",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 5
+    },
+    {
+      "arm": "same",
+      "baseline_correct": true,
+      "baseline_ids": [
+        314,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        314
+      ],
+      "case_id": "locality-7",
+      "changed_correct": true,
+      "changed_ids": [
+        314,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "4",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 5
+    },
+    {
+      "arm": "broad",
+      "baseline_correct": true,
+      "baseline_ids": [
+        314,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        314
+      ],
+      "case_id": "locality-7",
+      "changed_correct": true,
+      "changed_ids": [
+        314,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "4.243453259751161269983589261901969198597261306884341746584720120423794600828716885683177370081831065920199468388995125519566309600636951029560658906693629817271544328275759076500524253610424707732697754603738008502421157E-7",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "7.334851023914300107550095046112707521476544509627989800582672153251115384530022764500364787786509035245860051037904427086440103144389135352078457124762476534606512872490724885531761630698611055910704086664405972228487975E-7"
+      },
+      "expected": "4",
+      "input_contains_edited_token": false,
+      "owner_kl": 4.2434532576806814e-07,
+      "owner_tv": 7.334851023707482e-07,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "random",
+      "baseline_correct": true,
+      "baseline_ids": [
+        314,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        314
+      ],
+      "case_id": "locality-7",
+      "changed_correct": true,
+      "changed_ids": [
+        314,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "4",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 5
+    },
+    {
+      "arm": "opposite",
+      "baseline_correct": true,
+      "baseline_ids": [
+        314,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        314
+      ],
+      "case_id": "locality-7",
+      "changed_correct": true,
+      "changed_ids": [
+        314,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "4",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 5
+    },
+    {
+      "arm": "primary",
+      "baseline_correct": false,
+      "baseline_ids": [
+        1312,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        2107
+      ],
+      "case_id": "locality-8",
+      "changed_correct": false,
+      "changed_ids": [
+        1312,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "cold",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 5
+    },
+    {
+      "arm": "same",
+      "baseline_correct": false,
+      "baseline_ids": [
+        1312,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        2107
+      ],
+      "case_id": "locality-8",
+      "changed_correct": false,
+      "changed_ids": [
+        1312,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "cold",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 5
+    },
+    {
+      "arm": "broad",
+      "baseline_correct": false,
+      "baseline_ids": [
+        1312,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        2107
+      ],
+      "case_id": "locality-8",
+      "changed_correct": false,
+      "changed_ids": [
+        1312,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0.000007968691199323314919046987978545807276382233273517714978760493469458645537635864497533101337837257290829919757552472790543528450366026166600604456602400231799592394204832225630773090841205592142291328243314536903819345076",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 220,
+        "scope": "omitted weights below exp(-1200); finite precision is a cross-check",
+        "tv_decimal": "0.00002005839793521373998134320876757894392541030198815264980501155023643974288084231743223810622190543907713862887890591573823412615731827275112162831838790203459649827176572456406391665193494653579126820679194491754169405672"
+      },
+      "expected": "cold",
+      "input_contains_edited_token": false,
+      "owner_kl": 7.968691199328837e-06,
+      "owner_tv": 2.0058397935271354e-05,
+      "structural_identity_expected": false,
+      "structural_prefix_spans_checked": 0
+    },
+    {
+      "arm": "random",
+      "baseline_correct": false,
+      "baseline_ids": [
+        1312,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        2107
+      ],
+      "case_id": "locality-8",
+      "changed_correct": false,
+      "changed_ids": [
+        1312,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "cold",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 5
+    },
+    {
+      "arm": "opposite",
+      "baseline_correct": false,
+      "baseline_ids": [
+        1312,
+        1
+      ],
+      "candidate_teacher_prefix": [
+        0,
+        2107
+      ],
+      "case_id": "locality-8",
+      "changed_correct": false,
+      "changed_ids": [
+        1312,
+        1
+      ],
+      "decimal": {
+        "kl_decimal": "0",
+        "omitted_p": 0,
+        "omitted_q": 0,
+        "precision": 0,
+        "tv_decimal": "0"
+      },
+      "expected": "cold",
+      "input_contains_edited_token": false,
+      "owner_kl": 0.0,
+      "owner_tv": 0.0,
+      "structural_identity_expected": true,
+      "structural_prefix_spans_checked": 5
+    }
+  ],
+  "logits_sha256": "e5165d0d8f2ce4cfd20b86b01cf8a281e24eeb0c015d088f22be7764e97ed4ef",
+  "outcomes_replayed": 76,
+  "phase_sha256": "192fbb1582cd5bd36a1618dd3795ef1078cd8c2aa0fb3e9ab9d4dbd5b99c160d",
+  "primary": {
+    "baseline_eligible": 4,
+    "negative_labels": 4,
+    "status": "positive"
+  },
+  "recorded_restorations": 5,
+  "result_sha256": "182775f8bded54c66e8ed358b3ce254078e18f04cb90c35de726b359790fe3df",
+  "schema": "flan-v2-independent-evaluation-science-review-v1",
+  "scope": "saved bytes and recorded process/restoration only; physical execution and custody are cooperative; high-precision locality is a post-hoc numerical supplement",
+  "substitution": {
+    "evaluation-1-target": {
+      "matching_prefix_spans": 4,
+      "same_generated_ids": true
+    },
+    "evaluation-2-target": {
+      "matching_prefix_spans": 4,
+      "same_generated_ids": true
+    },
+    "evaluation-3-target": {
+      "matching_prefix_spans": 4,
+      "same_generated_ids": true
+    },
+    "evaluation-4-target": {
+      "matching_prefix_spans": 4,
+      "same_generated_ids": true
+    }
+  },
+  "target_effects": {
+    "evaluation-1-target": {
+      "broad": {
+        "margin_gain": 10.254472734859084,
+        "negative": true,
+        "strict_label": "negative",
+        "target_gain": 5.129449251297077
+      },
+      "opposite": {
+        "margin_gain": 0.48962311147591514,
+        "negative": false,
+        "strict_label": "positive",
+        "target_gain": 0.4857529452998207
+      },
+      "primary": {
+        "margin_gain": 10.50219266615757,
+        "negative": true,
+        "strict_label": "negative",
+        "target_gain": 5.11292754923749
+      },
+      "random": {
+        "margin_gain": 3.012320499271234,
+        "negative": false,
+        "strict_label": "positive",
+        "target_gain": 2.9036070933590117
+      },
+      "same": {
+        "margin_gain": -0.4416919713580862,
+        "negative": false,
+        "strict_label": "positive",
+        "target_gain": -0.4411118645471968
+      }
+    },
+    "evaluation-2-target": {
+      "broad": {
+        "margin_gain": 9.532948017200013,
+        "negative": true,
+        "strict_label": "negative",
+        "target_gain": 4.767037627743174
+      },
+      "opposite": {
+        "margin_gain": 0.061371809784603513,
+        "negative": false,
+        "strict_label": "positive",
+        "target_gain": 0.06019052611134851
+      },
+      "primary": {
+        "margin_gain": 10.685816673408798,
+        "negative": true,
+        "strict_label": "negative",
+        "target_gain": 4.771175781444433
+      },
+      "random": {
+        "margin_gain": 4.018996795461912,
+        "negative": false,
+        "strict_label": "positive",
+        "target_gain": 3.63811014306525
+      },
+      "same": {
+        "margin_gain": 0.3141583662559459,
+        "negative": false,
+        "strict_label": "positive",
+        "target_gain": 0.30988539981175206
+      }
+    },
+    "evaluation-3-target": {
+      "broad": {
+        "margin_gain": 7.337601464914075,
+        "negative": true,
+        "strict_label": "negative",
+        "target_gain": 3.7641691673272413
+      },
+      "opposite": {
+        "margin_gain": 0.4046227345379665,
+        "negative": false,
+        "strict_label": "positive",
+        "target_gain": 0.3878516386155706
+      },
+      "primary": {
+        "margin_gain": 7.29732102765039,
+        "negative": true,
+        "strict_label": "negative",
+        "target_gain": 3.7057530602028255
+      },
+      "random": {
+        "margin_gain": 2.5623007238023616,
+        "negative": false,
+        "strict_label": "positive",
+        "target_gain": 2.2355587861033026
+      },
+      "same": {
+        "margin_gain": 0.3230561419081445,
+        "negative": false,
+        "strict_label": "positive",
+        "target_gain": -0.04733570730666688
+      }
+    },
+    "evaluation-4-target": {
+      "broad": {
+        "margin_gain": 9.722714685618099,
+        "negative": true,
+        "strict_label": "negative",
+        "target_gain": 4.864524021300514
+      },
+      "opposite": {
+        "margin_gain": 1.0338802349798046,
+        "negative": false,
+        "strict_label": "positive",
+        "target_gain": 1.0191632291217947
+      },
+      "primary": {
+        "margin_gain": 10.348851282047276,
+        "negative": true,
+        "strict_label": "negative",
+        "target_gain": 4.862578904095062
+      },
+      "random": {
+        "margin_gain": 3.49070479976223,
+        "negative": false,
+        "strict_label": "positive",
+        "target_gain": 3.2672770700109353
+      },
+      "same": {
+        "margin_gain": -0.05589974606441219,
+        "negative": false,
+        "strict_label": "positive",
+        "target_gain": -0.05742007950334988
+      }
+    }
+  },
+  "targets": [
+    {
+      "baseline_eligible": true,
+      "case_id": "evaluation-1-target",
+      "edited_label": "negative"
+    },
+    {
+      "baseline_eligible": true,
+      "case_id": "evaluation-2-target",
+      "edited_label": "negative"
+    },
+    {
+      "baseline_eligible": true,
+      "case_id": "evaluation-3-target",
+      "edited_label": "negative"
+    },
+    {
+      "baseline_eligible": true,
+      "case_id": "evaluation-4-target",
+      "edited_label": "negative"
+    }
+  ]
+}

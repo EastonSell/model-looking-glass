@@ -6,3 +6,9 @@ results/local/
 build/
 *.egg-info/
 dist/
+
+# Local workbench exports can contain private prompts and activations.
+looking-glass-runs/
+
+# Explicit local model downloads are not repository source.
+looking-glass-models/

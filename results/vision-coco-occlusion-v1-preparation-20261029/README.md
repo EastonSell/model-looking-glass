@@ -12,11 +12,11 @@ The [fixed manifest](../../experiments/vision_coco_occlusion_v1.json) has
 SHA-256 `aa61b294710f5a6cd9682dc783085c7079f1addfbad8257fdbd893d143ce4cef`.
 Of 32 candidates per species, 17 cats and 15 dogs have a qualifying equal-
 radius object/background geometry; all 64 remain in the clean-screen inventory.
-The [receipt](receipt.json) and [logs](logs.zip) record a clean exit and zero
+The [receipt](receipt.json) and [logs](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/vision-coco-occlusion-v1-preparation-20261029/logs.zip) record a clean exit and zero
 model forwards under cooperative observation. The observer is retained as the
 original local-layout source, not as a portable execution attestation.
 
-An [independent input-audit bundle](independent-input-audits.zip) contains
+An [independent input-audit bundle](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/vision-coco-occlusion-v1-preparation-20261029/independent-input-audits.zip) contains
 two standalone no-model readers and their original reports. The full-ranking
 reader reconstructs the first 32 candidates of each species; the selected-row
 reader independently checks the recorded polygons, box-disjoint geometry,

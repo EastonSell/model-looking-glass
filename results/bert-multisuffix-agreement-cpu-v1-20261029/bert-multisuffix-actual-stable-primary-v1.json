@@ -1,0 +1,1350 @@
+{
+  "cases": [
+    {
+      "case_id": "f0-a0-l0-n0",
+      "frame": 0,
+      "lemma": 0,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 3.1313121285290375e-13,
+          "difference": 0.10886169923304705,
+          "interval": [
+            0.10886169923273391,
+            0.10886169923336018
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 2.5924291009293755e-14,
+          "difference": -0.002414359658665254,
+          "interval": [
+            -0.0024143596586911785,
+            -0.0024143596586393293
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "negative"
+        },
+        "present": {
+          "absolute_error_bound": 2.2786578893462186e-12,
+          "difference": 0.8338305397842367,
+          "interval": [
+            0.833830539781958,
+            0.8338305397865154
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a0-l0-n1",
+      "frame": 0,
+      "lemma": 0,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 2.387032275820755e-13,
+          "difference": 0.0722422658307381,
+          "interval": [
+            0.07224226583049939,
+            0.07224226583097682
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 8.64771902616375e-15,
+          "difference": -0.00034419036501358655,
+          "interval": [
+            -0.0003441903650222343,
+            -0.0003441903650049388
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "negative"
+        },
+        "present": {
+          "absolute_error_bound": 2.1893933319680803e-12,
+          "difference": 0.8013446784811814,
+          "interval": [
+            0.8013446784789919,
+            0.8013446784833709
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a0-l1-n0",
+      "frame": 0,
+      "lemma": 1,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 2.611273225548348e-13,
+          "difference": 0.0931421090277143,
+          "interval": [
+            0.09314210902745317,
+            0.09314210902797544
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 7.951778727757587e-15,
+          "difference": -0.00021002233436285089,
+          "interval": [
+            -0.0002100223343708027,
+            -0.00021002233435489908
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "negative"
+        },
+        "present": {
+          "absolute_error_bound": 2.154258340280401e-12,
+          "difference": 0.7889997193132345,
+          "interval": [
+            0.7889997193110801,
+            0.7889997193153889
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a0-l1-n1",
+      "frame": 0,
+      "lemma": 1,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 7.866963472757581e-14,
+          "difference": 0.025467749816059534,
+          "interval": [
+            0.02546774981598086,
+            0.025467749816138207
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 6.389572251028843e-15,
+          "difference": 0.0012783360486915104,
+          "interval": [
+            0.0012783360486851205,
+            0.0012783360486979002
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 1.989589391241378e-12,
+          "difference": 0.7286087845933246,
+          "interval": [
+            0.7286087845913348,
+            0.7286087845953143
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a0-l2-n0",
+      "frame": 0,
+      "lemma": 2,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 2.780278141727823e-13,
+          "difference": 0.09417468839098367,
+          "interval": [
+            0.09417468839070563,
+            0.09417468839126171
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 2.6398872522186313e-14,
+          "difference": -0.0062391483768106226,
+          "interval": [
+            -0.0062391483768370224,
+            -0.006239148376784223
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "negative"
+        },
+        "present": {
+          "absolute_error_bound": 2.311312829384225e-12,
+          "difference": 0.8455807900149207,
+          "interval": [
+            0.8455807900126093,
+            0.8455807900172321
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a0-l2-n1",
+      "frame": 0,
+      "lemma": 2,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 2.4969631302860595e-13,
+          "difference": 0.08332181511397395,
+          "interval": [
+            0.08332181511372423,
+            0.08332181511422367
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 1.1216935267331629e-14,
+          "difference": 0.0004750196146870525,
+          "interval": [
+            0.0004750196146758355,
+            0.00047501961469826947
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.2447774389433698e-12,
+          "difference": 0.8218724178676988,
+          "interval": [
+            0.821872417865454,
+            0.8218724178699437
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a0-l3-n0",
+      "frame": 0,
+      "lemma": 3,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 3.025463639023647e-13,
+          "difference": 0.10650670050466497,
+          "interval": [
+            0.10650670050436241,
+            0.10650670050496754
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 1.5335515365739112e-14,
+          "difference": -0.0020780204351398433,
+          "interval": [
+            -0.002078020435155179,
+            -0.0020780204351245075
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "negative"
+        },
+        "present": {
+          "absolute_error_bound": 2.206104177622554e-12,
+          "difference": 0.8076350349398643,
+          "interval": [
+            0.8076350349376581,
+            0.8076350349420706
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a0-l3-n1",
+      "frame": 0,
+      "lemma": 3,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 1.5775382425763092e-13,
+          "difference": 0.05125207909381835,
+          "interval": [
+            0.051252079093660585,
+            0.05125207909397611
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 1.1218346522691481e-14,
+          "difference": 0.0020144454477551877,
+          "interval": [
+            0.0020144454477439688,
+            0.0020144454477664065
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.248185461231812e-12,
+          "difference": 0.8232753504527135,
+          "interval": [
+            0.8232753504504652,
+            0.8232753504549618
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a1-l0-n0",
+      "frame": 0,
+      "lemma": 0,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 2.9892161237849333e-13,
+          "difference": 0.10679636786519685,
+          "interval": [
+            0.1067963678648979,
+            0.10679636786549579
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 2.600478069296993e-14,
+          "difference": 0.00704583210493837,
+          "interval": [
+            0.0070458321049123645,
+            0.007045832104964375
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.591091961304665e-12,
+          "difference": 0.9494727999237762,
+          "interval": [
+            0.949472799921185,
+            0.9494727999263674
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a1-l0-n1",
+      "frame": 0,
+      "lemma": 0,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 5.508414602559318e-13,
+          "difference": 0.1882312099369418,
+          "interval": [
+            0.18823120993639095,
+            0.18823120993749268
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 3.2043623571053285e-14,
+          "difference": 0.009079265240261281,
+          "interval": [
+            0.009079265240229235,
+            0.009079265240293326
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.584502053099286e-12,
+          "difference": 0.9470678266377162,
+          "interval": [
+            0.9470678266351316,
+            0.9470678266403008
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a1-l1-n0",
+      "frame": 0,
+      "lemma": 1,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 2.4305664736802015e-13,
+          "difference": 0.08557380056348134,
+          "interval": [
+            0.08557380056323827,
+            0.0855738005637244
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 2.386313099364384e-14,
+          "difference": 0.007134962946535764,
+          "interval": [
+            0.0071349629465119,
+            0.0071349629465596275
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.538664120079416e-12,
+          "difference": 0.929800861246647,
+          "interval": [
+            0.9298008612441082,
+            0.9298008612491857
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a1-l1-n1",
+      "frame": 0,
+      "lemma": 1,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 4.959657961297237e-13,
+          "difference": 0.17997929718427647,
+          "interval": [
+            0.17997929718378047,
+            0.17997929718477246
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 3.144759469092814e-14,
+          "difference": 0.008645864576295667,
+          "interval": [
+            0.008645864576264218,
+            0.008645864576327116
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.5661288969331696e-12,
+          "difference": 0.9403685299779697,
+          "interval": [
+            0.9403685299754034,
+            0.940368529980536
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a1-l2-n0",
+      "frame": 0,
+      "lemma": 2,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 5.260972004585098e-13,
+          "difference": 0.18930050984583888,
+          "interval": [
+            0.18930050984531274,
+            0.189300509846365
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 3.88435587500379e-14,
+          "difference": 0.009047693617639968,
+          "interval": [
+            0.009047693617601122,
+            0.009047693617678813
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.6014448425291146e-12,
+          "difference": 0.9532252122251833,
+          "interval": [
+            0.9532252122225817,
+            0.9532252122277849
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a1-l2-n1",
+      "frame": 0,
+      "lemma": 2,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 5.93210547830686e-13,
+          "difference": 0.21513169655242018,
+          "interval": [
+            0.21513169655182693,
+            0.21513169655301342
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 3.422021512942319e-14,
+          "difference": 0.009118523718727572,
+          "interval": [
+            0.00911852371869335,
+            0.009118523718761795
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.6155066709419312e-12,
+          "difference": 0.9584822405133974,
+          "interval": [
+            0.9584822405107818,
+            0.9584822405160129
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a1-l3-n0",
+      "frame": 0,
+      "lemma": 3,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 3.297816740528667e-13,
+          "difference": 0.11869760707888438,
+          "interval": [
+            0.11869760707855459,
+            0.11869760707921417
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 2.591702834758209e-14,
+          "difference": 0.007420498988936174,
+          "interval": [
+            0.007420498988910256,
+            0.007420498988962091
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.5974677750403377e-12,
+          "difference": 0.9518632098067202,
+          "interval": [
+            0.9518632098041226,
+            0.9518632098093178
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f0-a1-l3-n1",
+      "frame": 0,
+      "lemma": 3,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 5.804881140212484e-13,
+          "difference": 0.1969719142155854,
+          "interval": [
+            0.1969719142150049,
+            0.19697191421616592
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 3.169106136260631e-14,
+          "difference": 0.009007160502285947,
+          "interval": [
+            0.009007160502254254,
+            0.00900716050231764
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.6124167914676825e-12,
+          "difference": 0.9573293052369647,
+          "interval": [
+            0.9573293052343521,
+            0.9573293052395773
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a0-l0-n0",
+      "frame": 1,
+      "lemma": 0,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 7.329705394096939e-14,
+          "difference": 0.024648187683700015,
+          "interval": [
+            0.024648187683626716,
+            0.024648187683773314
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 1.2248252452981077e-14,
+          "difference": 0.0029851487522089062,
+          "interval": [
+            0.0029851487521966574,
+            0.002985148752221155
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.06687929367717e-12,
+          "difference": 0.7567825518636826,
+          "interval": [
+            0.7567825518616156,
+            0.7567825518657496
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a0-l0-n1",
+      "frame": 1,
+      "lemma": 0,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 1.3871646548234287e-13,
+          "difference": 0.040441977519594205,
+          "interval": [
+            0.04044197751945548,
+            0.04044197751973293
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 7.677292792754619e-15,
+          "difference": 0.0004781499216955153,
+          "interval": [
+            0.00047814992168783795,
+            0.00047814992170319264
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 3.230150798490294e-12,
+          "difference": 0.8343869578280466,
+          "interval": [
+            0.8343869578248163,
+            0.8343869578312769
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a0-l1-n0",
+      "frame": 1,
+      "lemma": 1,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 5.040174838890053e-14,
+          "difference": 0.017704763903294982,
+          "interval": [
+            0.017704763903244578,
+            0.017704763903345386
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 5.225878608546075e-15,
+          "difference": 0.0011937272546315996,
+          "interval": [
+            0.0011937272546263735,
+            0.0011937272546368256
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 1.6521794914208834e-12,
+          "difference": 0.6050618778183376,
+          "interval": [
+            0.6050618778166853,
+            0.60506187781999
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a0-l1-n1",
+      "frame": 1,
+      "lemma": 1,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 1.0721385186198998e-13,
+          "difference": 0.029999598765955048,
+          "interval": [
+            0.029999598765847832,
+            0.029999598766062265
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 3.0503147928915933e-15,
+          "difference": -3.2851360399491378e-06,
+          "interval": [
+            -3.285136042999453e-06,
+            -3.2851360368988226e-06
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "negative"
+        },
+        "present": {
+          "absolute_error_bound": 3.650090794948282e-12,
+          "difference": 0.642578134689645,
+          "interval": [
+            0.6425781346859948,
+            0.6425781346932952
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a0-l2-n0",
+      "frame": 1,
+      "lemma": 2,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 1.2398072776496967e-13,
+          "difference": 0.03582279491495641,
+          "interval": [
+            0.035822794914832416,
+            0.0358227949150804
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 3.055550463831237e-14,
+          "difference": 0.0023637334999376336,
+          "interval": [
+            0.0023637334999070778,
+            0.0023637334999681895
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.6255777192541313e-12,
+          "difference": 0.6692224066484093,
+          "interval": [
+            0.6692224066457836,
+            0.6692224066510349
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a0-l2-n1",
+      "frame": 1,
+      "lemma": 2,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 2.2270385024275358e-13,
+          "difference": 0.05902876894284341,
+          "interval": [
+            0.0590287689426207,
+            0.05902876894306612
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 1.434326182586589e-14,
+          "difference": 0.0016427356724376392,
+          "interval": [
+            0.0016427356724232956,
+            0.0016427356724519828
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 3.6318819116653432e-12,
+          "difference": 0.8084506735545186,
+          "interval": [
+            0.8084506735508866,
+            0.8084506735581506
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a0-l3-n0",
+      "frame": 1,
+      "lemma": 3,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 1.0131738607751077e-13,
+          "difference": 0.033914625189923546,
+          "interval": [
+            0.033914625189822224,
+            0.03391462519002487
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 1.7690157842919317e-14,
+          "difference": 0.00356748892566017,
+          "interval": [
+            0.0035674889256424795,
+            0.003567488925677861
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.1770274321197602e-12,
+          "difference": 0.7970927164076315,
+          "interval": [
+            0.7970927164054543,
+            0.7970927164098086
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a0-l3-n1",
+      "frame": 1,
+      "lemma": 3,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 2.8976645594582963e-13,
+          "difference": 0.06818958049599114,
+          "interval": [
+            0.06818958049570135,
+            0.06818958049628092
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 1.9970947188722128e-14,
+          "difference": 0.003129335755818335,
+          "interval": [
+            0.0031293357557983636,
+            0.0031293357558383065
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 3.0578960858643367e-12,
+          "difference": 0.833502214791515,
+          "interval": [
+            0.833502214788457,
+            0.833502214794573
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a1-l0-n0",
+      "frame": 1,
+      "lemma": 0,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 5.866119284374456e-14,
+          "difference": 0.02007264816712615,
+          "interval": [
+            0.020072648167067487,
+            0.020072648167184817
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 9.595768307253298e-15,
+          "difference": 0.0025735027509586035,
+          "interval": [
+            0.0025735027509490075,
+            0.0025735027509681996
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.1570231228973653e-12,
+          "difference": 0.7898194195662568,
+          "interval": [
+            0.7898194195640996,
+            0.789819419568414
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a1-l0-n1",
+      "frame": 1,
+      "lemma": 0,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 1.055301312985784e-13,
+          "difference": 0.03724853548175969,
+          "interval": [
+            0.03724853548165415,
+            0.03724853548186522
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 5.4357565113870325e-15,
+          "difference": 0.0007156491279414264,
+          "interval": [
+            0.0007156491279359905,
+            0.0007156491279468623
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.444727863874218e-12,
+          "difference": 0.8957735289346621,
+          "interval": [
+            0.8957735289322173,
+            0.8957735289371069
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a1-l1-n0",
+      "frame": 1,
+      "lemma": 1,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 2.890726459445231e-14,
+          "difference": 0.01031695983673538,
+          "interval": [
+            0.01031695983670647,
+            0.010316959836764289
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 3.7586422939512736e-15,
+          "difference": 0.001106423987622792,
+          "interval": [
+            0.001106423987619033,
+            0.001106423987626551
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 1.6628637067949177e-12,
+          "difference": 0.6093125444151913,
+          "interval": [
+            0.6093125444135283,
+            0.6093125444168543
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a1-l1-n1",
+      "frame": 1,
+      "lemma": 1,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 8.182142356597347e-14,
+          "difference": 0.02957441792306563,
+          "interval": [
+            0.029574417922983806,
+            0.029574417923147453
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 3.4980825026226436e-15,
+          "difference": 0.0008995669774173613,
+          "interval": [
+            0.0008995669774138631,
+            0.0008995669774208595
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 1.7913791892788516e-12,
+          "difference": 0.6563893881571854,
+          "interval": [
+            0.6563893881553939,
+            0.6563893881589768
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a1-l2-n0",
+      "frame": 1,
+      "lemma": 2,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 7.949506987385181e-14,
+          "difference": 0.024926248704216895,
+          "interval": [
+            0.024926248704137396,
+            0.024926248704296394
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 9.318634751779665e-15,
+          "difference": 0.0018301432615742716,
+          "interval": [
+            0.0018301432615649526,
+            0.0018301432615835905
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 3.1494360592756206e-12,
+          "difference": 0.7189110045965051,
+          "interval": [
+            0.7189110045933556,
+            0.7189110045996547
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a1-l2-n1",
+      "frame": 1,
+      "lemma": 2,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 1.7811547562857999e-13,
+          "difference": 0.06247285362868865,
+          "interval": [
+            0.06247285362851053,
+            0.06247285362886677
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 1.0087349859424376e-14,
+          "difference": 0.0010235124472654541,
+          "interval": [
+            0.0010235124472553665,
+            0.0010235124472755418
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.4141001957363433e-12,
+          "difference": 0.8841787157406,
+          "interval": [
+            0.8841787157381858,
+            0.8841787157430142
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a1-l3-n0",
+      "frame": 1,
+      "lemma": 3,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 1.0558846916231603e-13,
+          "difference": 0.03647673604506932,
+          "interval": [
+            0.03647673604496372,
+            0.036476736045174915
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 1.586138284957647e-14,
+          "difference": 0.004177337908599171,
+          "interval": [
+            0.004177337908583309,
+            0.004177337908615034
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.317407905837e-12,
+          "difference": 0.848783604696538,
+          "interval": [
+            0.8487836046942205,
+            0.8487836046988555
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    },
+    {
+      "case_id": "f1-a1-l3-n1",
+      "frame": 1,
+      "lemma": 3,
+      "variants": {
+        "awake": {
+          "absolute_error_bound": 2.9231823385611956e-13,
+          "difference": 0.1041158951749214,
+          "interval": [
+            0.10411589517462906,
+            0.10411589517521373
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "outside": {
+          "absolute_error_bound": 2.1352781091186205e-14,
+          "difference": 0.00469852170800327,
+          "interval": [
+            0.004698521707981917,
+            0.004698521708024624
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        },
+        "present": {
+          "absolute_error_bound": 2.5552719523376393e-12,
+          "difference": 0.9363095448018727,
+          "interval": [
+            0.9363095447993173,
+            0.9363095448044281
+          ],
+          "reason": "stable_conditionally_bounded",
+          "sign": "positive"
+        }
+      }
+    }
+  ],
+  "helper_sha256": "2012e2722867ad11559fbf33869ee8c97c5aeb31a4113c2bb68bf9938aa874b5",
+  "inputs_sha256": {
+    "cases": "bc8d1af844c52f46bf068c04257280ed37e4302028885540ea498103d6ce125e",
+    "logits": "623c173a2c0244a3b3aac7978a2fb83a41cf8d1d9de892945b3f8b111d5d2149",
+    "source_report": "a503c1d165a8d12244965737842537a292f01ade93d182baf283bcd1bf4faa45"
+  },
+  "schema": "multisuffix-stable-primary-replay-v1",
+  "scope": "Independent calculation from previously checked saved CPU float32 logits; no model, execution or chronology attestation. Error intervals assume IEEE binary64 round-to-nearest and exp/expm1 errors at most 16 ulps; not a platform-independent libm proof. Unknown signs remain unresolved.",
+  "script_sha256": "2387c4bf48a622d946fe05f0bba72399f3b11e96095b14d3fa52e5c0b97cd7ef",
+  "source_commit": "42519c13a5b33ce3601b89ba65d67b07ebd2f78d",
+  "summary": {
+    "awake": {
+      "criterion": true,
+      "group_mean_intervals": {
+        "0:0": [
+          0.11903288571602226,
+          0.11903288571693964
+        ],
+        "0:1": [
+          0.09604073914752582,
+          0.09604073914823999
+        ],
+        "0:2": [
+          0.14548217747526004,
+          0.14548217747634828
+        ],
+        "0:3": [
+          0.11835707522278796,
+          0.1183570752236886
+        ],
+        "1:0": [
+          0.030602837212923124,
+          0.030602837213166905
+        ],
+        "1:1": [
+          0.02189893510717575,
+          0.02189893510734977
+        ],
+        "1:2": [
+          0.04556266654748382,
+          0.04556266654786887
+        ],
+        "1:3": [
+          0.0606742092262239,
+          0.0606742092267288
+        ]
+      },
+      "mean_interval": [
+        0.07970644070692533,
+        0.07970644070754136
+      ],
+      "original_rounded_criterion": true,
+      "positive_case_count_interval": [
+        32,
+        32
+      ],
+      "positive_group_count_interval": [
+        8,
+        8
+      ]
+    },
+    "outside": {
+      "criterion": true,
+      "group_mean_intervals": {
+        "0:0": [
+          0.003341636830352753,
+          0.003341636830407652
+        ],
+        "0:1": [
+          0.0042122853092686815,
+          0.0042122853093113635
+        ],
+        "0:2": [
+          0.003100522143527664,
+          0.003100522143594321
+        ],
+        "0:3": [
+          0.004091021125933659,
+          0.004091021125985074
+        ],
+        "1:0": [
+          0.001688112638190838,
+          0.001688112638211388
+        ],
+        "1:1": [
+          0.0007991082709033392,
+          0.0007991082709125627
+        ],
+        "1:2": [
+          0.0017150312202861132,
+          0.001715031220321386
+        ],
+        "1:3": [
+          0.003893171074497976,
+          0.0038931710745424976
+        ]
+      },
+      "mean_interval": [
+        0.002855111076620128,
+        0.0028551110766607806
+      ],
+      "original_rounded_criterion": true,
+      "positive_case_count_interval": [
+        26,
+        26
+      ],
+      "positive_group_count_interval": [
+        8,
+        8
+      ]
+    },
+    "present": {
+      "criterion": true,
+      "group_mean_intervals": {
+        "0:0": [
+          0.8829289612035135,
+          0.8829289612099418
+        ],
+        "0:1": [
+          0.8469444737797113,
+          0.8469444737858766
+        ],
+        "0:2": [
+          0.8947901651520428,
+          0.8947901651585574
+        ],
+        "0:3": [
+          0.8850257251058445,
+          0.8850257251122869
+        ],
+        "1:0": [
+          0.819190614544942,
+          0.8191906145513821
+        ],
+        "1:1": [
+          0.628335486267329,
+          0.6283354862728506
+        ],
+        "1:2": [
+          0.7701907001313524,
+          0.7701907001386642
+        ],
+        "1:3": [
+          0.8539220201710855,
+          0.853922020177693
+        ]
+      },
+      "mean_interval": [
+        0.8226660182944776,
+        0.8226660183009066
+      ],
+      "original_rounded_criterion": true,
+      "positive_case_count_interval": [
+        32,
+        32
+      ],
+      "positive_group_count_interval": [
+        8,
+        8
+      ]
+    }
+  }
+}

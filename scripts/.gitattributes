@@ -16,3 +16,7 @@ observe_distilbert_color_preference_v2.py -text
 build_distilbert_antonym_cases_v1.py -text
 build_distilbert_antonym_exposures_v1.py -text
 check_distilbert_antonym_public_v1.py -text
+observe_distilbert_antonym_v1.py -text
+prepare_distilbert_antonym_prelaunch_v1.py -text
+review_distilbert_antonym_screen.py -text
+test_review_distilbert_antonym_screen.py -text

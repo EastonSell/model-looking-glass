@@ -25,6 +25,7 @@ def tiny_t5():
         cfg = T5Config(vocab_size=32, d_model=16, d_kv=8, d_ff=32, num_layers=2,
                        num_decoder_layers=2, num_heads=2, dropout_rate=0.0,
                        decoder_start_token_id=0, pad_token_id=0, eos_token_id=1)
+        cfg._attn_implementation = "eager"
         return T5ForConditionalGeneration(cfg).eval()
 
 
@@ -147,6 +148,7 @@ from looking_glass.flan_t5_intervention_workflow import compare_t5_donor_patch
 torch.set_num_threads(1)
 cfg = T5Config(vocab_size=32, d_model=16, d_kv=8, d_ff=32, num_layers=2,
     num_decoder_layers=2, num_heads=2, dropout_rate=0, decoder_start_token_id=0, pad_token_id=0)
+cfg._attn_implementation = "eager"
 model = T5ForConditionalGeneration(cfg).eval()
 target_module = model.get_submodule({(stack + '.block.1')!r})
 original = target_module.forward

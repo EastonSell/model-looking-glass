@@ -74,7 +74,8 @@ def main():
             expected['capture_event_count'] == 54 and expected['capture_bit_comparisons'] == 36):
         raise AssertionError('valid synthetic fixture did not reconcile')
     expect_rejection(fixture, 'real geometry without synthetic flag', synthetic=False)
-    cases = ('truncate', 'extra', 'sign', 'reorder', 'boolean_metadata', 'id_metadata', 'offset', 'nonfinite')
+    cases = ('truncate', 'extra', 'sign', 'reorder', 'boolean_metadata', 'id_metadata', 'offset',
+             'nonfinite', 'exponent_overflow')
     with tempfile.TemporaryDirectory(dir=args.scratch) as tmp:
         for name in cases:
             root = Path(tmp) / name
@@ -114,8 +115,18 @@ def main():
                 candidate['measurement']['result']['modes']['direct']['logit_sha256'][0] = sha(data)
                 candidate['measurement']['tensor_evidence']['manifest_sha256'] = write_json(manifest_path, manifest)
                 write_json(candidate_path, candidate)
+            elif name == 'exponent_overflow':
+                # Re-pin the mutated candidate; this value is in an otherwise
+                # unused field, so checked tensor fields remain untouched.
+                candidate = json.loads(candidate_path.read_bytes())
+                candidate['unused'] = 1.0
+                encoded = (json.dumps(candidate, sort_keys=True, separators=(',', ':'), allow_nan=False) + '\n').encode()
+                needle = b'"unused":1.0'
+                if encoded.count(needle) != 1:
+                    raise AssertionError('synthetic exponent fixture is ambiguous')
+                candidate_path.write_bytes(encoded.replace(needle, b'"unused":1e999'))
             expect_rejection(root, name)
-    print('PASS: valid tiny fixture and nine fabricated geometry/byte/metadata fault cases')
+    print('PASS: valid tiny fixture and ten fabricated geometry/byte/metadata fault cases')
 
 
 if __name__ == '__main__':

@@ -1,0 +1,19 @@
+{
+  "actual_prompts": 64,
+  "distinct_word_ids": 112,
+  "earlier_rejected_combinations": 0,
+  "families": 16,
+  "france_sequences": 73,
+  "france_sha256": "c8dd418bea948c8ca2b4d1e39e696374a28bd2f911bb16707415c38170fbba82",
+  "inventory_records": 1493,
+  "inventory_sha256": "78d783dc37c1ace4c39300b62e67652d76f3323de79830628ecd64e46aa0bfa0",
+  "model_loaded": false,
+  "pool_amendment_sha256": "7fa718ec0e375c460136812d3f06a6bebdfe065d182abeb6d4c0cdb009509154",
+  "proposal_sha256": "68b567718209285a9adedd588d0c0d269efb4b7d8ed9d278a2fb8201d672d1dd",
+  "protocol_sha256": "61af860d38fe236bcac6a9d043cafd1ffe3dccc2cfa97fd2d0cc795c523f0924",
+  "public_distinct_sequences": 6815,
+  "schema": "copy-paired-independent-case-audit-v1",
+  "scope": "Tokenizer-only fixed public selection and prefix reconstruction; no model, protected inputs, later unknown inputs or pretraining attestation.",
+  "scored_extensions": 128,
+  "status": "pass"
+}

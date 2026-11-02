@@ -198,6 +198,12 @@ def test_diff_requires_complete_finite_logit_vectors():
 
 def _fake_device_setup(monkeypatch, *, fail_on=None, rounding_drift_on=None, eval_drift_on=None):
     import transformers
+    import numpy as np
+    # These identities are simulated with the device, not verified host runtime claims.
+    monkeypatch.setattr(torch, '__version__', '2.8.0+cu128')
+    monkeypatch.setattr(torch.version, 'cuda', '12.8')
+    monkeypatch.setattr(transformers, '__version__', '4.57.3')
+    monkeypatch.setattr(np, '__version__', '2.4.6')
     from looking_glass import vision_coco_cls_gpu_adapter as adapter_module
     from looking_glass import vision_coco_recognized_screen
     calls, observed = [], []
@@ -245,6 +251,9 @@ def _fake_device_setup(monkeypatch, *, fail_on=None, rounding_drift_on=None, eva
     monkeypatch.setattr(transformers.ViTForImageClassification, 'from_pretrained', load)
     monkeypatch.setattr(adapter_module, 'ForwardAdapter', CPUAdapter)
     monkeypatch.setattr(owner, '_held', lambda _session, _lease: None)
+    # Fabricated host counters retain the real saved-record schema checks.
+    monkeypatch.setattr(owner, '_host_memory', lambda: {
+        'working_set_bytes': 1024, 'peak_working_set_bytes': 2048, 'private_bytes': 1024})
     monkeypatch.setattr(owner, '_runtime_uuid', lambda _torch, _uuid: 'GPU-fake')
     monkeypatch.setattr(owner, '_state_digest', lambda _model, check=None: owner.STATE_SHA)
     monkeypatch.setattr(owner.OwnerSession, 'verify_runtime_binding', lambda *_a, **_k: None)
@@ -262,7 +271,9 @@ def _fake_device_setup(monkeypatch, *, fail_on=None, rounding_drift_on=None, eva
         monkeypatch.setattr(torch.cuda, name, lambda _i: 0)
     monkeypatch.setattr(torch.cuda, 'manual_seed', lambda _seed: calls.append('seed'))
     monkeypatch.setattr(torch.cuda, 'empty_cache', lambda: calls.append('empty-cache'))
-    monkeypatch.setattr(torch._C, '_cuda_clearCublasWorkspaces', lambda: calls.append('clear-workspace'))
+    # CPU-only builds omit this binding; this fixture explicitly simulates CUDA cleanup.
+    monkeypatch.setattr(torch._C, '_cuda_clearCublasWorkspaces',
+                        lambda: calls.append('clear-workspace'), raising=False)
     monkeypatch.setattr(torch, 'set_num_threads', lambda _n: None)
     monkeypatch.setattr(torch, 'set_num_interop_threads', lambda _n: None)
     monkeypatch.setattr(torch, 'get_num_threads', lambda: 1)

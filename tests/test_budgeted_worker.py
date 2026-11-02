@@ -629,11 +629,18 @@ class BudgetedWorkerTests(unittest.TestCase):
                 seen.append(True)
             return trace_probe
 
+        previous_trace = sys.gettrace()
+        trace_frame = sys._getframe()
+        previous_opcodes = trace_frame.f_trace_opcodes
+        # CPython 3.12 needs a frame opted into opcodes before settrace().
+        trace_frame.f_trace_opcodes = True
         try:
             sys.settrace(trace_probe)
             probe()
         finally:
-            sys.settrace(None)
+            sys.settrace(previous_trace)
+            trace_frame.f_trace_opcodes = previous_opcodes
+            del trace_frame
         if not seen:
             self.skipTest('interpreter does not emit opcode trace events')
 
@@ -654,13 +661,18 @@ class BudgetedWorkerTests(unittest.TestCase):
                 raise RuntimeError('gate acquire return interrupted')
             return trace
 
+        trace_frame = sys._getframe()
+        previous_opcodes = trace_frame.f_trace_opcodes
+        trace_frame.f_trace_opcodes = True
         try:
             try:
                 sys.settrace(trace)
                 with self.assertRaisesRegex(RuntimeError, 'gate acquire return interrupted'):
                     wrapper.execute(request())
             finally:
-                sys.settrace(None)
+                sys.settrace(previous_trace)
+                trace_frame.f_trace_opcodes = previous_opcodes
+                del trace_frame
             self.assertEqual(fired, [True])
             self.assertTrue(admission.quarantined)
             self.assertTrue(wrapper.quarantined)

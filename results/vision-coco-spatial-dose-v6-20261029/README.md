@@ -19,7 +19,7 @@ were selected using eight distinct targets and four distinct donors. Cat donor
 398489 was reused in all four pairs; dog donors 176298, 121649 and 39913 were
 used twice, once and once respectively. These observations are dependent.
 The complete [screen result](screen-result.json),
-[screen evidence](screen-evidence.zip), and
+[screen evidence](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/vision-coco-spatial-dose-v6-20261029/screen-evidence.zip), and
 [screen audit](screen-independent-audit.json) were public before intervention.
 
 The study patches one 2-by-2 spatial block after encoder block index 2 (the
@@ -105,7 +105,7 @@ quiescent inputs, not source execution or independent sampling. Top-one IDs
 are checked; optional class-label strings are not.
 
 The retained source snapshots, checkpoint-only preflight, child supervisor
-and direct-controller observer receipts and [logs](controller-logs.zip)
+and direct-controller observer receipts and [logs](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/vision-coco-spatial-dose-v6-20261029/controller-logs.zip)
 record the CPU run and clean exits. Their scope is cooperative direct-process
 observation, not proof of every executed instruction or descendant cleanup.
 The original supervisor records retain numeric process IDs. As clarified before

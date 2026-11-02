@@ -218,7 +218,7 @@ def run_known_distilbert_intervention(model, input_ids, attention_mask, *, injec
                         or event["batch_index"] != requested.get("batch_index")
                         or event["token_index"] != requested.get("token_index")
                         or event["source_capture"] != requested.get("source_capture")
-                        or event["output_selector"] != [0] or event["output_shape"] != [1, length, hidden]
+                        or event["output_selector"] != [] or event["output_shape"] != [1, length, hidden]
                         or event["selected_shape"] != ([hidden] if selected else [1, length, hidden])
                         or event["dtype"] != "torch.float32" or event["device"] != "cpu"):
                     raise RuntimeError("plan metadata does not match the requested ordered sites")

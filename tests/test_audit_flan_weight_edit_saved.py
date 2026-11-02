@@ -6,6 +6,7 @@ import json
 import math
 from pathlib import Path
 import struct
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -39,6 +40,8 @@ def test_control_selection_checks_each_case_metric_and_ties_by_dose():
     assert selected['primary_eligible'] is False and selected['matched'] is False
 
 
+@pytest.mark.skipif(sys.version_info[:2] != (3, 11),
+                    reason="historical candidate reconstruction requires Python 3.11")
 def test_candidate_rows_reconstruct_donors_and_detect_tampering():
     def row(values):
         raw = struct.pack('<512f', *values)
@@ -71,6 +74,12 @@ def test_candidate_rows_reconstruct_donors_and_detect_tampering():
     metadata['sha256'] = audit.sha(audit.canonical(receipt))
     with pytest.raises(audit.AuditError, match='candidate row'):
         audit.verify_candidates(metadata, expected, direction)
+
+
+def test_candidate_replay_rejects_unsupported_python_before_reading_rows(monkeypatch):
+    monkeypatch.setattr(audit, 'sys', SimpleNamespace(version_info=(3, 12)))
+    with pytest.raises(audit.AuditError, match='requires Python 3.11'):
+        audit.reconstruct_candidates({})
 
 
 class FixtureJournal:

@@ -12,8 +12,9 @@ import pytest
 import torch
 
 
-SOURCE = Path(os.environ['INVARIANT_TEST_OWNER_SOURCE']).resolve()
 HERE = Path(__file__).resolve().parent
+# Frozen copies may point at an owner checkout; ordinary tests need no override.
+SOURCE = Path(os.environ.get('INVARIANT_TEST_OWNER_SOURCE', HERE.parent)).resolve()
 sys.path.insert(0, str(SOURCE))
 
 

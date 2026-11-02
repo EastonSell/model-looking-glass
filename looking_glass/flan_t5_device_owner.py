@@ -32,7 +32,7 @@ SOURCE_PATHS = (
     'looking_glass/flan_t5_device_owner.py', 'looking_glass/flan_t5_device_smoke.py',
     'looking_glass/flan_t5_device_controller.py',
     'looking_glass/flan_t5_device_observation.py',
-    'looking_glass/flan_t5_feasibility.py', 'looking_glass/flan_t5_equal_dose.py',
+    'looking_glass/flan_t5_feasibility.py', 'looking_glass/t5_compat.py', 'looking_glass/flan_t5_equal_dose.py',
     'looking_glass/intervention_plan.py', 'looking_glass/interventions.py',
     'looking_glass/model_ownership.py', 'looking_glass/device_identity.py',
     'looking_glass/device_lease.py', 'looking_glass/memory_budget.py',
@@ -260,8 +260,13 @@ def _load_staged_model(directory, torch):
             output_loading_info=True)
     diagnostics = {'missing_keys', 'unexpected_keys', 'mismatched_keys', 'error_msgs'}
     if (type(info) is not dict or set(info) != diagnostics
-            or any(type(info[key]) is not list or info[key] for key in diagnostics)):
+            or any(type(info[key]) not in (list, set) or info[key] for key in diagnostics)):
         raise ValueError('pinned model loading diagnostics are not empty')
+    from .t5_compat import validate_t5_checkpoint_contract
+    try:
+        validate_t5_checkpoint_contract(model, {"tie_word_embeddings": False})
+    except ValueError as error:
+        raise ValueError('loaded model differs from the pinned FLAN-T5 architecture') from error
     model.eval()
     model.config.use_cache = False
     config = model.config

@@ -26,7 +26,7 @@ the candidate phrasings are not independent facts or a representative sample.
 [All 36 rows](screen-rows.csv) list the prompts, top tokens, candidate log
 probabilities, eligibility and exclusions. The [fixed cases](../../../experiments/targeted_edit_full_top_cases_v1.json)
 include the 12 locality prompts, which remain unforwarded. The raw
-[screen logits](attempt/screen/screen.f32) are 36 ordered little-endian float32 rows of
+[screen logits](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/targeted-edit-full-top-cpu-v1-20261029/screen/attempt/screen/screen.f32) are 36 ordered little-endian float32 rows of
 50,257 vocabulary logits each; the [journal](attempt/screen/observations.jsonl),
 [selection](attempt/screen/screen-selection.json), [decoded top tokens](attempt/screen/screen-top-tokens.json),
 and [phase record](attempt/phase-record.json) bind the saved rows. The independent

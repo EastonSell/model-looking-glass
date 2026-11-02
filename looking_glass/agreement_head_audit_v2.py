@@ -87,12 +87,14 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
     """Recompute one closed attempt; callers separately verify source and admission."""
     _rounding_probe()
     root = Path(directory)
-    if (phase not in ("development", "evaluation", "exploratory") or len(rows) != 16 or len(heads) < 2
+    if (phase not in ("development", "evaluation", "exploratory", "fresh_context") or len(rows) != 16 or len(heads) < 2
             or (phase != "development" and len(heads) != 2) or len(set(heads)) != len(heads)):
         raise ValueError("invalid phase, row or head specification")
-    version = "v3" if phase == "exploratory" else "v2"
-    opposite_xor = 3 if phase == "exploratory" else 1
-    protocol = "distilgpt2-agreement-heads-fixed-donor-v3" if phase == "exploratory" else "distilgpt2-agreement-heads-v2"
+    version = "v4-1" if phase == "fresh_context" else ("v3" if phase == "exploratory" else "v2")
+    opposite_xor = 3 if phase in ("exploratory", "fresh_context") else 1
+    protocol = ("distilgpt2-agreement-heads-fresh-context-v4-1" if phase == "fresh_context" else
+                "distilgpt2-agreement-heads-fixed-donor-v3" if phase == "exploratory" else
+                "distilgpt2-agreement-heads-v2")
     if phase == "exploratory" and (type(reference_observations) is not tuple or len(reference_observations) != 16
             or any(type(pair) is not tuple or len(pair) != 2 or any(type(value) is not bytes or not value for value in pair)
                    for pair in reference_observations)):
@@ -230,7 +232,7 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
                 donors.append({"kind": name, "donor": donor,
                                "distance": _distance(source, selected(donor, head)), "realized_q": None})
             status = "eligible"
-            if q < 2.0 ** -20:
+            if q <= 0 or (phase != "fresh_context" and q < 2.0 ** -20):
                 status = "dose_below_floor"
             elif any(item["distance"] < q for item in donors):
                 status = "insufficient_donor_distance"
@@ -315,7 +317,7 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
             sign = 1 if local % 2 == 0 else -1
             contrast = float(sign * (margins["same"] - margins["opposite"]))
             effects[head].append(contrast)
-            details.append({"head": head, "target": target, "sign": sign,
+            detail = {"head": head, "target": target, "sign": sign,
                 "clean_margin": _margin(observations[target][0]["last_logits"], present_ids),
                 "opposite_margin": margins["opposite"], "same_margin": margins["same"],
                 "D": contrast, "receiver_norm": cell["receiver_norm"], "requested_q": q,
@@ -324,7 +326,12 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
                 "secondary": (None if secondary_ids is None else
                     {"clean_margin": _margin(observations[target][0]["last_logits"], secondary_ids),
                      "opposite_margin": secondary["opposite"], "same_margin": secondary["same"],
-                     "D": float(sign * (secondary["same"] - secondary["opposite"]))})})
+                     "D": float(sign * (secondary["same"] - secondary["opposite"]))})}
+            if phase == "fresh_context":
+                distances = {item["kind"]: item["distance"] for item in cell["donors"]}
+                detail["donor_distances"] = distances
+                detail["interpolation_fractions"] = {name: q / distance for name, distance in distances.items()}
+            details.append(detail)
     for row in range(16):
         event, data, _, _ = read_forward(row, 0, "repeat")
         if any(data[name] != observations[row][0][name] for name in ("before", "after", "last_logits")):
@@ -336,13 +343,13 @@ def audit(directory, rows, *, phase, heads, present_ids, secondary_ids=None,
     summary_record = next_record("summary")
     summary = summary_record["event"].copy()
     summary.pop("type")
-    expected_evaluation = _evaluation(details, heads[0], heads[1]) if phase == "evaluation" else None
+    expected_evaluation = _evaluation(details, heads[0], heads[1]) if phase in ("evaluation", "fresh_context") else None
     expected_comparison = _exploratory_comparison(details, heads[0], heads[1]) if phase == "exploratory" else None
     if (summary_record["tensors"] or summary.get("phase") != phase or summary.get("forward_count") != ordinal
             or summary.get("dose_plan") != expected_plan or summary.get("ranking") != ranking or summary.get("details") != details
             or summary.get("candidate") != (ranking[0]["head"] if phase == "development" else heads[0])
             or summary.get("comparator") != (ranking[1]["head"] if phase == "development" else heads[1])
-            or (phase == "evaluation" and summary.get("evaluation") != expected_evaluation)
+            or (phase in ("evaluation", "fresh_context") and summary.get("evaluation") != expected_evaluation)
             or (phase == "exploratory" and summary.get("comparison") != expected_comparison)
             or terminal.get("detail") != summary or cursor != len(events)
             or terminal.get("retained_tensor_bytes") != sum(unique.values())

@@ -206,6 +206,10 @@ def test_changed_cpu_runtime_stops_before_checkpoint_loading(tmp_path, monkeypat
     import transformers
     from looking_glass import agreement_preflight_v1, copy_head_factorial
 
+    # Isolate environment drift beyond the version gate; this is not a replay
+    # of the historical pinned Torch runtime.
+    monkeypatch.setattr(torch, "__version__", "2.8.0+cu128")
+    monkeypatch.setattr(transformers, "__version__", "4.57.3")
     root = Path(owner.__file__).resolve().parents[1]
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "-1")
     monkeypatch.setenv("HF_HUB_OFFLINE", "1")

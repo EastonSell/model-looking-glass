@@ -13,7 +13,7 @@ same physical tensor shape, but the broker still executes them serially; this
 does not demonstrate simultaneous model calls or a throughput improvement.
 The trusted owner supplies the model and must prevent concurrent model use or
 mutation. Bearer tokens and the loopback transport inherit the limitations in
-[IPC v1](IPC.md); in particular, the client does not authenticate the server.
+[IPC v1](https://github.com/EastonSell/model-looking-glass/blob/f3d3e28980379640f7548541225ef40b017e5557/docs/IPC.md); in particular, the client does not authenticate the server.
 
 ## Run and submit
 

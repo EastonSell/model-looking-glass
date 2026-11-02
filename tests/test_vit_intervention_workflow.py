@@ -61,11 +61,11 @@ def test_cls_donor_patch_lands_and_preserves_other_tokens():
 @pytest.mark.parametrize("target_token,control_token", [(0, 6), (6, 0)])
 def test_selected_state_reaches_real_downstream_boundary(monkeypatch, boundary, target_token, control_token):
     model = tiny_vit()
-    layer = model.vit.encoder.layer[0]
+    layer = model.vit.layers[0]
     receiver = torch.linspace(-1, 1, 3 * 32 * 48).reshape(1, 3, 32, 48)
     donor = receiver.flip(-1).contiguous()
-    destination = {"attention": layer.layernorm_after, "intermediate": layer.output,
-                   "block": model.vit.encoder.layer[1]}[boundary]
+    destination = {"attention": layer.layernorm_after, "intermediate": layer.mlp.fc2,
+                   "block": model.vit.layers[1]}[boundary]
     seen, residual = [], []
 
     def observe(module, store):
@@ -169,7 +169,7 @@ def test_invalid_requests_stop_before_forward(mutation):
 def test_late_forward_exception_removes_hooks_and_allows_cpu_reuse(monkeypatch):
     model = tiny_vit()
     pixels = torch.randn(1, 3, 32, 48)
-    module = model.vit.encoder.layer[0].output
+    module = model.vit.layers[0].mlp.fc2
     original, calls = module.forward, []
 
     def fail_during_target(*args, **kwargs):
@@ -191,7 +191,7 @@ def test_late_forward_exception_removes_hooks_and_allows_cpu_reuse(monkeypatch):
 
 def test_repeated_invocation_rejects_and_cleans_hooks(monkeypatch):
     model = tiny_vit()
-    encoder, pixels = model.vit.encoder, torch.zeros(1, 3, 32, 48)
+    encoder, pixels = model.vit, torch.zeros(1, 3, 32, 48)
     original = encoder.forward
 
     def repeat(*args, **kwargs):
@@ -231,7 +231,7 @@ cfg = ViTConfig(image_size=32, patch_size=8, hidden_size=16, num_hidden_layers=2
                 num_attention_heads=2, intermediate_size=24, num_labels=3)
 cfg._attn_implementation = 'eager'
 model = ViTForImageClassification(cfg).eval()
-module = model.vit.encoder.layer[0].output
+module = model.vit.layers[0].mlp.fc2
 original = module.forward
 calls = [0]
 def fail(*args, **kwargs):

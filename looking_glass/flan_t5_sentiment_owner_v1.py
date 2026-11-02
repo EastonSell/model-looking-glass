@@ -27,7 +27,7 @@ SOURCE_PATHS = (
     'looking_glass/flan_t5_sentiment_owner_v1.py',
     'looking_glass/flan_t5_sentiment_selector_v1.py',
     'looking_glass/flan_t5_sentiment_screen.py',
-    'looking_glass/flan_t5_feasibility.py',
+    'looking_glass/flan_t5_feasibility.py', 'looking_glass/t5_compat.py',
     'looking_glass/bert_matched_numeric.py',
     'looking_glass/flan_t5_sentiment_numeric.py',
     'looking_glass/flan_t5_sentiment_journal.py',
@@ -44,7 +44,7 @@ REVIEW_SCHEMA = 'flan-t5-sentiment-independent-tokenizer-replay-v1'
 SELECTOR_SOURCE_PATHS = (
     'tools/run_flan_sentiment_selector_stage_v1.py', 'tools/run_flan_sentiment_selector_v1.py',
     'looking_glass/__init__.py', 'looking_glass/flan_t5_sentiment_selector_v1.py',
-    'looking_glass/flan_t5_sentiment_screen.py', 'looking_glass/flan_t5_feasibility.py',
+    'looking_glass/flan_t5_sentiment_screen.py', 'looking_glass/flan_t5_feasibility.py', 'looking_glass/t5_compat.py',
     'docs/FLAN_T5_SENTIMENT_INTERVENTION_V1.md', 'docs/FLAN_T5_SENTIMENT_SELECTOR_V1.md',
 )
 SCIENTIFIC_READER_PATHS = (
@@ -369,6 +369,8 @@ def run(args):
         model, info = T5ForConditionalGeneration.from_pretrained(
             str(assets), local_files_only=True, use_safetensors=True, trust_remote_code=False,
             output_loading_info=True, dtype=torch.float32, attn_implementation='eager')
+        from .t5_compat import validate_t5_checkpoint_contract
+        validate_t5_checkpoint_contract(model, {"tie_word_embeddings": False})
         _check(not any(info.get(k) for k in ('missing_keys', 'unexpected_keys', 'mismatched_keys', 'error_msgs')),
                'model loading diagnostics differ')
         model.eval()

@@ -1,20 +1,35 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=84.2.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "model-looking-glass"
-version = "0.1.0"
-description = "Reproducible neural-network observation and causal experiments"
-requires-python = ">=3.10"
-dependencies = ["torch>=2.6"]
+version = "1.2.4"
+description = "Local model debugger for inspecting and comparing activation vectors"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT AND OFL-1.1"
+license-files = ["LICENSE", "looking_glass/app_static/vendor/*-LICENSE.txt"]
+dependencies = ["torch>=2.15.0", "setuptools>=84.2.1"]
+
+[project.urls]
+Repository = "https://github.com/EastonSell/model-looking-glass"
+Documentation = "https://github.com/EastonSell/model-looking-glass/blob/main/docs/LOCAL_APP.md"
+Issues = "https://github.com/EastonSell/model-looking-glass/issues"
+Discussions = "https://github.com/EastonSell/model-looking-glass/discussions"
+Security = "https://github.com/EastonSell/model-looking-glass/security/policy"
+
+[project.scripts]
+model-looking-glass = "looking_glass.app:main"
+model-looking-glass-gpu-check = "looking_glass.app_selftest:main"
 
 [project.optional-dependencies]
-transformer = ["transformers==4.57.3"]
-test = ["numpy>=1.26", "pytest>=8,<9", "Pillow==11.3.0"]
+app = ["torch==2.15.0", "transformers==5.22.1", "safetensors>=0.4.3", "numpy>=1.26", "Pillow==13.0.0"]
+transformer = ["transformers==5.22.1"]
+test = ["numpy>=1.26", "pytest>=9.0.3,<10", "Pillow==13.0.0"]
 
 [tool.setuptools.packages.find]
 include = ["looking_glass*"]
 
 [tool.setuptools.package-data]
-looking_glass = ["PROTOCOL.md"]
+looking_glass = ["PROTOCOL.md", "app_static/*.html", "app_static/*.js", "app_static/*.css", "app_static/vendor/*.js", "app_static/vendor/*.woff2", "app_static/vendor/*-LICENSE.txt", "app_static/vendor/provenance.json", "app_static/vendor/README.md"]

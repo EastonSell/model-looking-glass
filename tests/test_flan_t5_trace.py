@@ -13,6 +13,7 @@ def tiny_t5():
         config = T5Config(vocab_size=32, d_model=16, d_kv=8, d_ff=32, num_layers=2,
                           num_decoder_layers=2, num_heads=2, dropout_rate=0.0,
                           decoder_start_token_id=0, pad_token_id=0, eos_token_id=1)
+        config._attn_implementation = "eager"
         return T5ForConditionalGeneration(config).eval()
 
 
@@ -35,7 +36,7 @@ def test_encoder_and_decoder_block_tokens_match_untraced_hidden_states():
     decoder = torch.tensor([[0, 7, 1]], dtype=torch.long)
     decoder_mask = torch.tensor([[1, 1, 1]], dtype=torch.long)
     with torch.inference_mode():
-        baseline = model(input_ids=source, attention_mask=source_mask,
+        baseline = tiny_t5()(input_ids=source, attention_mask=source_mask,
                          decoder_input_ids=decoder, decoder_attention_mask=decoder_mask,
                          use_cache=False, output_hidden_states=True, return_dict=True)
     output, records = trace_t5_forward(

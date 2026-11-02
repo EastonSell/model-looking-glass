@@ -1,0 +1,10 @@
+{
+  "controller_end_utc": "2026-10-29T13:46:08.583892+00:00",
+  "controller_start_utc": "2026-10-29T13:45:56.227073+00:00",
+  "exit_code": 1,
+  "preflight_sha256": "c91419bb2c379b24deefe1bb3a5da3378ebd0a484933377e6558a9e9fb62c6f1",
+  "process_waited": true,
+  "source_commit": "b6667ad5bfcadac6e0f45d4ad6530cca1f4584ca",
+  "stderr_sha256": "46962f3641d666a7e719f2ea895c50e6c5cc3291524642dd831c8078c81bb39b",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

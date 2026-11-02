@@ -183,7 +183,7 @@ def run_observation(model, input_ids, *, layer, token, mask_token, is_id, are_id
                    or event['preceding_same_site_actions'] != names[:index]
                    or event['module_path'] != path or event['module_aliases'] != [path]
                    or event['invocation'] != 0 or event['batch_index'] != 0
-                   or event['token_index'] != token or event['output_selector'] != [0]
+                   or event['token_index'] != token or event['output_selector'] != []
                    or event['output_shape'] != [1, 10, hidden]
                    or event['selected_shape'] != [hidden]
                    or event['dtype'] != 'torch.float32' or event['device'] != 'cpu'

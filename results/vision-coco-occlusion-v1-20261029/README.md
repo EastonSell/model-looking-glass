@@ -66,17 +66,17 @@ Restore the 322-file ZIP without overwriting an existing file:
 python restore-evaluation.py --index evaluation-evidence-index.json --output evaluation-evidence.zip
 ```
 
-The independently reviewed [scientific replay and helpers](discovery-independent-replay.zip)
+The independently reviewed [scientific replay and helpers](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/vision-coco-occlusion-v1-20261029/discovery-independent-replay.zip)
 also support evaluation data. Its [evaluation audit](evaluation-independent-audit.json)
 checks every mask, active landing and control; the [cross-phase audit](screen-evaluation-independent-audit.json)
-checks screen linkage and the [Decimal replay bundle](evaluation-decimal-replay.zip)
+checks screen linkage and the [Decimal replay bundle](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/vision-coco-occlusion-v1-20261029/evaluation-decimal-replay.zip)
 independently checks the signed logits and reported decisions. The
 closed terminal records 144 forwards; the [direct observer](evaluation-observer.json)
 records exit 0 and a reaped child with no timeout or forced stop. These are saved-byte and
 cooperative-process checks, not proof of every executed instruction,
 publication timing, model pretraining independence or upstream authenticity.
 The two forward-forbidden preflights and the phase stdout/stderr streams are
-retained in [this archive](phase-preflight-logs.zip). The observed local source
+retained in [this archive](https://github.com/EastonSell/model-looking-glass/blob/3cbdec78134855532811a58a64e8dd5d4d457185/results/vision-coco-occlusion-v1-20261029/phase-preflight-logs.zip). The observed local source
 revisions and public commits have different commit identities; the relevant
 source blobs were checked for equality at each phase.
 

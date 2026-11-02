@@ -1146,3 +1146,81 @@ def test_failure_receipt_does_not_swallow_new_cancellation(tmp_path, monkeypatch
     with pytest.raises(KeyboardInterrupt, match='receipt') as exc:
         owner.run(args)
     assert isinstance(exc.value.__cause__, ValueError)
+
+
+def _dependency_config_fixture(tmp_path, schema):
+    venv = tmp_path / 'selected-venv'
+    venv.mkdir()
+    version = '.'.join(map(str, sys.version_info[:3]))
+    base = Path(sys._base_executable).resolve()
+    entries = {'include-system-site-packages': 'false'}
+    if schema == 'stdlib':
+        entries.update(home=str(base.parent), version=version, executable=str(base))
+    else:
+        entries.update(home=str(Path(sys.base_prefix).resolve()),
+                       implementation='CPython', version_info=version)
+    site = venv / ('Lib/site-packages' if os.name == 'nt' else
+                   'lib/python%d.%d/site-packages' % sys.version_info[:2])
+    site.mkdir(parents=True)
+    return venv, site, entries
+
+
+def _write_dependency_config(venv, entries):
+    raw = ''.join(f'{key} = {value}\n' for key, value in entries.items()).encode('utf8')
+    (venv / 'pyvenv.cfg').write_bytes(raw)
+    return raw
+
+
+@pytest.mark.parametrize('schema', ['stdlib', 'virtualenv'])
+def test_dependency_site_accepts_exact_recognized_config(tmp_path, schema):
+    stage = _tool('run_flan_sentiment_selector_stage_v1.py')
+    venv, site, entries = _dependency_config_fixture(tmp_path, schema)
+    raw = _write_dependency_config(venv, entries)
+    assert stage._dependency_site(venv) == (site.resolve(), hashlib.sha256(raw).hexdigest())
+
+
+@pytest.mark.parametrize('schema', ['stdlib', 'virtualenv'])
+@pytest.mark.parametrize('mutation', ['home', 'version', 'executable', 'base-executable',
+                                      'system-site', 'implementation', 'partial-schema',
+                                      'duplicate', 'direct-interpreter'])
+def test_dependency_site_rejects_identity_mismatches(tmp_path, monkeypatch, schema, mutation):
+    stage = _tool('run_flan_sentiment_selector_stage_v1.py')
+    venv, _, entries = _dependency_config_fixture(tmp_path, schema)
+    if mutation == 'home':
+        entries['home'] = str(tmp_path)
+    elif mutation == 'version':
+        entries['version' if schema == 'stdlib' else 'version_info'] = '0.0.0'
+    elif mutation in ('executable', 'base-executable'):
+        entries[mutation] = str(tmp_path / 'wrong-python')
+    elif mutation == 'system-site':
+        entries['include-system-site-packages'] = 'true'
+    elif mutation == 'implementation':
+        entries['implementation'] = 'PyPy'
+    elif mutation == 'partial-schema':
+        if schema == 'stdlib':
+            entries['implementation'] = 'CPython'
+        else:
+            del entries['version_info']
+    elif mutation == 'direct-interpreter':
+        monkeypatch.setattr(sys, 'executable', str(tmp_path / 'wrong-python'))
+    raw = _write_dependency_config(venv, entries)
+    if mutation == 'duplicate':
+        (venv / 'pyvenv.cfg').write_bytes(raw + b'HOME = duplicate\n')
+    with pytest.raises(ValueError):
+        stage._dependency_site(venv)
+
+
+@pytest.mark.parametrize('aliased', ['venv', 'config', 'site'])
+def test_dependency_site_rejects_aliased_paths(tmp_path, aliased):
+    stage = _tool('run_flan_sentiment_selector_stage_v1.py')
+    venv, site, entries = _dependency_config_fixture(tmp_path, 'stdlib')
+    _write_dependency_config(venv, entries)
+    target = {'venv': venv, 'config': venv / 'pyvenv.cfg', 'site': site}[aliased]
+    moved = tmp_path / ('real-' + aliased)
+    target.rename(moved)
+    try:
+        target.symlink_to(moved, target_is_directory=aliased != 'config')
+    except OSError as error:
+        pytest.skip(f'host cannot create symlink fixture: {error}')
+    with pytest.raises(ValueError):
+        stage._dependency_site(venv)

@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 import torch
+import transformers
 from transformers import GPT2Config, GPT2LMHeadModel
 
 from looking_glass import pretrained, pretrained_gpu_trace_pilot as owner
@@ -28,6 +29,10 @@ def test_actual_measurement_lifecycle_with_tiny_cpu_model_and_fake_device(tmp_pa
     monkeypatch.setattr(owner, '_verify_model', lambda *_a, **_k: None)
     monkeypatch.setattr(owner, '_host_memory', lambda: {'fake': True})
     monkeypatch.setenv('LOOKING_GLASS_TRACE_PILOT_SMI_TOTAL', str(8 * owner.GIB))
+    # Runtime identities are fabricated along with CUDA, not measurements of this host.
+    monkeypatch.setattr(torch, '__version__', '2.8.0+cu128')
+    monkeypatch.setattr(torch.version, 'cuda', '12.8')
+    monkeypatch.setattr(transformers, '__version__', '4.57.3')
     monkeypatch.setattr(torch, 'set_num_interop_threads', lambda *_a: None)
     monkeypatch.setattr(torch, 'get_num_interop_threads', lambda: 1)
     for name, value in {'is_initialized': lambda: False, 'device_count': lambda: 1,
@@ -41,7 +46,8 @@ def test_actual_measurement_lifecycle_with_tiny_cpu_model_and_fake_device(tmp_pa
             'max_memory_allocated': lambda *_a: 0, 'max_memory_reserved': lambda *_a: 0,
             'manual_seed': lambda *_a: None, 'empty_cache': lambda *_a: None}.items():
         monkeypatch.setattr(torch.cuda, name, value)
-    monkeypatch.setattr(torch._C, '_cuda_clearCublasWorkspaces', lambda: None)
+    # CPU-only builds omit this CUDA binding; this test explicitly simulates it.
+    monkeypatch.setattr(torch._C, '_cuda_clearCublasWorkspaces', lambda: None, raising=False)
     original_tensor_to, original_module_to = torch.Tensor.to, torch.nn.Module.to
     def tensor_to(value, *args, **kwargs):
         if args and args[0] == 'cuda:0':

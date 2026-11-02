@@ -218,6 +218,19 @@ def _check_metadata(metadata, steps):
             raise ValueError("intervention metadata geometry mismatch")
 
 
+def _runtime_site(model, path):
+    """Resolve only the two historical study coordinates; retain actual paths in evidence."""
+    if path in (EARLY, LATE):
+        current = path.replace("vit.encoder.layer.", "vit.layers.")
+        try:
+            model.get_submodule(current)
+            return current
+        except AttributeError:
+            pass
+    model.get_submodule(path)
+    return path
+
+
 def forward(model, pixels, evidence, label, *, path=None, tokens=None, replacement=None,
             action="capture", reference=None, numeric_guard=None):
     """Reserve before input/hook preparation; save bytes before control checks."""
@@ -251,6 +264,8 @@ def forward(model, pixels, evidence, label, *, path=None, tokens=None, replaceme
                 if action == "patch":
                     steps[-2]["value"] = replacement[i].to(pixels.device)
         steps.append(dict(name="after_all", operation="capture", **site))
+    for step in steps:
+        step["module_path"] = _runtime_site(model, step["module_path"])
     output = plan = None
     retained = False
     try:

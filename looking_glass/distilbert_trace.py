@@ -1,6 +1,6 @@
 """Bounded eager DistilBERT masked-LM observations, using the shared schema.
 
-This CPU-only, single-forward adapter is built from the existing capture-only
+This CPU-default, explicitly CUDA-opt-in single-forward adapter is built from the existing capture-only
 ActivationPlan. It neither loads a checkpoint nor performs generation.
 """
 
@@ -36,8 +36,12 @@ def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
                                layers=(0,), modules=("attention", "ffn", "block"),
                                samples=(0,), tokens=(0,), max_events=64,
                                max_trace_bytes=1024 * 1024,
-                               max_tensor_bytes=16 * 1024 * 1024):
-    """Run one eager, CPU float32 masked-LM forward with bounded snapshots.
+                               max_tensor_bytes=16 * 1024 * 1024, synchronous_cpu=True):
+    """Run one eager float32 masked-LM forward with bounded snapshots.
+
+    CPU is required by default. Explicit synchronous_cpu=False also permits
+    one exact CUDA device; the caller owns device memory/lifetime limits.
+    CUDA results synchronize before return and have no CPU encoder contract.
 
     Selectors are ordered local indices; one event is retained per selected
     module, sample and token. Output attentions and hidden-state collections
@@ -49,7 +53,7 @@ def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
         raise RuntimeError("compiled execution is not supported")
     from transformers import DistilBertForMaskedLM
     from transformers.models.distilbert.modeling_distilbert import (
-        FFN, MultiHeadSelfAttention, TransformerBlock,
+        FFN, DistilBertSelfAttention, TransformerBlock,
     )
 
     if type(model) is not DistilBertForMaskedLM or model.config.model_type != "distilbert":
@@ -58,15 +62,23 @@ def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
         raise ValueError("only eager DistilBERT attention is supported")
     if model.is_gradient_checkpointing or any(m.training for m in model.modules()):
         raise ValueError("model must be in evaluation mode without gradient checkpointing")
-    if (any(p.device.type != "cpu" or p.dtype != torch.float32 for p in model.parameters())
-            or any(buffer.device.type != "cpu" for buffer in model.buffers())):
-        raise ValueError("model parameters must be CPU float32 and buffers must be on CPU")
-    if torch.is_autocast_enabled("cpu"):
-        raise ValueError("CPU autocast is not supported")
+    if type(synchronous_cpu) is not bool:
+        raise ValueError("synchronous_cpu must be a boolean")
+    parameters = tuple(model.parameters())
+    if not parameters:
+        raise ValueError("model must retain its standard parameters")
+    device = parameters[0].device
+    if (device.type not in ("cpu", "cuda") or (synchronous_cpu and device.type != "cpu")
+            or any(p.device != device or p.dtype != torch.float32 for p in parameters)
+            or any(buffer.device != device or buffer.is_complex() or buffer.is_quantized or (buffer.is_floating_point() and buffer.dtype != torch.float32)
+                   for buffer in model.buffers())):
+        raise ValueError("model parameters and buffers must share one CPU/CUDA device with float32 floating values; CPU required by default")
+    if torch.is_autocast_enabled(device.type):
+        raise ValueError("selected-device autocast is not supported")
     blocks = model.distilbert.transformer.layer
     if (not isinstance(blocks, torch.nn.ModuleList) or not blocks
             or any(type(block) is not TransformerBlock
-                   or type(block.attention) is not MultiHeadSelfAttention
+                   or type(block.attention) is not DistilBertSelfAttention
                    or type(block.ffn) is not FFN for block in blocks)):
         raise TypeError("DistilBERT blocks, attention and FFN must be standard classes")
     hook_state = torch.nn.modules.module
@@ -87,14 +99,14 @@ def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
             or any(type(kind) is not str or kind not in ("attention", "ffn", "block") for kind in modules)
             or len(set(modules)) != len(modules)):
         raise ValueError("modules must contain distinct attention, ffn or block roles")
-    if (not isinstance(input_ids, torch.Tensor) or input_ids.device.type != "cpu"
+    if (not isinstance(input_ids, torch.Tensor) or input_ids.device != device
             or input_ids.dtype != torch.int64 or input_ids.ndim != 2
             or not input_ids.shape[0] or not input_ids.shape[1]):
-        raise ValueError("input_ids must be a nonempty CPU int64 [batch, token] tensor")
-    if (not isinstance(attention_mask, torch.Tensor) or attention_mask.device.type != "cpu"
+        raise ValueError("input_ids must be a nonempty same-device int64 [batch, token] tensor")
+    if (not isinstance(attention_mask, torch.Tensor) or attention_mask.device != device
             or attention_mask.dtype != torch.int64 or attention_mask.shape != input_ids.shape
             or bool(((attention_mask != 0) & (attention_mask != 1)).any())):
-        raise ValueError("attention_mask must be a matching binary CPU int64 tensor")
+        raise ValueError("attention_mask must be a matching binary same-device int64 tensor")
     ids, mask = input_ids.detach().clone(), attention_mask.detach().clone()
     batch, length = ids.shape
     if (length > model.config.max_position_embeddings or bool((ids < 0).any())
@@ -145,7 +157,9 @@ def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
     with torch.no_grad(), plan:
         output = model(input_ids=ids, attention_mask=mask, output_attentions=False,
                        output_hidden_states=False, return_dict=True)
-    if (ids.device.type != "cpu" or mask.device.type != "cpu"
+        if device.type == "cuda":
+            torch.cuda.synchronize(device)  # Drain the forward before releasing its model lease.
+    if (ids.device != device or mask.device != device
             or ids.dtype != torch.int64 or mask.dtype != torch.int64
             or tuple(tuple(int(x) for x in row) for row in ids.tolist()) != id_rows
             or tuple(tuple(int(x) for x in row) for row in mask.tolist()) != mask_rows
@@ -153,13 +167,18 @@ def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
                 model.config.vocab_size, model.config.max_position_embeddings) != dimensions):
         raise RuntimeError("encoder inputs or model dimensions changed during the forward")
 
+    if (type(output.logits) is not torch.Tensor or output.logits.shape != (batch, length, model.config.vocab_size)
+            or output.logits.dtype != torch.float32 or output.logits.device != device
+            or not bool(torch.isfinite(output.logits).all())):
+        raise RuntimeError("masked-LM logits must be finite float32 with exact batch/token/vocabulary shape on the model device")
+
     steps_seen = plan.metadata["steps"]
     captures = plan.captures
     if len(steps_seen) != count or len(captures) != count:
         raise RuntimeError("plan did not retain all selected observations")
     observations = []
     for sequence, ((layer, kind, path, sample, token, name), step) in enumerate(zip(selections, steps_seen)):
-        selector = [] if kind == "ffn" else [0]
+        selector = [0] if kind == "attention" else []
         value = captures[name]
         if (step["name"] != name or step["order"] != sequence or step["operation"] != "capture"
                 or step["module_path"] != path or step["forward_index"] != 0
@@ -167,8 +186,8 @@ def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
                 or step["token_index"] != token or step["output_selector"] != selector
                 or step["output_shape"] != [batch, length, hidden]
                 or step["selected_shape"] != [hidden] or step["dtype"] != "torch.float32"
-                or step["device"] != "cpu" or value.shape != (hidden,)
-                or value.dtype != torch.float32 or value.device.type != "cpu"):
+                or step["device"] != str(device) or value.shape != (hidden,)
+                or value.dtype != torch.float32 or value.device != device):
             raise RuntimeError("captured output does not match the declared DistilBERT boundary")
         view = value.unsqueeze(0).unsqueeze(0)
         event = TraceEvent(
@@ -191,5 +210,7 @@ def trace_distilbert_masked_lm(model, input_ids, attention_mask, *, run_id,
         layers=tuple(sorted(layers)), modules=tuple(role for role in ("attention", "ffn", "block")
                                                    if role in modules),
         samples=samples, tokens=tokens,
-    )
+    ) if device.type == "cpu" else None
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
     return DistilBertTraceResult(output, tuple(observations), mask_rows, size, context)
