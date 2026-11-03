@@ -433,3 +433,11 @@ def test_scrollable_trace_region_reserves_actual_toolbar_height():
     layer = re.search(r"\.layer-map\s*\{([^}]+)\}", css).group(1)
     assert "max-height" not in layer and "overflow:auto" not in layer
 
+
+
+def test_programmatically_focused_sensitivity_report_has_visible_focus():
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    rule = re.search(r"#sensitivity-report:focus\s*\{([^}]+)\}", css)
+    assert rule is not None
+    assert "outline:none" not in rule.group(1).replace(" ", "")
+    assert "outline:" in rule.group(1).replace(" ", "")

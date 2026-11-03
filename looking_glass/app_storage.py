@@ -547,6 +547,43 @@ class TraceStore:
         return {"coordinate": _json_copy(coordinate), "step": _json_copy(step),
                 "model": _json_copy(model), "reference_value": reference}
 
+    def intervention_candidates(self, forward, token_position, paths):
+        """Find captured vectors at exact boundaries in one bounded inventory pass.
+
+        Return at most two candidates per path: duplicates remain ambiguous and
+        must not be silently selected. No source tensor is cloned here.
+        """
+        if self._run is None: raise ValueError("No completed trace is loaded")
+        _integer(forward, "forward"); _integer(token_position, "token_position")
+        if (type(paths) is not list or not paths or len(paths) > 18
+                or any(type(path) is not str or not path or len(path) > 1024 for path in paths)
+                or len(set(paths)) != len(paths)):
+            raise ValueError("Expected distinct bounded intervention paths")
+        found = {path: [] for path in paths}
+        context = {}
+        for event in self._events:
+            metadata = event["metadata"]
+            path = metadata.get("module_path")
+            if path not in found or metadata.get("app_forward_index") != forward or len(found[path]) == 2:
+                continue
+            positions = metadata.get("token_positions")
+            if type(positions) is not list:
+                continue
+            try:
+                candidate = positions.index(token_position)
+            except ValueError:
+                continue
+            if candidate >= event["vector_count"]:
+                continue
+            coordinate = self._coordinate(event["index"], candidate, _context=context)
+            if (coordinate["status"] == "known" and coordinate["stack"] == "input"
+                    and coordinate["batch_position"] == 0
+                    and coordinate["app_forward_index"] == forward
+                    and coordinate["token_position"] == token_position
+                    and coordinate["module_path"] == path):
+                found[path].append((event["index"], candidate))
+        return found
+
     def reference_source(self, event, vector, *, max_bytes):
         """Preflight one retained vector and metadata before any tensor clone.
 

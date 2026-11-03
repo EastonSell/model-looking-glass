@@ -2,7 +2,7 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const token = document.querySelector('meta[name="mlg-token"]').content;
-  const state = {browseRequest: 0, browseFresh: false, settingsOpener: 'session-summary', mapButtons: [], outputGeneration: 0, outputStep: 0, tokenOffset: 0, tokenTotal: 0, mapAutoCapture: null, mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
+  const state = {browseRequest: 0, browseFresh: false, settingsOpener: 'session-summary', mapButtons: [], outputGeneration: 0, outputStep: 0, tokenOffset: 0, tokenTotal: 0, mapAutoCapture: null, mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, sensitivity: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, liveStatusUnverified: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
   const pageSize = 100, valuePageSize = 256;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
@@ -60,7 +60,7 @@
     catch(_){sceneUnavailable('3D rendering unavailable. Use the captured-site list.');}
   }
 
-  function revealOptions(id) { $(id).open = true; if (['vector-options','source-position-options','feature-values-options','intervention-options','reference-options'].includes(id)) setDock('selection',true); if (['vector-options','source-position-options','feature-values-options','intervention-options'].includes(id)) $('selection-details').open = true; if (['map-tools-options','source-options','event-catalog-options'].includes(id)) $('explorer-options').open = true; if (id === 'map-tools-options') $('layer-map-options').open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','privacy-options','download-options'].includes(id)) $('session-options').open = true; }
+  function revealOptions(id) { $(id).open = true; if (['vector-options','source-position-options','feature-values-options','intervention-options','sensitivity-options','reference-options'].includes(id)) setDock('selection',true); if (['vector-options','source-position-options','feature-values-options','intervention-options','sensitivity-options'].includes(id)) $('selection-details').open = true; if (['map-tools-options','source-options','event-catalog-options'].includes(id)) $('explorer-options').open = true; if (id === 'map-tools-options') $('layer-map-options').open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','privacy-options','download-options'].includes(id)) $('session-options').open = true; }
   function notice(message, error = false) { $('notice').textContent = message; $('notice').hidden = !message; $('notice').classList.toggle('error', error); }
   async function api(path, body, {allowErrorField=false} = {}) {
     if (body === undefined && /^(events|vectors|tensor|layer-map)\?/.test(path) && state.run?.capture_id) path += `&capture_id=${encodeURIComponent(state.run.capture_id)}`;
@@ -97,7 +97,7 @@
     $('scene-empty-message').textContent = ready ? (vision ? 'Choose an image, then Run.' : 'Enter a prompt, then Run.') : state.model?.state === 'quarantined' ? 'Restart required for another model run. Saved captures can still be opened.' : 'Choose a model, write a prompt, then Run.';
     $('open-settings').textContent = ready ? (vision ? 'Go to image' : 'Go to prompt') : 'Choose model';
     $('open-settings').setAttribute('title', ready ? (vision ? 'Focus the image input' : 'Focus the prompt') : 'Open model settings');
-    $('dock-exact').disabled = state.busy || !state.event; $('dock-edit').disabled = state.busy || !state.event; $('dock-reference').disabled = state.busy || !state.event;
+    $('dock-exact').disabled = state.busy || !state.event; $('dock-edit').disabled = state.busy || !state.event; $('dock-experiment').disabled = state.busy || !state.event; $('dock-reference').disabled = state.busy || !state.event;
     $('open-settings').disabled = state.busy;
     // Highlight canonical sites, not just their first event: singleton token captures share a site.
     const coordinate = state.coordinate, metadata = state.event?.metadata;
@@ -117,7 +117,7 @@
     $('output-prev').disabled = state.busy || state.outputStep === 0; $('output-next').disabled = state.busy || state.outputStep + 1 >= stepCount;
     $('input-tokens-prev').disabled = state.busy || state.tokenOffset === 0; $('input-tokens-next').disabled = state.busy || state.tokenOffset + 48 >= state.tokenTotal;
     document.querySelectorAll('#input-token-strip button').forEach(button => { button.disabled = state.busy || button.dataset?.unavailable === 'true'; });
-    ['intervention-operation', 'intervention-feature', 'intervention-value', 'witness-phase', 'experiment-save-name', 'vector-picker', 'browse-button', 'browse-go', 'browse-parent', 'browse-select', 'browse-path', 'saved-runs', 'refresh-saved', 'inspect-button', 'load-button', 'model-path', 'execution-device', 'vram-mib', 'refresh-devices', 'open-button', 'open-path', 'vector-index', 'vector-view', 'capture-mode', 'layers', 'max-input', 'max-output', 'max-events', 'trace-mib', 'prompt', 'image-file'].forEach((id) => { $(id).disabled = state.busy; });
+    ['sensitivity-layers', 'sensitivity-attention', 'sensitivity-mlp', 'sensitivity-block', 'intervention-operation', 'intervention-feature', 'intervention-value', 'witness-phase', 'experiment-save-name', 'vector-picker', 'browse-button', 'browse-go', 'browse-parent', 'browse-select', 'browse-path', 'saved-runs', 'refresh-saved', 'inspect-button', 'load-button', 'model-path', 'execution-device', 'vram-mib', 'refresh-devices', 'open-button', 'open-path', 'vector-index', 'vector-view', 'capture-mode', 'layers', 'max-input', 'max-output', 'max-events', 'trace-mib', 'prompt', 'image-file'].forEach((id) => { $(id).disabled = state.busy; });
     $('layer-map-load').disabled = state.busy || !state.run; $('layer-map-forward').disabled = state.busy || !state.run;
     $('layer-map-prev').disabled = state.busy || !state.run || state.mapOffset === 0; $('layer-map-next').disabled = state.busy || !state.run || state.mapOffset + 12 >= state.mapTotal;
     document.querySelectorAll('#layer-map-body button').forEach((button) => { button.disabled = state.busy; });
@@ -132,10 +132,10 @@
     $('reference-next').disabled = state.busy || !state.referenceMode || state.referenceOffset + valuePageSize >= state.referenceTotal;
     $('run-button').textContent = state.run ? 'Run again' : 'Run';
     $('replace-warning').hidden = !state.run || !state.model || state.model.state === 'quarantined';
-    $('run-button').disabled = state.busy || !state.model || state.model.state === 'quarantined';
-    $('demo-button').disabled = state.busy || state.model?.state === 'quarantined';
-    $('load-button').disabled = state.busy || state.model?.state === 'quarantined';
-    $('unload-button').disabled = state.busy || !state.model || state.model.state === 'quarantined';
+    $('run-button').disabled = state.busy || state.liveStatusUnverified || !state.model || state.model.state === 'quarantined';
+    $('demo-button').disabled = state.busy || state.liveStatusUnverified || state.model?.state === 'quarantined';
+    $('load-button').disabled = state.busy || state.liveStatusUnverified || state.model?.state === 'quarantined';
+    $('unload-button').disabled = state.busy || state.liveStatusUnverified || !state.model || state.model.state === 'quarantined';
     $('browse-parent').disabled = state.busy || !state.browseFresh || !state.browse?.parent; $('browse-select').disabled = state.busy || !state.browseFresh || !state.browse?.path;
     document.querySelectorAll('#folder-list button').forEach((button) => { button.disabled = state.busy || !state.browseFresh; });
     $('vram-mib').disabled = state.busy || $('execution-device').value === 'cpu';
@@ -151,6 +151,7 @@
     $('vectors-page-next').disabled = state.busy || !state.event || state.vectorListOffset + 100 >= state.vectorListTotal;
     $('intervene-button').disabled = state.busy || !interventionReady();
     $('intervention-status').textContent = interventionReady() ? 'Ready for this source vector.' : interventionReason();
+    $('sensitivity-run').disabled = state.busy || !interventionReady(); $('sensitivity-ready').textContent = interventionReady() ? 'Ready for the selected source position.' : interventionReason(); $('sensitivity-download').disabled = state.busy || !state.sensitivity; updateSensitivityBudget();
     $('save-experiment').disabled = state.busy || !state.experiment;
     $('witness-prev').disabled = state.busy || !state.experiment || state.witnessOffset === 0;
     $('witness-next').disabled = state.busy || !state.experiment || state.witnessOffset + valuePageSize >= state.witnessTotal;
@@ -161,9 +162,9 @@
   async function action(message, callback) {
     if (state.busy) return;
     let completed = false; state.busy = true; syncButtons(); notice(message); $('run-status').textContent = message;
-    try { await callback(); completed = true; if (state.model?.state === 'quarantined') { notice('The model cannot be reused safely. Please restart the app before loading or running again. Saved captures are still available.', true); $('run-status').textContent = 'Restart required before another model run.'; } else { notice(''); $('run-status').textContent = 'Ready.'; } }
+    try { await callback(); completed = true; if (state.model?.state === 'quarantined') { notice('The model cannot be reused safely. Please restart the app before loading or running again. Saved captures are still available.', true); $('run-status').textContent = 'Restart required before another model run.'; } else if (state.liveStatusUnverified) { notice('Session status could not be verified. Refresh device status in Model & settings before more model runs.', true); $('run-status').textContent = 'Session status unverified. Refresh device status.'; } else { notice(''); $('run-status').textContent = 'Ready.'; } }
     catch (error) {
-      try { const current = await api('status'); if (error.reconcileRun && (!state.run?.capture_id || current.run?.capture_id !== state.run.capture_id)) clearView(); if (error.reconcileRun && state.experiment && Object.hasOwn(current, 'experiment') && current.experiment?.experiment_id !== state.experiment.experiment_id) clearExperiment(); if (state.run) { const same = current.run?.capture_id && current.run.capture_id === state.run.capture_id; state.run.intervention_available = !!(same && current.run.intervention_available); state.run.intervention_reason = same ? current.run.intervention_reason : 'The displayed capture is no longer bound to the current server revision; reopen or make a fresh capture.'; state.run.reference_available = !!(same && current.run.reference_available); state.run.reference_reason = same ? current.run.reference_reason : 'The displayed capture revision is no longer current.'; } setModel(current.model); applyLimits(current.limits); applyDevices(current); } catch (_) { if (error.reconcileRun) { clearView(); error.message += ' The Run outcome could not be verified; previous capture values are hidden. Refresh or reopen a saved capture before continuing.'; } /* Preserve the original failure if status is unavailable. */ }
+      try { const current = await api('status'); if (error.reconcileRun && (!state.run?.capture_id || current.run?.capture_id !== state.run.capture_id)) clearView(); if (error.reconcileRun && state.experiment && Object.hasOwn(current, 'experiment') && current.experiment?.experiment_id !== state.experiment.experiment_id) clearExperiment(); if (state.run) { const same = current.run?.capture_id && current.run.capture_id === state.run.capture_id; state.run.intervention_available = !!(same && current.run.intervention_available); state.run.intervention_reason = same ? current.run.intervention_reason : 'The displayed capture is no longer bound to the current server revision; reopen or make a fresh capture.'; state.run.reference_available = !!(same && current.run.reference_available); state.run.reference_reason = same ? current.run.reference_reason : 'The displayed capture revision is no longer current.'; } state.liveStatusUnverified = false; setModel(current.model); applyLimits(current.limits); applyDevices(current); } catch (_) { if (error.sensitivityOutcomeUncertain) { state.liveStatusUnverified = true; if (state.run) { state.run.intervention_available = false; state.run.reference_available = false; state.run.intervention_reason = 'Session status could not be verified; refresh device status in Model & settings.'; state.run.reference_reason = state.run.intervention_reason; } error.message += ' Session status could not be verified. Refresh device status in Model & settings before more model runs.'; } if (error.reconcileRun) { clearView(); error.message += ' The Run outcome could not be verified; previous capture values are hidden. Refresh or reopen a saved capture before continuing.'; } /* Preserve the original failure if status is unavailable. */ }
       const quarantined = state.model?.state === 'quarantined';
       notice((error.message || String(error)) + (quarantined ? ' The model cannot be reused safely. Please restart the app before loading or running again.' : ''), true);
       $('run-status').textContent = quarantined ? 'Restart required before another model run.' : 'Stopped. See the message above.';
@@ -258,7 +259,7 @@
     state.outputGeneration++; state.outputStep = 0; state.tokenOffset = 0; state.tokenTotal = 0;
     $('output-readout').replaceChildren(); $('input-token-strip').replaceChildren(); $('output-note').textContent = ''; $('input-token-note').textContent = ''; $('input-token-page').textContent = ''; $('output-step').value = '0';
     clearLayerMap();
-    clearExperiment(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
+    clearExperiment(); clearSensitivity(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
     $('imported-control-warning').hidden = true; $('imported-comparison').hidden = true; clearDistribution('imported'); $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Saving includes prompts, output, metadata and full tensor values; these may be sensitive.'; syncButtons();
   }
   function showRun(run) {
@@ -612,7 +613,7 @@
     $('saved-status').textContent = `${state.saved.length} captures${result.truncated ? ' · list truncated' : ''}. Open validates a selected capture; incomplete exports cannot be opened.`;
   }
   function referenceSelectionReady() {
-    return !!(state.run?.reference_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && ['gpt2','llama'].includes(state.model?.family) && state.model.state !== 'quarantined' && state.event && state.coordinate?.status === 'known' && Number($('vector-index').value) === state.vector);
+    return !!(!state.liveStatusUnverified && state.run?.reference_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && ['gpt2','llama'].includes(state.model?.family) && state.model.state !== 'quarantined' && state.event && state.coordinate?.status === 'known' && Number($('vector-index').value) === state.vector);
   }
   function invalidateReferenceView() {
     state.referenceRequest++; state.referenceMode = null; state.referenceOffset = 0; state.referenceTotal = 0;
@@ -653,14 +654,91 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     syncButtons();
   }
   function interventionReady() {
-    return !!(state.run?.intervention_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && ['gpt2', 'llama'].includes(state.model?.family) && state.model.state !== 'quarantined' && state.event && Number($('vector-index').value) === state.vector && state.coordinate?.status === 'known');
+    return !!(!state.liveStatusUnverified && state.run?.intervention_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && ['gpt2', 'llama'].includes(state.model?.family) && state.model.state !== 'quarantined' && state.event && Number($('vector-index').value) === state.vector && state.coordinate?.status === 'known');
   }
   function interventionReason() {
+    if (state.liveStatusUnverified) return 'Session status could not be verified. Refresh device status in Model & settings before another model run.';
     if (!state.model || state.model.state === 'quarantined') return 'Load a ready GPT-2 or supported standard Llama model to replay. Unloaded or quarantined models cannot be edited; saved comparisons remain inspectable.';
     if (!['gpt2', 'llama'].includes(state.model.family)) return 'Interventions support live GPT-2 or standard Llama only. Other captures remain inspectable.';
     if (!state.run?.intervention_available || state.run.run_kind === 'intervention_comparison') return state.run?.intervention_reason || 'This capture is read-only for intervention; make a fresh supported live GPT-2 or standard Llama capture.';
     if (state.coordinate?.status !== 'known' || Number($('vector-index').value) !== state.vector) return 'Read a vector with validated source coordinates first.';
     return 'A current live GPT-2 or supported standard Llama capture identifier is required.';
+  }
+  const sensitivitySites = ['attention', 'mlp', 'block'];
+  function sensitivityChoices() {
+    const raw = $('sensitivity-layers').value.trim();
+    let layers;
+    if (raw) {
+      const parts = raw.split(',').map(value => value.trim());
+      if (parts.some(value => !/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)))) throw new Error('Layers must be comma-separated nonnegative whole numbers.');
+      layers = parts.map(Number);
+      if (new Set(layers).size !== layers.length) throw new Error('Choose distinct layers.');
+      if (layers.length > 6) throw new Error('Choose at most 6 layers.');
+    }
+    const sites = sensitivitySites.filter(site => $(`sensitivity-${site}`).checked);
+    if (!sites.length) throw new Error('Choose at least one component.');
+    return {layers, sites};
+  }
+  function updateSensitivityBudget() {
+    let message;
+    try {
+      const {layers, sites} = sensitivityChoices(), count = (layers?.length ?? 6) * sites.length;
+      const device = state.model?.device || 'loaded device';
+      message = `${layers ? '' : 'Up to '}${count} tests · ${count * 4} model forwards maximum on ${device}. Actual runtime and peak memory vary. Default picks up to 6 captured layers.`;
+    } catch (error) { message = error.message || String(error); }
+    $('sensitivity-budget').textContent = message;
+  }
+  function clearSensitivity() {
+    state.sensitivity = null; $('sensitivity-report').hidden = true; $('sensitivity-demo').hidden = true; $('sensitivity-status').hidden = true; $('sensitivity-status').textContent = '';
+    for (const id of ['sensitivity-outcome','sensitivity-anchor','sensitivity-finding','sensitivity-controls','sensitivity-limits','sensitivity-details']) $(id).textContent = '';
+    $('sensitivity-body').replaceChildren();
+  }
+  function showSensitivity(report) {
+    const valid = report && report.capture_id === state.run?.capture_id && report.preset === 'component_sensitivity' && Array.isArray(report.results) && report.results.length <= 18 && ['complete','partial','inconclusive'].includes(report.status);
+    if (!valid) throw new Error('The experiment report was incomplete or did not match the current capture. No results are displayed.');
+    state.sensitivity = report; $('sensitivity-report').hidden = false; $('sensitivity-demo').hidden = !isDemo(state.model);
+    const anchor = report.anchor || {};
+    $('sensitivity-outcome').textContent = `${report.status}: ${number(report.completed_runs)} of ${number(report.planned_runs)} tests completed. ${number(report.completed_model_forwards)} completed model forwards; planned upper bound ${number(report.model_forwards_upper_bound)}. A failed forward may have an unknown actual count.`;
+    $('sensitivity-anchor').textContent = `Model: ${report.model?.family || 'unknown'} · device: ${report.model?.device || 'unknown'} · forward: ${number(anchor.forward_index)} · input position: ${number(anchor.token_position)} · input token ID: ${number(anchor.token_id)} · readout position: ${number(anchor.readout_position)}.`;
+    $('sensitivity-body').replaceChildren(); const controlLines = [], measuredRows = [];
+    const finite = value => typeof value === 'number' && Number.isFinite(value);
+    const pct = (value, signed = false) => `${signed && value > 0 ? '+' : ''}${Number((value * 100).toPrecision(6))}`;
+    const fmt = value => String(Number(value.toPrecision(6)));
+    for (const result of report.results) {
+      const row = document.createElement('tr'), controls = result?.controls && typeof result.controls === 'object' ? result.controls : {};
+      const required = ['null_full_logits_bitwise_equal','restoration_full_logits_bitwise_equal','source_vector_bitwise_equal','other_token_positions_at_selected_site_bitwise_equal'];
+      if (report.model?.family === 'llama') required.push('static_rotary_state_unchanged','fixed_input_ids_mask_unchanged');
+      const entries = Object.entries(controls), controlFailed = entries.some(([,value]) => value === false), controlIncomplete = required.some(key => controls[key] !== true) || entries.some(([,value]) => value !== true);
+      controlLines.push(`Layer ${number(result?.layer)} · ${result?.site || 'unknown'} · ${result?.module_path || 'no module path'}\n${entries.length ? entries.map(([key,value]) => `${key}: ${value === true ? 'passed' : value === false ? 'FAILED' : 'unavailable'}`).join('\n') : 'No controls recorded.'}${result?.reason ? `\nReason: ${result.reason}` : ''}`);
+      let status = String(result?.status || 'inconclusive');
+      if (status !== 'ok') status += result?.reason ? `: ${result.reason}` : '';
+      else if (controlFailed) status = 'inconclusive: control FAILED';
+      else if (controlIncomplete) status = 'inconclusive: controls incomplete';
+      else if (result.activation_changed === false) status = 'no-op: vector unchanged';
+      else if (result.activation_changed !== true) status = 'inconclusive: vector change unverified';
+      const token = result?.baseline_token || {}, valuesValid = [token.baseline_probability, token.intervention_probability, token.probability_delta, result.total_variation, result.last_position_max_abs_delta].every(finite) && token.baseline_probability >= 0 && token.baseline_probability <= 1 && token.intervention_probability >= 0 && token.intervention_probability <= 1 && Math.abs(token.probability_delta - (token.intervention_probability - token.baseline_probability)) <= 1e-12 && result.total_variation >= 0 && result.total_variation <= 1 && result.last_position_max_abs_delta >= 0 && Number.isSafeInteger(token.token_id) && token.token_id >= 0;
+      if (status === 'ok' && !valuesValid) status = 'inconclusive: measurement unavailable';
+      const measured = status === 'ok';
+      if (measured) measuredRows.push(result);
+      const displayStatus = measured && result.total_variation === 0 && result.last_position_max_abs_delta === 0 ? 'ok: no next-token change detected' : status;
+      cell(row, number(result?.layer)); cell(row, result?.site || 'unknown'); cell(row, displayStatus);
+      cell(row, measured ? `${typeof token.text === 'string' ? JSON.stringify(token.text) : 'text unavailable'} · ${token.token_id}` : '—');
+      cell(row, measured ? pct(token.baseline_probability) : '—'); cell(row, measured ? pct(token.intervention_probability) : '—'); cell(row, measured ? pct(token.probability_delta, true) : '—');
+      const tv = cell(row, measured ? fmt(result.total_variation) : '—');
+      if (measured) tv.setAttribute('data-magnitude', result.total_variation === 0 ? 'zero' : result.total_variation < 0.01 ? 'low' : result.total_variation < 0.1 ? 'medium' : 'high');
+      cell(row, measured ? fmt(result.last_position_max_abs_delta) : '—'); $('sensitivity-body').append(row);
+    }
+    if (report.status === 'inconclusive') $('sensitivity-finding').textContent = 'No cross-test ranking: the sweep was inconclusive. Inspect the individual statuses and controls.';
+    else if (!measuredRows.length) $('sensitivity-finding').textContent = 'No comparable changed-vector measurements are available for ranking.';
+    else {
+      const best = measuredRows.reduce((a, b) => b.total_variation > a.total_variation ? b : a);
+      const tied = measuredRows.filter(item => item.total_variation === best.total_variation).length > 1;
+      $('sensitivity-finding').textContent = `${tied ? 'One of the largest' : 'Largest'} measured distribution changes for this input: Layer ${number(best.layer)} · ${best.site}, TV ${fmt(best.total_variation)}. This ranks only successful changed-vector trials with complete controls.`;
+    }
+    $('sensitivity-controls').textContent = controlLines.join('\n\n') || 'No control results recorded.';
+    $('sensitivity-limits').textContent = [report.scope, ...(Array.isArray(report.limitations) ? report.limitations : [])].filter(value => typeof value === 'string').join(' ');
+    $('sensitivity-details').textContent = display(report); syncButtons();
+    $('sensitivity-report').focus({preventScroll:true}); $('sensitivity-report').scrollIntoView({block:'start'});
   }
   function clearWitness() {
     state.witnessRequest++; state.witnessTotal = 0; $('witness-body').replaceChildren(); $('witness-coordinate').textContent = ''; $('witness-page').textContent = ''; $('witness-status').textContent = '';
@@ -737,7 +815,9 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('saved-runs').addEventListener('change', () => { const run = state.saved.find((item) => item.path === $('saved-runs').value && item.status === 'complete_unverified'); if (run) $('open-path').value = run.path; });
   $('unload-button').addEventListener('click', () => action('Releasing the model owner; keeping captured vectors…', async () => { await api('unload', {}); const current = await api('status'); setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
   $('execution-device').addEventListener('change', syncButtons);
-  $('refresh-devices').addEventListener('click', () => action('Checking actual device availability…', async () => { const current = await api('status'); setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
+  $('refresh-devices').addEventListener('click', () => action('Checking actual device availability…', async () => { const current = await api('status');
+    if (state.run) { const same = !!(current.run?.capture_id && current.run.capture_id === state.run.capture_id); state.run.intervention_available = !!(same && current.run.intervention_available); state.run.intervention_reason = same ? current.run.intervention_reason : 'This capture is no longer the live server revision.'; state.run.reference_available = !!(same && current.run.reference_available); state.run.reference_reason = same ? current.run.reference_reason : 'This capture is no longer the live server revision.'; }
+    state.liveStatusUnverified = false; setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
   $('capture-mode').addEventListener('change', () => { $('custom-capture').hidden = $('capture-mode').value !== 'custom'; });
   $('model-path').addEventListener('input', () => { invalidateInspection(); invalidateBrowse(true); });
   $('browse-path').addEventListener('input', () => invalidateBrowse());
@@ -773,6 +853,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('session-options').addEventListener('toggle', () => { if (!$('session-options').open && $('session-options').contains(document.activeElement)) restoreSettingsFocus(); });
   $('dock-exact').addEventListener('click', () => { if (!state.event || state.busy) return; revealOptions('feature-values-options'); $('feature-values-options').scrollIntoView({block:'nearest'}); });
   $('dock-edit').addEventListener('click', () => { if (!state.event || state.busy) return; revealOptions('intervention-options'); $('intervention-operation').focus(); });
+  $('dock-experiment').addEventListener('click', () => { if (!state.event || state.busy) return; revealOptions('sensitivity-options'); $('sensitivity-layers').focus(); });
   $('dock-reference').addEventListener('click', () => { if (!state.event || state.busy) return; revealOptions('reference-options'); $('reference-options').scrollIntoView({block:'nearest'}); });
   $('output-step').addEventListener('change', () => { const raw = $('output-step').value.trim(), index = Number(raw); if (!/^\d+$/.test(raw) || !safeId(index) || index >= (state.run?.steps?.length || 0)) { state.outputGeneration++; $('output-readout').replaceChildren(); $('input-token-strip').replaceChildren(); $('input-token-page').textContent = ''; $('output-note').textContent = 'Choose a recorded forward record in range.'; return; } state.outputStep = index; state.tokenOffset = 0; renderForward(); });
   $('output-prev').addEventListener('click', () => { if (state.busy || state.outputStep === 0) return; state.outputStep--; state.tokenOffset = 0; renderForward(); });
@@ -820,6 +901,37 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('compare-reference').addEventListener('click',()=>{if(state.busy)return;return readReference('compare');});
   $('reference-prev').addEventListener('click',()=>{if(state.busy||!state.referenceMode)return;return readReference(state.referenceMode,Math.max(0,state.referenceOffset-valuePageSize));});
   $('reference-next').addEventListener('click',()=>{if(state.busy||!state.referenceMode)return;return readReference(state.referenceMode,state.referenceOffset+valuePageSize);});
+  for (const id of ['sensitivity-layers','sensitivity-attention','sensitivity-mlp','sensitivity-block']) $(id).addEventListener(id === 'sensitivity-layers' ? 'input' : 'change', updateSensitivityBudget);
+  $('sensitivity-run').addEventListener('click',()=>action('Running the bounded sensitivity experiment. This may take time on CPU or GPU.',async()=>{
+    if (!interventionReady()) throw new Error(interventionReason());
+    const {layers, sites} = sensitivityChoices(), body = {capture_id:state.run.capture_id,event:state.event.index,vector:state.vector,sites};
+    if (layers) body.layers = layers;
+    clearSensitivity();
+    try { const report = await api('sensitivity', body); showSensitivity(report); }
+    catch (caught) { clearSensitivity(); const error = caught instanceof Error ? caught : new Error(String(caught)); error.sensitivityOutcomeUncertain = true; throw error; }
+    // A partial report can follow a quarantining engine failure. Reconcile ownership even on HTTP success.
+    try {
+      const current = await api('status'), same = !!(state.run?.capture_id && current.run?.capture_id === state.run.capture_id);
+      if (state.run) {
+        state.run.intervention_available = !!(same && current.run.intervention_available);
+        state.run.intervention_reason = same ? current.run.intervention_reason : 'This displayed capture is no longer the live server revision; make a fresh capture.';
+        state.run.reference_available = !!(same && current.run.reference_available);
+        state.run.reference_reason = same ? current.run.reference_reason : 'This displayed capture is no longer the live server revision.';
+      }
+      state.liveStatusUnverified = false; setModel(current.model); applyLimits(current.limits); applyDevices(current);
+      if (!same) { $('sensitivity-status').hidden = false; $('sensitivity-status').textContent = 'The server capture changed after this report. These results belong to the displayed earlier capture; make a fresh capture before further experiments.'; }
+      else if (current.model?.state === 'quarantined') { $('sensitivity-status').hidden = false; $('sensitivity-status').textContent = 'The model was quarantined after the sweep. Restart the app before further runs; this partial report remains available.'; }
+    } catch (_) {
+      state.liveStatusUnverified = true;
+      if (state.run) { state.run.intervention_available = false; state.run.reference_available = false; state.run.intervention_reason = 'Post-experiment session status could not be verified; refresh device status in Model & settings.'; state.run.reference_reason = 'Post-experiment session status could not be verified.'; }
+      $('sensitivity-status').hidden = false; $('sensitivity-status').textContent = 'Post-experiment session status could not be verified. The report is retained; refresh device status in Model & settings before more model runs.';
+    }
+  }));
+  $('sensitivity-download').addEventListener('click',()=>{
+    if (state.busy || !state.sensitivity) return;
+    const blob = new Blob([JSON.stringify(state.sensitivity, null, 2)], {type:'application/json'}), url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = 'component-sensitivity-report.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
   $('intervention-operation').addEventListener('change',()=>{$('intervention-feature-fields').hidden=$('intervention-operation').value==='zero';});
   $('intervene-button').addEventListener('click',()=>action('Replaying fixed input and checking controls…',async()=>{
     if(!interventionReady()) throw new Error(interventionReason());

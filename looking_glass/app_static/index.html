@@ -198,7 +198,7 @@
 
         <details id="token-evidence" class="token-evidence"><summary id="token-evidence-heading">Token evidence</summary><p class="hint">Whole-model output, not decoding this layer.</p><p id="token-evidence-status" class="hint" role="status"></p><div id="token-evidence-output"></div><details id="token-evidence-candidates-options" class="options"><summary>Recorded candidate logits</summary><p class="hint">Saved full-model logits at this readout; not probabilities, confidence, or layer-level explanations.</p><div id="token-evidence-candidates"></div></details></details>
         <label for="vector-picker">Token / position</label><select id="vector-picker"><option value="">Choose a source position…</option></select>
-        <div class="dock-actions"><button id="dock-exact" type="button" class="secondary" title="Exact values">Exact values</button><button id="dock-edit" type="button" class="secondary" title="Edit">Edit</button><button id="dock-reference" type="button" class="quiet" title="Reference">Reference</button></div>
+        <div class="dock-actions"><button id="dock-exact" type="button" class="secondary" title="Exact values">Exact values</button><button id="dock-edit" type="button" class="secondary" title="Edit">Edit</button><button id="dock-experiment" type="button" class="secondary" title="Run an experiment">Experiment</button><button id="dock-reference" type="button" class="quiet" title="Reference">Reference</button></div>
         <details id="selection-details" class="options"><summary>Inspect details</summary>
         <details id="source-position-options" class="options"><summary>Position details</summary><p class="hint source-semantics">This activation is associated with this input token or patch position—not a word decoded from hidden features.</p>
         <div class="pager"><button id="vectors-page-prev" class="quiet" type="button" title="← Picker page">← Picker page</button><span id="vectors-page" class="hint"></span><button id="vectors-page-next" class="quiet" type="button" title="Picker page →">Picker page →</button></div>
@@ -222,6 +222,14 @@
         <label for="intervention-operation">Edit at the selected source vector</label><select id="intervention-operation"><option value="zero">Zero the entire selected vector</option><option value="add">Add to one feature</option><option value="replace">Set one feature</option></select>
         <div id="intervention-feature-fields" class="field-grid" hidden><div><label for="intervention-feature">Feature index · zero-based</label><input id="intervention-feature" type="number" min="0" max="0" value="0"></div><div><label for="intervention-value">Explicit finite value</label><input id="intervention-value" type="text" inputmode="decimal" placeholder="e.g. 0.5" autocomplete="off"></div></div>
         <button id="intervene-button" type="button" disabled title="Replay &amp; compare">Replay &amp; compare</button><p class="hint">Replay keeps the original capture but replaces the previous comparison, even if it fails. Save a comparison you want to keep first.</p></details>
+        <details id="sensitivity-options" class="options"><summary>Run an experiment · component sensitivity</summary>
+        <p class="hint">At this selected input position, zero one component output at a time and compare the next-token distribution on the same fixed input. GPT-2 and supported Llama live captures only; model weights and the existing comparison stay unchanged.</p>
+        <p id="sensitivity-ready" class="hint" aria-live="polite"></p>
+        <label for="sensitivity-layers">Layers · up to 6, zero-based, comma-separated</label><input id="sensitivity-layers" type="text" placeholder="Automatic: up to 6 captured layers" autocomplete="off" aria-describedby="sensitivity-budget">
+        <fieldset><legend>Components to test</legend><div class="checklist"><label for="sensitivity-attention"><input id="sensitivity-attention" type="checkbox" checked> Attention</label><label for="sensitivity-mlp"><input id="sensitivity-mlp" type="checkbox" checked> MLP</label><label for="sensitivity-block"><input id="sensitivity-block" type="checkbox" checked> Block</label></div></fieldset>
+        <p id="sensitivity-budget" class="hint" aria-live="polite"></p>
+        <button id="sensitivity-run" type="button" disabled>Run experiment</button>
+        <p class="hint">Tests run sequentially on the loaded device and may take time, especially on CPU. The fixed input is limited to 64 tokens and the remaining capture allowance. The report is temporary until you download it.</p></details>
         <details><summary>Exact observation metadata</summary><pre id="event-metadata" class="detail-json"></pre></details>
         </details>
       </div>
@@ -239,6 +247,19 @@
       <details><summary>Pinned source metadata</summary><pre id="reference-source-details" class="detail-json"></pre></details>
     </details>
     </div></aside>
+    <div id="comparison-reports">
+    <section id="sensitivity-report" class="panel" aria-labelledby="sensitivity-heading" tabindex="-1" hidden>
+      <div class="panel-heading"><h2 id="sensitivity-heading">Component sensitivity report</h2><span class="status-text">Fixed input · one position</span></div>
+      <p id="sensitivity-demo" class="approximation" hidden>Untrained CPU demo: this report checks the workflow, not useful model behavior.</p>
+      <p id="sensitivity-outcome" class="info-box" role="status"></p><p id="sensitivity-status" class="notice error" role="status" hidden></p><p id="sensitivity-anchor" class="hint"></p><p id="sensitivity-finding" class="info-box"></p>
+      <p class="hint">This is one fixed input and position. Changes do not identify a concept or explain the whole model. No cross-prompt patching was run.</p>
+      <p class="hint">Each row zeros one component output. Δ is the baseline top token’s probability change in percentage points; TV measures change across the full vocabulary (0 to 1). Color is a visual aid; the numbers and status are the evidence.</p>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Component sensitivity by layer"><table><thead><tr><th>Layer</th><th>Component</th><th>Status</th><th>Baseline top token · ID</th><th>Baseline %</th><th>Zeroed %</th><th>Δ percentage points</th><th>Distribution TV</th><th>Last-position max |Δ logit|</th></tr></thead><tbody id="sensitivity-body"></tbody></table></div>
+      <details><summary>Control checks by layer and component</summary><pre id="sensitivity-controls" class="detail-json"></pre></details>
+      <details><summary>Scope and limitations</summary><p id="sensitivity-limits" class="hint"></p></details>
+      <details><summary>Exact report metadata and token distributions</summary><pre id="sensitivity-details" class="detail-json"></pre></details>
+      <button id="sensitivity-download" type="button" class="secondary">Download report JSON</button><p class="hint">Download is explicit and may contain sensitive token text and input token IDs. Store it privately.</p>
+    </section>
     <section id="experiment-panel" class="panel" aria-labelledby="experiment-heading" hidden>
       <div class="panel-heading"><h2 id="experiment-heading">Fixed-input comparison</h2><span class="status-text">Separate from original capture</span></div>
       <p id="demo-experiment-warning" class="approximation" hidden>Untrained CPU demo comparison: workflow only, not useful model behavior or GPU validation.</p>
@@ -257,6 +278,7 @@
       </details>
       <label for="experiment-save-name">Save only this comparison</label><div class="button-row"><input id="experiment-save-name" type="text" value="my-comparison" autocomplete="off"><button id="save-experiment" class="secondary" type="button" title="Save comparison">Save comparison</button></div><p id="experiment-save-status" class="hint">Saves this comparison’s input, outputs and before/after vectors. Save capture saves the original run separately. Exports may contain private data.</p>
     </section>
+    </div>
     <p id="experiment-startup-status" class="hint" aria-live="polite"></p>
 
   </main>
