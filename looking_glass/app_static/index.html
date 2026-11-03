@@ -198,7 +198,7 @@
 
         <details id="token-evidence" class="token-evidence"><summary id="token-evidence-heading">Token evidence</summary><p class="hint">Whole-model output, not decoding this layer.</p><p id="token-evidence-status" class="hint" role="status"></p><div id="token-evidence-output"></div><details id="token-evidence-candidates-options" class="options"><summary>Recorded candidate logits</summary><p class="hint">Saved full-model logits at this readout; not probabilities, confidence, or layer-level explanations.</p><div id="token-evidence-candidates"></div></details></details>
         <label for="vector-picker">Token / position</label><select id="vector-picker"><option value="">Choose a source position…</option></select>
-        <div class="dock-actions"><button id="dock-exact" type="button" class="secondary" title="Exact values">Exact values</button><button id="dock-edit" type="button" class="secondary" title="Edit">Edit</button><button id="dock-reference" type="button" class="quiet" title="Reference">Reference</button></div>
+        <div class="dock-actions"><button id="dock-exact" type="button" class="secondary" title="Exact values">Exact values</button><button id="dock-edit" type="button" class="secondary" title="Edit">Edit</button><button id="dock-experiment" type="button" class="secondary" title="Run an experiment">Experiment</button><button id="dock-reference" type="button" class="quiet" title="Reference">Reference</button></div>
         <details id="selection-details" class="options"><summary>Inspect details</summary>
         <details id="source-position-options" class="options"><summary>Position details</summary><p class="hint source-semantics">This activation is associated with this input token or patch position—not a word decoded from hidden features.</p>
         <div class="pager"><button id="vectors-page-prev" class="quiet" type="button" title="← Picker page">← Picker page</button><span id="vectors-page" class="hint"></span><button id="vectors-page-next" class="quiet" type="button" title="Picker page →">Picker page →</button></div>
@@ -222,6 +222,34 @@
         <label for="intervention-operation">Edit at the selected source vector</label><select id="intervention-operation"><option value="zero">Zero the entire selected vector</option><option value="add">Add to one feature</option><option value="replace">Set one feature</option></select>
         <div id="intervention-feature-fields" class="field-grid" hidden><div><label for="intervention-feature">Feature index · zero-based</label><input id="intervention-feature" type="number" min="0" max="0" value="0"></div><div><label for="intervention-value">Explicit finite value</label><input id="intervention-value" type="text" inputmode="decimal" placeholder="e.g. 0.5" autocomplete="off"></div></div>
         <button id="intervene-button" type="button" disabled title="Replay &amp; compare">Replay &amp; compare</button><p class="hint">Replay keeps the original capture but replaces the previous comparison, even if it fails. Save a comparison you want to keep first.</p></details>
+        <details id="sensitivity-options" class="options"><summary>Run an experiment · component sensitivity</summary>
+        <p class="hint">At this selected input position, zero one component output at a time and compare the next-token distribution on the same fixed input. GPT-2 and supported Llama live captures only; model weights and the existing comparison stay unchanged.</p>
+        <p id="experiment-cancel-note" class="hint">Stop requests wait for the current controlled operation to finish and restore model state; an individual GPU forward cannot be interrupted. Closing this tab does not stop a submitted experiment.</p>
+        <p id="sensitivity-ready" class="hint" aria-live="polite"></p>
+        <label for="sensitivity-layers">Layers · up to 6, zero-based, comma-separated</label><input id="sensitivity-layers" type="text" placeholder="Automatic: up to 6 captured layers" autocomplete="off" aria-describedby="sensitivity-budget">
+        <fieldset><legend>Components to test</legend><div class="checklist"><label for="sensitivity-attention"><input id="sensitivity-attention" type="checkbox" checked> Attention</label><label for="sensitivity-mlp"><input id="sensitivity-mlp" type="checkbox" checked> MLP</label><label for="sensitivity-block"><input id="sensitivity-block" type="checkbox" checked> Block</label></div></fieldset>
+        <p id="sensitivity-budget" class="hint" aria-live="polite"></p>
+        <div class="button-row"><button id="sensitivity-run" type="button" disabled>Run experiment</button><button id="sensitivity-stop" class="secondary" type="button" hidden disabled>Stop experiment</button><button id="sensitivity-check-job" class="secondary" type="button" hidden disabled>Check experiment status</button></div><p id="sensitivity-job-status" class="hint" role="status" hidden></p>
+        <p class="hint">Tests run sequentially on the loaded device and may take time, especially on CPU. The fixed input is limited to 64 tokens and the remaining capture allowance. The report is temporary until you download it.</p>
+        <details id="repeat-options" class="options"><summary>Compare prompts with repeated tests</summary>
+          <p class="hint">Enter 2–4 prompts, one per line, up to 512 characters each. Each uses its own final input token on the same loaded model; positions are not semantically aligned. This compares separate zeroing tests, not activation patching.</p>
+          <label for="repeat-prompts">Prompts · one per line</label><textarea id="repeat-prompts" rows="4" maxlength="4096" placeholder="The capital of France is&#10;The capital of Italy is" aria-describedby="repeat-budget"></textarea>
+          <p id="repeat-budget" class="hint" aria-live="polite"></p>
+          <div class="button-row"><button id="repeat-run" type="button" disabled>Run repeated tests</button><button id="repeat-stop" class="secondary" type="button" hidden disabled>Stop repeated tests</button><button id="repeat-check-job" class="secondary" type="button" hidden disabled>Check experiment status</button></div><p id="repeat-job-status" class="hint" role="status" hidden></p>
+          <p class="hint">Uses the layers and components above. Up to 12 tests and 52 model forwards, sequentially on the loaded device. Prompts are limited to 64 input tokens each.</p>
+        </details>
+        <details id="patch-options" class="options"><summary>Patch an activation between prompts</summary>
+          <p class="hint">Choose a donor and a receiver prompt, preview their exact tokens, then explicitly choose one token in each. Clean and corrupted are your descriptions of these prompts. One donor vector is inserted at the same layer and component in the receiver. Token positions do not imply semantic alignment.</p>
+          <label for="patch-donor-prompt">Donor / clean prompt</label><textarea id="patch-donor-prompt" rows="2" maxlength="512"></textarea>
+          <label for="patch-receiver-prompt">Receiver / corrupted prompt</label><textarea id="patch-receiver-prompt" rows="2" maxlength="512"></textarea>
+          <button id="patch-preview" type="button" disabled>Preview tokens</button><p id="patch-preview-status" class="hint" aria-live="polite">Preview both prompts before selecting tokens.</p>
+          <label for="patch-donor-position">Donor token · zero-based position and ID</label><select id="patch-donor-position" disabled><option value="">Choose a donor token…</option></select>
+          <label for="patch-receiver-position">Receiver token · zero-based position and ID</label><select id="patch-receiver-position" disabled><option value="">Choose a receiver token…</option></select>
+          <label for="patch-layer">Layer · zero-based</label><input id="patch-layer" type="number" min="0" max="2147483647" placeholder="Choose a layer" inputmode="numeric">
+          <label for="patch-site">Component</label><select id="patch-site"><option value="attention">Attention</option><option value="mlp">MLP</option><option value="block">Block</option></select>
+          <div class="button-row"><button id="patch-run" type="button" disabled>Run activation patch</button><button id="patch-stop" class="secondary" type="button" hidden disabled>Stop activation patch</button><button id="patch-check-job" class="secondary" type="button" hidden disabled>Check experiment status</button></div><p id="patch-job-status" class="hint" role="status" hidden></p>
+          <p class="hint">Prompts are limited to 512 characters and 64 tokens each. The patch uses 10 model forwards on the loaded device and can take time. This is a temporary intervention, not a checkpoint edit or automatic concept alignment.</p>
+        </details></details>
         <details><summary>Exact observation metadata</summary><pre id="event-metadata" class="detail-json"></pre></details>
         </details>
       </div>
@@ -239,6 +267,39 @@
       <details><summary>Pinned source metadata</summary><pre id="reference-source-details" class="detail-json"></pre></details>
     </details>
     </div></aside>
+    <div id="comparison-reports">
+    <section id="patch-report" class="panel" aria-labelledby="patch-heading" tabindex="-1" hidden>
+      <div class="panel-heading"><h2 id="patch-heading">Cross-prompt activation patch</h2><span class="status-text">One donor vector · one receiver position</span></div>
+      <p id="patch-demo" class="approximation" hidden>Untrained CPU demo: this report checks the workflow, not useful model behavior.</p>
+      <p id="patch-outcome" class="info-box" role="status"></p><p id="patch-status" class="notice error" role="status" hidden></p>
+      <p id="patch-input-status" class="notice" role="status" hidden></p>
+      <p id="patch-alignment" class="hint"></p><details><summary>Prompt inputs for this report</summary><p id="patch-report-prompts" class="hint"></p></details><p class="hint">This compares one explicit intervention. The selected positions need not represent equivalent words or concepts. A changed prediction is not a complete explanation or proof of generalization.</p>
+      <h3>Clean, corrupted and patched predictions</h3><pre id="patch-baselines" class="detail-json"></pre>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Patched next-token probabilities"><table><thead><tr><th>Token · ID</th><th>Receiver baseline %</th><th>Patched %</th><th>Change · percentage points</th></tr></thead><tbody id="patch-distribution-body"></tbody></table></div>
+      <details><summary>Controls, exact values and limitations</summary><pre id="patch-details" class="detail-json"></pre></details>
+      <button id="patch-download" type="button" class="secondary">Download patch report JSON</button><p class="hint">The report contains prompt text and token IDs; store it privately.</p>
+    </section>
+    <section id="repeat-report" class="panel" aria-labelledby="repeat-heading" tabindex="-1" hidden>
+      <div class="panel-heading"><h2 id="repeat-heading">Repeated-prompt report</h2><span class="status-text">Same loaded model · final input token</span></div>
+      <p id="repeat-demo" class="approximation" hidden>Untrained CPU demo: this report checks the workflow, not useful model behavior.</p>
+      <p id="repeat-outcome" class="info-box" role="status"></p><p id="repeat-status" class="notice error" role="status" hidden></p>
+      <p class="hint">Each prompt is run separately and may tokenize differently. Final positions are not semantic matches, and the predicted token may differ. TV is a full-vocabulary distribution change; these tests do not patch activations or establish general robustness.</p>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Repeated tests by prompt and layer"><table><thead><tr><th>Prompt and final input token</th><th>Layer</th><th>Component</th><th>Status</th><th>Baseline top token · ID</th><th>Baseline %</th><th>Zeroed %</th><th>Δ percentage points</th><th>Distribution TV</th></tr></thead><tbody id="repeat-body"></tbody></table></div>
+      <details><summary>Exact repeated-test report and controls</summary><pre id="repeat-details" class="detail-json"></pre></details>
+      <button id="repeat-download" type="button" class="secondary">Download repeated-test JSON</button><p class="hint">The downloaded report contains prompt text and token IDs. Store it privately.</p>
+    </section>
+    <section id="sensitivity-report" class="panel" aria-labelledby="sensitivity-heading" tabindex="-1" hidden>
+      <div class="panel-heading"><h2 id="sensitivity-heading">Component sensitivity report</h2><span class="status-text">Fixed input · one position</span></div>
+      <p id="sensitivity-demo" class="approximation" hidden>Untrained CPU demo: this report checks the workflow, not useful model behavior.</p>
+      <p id="sensitivity-outcome" class="info-box" role="status"></p><p id="sensitivity-status" class="notice error" role="status" hidden></p><p id="sensitivity-anchor" class="hint"></p><p id="sensitivity-finding" class="info-box"></p>
+      <p class="hint">This is one fixed input and position. Changes do not identify a concept or explain the whole model. No cross-prompt patching was run.</p>
+      <p class="hint">Each row zeros one component output. Δ is the baseline top token’s probability change in percentage points; TV measures change across the full vocabulary (0 to 1). Color is a visual aid; the numbers and status are the evidence.</p>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Component sensitivity by layer"><table><thead><tr><th>Layer</th><th>Component</th><th>Status</th><th>Baseline top token · ID</th><th>Baseline %</th><th>Zeroed %</th><th>Δ percentage points</th><th>Distribution TV</th><th>Last-position max |Δ logit|</th></tr></thead><tbody id="sensitivity-body"></tbody></table></div>
+      <details><summary>Control checks by layer and component</summary><pre id="sensitivity-controls" class="detail-json"></pre></details>
+      <details><summary>Scope and limitations</summary><p id="sensitivity-limits" class="hint"></p></details>
+      <details><summary>Exact report metadata and token distributions</summary><pre id="sensitivity-details" class="detail-json"></pre></details>
+      <button id="sensitivity-download" type="button" class="secondary">Download report JSON</button><p class="hint">Download is explicit and may contain sensitive token text and input token IDs. Store it privately.</p>
+    </section>
     <section id="experiment-panel" class="panel" aria-labelledby="experiment-heading" hidden>
       <div class="panel-heading"><h2 id="experiment-heading">Fixed-input comparison</h2><span class="status-text">Separate from original capture</span></div>
       <p id="demo-experiment-warning" class="approximation" hidden>Untrained CPU demo comparison: workflow only, not useful model behavior or GPU validation.</p>
@@ -257,6 +318,7 @@
       </details>
       <label for="experiment-save-name">Save only this comparison</label><div class="button-row"><input id="experiment-save-name" type="text" value="my-comparison" autocomplete="off"><button id="save-experiment" class="secondary" type="button" title="Save comparison">Save comparison</button></div><p id="experiment-save-status" class="hint">Saves this comparison’s input, outputs and before/after vectors. Save capture saves the original run separately. Exports may contain private data.</p>
     </section>
+    </div>
     <p id="experiment-startup-status" class="hint" aria-live="polite"></p>
 
   </main>

@@ -433,3 +433,73 @@ def test_scrollable_trace_region_reserves_actual_toolbar_height():
     layer = re.search(r"\.layer-map\s*\{([^}]+)\}", css).group(1)
     assert "max-height" not in layer and "overflow:auto" not in layer
 
+
+def test_patch_preview_has_explicit_disabled_token_choices_and_visible_report_focus():
+    ids = page().ids
+    assert ids["patch-options"].tag == "details"
+    for identifier in ("patch-donor-position", "patch-receiver-position", "patch-run"):
+        assert "disabled" in ids[identifier].attrs
+    assert ids["patch-report"].attrs.get("tabindex") == "-1"
+    assert "hidden" in ids["patch-report"].attrs
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    assert "#patch-report:focus{outline:2px solid var(--selected)" in css
+
+
+def test_experiment_stop_controls_and_safe_boundary_explanation():
+    ids = page().ids
+    note = ids["experiment-cancel-note"]
+    assert ids["sensitivity-options"] in note.ancestors()
+    for kind in ("sensitivity", "repeat", "patch"):
+        run, stop, check, status = (ids[f"{kind}-{suffix}"] for suffix in ("run", "stop", "check-job", "job-status"))
+        for element in (run, stop, check, status):
+            assert ids["sensitivity-options"] in element.ancestors()
+        assert stop.tag == "button" and stop.attrs.get("type") == "button"
+        assert "hidden" in stop.attrs and "disabled" in stop.attrs
+        assert check.tag == "button" and check.attrs.get("type") == "button"
+        assert "hidden" in check.attrs and "disabled" in check.attrs
+        assert status.attrs.get("role") == "status" and "hidden" in status.attrs
+    text = note.text.lower()
+    assert "current controlled operation" in text and "restore model state" in text
+    assert "gpu forward cannot be interrupted" in text
+    assert "closing this tab does not stop" in text
+
+
+def test_patch_report_exposes_prior_inputs_and_live_attribution_warning():
+    ids = page().ids
+    warning = ids["patch-input-status"]
+    assert warning.attrs.get("role") == "status" and "hidden" in warning.attrs
+    assert ids["patch-report"] in warning.ancestors()
+    assert any(node.tag == "details" for node in ids["patch-report-prompts"].ancestors())
+    assert ids["patch-report"] in ids["patch-report-prompts"].ancestors()
+
+
+def test_experiment_report_long_labels_can_wrap_within_bounded_cells():
+    # Structural CSS check; a rendered viewport test is still needed.
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    rule = re.search(r"([^{}]*#repeat-body td:first-child[^{}]*)\{([^}]+)\}", css)
+    assert rule is not None
+    for selector in ("#repeat-body td:first-child", "#repeat-body td:nth-child(4)",
+                     "#repeat-body td:nth-child(5)", "#sensitivity-body td:nth-child(3)",
+                     "#sensitivity-body td:nth-child(4)", "#patch-distribution-body td:first-child"):
+        assert selector in rule.group(1)
+    styles = rule.group(2).replace(" ", "")
+    assert "white-space:normal" in styles and "overflow-wrap:anywhere" in styles
+    assert "max-width:24rem" in styles
+
+
+
+def test_programmatically_focused_sensitivity_report_has_visible_focus():
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    rule = re.search(r"#sensitivity-report:focus\s*\{([^}]+)\}", css)
+    assert rule is not None
+    assert "outline:none" not in rule.group(1).replace(" ", "")
+    assert "outline:" in rule.group(1).replace(" ", "")
+
+
+def test_repeated_prompt_report_has_demo_warning_and_visible_focus():
+    demo = page().ids["repeat-demo"]
+    assert "hidden" in demo.attrs and "Untrained CPU demo" in demo.text
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    rule = re.search(r"#repeat-report:focus\s*\{([^}]+)\}", css)
+    assert rule and "outline:" in rule.group(1).replace(" ", "")
+    assert "outline:none" not in rule.group(1).replace(" ", "")

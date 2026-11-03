@@ -2,10 +2,14 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   const token = document.querySelector('meta[name="mlg-token"]').content;
-  const state = {browseRequest: 0, browseFresh: false, settingsOpener: 'session-summary', mapButtons: [], outputGeneration: 0, outputStep: 0, tokenOffset: 0, tokenTotal: 0, mapAutoCapture: null, mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
+  const state = {browseRequest: 0, browseFresh: false, settingsOpener: 'session-summary', mapButtons: [], outputGeneration: 0, outputStep: 0, tokenOffset: 0, tokenTotal: 0, mapAutoCapture: null, mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, sensitivity: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, liveStatusUnverified: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
   const pageSize = 100, valuePageSize = 256;
+  let repeatReport = null, patchPreview = null, patchReport = null;
+  let activeExperimentJob = null, experimentActionStatus = null;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
+  const tokenText = (token) => token?.text_unavailable === true || typeof token?.text !== 'string' ? 'text unavailable' : `${JSON.stringify(token.text)}${token.text_truncated === true ? ' · text truncated' : ''}`;
+  const tokenPiece = (token) => token?.piece_unavailable === true || typeof token?.piece !== 'string' ? 'piece unavailable' : `piece ${JSON.stringify(token.piece)}${token.piece_truncated === true ? ' · piece truncated' : ''}`;
   const bytes = (value) => { const n = Number(value); if (!Number.isFinite(n)) return '—'; return n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KiB` : `${(n / 1048576).toFixed(2)} MiB`; };
   let sceneApi=null, sceneFailed=false, sceneMode='select', sceneNavigation={index:0,total:0,label:''};
   function syncSceneControls(){
@@ -60,7 +64,7 @@
     catch(_){sceneUnavailable('3D rendering unavailable. Use the captured-site list.');}
   }
 
-  function revealOptions(id) { $(id).open = true; if (['vector-options','source-position-options','feature-values-options','intervention-options','reference-options'].includes(id)) setDock('selection',true); if (['vector-options','source-position-options','feature-values-options','intervention-options'].includes(id)) $('selection-details').open = true; if (['map-tools-options','source-options','event-catalog-options'].includes(id)) $('explorer-options').open = true; if (id === 'map-tools-options') $('layer-map-options').open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','privacy-options','download-options'].includes(id)) $('session-options').open = true; }
+  function revealOptions(id) { $(id).open = true; if (['vector-options','source-position-options','feature-values-options','intervention-options','sensitivity-options','reference-options'].includes(id)) setDock('selection',true); if (['vector-options','source-position-options','feature-values-options','intervention-options','sensitivity-options'].includes(id)) $('selection-details').open = true; if (['map-tools-options','source-options','event-catalog-options'].includes(id)) $('explorer-options').open = true; if (id === 'map-tools-options') $('layer-map-options').open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','privacy-options','download-options'].includes(id)) $('session-options').open = true; }
   function notice(message, error = false) { $('notice').textContent = message; $('notice').hidden = !message; $('notice').classList.toggle('error', error); }
   async function api(path, body, {allowErrorField=false} = {}) {
     if (body === undefined && /^(events|vectors|tensor|layer-map)\?/.test(path) && state.run?.capture_id) path += `&capture_id=${encodeURIComponent(state.run.capture_id)}`;
@@ -69,8 +73,147 @@
     const response = await fetch(`/api/${path}`, options);
     let data;
     try { data = await response.json(); } catch (_) { throw new Error(`The local app returned an invalid response (${response.status}).`); }
-    if (!response.ok || (data?.error && !allowErrorField)) throw new Error(data?.error || `Request failed (${response.status}).`);
+    if (!response.ok || (data?.error && !allowErrorField)) {
+      const error = new Error(data?.error || `Request failed (${response.status}).`);
+      error.httpStatus = response.status; throw error;
+    }
     return data;
+  }
+  function setExperimentJobStatus(kind, message) {
+    const status = $(`${kind}-job-status`);
+    if (status.textContent !== message) status.textContent = message;
+    status.hidden = !message;
+  }
+  function inFlightExperimentStatus(job, message) {
+    setExperimentJobStatus(job.kind, `${message}${job.unverified ? ' The result is unavailable; use Check experiment status to check whether it is still active.' : ''}${job.previousReport ? ' The previous report below is from an earlier run.' : ''}`);
+  }
+  function syncExperimentStops() {
+    for (const kind of ['sensitivity', 'repeat', 'patch']) {
+      const button = $(`${kind}-stop`), check = $(`${kind}-check-job`), job = activeExperimentJob;
+      button.hidden = !job || job.kind !== kind;
+      button.disabled = !job || job.kind !== kind || !job.id || job.finished || job.stopPending || job.statusPending || job.stopping;
+      check.hidden = !job || job.kind !== kind || !job.unverified;
+      check.disabled = !job || job.kind !== kind || !job.unverified || job.statusPending || job.stopPending;
+    }
+  }
+  async function checkUnverifiedExperiment(kind) {
+    const job = activeExperimentJob;
+    if (!job || job.kind !== kind || !job.unverified || job.statusPending || job.stopPending) return;
+    const current = () => activeExperimentJob === job && !job.finished;
+    job.statusPending = true; syncButtons();
+    try {
+      const answer = await api('experiment-status', {job_id: job.id});
+      if (!current()) return;
+      if (answer?.job_id !== job.id || answer.action !== job.action || !['reserved','queued','running','stopping'].includes(answer.status)) throw new Error('Experiment status did not match');
+      job.stopping = answer.status === 'stopping';
+      inFlightExperimentStatus(job, `Experiment status: ${answer.status}. Its result is unverified. Check again later; ${job.stopping ? 'stop was requested and the current controlled operation must finish' : 'Stop is available'}.`);
+    } catch (error) {
+      if (!current()) return;
+      if (error.httpStatus === 400 && error.message === 'Experiment job is not active or has expired') {
+        job.finished = true; activeExperimentJob = null; state.busy = false;
+        setExperimentJobStatus(kind, `The experiment is no longer active, but its result remains unverified. Refresh device status in Model & settings before another model run.${job.previousReport ? ' The previous report below is from an earlier run.' : ''}`);
+        $('run-status').textContent = 'Experiment result unverified. Refresh device status.';
+        notice('The experiment is no longer active, but its result could not be recovered. Refresh device status in Model & settings.', true);
+      } else {
+        inFlightExperimentStatus(job, 'Experiment status is unverified. It may still be queued or running. Check again or try Stop while the result is unavailable.');
+      }
+    } finally { job.statusPending = false; syncButtons(); }
+  }
+  async function requestExperimentStop(kind) {
+    const job = activeExperimentJob;
+    if (!job || job.kind !== kind || !job.id || job.finished || job.stopPending || job.statusPending || job.stopping) return;
+    const current = () => activeExperimentJob === job && !job.finished;
+    job.stopPending = true; job.stopAttempted = true;
+    inFlightExperimentStatus(job, 'Requesting stop. The current controlled operation must finish and restore the model first.');
+    syncButtons();
+    try {
+      const answer = await api('experiment-cancel', {job_id: job.id});
+      if (!current()) return;
+      if (answer?.job_id !== job.id || answer.status !== 'stopping') throw new Error('Stop response did not match this experiment');
+      job.stopping = true;
+      inFlightExperimentStatus(job, 'Stop requested. Waiting for the current controlled operation to finish and restore the model.');
+    } catch (_) {
+      if (!current()) return;
+      try {
+        const status = await api('experiment-status', {job_id: job.id});
+        if (!current()) return;
+        if (status?.job_id !== job.id || status.action !== job.action) throw new Error('Experiment status did not match');
+        if (status.status === 'stopping') {
+          job.stopping = true;
+          inFlightExperimentStatus(job, 'Stop requested. Waiting for the current controlled operation to finish and restore the model.');
+        } else if (['reserved', 'queued', 'running'].includes(status.status)) {
+          inFlightExperimentStatus(job, 'Stop was not confirmed. The experiment is still pending or running; you may try Stop again.');
+        } else throw new Error('Experiment status unavailable');
+      } catch (_) {
+        if (!current()) return;
+        inFlightExperimentStatus(job, 'Stop could not be confirmed; the experiment may still be running or may already have finished. You may try Stop again while waiting for its result.');
+      }
+    } finally {
+      job.stopPending = false;
+      if (current()) syncButtons();
+    }
+  }
+  async function runStopEnabledExperiment(kind, actionName, body, previousReport) {
+    const job = {kind, action: actionName, id: null, finished: false, stopPending: false, statusPending: false, unverified: false,
+                 stopping: false, stopAttempted: false, previousReport};
+    activeExperimentJob = job;
+    setExperimentJobStatus(kind, `Preparing experiment; Stop becomes available after reservation.${previousReport ? ' The previous report below belongs to an earlier run.' : ''}`);
+    syncButtons();
+    let submitted = false;
+    try {
+      const reservation = await api('experiment-reserve', {action: actionName, capture_id: body.capture_id});
+      if (!reservation || typeof reservation.job_id !== 'string' || !/^[0-9a-f]{48}$/.test(reservation.job_id) || reservation.action !== actionName || reservation.status !== 'reserved')
+        throw new Error('Could not verify the experiment reservation; no experiment was submitted.');
+      job.id = reservation.job_id;
+      setExperimentJobStatus(kind, `Experiment submitted or waiting. Stop is available.${previousReport ? ' The previous report below belongs to an earlier run.' : ''}`);
+      syncButtons();
+      submitted = true;
+      const result = await api(actionName, {...body, job_id: job.id});
+      job.finished = true;
+      return {result, job};
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught));
+      if (submitted) {
+        error.sensitivityOutcomeUncertain = true;
+        job.unverified = true; error.experimentJob = job;
+        error.message += ' The experiment outcome is unverified; it may still be running or may already have finished.';
+        inFlightExperimentStatus(job, 'Experiment outcome unverified; it may still be queued or running, or may already have finished.');
+      } else {
+        setExperimentJobStatus(kind, `No experiment was submitted. A reservation may remain briefly; retry after 30 seconds.${previousReport ? ' The previous report below is from an earlier run.' : ''}`);
+      }
+      throw error;
+    } finally {
+      if (!job.unverified) {
+        job.finished = true;
+        if (activeExperimentJob === job) activeExperimentJob = null;
+      }
+      syncButtons();
+    }
+  }
+  function finishExperiment(kind, report, job, previousRetained = false) {
+    if (report.status === 'cancelled') {
+      const message = previousRetained ? 'Stopped before a controlled result was produced. The previous report below is from an earlier run.' : kind === 'patch' ? 'Stopped before the activation patch began. No patch result was produced.' : report.completed_runs === 0 ? 'Stopped before a controlled result was produced. Skipped tests are not zero effects.' : 'Stopped at a safe boundary. Completed results are shown; skipped tests are not zero effects.';
+      setExperimentJobStatus(kind, message); experimentActionStatus = 'Experiment stopped at a safe boundary. See the experiment status.';
+    } else if (job.stopAttempted && ['complete', 'partial'].includes(report.status)) {
+      setExperimentJobStatus(kind, 'The experiment finished before the stop took effect. The final report is shown.');
+      experimentActionStatus = 'Experiment finished before the stop took effect.';
+    } else if (report.status === 'inconclusive') {
+      setExperimentJobStatus(kind, 'The experiment ended inconclusively. Review its report and controls.');
+      experimentActionStatus = 'Experiment ended inconclusively.';
+    } else {
+      setExperimentJobStatus(kind, 'Experiment finished. The current report is shown.');
+    }
+  }
+  function emptyCancelledReport(kind, report, capture) {
+    const preset = kind === 'sensitivity' ? 'component_sensitivity' : 'multi_prompt_sensitivity';
+    if (!report || report.status !== 'cancelled' || report.capture_id !== capture || report.preset !== preset || report.completed_runs !== 0 || !Array.isArray(report.results) || report.results.length > (kind === 'sensitivity' ? 18 : 4)) return false;
+    return report.results.every(row => row && row.status !== 'ok' && (!row.report || (Array.isArray(row.report.results) && row.report.results.every(cell => cell && cell.status !== 'ok'))));
+  }
+  function invalidExperimentReport(kind, caught, previousReport) {
+    const error = caught instanceof Error ? caught : new Error(String(caught));
+    error.sensitivityOutcomeUncertain = true;
+    setExperimentJobStatus(kind, `The experiment result could not be verified.${previousReport ? ' The previous report below is from an earlier run.' : ''}`);
+    return error;
   }
   function syncDeviceChoice() {
     const choice = $('execution-device').value || 'auto';
@@ -97,7 +240,7 @@
     $('scene-empty-message').textContent = ready ? (vision ? 'Choose an image, then Run.' : 'Enter a prompt, then Run.') : state.model?.state === 'quarantined' ? 'Restart required for another model run. Saved captures can still be opened.' : 'Choose a model, write a prompt, then Run.';
     $('open-settings').textContent = ready ? (vision ? 'Go to image' : 'Go to prompt') : 'Choose model';
     $('open-settings').setAttribute('title', ready ? (vision ? 'Focus the image input' : 'Focus the prompt') : 'Open model settings');
-    $('dock-exact').disabled = state.busy || !state.event; $('dock-edit').disabled = state.busy || !state.event; $('dock-reference').disabled = state.busy || !state.event;
+    $('dock-exact').disabled = state.busy || !state.event; $('dock-edit').disabled = state.busy || !state.event; $('dock-experiment').disabled = state.busy || !state.event; $('dock-reference').disabled = state.busy || !state.event;
     $('open-settings').disabled = state.busy;
     // Highlight canonical sites, not just their first event: singleton token captures share a site.
     const coordinate = state.coordinate, metadata = state.event?.metadata;
@@ -117,7 +260,7 @@
     $('output-prev').disabled = state.busy || state.outputStep === 0; $('output-next').disabled = state.busy || state.outputStep + 1 >= stepCount;
     $('input-tokens-prev').disabled = state.busy || state.tokenOffset === 0; $('input-tokens-next').disabled = state.busy || state.tokenOffset + 48 >= state.tokenTotal;
     document.querySelectorAll('#input-token-strip button').forEach(button => { button.disabled = state.busy || button.dataset?.unavailable === 'true'; });
-    ['intervention-operation', 'intervention-feature', 'intervention-value', 'witness-phase', 'experiment-save-name', 'vector-picker', 'browse-button', 'browse-go', 'browse-parent', 'browse-select', 'browse-path', 'saved-runs', 'refresh-saved', 'inspect-button', 'load-button', 'model-path', 'execution-device', 'vram-mib', 'refresh-devices', 'open-button', 'open-path', 'vector-index', 'vector-view', 'capture-mode', 'layers', 'max-input', 'max-output', 'max-events', 'trace-mib', 'prompt', 'image-file'].forEach((id) => { $(id).disabled = state.busy; });
+    ['sensitivity-layers', 'sensitivity-attention', 'sensitivity-mlp', 'sensitivity-block', 'intervention-operation', 'intervention-feature', 'intervention-value', 'witness-phase', 'experiment-save-name', 'vector-picker', 'browse-button', 'browse-go', 'browse-parent', 'browse-select', 'browse-path', 'saved-runs', 'refresh-saved', 'inspect-button', 'load-button', 'model-path', 'execution-device', 'vram-mib', 'refresh-devices', 'open-button', 'open-path', 'vector-index', 'vector-view', 'capture-mode', 'layers', 'max-input', 'max-output', 'max-events', 'trace-mib', 'prompt', 'image-file'].forEach((id) => { $(id).disabled = state.busy; });
     $('layer-map-load').disabled = state.busy || !state.run; $('layer-map-forward').disabled = state.busy || !state.run;
     $('layer-map-prev').disabled = state.busy || !state.run || state.mapOffset === 0; $('layer-map-next').disabled = state.busy || !state.run || state.mapOffset + 12 >= state.mapTotal;
     document.querySelectorAll('#layer-map-body button').forEach((button) => { button.disabled = state.busy; });
@@ -132,10 +275,10 @@
     $('reference-next').disabled = state.busy || !state.referenceMode || state.referenceOffset + valuePageSize >= state.referenceTotal;
     $('run-button').textContent = state.run ? 'Run again' : 'Run';
     $('replace-warning').hidden = !state.run || !state.model || state.model.state === 'quarantined';
-    $('run-button').disabled = state.busy || !state.model || state.model.state === 'quarantined';
-    $('demo-button').disabled = state.busy || state.model?.state === 'quarantined';
-    $('load-button').disabled = state.busy || state.model?.state === 'quarantined';
-    $('unload-button').disabled = state.busy || !state.model || state.model.state === 'quarantined';
+    $('run-button').disabled = state.busy || state.liveStatusUnverified || !state.model || state.model.state === 'quarantined';
+    $('demo-button').disabled = state.busy || state.liveStatusUnverified || state.model?.state === 'quarantined';
+    $('load-button').disabled = state.busy || state.liveStatusUnverified || state.model?.state === 'quarantined';
+    $('unload-button').disabled = state.busy || state.liveStatusUnverified || !state.model || state.model.state === 'quarantined';
     $('browse-parent').disabled = state.busy || !state.browseFresh || !state.browse?.parent; $('browse-select').disabled = state.busy || !state.browseFresh || !state.browse?.path;
     document.querySelectorAll('#folder-list button').forEach((button) => { button.disabled = state.busy || !state.browseFresh; });
     $('vram-mib').disabled = state.busy || $('execution-device').value === 'cpu';
@@ -151,6 +294,15 @@
     $('vectors-page-next').disabled = state.busy || !state.event || state.vectorListOffset + 100 >= state.vectorListTotal;
     $('intervene-button').disabled = state.busy || !interventionReady();
     $('intervention-status').textContent = interventionReady() ? 'Ready for this source vector.' : interventionReason();
+    $('sensitivity-run').disabled = state.busy || !interventionReady(); $('sensitivity-ready').textContent = interventionReady() ? 'Ready for the selected source position.' : interventionReason(); $('sensitivity-download').disabled = state.busy || !state.sensitivity; updateSensitivityBudget();
+    $('repeat-run').disabled = state.busy || !interventionReady(); $('repeat-prompts').disabled = state.busy; $('repeat-download').disabled = state.busy || !repeatReport; updateRepeatBudget();
+    $('patch-donor-prompt').disabled = $('patch-receiver-prompt').disabled = $('patch-layer').disabled = $('patch-site').disabled = state.busy;
+    $('patch-preview').disabled = state.busy || !interventionReady();
+    $('patch-donor-position').disabled = $('patch-receiver-position').disabled = state.busy || !patchPreviewCurrent();
+    $('patch-run').disabled = state.busy || !interventionReady() || !patchSelectionReady();
+    $('patch-download').disabled = state.busy || !patchReport;
+    syncExperimentStops();
+    syncPatchReportAttribution();
     $('save-experiment').disabled = state.busy || !state.experiment;
     $('witness-prev').disabled = state.busy || !state.experiment || state.witnessOffset === 0;
     $('witness-next').disabled = state.busy || !state.experiment || state.witnessOffset + valuePageSize >= state.witnessTotal;
@@ -160,15 +312,18 @@
   }
   async function action(message, callback) {
     if (state.busy) return;
-    let completed = false; state.busy = true; syncButtons(); notice(message); $('run-status').textContent = message;
-    try { await callback(); completed = true; if (state.model?.state === 'quarantined') { notice('The model cannot be reused safely. Please restart the app before loading or running again. Saved captures are still available.', true); $('run-status').textContent = 'Restart required before another model run.'; } else { notice(''); $('run-status').textContent = 'Ready.'; } }
+    let completed = false; experimentActionStatus = null; state.busy = true; syncButtons(); notice(message); $('run-status').textContent = message;
+    try { await callback(); completed = true; if (state.model?.state === 'quarantined') { notice('The model cannot be reused safely. Please restart the app before loading or running again. Saved captures are still available.', true); $('run-status').textContent = 'Restart required before another model run.'; } else if (state.liveStatusUnverified) { notice('Session status could not be verified. Refresh device status in Model & settings before more model runs.', true); $('run-status').textContent = 'Session status unverified. Refresh device status.'; } else { notice(''); $('run-status').textContent = experimentActionStatus || 'Ready.'; } }
     catch (error) {
-      try { const current = await api('status'); if (error.reconcileRun && (!state.run?.capture_id || current.run?.capture_id !== state.run.capture_id)) clearView(); if (error.reconcileRun && state.experiment && Object.hasOwn(current, 'experiment') && current.experiment?.experiment_id !== state.experiment.experiment_id) clearExperiment(); if (state.run) { const same = current.run?.capture_id && current.run.capture_id === state.run.capture_id; state.run.intervention_available = !!(same && current.run.intervention_available); state.run.intervention_reason = same ? current.run.intervention_reason : 'The displayed capture is no longer bound to the current server revision; reopen or make a fresh capture.'; state.run.reference_available = !!(same && current.run.reference_available); state.run.reference_reason = same ? current.run.reference_reason : 'The displayed capture revision is no longer current.'; } setModel(current.model); applyLimits(current.limits); applyDevices(current); } catch (_) { if (error.reconcileRun) { clearView(); error.message += ' The Run outcome could not be verified; previous capture values are hidden. Refresh or reopen a saved capture before continuing.'; } /* Preserve the original failure if status is unavailable. */ }
+      if (error.experimentJob) {
+        state.liveStatusUnverified = true;
+        if (state.run) { state.run.intervention_available = false; state.run.reference_available = false; state.run.intervention_reason = 'The experiment outcome is unverified.'; state.run.reference_reason = state.run.intervention_reason; }
+      } else try { const current = await api('status'); if (error.reconcileRun && (!state.run?.capture_id || current.run?.capture_id !== state.run.capture_id)) clearView(); if (error.reconcileRun && state.experiment && Object.hasOwn(current, 'experiment') && current.experiment?.experiment_id !== state.experiment.experiment_id) clearExperiment(); if (state.run) { const same = current.run?.capture_id && current.run.capture_id === state.run.capture_id; state.run.intervention_available = !!(same && current.run.intervention_available); state.run.intervention_reason = same ? current.run.intervention_reason : 'The displayed capture is no longer bound to the current server revision; reopen or make a fresh capture.'; state.run.reference_available = !!(same && current.run.reference_available); state.run.reference_reason = same ? current.run.reference_reason : 'The displayed capture revision is no longer current.'; } state.liveStatusUnverified = false; setModel(current.model); applyLimits(current.limits); applyDevices(current); } catch (_) { if (error.sensitivityOutcomeUncertain) { state.liveStatusUnverified = true; if (state.run) { state.run.intervention_available = false; state.run.reference_available = false; state.run.intervention_reason = 'Session status could not be verified; refresh device status in Model & settings.'; state.run.reference_reason = state.run.intervention_reason; } error.message += ' Session status could not be verified. Refresh device status in Model & settings before more model runs.'; } if (error.reconcileRun) { clearView(); error.message += ' The Run outcome could not be verified; previous capture values are hidden. Refresh or reopen a saved capture before continuing.'; } /* Preserve the original failure if status is unavailable. */ }
       const quarantined = state.model?.state === 'quarantined';
       notice((error.message || String(error)) + (quarantined ? ' The model cannot be reused safely. Please restart the app before loading or running again.' : ''), true);
-      $('run-status').textContent = quarantined ? 'Restart required before another model run.' : 'Stopped. See the message above.';
+      $('run-status').textContent = quarantined ? 'Restart required before another model run.' : error.sensitivityOutcomeUncertain ? 'Experiment outcome unverified. See the message above.' : 'Action failed. See the message above.';
     }
-    finally { state.busy = false; syncButtons(); if (completed && state.run?.capture_id && $('layer-map-options').open && state.mapAutoCapture !== state.run.capture_id) { state.mapAutoCapture = state.run.capture_id; await loadLayerMap(); } }
+    finally { state.busy = !!activeExperimentJob?.unverified; syncButtons(); if (completed && state.run?.capture_id && $('layer-map-options').open && state.mapAutoCapture !== state.run.capture_id) { state.mapAutoCapture = state.run.capture_id; await loadLayerMap(); } }
     return completed;
   }
   function applyLimits(limits) {
@@ -258,7 +413,7 @@
     state.outputGeneration++; state.outputStep = 0; state.tokenOffset = 0; state.tokenTotal = 0;
     $('output-readout').replaceChildren(); $('input-token-strip').replaceChildren(); $('output-note').textContent = ''; $('input-token-note').textContent = ''; $('input-token-page').textContent = ''; $('output-step').value = '0';
     clearLayerMap();
-    clearExperiment(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
+    clearExperiment(); clearSensitivity(); clearRepeat(); clearPatch(); for (const kind of ['sensitivity','repeat','patch']) setExperimentJobStatus(kind, ''); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
     $('imported-control-warning').hidden = true; $('imported-comparison').hidden = true; clearDistribution('imported'); $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Saving includes prompts, output, metadata and full tensor values; these may be sensitive.'; syncButtons();
   }
   function showRun(run) {
@@ -612,7 +767,7 @@
     $('saved-status').textContent = `${state.saved.length} captures${result.truncated ? ' · list truncated' : ''}. Open validates a selected capture; incomplete exports cannot be opened.`;
   }
   function referenceSelectionReady() {
-    return !!(state.run?.reference_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && ['gpt2','llama'].includes(state.model?.family) && state.model.state !== 'quarantined' && state.event && state.coordinate?.status === 'known' && Number($('vector-index').value) === state.vector);
+    return !!(!state.liveStatusUnverified && state.run?.reference_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && ['gpt2','llama'].includes(state.model?.family) && state.model.state !== 'quarantined' && state.event && state.coordinate?.status === 'known' && Number($('vector-index').value) === state.vector);
   }
   function invalidateReferenceView() {
     state.referenceRequest++; state.referenceMode = null; state.referenceOffset = 0; state.referenceTotal = 0;
@@ -653,14 +808,223 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     syncButtons();
   }
   function interventionReady() {
-    return !!(state.run?.intervention_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && ['gpt2', 'llama'].includes(state.model?.family) && state.model.state !== 'quarantined' && state.event && Number($('vector-index').value) === state.vector && state.coordinate?.status === 'known');
+    return !!(!state.liveStatusUnverified && state.run?.intervention_available && state.run.capture_id && state.run.run_kind !== 'intervention_comparison' && ['gpt2', 'llama'].includes(state.model?.family) && state.model.state !== 'quarantined' && state.event && Number($('vector-index').value) === state.vector && state.coordinate?.status === 'known');
   }
   function interventionReason() {
+    if (state.liveStatusUnverified) return 'Session status could not be verified. Refresh device status in Model & settings before another model run.';
     if (!state.model || state.model.state === 'quarantined') return 'Load a ready GPT-2 or supported standard Llama model to replay. Unloaded or quarantined models cannot be edited; saved comparisons remain inspectable.';
     if (!['gpt2', 'llama'].includes(state.model.family)) return 'Interventions support live GPT-2 or standard Llama only. Other captures remain inspectable.';
     if (!state.run?.intervention_available || state.run.run_kind === 'intervention_comparison') return state.run?.intervention_reason || 'This capture is read-only for intervention; make a fresh supported live GPT-2 or standard Llama capture.';
     if (state.coordinate?.status !== 'known' || Number($('vector-index').value) !== state.vector) return 'Read a vector with validated source coordinates first.';
     return 'A current live GPT-2 or supported standard Llama capture identifier is required.';
+  }
+  const sensitivitySites = ['attention', 'mlp', 'block'];
+  function sensitivityChoices() {
+    const raw = $('sensitivity-layers').value.trim();
+    let layers;
+    if (raw) {
+      const parts = raw.split(',').map(value => value.trim());
+      if (parts.some(value => !/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)))) throw new Error('Layers must be comma-separated nonnegative whole numbers.');
+      layers = parts.map(Number);
+      if (new Set(layers).size !== layers.length) throw new Error('Choose distinct layers.');
+      if (layers.length > 6) throw new Error('Choose at most 6 layers.');
+    }
+    const sites = sensitivitySites.filter(site => $(`sensitivity-${site}`).checked);
+    if (!sites.length) throw new Error('Choose at least one component.');
+    return {layers, sites};
+  }
+  function updateSensitivityBudget() {
+    let message;
+    try {
+      const {layers, sites} = sensitivityChoices(), count = (layers?.length ?? 6) * sites.length;
+      const device = state.model?.device || 'loaded device';
+      message = `${layers ? '' : 'Up to '}${count} tests · ${count * 4} model forwards maximum on ${device}. Actual runtime and peak memory vary. Default picks up to 6 captured layers.`;
+    } catch (error) { message = error.message || String(error); }
+    $('sensitivity-budget').textContent = message;
+  }
+  function patchPreviewCurrent() {
+    return !!(patchPreview && patchPreview.capture_id === state.run?.capture_id && patchPreview.donorPrompt === $('patch-donor-prompt').value && patchPreview.receiverPrompt === $('patch-receiver-prompt').value);
+  }
+  function patchSelected(side) {
+    if (!patchPreviewCurrent()) return null;
+    const value = $(`patch-${side}-position`).value;
+    if (!/^\d+$/.test(value)) return null;
+    return patchPreview[side]?.tokens?.find(token => token.index === Number(value)) || null;
+  }
+  function patchSelectionReady() {
+    return !!(patchSelected('donor') && patchSelected('receiver') && /^\d+$/.test($('patch-layer').value.trim()) && Number.isSafeInteger(Number($('patch-layer').value)) && Number($('patch-layer').value) <= 2147483647);
+  }
+  function matchingTokenIds(first, second) {
+    return Array.isArray(first) && Array.isArray(second) && first.length > 0 && first.length <= 64 && first.length === second.length && first.every((id, index) => Number.isSafeInteger(id) && id >= 0 && id === second[index]);
+  }
+  function syncPatchReportAttribution() {
+    const donor = patchSelected('donor'), receiver = patchSelected('receiver');
+    const same = !!(patchReport && patchSelectionReady() &&
+      patchReport.donor?.prompt === $('patch-donor-prompt').value && patchReport.receiver?.prompt === $('patch-receiver-prompt').value &&
+      matchingTokenIds(patchReport.donor?.token_ids, patchPreview.donor.token_ids) && matchingTokenIds(patchReport.receiver?.token_ids, patchPreview.receiver.token_ids) &&
+      patchReport.donor?.position === donor.index && patchReport.donor?.token_id === donor.token_id &&
+      patchReport.receiver?.position === receiver.index && patchReport.receiver?.token_id === receiver.token_id &&
+      patchReport.layer === Number($('patch-layer').value) && patchReport.site === $('patch-site').value);
+    const status = $('patch-input-status'), hidden = !patchReport || same;
+    const message = hidden ? '' : 'This report uses earlier selections. Review its recorded prompt inputs and positions before interpreting it.';
+    if (status.hidden !== hidden) status.hidden = hidden;
+    if (status.textContent !== message) status.textContent = message;
+  }
+  function clearPatchPreview() {
+    patchPreview = null;
+    for (const side of ['donor','receiver']) {
+      const select = $(`patch-${side}-position`), blank = document.createElement('option');
+      blank.value = ''; blank.textContent = `Choose a ${side} token…`; select.replaceChildren(blank); select.value = '';
+    }
+    $('patch-preview-status').textContent = 'Preview both prompts before selecting tokens.';
+  }
+  function clearPatch() {
+    clearPatchPreview(); patchReport = null; $('patch-report').hidden = true; $('patch-status').hidden = true; $('patch-demo').hidden = true;
+    for (const id of ['patch-outcome','patch-status','patch-alignment','patch-baselines','patch-details','patch-report-prompts','patch-input-status']) $(id).textContent = '';
+    $('patch-input-status').hidden = true;
+    $('patch-distribution-body').replaceChildren();
+  }
+  function validPatchTokens(tokens) {
+    return Array.isArray(tokens) && tokens.length > 0 && tokens.length <= 64 && tokens.every((token,index) => token && token.index === index && Number.isSafeInteger(token.token_id) && token.token_id >= 0 && (token.text == null || (typeof token.text === 'string' && token.text.length <= 512)) && (token.piece == null || (typeof token.piece === 'string' && token.piece.length <= 512)));
+  }
+  function showPatch(report) {
+    if (!report || report.preset !== 'cross_prompt_patch' || report.capture_id !== state.run?.capture_id || !['complete','inconclusive'].includes(report.status)) throw new Error('Patch report was incomplete or did not match the current capture.');
+    patchReport = report; $('patch-report').hidden = false; $('patch-demo').hidden = !isDemo(state.model); $('patch-status').hidden = true; $('patch-status').textContent = '';
+    const donor = report.donor || {}, receiver = report.receiver || {}, controls = report.controls || {};
+    $('patch-alignment').textContent = `Donor position ${number(donor.position)} · ID ${number(donor.token_id)} · ${tokenText(donor)}; receiver position ${number(receiver.position)} · ID ${number(receiver.token_id)} · ${tokenText(receiver)}. Layer ${number(report.layer)} · ${report.site || 'unknown'}.`;
+    $('patch-report-prompts').textContent = `Donor prompt: ${typeof donor.prompt === 'string' ? JSON.stringify(donor.prompt) : 'unavailable'}; receiver prompt: ${typeof receiver.prompt === 'string' ? JSON.stringify(receiver.prompt) : 'unavailable'}.`;
+    $('patch-outcome').textContent = `${report.status}. Donor/clean and receiver/corrupted are the supplied prompt labels; no semantic alignment is inferred.`;
+    const required = ['donor_null_full_logits_bitwise_equal','donor_restoration_full_logits_bitwise_equal','donor_source_vector_bitwise_equal','donor_other_positions_bitwise_equal','donor_same_vector_full_logits_bitwise_equal','receiver_null_full_logits_bitwise_equal','receiver_restoration_full_logits_bitwise_equal','receiver_source_vector_bitwise_equal','receiver_other_positions_bitwise_equal','patched_vector_matches_donor_bitwise','fixed_input_ids_masks_unchanged'];
+    if (report.model?.family === 'llama') required.push('donor_static_rotary_state_unchanged','receiver_static_rotary_state_unchanged');
+    const controlsValid = required.every(key => controls[key] === true) && Object.values(controls).every(value => value === true) && typeof report.metrics?.activation_changed === 'boolean';
+    if (report.status === 'complete' && controlsValid && report.metrics.activation_changed === false) $('patch-outcome').textContent += ' No-op: the donor and receiver vectors were already bitwise identical.';
+    $('patch-distribution-body').replaceChildren();
+    if (report.status === 'complete' && controlsValid) {
+      const clean = report.clean_baseline || {}, corrupted = report.corrupted_baseline || {}, patched = report.patched || {};
+      const p = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+      if (Number.isSafeInteger(clean.token_id) && clean.token_id === corrupted.token_id && clean.token_id === patched.token_id && [clean.probability,corrupted.probability,patched.probability].every(p)) {
+        const token = tokenText(clean);
+        $('patch-baselines').textContent = `Donor baseline top token ${token} · ID ${clean.token_id}: donor ${(clean.probability*100).toPrecision(6)}%, receiver ${(corrupted.probability*100).toPrecision(6)}%, receiver after patch ${(patched.probability*100).toPrecision(6)}%. These are full-vocabulary probabilities for the same token.`;
+      } else $('patch-baselines').textContent = 'Same-token probability comparison unavailable; inspect the exact report.';
+      const rows = report.distribution?.rows;
+      if (Array.isArray(rows) && rows.length <= 10) for (const item of rows) {
+        if (!item || !Number.isSafeInteger(item.token_id) || !p(item.baseline_probability) || !p(item.intervention_probability) || typeof item.probability_delta !== 'number' || !Number.isFinite(item.probability_delta) || Math.abs(item.probability_delta - (item.intervention_probability - item.baseline_probability)) > 1e-12) continue;
+        const row = document.createElement('tr'); cell(row, `${tokenText(item)} · ${item.token_id}`); cell(row, Number((item.baseline_probability*100).toPrecision(6))); cell(row, Number((item.intervention_probability*100).toPrecision(6))); cell(row, Number((item.probability_delta*100).toPrecision(6))); $('patch-distribution-body').append(row);
+      }
+    } else {
+      $('patch-baselines').textContent = 'No confirmed numerical result: the intervention or required controls were incomplete or failed.';
+      $('patch-status').hidden = false; $('patch-status').textContent = 'Review the exact control results before interpreting this report.';
+    }
+    $('patch-details').textContent = display(report); syncButtons(); $('patch-report').focus({preventScroll:true}); $('patch-report').scrollIntoView({block:'start'});
+  }
+  function repeatChoices() {
+    const prompts = $('repeat-prompts').value.split(/\r?\n/);
+    if (prompts.length < 2 || prompts.length > 4 || prompts.some(prompt => !prompt.trim() || prompt.length > 512))
+      throw new Error('Enter 2–4 nonempty prompts, one per line, with at most 512 characters each.');
+    const {layers, sites} = sensitivityChoices();
+    const layerCount = layers?.length ?? Math.min(6, Math.floor(12 / (prompts.length * sites.length)));
+    const cells = prompts.length * layerCount * sites.length;
+    if (cells > 12) throw new Error('Choose fewer layers, components or prompts: at most 12 total tests.');
+    return {prompts, layers, sites, cells};
+  }
+  function updateRepeatBudget() {
+    try {
+      const {prompts, layers, cells} = repeatChoices();
+      $('repeat-budget').textContent = `${layers ? '' : 'Up to '}${cells} tests and ${prompts.length + cells * 4} model forwards on ${state.model?.device || 'the loaded device'}. Actual runtime and peak memory vary.`;
+    } catch (error) { $('repeat-budget').textContent = error.message || String(error); }
+  }
+  function clearRepeat() {
+    repeatReport = null; $('repeat-report').hidden = true; $('repeat-status').hidden = true; $('repeat-demo').hidden = true;
+    $('repeat-status').textContent = ''; $('repeat-outcome').textContent = ''; $('repeat-details').textContent = ''; $('repeat-body').replaceChildren();
+  }
+  function showRepeat(report) {
+    if (!report || report.preset !== 'multi_prompt_sensitivity' || report.capture_id !== state.run?.capture_id ||
+        !['complete','partial','inconclusive','cancelled'].includes(report.status) || !Array.isArray(report.results) || report.results.length > 4)
+      throw new Error('Repeated-test report was incomplete or did not match the current capture.');
+    repeatReport = report; $('repeat-report').hidden = false; $('repeat-demo').hidden = !isDemo(state.model); $('repeat-status').hidden = true; $('repeat-status').textContent = '';
+    $('repeat-outcome').textContent = `${report.status}: ${number(report.completed_prompts)} of ${number(report.planned_prompts)} prompts completed, ${number(report.completed_runs)} of ${number(report.planned_runs)} tests completed. ${number(report.completed_model_forwards)} completed model forwards; upper bound ${number(report.model_forwards_upper_bound)}. A failed forward may have an unknown count.`;
+    $('repeat-body').replaceChildren();
+    const finite = value => typeof value === 'number' && Number.isFinite(value);
+    const pct = (value, signed=false) => `${signed && value > 0 ? '+' : ''}${Number((value * 100).toPrecision(6))}`;
+    for (const item of report.results) {
+      const sweep = item?.report, anchor = sweep?.anchor || {};
+      const label = `Prompt ${number((item?.prompt_index ?? 0) + 1)}: ${JSON.stringify(typeof item?.prompt === 'string' ? item.prompt : '')} · final token ${tokenText({text: anchor.token_text})}${anchor.token_label_truncated === true ? ' · display label truncated' : ''} · ID ${number(anchor.token_id)} · position ${number(anchor.token_position)}`;
+      const rows = Array.isArray(sweep?.results) && sweep.results.length <= 12 ? sweep.results : [];
+      if (!rows.length) { const row=document.createElement('tr'); cell(row,label); cell(row,'—'); cell(row,'—'); cell(row,`${item?.status || 'unavailable'}${item?.reason ? ': ' + item.reason : ''}`); for(let i=0;i<5;i++)cell(row,'—'); $('repeat-body').append(row); continue; }
+      for (const result of rows) {
+        const row = document.createElement('tr'), controls = result?.controls || {};
+        const required = ['null_full_logits_bitwise_equal','restoration_full_logits_bitwise_equal','source_vector_bitwise_equal','other_token_positions_at_selected_site_bitwise_equal'];
+        if (report.model?.family === 'llama') required.push('static_rotary_state_unchanged','fixed_input_ids_mask_unchanged');
+        let status = String(result?.status || 'inconclusive');
+        if (status !== 'ok') status += result?.reason ? `: ${result.reason}` : '';
+        else if (required.some(key => controls[key] !== true) || Object.values(controls).some(value => value !== true)) status = 'inconclusive: controls incomplete or failed';
+        else if (result.activation_changed === false) status = 'no-op: vector unchanged';
+        else if (result.activation_changed !== true) status = 'inconclusive: vector change unverified';
+        const token = result?.baseline_token || {}, valid = [token.baseline_probability, token.intervention_probability, token.probability_delta, result.total_variation].every(finite) && token.baseline_probability >= 0 && token.baseline_probability <= 1 && token.intervention_probability >= 0 && token.intervention_probability <= 1 && Math.abs(token.probability_delta - (token.intervention_probability - token.baseline_probability)) <= 1e-12 && result.total_variation >= 0 && result.total_variation <= 1 && Number.isSafeInteger(token.token_id) && token.token_id >= 0;
+        if (status === 'ok' && !valid) status = 'inconclusive: measurement unavailable';
+        const measured = status === 'ok';
+        if (measured && result.total_variation === 0 && result.last_position_max_abs_delta === 0) status = 'ok: no next-token change detected';
+        cell(row,label); cell(row,number(result?.layer)); cell(row,result?.site || 'unknown'); cell(row,status);
+        cell(row,measured ? `${tokenText(token)} · ${token.token_id}` : '—');
+        cell(row,measured ? pct(token.baseline_probability) : '—'); cell(row,measured ? pct(token.intervention_probability) : '—');
+        cell(row,measured ? pct(token.probability_delta,true) : '—'); cell(row,measured ? String(Number(result.total_variation.toPrecision(6))) : '—');
+        $('repeat-body').append(row);
+      }
+    }
+    $('repeat-details').textContent = display(report); syncButtons(); $('repeat-report').focus({preventScroll:true}); $('repeat-report').scrollIntoView({block:'start'});
+  }
+  function clearSensitivity() {
+    state.sensitivity = null; $('sensitivity-report').hidden = true; $('sensitivity-demo').hidden = true; $('sensitivity-status').hidden = true; $('sensitivity-status').textContent = '';
+    for (const id of ['sensitivity-outcome','sensitivity-anchor','sensitivity-finding','sensitivity-controls','sensitivity-limits','sensitivity-details']) $(id).textContent = '';
+    $('sensitivity-body').replaceChildren();
+  }
+  function showSensitivity(report) {
+    const valid = report && report.capture_id === state.run?.capture_id && report.preset === 'component_sensitivity' && Array.isArray(report.results) && report.results.length <= 18 && ['complete','partial','inconclusive','cancelled'].includes(report.status);
+    if (!valid) throw new Error('The experiment report was incomplete or did not match the current capture. No results are displayed.');
+    state.sensitivity = report; $('sensitivity-report').hidden = false; $('sensitivity-demo').hidden = !isDemo(state.model); $('sensitivity-status').hidden = true; $('sensitivity-status').textContent = '';
+    const anchor = report.anchor || {};
+    $('sensitivity-outcome').textContent = `${report.status}: ${number(report.completed_runs)} of ${number(report.planned_runs)} tests completed. ${number(report.completed_model_forwards)} completed model forwards; planned upper bound ${number(report.model_forwards_upper_bound)}. A failed forward may have an unknown actual count.`;
+    $('sensitivity-anchor').textContent = `Model: ${report.model?.family || 'unknown'} · device: ${report.model?.device || 'unknown'} · forward: ${number(anchor.forward_index)} · input position: ${number(anchor.token_position)} · input token ID: ${number(anchor.token_id)} · readout position: ${number(anchor.readout_position)}.`;
+    $('sensitivity-body').replaceChildren(); const controlLines = [], measuredRows = [];
+    const finite = value => typeof value === 'number' && Number.isFinite(value);
+    const pct = (value, signed = false) => `${signed && value > 0 ? '+' : ''}${Number((value * 100).toPrecision(6))}`;
+    const fmt = value => String(Number(value.toPrecision(6)));
+    for (const result of report.results) {
+      const row = document.createElement('tr'), controls = result?.controls && typeof result.controls === 'object' ? result.controls : {};
+      const required = ['null_full_logits_bitwise_equal','restoration_full_logits_bitwise_equal','source_vector_bitwise_equal','other_token_positions_at_selected_site_bitwise_equal'];
+      if (report.model?.family === 'llama') required.push('static_rotary_state_unchanged','fixed_input_ids_mask_unchanged');
+      const entries = Object.entries(controls), controlFailed = entries.some(([,value]) => value === false), controlIncomplete = required.some(key => controls[key] !== true) || entries.some(([,value]) => value !== true);
+      controlLines.push(`Layer ${number(result?.layer)} · ${result?.site || 'unknown'} · ${result?.module_path || 'no module path'}\n${entries.length ? entries.map(([key,value]) => `${key}: ${value === true ? 'passed' : value === false ? 'FAILED' : 'unavailable'}`).join('\n') : 'No controls recorded.'}${result?.reason ? `\nReason: ${result.reason}` : ''}`);
+      let status = String(result?.status || 'inconclusive');
+      if (status !== 'ok') status += result?.reason ? `: ${result.reason}` : '';
+      else if (controlFailed) status = 'inconclusive: control FAILED';
+      else if (controlIncomplete) status = 'inconclusive: controls incomplete';
+      else if (result.activation_changed === false) status = 'no-op: vector unchanged';
+      else if (result.activation_changed !== true) status = 'inconclusive: vector change unverified';
+      const token = result?.baseline_token || {}, valuesValid = [token.baseline_probability, token.intervention_probability, token.probability_delta, result.total_variation, result.last_position_max_abs_delta].every(finite) && token.baseline_probability >= 0 && token.baseline_probability <= 1 && token.intervention_probability >= 0 && token.intervention_probability <= 1 && Math.abs(token.probability_delta - (token.intervention_probability - token.baseline_probability)) <= 1e-12 && result.total_variation >= 0 && result.total_variation <= 1 && result.last_position_max_abs_delta >= 0 && Number.isSafeInteger(token.token_id) && token.token_id >= 0;
+      if (status === 'ok' && !valuesValid) status = 'inconclusive: measurement unavailable';
+      const measured = status === 'ok';
+      if (measured) measuredRows.push(result);
+      const displayStatus = measured && result.total_variation === 0 && result.last_position_max_abs_delta === 0 ? 'ok: no next-token change detected' : status;
+      cell(row, number(result?.layer)); cell(row, result?.site || 'unknown'); cell(row, displayStatus);
+      cell(row, measured ? `${tokenText(token)} · ${token.token_id}` : '—');
+      cell(row, measured ? pct(token.baseline_probability) : '—'); cell(row, measured ? pct(token.intervention_probability) : '—'); cell(row, measured ? pct(token.probability_delta, true) : '—');
+      const tv = cell(row, measured ? fmt(result.total_variation) : '—');
+      if (measured) tv.setAttribute('data-magnitude', result.total_variation === 0 ? 'zero' : result.total_variation < 0.01 ? 'low' : result.total_variation < 0.1 ? 'medium' : 'high');
+      cell(row, measured ? fmt(result.last_position_max_abs_delta) : '—'); $('sensitivity-body').append(row);
+    }
+    if (report.status === 'cancelled') $('sensitivity-finding').textContent = 'No cross-test ranking: the sweep was stopped. Completed rows remain available; skipped rows are not zero effects.';
+    else if (report.status === 'inconclusive') $('sensitivity-finding').textContent = 'No cross-test ranking: the sweep was inconclusive. Inspect the individual statuses and controls.';
+    else if (!measuredRows.length) $('sensitivity-finding').textContent = 'No comparable changed-vector measurements are available for ranking.';
+    else {
+      const best = measuredRows.reduce((a, b) => b.total_variation > a.total_variation ? b : a);
+      const tied = measuredRows.filter(item => item.total_variation === best.total_variation).length > 1;
+      $('sensitivity-finding').textContent = `${tied ? 'One of the largest' : 'Largest'} measured distribution changes for this input: Layer ${number(best.layer)} · ${best.site}, TV ${fmt(best.total_variation)}. This ranks only successful changed-vector trials with complete controls.`;
+    }
+    $('sensitivity-controls').textContent = controlLines.join('\n\n') || 'No control results recorded.';
+    $('sensitivity-limits').textContent = [report.scope, ...(Array.isArray(report.limitations) ? report.limitations : [])].filter(value => typeof value === 'string').join(' ');
+    $('sensitivity-details').textContent = display(report); syncButtons();
+    $('sensitivity-report').focus({preventScroll:true}); $('sensitivity-report').scrollIntoView({block:'start'});
   }
   function clearWitness() {
     state.witnessRequest++; state.witnessTotal = 0; $('witness-body').replaceChildren(); $('witness-coordinate').textContent = ''; $('witness-page').textContent = ''; $('witness-status').textContent = '';
@@ -680,7 +1044,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     if (!usable) {
       $(`${prefix}-distribution-note`).textContent = 'Probability unavailable: this record lacks compatible full-vocabulary normalized metadata. Legacy ranked logits are shown below; no probabilities are inferred or normalized from a top-token list.';
       const before = experiment.baseline_top_next_tokens || [], after = experiment.intervention_top_next_tokens || [];
-      for (let i=0; i < Math.max(before.length, after.length); i++) { const row=document.createElement('tr'); cell(row,i+1); cell(row,before[i] ? `${JSON.stringify(before[i].text)} · ${before[i].token_id}` : '—'); cell(row,number(before[i]?.logit)); cell(row,after[i] ? `${JSON.stringify(after[i].text)} · ${after[i].token_id}` : '—'); cell(row,number(after[i]?.logit)); $(`${prefix}-token-body`).append(row); }
+      for (let i=0; i < Math.max(before.length, after.length); i++) { const row=document.createElement('tr'); cell(row,i+1); cell(row,before[i] ? `${tokenText(before[i])} · ${before[i].token_id}` : '—'); cell(row,number(before[i]?.logit)); cell(row,after[i] ? `${tokenText(after[i])} · ${after[i].token_id}` : '—'); cell(row,number(after[i]?.logit)); $(`${prefix}-token-body`).append(row); }
       return;
     }
     $(`${prefix}-distribution-note`).textContent = `Full-vocabulary normalized probabilities (${d.vocabulary_size} tokens). Only the top-5 union is shown; these rows need not sum to 100%.`;
@@ -737,7 +1101,9 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('saved-runs').addEventListener('change', () => { const run = state.saved.find((item) => item.path === $('saved-runs').value && item.status === 'complete_unverified'); if (run) $('open-path').value = run.path; });
   $('unload-button').addEventListener('click', () => action('Releasing the model owner; keeping captured vectors…', async () => { await api('unload', {}); const current = await api('status'); setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
   $('execution-device').addEventListener('change', syncButtons);
-  $('refresh-devices').addEventListener('click', () => action('Checking actual device availability…', async () => { const current = await api('status'); setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
+  $('refresh-devices').addEventListener('click', () => action('Checking actual device availability…', async () => { const current = await api('status');
+    if (state.run) { const same = !!(current.run?.capture_id && current.run.capture_id === state.run.capture_id); state.run.intervention_available = !!(same && current.run.intervention_available); state.run.intervention_reason = same ? current.run.intervention_reason : 'This capture is no longer the live server revision.'; state.run.reference_available = !!(same && current.run.reference_available); state.run.reference_reason = same ? current.run.reference_reason : 'This capture is no longer the live server revision.'; }
+    state.liveStatusUnverified = false; setModel(current.model); applyLimits(current.limits); applyDevices(current); }));
   $('capture-mode').addEventListener('change', () => { $('custom-capture').hidden = $('capture-mode').value !== 'custom'; });
   $('model-path').addEventListener('input', () => { invalidateInspection(); invalidateBrowse(true); });
   $('browse-path').addEventListener('input', () => invalidateBrowse());
@@ -773,6 +1139,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('session-options').addEventListener('toggle', () => { if (!$('session-options').open && $('session-options').contains(document.activeElement)) restoreSettingsFocus(); });
   $('dock-exact').addEventListener('click', () => { if (!state.event || state.busy) return; revealOptions('feature-values-options'); $('feature-values-options').scrollIntoView({block:'nearest'}); });
   $('dock-edit').addEventListener('click', () => { if (!state.event || state.busy) return; revealOptions('intervention-options'); $('intervention-operation').focus(); });
+  $('dock-experiment').addEventListener('click', () => { if (!state.event || state.busy) return; revealOptions('sensitivity-options'); $('sensitivity-layers').focus(); });
   $('dock-reference').addEventListener('click', () => { if (!state.event || state.busy) return; revealOptions('reference-options'); $('reference-options').scrollIntoView({block:'nearest'}); });
   $('output-step').addEventListener('change', () => { const raw = $('output-step').value.trim(), index = Number(raw); if (!/^\d+$/.test(raw) || !safeId(index) || index >= (state.run?.steps?.length || 0)) { state.outputGeneration++; $('output-readout').replaceChildren(); $('input-token-strip').replaceChildren(); $('input-token-page').textContent = ''; $('output-note').textContent = 'Choose a recorded forward record in range.'; return; } state.outputStep = index; state.tokenOffset = 0; renderForward(); });
   $('output-prev').addEventListener('click', () => { if (state.busy || state.outputStep === 0) return; state.outputStep--; state.tokenOffset = 0; renderForward(); });
@@ -820,6 +1187,132 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('compare-reference').addEventListener('click',()=>{if(state.busy)return;return readReference('compare');});
   $('reference-prev').addEventListener('click',()=>{if(state.busy||!state.referenceMode)return;return readReference(state.referenceMode,Math.max(0,state.referenceOffset-valuePageSize));});
   $('reference-next').addEventListener('click',()=>{if(state.busy||!state.referenceMode)return;return readReference(state.referenceMode,state.referenceOffset+valuePageSize);});
+  for (const side of ['donor','receiver']) {
+    $(`patch-${side}-prompt`).addEventListener('input', () => { clearPatchPreview(); syncButtons(); });
+    $(`patch-${side}-position`).addEventListener('change', syncButtons);
+  }
+  for (const kind of ['sensitivity','repeat','patch']) {
+    $(`${kind}-stop`).addEventListener('click', () => requestExperimentStop(kind));
+    $(`${kind}-check-job`).addEventListener('click', () => checkUnverifiedExperiment(kind));
+  }
+  $('patch-layer').addEventListener('input', syncButtons); $('patch-site').addEventListener('change', syncButtons);
+  $('patch-preview').addEventListener('click',()=>action('Previewing prompt tokens locally.',async()=>{
+    if (!interventionReady()) throw new Error(interventionReason());
+    const donorPrompt=$('patch-donor-prompt').value, receiverPrompt=$('patch-receiver-prompt').value, capture=state.run.capture_id;
+    if (![donorPrompt,receiverPrompt].every(prompt=>prompt.trim() && prompt.length<=512)) throw new Error('Enter both prompts, each at most 512 characters.');
+    clearPatchPreview();
+    const preview=await api('patch-preview',{capture_id:capture,donor_prompt:donorPrompt,receiver_prompt:receiverPrompt});
+    const validSide = side => validPatchTokens(preview?.[side]?.tokens) && Array.isArray(preview[side].token_ids) && preview[side].token_ids.length === preview[side].tokens.length && preview[side].tokens.every((token,index)=>token.token_id === preview[side].token_ids[index]);
+    if (preview?.capture_id !== capture || state.run?.capture_id !== capture || $('patch-donor-prompt').value !== donorPrompt || $('patch-receiver-prompt').value !== receiverPrompt || !validSide('donor') || !validSide('receiver')) throw new Error('Token preview was incomplete or stale; preview again.');
+    patchPreview={...preview,donorPrompt,receiverPrompt};
+    for (const side of ['donor','receiver']) for (const token of preview[side].tokens) {
+      const option=document.createElement('option'); option.value=String(token.index); option.textContent=`Position ${token.index} · ID ${token.token_id} · ${tokenText(token)} · ${tokenPiece(token)}`; $(`patch-${side}-position`).append(option);
+    }
+    $('patch-preview-status').textContent = 'Choose a donor and receiver token explicitly. No automatic alignment is applied.'; syncButtons();
+  }));
+  $('patch-run').addEventListener('click',()=>action('Patching one donor vector into the receiver and checking controls.',async()=>{
+    if (!interventionReady() || !patchSelectionReady()) throw new Error('Preview both prompts and explicitly select their tokens and layer first.');
+    const donor=patchSelected('donor'), receiver=patchSelected('receiver');
+    const body={capture_id:state.run.capture_id,donor_prompt:patchPreview.donorPrompt,receiver_prompt:patchPreview.receiverPrompt,
+      donor_position:donor.index,receiver_position:receiver.index,donor_token_id:donor.token_id,receiver_token_id:receiver.token_id,
+      donor_token_ids:patchPreview.donor.token_ids,receiver_token_ids:patchPreview.receiver.token_ids,layer:Number($('patch-layer').value),site:$('patch-site').value};
+    const previous = !!patchReport;
+    const {result, job} = await runStopEnabledExperiment('patch', 'patch-cross-prompt', body, previous);
+    try {
+      if (result?.status === 'cancelled') {
+        if (result.preset !== 'cross_prompt_patch' || result.capture_id !== body.capture_id || !Number.isSafeInteger(result.total_model_forwards) || result.total_model_forwards < 0 || result.total_model_forwards > 2 || result.controls || result.metrics)
+          throw new Error('Cancelled patch report was incomplete or did not match the current capture.');
+        finishExperiment('patch', result, job, previous);
+      } else {
+        showPatch(result); finishExperiment('patch', result, job);
+      }
+    } catch (caught) { throw invalidExperimentReport('patch', caught, previous); }
+    try {
+      const current=await api('status'), same=!!(state.run?.capture_id && current.run?.capture_id===state.run.capture_id);
+      if (state.run) { state.run.intervention_available=!!(same && current.run.intervention_available); state.run.intervention_reason=same ? current.run.intervention_reason : 'This capture is no longer the live server revision.'; state.run.reference_available=!!(same && current.run.reference_available); state.run.reference_reason=same ? current.run.reference_reason : 'This capture is no longer the live server revision.'; }
+      state.liveStatusUnverified=false; setModel(current.model); applyLimits(current.limits); applyDevices(current);
+      if (!same || current.model?.state==='quarantined') { $('patch-status').hidden=false; $('patch-status').textContent=!same ? 'The server capture changed after this report; make a fresh capture before further experiments.' : 'The model was quarantined. Restart before further runs; the report remains available.'; }
+    } catch (_) {
+      state.liveStatusUnverified=true;
+      if (state.run) { state.run.intervention_available=false; state.run.reference_available=false; state.run.intervention_reason='Post-experiment status could not be verified; refresh device status in Model & settings.'; state.run.reference_reason=state.run.intervention_reason; }
+      $('patch-status').hidden=false; $('patch-status').textContent='Post-experiment status could not be verified. The report is retained; refresh device status before more runs.';
+    }
+  }));
+  $('patch-download').addEventListener('click',()=>{
+    if (state.busy || !patchReport) return;
+    const blob=new Blob([JSON.stringify(patchReport,null,2)],{type:'application/json'}), url=URL.createObjectURL(blob), link=document.createElement('a');
+    link.href=url; link.download='cross-prompt-patch-report.json'; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+  });
+  for (const id of ['sensitivity-layers','sensitivity-attention','sensitivity-mlp','sensitivity-block']) $(id).addEventListener(id === 'sensitivity-layers' ? 'input' : 'change', () => { updateSensitivityBudget(); updateRepeatBudget(); });
+  $('repeat-prompts').addEventListener('input', updateRepeatBudget);
+  $('repeat-run').addEventListener('click',()=>action('Running repeated tests on the loaded model. This may take time.',async()=>{
+    if (!interventionReady()) throw new Error(interventionReason());
+    const {prompts, layers, sites} = repeatChoices(), body = {capture_id:state.run.capture_id,prompts,sites};
+    if (layers) body.layers = layers;
+    const previous = !!repeatReport;
+    const {result, job} = await runStopEnabledExperiment('repeat', 'sensitivity-repeat', body, previous);
+    try {
+      const retain = result?.status === 'cancelled' && result.completed_runs === 0 && previous;
+      if (retain && !emptyCancelledReport('repeat', result, body.capture_id)) throw new Error('Cancelled repeated-test report was incomplete or did not match the current capture.');
+      if (!retain) showRepeat(result);
+      finishExperiment('repeat', result, job, retain);
+    } catch (caught) { throw invalidExperimentReport('repeat', caught, previous); }
+    try {
+      const current = await api('status'), same = !!(state.run?.capture_id && current.run?.capture_id === state.run.capture_id);
+      if (state.run) {
+        state.run.intervention_available = !!(same && current.run.intervention_available);
+        state.run.intervention_reason = same ? current.run.intervention_reason : 'This capture is no longer the live server revision.';
+        state.run.reference_available = !!(same && current.run.reference_available);
+        state.run.reference_reason = same ? current.run.reference_reason : 'This capture is no longer the live server revision.';
+      }
+      state.liveStatusUnverified = false; setModel(current.model); applyLimits(current.limits); applyDevices(current);
+      if (!same || current.model?.state === 'quarantined') { $('repeat-status').hidden = false; $('repeat-status').textContent = !same ? 'The server capture changed after this report; make a fresh capture before further experiments.' : 'The model was quarantined. Restart the app before further runs; this report remains available.'; }
+    } catch (_) {
+      state.liveStatusUnverified = true;
+      if (state.run) { state.run.intervention_available = false; state.run.reference_available = false; state.run.intervention_reason = 'Post-experiment session status could not be verified; refresh device status in Model & settings.'; state.run.reference_reason = state.run.intervention_reason; }
+      $('repeat-status').hidden = false; $('repeat-status').textContent = 'Post-experiment session status could not be verified. The report is retained; refresh device status in Model & settings before more model runs.';
+    }
+  }));
+  $('repeat-download').addEventListener('click',()=>{
+    if (state.busy || !repeatReport) return;
+    const blob = new Blob([JSON.stringify(repeatReport, null, 2)], {type:'application/json'}), url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = 'repeated-sensitivity-report.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  $('sensitivity-run').addEventListener('click',()=>action('Running the bounded sensitivity experiment. This may take time on CPU or GPU.',async()=>{
+    if (!interventionReady()) throw new Error(interventionReason());
+    const {layers, sites} = sensitivityChoices(), body = {capture_id:state.run.capture_id,event:state.event.index,vector:state.vector,sites};
+    if (layers) body.layers = layers;
+    const previous = !!state.sensitivity;
+    const {result, job} = await runStopEnabledExperiment('sensitivity', 'sensitivity', body, previous);
+    try {
+      const retain = result?.status === 'cancelled' && result.completed_runs === 0 && previous;
+      if (retain && !emptyCancelledReport('sensitivity', result, body.capture_id)) throw new Error('Cancelled experiment report was incomplete or did not match the current capture.');
+      if (!retain) showSensitivity(result);
+      finishExperiment('sensitivity', result, job, retain);
+    } catch (caught) { throw invalidExperimentReport('sensitivity', caught, previous); }
+    // A partial report can follow a quarantining engine failure. Reconcile ownership even on HTTP success.
+    try {
+      const current = await api('status'), same = !!(state.run?.capture_id && current.run?.capture_id === state.run.capture_id);
+      if (state.run) {
+        state.run.intervention_available = !!(same && current.run.intervention_available);
+        state.run.intervention_reason = same ? current.run.intervention_reason : 'This displayed capture is no longer the live server revision; make a fresh capture.';
+        state.run.reference_available = !!(same && current.run.reference_available);
+        state.run.reference_reason = same ? current.run.reference_reason : 'This displayed capture is no longer the live server revision.';
+      }
+      state.liveStatusUnverified = false; setModel(current.model); applyLimits(current.limits); applyDevices(current);
+      if (!same) { $('sensitivity-status').hidden = false; $('sensitivity-status').textContent = 'The server capture changed after this report. These results belong to the displayed earlier capture; make a fresh capture before further experiments.'; }
+      else if (current.model?.state === 'quarantined') { $('sensitivity-status').hidden = false; $('sensitivity-status').textContent = 'The model was quarantined after the sweep. Restart the app before further runs; this partial report remains available.'; }
+    } catch (_) {
+      state.liveStatusUnverified = true;
+      if (state.run) { state.run.intervention_available = false; state.run.reference_available = false; state.run.intervention_reason = 'Post-experiment session status could not be verified; refresh device status in Model & settings.'; state.run.reference_reason = 'Post-experiment session status could not be verified.'; }
+      $('sensitivity-status').hidden = false; $('sensitivity-status').textContent = 'Post-experiment session status could not be verified. The report is retained; refresh device status in Model & settings before more model runs.';
+    }
+  }));
+  $('sensitivity-download').addEventListener('click',()=>{
+    if (state.busy || !state.sensitivity) return;
+    const blob = new Blob([JSON.stringify(state.sensitivity, null, 2)], {type:'application/json'}), url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = 'component-sensitivity-report.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
   $('intervention-operation').addEventListener('change',()=>{$('intervention-feature-fields').hidden=$('intervention-operation').value==='zero';});
   $('intervene-button').addEventListener('click',()=>action('Replaying fixed input and checking controls…',async()=>{
     if(!interventionReady()) throw new Error(interventionReason());
