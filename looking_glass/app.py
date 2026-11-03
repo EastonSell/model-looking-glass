@@ -15,6 +15,7 @@ import webbrowser
 
 from .app_storage import TraceStore
 from .app_reference import ReferenceVector
+from .app_experiment_jobs import EXPERIMENT_ACTIONS, ExperimentJobs
 
 MAX_BODY = 8 * 1024 * 1024
 MAX_IMAGE = 4 * 1024 * 1024
@@ -55,6 +56,7 @@ class AppState:
         self._capture_id = None
         self._experiment_id = None
         self.lock = threading.Lock()
+        self.experiment_jobs = ExperimentJobs()
         self.models_dir = None if models_dir is None else Path(models_dir).expanduser().resolve()
         from .app_downloads import CATALOG, DownloadManager
         self._download_specs = CATALOG
@@ -183,7 +185,7 @@ class AppState:
         if current["state"] in {"running", "cancelling"}:
             self.downloads.cancel(current["job_id"])
 
-    def post(self, action, data):
+    def post(self, action, data, *, cancel_event=None):
         if not isinstance(data, dict): raise ValueError("Expected a JSON object")
         if action == "download":
             if set(data) != {"model_id", "revision"}: raise ValueError("Choose a catalog model and its exact revision")
@@ -264,13 +266,16 @@ class AppState:
             return self._run_summary()
         if action == "sensitivity":
             from .app_sensitivity import run_sensitivity
-            return run_sensitivity(self, data)
+            return (run_sensitivity(self, data) if cancel_event is None
+                    else run_sensitivity(self, data, cancel_event=cancel_event))
         if action == "sensitivity-repeat":
             from .app_sensitivity_repeat import run_repeated_sensitivity
-            return run_repeated_sensitivity(self, data)
+            return (run_repeated_sensitivity(self, data) if cancel_event is None
+                    else run_repeated_sensitivity(self, data, cancel_event=cancel_event))
         if action in ("patch-preview", "patch-cross-prompt"):
             from .app_cross_patch import preview, patch
-            return preview(self, data) if action == "patch-preview" else patch(self, data)
+            if action == "patch-preview": return preview(self, data)
+            return patch(self, data) if cancel_event is None else patch(self, data, cancel_event=cancel_event)
         if action == "intervene":
             self._clear_experiment()  # Never present an earlier experiment as this attempt.
             available, reason = self._intervention_status()
@@ -433,7 +438,7 @@ def create_server(state, port=0):
         def do_POST(self):
             if not self._allowed(api=True): return
             path = urlsplit(self.path).path
-            if path not in {"/api/inspect", "/api/load", "/api/demo", "/api/unload", "/api/browse-models", "/api/run", "/api/intervene", "/api/sensitivity", "/api/sensitivity-repeat", "/api/patch-preview", "/api/patch-cross-prompt", "/api/save", "/api/save-experiment", "/api/open", "/api/clear", "/api/pin-reference", "/api/clear-reference", "/api/download", "/api/cancel-download"}:
+            if path not in {"/api/inspect", "/api/load", "/api/demo", "/api/unload", "/api/browse-models", "/api/run", "/api/intervene", "/api/sensitivity", "/api/sensitivity-repeat", "/api/patch-preview", "/api/patch-cross-prompt", "/api/experiment-reserve", "/api/experiment-cancel", "/api/experiment-status", "/api/save", "/api/save-experiment", "/api/open", "/api/clear", "/api/pin-reference", "/api/clear-reference", "/api/download", "/api/cancel-download"}:
                 self._send(404, {"error": "Not found"}); return
             if self.headers.get("Transfer-Encoding") or len(self.headers.get_all("Content-Length", [])) != 1:
                 self._send(400, {"error": "A single bounded Content-Length is required"}); return
@@ -446,8 +451,38 @@ def create_server(state, port=0):
                 body = self.rfile.read(length)
                 if len(body) != length: raise ValueError("Incomplete request body")
                 data = json.loads(body)
-                # One model owner and capture lifecycle at a time, including browse/save.
-                with state.lock: answer = state.post(path.rsplit("/", 1)[1], data)
+                action = path.rsplit("/", 1)[1]
+                # Registry operations must remain available while a model forward
+                # holds state.lock; they store no prompts, tensors or results.
+                if action == "experiment-reserve":
+                    if type(data) is not dict or set(data) != {"action", "capture_id"}:
+                        raise ValueError("Choose an experiment and current capture ID")
+                    answer = state.experiment_jobs.reserve(data["action"], data["capture_id"])
+                elif action in {"experiment-cancel", "experiment-status"}:
+                    if type(data) is not dict or set(data) != {"job_id"}:
+                        raise ValueError("Choose the current experiment job ID")
+                    answer = (state.experiment_jobs.cancel(data["job_id"]) if action == "experiment-cancel"
+                              else state.experiment_jobs.status(data["job_id"]))
+                else:
+                    lease = None
+                    # Claim exactly once before waiting for the model lock so
+                    # an already-queued request can still be stopped.
+                    if action in EXPERIMENT_ACTIONS and type(data) is dict and "job_id" in data:
+                        data = dict(data)
+                        job_id = data.pop("job_id")
+                        lease = state.experiment_jobs.claim(job_id, action, data.get("capture_id"))
+                    try:
+                        # One model owner and capture lifecycle at a time.
+                        with state.lock:
+                            if lease is None:
+                                answer = state.post(action, data)
+                            else:
+                                if not state.experiment_jobs.mark_started(lease):
+                                    raise ValueError("Experiment job is no longer active")
+                                answer = state.post(action, data, cancel_event=lease.cancel_event)
+                    finally:
+                        if lease is not None:
+                            state.experiment_jobs.release(lease)
                 self._send(200, answer)
             except (ValueError, OSError, TypeError, KeyError) as exc:
                 self._send(400, {"error": str(exc)})

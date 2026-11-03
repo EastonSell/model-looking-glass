@@ -224,18 +224,18 @@
         <button id="intervene-button" type="button" disabled title="Replay &amp; compare">Replay &amp; compare</button><p class="hint">Replay keeps the original capture but replaces the previous comparison, even if it fails. Save a comparison you want to keep first.</p></details>
         <details id="sensitivity-options" class="options"><summary>Run an experiment · component sensitivity</summary>
         <p class="hint">At this selected input position, zero one component output at a time and compare the next-token distribution on the same fixed input. GPT-2 and supported Llama live captures only; model weights and the existing comparison stay unchanged.</p>
-        <p id="experiment-cancel-note" class="hint">Submitted experiments cannot currently be cancelled. Closing this tab does not cancel the request: it may still be waiting for another operation, or continue running until it finishes or fails.</p>
+        <p id="experiment-cancel-note" class="hint">Stop requests wait for the current controlled operation to finish and restore model state; an individual GPU forward cannot be interrupted. Closing this tab does not stop a submitted experiment.</p>
         <p id="sensitivity-ready" class="hint" aria-live="polite"></p>
         <label for="sensitivity-layers">Layers · up to 6, zero-based, comma-separated</label><input id="sensitivity-layers" type="text" placeholder="Automatic: up to 6 captured layers" autocomplete="off" aria-describedby="sensitivity-budget">
         <fieldset><legend>Components to test</legend><div class="checklist"><label for="sensitivity-attention"><input id="sensitivity-attention" type="checkbox" checked> Attention</label><label for="sensitivity-mlp"><input id="sensitivity-mlp" type="checkbox" checked> MLP</label><label for="sensitivity-block"><input id="sensitivity-block" type="checkbox" checked> Block</label></div></fieldset>
         <p id="sensitivity-budget" class="hint" aria-live="polite"></p>
-        <button id="sensitivity-run" type="button" disabled>Run experiment</button>
+        <div class="button-row"><button id="sensitivity-run" type="button" disabled>Run experiment</button><button id="sensitivity-stop" class="secondary" type="button" hidden disabled>Stop experiment</button><button id="sensitivity-check-job" class="secondary" type="button" hidden disabled>Check experiment status</button></div><p id="sensitivity-job-status" class="hint" role="status" hidden></p>
         <p class="hint">Tests run sequentially on the loaded device and may take time, especially on CPU. The fixed input is limited to 64 tokens and the remaining capture allowance. The report is temporary until you download it.</p>
         <details id="repeat-options" class="options"><summary>Compare prompts with repeated tests</summary>
           <p class="hint">Enter 2–4 prompts, one per line, up to 512 characters each. Each uses its own final input token on the same loaded model; positions are not semantically aligned. This compares separate zeroing tests, not activation patching.</p>
           <label for="repeat-prompts">Prompts · one per line</label><textarea id="repeat-prompts" rows="4" maxlength="4096" placeholder="The capital of France is&#10;The capital of Italy is" aria-describedby="repeat-budget"></textarea>
           <p id="repeat-budget" class="hint" aria-live="polite"></p>
-          <button id="repeat-run" type="button" disabled>Run repeated tests</button>
+          <div class="button-row"><button id="repeat-run" type="button" disabled>Run repeated tests</button><button id="repeat-stop" class="secondary" type="button" hidden disabled>Stop repeated tests</button><button id="repeat-check-job" class="secondary" type="button" hidden disabled>Check experiment status</button></div><p id="repeat-job-status" class="hint" role="status" hidden></p>
           <p class="hint">Uses the layers and components above. Up to 12 tests and 52 model forwards, sequentially on the loaded device. Prompts are limited to 64 input tokens each.</p>
         </details>
         <details id="patch-options" class="options"><summary>Patch an activation between prompts</summary>
@@ -247,7 +247,7 @@
           <label for="patch-receiver-position">Receiver token · zero-based position and ID</label><select id="patch-receiver-position" disabled><option value="">Choose a receiver token…</option></select>
           <label for="patch-layer">Layer · zero-based</label><input id="patch-layer" type="number" min="0" max="2147483647" placeholder="Choose a layer" inputmode="numeric">
           <label for="patch-site">Component</label><select id="patch-site"><option value="attention">Attention</option><option value="mlp">MLP</option><option value="block">Block</option></select>
-          <button id="patch-run" type="button" disabled>Run activation patch</button>
+          <div class="button-row"><button id="patch-run" type="button" disabled>Run activation patch</button><button id="patch-stop" class="secondary" type="button" hidden disabled>Stop activation patch</button><button id="patch-check-job" class="secondary" type="button" hidden disabled>Check experiment status</button></div><p id="patch-job-status" class="hint" role="status" hidden></p>
           <p class="hint">Prompts are limited to 512 characters and 64 tokens each. The patch uses 10 model forwards on the loaded device and can take time. This is a temporary intervention, not a checkpoint edit or automatic concept alignment.</p>
         </details></details>
         <details><summary>Exact observation metadata</summary><pre id="event-metadata" class="detail-json"></pre></details>

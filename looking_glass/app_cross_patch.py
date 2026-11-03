@@ -51,7 +51,7 @@ def preview(state, data):
     return {"capture_id": data["capture_id"], "donor": donor, "receiver": receiver}
 
 
-def patch(state, data):
+def patch(state, data, *, cancel_event=None):
     required = {"capture_id", "donor_prompt", "receiver_prompt", "donor_position", "receiver_position",
                 "donor_token_id", "receiver_token_id", "donor_token_ids", "receiver_token_ids", "layer", "site"}
     if set(data) != required: raise ValueError("Cross-prompt patch requires both previewed prompts and explicit positions")
@@ -75,16 +75,42 @@ def patch(state, data):
                 "max_events": 1, "max_trace_bytes": budget, "max_tensor_bytes": budget,
                 "max_logits_bytes": 16 * 1024**2}
     stores = []
+    completed_captures = 0
+
+    def stopped():
+        return cancel_event is not None and cancel_event.is_set()
+
+    def cancelled_report():
+        return {"preset": "cross_prompt_patch", "capture_id": data["capture_id"], "status": "cancelled",
+                "reason": "Stopped by request before the next controlled operation.",
+                "model": report_model(model), "layer": layers[0], "site": sites[0],
+                "donor": {"prompt": data["donor_prompt"], "position": data["donor_position"],
+                          **donor["tokens"][data["donor_position"]], "token_ids": donor["token_ids"]},
+                "receiver": {"prompt": data["receiver_prompt"], "position": data["receiver_position"],
+                             **receiver["tokens"][data["receiver_position"]], "token_ids": receiver["token_ids"]},
+                "total_model_forwards": completed_captures, "model_forwards_upper_bound": 10,
+                "scope": "Stopped before the next capture or donor-to-receiver patch; no incomplete control is reported."}
+
     try:
         for name, side in (("donor", donor), ("receiver", receiver)):
+            # A capture is indivisible: finish the current forward and hook
+            # cleanup before observing a stop request.
+            if stopped():
+                return cancelled_report()
             store = TraceStore(state.store.export_root, max_bytes=budget, max_events=1)
             stores.append(store)
             result = state.runtime.run(data[name + "_prompt"], settings)
+            completed_captures += 1
             store.publish(result)
             del result
             step = store.summary()["steps"][0]
             if step["input_token_ids"] != side["token_ids"] or step["input_attention_mask"] != side["attention_mask"]:
                 raise ValueError("Fresh captured input differs from preview")
+        # Once the paired control begins, allow all eight forwards and cleanup
+        # to finish.  In particular, never raise a cancellation inside CUDA's
+        # allocator context or an active activation-plan lease.
+        if stopped():
+            return cancelled_report()
         source = stores[0].intervention_source(0, data["donor_position"])
         destination = stores[1].intervention_source(0, data["receiver_position"])
         allowance = min(128 * 1024**2, remaining - sum(s.summary()["total_bytes"] for s in stores))

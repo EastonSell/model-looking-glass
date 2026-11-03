@@ -5,6 +5,7 @@
   const state = {browseRequest: 0, browseFresh: false, settingsOpener: 'session-summary', mapButtons: [], outputGeneration: 0, outputStep: 0, tokenOffset: 0, tokenTotal: 0, mapAutoCapture: null, mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, sensitivity: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, liveStatusUnverified: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
   const pageSize = 100, valuePageSize = 256;
   let repeatReport = null, patchPreview = null, patchReport = null;
+  let activeExperimentJob = null, experimentActionStatus = null;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
   const tokenText = (token) => token?.text_unavailable === true || typeof token?.text !== 'string' ? 'text unavailable' : `${JSON.stringify(token.text)}${token.text_truncated === true ? ' · text truncated' : ''}`;
@@ -72,8 +73,147 @@
     const response = await fetch(`/api/${path}`, options);
     let data;
     try { data = await response.json(); } catch (_) { throw new Error(`The local app returned an invalid response (${response.status}).`); }
-    if (!response.ok || (data?.error && !allowErrorField)) throw new Error(data?.error || `Request failed (${response.status}).`);
+    if (!response.ok || (data?.error && !allowErrorField)) {
+      const error = new Error(data?.error || `Request failed (${response.status}).`);
+      error.httpStatus = response.status; throw error;
+    }
     return data;
+  }
+  function setExperimentJobStatus(kind, message) {
+    const status = $(`${kind}-job-status`);
+    if (status.textContent !== message) status.textContent = message;
+    status.hidden = !message;
+  }
+  function inFlightExperimentStatus(job, message) {
+    setExperimentJobStatus(job.kind, `${message}${job.unverified ? ' The result is unavailable; use Check experiment status to check whether it is still active.' : ''}${job.previousReport ? ' The previous report below is from an earlier run.' : ''}`);
+  }
+  function syncExperimentStops() {
+    for (const kind of ['sensitivity', 'repeat', 'patch']) {
+      const button = $(`${kind}-stop`), check = $(`${kind}-check-job`), job = activeExperimentJob;
+      button.hidden = !job || job.kind !== kind;
+      button.disabled = !job || job.kind !== kind || !job.id || job.finished || job.stopPending || job.statusPending || job.stopping;
+      check.hidden = !job || job.kind !== kind || !job.unverified;
+      check.disabled = !job || job.kind !== kind || !job.unverified || job.statusPending || job.stopPending;
+    }
+  }
+  async function checkUnverifiedExperiment(kind) {
+    const job = activeExperimentJob;
+    if (!job || job.kind !== kind || !job.unverified || job.statusPending || job.stopPending) return;
+    const current = () => activeExperimentJob === job && !job.finished;
+    job.statusPending = true; syncButtons();
+    try {
+      const answer = await api('experiment-status', {job_id: job.id});
+      if (!current()) return;
+      if (answer?.job_id !== job.id || answer.action !== job.action || !['reserved','queued','running','stopping'].includes(answer.status)) throw new Error('Experiment status did not match');
+      job.stopping = answer.status === 'stopping';
+      inFlightExperimentStatus(job, `Experiment status: ${answer.status}. Its result is unverified. Check again later; ${job.stopping ? 'stop was requested and the current controlled operation must finish' : 'Stop is available'}.`);
+    } catch (error) {
+      if (!current()) return;
+      if (error.httpStatus === 400 && error.message === 'Experiment job is not active or has expired') {
+        job.finished = true; activeExperimentJob = null; state.busy = false;
+        setExperimentJobStatus(kind, `The experiment is no longer active, but its result remains unverified. Refresh device status in Model & settings before another model run.${job.previousReport ? ' The previous report below is from an earlier run.' : ''}`);
+        $('run-status').textContent = 'Experiment result unverified. Refresh device status.';
+        notice('The experiment is no longer active, but its result could not be recovered. Refresh device status in Model & settings.', true);
+      } else {
+        inFlightExperimentStatus(job, 'Experiment status is unverified. It may still be queued or running. Check again or try Stop while the result is unavailable.');
+      }
+    } finally { job.statusPending = false; syncButtons(); }
+  }
+  async function requestExperimentStop(kind) {
+    const job = activeExperimentJob;
+    if (!job || job.kind !== kind || !job.id || job.finished || job.stopPending || job.statusPending || job.stopping) return;
+    const current = () => activeExperimentJob === job && !job.finished;
+    job.stopPending = true; job.stopAttempted = true;
+    inFlightExperimentStatus(job, 'Requesting stop. The current controlled operation must finish and restore the model first.');
+    syncButtons();
+    try {
+      const answer = await api('experiment-cancel', {job_id: job.id});
+      if (!current()) return;
+      if (answer?.job_id !== job.id || answer.status !== 'stopping') throw new Error('Stop response did not match this experiment');
+      job.stopping = true;
+      inFlightExperimentStatus(job, 'Stop requested. Waiting for the current controlled operation to finish and restore the model.');
+    } catch (_) {
+      if (!current()) return;
+      try {
+        const status = await api('experiment-status', {job_id: job.id});
+        if (!current()) return;
+        if (status?.job_id !== job.id || status.action !== job.action) throw new Error('Experiment status did not match');
+        if (status.status === 'stopping') {
+          job.stopping = true;
+          inFlightExperimentStatus(job, 'Stop requested. Waiting for the current controlled operation to finish and restore the model.');
+        } else if (['reserved', 'queued', 'running'].includes(status.status)) {
+          inFlightExperimentStatus(job, 'Stop was not confirmed. The experiment is still pending or running; you may try Stop again.');
+        } else throw new Error('Experiment status unavailable');
+      } catch (_) {
+        if (!current()) return;
+        inFlightExperimentStatus(job, 'Stop could not be confirmed; the experiment may still be running or may already have finished. You may try Stop again while waiting for its result.');
+      }
+    } finally {
+      job.stopPending = false;
+      if (current()) syncButtons();
+    }
+  }
+  async function runStopEnabledExperiment(kind, actionName, body, previousReport) {
+    const job = {kind, action: actionName, id: null, finished: false, stopPending: false, statusPending: false, unverified: false,
+                 stopping: false, stopAttempted: false, previousReport};
+    activeExperimentJob = job;
+    setExperimentJobStatus(kind, `Preparing experiment; Stop becomes available after reservation.${previousReport ? ' The previous report below belongs to an earlier run.' : ''}`);
+    syncButtons();
+    let submitted = false;
+    try {
+      const reservation = await api('experiment-reserve', {action: actionName, capture_id: body.capture_id});
+      if (!reservation || typeof reservation.job_id !== 'string' || !/^[0-9a-f]{48}$/.test(reservation.job_id) || reservation.action !== actionName || reservation.status !== 'reserved')
+        throw new Error('Could not verify the experiment reservation; no experiment was submitted.');
+      job.id = reservation.job_id;
+      setExperimentJobStatus(kind, `Experiment submitted or waiting. Stop is available.${previousReport ? ' The previous report below belongs to an earlier run.' : ''}`);
+      syncButtons();
+      submitted = true;
+      const result = await api(actionName, {...body, job_id: job.id});
+      job.finished = true;
+      return {result, job};
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught));
+      if (submitted) {
+        error.sensitivityOutcomeUncertain = true;
+        job.unverified = true; error.experimentJob = job;
+        error.message += ' The experiment outcome is unverified; it may still be running or may already have finished.';
+        inFlightExperimentStatus(job, 'Experiment outcome unverified; it may still be queued or running, or may already have finished.');
+      } else {
+        setExperimentJobStatus(kind, `No experiment was submitted. A reservation may remain briefly; retry after 30 seconds.${previousReport ? ' The previous report below is from an earlier run.' : ''}`);
+      }
+      throw error;
+    } finally {
+      if (!job.unverified) {
+        job.finished = true;
+        if (activeExperimentJob === job) activeExperimentJob = null;
+      }
+      syncButtons();
+    }
+  }
+  function finishExperiment(kind, report, job, previousRetained = false) {
+    if (report.status === 'cancelled') {
+      const message = previousRetained ? 'Stopped before a controlled result was produced. The previous report below is from an earlier run.' : kind === 'patch' ? 'Stopped before the activation patch began. No patch result was produced.' : report.completed_runs === 0 ? 'Stopped before a controlled result was produced. Skipped tests are not zero effects.' : 'Stopped at a safe boundary. Completed results are shown; skipped tests are not zero effects.';
+      setExperimentJobStatus(kind, message); experimentActionStatus = 'Experiment stopped at a safe boundary. See the experiment status.';
+    } else if (job.stopAttempted && ['complete', 'partial'].includes(report.status)) {
+      setExperimentJobStatus(kind, 'The experiment finished before the stop took effect. The final report is shown.');
+      experimentActionStatus = 'Experiment finished before the stop took effect.';
+    } else if (report.status === 'inconclusive') {
+      setExperimentJobStatus(kind, 'The experiment ended inconclusively. Review its report and controls.');
+      experimentActionStatus = 'Experiment ended inconclusively.';
+    } else {
+      setExperimentJobStatus(kind, 'Experiment finished. The current report is shown.');
+    }
+  }
+  function emptyCancelledReport(kind, report, capture) {
+    const preset = kind === 'sensitivity' ? 'component_sensitivity' : 'multi_prompt_sensitivity';
+    if (!report || report.status !== 'cancelled' || report.capture_id !== capture || report.preset !== preset || report.completed_runs !== 0 || !Array.isArray(report.results) || report.results.length > (kind === 'sensitivity' ? 18 : 4)) return false;
+    return report.results.every(row => row && row.status !== 'ok' && (!row.report || (Array.isArray(row.report.results) && row.report.results.every(cell => cell && cell.status !== 'ok'))));
+  }
+  function invalidExperimentReport(kind, caught, previousReport) {
+    const error = caught instanceof Error ? caught : new Error(String(caught));
+    error.sensitivityOutcomeUncertain = true;
+    setExperimentJobStatus(kind, `The experiment result could not be verified.${previousReport ? ' The previous report below is from an earlier run.' : ''}`);
+    return error;
   }
   function syncDeviceChoice() {
     const choice = $('execution-device').value || 'auto';
@@ -161,6 +301,7 @@
     $('patch-donor-position').disabled = $('patch-receiver-position').disabled = state.busy || !patchPreviewCurrent();
     $('patch-run').disabled = state.busy || !interventionReady() || !patchSelectionReady();
     $('patch-download').disabled = state.busy || !patchReport;
+    syncExperimentStops();
     syncPatchReportAttribution();
     $('save-experiment').disabled = state.busy || !state.experiment;
     $('witness-prev').disabled = state.busy || !state.experiment || state.witnessOffset === 0;
@@ -171,15 +312,18 @@
   }
   async function action(message, callback) {
     if (state.busy) return;
-    let completed = false; state.busy = true; syncButtons(); notice(message); $('run-status').textContent = message;
-    try { await callback(); completed = true; if (state.model?.state === 'quarantined') { notice('The model cannot be reused safely. Please restart the app before loading or running again. Saved captures are still available.', true); $('run-status').textContent = 'Restart required before another model run.'; } else if (state.liveStatusUnverified) { notice('Session status could not be verified. Refresh device status in Model & settings before more model runs.', true); $('run-status').textContent = 'Session status unverified. Refresh device status.'; } else { notice(''); $('run-status').textContent = 'Ready.'; } }
+    let completed = false; experimentActionStatus = null; state.busy = true; syncButtons(); notice(message); $('run-status').textContent = message;
+    try { await callback(); completed = true; if (state.model?.state === 'quarantined') { notice('The model cannot be reused safely. Please restart the app before loading or running again. Saved captures are still available.', true); $('run-status').textContent = 'Restart required before another model run.'; } else if (state.liveStatusUnverified) { notice('Session status could not be verified. Refresh device status in Model & settings before more model runs.', true); $('run-status').textContent = 'Session status unverified. Refresh device status.'; } else { notice(''); $('run-status').textContent = experimentActionStatus || 'Ready.'; } }
     catch (error) {
-      try { const current = await api('status'); if (error.reconcileRun && (!state.run?.capture_id || current.run?.capture_id !== state.run.capture_id)) clearView(); if (error.reconcileRun && state.experiment && Object.hasOwn(current, 'experiment') && current.experiment?.experiment_id !== state.experiment.experiment_id) clearExperiment(); if (state.run) { const same = current.run?.capture_id && current.run.capture_id === state.run.capture_id; state.run.intervention_available = !!(same && current.run.intervention_available); state.run.intervention_reason = same ? current.run.intervention_reason : 'The displayed capture is no longer bound to the current server revision; reopen or make a fresh capture.'; state.run.reference_available = !!(same && current.run.reference_available); state.run.reference_reason = same ? current.run.reference_reason : 'The displayed capture revision is no longer current.'; } state.liveStatusUnverified = false; setModel(current.model); applyLimits(current.limits); applyDevices(current); } catch (_) { if (error.sensitivityOutcomeUncertain) { state.liveStatusUnverified = true; if (state.run) { state.run.intervention_available = false; state.run.reference_available = false; state.run.intervention_reason = 'Session status could not be verified; refresh device status in Model & settings.'; state.run.reference_reason = state.run.intervention_reason; } error.message += ' Session status could not be verified. Refresh device status in Model & settings before more model runs.'; } if (error.reconcileRun) { clearView(); error.message += ' The Run outcome could not be verified; previous capture values are hidden. Refresh or reopen a saved capture before continuing.'; } /* Preserve the original failure if status is unavailable. */ }
+      if (error.experimentJob) {
+        state.liveStatusUnverified = true;
+        if (state.run) { state.run.intervention_available = false; state.run.reference_available = false; state.run.intervention_reason = 'The experiment outcome is unverified.'; state.run.reference_reason = state.run.intervention_reason; }
+      } else try { const current = await api('status'); if (error.reconcileRun && (!state.run?.capture_id || current.run?.capture_id !== state.run.capture_id)) clearView(); if (error.reconcileRun && state.experiment && Object.hasOwn(current, 'experiment') && current.experiment?.experiment_id !== state.experiment.experiment_id) clearExperiment(); if (state.run) { const same = current.run?.capture_id && current.run.capture_id === state.run.capture_id; state.run.intervention_available = !!(same && current.run.intervention_available); state.run.intervention_reason = same ? current.run.intervention_reason : 'The displayed capture is no longer bound to the current server revision; reopen or make a fresh capture.'; state.run.reference_available = !!(same && current.run.reference_available); state.run.reference_reason = same ? current.run.reference_reason : 'The displayed capture revision is no longer current.'; } state.liveStatusUnverified = false; setModel(current.model); applyLimits(current.limits); applyDevices(current); } catch (_) { if (error.sensitivityOutcomeUncertain) { state.liveStatusUnverified = true; if (state.run) { state.run.intervention_available = false; state.run.reference_available = false; state.run.intervention_reason = 'Session status could not be verified; refresh device status in Model & settings.'; state.run.reference_reason = state.run.intervention_reason; } error.message += ' Session status could not be verified. Refresh device status in Model & settings before more model runs.'; } if (error.reconcileRun) { clearView(); error.message += ' The Run outcome could not be verified; previous capture values are hidden. Refresh or reopen a saved capture before continuing.'; } /* Preserve the original failure if status is unavailable. */ }
       const quarantined = state.model?.state === 'quarantined';
       notice((error.message || String(error)) + (quarantined ? ' The model cannot be reused safely. Please restart the app before loading or running again.' : ''), true);
-      $('run-status').textContent = quarantined ? 'Restart required before another model run.' : 'Stopped. See the message above.';
+      $('run-status').textContent = quarantined ? 'Restart required before another model run.' : error.sensitivityOutcomeUncertain ? 'Experiment outcome unverified. See the message above.' : 'Action failed. See the message above.';
     }
-    finally { state.busy = false; syncButtons(); if (completed && state.run?.capture_id && $('layer-map-options').open && state.mapAutoCapture !== state.run.capture_id) { state.mapAutoCapture = state.run.capture_id; await loadLayerMap(); } }
+    finally { state.busy = !!activeExperimentJob?.unverified; syncButtons(); if (completed && state.run?.capture_id && $('layer-map-options').open && state.mapAutoCapture !== state.run.capture_id) { state.mapAutoCapture = state.run.capture_id; await loadLayerMap(); } }
     return completed;
   }
   function applyLimits(limits) {
@@ -269,7 +413,7 @@
     state.outputGeneration++; state.outputStep = 0; state.tokenOffset = 0; state.tokenTotal = 0;
     $('output-readout').replaceChildren(); $('input-token-strip').replaceChildren(); $('output-note').textContent = ''; $('input-token-note').textContent = ''; $('input-token-page').textContent = ''; $('output-step').value = '0';
     clearLayerMap();
-    clearExperiment(); clearSensitivity(); clearRepeat(); clearPatch(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
+    clearExperiment(); clearSensitivity(); clearRepeat(); clearPatch(); for (const kind of ['sensitivity','repeat','patch']) setExperimentJobStatus(kind, ''); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
     $('imported-control-warning').hidden = true; $('imported-comparison').hidden = true; clearDistribution('imported'); $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Saving includes prompts, output, metadata and full tensor values; these may be sensitive.'; syncButtons();
   }
   function showRun(run) {
@@ -745,7 +889,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   }
   function showPatch(report) {
     if (!report || report.preset !== 'cross_prompt_patch' || report.capture_id !== state.run?.capture_id || !['complete','inconclusive'].includes(report.status)) throw new Error('Patch report was incomplete or did not match the current capture.');
-    patchReport = report; $('patch-report').hidden = false; $('patch-demo').hidden = !isDemo(state.model);
+    patchReport = report; $('patch-report').hidden = false; $('patch-demo').hidden = !isDemo(state.model); $('patch-status').hidden = true; $('patch-status').textContent = '';
     const donor = report.donor || {}, receiver = report.receiver || {}, controls = report.controls || {};
     $('patch-alignment').textContent = `Donor position ${number(donor.position)} · ID ${number(donor.token_id)} · ${tokenText(donor)}; receiver position ${number(receiver.position)} · ID ${number(receiver.token_id)} · ${tokenText(receiver)}. Layer ${number(report.layer)} · ${report.site || 'unknown'}.`;
     $('patch-report-prompts').textContent = `Donor prompt: ${typeof donor.prompt === 'string' ? JSON.stringify(donor.prompt) : 'unavailable'}; receiver prompt: ${typeof receiver.prompt === 'string' ? JSON.stringify(receiver.prompt) : 'unavailable'}.`;
@@ -795,9 +939,9 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   }
   function showRepeat(report) {
     if (!report || report.preset !== 'multi_prompt_sensitivity' || report.capture_id !== state.run?.capture_id ||
-        !['complete','partial','inconclusive'].includes(report.status) || !Array.isArray(report.results) || report.results.length > 4)
+        !['complete','partial','inconclusive','cancelled'].includes(report.status) || !Array.isArray(report.results) || report.results.length > 4)
       throw new Error('Repeated-test report was incomplete or did not match the current capture.');
-    repeatReport = report; $('repeat-report').hidden = false; $('repeat-demo').hidden = !isDemo(state.model);
+    repeatReport = report; $('repeat-report').hidden = false; $('repeat-demo').hidden = !isDemo(state.model); $('repeat-status').hidden = true; $('repeat-status').textContent = '';
     $('repeat-outcome').textContent = `${report.status}: ${number(report.completed_prompts)} of ${number(report.planned_prompts)} prompts completed, ${number(report.completed_runs)} of ${number(report.planned_runs)} tests completed. ${number(report.completed_model_forwards)} completed model forwards; upper bound ${number(report.model_forwards_upper_bound)}. A failed forward may have an unknown count.`;
     $('repeat-body').replaceChildren();
     const finite = value => typeof value === 'number' && Number.isFinite(value);
@@ -835,9 +979,9 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     $('sensitivity-body').replaceChildren();
   }
   function showSensitivity(report) {
-    const valid = report && report.capture_id === state.run?.capture_id && report.preset === 'component_sensitivity' && Array.isArray(report.results) && report.results.length <= 18 && ['complete','partial','inconclusive'].includes(report.status);
+    const valid = report && report.capture_id === state.run?.capture_id && report.preset === 'component_sensitivity' && Array.isArray(report.results) && report.results.length <= 18 && ['complete','partial','inconclusive','cancelled'].includes(report.status);
     if (!valid) throw new Error('The experiment report was incomplete or did not match the current capture. No results are displayed.');
-    state.sensitivity = report; $('sensitivity-report').hidden = false; $('sensitivity-demo').hidden = !isDemo(state.model);
+    state.sensitivity = report; $('sensitivity-report').hidden = false; $('sensitivity-demo').hidden = !isDemo(state.model); $('sensitivity-status').hidden = true; $('sensitivity-status').textContent = '';
     const anchor = report.anchor || {};
     $('sensitivity-outcome').textContent = `${report.status}: ${number(report.completed_runs)} of ${number(report.planned_runs)} tests completed. ${number(report.completed_model_forwards)} completed model forwards; planned upper bound ${number(report.model_forwards_upper_bound)}. A failed forward may have an unknown actual count.`;
     $('sensitivity-anchor').textContent = `Model: ${report.model?.family || 'unknown'} · device: ${report.model?.device || 'unknown'} · forward: ${number(anchor.forward_index)} · input position: ${number(anchor.token_position)} · input token ID: ${number(anchor.token_id)} · readout position: ${number(anchor.readout_position)}.`;
@@ -869,7 +1013,8 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
       if (measured) tv.setAttribute('data-magnitude', result.total_variation === 0 ? 'zero' : result.total_variation < 0.01 ? 'low' : result.total_variation < 0.1 ? 'medium' : 'high');
       cell(row, measured ? fmt(result.last_position_max_abs_delta) : '—'); $('sensitivity-body').append(row);
     }
-    if (report.status === 'inconclusive') $('sensitivity-finding').textContent = 'No cross-test ranking: the sweep was inconclusive. Inspect the individual statuses and controls.';
+    if (report.status === 'cancelled') $('sensitivity-finding').textContent = 'No cross-test ranking: the sweep was stopped. Completed rows remain available; skipped rows are not zero effects.';
+    else if (report.status === 'inconclusive') $('sensitivity-finding').textContent = 'No cross-test ranking: the sweep was inconclusive. Inspect the individual statuses and controls.';
     else if (!measuredRows.length) $('sensitivity-finding').textContent = 'No comparable changed-vector measurements are available for ranking.';
     else {
       const best = measuredRows.reduce((a, b) => b.total_variation > a.total_variation ? b : a);
@@ -1046,6 +1191,10 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     $(`patch-${side}-prompt`).addEventListener('input', () => { clearPatchPreview(); syncButtons(); });
     $(`patch-${side}-position`).addEventListener('change', syncButtons);
   }
+  for (const kind of ['sensitivity','repeat','patch']) {
+    $(`${kind}-stop`).addEventListener('click', () => requestExperimentStop(kind));
+    $(`${kind}-check-job`).addEventListener('click', () => checkUnverifiedExperiment(kind));
+  }
   $('patch-layer').addEventListener('input', syncButtons); $('patch-site').addEventListener('change', syncButtons);
   $('patch-preview').addEventListener('click',()=>action('Previewing prompt tokens locally.',async()=>{
     if (!interventionReady()) throw new Error(interventionReason());
@@ -1067,9 +1216,17 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     const body={capture_id:state.run.capture_id,donor_prompt:patchPreview.donorPrompt,receiver_prompt:patchPreview.receiverPrompt,
       donor_position:donor.index,receiver_position:receiver.index,donor_token_id:donor.token_id,receiver_token_id:receiver.token_id,
       donor_token_ids:patchPreview.donor.token_ids,receiver_token_ids:patchPreview.receiver.token_ids,layer:Number($('patch-layer').value),site:$('patch-site').value};
-    patchReport=null; $('patch-report').hidden=true; $('patch-status').hidden=true;
-    try { showPatch(await api('patch-cross-prompt',body)); }
-    catch(caught) { patchReport=null; $('patch-report').hidden=true; const error=caught instanceof Error ? caught : new Error(String(caught)); error.sensitivityOutcomeUncertain=true; throw error; }
+    const previous = !!patchReport;
+    const {result, job} = await runStopEnabledExperiment('patch', 'patch-cross-prompt', body, previous);
+    try {
+      if (result?.status === 'cancelled') {
+        if (result.preset !== 'cross_prompt_patch' || result.capture_id !== body.capture_id || !Number.isSafeInteger(result.total_model_forwards) || result.total_model_forwards < 0 || result.total_model_forwards > 2 || result.controls || result.metrics)
+          throw new Error('Cancelled patch report was incomplete or did not match the current capture.');
+        finishExperiment('patch', result, job, previous);
+      } else {
+        showPatch(result); finishExperiment('patch', result, job);
+      }
+    } catch (caught) { throw invalidExperimentReport('patch', caught, previous); }
     try {
       const current=await api('status'), same=!!(state.run?.capture_id && current.run?.capture_id===state.run.capture_id);
       if (state.run) { state.run.intervention_available=!!(same && current.run.intervention_available); state.run.intervention_reason=same ? current.run.intervention_reason : 'This capture is no longer the live server revision.'; state.run.reference_available=!!(same && current.run.reference_available); state.run.reference_reason=same ? current.run.reference_reason : 'This capture is no longer the live server revision.'; }
@@ -1092,9 +1249,14 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     if (!interventionReady()) throw new Error(interventionReason());
     const {prompts, layers, sites} = repeatChoices(), body = {capture_id:state.run.capture_id,prompts,sites};
     if (layers) body.layers = layers;
-    clearRepeat();
-    try { showRepeat(await api('sensitivity-repeat', body)); }
-    catch (caught) { clearRepeat(); const error = caught instanceof Error ? caught : new Error(String(caught)); error.sensitivityOutcomeUncertain = true; throw error; }
+    const previous = !!repeatReport;
+    const {result, job} = await runStopEnabledExperiment('repeat', 'sensitivity-repeat', body, previous);
+    try {
+      const retain = result?.status === 'cancelled' && result.completed_runs === 0 && previous;
+      if (retain && !emptyCancelledReport('repeat', result, body.capture_id)) throw new Error('Cancelled repeated-test report was incomplete or did not match the current capture.');
+      if (!retain) showRepeat(result);
+      finishExperiment('repeat', result, job, retain);
+    } catch (caught) { throw invalidExperimentReport('repeat', caught, previous); }
     try {
       const current = await api('status'), same = !!(state.run?.capture_id && current.run?.capture_id === state.run.capture_id);
       if (state.run) {
@@ -1120,9 +1282,14 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     if (!interventionReady()) throw new Error(interventionReason());
     const {layers, sites} = sensitivityChoices(), body = {capture_id:state.run.capture_id,event:state.event.index,vector:state.vector,sites};
     if (layers) body.layers = layers;
-    clearSensitivity();
-    try { const report = await api('sensitivity', body); showSensitivity(report); }
-    catch (caught) { clearSensitivity(); const error = caught instanceof Error ? caught : new Error(String(caught)); error.sensitivityOutcomeUncertain = true; throw error; }
+    const previous = !!state.sensitivity;
+    const {result, job} = await runStopEnabledExperiment('sensitivity', 'sensitivity', body, previous);
+    try {
+      const retain = result?.status === 'cancelled' && result.completed_runs === 0 && previous;
+      if (retain && !emptyCancelledReport('sensitivity', result, body.capture_id)) throw new Error('Cancelled experiment report was incomplete or did not match the current capture.');
+      if (!retain) showSensitivity(result);
+      finishExperiment('sensitivity', result, job, retain);
+    } catch (caught) { throw invalidExperimentReport('sensitivity', caught, previous); }
     // A partial report can follow a quarantining engine failure. Reconcile ownership even on HTTP success.
     try {
       const current = await api('status'), same = !!(state.run?.capture_id && current.run?.capture_id === state.run.capture_id);

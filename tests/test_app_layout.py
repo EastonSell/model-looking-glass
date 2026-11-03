@@ -445,15 +445,23 @@ def test_patch_preview_has_explicit_disabled_token_choices_and_visible_report_fo
     assert "#patch-report:focus{outline:2px solid var(--selected)" in css
 
 
-def test_experiment_controls_explain_that_submitted_work_cannot_be_cancelled():
+def test_experiment_stop_controls_and_safe_boundary_explanation():
     ids = page().ids
     note = ids["experiment-cancel-note"]
     assert ids["sensitivity-options"] in note.ancestors()
-    for identifier in ("sensitivity-run", "repeat-run", "patch-run"):
-        assert ids["sensitivity-options"] in ids[identifier].ancestors()
+    for kind in ("sensitivity", "repeat", "patch"):
+        run, stop, check, status = (ids[f"{kind}-{suffix}"] for suffix in ("run", "stop", "check-job", "job-status"))
+        for element in (run, stop, check, status):
+            assert ids["sensitivity-options"] in element.ancestors()
+        assert stop.tag == "button" and stop.attrs.get("type") == "button"
+        assert "hidden" in stop.attrs and "disabled" in stop.attrs
+        assert check.tag == "button" and check.attrs.get("type") == "button"
+        assert "hidden" in check.attrs and "disabled" in check.attrs
+        assert status.attrs.get("role") == "status" and "hidden" in status.attrs
     text = note.text.lower()
-    assert "cannot currently be cancelled" in text
-    assert "closing this tab" in text and "waiting for another operation" in text
+    assert "current controlled operation" in text and "restore model state" in text
+    assert "gpu forward cannot be interrupted" in text
+    assert "closing this tab does not stop" in text
 
 
 def test_patch_report_exposes_prior_inputs_and_live_attribution_warning():

@@ -11,7 +11,7 @@ MAX_TOTAL_CELLS = 12
 MAX_TEMP_CAPTURE_BYTES = 32 * 1024**2
 
 
-def run_repeated_sensitivity(state, data):
+def run_repeated_sensitivity(state, data, *, cancel_event=None):
     """Run fresh temporary captures without replacing the user's retained run."""
     if set(data) - {"capture_id", "layers", "sites", "prompts"}:
         raise ValueError("Unknown repeated sensitivity experiment option")
@@ -52,11 +52,17 @@ def run_repeated_sensitivity(state, data):
                 "max_new_tokens": 1, "max_events": per_prompt,
                 "max_trace_bytes": capture_budget, "max_tensor_bytes": capture_budget,
                 "max_logits_bytes": 16 * 1024**2}
-    rows, capture_count, completed_runs, completed_forwards, stopped = [], 0, 0, 0, False
+    rows, capture_count, completed_runs, completed_forwards = [], 0, 0, 0
+    stopped_failure = stopped_cancel = False
     for index, prompt in enumerate(prompts):
         row = {"prompt_index": index, "prompt": prompt}
-        if stopped:
+        if stopped_failure:
             row.update(status="skipped", reason="Stopped after an earlier failed or inconclusive prompt.")
+            rows.append(row)
+            continue
+        if stopped_cancel or (cancel_event is not None and cancel_event.is_set()):
+            stopped_cancel = True
+            row.update(status="skipped", reason="Stopped by request before this prompt.")
             rows.append(row)
             continue
         scratch = TraceStore(state.store.export_root, max_bytes=capture_budget, max_events=per_prompt)
@@ -75,7 +81,7 @@ def run_repeated_sensitivity(state, data):
                 _live_binding=state._live_binding, _require_capture_id=state._require_capture_id,
                 _intervention_status=state._intervention_status)
             report = run_sensitivity(proxy, {"capture_id": data["capture_id"], "event": 0,
-                "vector": position, "layers": layers, "sites": sites})
+                "vector": position, "layers": layers, "sites": sites}, cancel_event=cancel_event)
             coordinate = scratch._coordinate(0, position)
             report["anchor"]["token_text"] = coordinate.get("token_text")
             report["anchor"]["token_piece"] = coordinate.get("token_piece")
@@ -87,15 +93,18 @@ def run_repeated_sensitivity(state, data):
             completed_forwards += report["completed_model_forwards"]
             row.update(status=report["status"], report=report)
             if report["status"] == "inconclusive":
-                stopped = True
+                stopped_failure = True
+            elif report["status"] == "cancelled":
+                stopped_cancel = True
         except Exception as error:
             row.update(status="failed", reason=f"{type(error).__name__}: {str(error)[:512]}")
-            stopped = True
+            stopped_failure = True
         finally:
             scratch.clear()
         rows.append(row)
     complete_prompts = sum(row["status"] == "complete" for row in rows)
-    overall = ("inconclusive" if stopped else "complete" if complete_prompts == len(prompts) else "partial")
+    overall = ("inconclusive" if stopped_failure else "cancelled" if stopped_cancel
+               else "complete" if complete_prompts == len(prompts) else "partial")
     return {"preset": "multi_prompt_sensitivity", "capture_id": data["capture_id"],
         "status": overall, "model": report_model(model),
         "layers": layers, "sites": sites, "planned_prompts": len(prompts),

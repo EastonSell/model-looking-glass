@@ -71,7 +71,7 @@ def _selection(data, model, capture):
     return layers, sites
 
 
-def run_sensitivity(state, data):
+def run_sensitivity(state, data, *, cancel_event=None):
     """Measure <=18 separately controlled zeroings; retain no capture tensors."""
     state._require_capture_id(data.get("capture_id"))
     available, reason = state._intervention_status()
@@ -90,11 +90,18 @@ def run_sensitivity(state, data):
     allowance = min(128 * 1024**2, state.max_trace_bytes - retained)
     if allowance <= 0: raise ValueError("No remaining trace allowance for a sensitivity experiment")
 
-    rows, replay_count, failed, baseline = [], 0, False, None
+    rows, replay_count, failed, cancelled, baseline = [], 0, False, False, None
     for layer, site, path in cells:
         row = {"layer": layer, "site": site, "module_path": path}
         if failed:
             row.update(status="skipped", reason="Stopped after an earlier failed or inconsistent trial.")
+            rows.append(row)
+            continue
+        # A controlled cell owns its four forwards and hook cleanup.  Observe
+        # cancellation only before starting another cell, never mid-forward.
+        if cancelled or (cancel_event is not None and cancel_event.is_set()):
+            cancelled = True
+            row.update(status="skipped", reason="Stopped by request before this cell.")
             rows.append(row)
             continue
         matches = candidates[path]
@@ -143,7 +150,8 @@ def run_sensitivity(state, data):
             failed = True
         rows.append(row)
     completed = sum(row["status"] == "ok" for row in rows)
-    status = "inconclusive" if failed or completed == 0 else "complete" if completed == len(rows) else "partial"
+    status = ("inconclusive" if failed else "cancelled" if cancelled else "inconclusive" if completed == 0
+              else "complete" if completed == len(rows) else "partial")
     return {"preset": "component_sensitivity", "capture_id": data["capture_id"], "status": status,
         "anchor": {"forward_index": coordinate["app_forward_index"], "token_position": coordinate["token_position"],
                    "token_id": coordinate["token_id"], "readout_position": len(step["input_token_ids"]) - 1,
