@@ -4,7 +4,7 @@
   const token = document.querySelector('meta[name="mlg-token"]').content;
   const state = {browseRequest: 0, browseFresh: false, settingsOpener: 'session-summary', mapButtons: [], outputGeneration: 0, outputStep: 0, tokenOffset: 0, tokenTotal: 0, mapAutoCapture: null, mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, sensitivity: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, liveStatusUnverified: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
   const pageSize = 100, valuePageSize = 256;
-  let repeatReport = null;
+  let repeatReport = null, patchPreview = null, patchReport = null;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
   const bytes = (value) => { const n = Number(value); if (!Number.isFinite(n)) return '—'; return n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KiB` : `${(n / 1048576).toFixed(2)} MiB`; };
@@ -154,6 +154,11 @@
     $('intervention-status').textContent = interventionReady() ? 'Ready for this source vector.' : interventionReason();
     $('sensitivity-run').disabled = state.busy || !interventionReady(); $('sensitivity-ready').textContent = interventionReady() ? 'Ready for the selected source position.' : interventionReason(); $('sensitivity-download').disabled = state.busy || !state.sensitivity; updateSensitivityBudget();
     $('repeat-run').disabled = state.busy || !interventionReady(); $('repeat-prompts').disabled = state.busy; $('repeat-download').disabled = state.busy || !repeatReport; updateRepeatBudget();
+    $('patch-donor-prompt').disabled = $('patch-receiver-prompt').disabled = $('patch-layer').disabled = $('patch-site').disabled = state.busy;
+    $('patch-preview').disabled = state.busy || !interventionReady();
+    $('patch-donor-position').disabled = $('patch-receiver-position').disabled = state.busy || !patchPreviewCurrent();
+    $('patch-run').disabled = state.busy || !interventionReady() || !patchSelectionReady();
+    $('patch-download').disabled = state.busy || !patchReport;
     $('save-experiment').disabled = state.busy || !state.experiment;
     $('witness-prev').disabled = state.busy || !state.experiment || state.witnessOffset === 0;
     $('witness-next').disabled = state.busy || !state.experiment || state.witnessOffset + valuePageSize >= state.witnessTotal;
@@ -261,7 +266,7 @@
     state.outputGeneration++; state.outputStep = 0; state.tokenOffset = 0; state.tokenTotal = 0;
     $('output-readout').replaceChildren(); $('input-token-strip').replaceChildren(); $('output-note').textContent = ''; $('input-token-note').textContent = ''; $('input-token-page').textContent = ''; $('output-step').value = '0';
     clearLayerMap();
-    clearExperiment(); clearSensitivity(); clearRepeat(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
+    clearExperiment(); clearSensitivity(); clearRepeat(); clearPatch(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
     $('imported-control-warning').hidden = true; $('imported-comparison').hidden = true; clearDistribution('imported'); $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Saving includes prompts, output, metadata and full tensor values; these may be sensitive.'; syncButtons();
   }
   function showRun(run) {
@@ -690,6 +695,63 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     } catch (error) { message = error.message || String(error); }
     $('sensitivity-budget').textContent = message;
   }
+  function patchPreviewCurrent() {
+    return !!(patchPreview && patchPreview.capture_id === state.run?.capture_id && patchPreview.donorPrompt === $('patch-donor-prompt').value && patchPreview.receiverPrompt === $('patch-receiver-prompt').value);
+  }
+  function patchSelected(side) {
+    if (!patchPreviewCurrent()) return null;
+    const value = $(`patch-${side}-position`).value;
+    if (!/^\d+$/.test(value)) return null;
+    return patchPreview[side]?.tokens?.find(token => token.index === Number(value)) || null;
+  }
+  function patchSelectionReady() {
+    return !!(patchSelected('donor') && patchSelected('receiver') && /^\d+$/.test($('patch-layer').value.trim()) && Number.isSafeInteger(Number($('patch-layer').value)) && Number($('patch-layer').value) <= 2147483647);
+  }
+  function clearPatchPreview() {
+    patchPreview = null;
+    for (const side of ['donor','receiver']) {
+      const select = $(`patch-${side}-position`), blank = document.createElement('option');
+      blank.value = ''; blank.textContent = `Choose a ${side} token…`; select.replaceChildren(blank); select.value = '';
+    }
+    $('patch-preview-status').textContent = 'Preview both prompts before selecting tokens.';
+  }
+  function clearPatch() {
+    clearPatchPreview(); patchReport = null; $('patch-report').hidden = true; $('patch-status').hidden = true; $('patch-demo').hidden = true;
+    for (const id of ['patch-outcome','patch-status','patch-alignment','patch-baselines','patch-details']) $(id).textContent = '';
+    $('patch-distribution-body').replaceChildren();
+  }
+  function validPatchTokens(tokens) {
+    return Array.isArray(tokens) && tokens.length > 0 && tokens.length <= 64 && tokens.every((token,index) => token && token.index === index && Number.isSafeInteger(token.token_id) && token.token_id >= 0 && (token.text == null || (typeof token.text === 'string' && token.text.length <= 512)) && (token.piece == null || (typeof token.piece === 'string' && token.piece.length <= 512)));
+  }
+  function showPatch(report) {
+    if (!report || report.preset !== 'cross_prompt_patch' || report.capture_id !== state.run?.capture_id || !['complete','inconclusive'].includes(report.status)) throw new Error('Patch report was incomplete or did not match the current capture.');
+    patchReport = report; $('patch-report').hidden = false; $('patch-demo').hidden = !isDemo(state.model);
+    const donor = report.donor || {}, receiver = report.receiver || {}, controls = report.controls || {};
+    $('patch-alignment').textContent = `Donor position ${number(donor.position)} · ID ${number(donor.token_id)} · ${typeof donor.text === 'string' ? JSON.stringify(donor.text) : 'text unavailable'}; receiver position ${number(receiver.position)} · ID ${number(receiver.token_id)} · ${typeof receiver.text === 'string' ? JSON.stringify(receiver.text) : 'text unavailable'}. Layer ${number(report.layer)} · ${report.site || 'unknown'}.`;
+    $('patch-outcome').textContent = `${report.status}. Donor/clean and receiver/corrupted are the supplied prompt labels; no semantic alignment is inferred.`;
+    const required = ['donor_null_full_logits_bitwise_equal','donor_restoration_full_logits_bitwise_equal','donor_source_vector_bitwise_equal','donor_other_positions_bitwise_equal','donor_same_vector_full_logits_bitwise_equal','receiver_null_full_logits_bitwise_equal','receiver_restoration_full_logits_bitwise_equal','receiver_source_vector_bitwise_equal','receiver_other_positions_bitwise_equal','patched_vector_matches_donor_bitwise','fixed_input_ids_masks_unchanged'];
+    if (report.model?.family === 'llama') required.push('donor_static_rotary_state_unchanged','receiver_static_rotary_state_unchanged');
+    const controlsValid = required.every(key => controls[key] === true) && Object.values(controls).every(value => value === true) && typeof report.metrics?.activation_changed === 'boolean';
+    if (report.status === 'complete' && controlsValid && report.metrics.activation_changed === false) $('patch-outcome').textContent += ' No-op: the donor and receiver vectors were already bitwise identical.';
+    $('patch-distribution-body').replaceChildren();
+    if (report.status === 'complete' && controlsValid) {
+      const clean = report.clean_baseline || {}, corrupted = report.corrupted_baseline || {}, patched = report.patched || {};
+      const p = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+      if (Number.isSafeInteger(clean.token_id) && clean.token_id === corrupted.token_id && clean.token_id === patched.token_id && [clean.probability,corrupted.probability,patched.probability].every(p)) {
+        const token = typeof clean.text === 'string' ? JSON.stringify(clean.text) : 'text unavailable';
+        $('patch-baselines').textContent = `Donor baseline top token ${token} · ID ${clean.token_id}: donor ${(clean.probability*100).toPrecision(6)}%, receiver ${(corrupted.probability*100).toPrecision(6)}%, receiver after patch ${(patched.probability*100).toPrecision(6)}%. These are full-vocabulary probabilities for the same token.`;
+      } else $('patch-baselines').textContent = 'Same-token probability comparison unavailable; inspect the exact report.';
+      const rows = report.distribution?.rows;
+      if (Array.isArray(rows) && rows.length <= 10) for (const item of rows) {
+        if (!item || !Number.isSafeInteger(item.token_id) || !p(item.baseline_probability) || !p(item.intervention_probability) || typeof item.probability_delta !== 'number' || !Number.isFinite(item.probability_delta) || Math.abs(item.probability_delta - (item.intervention_probability - item.baseline_probability)) > 1e-12) continue;
+        const row = document.createElement('tr'); cell(row, `${typeof item.text === 'string' ? JSON.stringify(item.text) : 'text unavailable'} · ${item.token_id}`); cell(row, Number((item.baseline_probability*100).toPrecision(6))); cell(row, Number((item.intervention_probability*100).toPrecision(6))); cell(row, Number((item.probability_delta*100).toPrecision(6))); $('patch-distribution-body').append(row);
+      }
+    } else {
+      $('patch-baselines').textContent = 'No confirmed numerical result: the intervention or required controls were incomplete or failed.';
+      $('patch-status').hidden = false; $('patch-status').textContent = 'Review the exact control results before interpreting this report.';
+    }
+    $('patch-details').textContent = display(report); syncButtons(); $('patch-report').focus({preventScroll:true}); $('patch-report').scrollIntoView({block:'start'});
+  }
   function repeatChoices() {
     const prompts = $('repeat-prompts').value.split(/\r?\n/);
     if (prompts.length < 2 || prompts.length > 4 || prompts.some(prompt => !prompt.trim() || prompt.length > 512))
@@ -959,6 +1021,50 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('compare-reference').addEventListener('click',()=>{if(state.busy)return;return readReference('compare');});
   $('reference-prev').addEventListener('click',()=>{if(state.busy||!state.referenceMode)return;return readReference(state.referenceMode,Math.max(0,state.referenceOffset-valuePageSize));});
   $('reference-next').addEventListener('click',()=>{if(state.busy||!state.referenceMode)return;return readReference(state.referenceMode,state.referenceOffset+valuePageSize);});
+  for (const side of ['donor','receiver']) {
+    $(`patch-${side}-prompt`).addEventListener('input', () => { clearPatchPreview(); syncButtons(); });
+    $(`patch-${side}-position`).addEventListener('change', syncButtons);
+  }
+  $('patch-layer').addEventListener('input', syncButtons); $('patch-site').addEventListener('change', syncButtons);
+  $('patch-preview').addEventListener('click',()=>action('Previewing prompt tokens locally.',async()=>{
+    if (!interventionReady()) throw new Error(interventionReason());
+    const donorPrompt=$('patch-donor-prompt').value, receiverPrompt=$('patch-receiver-prompt').value, capture=state.run.capture_id;
+    if (![donorPrompt,receiverPrompt].every(prompt=>prompt.trim() && prompt.length<=512)) throw new Error('Enter both prompts, each at most 512 characters.');
+    clearPatchPreview();
+    const preview=await api('patch-preview',{capture_id:capture,donor_prompt:donorPrompt,receiver_prompt:receiverPrompt});
+    const validSide = side => validPatchTokens(preview?.[side]?.tokens) && Array.isArray(preview[side].token_ids) && preview[side].token_ids.length === preview[side].tokens.length && preview[side].tokens.every((token,index)=>token.token_id === preview[side].token_ids[index]);
+    if (preview?.capture_id !== capture || state.run?.capture_id !== capture || $('patch-donor-prompt').value !== donorPrompt || $('patch-receiver-prompt').value !== receiverPrompt || !validSide('donor') || !validSide('receiver')) throw new Error('Token preview was incomplete or stale; preview again.');
+    patchPreview={...preview,donorPrompt,receiverPrompt};
+    for (const side of ['donor','receiver']) for (const token of preview[side].tokens) {
+      const option=document.createElement('option'); option.value=String(token.index); option.textContent=`Position ${token.index} · ID ${token.token_id} · ${typeof token.text === 'string' ? JSON.stringify(token.text) : 'text unavailable'}${typeof token.piece === 'string' ? ` · piece ${JSON.stringify(token.piece)}` : ''}`; $(`patch-${side}-position`).append(option);
+    }
+    $('patch-preview-status').textContent = 'Choose a donor and receiver token explicitly. No automatic alignment is applied.'; syncButtons();
+  }));
+  $('patch-run').addEventListener('click',()=>action('Patching one donor vector into the receiver and checking controls.',async()=>{
+    if (!interventionReady() || !patchSelectionReady()) throw new Error('Preview both prompts and explicitly select their tokens and layer first.');
+    const donor=patchSelected('donor'), receiver=patchSelected('receiver');
+    const body={capture_id:state.run.capture_id,donor_prompt:patchPreview.donorPrompt,receiver_prompt:patchPreview.receiverPrompt,
+      donor_position:donor.index,receiver_position:receiver.index,donor_token_id:donor.token_id,receiver_token_id:receiver.token_id,
+      donor_token_ids:patchPreview.donor.token_ids,receiver_token_ids:patchPreview.receiver.token_ids,layer:Number($('patch-layer').value),site:$('patch-site').value};
+    patchReport=null; $('patch-report').hidden=true; $('patch-status').hidden=true;
+    try { showPatch(await api('patch-cross-prompt',body)); }
+    catch(caught) { patchReport=null; $('patch-report').hidden=true; const error=caught instanceof Error ? caught : new Error(String(caught)); error.sensitivityOutcomeUncertain=true; throw error; }
+    try {
+      const current=await api('status'), same=!!(state.run?.capture_id && current.run?.capture_id===state.run.capture_id);
+      if (state.run) { state.run.intervention_available=!!(same && current.run.intervention_available); state.run.intervention_reason=same ? current.run.intervention_reason : 'This capture is no longer the live server revision.'; state.run.reference_available=!!(same && current.run.reference_available); state.run.reference_reason=same ? current.run.reference_reason : 'This capture is no longer the live server revision.'; }
+      state.liveStatusUnverified=false; setModel(current.model); applyLimits(current.limits); applyDevices(current);
+      if (!same || current.model?.state==='quarantined') { $('patch-status').hidden=false; $('patch-status').textContent=!same ? 'The server capture changed after this report; make a fresh capture before further experiments.' : 'The model was quarantined. Restart before further runs; the report remains available.'; }
+    } catch (_) {
+      state.liveStatusUnverified=true;
+      if (state.run) { state.run.intervention_available=false; state.run.reference_available=false; state.run.intervention_reason='Post-experiment status could not be verified; refresh device status in Model & settings.'; state.run.reference_reason=state.run.intervention_reason; }
+      $('patch-status').hidden=false; $('patch-status').textContent='Post-experiment status could not be verified. The report is retained; refresh device status before more runs.';
+    }
+  }));
+  $('patch-download').addEventListener('click',()=>{
+    if (state.busy || !patchReport) return;
+    const blob=new Blob([JSON.stringify(patchReport,null,2)],{type:'application/json'}), url=URL.createObjectURL(blob), link=document.createElement('a');
+    link.href=url; link.download='cross-prompt-patch-report.json'; link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+  });
   for (const id of ['sensitivity-layers','sensitivity-attention','sensitivity-mlp','sensitivity-block']) $(id).addEventListener(id === 'sensitivity-layers' ? 'input' : 'change', () => { updateSensitivityBudget(); updateRepeatBudget(); });
   $('repeat-prompts').addEventListener('input', updateRepeatBudget);
   $('repeat-run').addEventListener('click',()=>action('Running repeated tests on the loaded model. This may take time.',async()=>{

@@ -434,6 +434,17 @@ def test_scrollable_trace_region_reserves_actual_toolbar_height():
     assert "max-height" not in layer and "overflow:auto" not in layer
 
 
+def test_patch_preview_has_explicit_disabled_token_choices_and_visible_report_focus():
+    ids = page().ids
+    assert ids["patch-options"].tag == "details"
+    for identifier in ("patch-donor-position", "patch-receiver-position", "patch-run"):
+        assert "disabled" in ids[identifier].attrs
+    assert ids["patch-report"].attrs.get("tabindex") == "-1"
+    assert "hidden" in ids["patch-report"].attrs
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    assert "#patch-report:focus{outline:2px solid var(--selected)" in css
+
+
 
 def test_programmatically_focused_sensitivity_report_has_visible_focus():
     css = (ROOT / "looking_glass/app_static/app.css").read_text()

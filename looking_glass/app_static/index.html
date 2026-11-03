@@ -236,6 +236,18 @@
           <p id="repeat-budget" class="hint" aria-live="polite"></p>
           <button id="repeat-run" type="button" disabled>Run repeated tests</button>
           <p class="hint">Uses the layers and components above. Up to 12 tests and 52 model forwards, sequentially on the loaded device. Prompts are limited to 64 input tokens each.</p>
+        </details>
+        <details id="patch-options" class="options"><summary>Patch an activation between prompts</summary>
+          <p class="hint">Choose a donor and a receiver prompt, preview their exact tokens, then explicitly choose one token in each. Clean and corrupted are your descriptions of these prompts. One donor vector is inserted at the same layer and component in the receiver. Token positions do not imply semantic alignment.</p>
+          <label for="patch-donor-prompt">Donor / clean prompt</label><textarea id="patch-donor-prompt" rows="2" maxlength="512"></textarea>
+          <label for="patch-receiver-prompt">Receiver / corrupted prompt</label><textarea id="patch-receiver-prompt" rows="2" maxlength="512"></textarea>
+          <button id="patch-preview" type="button" disabled>Preview tokens</button><p id="patch-preview-status" class="hint" aria-live="polite">Preview both prompts before selecting tokens.</p>
+          <label for="patch-donor-position">Donor token · zero-based position and ID</label><select id="patch-donor-position" disabled><option value="">Choose a donor token…</option></select>
+          <label for="patch-receiver-position">Receiver token · zero-based position and ID</label><select id="patch-receiver-position" disabled><option value="">Choose a receiver token…</option></select>
+          <label for="patch-layer">Layer · zero-based</label><input id="patch-layer" type="number" min="0" max="2147483647" placeholder="Choose a layer" inputmode="numeric">
+          <label for="patch-site">Component</label><select id="patch-site"><option value="attention">Attention</option><option value="mlp">MLP</option><option value="block">Block</option></select>
+          <button id="patch-run" type="button" disabled>Run activation patch</button>
+          <p class="hint">Prompts are limited to 512 characters and 64 tokens each. The patch uses 10 model forwards on the loaded device and can take time. This is a temporary intervention, not a checkpoint edit or automatic concept alignment.</p>
         </details></details>
         <details><summary>Exact observation metadata</summary><pre id="event-metadata" class="detail-json"></pre></details>
         </details>
@@ -255,6 +267,16 @@
     </details>
     </div></aside>
     <div id="comparison-reports">
+    <section id="patch-report" class="panel" aria-labelledby="patch-heading" tabindex="-1" hidden>
+      <div class="panel-heading"><h2 id="patch-heading">Cross-prompt activation patch</h2><span class="status-text">One donor vector · one receiver position</span></div>
+      <p id="patch-demo" class="approximation" hidden>Untrained CPU demo: this report checks the workflow, not useful model behavior.</p>
+      <p id="patch-outcome" class="info-box" role="status"></p><p id="patch-status" class="notice error" role="status" hidden></p>
+      <p id="patch-alignment" class="hint"></p><p class="hint">This compares one explicit intervention. The selected positions need not represent equivalent words or concepts. A changed prediction is not a complete explanation or proof of generalization.</p>
+      <h3>Clean, corrupted and patched predictions</h3><pre id="patch-baselines" class="detail-json"></pre>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Patched next-token probabilities"><table><thead><tr><th>Token · ID</th><th>Receiver baseline %</th><th>Patched %</th><th>Change · percentage points</th></tr></thead><tbody id="patch-distribution-body"></tbody></table></div>
+      <details><summary>Controls, exact values and limitations</summary><pre id="patch-details" class="detail-json"></pre></details>
+      <button id="patch-download" type="button" class="secondary">Download patch report JSON</button><p class="hint">The report contains prompt text and token IDs; store it privately.</p>
+    </section>
     <section id="repeat-report" class="panel" aria-labelledby="repeat-heading" tabindex="-1" hidden>
       <div class="panel-heading"><h2 id="repeat-heading">Repeated-prompt report</h2><span class="status-text">Same loaded model · final input token</span></div>
       <p id="repeat-demo" class="approximation" hidden>Untrained CPU demo: this report checks the workflow, not useful model behavior.</p>

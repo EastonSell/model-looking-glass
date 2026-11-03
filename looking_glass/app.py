@@ -268,6 +268,9 @@ class AppState:
         if action == "sensitivity-repeat":
             from .app_sensitivity_repeat import run_repeated_sensitivity
             return run_repeated_sensitivity(self, data)
+        if action in ("patch-preview", "patch-cross-prompt"):
+            from .app_cross_patch import preview, patch
+            return preview(self, data) if action == "patch-preview" else patch(self, data)
         if action == "intervene":
             self._clear_experiment()  # Never present an earlier experiment as this attempt.
             available, reason = self._intervention_status()
@@ -424,7 +427,7 @@ def create_server(state, port=0):
         def do_POST(self):
             if not self._allowed(api=True): return
             path = urlsplit(self.path).path
-            if path not in {"/api/inspect", "/api/load", "/api/demo", "/api/unload", "/api/browse-models", "/api/run", "/api/intervene", "/api/sensitivity", "/api/sensitivity-repeat", "/api/save", "/api/save-experiment", "/api/open", "/api/clear", "/api/pin-reference", "/api/clear-reference", "/api/download", "/api/cancel-download"}:
+            if path not in {"/api/inspect", "/api/load", "/api/demo", "/api/unload", "/api/browse-models", "/api/run", "/api/intervene", "/api/sensitivity", "/api/sensitivity-repeat", "/api/patch-preview", "/api/patch-cross-prompt", "/api/save", "/api/save-experiment", "/api/open", "/api/clear", "/api/pin-reference", "/api/clear-reference", "/api/download", "/api/cancel-download"}:
                 self._send(404, {"error": "Not found"}); return
             if self.headers.get("Transfer-Encoding") or len(self.headers.get_all("Content-Length", [])) != 1:
                 self._send(400, {"error": "A single bounded Content-Length is required"}); return

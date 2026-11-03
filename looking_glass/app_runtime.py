@@ -881,6 +881,45 @@ class LocalModelRuntime:
                 self._quarantine()
                 raise
 
+    def intervene_cross_prompt(self, binding, donor_source, receiver_source, max_pair_bytes=128 * 1024**2):
+        """Patch a validated donor vector into one receiver prefix on the same owner."""
+        from .app_interventions import validate_request, execute, require
+        with self._lock:
+            if self._quarantined:
+                raise RuntimeError("model owner is quarantined; restart the local app")
+            if binding is None or binding is not self._capture_binding or self.model is None:
+                raise ValueError("cross-prompt patch requires the original live model binding")
+            donor = validate_request(self, donor_source, "zero", None, None, max_pair_bytes)
+            receiver = validate_request(self, receiver_source, "zero", None, None, max_pair_bytes)
+            require(donor["path"] == receiver["path"] and donor["layer"] == receiver["layer"]
+                    and donor["width"] == receiver["width"] and donor["numerics"] == receiver["numerics"],
+                    "donor and receiver must have matching model boundary, width and numerics")
+            require(donor["planned_bytes"] + receiver["planned_bytes"] <= max_pair_bytes,
+                    "cross-prompt experiment exceeds logical memory allowance")
+            donor.update(operation="transfer", transfer_value=donor["reference"].clone())
+            receiver.update(operation="transfer", transfer_value=donor["reference"].clone())
+            def run_pair():
+                clean = execute(self, donor)
+                require(clean["experiment"]["full_logits"]["bitwise_equal"]
+                        and not clean["experiment"]["activation_changed"],
+                        "donor same-vector control changed the clean baseline")
+                receiver["watched_token_ids"] = [clean["experiment"]["comparison"]["baseline_next_token_id"]]
+                return clean, execute(self, receiver)
+            try:
+                if self._device.type == "cuda":
+                    with _cuda_operation(self._device, self._vram_limit) as telemetry:
+                        _cuda_admit(self._device, donor["planned_bytes"] + receiver["planned_bytes"], telemetry["effective_limit_bytes"])
+                        clean, patched = run_pair()
+                else:
+                    clean, patched = run_pair()
+                require(patched["experiment"]["activation_changed"]
+                        or patched["experiment"]["full_logits"]["bitwise_equal"],
+                        "unchanged donor patch altered receiver logits")
+                return clean, patched
+            except BaseException:
+                self._quarantine()
+                raise
+
     def run(self, prompt, settings, image_bytes=None):
         with self._lock:
             if self._quarantined:

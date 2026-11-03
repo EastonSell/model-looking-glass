@@ -35,7 +35,7 @@ def _distribution_workspace_bytes(vocabulary_size):
 
 
 @torch.no_grad()
-def _next_token_distribution(baseline, intervention, tokenizer):
+def _next_token_distribution(baseline, intervention, tokenizer, watched_token_ids=()):
     """Aligned full-vocabulary float64 readout, never top-k renormalization."""
     require(type(baseline) is torch.Tensor and type(intervention) is torch.Tensor
             and baseline.dtype == intervention.dtype == torch.float32
@@ -61,8 +61,10 @@ def _next_token_distribution(baseline, intervention, tokenizer):
     ordinal = torch.arange(1, vocab + 1, dtype=torch.int64)
     ranks_first[order_first], ranks_second[order_second] = ordinal, ordinal
     selected = list(dict.fromkeys(order_first[:5].tolist() + order_second[:5].tolist()))
-    rows = []
-    for token in selected:
+    require(type(watched_token_ids) in (tuple, list) and len(watched_token_ids) <= 1
+            and all(type(token) is int and 0 <= token < vocab for token in watched_token_ids),
+            "invalid watched token IDs")
+    def make_row(token):
         unavailable = truncated = False
         try:
             text = tokenizer.decode([token])
@@ -75,20 +77,24 @@ def _next_token_distribution(baseline, intervention, tokenizer):
                 raise
             text, unavailable = "", True
         p, q = float(prob_first[token]), float(prob_second[token])
-        rows.append(dict(token_id=token, text=text, text_truncated=truncated, text_unavailable=unavailable,
+        return dict(token_id=token, text=text, text_truncated=truncated, text_unavailable=unavailable,
             baseline_logit=float(first[token]), intervention_logit=float(second[token]),
             baseline_log_probability=float(log_first[token]), intervention_log_probability=float(log_second[token]),
             baseline_probability=p, intervention_probability=q, probability_delta=q-p,
-            baseline_rank=int(ranks_first[token]), intervention_rank=int(ranks_second[token])))
+            baseline_rank=int(ranks_first[token]), intervention_rank=int(ranks_second[token]))
+    rows = [make_row(token) for token in selected]
     total_variation = float((prob_second - prob_first).abs().sum() * .5)
     require(math.isfinite(total_variation) and 0 <= total_variation <= 1 + 1e-12,
             "invalid total-variation result")
-    return dict(normalization="full vocabulary", computation_dtype="float64", vocabulary_size=vocab,
+    result = dict(normalization="full vocabulary", computation_dtype="float64", vocabulary_size=vocab,
         readout_position=baseline.shape[1]-1, total_variation=min(1., total_variation), rows=rows,
         rank_definition="1-based descending full-vocabulary logits; ascending token ID breaks exact ties",
         selection="Union of deterministic baseline top 5 followed by unseen intervention top 5; at most 10 rows. Legacy top lists may order tied logits differently.",
         label_max_characters=512,
         scope="Next-token model distribution only, not truth, confidence, calibration, semantic meaning or causal explanation. Float64 probabilities can underflow to zero; finite log probabilities are retained. Total variation is full-vocabulary, bounded for floating-point roundoff. Captured tensor bits are unchanged.")
+    if watched_token_ids:
+        result["watched_tokens"] = [make_row(token) for token in watched_token_ids]
+    return result
 
 
 def validate_request(runtime, source, operation, feature, value, maximum):
@@ -183,10 +189,16 @@ def validate_request(runtime, source, operation, feature, value, maximum):
                 planned_bytes=planned, maximum=maximum, numerics=numerics)
 
 
-def replacement(fresh, operation, feature, value):
+def replacement(fresh, operation, feature, value, transfer_value=None):
     """Apply scalar arithmetic only at its feature; preserve all other bits."""
     if operation == "zero":
         return None, torch.zeros_like(fresh)
+    if operation == "transfer":
+        require(type(transfer_value) is torch.Tensor and transfer_value.device.type == "cpu"
+                and transfer_value.dtype == torch.float32 and transfer_value.shape == fresh.shape
+                and bool(torch.isfinite(transfer_value).all()), "invalid transfer vector")
+        source = transfer_value.to(device=fresh.device).clone()
+        return source, source.clone()
     source = fresh.clone()
     source[feature] = fresh[feature] + value if operation == "add" else value
     return source, source.clone()
@@ -214,6 +226,7 @@ def execute(runtime, request):
         value = output.logits
         require(type(value) is torch.Tensor and value.device == device and value.shape == (1, len(request["ids"]), model.config.vocab_size)
                 and value.dtype == torch.float32 and bool(torch.isfinite(value).all()), "invalid model logits")
+        require(torch.equal(ids, expected_ids) and torch.equal(mask, expected_mask), "fixed input IDs/mask changed")
         if family == "llama":
             require(output.past_key_values is None, "unexpected cached model output")
             require(torch.equal(ids, expected_ids) and torch.equal(mask, expected_mask), "fixed input IDs/mask changed")
@@ -260,10 +273,12 @@ def execute(runtime, request):
         require(same_bits(before[:, :token], after[:, :token]) and same_bits(before[:, token + 1:], after[:, token + 1:]), "intervention changed other token positions at selected site")
         if operation == "null":
             fresh = captures["before"][0, token].detach().clone()
-            source, desired = replacement(fresh, request["operation"], request["feature"], request["value"])
+            source, desired = replacement(fresh, request["operation"], request["feature"], request["value"], request.get("transfer_value"))
             require(bool(torch.isfinite(desired).all()), "operation produces nonfinite activation")
             desired_cpu = desired.detach().cpu().clone()
-        elif request["operation"] != "zero":
+            if request["operation"] == "transfer":
+                require(same_bits(desired_cpu, request["transfer_value"]), "donor vector bits changed during device transfer")
+        elif request["operation"] not in ("zero", "transfer"):
             feature = request["feature"]
             require(same_bits(before[0, token, :feature], after[0, token, :feature])
                     and same_bits(before[0, token, feature + 1:], after[0, token, feature + 1:]), "operation changed another feature")
@@ -324,14 +339,14 @@ def execute(runtime, request):
         "experiment": {"source_coordinate": request["coordinate"], "source_step": request["step"],
             "input_prefix": request["ids"], "input_attention_mask": request["mask"],
             "operation": request["operation"], "feature_index": request["feature"], "requested_value": request["value"],
-            "operation_semantics": "Zero whole vector, or change only the selected feature on a fresh baseline clone and patch it; other feature bits preserved.",
+            "operation_semantics": "Zero a whole vector, patch one feature, or transfer a validated donor vector at the selected boundary.",
             "activation_changed": changed, "realized_displacement_l2": float(displacement.norm()),
             "realized_feature_value": None if request["feature"] is None else float(desired_cpu[request["feature"]]),
             "controls": {"null_full_logits_bitwise_equal": True, "restoration_full_logits_bitwise_equal": True,
                 **({"static_rotary_state_unchanged": True, "fixed_input_ids_mask_unchanged": True} if family == "llama" else {}),
                 "source_vector_bitwise_equal": True, "other_token_positions_at_selected_site_bitwise_equal": True,
-                **({"other_features_at_selected_vector_bitwise_equal": True} if request["operation"] != "zero" else {})},
-            "next_token_distribution": _next_token_distribution(baseline, treatment, runtime.tokenizer),
+                **({"other_features_at_selected_vector_bitwise_equal": True} if request["operation"] not in ("zero", "transfer") else {})},
+            "next_token_distribution": _next_token_distribution(baseline, treatment, runtime.tokenizer, request.get("watched_token_ids", ())),
             "full_logits": {"shape": list(baseline.shape), "bitwise_equal": same_bits(baseline, treatment),
                 "max_absolute_change": float(difference.abs().max()), "l2_change": float(difference.norm())},
             "comparison": {"full_logits_max_abs_delta": float(difference.abs().max()),

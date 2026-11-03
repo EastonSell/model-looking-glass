@@ -127,7 +127,7 @@ button,summary,.status-text,.source-readable,.answer{overflow-wrap:anywhere}
  .scene-ui{container-type:inline-size}
  .scene-explorer #trace-panel{width:min(560px,calc(100cqw - 24px));max-width:calc(100cqw - 24px)}
  /* Comparisons continue below the viewport without shrinking the scene. */
- .scene-workspace:has(#experiment-panel:not([hidden])),.scene-workspace:has(#sensitivity-report:not([hidden])),.scene-workspace:has(#repeat-report:not([hidden])){height:auto;min-height:100dvh;grid-template-rows:auto auto minmax(360px,calc(100dvh - 70px)) auto}
+ .scene-workspace:has(#experiment-panel:not([hidden])),.scene-workspace:has(#sensitivity-report:not([hidden])),.scene-workspace:has(#repeat-report:not([hidden])),.scene-workspace:has(#patch-report:not([hidden])){height:auto;min-height:100dvh;grid-template-rows:auto auto minmax(360px,calc(100dvh - 70px)) auto}
 }
 @media(max-width:1000px){.scene-workspace{height:auto;min-height:0}}
 
@@ -158,3 +158,5 @@ button,summary,.status-text,.source-readable,.answer{overflow-wrap:anywhere}
 #repeat-report{margin:20px 0;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
 #repeat-report:focus{outline:2px solid var(--selected);outline-offset:2px}
 #repeat-body td:first-child{white-space:normal;min-width:14rem;overflow-wrap:anywhere}
+#patch-report{margin:20px 0;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+#patch-report:focus{outline:2px solid var(--selected);outline-offset:2px}
