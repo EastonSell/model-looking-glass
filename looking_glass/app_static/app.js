@@ -4,6 +4,7 @@
   const token = document.querySelector('meta[name="mlg-token"]').content;
   const state = {browseRequest: 0, browseFresh: false, settingsOpener: 'session-summary', mapButtons: [], outputGeneration: 0, outputStep: 0, tokenOffset: 0, tokenTotal: 0, mapAutoCapture: null, mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, sensitivity: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, liveStatusUnverified: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
   const pageSize = 100, valuePageSize = 256;
+  let repeatReport = null;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
   const bytes = (value) => { const n = Number(value); if (!Number.isFinite(n)) return '—'; return n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KiB` : `${(n / 1048576).toFixed(2)} MiB`; };
@@ -152,6 +153,7 @@
     $('intervene-button').disabled = state.busy || !interventionReady();
     $('intervention-status').textContent = interventionReady() ? 'Ready for this source vector.' : interventionReason();
     $('sensitivity-run').disabled = state.busy || !interventionReady(); $('sensitivity-ready').textContent = interventionReady() ? 'Ready for the selected source position.' : interventionReason(); $('sensitivity-download').disabled = state.busy || !state.sensitivity; updateSensitivityBudget();
+    $('repeat-run').disabled = state.busy || !interventionReady(); $('repeat-prompts').disabled = state.busy; $('repeat-download').disabled = state.busy || !repeatReport; updateRepeatBudget();
     $('save-experiment').disabled = state.busy || !state.experiment;
     $('witness-prev').disabled = state.busy || !state.experiment || state.witnessOffset === 0;
     $('witness-next').disabled = state.busy || !state.experiment || state.witnessOffset + valuePageSize >= state.witnessTotal;
@@ -259,7 +261,7 @@
     state.outputGeneration++; state.outputStep = 0; state.tokenOffset = 0; state.tokenTotal = 0;
     $('output-readout').replaceChildren(); $('input-token-strip').replaceChildren(); $('output-note').textContent = ''; $('input-token-note').textContent = ''; $('input-token-page').textContent = ''; $('output-step').value = '0';
     clearLayerMap();
-    clearExperiment(); clearSensitivity(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
+    clearExperiment(); clearSensitivity(); clearRepeat(); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
     $('imported-control-warning').hidden = true; $('imported-comparison').hidden = true; clearDistribution('imported'); $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Saving includes prompts, output, metadata and full tensor values; these may be sensitive.'; syncButtons();
   }
   function showRun(run) {
@@ -688,6 +690,62 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     } catch (error) { message = error.message || String(error); }
     $('sensitivity-budget').textContent = message;
   }
+  function repeatChoices() {
+    const prompts = $('repeat-prompts').value.split(/\r?\n/);
+    if (prompts.length < 2 || prompts.length > 4 || prompts.some(prompt => !prompt.trim() || prompt.length > 512))
+      throw new Error('Enter 2–4 nonempty prompts, one per line, with at most 512 characters each.');
+    const {layers, sites} = sensitivityChoices();
+    const layerCount = layers?.length ?? Math.min(6, Math.floor(12 / (prompts.length * sites.length)));
+    const cells = prompts.length * layerCount * sites.length;
+    if (cells > 12) throw new Error('Choose fewer layers, components or prompts: at most 12 total tests.');
+    return {prompts, layers, sites, cells};
+  }
+  function updateRepeatBudget() {
+    try {
+      const {prompts, layers, cells} = repeatChoices();
+      $('repeat-budget').textContent = `${layers ? '' : 'Up to '}${cells} tests and ${prompts.length + cells * 4} model forwards on ${state.model?.device || 'the loaded device'}. Actual runtime and peak memory vary.`;
+    } catch (error) { $('repeat-budget').textContent = error.message || String(error); }
+  }
+  function clearRepeat() {
+    repeatReport = null; $('repeat-report').hidden = true; $('repeat-status').hidden = true; $('repeat-demo').hidden = true;
+    $('repeat-status').textContent = ''; $('repeat-outcome').textContent = ''; $('repeat-details').textContent = ''; $('repeat-body').replaceChildren();
+  }
+  function showRepeat(report) {
+    if (!report || report.preset !== 'multi_prompt_sensitivity' || report.capture_id !== state.run?.capture_id ||
+        !['complete','partial','inconclusive'].includes(report.status) || !Array.isArray(report.results) || report.results.length > 4)
+      throw new Error('Repeated-test report was incomplete or did not match the current capture.');
+    repeatReport = report; $('repeat-report').hidden = false; $('repeat-demo').hidden = !isDemo(state.model);
+    $('repeat-outcome').textContent = `${report.status}: ${number(report.completed_prompts)} of ${number(report.planned_prompts)} prompts completed, ${number(report.completed_runs)} of ${number(report.planned_runs)} tests completed. ${number(report.completed_model_forwards)} completed model forwards; upper bound ${number(report.model_forwards_upper_bound)}. A failed forward may have an unknown count.`;
+    $('repeat-body').replaceChildren();
+    const finite = value => typeof value === 'number' && Number.isFinite(value);
+    const pct = (value, signed=false) => `${signed && value > 0 ? '+' : ''}${Number((value * 100).toPrecision(6))}`;
+    for (const item of report.results) {
+      const sweep = item?.report, anchor = sweep?.anchor || {};
+      const label = `Prompt ${number((item?.prompt_index ?? 0) + 1)}: ${JSON.stringify(typeof item?.prompt === 'string' ? item.prompt : '')} · final token ${typeof anchor.token_text === 'string' ? JSON.stringify(anchor.token_text) : 'text unavailable'} · ID ${number(anchor.token_id)} · position ${number(anchor.token_position)}`;
+      const rows = Array.isArray(sweep?.results) && sweep.results.length <= 12 ? sweep.results : [];
+      if (!rows.length) { const row=document.createElement('tr'); cell(row,label); cell(row,'—'); cell(row,'—'); cell(row,`${item?.status || 'unavailable'}${item?.reason ? ': ' + item.reason : ''}`); for(let i=0;i<5;i++)cell(row,'—'); $('repeat-body').append(row); continue; }
+      for (const result of rows) {
+        const row = document.createElement('tr'), controls = result?.controls || {};
+        const required = ['null_full_logits_bitwise_equal','restoration_full_logits_bitwise_equal','source_vector_bitwise_equal','other_token_positions_at_selected_site_bitwise_equal'];
+        if (report.model?.family === 'llama') required.push('static_rotary_state_unchanged','fixed_input_ids_mask_unchanged');
+        let status = String(result?.status || 'inconclusive');
+        if (status !== 'ok') status += result?.reason ? `: ${result.reason}` : '';
+        else if (required.some(key => controls[key] !== true) || Object.values(controls).some(value => value !== true)) status = 'inconclusive: controls incomplete or failed';
+        else if (result.activation_changed === false) status = 'no-op: vector unchanged';
+        else if (result.activation_changed !== true) status = 'inconclusive: vector change unverified';
+        const token = result?.baseline_token || {}, valid = [token.baseline_probability, token.intervention_probability, token.probability_delta, result.total_variation].every(finite) && token.baseline_probability >= 0 && token.baseline_probability <= 1 && token.intervention_probability >= 0 && token.intervention_probability <= 1 && Math.abs(token.probability_delta - (token.intervention_probability - token.baseline_probability)) <= 1e-12 && result.total_variation >= 0 && result.total_variation <= 1 && Number.isSafeInteger(token.token_id) && token.token_id >= 0;
+        if (status === 'ok' && !valid) status = 'inconclusive: measurement unavailable';
+        const measured = status === 'ok';
+        if (measured && result.total_variation === 0 && result.last_position_max_abs_delta === 0) status = 'ok: no next-token change detected';
+        cell(row,label); cell(row,number(result?.layer)); cell(row,result?.site || 'unknown'); cell(row,status);
+        cell(row,measured ? `${typeof token.text === 'string' ? JSON.stringify(token.text) : 'text unavailable'} · ${token.token_id}` : '—');
+        cell(row,measured ? pct(token.baseline_probability) : '—'); cell(row,measured ? pct(token.intervention_probability) : '—');
+        cell(row,measured ? pct(token.probability_delta,true) : '—'); cell(row,measured ? String(Number(result.total_variation.toPrecision(6))) : '—');
+        $('repeat-body').append(row);
+      }
+    }
+    $('repeat-details').textContent = display(report); syncButtons(); $('repeat-report').focus({preventScroll:true}); $('repeat-report').scrollIntoView({block:'start'});
+  }
   function clearSensitivity() {
     state.sensitivity = null; $('sensitivity-report').hidden = true; $('sensitivity-demo').hidden = true; $('sensitivity-status').hidden = true; $('sensitivity-status').textContent = '';
     for (const id of ['sensitivity-outcome','sensitivity-anchor','sensitivity-finding','sensitivity-controls','sensitivity-limits','sensitivity-details']) $(id).textContent = '';
@@ -901,7 +959,36 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('compare-reference').addEventListener('click',()=>{if(state.busy)return;return readReference('compare');});
   $('reference-prev').addEventListener('click',()=>{if(state.busy||!state.referenceMode)return;return readReference(state.referenceMode,Math.max(0,state.referenceOffset-valuePageSize));});
   $('reference-next').addEventListener('click',()=>{if(state.busy||!state.referenceMode)return;return readReference(state.referenceMode,state.referenceOffset+valuePageSize);});
-  for (const id of ['sensitivity-layers','sensitivity-attention','sensitivity-mlp','sensitivity-block']) $(id).addEventListener(id === 'sensitivity-layers' ? 'input' : 'change', updateSensitivityBudget);
+  for (const id of ['sensitivity-layers','sensitivity-attention','sensitivity-mlp','sensitivity-block']) $(id).addEventListener(id === 'sensitivity-layers' ? 'input' : 'change', () => { updateSensitivityBudget(); updateRepeatBudget(); });
+  $('repeat-prompts').addEventListener('input', updateRepeatBudget);
+  $('repeat-run').addEventListener('click',()=>action('Running repeated tests on the loaded model. This may take time.',async()=>{
+    if (!interventionReady()) throw new Error(interventionReason());
+    const {prompts, layers, sites} = repeatChoices(), body = {capture_id:state.run.capture_id,prompts,sites};
+    if (layers) body.layers = layers;
+    clearRepeat();
+    try { showRepeat(await api('sensitivity-repeat', body)); }
+    catch (caught) { clearRepeat(); const error = caught instanceof Error ? caught : new Error(String(caught)); error.sensitivityOutcomeUncertain = true; throw error; }
+    try {
+      const current = await api('status'), same = !!(state.run?.capture_id && current.run?.capture_id === state.run.capture_id);
+      if (state.run) {
+        state.run.intervention_available = !!(same && current.run.intervention_available);
+        state.run.intervention_reason = same ? current.run.intervention_reason : 'This capture is no longer the live server revision.';
+        state.run.reference_available = !!(same && current.run.reference_available);
+        state.run.reference_reason = same ? current.run.reference_reason : 'This capture is no longer the live server revision.';
+      }
+      state.liveStatusUnverified = false; setModel(current.model); applyLimits(current.limits); applyDevices(current);
+      if (!same || current.model?.state === 'quarantined') { $('repeat-status').hidden = false; $('repeat-status').textContent = !same ? 'The server capture changed after this report; make a fresh capture before further experiments.' : 'The model was quarantined. Restart the app before further runs; this report remains available.'; }
+    } catch (_) {
+      state.liveStatusUnverified = true;
+      if (state.run) { state.run.intervention_available = false; state.run.reference_available = false; state.run.intervention_reason = 'Post-experiment session status could not be verified; refresh device status in Model & settings.'; state.run.reference_reason = state.run.intervention_reason; }
+      $('repeat-status').hidden = false; $('repeat-status').textContent = 'Post-experiment session status could not be verified. The report is retained; refresh device status in Model & settings before more model runs.';
+    }
+  }));
+  $('repeat-download').addEventListener('click',()=>{
+    if (state.busy || !repeatReport) return;
+    const blob = new Blob([JSON.stringify(repeatReport, null, 2)], {type:'application/json'}), url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = 'repeated-sensitivity-report.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
   $('sensitivity-run').addEventListener('click',()=>action('Running the bounded sensitivity experiment. This may take time on CPU or GPU.',async()=>{
     if (!interventionReady()) throw new Error(interventionReason());
     const {layers, sites} = sensitivityChoices(), body = {capture_id:state.run.capture_id,event:state.event.index,vector:state.vector,sites};

@@ -11,6 +11,33 @@ MAX_CELLS = 18
 DEFAULT_LAYERS = 6
 
 
+def report_model(model):
+    """Keep bounded demo provenance without exporting local checkpoint paths."""
+    result = {"family": model.get("family"), "device": model.get("device")}
+    architecture = model.get("architecture")
+    if type(architecture) is str and 0 < len(architecture) <= 128:
+        result["architecture"] = architecture
+    summary = model.get("config_summary")
+    if type(summary) is dict:
+        keys = ("vocab_size", "n_positions", "n_embd", "n_layer", "n_head", "max_position_embeddings",
+                "hidden_size", "intermediate_size", "num_hidden_layers", "num_attention_heads",
+                "num_key_value_heads", "head_dim")
+        result["config_summary"] = {key: summary[key] for key in keys
+                                    if type(summary.get(key)) is int and 0 <= summary[key] <= 2**31}
+    note = model.get("identity_note")
+    if type(note) is str and note:
+        result["identity_note"] = note[:512]
+    provenance = model.get("provenance")
+    if type(provenance) is dict and provenance.get("kind") == "synthetic_untrained_demo":
+        result["provenance"] = {"kind": "synthetic_untrained_demo"}
+        if type(provenance.get("seed")) is int:
+            result["provenance"]["seed"] = provenance["seed"]
+    warning = model.get("warning")
+    if type(warning) is str and warning:
+        result["warning"] = warning[:512]
+    return result
+
+
 def _path(family, layer, site):
     prefix = f"transformer.h.{layer}" if family == "gpt2" else f"model.layers.{layer}"
     if site == "attention":
@@ -116,7 +143,7 @@ def run_sensitivity(state, data):
         "anchor": {"forward_index": coordinate["app_forward_index"], "token_position": coordinate["token_position"],
                    "token_id": coordinate["token_id"], "readout_position": len(step["input_token_ids"]) - 1,
                    "input_token_ids": list(step["input_token_ids"]), "input_attention_mask": list(step["input_attention_mask"])},
-        "model": {"family": family, "device": model.get("device")}, "layers": layers, "sites": sites,
+        "model": report_model(model), "layers": layers, "sites": sites,
         "planned_runs": len(cells), "completed_runs": completed, "completed_model_forwards": replay_count * 4,
         "model_forwards_upper_bound": len(cells) * 4, "results": rows,
         "scope": "One recorded uncached input prefix, one selected input token, and the next-token readout. Each supported cell zeros its own whole output vector temporarily; no checkpoint weights are edited.",

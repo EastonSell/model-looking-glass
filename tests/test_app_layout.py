@@ -441,3 +441,12 @@ def test_programmatically_focused_sensitivity_report_has_visible_focus():
     assert rule is not None
     assert "outline:none" not in rule.group(1).replace(" ", "")
     assert "outline:" in rule.group(1).replace(" ", "")
+
+
+def test_repeated_prompt_report_has_demo_warning_and_visible_focus():
+    demo = page().ids["repeat-demo"]
+    assert "hidden" in demo.attrs and "Untrained CPU demo" in demo.text
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    rule = re.search(r"#repeat-report:focus\s*\{([^}]+)\}", css)
+    assert rule and "outline:" in rule.group(1).replace(" ", "")
+    assert "outline:none" not in rule.group(1).replace(" ", "")

@@ -33,7 +33,7 @@ CUDA needs a compatible NVIDIA GPU and driver; drivers aren't installed for you.
 2. Choose **Auto / CUDA / CPU**, then **Inspect folder → Load model**.
 3. Enter text or choose an image, then **Run & capture**. Select a layer and token/patch for **Exact values**. **Reference / Edit** work on GPT-2 and supported Llama.
 
-For a live GPT-2 or supported Llama capture, **Experiment** can sweep selected layer outputs and report how temporary zeroing changes one next-token prediction. [Experiment guide](docs/LOCAL_APP.md#run-an-automated-component-sensitivity-experiment).
+For a live GPT-2 or supported Llama capture, **Experiment** can sweep selected layer outputs, report how temporary zeroing changes a next-token prediction, and repeat the tests on several prompts. [Experiment guide](docs/LOCAL_APP.md#run-an-automated-component-sensitivity-experiment).
 
 Compatible GPT-2, standard Llama, DistilBERT, T5 and ViT **safetensors** exports work—not every checkpoint. [Supported formats](docs/LOCAL_APP.md#checkpoint-compatibility). **Get a model** offers optional Hugging Face downloads; **Load tiny CPU demo** is an optional untrained sandbox.
 
