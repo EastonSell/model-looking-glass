@@ -4,6 +4,20 @@ from .app_sensitivity import _selection, report_model
 from .app_storage import TraceStore
 
 
+def _display_label(get_value):
+    """Bound token labels while keeping missing labels distinct from empty ones."""
+    try:
+        value = get_value()
+        if type(value) is not str:
+            raise ValueError("tokenizer label must be text")
+        return value[:512], False, len(value) > 512
+    except Exception as error:
+        if isinstance(error, (MemoryError, torch.OutOfMemoryError)) or (
+                isinstance(error, RuntimeError) and "out of memory" in str(error).lower()):
+            raise
+        return "", True, False
+
+
 def _inputs(state, data):
     state._require_capture_id(data.get("capture_id"))
     available, reason = state._intervention_status()
@@ -19,15 +33,13 @@ def _inputs(state, data):
             token_ids, masks = ids[0].tolist(), mask[0].tolist()
             tokens = []
             for index, token in enumerate(token_ids):
-                try: text = state.runtime.tokenizer.decode([token])[:512]
-                except Exception as error:
-                    if isinstance(error, (MemoryError, torch.OutOfMemoryError)) or (isinstance(error, RuntimeError) and "out of memory" in str(error).lower()): raise
-                    text = ""
-                try: piece = str(state.runtime.tokenizer.convert_ids_to_tokens(token))[:512]
-                except Exception as error:
-                    if isinstance(error, (MemoryError, torch.OutOfMemoryError)) or (isinstance(error, RuntimeError) and "out of memory" in str(error).lower()): raise
-                    piece = ""
-                tokens.append({"index": index, "token_id": token, "text": text, "piece": piece})
+                text, text_unavailable, text_truncated = _display_label(
+                    lambda: state.runtime.tokenizer.decode([token]))
+                piece, piece_unavailable, piece_truncated = _display_label(
+                    lambda: state.runtime.tokenizer.convert_ids_to_tokens(token))
+                tokens.append({"index": index, "token_id": token, "text": text, "piece": piece,
+                               "text_unavailable": text_unavailable, "text_truncated": text_truncated,
+                               "piece_unavailable": piece_unavailable, "piece_truncated": piece_truncated})
             answer.append({"token_ids": token_ids, "attention_mask": masks, "tokens": tokens})
     return answer
 
@@ -102,6 +114,8 @@ def patch(state, data):
             "receiver": {"prompt": data["receiver_prompt"], "position": data["receiver_position"],
                          **receiver["tokens"][data["receiver_position"]], "token_ids": receiver["token_ids"]},
             "clean_baseline": {"token_id": clean_id, "text": clean_token["text"],
+                               "text_unavailable": clean_token["text_unavailable"],
+                               "text_truncated": clean_token["text_truncated"],
                                "probability": clean_token["baseline_probability"], "logit": clean_token["baseline_logit"]},
             "corrupted_baseline": {"token_id": clean_id, "probability": watched["baseline_probability"],
                                    "logit": watched["baseline_logit"], "top_token_id": p["comparison"]["baseline_next_token_id"]},

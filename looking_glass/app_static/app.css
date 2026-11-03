@@ -150,13 +150,12 @@ button,summary,.status-text,.source-readable,.answer{overflow-wrap:anywhere}
 #scene-canvas canvas:focus-visible{outline:2px solid var(--selected);outline-offset:-3px}
 
 /* The color scale supplements the numeric distribution change, never the status. */
-#sensitivity-body td:nth-child(3){white-space:normal;min-width:10rem;overflow-wrap:anywhere}
+#repeat-body td:first-child,#repeat-body td:nth-child(4),#repeat-body td:nth-child(5),#sensitivity-body td:nth-child(3),#sensitivity-body td:nth-child(4),#patch-distribution-body td:first-child{white-space:normal;min-width:10rem;max-width:24rem;overflow-wrap:anywhere}
 #sensitivity-body td[data-magnitude=low]{background:rgba(238,217,160,.08)}
 #sensitivity-body td[data-magnitude=medium]{background:rgba(238,217,160,.17)}
 #sensitivity-body td[data-magnitude=high]{background:rgba(238,217,160,.28)}
 #sensitivity-report:focus{outline:2px solid var(--selected);outline-offset:2px}
 #repeat-report{margin:20px 0;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
 #repeat-report:focus{outline:2px solid var(--selected);outline-offset:2px}
-#repeat-body td:first-child{white-space:normal;min-width:14rem;overflow-wrap:anywhere}
 #patch-report{margin:20px 0;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
 #patch-report:focus{outline:2px solid var(--selected);outline-offset:2px}

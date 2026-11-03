@@ -445,6 +445,40 @@ def test_patch_preview_has_explicit_disabled_token_choices_and_visible_report_fo
     assert "#patch-report:focus{outline:2px solid var(--selected)" in css
 
 
+def test_experiment_controls_explain_that_submitted_work_cannot_be_cancelled():
+    ids = page().ids
+    note = ids["experiment-cancel-note"]
+    assert ids["sensitivity-options"] in note.ancestors()
+    for identifier in ("sensitivity-run", "repeat-run", "patch-run"):
+        assert ids["sensitivity-options"] in ids[identifier].ancestors()
+    text = note.text.lower()
+    assert "cannot currently be cancelled" in text
+    assert "closing this tab" in text and "waiting for another operation" in text
+
+
+def test_patch_report_exposes_prior_inputs_and_live_attribution_warning():
+    ids = page().ids
+    warning = ids["patch-input-status"]
+    assert warning.attrs.get("role") == "status" and "hidden" in warning.attrs
+    assert ids["patch-report"] in warning.ancestors()
+    assert any(node.tag == "details" for node in ids["patch-report-prompts"].ancestors())
+    assert ids["patch-report"] in ids["patch-report-prompts"].ancestors()
+
+
+def test_experiment_report_long_labels_can_wrap_within_bounded_cells():
+    # Structural CSS check; a rendered viewport test is still needed.
+    css = (ROOT / "looking_glass/app_static/app.css").read_text()
+    rule = re.search(r"([^{}]*#repeat-body td:first-child[^{}]*)\{([^}]+)\}", css)
+    assert rule is not None
+    for selector in ("#repeat-body td:first-child", "#repeat-body td:nth-child(4)",
+                     "#repeat-body td:nth-child(5)", "#sensitivity-body td:nth-child(3)",
+                     "#sensitivity-body td:nth-child(4)", "#patch-distribution-body td:first-child"):
+        assert selector in rule.group(1)
+    styles = rule.group(2).replace(" ", "")
+    assert "white-space:normal" in styles and "overflow-wrap:anywhere" in styles
+    assert "max-width:24rem" in styles
+
+
 
 def test_programmatically_focused_sensitivity_report_has_visible_focus():
     css = (ROOT / "looking_glass/app_static/app.css").read_text()

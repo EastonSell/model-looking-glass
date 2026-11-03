@@ -7,6 +7,8 @@
   let repeatReport = null, patchPreview = null, patchReport = null;
   const display = (value) => typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   const number = (value) => typeof value === 'number' ? (Object.is(value, -0) ? '-0' : String(value)) : String(value ?? '—');
+  const tokenText = (token) => token?.text_unavailable === true || typeof token?.text !== 'string' ? 'text unavailable' : `${JSON.stringify(token.text)}${token.text_truncated === true ? ' · text truncated' : ''}`;
+  const tokenPiece = (token) => token?.piece_unavailable === true || typeof token?.piece !== 'string' ? 'piece unavailable' : `piece ${JSON.stringify(token.piece)}${token.piece_truncated === true ? ' · piece truncated' : ''}`;
   const bytes = (value) => { const n = Number(value); if (!Number.isFinite(n)) return '—'; return n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KiB` : `${(n / 1048576).toFixed(2)} MiB`; };
   let sceneApi=null, sceneFailed=false, sceneMode='select', sceneNavigation={index:0,total:0,label:''};
   function syncSceneControls(){
@@ -159,6 +161,7 @@
     $('patch-donor-position').disabled = $('patch-receiver-position').disabled = state.busy || !patchPreviewCurrent();
     $('patch-run').disabled = state.busy || !interventionReady() || !patchSelectionReady();
     $('patch-download').disabled = state.busy || !patchReport;
+    syncPatchReportAttribution();
     $('save-experiment').disabled = state.busy || !state.experiment;
     $('witness-prev').disabled = state.busy || !state.experiment || state.witnessOffset === 0;
     $('witness-next').disabled = state.busy || !state.experiment || state.witnessOffset + valuePageSize >= state.witnessTotal;
@@ -707,6 +710,22 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   function patchSelectionReady() {
     return !!(patchSelected('donor') && patchSelected('receiver') && /^\d+$/.test($('patch-layer').value.trim()) && Number.isSafeInteger(Number($('patch-layer').value)) && Number($('patch-layer').value) <= 2147483647);
   }
+  function matchingTokenIds(first, second) {
+    return Array.isArray(first) && Array.isArray(second) && first.length > 0 && first.length <= 64 && first.length === second.length && first.every((id, index) => Number.isSafeInteger(id) && id >= 0 && id === second[index]);
+  }
+  function syncPatchReportAttribution() {
+    const donor = patchSelected('donor'), receiver = patchSelected('receiver');
+    const same = !!(patchReport && patchSelectionReady() &&
+      patchReport.donor?.prompt === $('patch-donor-prompt').value && patchReport.receiver?.prompt === $('patch-receiver-prompt').value &&
+      matchingTokenIds(patchReport.donor?.token_ids, patchPreview.donor.token_ids) && matchingTokenIds(patchReport.receiver?.token_ids, patchPreview.receiver.token_ids) &&
+      patchReport.donor?.position === donor.index && patchReport.donor?.token_id === donor.token_id &&
+      patchReport.receiver?.position === receiver.index && patchReport.receiver?.token_id === receiver.token_id &&
+      patchReport.layer === Number($('patch-layer').value) && patchReport.site === $('patch-site').value);
+    const status = $('patch-input-status'), hidden = !patchReport || same;
+    const message = hidden ? '' : 'This report uses earlier selections. Review its recorded prompt inputs and positions before interpreting it.';
+    if (status.hidden !== hidden) status.hidden = hidden;
+    if (status.textContent !== message) status.textContent = message;
+  }
   function clearPatchPreview() {
     patchPreview = null;
     for (const side of ['donor','receiver']) {
@@ -717,7 +736,8 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   }
   function clearPatch() {
     clearPatchPreview(); patchReport = null; $('patch-report').hidden = true; $('patch-status').hidden = true; $('patch-demo').hidden = true;
-    for (const id of ['patch-outcome','patch-status','patch-alignment','patch-baselines','patch-details']) $(id).textContent = '';
+    for (const id of ['patch-outcome','patch-status','patch-alignment','patch-baselines','patch-details','patch-report-prompts','patch-input-status']) $(id).textContent = '';
+    $('patch-input-status').hidden = true;
     $('patch-distribution-body').replaceChildren();
   }
   function validPatchTokens(tokens) {
@@ -727,7 +747,8 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     if (!report || report.preset !== 'cross_prompt_patch' || report.capture_id !== state.run?.capture_id || !['complete','inconclusive'].includes(report.status)) throw new Error('Patch report was incomplete or did not match the current capture.');
     patchReport = report; $('patch-report').hidden = false; $('patch-demo').hidden = !isDemo(state.model);
     const donor = report.donor || {}, receiver = report.receiver || {}, controls = report.controls || {};
-    $('patch-alignment').textContent = `Donor position ${number(donor.position)} · ID ${number(donor.token_id)} · ${typeof donor.text === 'string' ? JSON.stringify(donor.text) : 'text unavailable'}; receiver position ${number(receiver.position)} · ID ${number(receiver.token_id)} · ${typeof receiver.text === 'string' ? JSON.stringify(receiver.text) : 'text unavailable'}. Layer ${number(report.layer)} · ${report.site || 'unknown'}.`;
+    $('patch-alignment').textContent = `Donor position ${number(donor.position)} · ID ${number(donor.token_id)} · ${tokenText(donor)}; receiver position ${number(receiver.position)} · ID ${number(receiver.token_id)} · ${tokenText(receiver)}. Layer ${number(report.layer)} · ${report.site || 'unknown'}.`;
+    $('patch-report-prompts').textContent = `Donor prompt: ${typeof donor.prompt === 'string' ? JSON.stringify(donor.prompt) : 'unavailable'}; receiver prompt: ${typeof receiver.prompt === 'string' ? JSON.stringify(receiver.prompt) : 'unavailable'}.`;
     $('patch-outcome').textContent = `${report.status}. Donor/clean and receiver/corrupted are the supplied prompt labels; no semantic alignment is inferred.`;
     const required = ['donor_null_full_logits_bitwise_equal','donor_restoration_full_logits_bitwise_equal','donor_source_vector_bitwise_equal','donor_other_positions_bitwise_equal','donor_same_vector_full_logits_bitwise_equal','receiver_null_full_logits_bitwise_equal','receiver_restoration_full_logits_bitwise_equal','receiver_source_vector_bitwise_equal','receiver_other_positions_bitwise_equal','patched_vector_matches_donor_bitwise','fixed_input_ids_masks_unchanged'];
     if (report.model?.family === 'llama') required.push('donor_static_rotary_state_unchanged','receiver_static_rotary_state_unchanged');
@@ -738,13 +759,13 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
       const clean = report.clean_baseline || {}, corrupted = report.corrupted_baseline || {}, patched = report.patched || {};
       const p = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
       if (Number.isSafeInteger(clean.token_id) && clean.token_id === corrupted.token_id && clean.token_id === patched.token_id && [clean.probability,corrupted.probability,patched.probability].every(p)) {
-        const token = typeof clean.text === 'string' ? JSON.stringify(clean.text) : 'text unavailable';
+        const token = tokenText(clean);
         $('patch-baselines').textContent = `Donor baseline top token ${token} · ID ${clean.token_id}: donor ${(clean.probability*100).toPrecision(6)}%, receiver ${(corrupted.probability*100).toPrecision(6)}%, receiver after patch ${(patched.probability*100).toPrecision(6)}%. These are full-vocabulary probabilities for the same token.`;
       } else $('patch-baselines').textContent = 'Same-token probability comparison unavailable; inspect the exact report.';
       const rows = report.distribution?.rows;
       if (Array.isArray(rows) && rows.length <= 10) for (const item of rows) {
         if (!item || !Number.isSafeInteger(item.token_id) || !p(item.baseline_probability) || !p(item.intervention_probability) || typeof item.probability_delta !== 'number' || !Number.isFinite(item.probability_delta) || Math.abs(item.probability_delta - (item.intervention_probability - item.baseline_probability)) > 1e-12) continue;
-        const row = document.createElement('tr'); cell(row, `${typeof item.text === 'string' ? JSON.stringify(item.text) : 'text unavailable'} · ${item.token_id}`); cell(row, Number((item.baseline_probability*100).toPrecision(6))); cell(row, Number((item.intervention_probability*100).toPrecision(6))); cell(row, Number((item.probability_delta*100).toPrecision(6))); $('patch-distribution-body').append(row);
+        const row = document.createElement('tr'); cell(row, `${tokenText(item)} · ${item.token_id}`); cell(row, Number((item.baseline_probability*100).toPrecision(6))); cell(row, Number((item.intervention_probability*100).toPrecision(6))); cell(row, Number((item.probability_delta*100).toPrecision(6))); $('patch-distribution-body').append(row);
       }
     } else {
       $('patch-baselines').textContent = 'No confirmed numerical result: the intervention or required controls were incomplete or failed.';
@@ -783,7 +804,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     const pct = (value, signed=false) => `${signed && value > 0 ? '+' : ''}${Number((value * 100).toPrecision(6))}`;
     for (const item of report.results) {
       const sweep = item?.report, anchor = sweep?.anchor || {};
-      const label = `Prompt ${number((item?.prompt_index ?? 0) + 1)}: ${JSON.stringify(typeof item?.prompt === 'string' ? item.prompt : '')} · final token ${typeof anchor.token_text === 'string' ? JSON.stringify(anchor.token_text) : 'text unavailable'} · ID ${number(anchor.token_id)} · position ${number(anchor.token_position)}`;
+      const label = `Prompt ${number((item?.prompt_index ?? 0) + 1)}: ${JSON.stringify(typeof item?.prompt === 'string' ? item.prompt : '')} · final token ${tokenText({text: anchor.token_text})}${anchor.token_label_truncated === true ? ' · display label truncated' : ''} · ID ${number(anchor.token_id)} · position ${number(anchor.token_position)}`;
       const rows = Array.isArray(sweep?.results) && sweep.results.length <= 12 ? sweep.results : [];
       if (!rows.length) { const row=document.createElement('tr'); cell(row,label); cell(row,'—'); cell(row,'—'); cell(row,`${item?.status || 'unavailable'}${item?.reason ? ': ' + item.reason : ''}`); for(let i=0;i<5;i++)cell(row,'—'); $('repeat-body').append(row); continue; }
       for (const result of rows) {
@@ -800,7 +821,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
         const measured = status === 'ok';
         if (measured && result.total_variation === 0 && result.last_position_max_abs_delta === 0) status = 'ok: no next-token change detected';
         cell(row,label); cell(row,number(result?.layer)); cell(row,result?.site || 'unknown'); cell(row,status);
-        cell(row,measured ? `${typeof token.text === 'string' ? JSON.stringify(token.text) : 'text unavailable'} · ${token.token_id}` : '—');
+        cell(row,measured ? `${tokenText(token)} · ${token.token_id}` : '—');
         cell(row,measured ? pct(token.baseline_probability) : '—'); cell(row,measured ? pct(token.intervention_probability) : '—');
         cell(row,measured ? pct(token.probability_delta,true) : '—'); cell(row,measured ? String(Number(result.total_variation.toPrecision(6))) : '—');
         $('repeat-body').append(row);
@@ -842,7 +863,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
       if (measured) measuredRows.push(result);
       const displayStatus = measured && result.total_variation === 0 && result.last_position_max_abs_delta === 0 ? 'ok: no next-token change detected' : status;
       cell(row, number(result?.layer)); cell(row, result?.site || 'unknown'); cell(row, displayStatus);
-      cell(row, measured ? `${typeof token.text === 'string' ? JSON.stringify(token.text) : 'text unavailable'} · ${token.token_id}` : '—');
+      cell(row, measured ? `${tokenText(token)} · ${token.token_id}` : '—');
       cell(row, measured ? pct(token.baseline_probability) : '—'); cell(row, measured ? pct(token.intervention_probability) : '—'); cell(row, measured ? pct(token.probability_delta, true) : '—');
       const tv = cell(row, measured ? fmt(result.total_variation) : '—');
       if (measured) tv.setAttribute('data-magnitude', result.total_variation === 0 ? 'zero' : result.total_variation < 0.01 ? 'low' : result.total_variation < 0.1 ? 'medium' : 'high');
@@ -878,7 +899,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     if (!usable) {
       $(`${prefix}-distribution-note`).textContent = 'Probability unavailable: this record lacks compatible full-vocabulary normalized metadata. Legacy ranked logits are shown below; no probabilities are inferred or normalized from a top-token list.';
       const before = experiment.baseline_top_next_tokens || [], after = experiment.intervention_top_next_tokens || [];
-      for (let i=0; i < Math.max(before.length, after.length); i++) { const row=document.createElement('tr'); cell(row,i+1); cell(row,before[i] ? `${JSON.stringify(before[i].text)} · ${before[i].token_id}` : '—'); cell(row,number(before[i]?.logit)); cell(row,after[i] ? `${JSON.stringify(after[i].text)} · ${after[i].token_id}` : '—'); cell(row,number(after[i]?.logit)); $(`${prefix}-token-body`).append(row); }
+      for (let i=0; i < Math.max(before.length, after.length); i++) { const row=document.createElement('tr'); cell(row,i+1); cell(row,before[i] ? `${tokenText(before[i])} · ${before[i].token_id}` : '—'); cell(row,number(before[i]?.logit)); cell(row,after[i] ? `${tokenText(after[i])} · ${after[i].token_id}` : '—'); cell(row,number(after[i]?.logit)); $(`${prefix}-token-body`).append(row); }
       return;
     }
     $(`${prefix}-distribution-note`).textContent = `Full-vocabulary normalized probabilities (${d.vocabulary_size} tokens). Only the top-5 union is shown; these rows need not sum to 100%.`;
@@ -1036,7 +1057,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     if (preview?.capture_id !== capture || state.run?.capture_id !== capture || $('patch-donor-prompt').value !== donorPrompt || $('patch-receiver-prompt').value !== receiverPrompt || !validSide('donor') || !validSide('receiver')) throw new Error('Token preview was incomplete or stale; preview again.');
     patchPreview={...preview,donorPrompt,receiverPrompt};
     for (const side of ['donor','receiver']) for (const token of preview[side].tokens) {
-      const option=document.createElement('option'); option.value=String(token.index); option.textContent=`Position ${token.index} · ID ${token.token_id} · ${typeof token.text === 'string' ? JSON.stringify(token.text) : 'text unavailable'}${typeof token.piece === 'string' ? ` · piece ${JSON.stringify(token.piece)}` : ''}`; $(`patch-${side}-position`).append(option);
+      const option=document.createElement('option'); option.value=String(token.index); option.textContent=`Position ${token.index} · ID ${token.token_id} · ${tokenText(token)} · ${tokenPiece(token)}`; $(`patch-${side}-position`).append(option);
     }
     $('patch-preview-status').textContent = 'Choose a donor and receiver token explicitly. No automatic alignment is applied.'; syncButtons();
   }));

@@ -341,17 +341,21 @@ def create_server(state, port=0):
 
         def _send(self, status, body, mime="application/json; charset=utf-8"):
             if not isinstance(body, bytes):
-                body = json.dumps(body, allow_nan=False, ensure_ascii=False).encode("utf-8")
-            self.send_response(status)
-            self.send_header("Content-Type", mime)
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("X-Content-Type-Options", "nosniff")
-            self.send_header("Referrer-Policy", "no-referrer")
-            self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
-            self.end_headers()
-            try: self.wfile.write(body)
-            except (BrokenPipeError, ConnectionResetError): pass
+                # Escape isolated surrogates without failing while handling an
+                # error whose text may contain a private path or prompt.
+                body = json.dumps(body, allow_nan=False, ensure_ascii=False).encode("utf-8", "backslashreplace")
+            try:
+                self.send_response(status)
+                self.send_header("Content-Type", mime)
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.send_header("Referrer-Policy", "no-referrer")
+                self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+                self.end_headers()
+                self.wfile.write(body)
+            except OSError:
+                pass  # A lost/timed-out client must not log a chained private exception.
 
         def _allowed(self, api=False):
             port = self.server.server_address[1]
@@ -423,6 +427,8 @@ def create_server(state, port=0):
                 self._send(200, answer)
             except (ValueError, OSError, TypeError, KeyError) as exc:
                 self._send(400, {"error": str(exc)})
+            except Exception:
+                self._send(500, {"error": "The local app could not complete this request."})
 
         def do_POST(self):
             if not self._allowed(api=True): return

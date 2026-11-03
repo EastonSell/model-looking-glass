@@ -79,6 +79,7 @@ def run_repeated_sensitivity(state, data):
             coordinate = scratch._coordinate(0, position)
             report["anchor"]["token_text"] = coordinate.get("token_text")
             report["anchor"]["token_piece"] = coordinate.get("token_piece")
+            report["anchor"]["token_label_truncated"] = coordinate.get("token_label_truncated", False)
             # A fresh temporary input must not be presented as the original capture.
             report.pop("capture_id", None)
             report["source"] = "temporary capture for this prompt"

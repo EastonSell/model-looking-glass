@@ -106,24 +106,29 @@ def run_sensitivity(state, data):
             continue
         try:
             source = state.store.intervention_source(*matches[0])
-            result = state.runtime.intervene_fixed_forward(state._live_binding, source, "zero", max_pair_bytes=allowance)
+            result = state.runtime.intervene_fixed_forward(state._live_binding, source, "zero",
+                max_pair_bytes=allowance, _include_baseline_digest=True)
             replay_count += 1
+            baseline_digest = result.pop("_baseline_digest", None)
+            if type(baseline_digest) is not str or len(baseline_digest) != 64:
+                raise ValueError("Full baseline identity is unavailable; trials cannot be compared reliably")
             experiment = result["experiment"]
             distribution = experiment["next_token_distribution"]
             token_id = experiment["comparison"]["baseline_next_token_id"]
             token = next(item for item in distribution["rows"] if item["token_id"] == token_id)
-            baseline_key = (token_id, token["baseline_logit"], token["baseline_probability"])
+            baseline_key = baseline_digest
             if baseline is None:
                 baseline = baseline_key
             elif baseline != baseline_key:
                 row.update(status="failed", failure_kind="baseline_mismatch",
-                           reason="Baseline top-token values differed across trials; results cannot be compared reliably.")
+                           reason="Full baseline logits differed across trials; results cannot be compared reliably.")
                 failed = True
                 rows.append(row)
                 continue
             row.update(status="ok", reason=None, activation_changed=experiment["activation_changed"],
                 controls=experiment["controls"], baseline_token={key: token[key] for key in (
-                    "token_id", "text", "baseline_probability", "intervention_probability", "probability_delta",
+                    "token_id", "text", "text_unavailable", "text_truncated",
+                    "baseline_probability", "intervention_probability", "probability_delta",
                     "baseline_logit", "intervention_logit")}, total_variation=distribution["total_variation"],
                 last_position_max_abs_delta=experiment["comparison"]["last_position_max_abs_delta"],
                 next_token_distribution=distribution)

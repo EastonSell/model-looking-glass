@@ -78,6 +78,123 @@ def test_real_zero_vector_is_reported_as_a_successful_no_effect(state):
     assert row["total_variation"] == row["last_position_max_abs_delta"] == 0
 
 
+def test_sweep_preserves_unavailable_baseline_label_flags(state, monkeypatch):
+    import looking_glass.app_interventions as engine
+    monkeypatch.setattr(engine, "_token_text", lambda *_args: ("", True, False))
+    report = state.post("sensitivity", request(state, layers=[0], sites=["attention"]))
+    assert report["status"] == "complete"
+    token = report["results"][0]["baseline_token"]
+    assert token["text_unavailable"] and not token["text_truncated"]
+
+
+def test_full_baseline_digest_detects_non_top_logit_permutation():
+    from looking_glass.app_interventions import _full_logits_digest
+    first = torch.tensor([[[1., 2., 10., -1.]]])
+    second = first[:, :, [1, 0, 2, 3]].contiguous()
+    assert first.argmax() == second.argmax()
+    assert first.double().softmax(-1)[0, 0, 2] == second.double().softmax(-1)[0, 0, 2]
+    assert _full_logits_digest(first) != _full_logits_digest(second)
+    assert _full_logits_digest(first) != _full_logits_digest(first.reshape(1, 2, 2))
+
+
+def test_sweep_detects_real_non_top_logit_drift_with_unchanged_top_probability(state, monkeypatch):
+    import looking_glass.app_interventions as engine
+    model = state.runtime.model
+    step = state.store.summary()["steps"][0]
+    ids = torch.tensor([step["input_token_ids"]], dtype=torch.long)
+    mask = torch.tensor([step["input_attention_mask"]], dtype=torch.long)
+    with torch.inference_mode():
+        initial = model(input_ids=ids, attention_mask=mask, use_cache=False).logits[0, -1].double()
+    top = int(initial.argmax())
+    probability = initial.log_softmax(-1)[top].exp()
+    pair = None
+    for left in range(initial.numel()):
+        for right in range(left + 1, initial.numel()):
+            if top in (left, right) or initial[left] == initial[right]:
+                continue
+            changed = initial.clone()
+            changed[left], changed[right] = initial[right], initial[left]
+            if changed.log_softmax(-1)[top].exp() == probability:
+                pair = (left, right)
+                break
+        if pair is not None:
+            break
+    assert pair is not None, "fixture must have distinct non-top logits with an unchanged top probability"
+    execute = engine.execute
+    forward = model.forward
+    baseline_keys = []
+    digests = []
+
+    def after_preflight(owner, validated):
+        if baseline_keys:
+            def permuted(*args, **kwargs):
+                output = forward(*args, **kwargs)
+                logits = output.logits.clone()
+                left, right = pair
+                logits[0, -1, left], logits[0, -1, right] = output.logits[0, -1, right], output.logits[0, -1, left]
+                output.logits = logits
+                return output
+            monkeypatch.setattr(owner.model, "forward", permuted)
+        try:
+            result = execute(owner, validated)
+        finally:
+            monkeypatch.setattr(owner.model, "forward", forward)
+        experiment = result["experiment"]
+        token_id = experiment["comparison"]["baseline_next_token_id"]
+        token = next(row for row in experiment["next_token_distribution"]["rows"] if row["token_id"] == token_id)
+        baseline_keys.append((token_id, token["baseline_logit"], token["baseline_probability"]))
+        digests.append(result["_baseline_digest"])
+        return result
+
+    monkeypatch.setattr(engine, "execute", after_preflight)
+    report = state.post("sensitivity", request(state, layers=[0]))
+    assert len(baseline_keys) == 2 and baseline_keys[0] == baseline_keys[1]
+    assert digests[0] != digests[1]
+    assert report["status"] == "inconclusive"
+    assert [row["status"] for row in report["results"]] == ["ok", "failed", "skipped"]
+    assert report["results"][1]["failure_kind"] == "baseline_mismatch"
+
+
+def test_sweep_rejects_inconsistent_full_baselines_without_exporting_hash(state, monkeypatch):
+    import json
+    original = state.runtime.intervene_fixed_forward
+    hashes = []
+    def changed(*args, **kwargs):
+        result = original(*args, **kwargs)
+        hashes.append(result["_baseline_digest"])
+        if len(hashes) == 2:
+            result["_baseline_digest"] = "0" * 64 if hashes[0] != "0" * 64 else "1" * 64
+        return result
+    monkeypatch.setattr(state.runtime, "intervene_fixed_forward", changed)
+    report = state.post("sensitivity", request(state, layers=[0]))
+    assert report["status"] == "inconclusive"
+    assert [row["status"] for row in report["results"]] == ["ok", "failed", "skipped"]
+    assert report["results"][1]["failure_kind"] == "baseline_mismatch"
+    assert "Full baseline logits differed" in report["results"][1]["reason"]
+    serialized = json.dumps(report)
+    assert "_baseline_digest" not in serialized and all(value not in serialized for value in hashes)
+
+
+def test_manual_comparison_and_export_omit_internal_digest(state):
+    import json
+    from pathlib import Path
+    comparison = state.post("intervene", {**request(state), "operation": "zero"})
+    assert "_baseline_digest" not in json.dumps(comparison)
+    saved = state.post("save-experiment", {"experiment_id": comparison["experiment_id"], "name": "manual"})
+    assert "_baseline_digest" not in (Path(saved["path"]) / "manifest.json").read_text(encoding="utf-8")
+
+
+def test_missing_display_labels_do_not_quarantine_manual_intervention(state, monkeypatch):
+    def unavailable(*_args, **_kwargs):
+        raise ValueError("synthetic display failure")
+    monkeypatch.setattr(state.runtime.tokenizer, "decode", unavailable)
+    comparison = state.post("intervene", {**request(state), "operation": "zero"})
+    assert state.runtime.info()["state"] == "ready"
+    experiment = comparison["experiment"]
+    assert all(row["text_unavailable"] for row in experiment["next_token_distribution"]["rows"])
+    assert all(row["text_unavailable"] for row in experiment["baseline_top_next_tokens"])
+
+
 @pytest.mark.parametrize("changes", [
     {"layers": []}, {"layers": [0, 0]}, {"layers": [True]}, {"layers": [2]},
     {"sites": []}, {"sites": ["attn"]}, {"sites": ["mlp", "mlp"]},

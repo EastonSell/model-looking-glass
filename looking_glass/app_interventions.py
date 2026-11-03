@@ -3,7 +3,9 @@
 Display results are local intervention observations, not causal explanations.
 """
 import copy
+import hashlib
 import math
+import struct
 import uuid
 
 import torch
@@ -32,6 +34,34 @@ def _distribution_workspace_bytes(vocabulary_size):
     # Two f64 input/logprob/prob vectors, differences, finite checks, stable
     # sorts/indices/ranks and workspace. Planning allowance, not a peak-RAM cap.
     return DISTRIBUTION_BYTES_PER_TOKEN * vocabulary_size + DISTRIBUTION_FIXED_BYTES
+
+
+def _token_text(tokenizer, token):
+    """Decode a bounded display label without mistaking a missing label for text."""
+    try:
+        text = tokenizer.decode([token])
+        if type(text) is not str:
+            raise ValueError("token label is not text")
+        return text[:512], False, len(text) > 512
+    except Exception as error:
+        if isinstance(error, (MemoryError, torch.OutOfMemoryError)) or (
+                isinstance(error, RuntimeError) and "out of memory" in str(error).lower()):
+            raise
+        return "", True, False
+
+
+def _full_logits_digest(logits):
+    """Hash the complete float32 baseline and shape for one internal sweep."""
+    require(type(logits) is torch.Tensor and logits.device.type == "cpu"
+            and logits.dtype == torch.float32 and logits.layout == torch.strided
+            and logits.ndim == 3, "baseline digest requires CPU float32 logits")
+    digest = hashlib.sha256(b"model-looking-glass-baseline-v1\0")
+    digest.update(struct.pack("<I", logits.ndim))
+    for dimension in logits.shape:
+        digest.update(struct.pack("<Q", dimension))
+    value = logits.contiguous().view(torch.uint8).numpy()
+    digest.update(memoryview(value).cast("B"))
+    return digest.hexdigest()
 
 
 @torch.no_grad()
@@ -65,17 +95,7 @@ def _next_token_distribution(baseline, intervention, tokenizer, watched_token_id
             and all(type(token) is int and 0 <= token < vocab for token in watched_token_ids),
             "invalid watched token IDs")
     def make_row(token):
-        unavailable = truncated = False
-        try:
-            text = tokenizer.decode([token])
-            if type(text) is not str: raise ValueError("token label is not text")
-            truncated = len(text) > 512
-            text = text[:512]
-        except Exception as error:
-            if isinstance(error, (MemoryError, torch.OutOfMemoryError)) or (
-                    isinstance(error, RuntimeError) and "out of memory" in str(error).lower()):
-                raise
-            text, unavailable = "", True
+        text, unavailable, truncated = _token_text(tokenizer, token)
         p, q = float(prob_first[token]), float(prob_second[token])
         return dict(token_id=token, text=text, text_truncated=truncated, text_unavailable=unavailable,
             baseline_logit=float(first[token]), intervention_logit=float(second[token]),
@@ -329,9 +349,15 @@ def execute(runtime, request):
     displacement = desired_cpu.double() - request["reference"].double()
     def top(value):
         scores, indices = torch.topk(value[0, -1], min(5, value.shape[-1]))
-        return [{"token_id": int(i), "text": runtime.tokenizer.decode([int(i)]), "logit": float(v)} for i, v in zip(indices, scores)]
+        result = []
+        for index, value in zip(indices, scores):
+            token = int(index)
+            text, unavailable, truncated = _token_text(runtime.tokenizer, token)
+            result.append({"token_id": token, "text": text, "text_unavailable": unavailable,
+                           "text_truncated": truncated, "logit": float(value)})
+        return result
     changed = not same_bits(desired_cpu, request["reference"])
-    return {"answer": "Fixed-prefix intervention comparison completed", "task": "activation-intervention",
+    result = {"answer": "Fixed-prefix intervention comparison completed", "task": "activation-intervention",
         "run_kind": "intervention_comparison", "events": events, "model": runtime.info(), "steps": steps, "token_labels": labels, "token_labels_note": labels_note,
         "coverage": {"complete": True, "captured_events": 4, "captured_bytes": 4 * width * 4,
             "full_feature_vectors": True, "forward_count": 2, "captured_forward_count": 2, "total_model_forwards": 4,
@@ -357,3 +383,6 @@ def execute(runtime, request):
             "intervention_top_next_tokens": top(treatment), "execution_numerics": request["numerics"],
             "logical_planned_bytes": request["planned_bytes"], "logical_allowance_bytes": request["maximum"],
             "scope": "One exact fixed input and next-token readout; no generated continuation, checkpoint edit, causal explanation or backdoor proof. Logical budgets are not peak-memory guarantees."}}
+    if request.get("_include_baseline_digest") is True:
+        result["_baseline_digest"] = _full_logits_digest(baseline)
+    return result

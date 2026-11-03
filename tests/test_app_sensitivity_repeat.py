@@ -124,6 +124,20 @@ def test_repeated_llama_static_rope_controls(tmp_path):
                    for row in prompt["report"]["results"])
 
 
+def test_repeated_report_preserves_truncated_final_token_label(state, monkeypatch):
+    import looking_glass.app_runtime as module
+    original = module._token_labels
+    def truncated(tokenizer, steps):
+        labels, note = original(tokenizer, steps)
+        for label in labels.values():
+            label["truncated"] = True
+        return labels, note
+    monkeypatch.setattr(module, "_token_labels", truncated)
+    report = state.post("sensitivity-repeat", request(state, sites=["attention"]))
+    assert report["status"] == "complete"
+    assert all(item["report"]["anchor"]["token_label_truncated"] for item in report["results"])
+
+
 def test_demo_warning_and_provenance_survive_both_json_reports(tmp_path):
     import json
     from looking_glass.app import AppState

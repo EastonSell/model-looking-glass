@@ -71,6 +71,39 @@ def test_watched_token_outside_top_union_is_full_vocabulary(state):
     assert row["intervention_probability"] == pytest.approx(float(b[0, 0].double().softmax(-1)[12]))
 
 
+def test_preview_marks_unavailable_and_truncated_token_labels(state, monkeypatch):
+    tokenizer = state.runtime.tokenizer
+    monkeypatch.setattr(tokenizer, "decode", lambda *_args, **_kwargs: "x" * 513)
+    monkeypatch.setattr(tokenizer, "convert_ids_to_tokens", lambda *_args, **_kwargs: None)
+    preview = state.post("patch-preview", {"capture_id": state._capture_id,
+                         "donor_prompt": "hello world", "receiver_prompt": "world hello"})
+    for side in ("donor", "receiver"):
+        for token in preview[side]["tokens"]:
+            assert token["text"] == "x" * 512 and token["text_truncated"]
+            assert not token["text_unavailable"]
+            assert token["piece"] == "" and token["piece_unavailable"]
+            assert not token["piece_truncated"]
+
+
+def test_preview_does_not_hide_resource_exhaustion(state, monkeypatch):
+    def exhausted(*_args, **_kwargs):
+        raise MemoryError("simulated allocation failure")
+    monkeypatch.setattr(state.runtime.tokenizer, "decode", exhausted)
+    with pytest.raises(MemoryError):
+        state.post("patch-preview", {"capture_id": state._capture_id,
+                   "donor_prompt": "hello world", "receiver_prompt": "world hello"})
+
+
+def test_clean_baseline_preserves_missing_or_truncated_label_flags(state, monkeypatch):
+    import looking_glass.app_interventions as engine
+    request = pair(state)
+    monkeypatch.setattr(engine, "_token_text", lambda *_args: ("x" * 512, False, True))
+    report = state.post("patch-cross-prompt", request)
+    assert report["clean_baseline"]["text_truncated"]
+    assert not report["clean_baseline"]["text_unavailable"]
+    assert len(report["clean_baseline"]["text"]) == 512
+
+
 @pytest.mark.parametrize("failing_trial", [1, 2])
 def test_control_failure_quarantines_and_preserves_capture(state, monkeypatch, failing_trial):
     import looking_glass.app_interventions as engine

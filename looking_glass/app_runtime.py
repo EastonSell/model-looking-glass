@@ -860,14 +860,18 @@ class LocalModelRuntime:
             return self._capture_binding
 
     def intervene_fixed_forward(self, binding, source, operation, feature_index=None,
-                                value=None, max_pair_bytes=128 * 1024**2):
+                                value=None, max_pair_bytes=128 * 1024**2, *, _include_baseline_digest=False):
         from .app_interventions import validate_request, execute
         with self._lock:
             if self._quarantined:
                 raise RuntimeError("model owner is quarantined; restart the local app")
             if binding is None or binding is not self._capture_binding or self.model is None:
                 raise ValueError("intervention requires the original live model binding")
+            if type(_include_baseline_digest) is not bool:
+                raise ValueError("internal baseline digest flag must be boolean")
             request = validate_request(self, source, operation, feature_index, value, max_pair_bytes)
+            if _include_baseline_digest:
+                request["_include_baseline_digest"] = True
             try:
                 if self._device.type == "cuda":
                     with _cuda_operation(self._device, self._vram_limit) as telemetry:

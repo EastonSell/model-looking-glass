@@ -224,6 +224,7 @@
         <button id="intervene-button" type="button" disabled title="Replay &amp; compare">Replay &amp; compare</button><p class="hint">Replay keeps the original capture but replaces the previous comparison, even if it fails. Save a comparison you want to keep first.</p></details>
         <details id="sensitivity-options" class="options"><summary>Run an experiment · component sensitivity</summary>
         <p class="hint">At this selected input position, zero one component output at a time and compare the next-token distribution on the same fixed input. GPT-2 and supported Llama live captures only; model weights and the existing comparison stay unchanged.</p>
+        <p id="experiment-cancel-note" class="hint">Submitted experiments cannot currently be cancelled. Closing this tab does not cancel the request: it may still be waiting for another operation, or continue running until it finishes or fails.</p>
         <p id="sensitivity-ready" class="hint" aria-live="polite"></p>
         <label for="sensitivity-layers">Layers · up to 6, zero-based, comma-separated</label><input id="sensitivity-layers" type="text" placeholder="Automatic: up to 6 captured layers" autocomplete="off" aria-describedby="sensitivity-budget">
         <fieldset><legend>Components to test</legend><div class="checklist"><label for="sensitivity-attention"><input id="sensitivity-attention" type="checkbox" checked> Attention</label><label for="sensitivity-mlp"><input id="sensitivity-mlp" type="checkbox" checked> MLP</label><label for="sensitivity-block"><input id="sensitivity-block" type="checkbox" checked> Block</label></div></fieldset>
@@ -271,7 +272,8 @@
       <div class="panel-heading"><h2 id="patch-heading">Cross-prompt activation patch</h2><span class="status-text">One donor vector · one receiver position</span></div>
       <p id="patch-demo" class="approximation" hidden>Untrained CPU demo: this report checks the workflow, not useful model behavior.</p>
       <p id="patch-outcome" class="info-box" role="status"></p><p id="patch-status" class="notice error" role="status" hidden></p>
-      <p id="patch-alignment" class="hint"></p><p class="hint">This compares one explicit intervention. The selected positions need not represent equivalent words or concepts. A changed prediction is not a complete explanation or proof of generalization.</p>
+      <p id="patch-input-status" class="notice" role="status" hidden></p>
+      <p id="patch-alignment" class="hint"></p><details><summary>Prompt inputs for this report</summary><p id="patch-report-prompts" class="hint"></p></details><p class="hint">This compares one explicit intervention. The selected positions need not represent equivalent words or concepts. A changed prediction is not a complete explanation or proof of generalization.</p>
       <h3>Clean, corrupted and patched predictions</h3><pre id="patch-baselines" class="detail-json"></pre>
       <div class="table-scroll" tabindex="0" role="region" aria-label="Patched next-token probabilities"><table><thead><tr><th>Token · ID</th><th>Receiver baseline %</th><th>Patched %</th><th>Change · percentage points</th></tr></thead><tbody id="patch-distribution-body"></tbody></table></div>
       <details><summary>Controls, exact values and limitations</summary><pre id="patch-details" class="detail-json"></pre></details>
