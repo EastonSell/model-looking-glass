@@ -159,3 +159,8 @@ button,summary,.status-text,.source-readable,.answer{overflow-wrap:anywhere}
 #repeat-report:focus{outline:2px solid var(--selected);outline-offset:2px}
 #patch-report{margin:20px 0;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
 #patch-report:focus{outline:2px solid var(--selected);outline-offset:2px}
+
+/* Chat history is separate from trace results and never interpreted as HTML. */
+.chat-messages { display: grid; gap: 1rem; }
+.chat-messages > div { min-width: 0; border-top: 1px solid var(--border, #343b48); padding-top: .75rem; }
+.chat-messages .answer { white-space: pre-wrap; overflow-wrap: anywhere; }

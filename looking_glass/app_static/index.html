@@ -25,6 +25,9 @@
       <datalist id="model-choices"></datalist>
       <button id="browse-button" class="secondary" type="button" title="Browse / find models">Browse / find models</button>
       <p id="model-discovery-warning" class="hint" aria-live="polite" hidden></p>
+      <label for="execution-mode">Mode for next load</label>
+      <select id="execution-mode"><option value="auto">Auto — Chat for Llama / GPT-2</option><option value="chat">Chat — no activation capture</option><option value="capture">Capture — inspect exact activations</option></select>
+      <p id="mode-reload-note" class="hint" role="status">Changing mode takes effect when you load the model again.</p>
       <label for="execution-device">Device for next load</label>
       <select id="execution-device" aria-describedby="device-choice-status"><option value="auto">Auto — prefer CUDA for supported families</option><option value="cpu">CPU</option></select>
       <p id="device-choice-status" class="hint" role="status">Checking device availability…</p>
@@ -58,16 +61,17 @@
       <details><summary>Test CUDA execution</summary>
       <p class="hint">Check CUDA execution with <code>python -m looking_glass.app_selftest</code>. CPU-only machines report skipped. It uses tiny synthetic models, not your checkpoint; it does not establish CPU/GPU numerical equivalence.</p>
       </details>
+      <label class="check-row" for="vram-auto"><input id="vram-auto" type="checkbox" checked> Automatic GPU allowance</label>
       <label for="vram-mib">GPU model / work allowance · MiB</label>
       <input id="vram-mib" type="number" min="1" max="65536" value="2048">
-      <p id="vram-help" class="hint">Limits PyTorch GPU allocations, not total VRAM. Captures use CPU RAM; CPU execution ignores this limit.</p>
+      <p id="vram-help" class="hint">Automatic uses available GPU capacity with headroom and server limits. A custom allowance limits PyTorch GPU allocations, not total VRAM. Captures use CPU RAM; CPU execution ignores this limit.</p>
       <section id="inspection-panel" class="inspection-panel" aria-labelledby="inspection-heading" hidden><h3 id="inspection-heading">Folder inspection · not the loaded model</h3><p id="inspection-path" class="hint"></p><p id="inspection-status" class="hint" aria-live="polite"></p><ul id="inspection-checks" class="inspection-checks"></ul><p id="inspection-summary" class="hint"></p><p id="inspection-memory" class="hint"></p><p class="hint">Inspection checks files only; loading can still fail.</p><details><summary>Exact inspection record</summary><pre id="inspection-details" class="detail-json"></pre></details></section>
       <button id="unload-button" class="quiet" type="button" disabled title="Unload model · keep capture">Unload model · keep capture</button>
 
 
       <details><summary>Model record</summary><div id="model-info" class="info-box" aria-live="polite">No model loaded.</div></details>
       <details><summary>Supported models and limitations</summary>
-      <p class="hint">Eager float32: GPT-2, T5, DistilBERT masked language models, ViT image classifiers, and standard LlamaForCausalLM have CPU or single-CUDA execution paths. Auto prefers available CUDA. GPU use has been reported by the user; automated model checks ran on CPU, not GPU. Image preprocessing stays on CPU. Llama supports default or static Llama 3 RoPE only; dynamic, linear, YaRN, LongRoPE and partial rotary configurations remain unsupported. This is not support for Mistral, Qwen, multimodal descendants, quantized/GGUF checkpoints, half precision, multi-GPU sharding, or custom checkpoint code.</p>
+      <p class="hint">Capture uses eager float32. Chat supports CUDA reduced precision and reports the loaded dtype; outputs can differ from float32. GPT-2, T5, DistilBERT masked language models, ViT image classifiers, and standard LlamaForCausalLM have CPU or single-CUDA execution paths. Auto prefers available CUDA. GPU use has been reported by the user; automated model checks ran on CPU, not GPU. Image preprocessing stays on CPU. Llama supports default or static Llama 3 RoPE only; dynamic, linear, YaRN, LongRoPE and partial rotary configurations remain unsupported. This is not support for Mistral, Qwen, multimodal descendants, quantized/GGUF checkpoints, multi-GPU sharding, or custom checkpoint code.</p>
       </details>
       </details>
     </section>
@@ -116,12 +120,15 @@
       <textarea id="prompt" rows="2" maxlength="65536" placeholder="Enter a prompt…" spellcheck="false"></textarea>
       <details id="prompt-guide" class="options"><summary>Prompt tips</summary><p id="prompt-help" class="hint">GPT-2 and standard Llama complete raw text. No Llama chat template is applied automatically. T5 uses a task prompt. DistilBERT predicts a [MASK]. ViT classifies an image.</p></details>
       <div id="image-input-group" hidden><label for="image-file">Input image · maximum 4 MiB</label><input id="image-file" type="file" accept="image/png,image/jpeg,image/webp"><p id="image-description" class="hint">Select a local PNG, JPEG, or WebP. It is sent only to this local app.</p></div>
+      <p id="chat-mode-note" class="hint" hidden>Chat uses cached generation with no activation capture. History stays in this browser tab’s RAM; reloads and model loads clear it.</p>
+      <details id="chat-options" class="options" hidden><summary>Chat limits</summary><label for="chat-output">Maximum new tokens</label><input id="chat-output" type="number" min="1" max="1024" value="512"><label for="chat-context">Context tokens (input and output)</label><input id="chat-context" type="number" min="1" max="32768" placeholder="Automatic"><p class="hint">Leave context blank for automatic sizing, which may shrink to fit GPU memory. A number requests that exact limit and is rejected if it cannot fit. Older turns may be omitted; the response reports the context used and omissions.</p></details>
       <p id="replace-warning" class="approximation" hidden>Save first: running replaces this capture, even if it fails.</p>
         <details id="input-tokens-options" class="options"><summary>Explore input tokens</summary><div class="token-heading"><h3>Captured inputs</h3><label class="sr-only" for="input-token-stack">Captured input stack</label><select id="input-token-stack"><option value="input">Input</option></select></div>
         <p id="input-token-note" class="hint"></p><div id="input-token-strip" class="token-strip" aria-label="Recorded input token positions"></div>
         <div class="pager"><button id="input-tokens-prev" type="button" class="quiet" title="← Inputs">← Inputs</button><span id="input-token-page" class="hint"></span><button id="input-tokens-next" type="button" class="quiet" title="Inputs →">Inputs →</button></div></details>
       <div class="query-footer"><button id="run-button" type="button" disabled title="Run &amp; capture →">Run &amp; capture <span aria-hidden="true">→</span></button><span id="run-status" class="muted" aria-live="polite">Ready when you are.</span></div>
     </section>
+    <section id="chat-panel" class="panel" aria-labelledby="chat-heading" hidden><div class="panel-heading"><h2 id="chat-heading">Conversation</h2><button id="chat-clear" class="quiet" type="button">New chat</button></div><p id="chat-status" class="hint" role="status"></p><div id="chat-messages" class="chat-messages" aria-live="polite"></div></section>
     <section id="result-panel" class="panel" aria-labelledby="result-heading" hidden>
       <div class="panel-heading"><div><h2 id="result-heading">Model response</h2></div><span id="task-badge" class="status-text"></span></div>
       <p id="demo-capture-warning" class="approximation" hidden>Untrained CPU demo capture: output is synthetic, not useful answers or GPU validation.</p>

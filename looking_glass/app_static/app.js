@@ -3,6 +3,13 @@
   const $ = (id) => document.getElementById(id);
   const token = document.querySelector('meta[name="mlg-token"]').content;
   const state = {browseRequest: 0, browseFresh: false, settingsOpener: 'session-summary', mapButtons: [], outputGeneration: 0, outputStep: 0, tokenOffset: 0, tokenTotal: 0, mapAutoCapture: null, mapRequest: 0, mapOffset: 0, mapTotal: 0, mapForward: 0, mapCapture: null, reference: null, referenceFresh: false, referenceRequest: 0, referenceOffset: 0, referenceTotal: 0, referenceMode: null, coordinate: null, experiment: null, sensitivity: null, witnessRequest: 0, witnessOffset: 0, witnessTotal: 0, vectorListRequest: 0, vectorListOffset: 0, vectorListTotal: 0, vectorOptions: [], browse: null, saved: [], searchTimer: null, eventQuery: '', filterError: false, eventTotalAll: 0, devices: [], cuda: null, model: null, run: null, busy: false, liveStatusUnverified: false, events: [], eventOffset: 0, eventTotal: 0, event: null, vector: 0, valueOffset: 0, valueTotal: 0, eventRequest: 0, valueRequest: 0, imageRequest: 0, image: null};
+  let chatMessages = [], chatFormat = null;
+  const isChat = () => state.model?.mode === 'chat';
+  function resetChat() { chatMessages = []; chatFormat = null; $('chat-messages').replaceChildren(); $('chat-status').textContent = 'No activation capture. Conversation stays in this tab’s RAM.'; }
+  function renderChat() {
+    $('chat-messages').replaceChildren();
+    for (const message of chatMessages) { const item = document.createElement('div'), label = document.createElement('strong'), body = document.createElement('pre'); label.textContent = message.role === 'user' ? 'You' : message.role === 'assistant' ? 'Model' : 'System'; body.className = 'answer'; body.textContent = message.content; item.append(label, body); $('chat-messages').append(item); }
+  }
   const pageSize = 100, valuePageSize = 256;
   let repeatReport = null, patchPreview = null, patchReport = null;
   let activeExperimentJob = null, experimentActionStatus = null;
@@ -64,7 +71,7 @@
     catch(_){sceneUnavailable('3D rendering unavailable. Use the captured-site list.');}
   }
 
-  function revealOptions(id) { $(id).open = true; if (['vector-options','source-position-options','feature-values-options','intervention-options','sensitivity-options','reference-options'].includes(id)) setDock('selection',true); if (['vector-options','source-position-options','feature-values-options','intervention-options','sensitivity-options'].includes(id)) $('selection-details').open = true; if (['map-tools-options','source-options','event-catalog-options'].includes(id)) $('explorer-options').open = true; if (id === 'map-tools-options') $('layer-map-options').open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','privacy-options','download-options'].includes(id)) $('session-options').open = true; }
+  function revealOptions(id) { $(id).open = true; if (['vector-options','source-position-options','feature-values-options','intervention-options','sensitivity-options','reference-options'].includes(id)) setDock('selection',true); if (['vector-options','source-position-options','feature-values-options','intervention-options','sensitivity-options'].includes(id)) $('selection-details').open = true; if (['map-tools-options','source-options','event-catalog-options'].includes(id)) $('explorer-options').open = true; if (id === 'map-tools-options') $('layer-map-options').open = true; if (id === 'source-options') $('event-catalog-options').open = true; if (id === 'vector-options') $('source-position-options').open = true; if (['model-options','saved-options','capture-options','chat-options','privacy-options','download-options'].includes(id)) $('session-options').open = true; }
   function notice(message, error = false) { $('notice').textContent = message; $('notice').hidden = !message; $('notice').classList.toggle('error', error); }
   async function api(path, body, {allowErrorField=false} = {}) {
     if (body === undefined && /^(events|vectors|tensor|layer-map)\?/.test(path) && state.run?.capture_id) path += `&capture_id=${encodeURIComponent(state.run.capture_id)}`;
@@ -273,15 +280,19 @@
     $('refresh-reference').disabled = state.busy;
     $('reference-prev').disabled = state.busy || state.referenceOffset === 0 || !state.referenceMode;
     $('reference-next').disabled = state.busy || !state.referenceMode || state.referenceOffset + valuePageSize >= state.referenceTotal;
-    $('run-button').textContent = state.run ? 'Run again' : 'Run';
-    $('replace-warning').hidden = !state.run || !state.model || state.model.state === 'quarantined';
+    $('run-button').textContent = isChat() ? 'Send' : state.run ? 'Run again' : 'Run';
+    $('run-button').title = isChat() ? 'Send without activation capture' : 'Run & capture';
+    $('execution-mode').disabled = state.busy; $('vram-auto').disabled = state.busy;
+    $('chat-clear').disabled = state.busy || !chatMessages.length;
+    $('chat-output').disabled = $('chat-context').disabled = state.busy;
+    $('replace-warning').hidden = isChat() || !state.run || !state.model || state.model.state === 'quarantined';
     $('run-button').disabled = state.busy || state.liveStatusUnverified || !state.model || state.model.state === 'quarantined';
     $('demo-button').disabled = state.busy || state.liveStatusUnverified || state.model?.state === 'quarantined';
     $('load-button').disabled = state.busy || state.liveStatusUnverified || state.model?.state === 'quarantined';
     $('unload-button').disabled = state.busy || state.liveStatusUnverified || !state.model || state.model.state === 'quarantined';
     $('browse-parent').disabled = state.busy || !state.browseFresh || !state.browse?.parent; $('browse-select').disabled = state.busy || !state.browseFresh || !state.browse?.path;
     document.querySelectorAll('#folder-list button').forEach((button) => { button.disabled = state.busy || !state.browseFresh; });
-    $('vram-mib').disabled = state.busy || $('execution-device').value === 'cpu';
+    $('vram-mib').disabled = state.busy || $('vram-auto').checked || $('execution-device').value === 'cpu';
     $('save-button').disabled = state.busy || !state.run;
     $('clear-button').disabled = state.busy || !state.run;
     $('events-prev').disabled = state.busy || state.eventOffset === 0;
@@ -357,11 +368,13 @@
   function loadSettings() {
     const device = $('execution-device').value;
     if (device !== 'auto' && device !== 'cpu' && !state.devices.some((item) => item.id === device && item.available !== false)) { revealOptions('model-options'); throw new Error('The selected CUDA device is unavailable. Choose an available device; no CPU fallback was performed.'); }
-    return device === 'cpu' ? {device} : {device, max_vram_bytes: intField('vram-mib') * 1048576};
+    const result = {device, mode: $('execution-mode').value || 'auto'};
+    if (device !== 'cpu' && !$('vram-auto').checked) result.max_vram_bytes = intField('vram-mib') * 1048576;
+    return result;
   }
   function intField(id) {
     const field = $(id), value = Number(field.value);
-    if (!Number.isSafeInteger(value) || value < Number(field.min) || value > Number(field.max)) { revealOptions(id === 'vram-mib' ? 'model-options' : id === 'intervention-feature' ? 'intervention-options' : 'capture-options'); throw new Error(`${field.labels[0].textContent} must be a whole number from ${field.min} to ${field.max}.`); }
+    if (!Number.isSafeInteger(value) || value < Number(field.min) || value > Number(field.max)) { revealOptions(id.startsWith('chat-') ? 'chat-options' : id === 'vram-mib' ? 'model-options' : id === 'intervention-feature' ? 'intervention-options' : 'capture-options'); throw new Error(`${field.labels[0].textContent} must be a whole number from ${field.min} to ${field.max}.`); }
     return value;
   }
   function settings() {
@@ -398,7 +411,8 @@
   function setModel(info) {
     const prior = state.model, selectedTargets = new Set(Array.from(document.querySelectorAll('#target-options input:checked'), (input) => input.value));
     const preserveTargets = prior && info && prior.path === info.path && prior.family === info.family;
-    state.model = info; $('demo-model-warning').hidden = !isDemo(info); $('model-badge').textContent = info ? (info.state === 'quarantined' ? 'Restart required' : `${isDemo(info) ? 'Untrained CPU demo' : 'Loaded'}: ${info.name || info.family || 'model'}${info.device ? ' · ' + info.device : ''}`) : 'No model loaded';
+    if (!prior || !info || prior.path !== info.path || prior.mode !== info.mode || prior.dtype !== info.dtype || prior.device !== info.device) resetChat();
+    state.model = info; $('demo-model-warning').hidden = !isDemo(info); $('model-badge').textContent = info ? (info.state === 'quarantined' ? 'Restart required' : `${isDemo(info) ? 'Untrained CPU demo' : 'Loaded'}: ${info.name || info.family || 'model'}${info.device ? ' · ' + info.device : ''}${info.dtype ? ' · ' + info.dtype : ''}${info.mode ? ' · ' + info.mode : ''}`) : 'No model loaded';
     $('model-info').textContent = info ? display(info) : 'No model loaded.';
     $('target-options').replaceChildren();
     const targets = info?.targets || ['attn', 'mlp', 'block'];
@@ -406,6 +420,19 @@
     const family = String(info?.family || '').toLowerCase();
     const vision = family.includes('vit'); $('image-input-group').hidden = !vision; $('prompt').hidden = vision; document.querySelector('label[for="prompt"]').hidden = vision;
     $('prompt-help').textContent = vision ? 'Classify one image. The app captures supported ViT module outputs; patch positions are not text tokens.' : family.includes('distilbert') ? 'Include [MASK] where you want DistilBERT to predict a token. It does not continue a conversation.' : family === 'llama' ? 'Llama completes raw text with uncached steps; no automatic chat template is applied. Format chat prompts yourself. Supports default or static Llama 3 RoPE.' : family.includes('t5') ? 'Use a T5 task prompt, such as “translate English to German: …”.' : 'GPT-2 continues your text, choosing the highest-scoring next token.';
+    $('chat-mode-note').hidden = $('chat-options').hidden = $('chat-panel').hidden = !isChat();
+    $('capture-options').hidden = isChat(); $('input-tokens-options').hidden = isChat();
+    if (isChat()) {
+      $('prompt-help').textContent = 'Chat uses the checkpoint’s tokenizer chat template when available. Without a template, only a single raw user prompt is supported; start a New chat for another prompt.';
+      const context = Math.min(32768, info.chat_context_tokens || (String(info.device).startsWith('cuda') ? 8192 : 4096));
+      $('chat-context').placeholder = `Automatic · up to ${context} tokens`;
+      $('chat-context').max = String(Math.min(32768, info.max_chat_context_tokens || 32768));
+      $('chat-output').max = String(Math.max(1, Math.min(1024, (info.max_chat_context_tokens || context) - 1)));
+      if (!prior || prior.path !== info.path || prior.mode !== info.mode || prior.chat_context_tokens !== info.chat_context_tokens) {
+        $('chat-context').value = '';
+        $('chat-output').value = String(Math.max(1, Math.min(512, Math.floor(context / 4))));
+      }
+    }
     syncButtons();
   }
   function clearView() {
@@ -1118,7 +1145,7 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
     for (const [id, maximum] of [['max-output', 8], ['max-input', 120]]) { const current = Number($(id).value); $(id).value = String(Number.isSafeInteger(current) && current >= Number($(id).min) ? Math.min(current, maximum) : maximum); }
     if (!$('prompt').value.trim()) $('prompt').value = 'Hello, tiny model!'; await refreshReferenceOptional();
   }) && $('session-options').open) focusModelInput(); });
-  $('load-button').addEventListener('click', async () => { if (await action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); const info = await api('load', {path, ...execution}); clearView(); setModel(info); await refreshReferenceOptional(); }) && $('session-options').open) focusModelInput(); });
+  $('load-button').addEventListener('click', async () => { if (await action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); const info = await api('load', {path, ...execution}); clearView(); resetChat(); setModel(info); await refreshReferenceOptional(); }) && $('session-options').open) focusModelInput(); });
   $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); const opened = await api('open', {path}); clearView(); showRun(opened); await loadEvents(); $('saved-status').textContent = 'Selected capture opened and validated. Other listed exports remain unverified.'; await refreshReferenceOptional(); }));
   $('scene-view').value = 'scene'; $('layer-map-body').setAttribute('data-view', 'scene');
   $('scene-view').addEventListener('change', () => { const view = $('scene-view').value; if (!['scene','list'].includes(view)||sceneFailed) $('scene-view').value = 'list'; $('layer-map-body').setAttribute('data-view',$('scene-view').value);syncSceneVisibility(); });
@@ -1152,7 +1179,25 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   $('layer-map-load').addEventListener('click', () => loadLayerMap());
   $('layer-map-prev').addEventListener('click', () => loadLayerMap(Math.max(0, state.mapOffset - 12)));
   $('layer-map-next').addEventListener('click', () => loadLayerMap(state.mapOffset + 12));
-  $('run-button').addEventListener('click', () => action('Running model and capturing supported outputs…', async () => { const options = settings(), prompt = $('prompt').value; const vision = String(state.model?.family || '').toLowerCase().includes('vit'); if (vision && !state.image) {setDock('query',true);throw new Error('Choose an image first.');} if (!vision && !prompt.trim()) {setDock('query',true);throw new Error('Enter a prompt first.');} // Cancel old read generations without discarding a capture the server may preserve on preflight rejection.
+  $('execution-mode').addEventListener('change', () => { $('mode-reload-note').textContent = 'Choose Load model to apply this mode. Reloading clears this tab’s chat and live capture, but keeps saved files.'; });
+  $('vram-auto').addEventListener('change', syncButtons);
+  $('chat-clear').addEventListener('click', () => { if (state.busy) return; resetChat(); syncButtons(); $('prompt').focus(); });
+  async function sendChat() {
+    const prompt = $('prompt').value;
+    if (!prompt.trim()) throw new Error('Enter a message first.');
+    if (chatFormat === 'raw_completion' && chatMessages.length) throw new Error('This tokenizer has no chat template. Choose New chat for another single raw prompt.');
+    const messages = [...chatMessages, {role: 'user', content: prompt}];
+    const options = {max_new_tokens: intField('chat-output')};
+    if ($('chat-context').value.trim()) options.context_tokens = intField('chat-context');
+    const result = await api('chat', {messages, settings: options});
+    if (typeof result.answer !== 'string' || !['chat_template','raw_completion'].includes(result.format)) throw new Error('The chat response could not be verified. Your message was not added to local history.');
+    const dropped = Number.isSafeInteger(result.dropped_messages) && result.dropped_messages >= 0 ? result.dropped_messages : 0;
+    const historyStart = messages[0]?.role === 'system' ? 1 : 0;
+    chatMessages = [...messages.slice(0, historyStart), ...messages.slice(historyStart + dropped), {role: 'assistant', content: result.answer}]; chatFormat = result.format;
+    renderChat(); $('prompt').value = '';
+    $('chat-status').textContent = `No activation capture · ${result.device} · ${result.dtype} · ${result.input_tokens} input / ${result.output_tokens} output tokens · ${result.context_tokens} context.${dropped ? ' ' + dropped + ' older messages omitted from context and local history.' : ''}${result.format === 'raw_completion' ? ' Raw completion only: start New chat for the next prompt.' : ''}${result.note ? ' ' + result.note : ''}`;
+  }
+  $('run-button').addEventListener('click', () => action(isChat() ? 'Generating reply without activation capture…' : 'Running model and capturing supported outputs…', async () => { if (isChat()) { await sendChat(); return; } const options = settings(), prompt = $('prompt').value; const vision = String(state.model?.family || '').toLowerCase().includes('vit'); if (vision && !state.image) {setDock('query',true);throw new Error('Choose an image first.');} if (!vision && !prompt.trim()) {setDock('query',true);throw new Error('Enter a prompt first.');} // Cancel old read generations without discarding a capture the server may preserve on preflight rejection.
     clearTimeout(state.searchTimer); state.eventRequest++; state.valueRequest++; state.vectorListRequest++; state.witnessRequest++; state.referenceRequest++; state.mapRequest++;
     const body = {prompt, settings: options}; if (vision) body.image_base64 = state.image;
     let result;

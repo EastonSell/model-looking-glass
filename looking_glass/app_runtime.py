@@ -81,6 +81,29 @@ CUDA_FAMILIES = ("gpt2", "t5", "distilbert", "vit", "llama")
 DEFAULT_VRAM_BYTES = 2 * 1024**3
 
 
+def _load_dtype(device, mode):
+    if device.type != "cuda" or mode != "chat":
+        return torch.float32
+    # Check native support on the selected device, excluding slow BF16 emulation.
+    with torch.cuda.device(device):
+        native_bf16 = torch.cuda.get_device_capability(device)[0] >= 8
+        if native_bf16:
+            try:
+                native_bf16 = torch.cuda.is_bf16_supported(including_emulation=False)
+            except TypeError:  # older PyTorch lacking the keyword
+                native_bf16 = torch.cuda.is_bf16_supported()
+    return torch.bfloat16 if native_bf16 else torch.float16
+
+
+def _automatic_vram_allowance(device, ceiling):
+    snapshot = _cuda_snapshot(device)
+    reserve = max(256 * 1024**2, math.ceil(snapshot["total_bytes"] * 0.10))
+    allowance = min(ceiling, snapshot["free_bytes"] + snapshot["reserved_bytes"] - reserve)
+    if allowance <= 0:
+        raise ValueError("CUDA has insufficient free memory after safety headroom")
+    return allowance
+
+
 class CudaStateError(RuntimeError):
     """CUDA state/cleanup cannot be represented as a ready owner."""
 
@@ -279,10 +302,12 @@ def _capture(record, forward, sequence):
 
 
 class LocalModelRuntime:
-    """Exclusive float32 CPU/CUDA owner. Published captures reside in CPU RAM."""
+    """Exclusive CPU/CUDA owner; float32 capture and cached chat never overlap."""
 
-    def __init__(self, *, max_model_bytes=2 * 1024**3):
-        self.max_model_bytes = _positive(max_model_bytes, "max_model_bytes")
+    def __init__(self, *, max_model_bytes=None, max_auto_vram_bytes=64 * 1024**3):
+        from .app_memory import automatic_model_limit
+        self.max_model_bytes = _positive(automatic_model_limit() if max_model_bytes is None else max_model_bytes, "max_model_bytes")
+        self.max_auto_vram_bytes = _positive(max_auto_vram_bytes, "max_auto_vram_bytes", 64 * 1024**3)
         self.model = self.tokenizer = self.processor = None
         self._info = None
         self._lock = threading.Lock()
@@ -526,7 +551,7 @@ class LocalModelRuntime:
                                         "total_bytes": snapshot["total_bytes"], "free_bytes": snapshot["free_bytes"]})
                     available = len(devices) > 1
                     if available:
-                        reason = "CUDA available; GPT-2 and T5 adapters support GPU execution, with CPU capture offload."
+                        reason = "CUDA available; supported model adapters use GPU execution, with CPU capture offload in Capture mode."
             except Exception:
                 devices = devices[:1]
                 reason = "CUDA initialization or telemetry failed; check the installed driver/build before selecting CUDA."
@@ -544,7 +569,8 @@ class LocalModelRuntime:
         capabilities = LocalModelRuntime.capabilities()
         if requested == "auto":
             if capabilities["cuda"]["available"]:
-                return torch.device(capabilities["devices"][1]["id"]), "Auto selected an available CUDA device for this supported adapter."
+                chosen = max((item for item in capabilities["devices"] if item["id"].startswith("cuda:") and item["available"]), key=lambda item: item.get("free_bytes", 0))
+                return torch.device(chosen["id"]), "Auto selected the available CUDA device with the most free memory."
             return torch.device("cpu"), "Auto selected CPU: " + capabilities["cuda"]["reason"]
         if requested == "cuda":
             requested = "cuda:0"
@@ -559,8 +585,8 @@ class LocalModelRuntime:
         return torch.device(normalized), "CUDA explicitly selected; no fallback after a CUDA failure."
 
     @staticmethod
-    def _numerics():
-        return {"dtype": "float32", "torch_version": str(torch.__version__),
+    def _numerics(dtype="float32"):
+        return {"dtype": dtype, "torch_version": str(torch.__version__),
                 "cuda_runtime": torch.version.cuda,
                 "float32_matmul_precision": torch.get_float32_matmul_precision(),
                 "cuda_matmul_allow_tf32": bool(torch.backends.cuda.matmul.allow_tf32),
@@ -664,43 +690,56 @@ class LocalModelRuntime:
                 self._quarantine()
                 raise
 
-    def load(self, path, device="auto", max_vram_bytes=DEFAULT_VRAM_BYTES):
+    def load(self, path, device="auto", max_vram_bytes=None, mode="capture"):
         import transformers
         with self._lock:
             if self._quarantined:
                 raise RuntimeError("model owner is quarantined; restart the local app")
             inspected = self._inspect_files(path)
             selected, reason = self._select_device(device, inspected["family"])
-            _positive(max_vram_bytes, "max_vram_bytes", 64 * 1024**3)
-            if inspected["estimated_float32_weight_bytes"] > self.max_model_bytes:
-                raise ValueError("checkpoint float32 weight estimate exceeds model byte limit")
+            if mode not in ("auto", "chat", "capture"):
+                raise ValueError("mode must be auto, chat or capture")
+            resolved_mode = ("chat" if inspected["family"] in ("gpt2", "llama") else "capture") if mode == "auto" else mode
+            if resolved_mode == "chat" and inspected["family"] not in ("gpt2", "llama"):
+                raise ValueError("Chat mode supports GPT-2 and Llama causal models only")
+            dtype = _load_dtype(selected, resolved_mode)
+            dtype_name = str(dtype).removeprefix("torch.")
+            dtype_bytes = torch.empty((), dtype=dtype).element_size()
+            weight_estimate = inspected["estimated_float32_weight_bytes"] * dtype_bytes // 4
+            if max_vram_bytes is None and selected.type == "cuda":
+                max_vram_bytes = _automatic_vram_allowance(selected, self.max_auto_vram_bytes)
+            if max_vram_bytes is not None:
+                _positive(max_vram_bytes, "max_vram_bytes", 64 * 1024**3)
+            if weight_estimate > self.max_model_bytes:
+                raise ValueError(f"checkpoint {dtype_name} weight estimate exceeds model byte limit")
             tokenizer, processor, input_summary = self._prepare_inputs(inspected)
             self._inspection_result(inspected, input_summary)
             spec = FAMILIES[inspected["family"]]
             config = getattr(transformers, spec["config"]).from_dict(inspected["config"])
-            config._attn_implementation = "eager"
+            attention = "sdpa" if resolved_mode == "chat" else "eager"
+            config._attn_implementation = attention
             model_class = getattr(transformers, spec["architecture"])
             with torch.device("meta"):
                 shell = model_class(config)
-            estimated = sum(x.numel() * x.element_size() for x in shell.parameters())
+            estimated = sum(x.numel() * dtype_bytes for x in shell.parameters())
             del shell
             if estimated > self.max_model_bytes:
                 raise ValueError("configuration parameter storage exceeds model byte limit")
             self._retire_current()
             load_admission = None
             if selected.type == "cuda":
-                load_admission = _cuda_admit(selected, max(estimated, inspected["estimated_float32_weight_bytes"]), max_vram_bytes)
+                load_admission = _cuda_admit(selected, max(estimated, weight_estimate), max_vram_bytes)
             model, report = model_class.from_pretrained(
                 inspected["path"], config=config, local_files_only=True,
                 use_safetensors=True, trust_remote_code=False,
-                torch_dtype=torch.float32, attn_implementation="eager",
+                torch_dtype=dtype, attn_implementation=attention,
                 output_loading_info=True)
             if any(report.get(key) for key in ("missing_keys", "unexpected_keys", "mismatched_keys", "error_msgs")):
                 raise ValueError("checkpoint tensors do not exactly match the supported architecture/head")
             if inspected["family"] == "t5":
                 from .t5_compat import validate_t5_checkpoint_contract
                 validate_t5_checkpoint_contract(model, inspected["config"])
-            model = model.to(device="cpu", dtype=torch.float32).eval()
+            model = model.to(device="cpu", dtype=dtype).eval()
             model.requires_grad_(False)
             self.model, self.tokenizer, self.processor = model, tokenizer, processor
             self._device = selected
@@ -713,8 +752,8 @@ class LocalModelRuntime:
             else: depths = {"encoder": len(model.vit.layers)}
             self._info = {key: value for key, value in inspected.items() if key != "config"}
             self._info.update(device=str(selected), requested_device=device,
-                              device_selection_reason=reason, dtype="float32", state="loading", stack_layers=depths,
-                              capture_device="cpu", max_vram_bytes=self._vram_limit, execution_numerics=self._numerics(),
+                              device_selection_reason=reason, dtype=dtype_name, mode=resolved_mode, state="loading", stack_layers=depths,
+                              capture_device="cpu" if resolved_mode == "capture" else None, max_vram_bytes=self._vram_limit, execution_numerics=self._numerics(dtype_name),
                               identity_note="Local directory and configuration labels, not a cryptographic checkpoint fingerprint or execution attestation.",
                               config_summary={key: value for key, value in model.config.to_dict().items() if key in ("model_type", "architectures", "vocab_size", "n_positions", "n_embd", "n_layer", "n_head", "dim", "hidden_dim", "n_layers", "n_heads", "max_position_embeddings", "d_model", "d_ff", "num_layers", "num_decoder_layers", "num_heads", "hidden_size", "intermediate_size", "num_hidden_layers", "num_attention_heads", "num_key_value_heads", "head_dim", "rope_theta", "rope_scaling", "image_size", "patch_size", "num_channels", "num_labels")},
                               layers=list(range(max(depths.values()))),
@@ -728,9 +767,9 @@ class LocalModelRuntime:
                 try:
                     with _cuda_operation(selected, max_vram_bytes) as telemetry:
                         load_admission = _cuda_admit(selected,
-                            max(estimated, inspected["estimated_float32_weight_bytes"], self._info["parameter_bytes"])
+                            max(estimated, weight_estimate, self._info["parameter_bytes"])
                             + self._info["registered_buffer_bytes"], telemetry["effective_limit_bytes"])
-                        model.to(device=selected, dtype=torch.float32)
+                        model.to(device=selected, dtype=dtype)
                     self._info["gpu_memory"] = {**telemetry, "admission": load_admission, "operation": "model load"}
                 except BaseException:
                     self._quarantine()
@@ -738,8 +777,53 @@ class LocalModelRuntime:
             else:
                 self._info["gpu_memory"] = None
             self._info["state"] = "ready"
-            self._capture_binding = object()
+            self._capture_binding = object() if resolved_mode == "capture" else None
+            if resolved_mode == "chat":
+                from .app_chat import default_context, context_limit
+                self._info["chat_context_tokens"] = default_context(model, selected)
+                self._info["max_chat_context_tokens"] = context_limit(model)
+                self._info["capture_scope"] = "Chat uses KV-cached generation without activation capture."
             return self.info()
+
+    def chat(self, messages, settings=None):
+        from .app_chat import prepare_chat, generate_chat, estimated_chat_bytes
+        with self._lock:
+            if self._quarantined:
+                raise RuntimeError("model owner is quarantined; restart the local app")
+            if self.model is None or self._info.get("mode") != "chat":
+                raise ValueError("Load a causal model in Chat mode first")
+            settings = {} if settings is None else settings
+            prepared = prepare_chat(self.model, self.tokenizer, messages, settings, self._device)
+            if self._device.type != "cuda":
+                try:
+                    return generate_chat(self.model, self.tokenizer, prepared, self._device)
+                except BaseException:
+                    self._quarantine()
+                    raise
+            try:
+                with _cuda_operation(self._device, self._vram_limit) as telemetry:
+                    while True:
+                        try:
+                            admission = _cuda_admit(self._device, estimated_chat_bytes(self.model, prepared), telemetry["effective_limit_bytes"])
+                            break
+                        except ValueError:
+                            if "context_tokens" in settings or prepared["context_tokens"] <= 1024:
+                                raise
+                            # Auto context fits current free memory. Re-tokenization drops
+                            # only old complete turns and reports the effective window.
+                            shorter = {**settings, "context_tokens": prepared["context_tokens"] // 2}
+                            prepared = prepare_chat(self.model, self.tokenizer, messages, shorter, self._device)
+                    try:
+                        result = generate_chat(self.model, self.tokenizer, prepared, self._device)
+                    except BaseException:
+                        self._quarantine()
+                        raise
+                self._info["gpu_memory"] = {**telemetry, "operation": "cached chat", "admission": admission}
+                result["gpu_memory"] = copy.deepcopy(self._info["gpu_memory"])
+                return result
+            except CudaStateError:
+                self._quarantine()
+                raise
 
     def _image_geometry(self):
         size = self.model.config.image_size
@@ -930,6 +1014,8 @@ class LocalModelRuntime:
                 raise RuntimeError("model owner is quarantined after a failed forward; restart the local app")
             if self.model is None:
                 raise ValueError("load a supported local model first")
+            if self._info.get("mode") == "chat":
+                raise ValueError("Reload the model in Capture mode for activation tracing")
             opts = self._settings(settings)
             self._info["execution_numerics"] = self._numerics()
             if self._device.type != "cuda":

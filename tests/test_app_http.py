@@ -194,13 +194,13 @@ def test_cuda_unavailable_is_not_a_successful_cpu_load(tmp_path, monkeypatch, fa
     assert info["device"] == "cpu"
 
 
-def test_lowered_gpu_server_allowance_defaults_apply_to_cpu_request(tmp_path):
+def test_automatic_gpu_allowance_is_omitted_for_cpu_request(tmp_path):
     received = []
     fake = FakeRuntime()
     fake.load = lambda path, **kwargs: received.append(kwargs) or {"device": kwargs["device"]}
     state = AppState(runtime=fake, export_root=tmp_path, max_vram_bytes=512 * 1024**2)
     state.post("load", {"path": "model", "device": "cpu"})
-    assert received == [{"device": "cpu", "max_vram_bytes": 512 * 1024**2}]
+    assert received == [{"device": "cpu", "max_vram_bytes": None}]
 
 
 def test_model_browser_explicit_root_containment_and_no_implicit_home(tmp_path):
@@ -332,3 +332,36 @@ def test_invalid_source_event_filter_returns_actionable_http_error(server, query
     code, body, _ = call(server, "/api/events?" + query)
     assert code == 400 and json.loads(body)["error"]
     assert server[0].store.summary()["event_count"] == 1
+
+
+def test_chat_route_is_authenticated_and_does_not_publish_or_replace_capture(server):
+    state, _ = server
+    call(server, '/api/run', 'POST', {'prompt':'retained capture', 'settings':{}})
+    before = state._run_summary()
+    received = []
+    def chat(messages, settings):
+        received.append((messages, settings))
+        return {'answer':'hello', 'format':'chat_template', 'dropped_messages':0}
+    state.runtime.chat = chat
+    body = {'messages':[{'role':'user', 'content':'hello'}], 'settings':{'max_new_tokens':5}}
+    assert call(server, '/api/chat', 'POST', body, token=False)[0] == 403
+    assert call(server, '/api/chat', 'POST', body, headers={'Origin':'https://attacker.invalid'})[0] == 403
+    code, result, _ = call(server, '/api/chat', 'POST', body)
+    assert code == 200 and json.loads(result)['answer'] == 'hello'
+    assert received == [(body['messages'], body['settings'])]
+    assert state._run_summary() == before
+
+
+def test_load_passes_auto_chat_mode_and_automatic_budget(server):
+    received = []
+    server[0].runtime.load = lambda path, **kwargs: received.append(kwargs) or {}
+    assert call(server, '/api/load', 'POST', {'path':'model', 'mode':'auto'})[0] == 200
+    assert received == [{'device':'auto', 'max_vram_bytes':None, 'mode':'auto'}]
+    assert call(server, '/api/load', 'POST', {'path':'model', 'mode':'unexpected'})[0] == 400
+
+
+def test_injected_runtime_cannot_bypass_automatic_server_gpu_ceiling(tmp_path):
+    from looking_glass.app_runtime import LocalModelRuntime
+    runtime = LocalModelRuntime(max_auto_vram_bytes=8*1024**3)
+    AppState(runtime=runtime, export_root=tmp_path, max_vram_bytes=512*1024**2)
+    assert runtime.max_auto_vram_bytes == 512*1024**2
