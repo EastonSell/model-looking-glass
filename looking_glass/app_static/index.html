@@ -4,12 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="mlg-token" content="__MLG_TOKEN__">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light">
   <title>Model Looking Glass · Local inspector</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/app_lens.css">
   <script src="/vendor/three-0.128.0.min.js" defer></script>
   <script src="/vendor/OrbitControls-0.128.0.js" defer></script>
   <script src="/app_scene.js" defer></script>
+  <script src="/app_lens.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -159,6 +162,65 @@
     </section>
     </div></aside>
     <div id="scene-ui" class="scene-ui">
+    <section id="lens-view" class="lens" aria-labelledby="lens-heading" hidden>
+      <header class="lens-header">
+        <div class="lens-title">
+          <h2 id="lens-heading">What each layer would say next</h2>
+          <p id="lens-subtitle" class="lens-sub">Logit lens: every captured block output, read through the model's own final norm and unembedding.</p>
+        </div>
+        <div class="lens-controls">
+          <div class="lens-stepper" role="group" aria-label="Generation step">
+            <button id="lens-forward-prev" class="lens-step" type="button" aria-label="Previous generation step" title="Previous generation step">&lsaquo;</button>
+            <span id="lens-forward-status" role="status" aria-live="polite">Step 1 of 1</span>
+            <button id="lens-forward-next" class="lens-step" type="button" aria-label="Next generation step" title="Next generation step">&rsaquo;</button>
+          </div>
+          <div class="lens-field"><label for="lens-color">Colour cells by</label>
+            <select id="lens-color">
+              <option value="probability">Top token probability</option>
+              <option value="answer">Rank of the model's answer</option>
+              <option value="pinned">Rank of a tracked token</option>
+            </select></div>
+        </div>
+      </header>
+      <div id="lens-pin-form" class="lens-pins" role="group" aria-label="Track a token through the layers">
+        <label for="lens-pin-text">Track a token</label>
+        <input id="lens-pin-text" type="text" maxlength="64" placeholder="e.g. Paris" spellcheck="false" autocomplete="off">
+        <button id="lens-pin-add" type="button">Track</button>
+        <ul id="lens-pin-list" class="lens-pin-list" aria-label="Tracked tokens"></ul>
+      </div>
+      <p id="lens-status" class="lens-status" role="status" aria-live="polite"></p>
+      <div id="lens-body" hidden>
+        <div class="lens-window" id="lens-window" hidden>
+          <button id="lens-window-prev" class="lens-step" type="button" aria-label="Earlier positions" title="Earlier positions">&lsaquo;</button>
+          <span id="lens-window-status"></span>
+          <button id="lens-window-next" class="lens-step" type="button" aria-label="Later positions" title="Later positions">&rsaquo;</button>
+        </div>
+        <div id="lens-grid-scroll" class="lens-grid-scroll" tabindex="-1">
+          <table id="lens-grid" class="lens-grid"><caption id="lens-grid-caption" class="sr-only">Top next-token read-out for every captured layer and input position</caption><thead id="lens-grid-head"></thead><tbody id="lens-grid-body"></tbody></table>
+        </div>
+        <div id="lens-legend" class="lens-legend"></div>
+        <div class="lens-detail">
+          <section id="lens-readout" class="lens-card" aria-labelledby="lens-readout-heading">
+            <h3 id="lens-readout-heading">Read-out</h3>
+            <p id="lens-readout-context" class="lens-sub"></p>
+            <ol id="lens-readout-list" class="lens-readout-list"></ol>
+            <p id="lens-readout-answer" class="lens-sub"></p>
+            <button id="lens-open-vector" class="secondary" type="button" title="Open this vector's exact values, edits and experiments in the Selected vector panel">Open exact vector</button>
+          </section>
+          <section id="lens-trajectory" class="lens-card" aria-labelledby="lens-trajectory-heading">
+            <h3 id="lens-trajectory-heading">Rank through the layers</h3>
+            <p id="lens-trajectory-context" class="lens-sub"></p>
+            <div id="lens-chart-legend" class="lens-chart-legend"></div>
+            <div id="lens-chart" class="lens-chart"></div>
+            <details id="lens-chart-table-options" class="lens-table-view"><summary>Show as table</summary>
+              <div class="table-scroll"><table id="lens-chart-table"><thead id="lens-chart-table-head"></thead><tbody id="lens-chart-table-body"></tbody></table></div>
+            </details>
+          </section>
+        </div>
+        <p id="lens-scope" class="lens-scope"></p>
+      </div>
+      <div id="lens-tooltip" class="lens-tooltip" role="presentation" hidden></div>
+    </section>
     <details id="explorer-options" class="scene-explorer" hidden><summary>Explore capture</summary>
     <section id="trace-panel" class="panel" aria-labelledby="trace-heading" hidden>
       <div class="panel-heading sr-only"><div><h2 id="trace-heading">Captured layers</h2></div><span id="event-total" class="status-text"></span></div>
@@ -195,10 +257,10 @@
       <button id="scene-panels" class="scene-icon" type="button" aria-label="Show panels" title="Show or hide panels" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
       <span class="scene-toolbar-divider" aria-hidden="true"></span>
       <div class="scene-depth" role="group" aria-label="Layer navigation"><button id="scene-layer-prev" class="scene-icon" type="button" aria-label="Previous layer" title="Previous layer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button><span id="scene-depth-status" role="status" aria-live="polite"></span><button id="scene-layer-next" class="scene-icon" type="button" aria-label="Next layer" title="Next layer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button></div>
-      <label class="sr-only" for="scene-view">View</label><select id="scene-view" aria-label="Scene view"><option value="scene">3D</option><option value="list">List</option></select>
+      <label class="sr-only" for="scene-view">View</label><select id="scene-view" aria-label="Capture view"><option value="lens">Lens</option><option value="scene">3D sites</option><option value="list">Site list</option></select>
     </div>
     </div>
-    <aside id="selection-dock" class="workspace-dock selection-dock" aria-label="Selected capture"><div class="dock-toolbar"><span>Selected site</span><button id="selection-dock-toggle" type="button" aria-label="Collapse selected capture" aria-controls="selection-dock-body" aria-expanded="true" title="Collapse selected capture ([)">‹</button></div><div id="selection-dock-body"><p id="selection-empty" class="hint">Choose a captured site in the scene or list.</p>
+    <aside id="selection-dock" class="workspace-dock selection-dock" aria-label="Selected capture"><div class="dock-toolbar"><span>Selected vector</span><button id="selection-dock-toggle" type="button" aria-label="Collapse selected capture" aria-controls="selection-dock-body" aria-expanded="true" title="Collapse selected capture ([)">‹</button></div><div id="selection-dock-body"><p id="selection-empty" class="hint">Choose a cell in the lens, or a captured site in the list.</p>
       <div id="vector-panel" class="vector-panel source-dock" hidden>
         <div class="panel-heading"><h3 id="vector-heading" tabindex="-1">Selected observation</h3><span id="dtype-badge" class="status-text"></span></div>
         <div id="source-readable" class="source-readable" role="status">Choose a captured module and source position.</div>

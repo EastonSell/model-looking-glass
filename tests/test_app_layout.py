@@ -176,10 +176,11 @@ def test_readable_explorer_and_outputs_are_primary_not_raw_numbers():
         assert not any(n.tag == "details" for n in ids[name].ancestors())
 
 
-def test_workspace_has_local_dark_presentation_and_truthful_readout():
+def test_workspace_has_local_light_presentation_and_truthful_readout():
     doc = page()
     css = (ROOT / "looking_glass/app_static/app.css").read_text()
-    assert "color-scheme: dark" in css
+    assert "color-scheme: light" in css and "color-scheme: dark" not in css
+    assert css.count(":root{") == 1, "theme tokens live in one block"
     assert "complete model output—not from decoding the selected intermediate activation" in doc.root.text
     assert "Hidden feature numbers are not token IDs" in doc.root.text
     assert "/app_scene.js" in (ROOT / "looking_glass/app_static/index.html").read_text()
@@ -236,7 +237,7 @@ def test_discovery_is_explicit_and_wireframe_is_not_fake_model_data():
     assert ids["folder-browser"] in ids["browse-current"].ancestors()
     assert ids["inspect-button"].tag == "button"
     css = (ROOT / "looking_glass/app_static/app.css").read_text()
-    assert "#04050a" in css and "rgba(10,13,19,.82)" in css
+    assert "--bg:#f4f3ee" in css and "--panel:#fcfcfb" in css
     assert "radial-gradient" not in css
     assert "rotateY(" not in css  # Real scene geometry lives in app_scene.js, not CSS illusions.
 
@@ -320,9 +321,9 @@ def test_real_scene_and_two_docks_replace_perspective_dashboard():
         assert ids[f'{side}-dock-toggle'].attrs['aria-controls'] == f'{side}-dock-body'
         assert ids[f'{side}-dock-toggle'].attrs['aria-expanded'] == 'true'
     sources=[e.attrs['src'] for e in doc.elements if e.tag=='script']
-    assert sources[-4:] == ['/vendor/three-0.128.0.min.js','/vendor/OrbitControls-0.128.0.js','/app_scene.js','/app.js']
+    assert sources[-5:] == ['/vendor/three-0.128.0.min.js','/vendor/OrbitControls-0.128.0.js','/app_scene.js','/app_lens.js','/app.js']
     css=(ROOT/'looking_glass/app_static/app.css').read_text()
-    assert '#04050a' in css
+    assert '--bg:#f4f3ee' in css
     assert 'rotateY(' not in css and 'perspective:' not in css
     assert 'text-transform:uppercase' not in css and 'text-transform: uppercase' not in css
     assert not any(e.attrs.get('class') in ('brand','brand-mark') for e in doc.elements)
@@ -340,7 +341,7 @@ def test_alerts_and_scene_docks_keep_accessible_neutral_chrome():
     for selectors, declarations in re.findall(r'([^{}]+)\{([^{}]*)\}', css):
         if any(name in selectors for name in ('.notice', '.approximation', '#notice', '#demo-model-warning')):
             assert not re.search(r'text-align\s*:\s*(center|right)', declarations), selectors
-    assert '--error-text:#e8eaf0' in css and '--warning-text:#e8eaf0' in css
+    assert '--error-text:#1a1a19' in css and '--warning-text:#1a1a19' in css
     assert '::-webkit-scrollbar{width:4px;height:4px}' in css
 
 

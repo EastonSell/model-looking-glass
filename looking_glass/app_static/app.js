@@ -39,13 +39,35 @@
     if(sceneApi)sceneApi.resize();syncSceneControls();
   }
   function sceneUnavailable(reason){
-    sceneFailed=true;$('scene-render-status').textContent=reason||'3D rendering unavailable. Use the captured-site list.';$('scene-view').value='list';$('layer-map-options').open=true;$('explorer-options').open=true;syncSceneVisibility();
+    sceneFailed=true;$('scene-render-status').textContent=reason||'3D rendering unavailable. Use the captured-site list.';if($('scene-view').value==='scene'){$('scene-view').value='list';$('layer-map-options').open=true;$('explorer-options').open=true;}syncSceneVisibility();
+  }
+  // Lens is the default view; the 3D site scene and the site list remain available.
+  let lensApi=null, viewChosen=false;
+  async function selectCapturedVector(eventIndex, vector) {
+    const result = await api(`events?offset=${eventIndex}&limit=1`);
+    const event = (result.events || [])[0];
+    if (!event || event.index !== eventIndex) throw new Error('That capture is no longer available; run again.');
+    setDock('selection', true);
+    await chooseEvent({...event, matched_vector_index: vector});
+  }
+  function initializeLens(){
+    const library=typeof window!=='undefined'?window.MLGLens:null;
+    if(!library||typeof library.create!=='function'||!$('lens-view'))return;
+    lensApi=library.create($('lens-view'),{api,selectVector:selectCapturedVector});
+  }
+  function syncLens(){
+    if(state.run&&!viewChosen)$('scene-view').value=state.run.lens_available&&lensApi?'lens':sceneFailed?'list':'scene';
+    if(lensApi){lensApi.setRun(state.run);lensApi.setBusy(state.busy);}
+    syncSceneVisibility();
   }
   function syncSceneVisibility(){
-    const scene=$('scene-view').value==='scene'&&!sceneFailed&&!!sceneApi;
+    const view=$('scene-view').value,lens=view==='lens'&&!!lensApi;
+    $('scene-ui').setAttribute('data-view',lens?'lens':view);$('layer-map-body').setAttribute('data-view',view==='scene'?'scene':'list');
+    $('lens-view').hidden=!lens||!state.run;if(lensApi)lensApi.setActive(lens&&!!state.run);
+    const scene=view==='scene'&&!sceneFailed&&!!sceneApi;
     $('scene-reset').disabled=state.busy||!scene||!state.mapCapture;
     $('scene-canvas').hidden=!scene||!state.mapCapture;$('layer-map-body').hidden=scene&&!!state.mapCapture;
-    if(!scene && state.run)$('explorer-options').open=true;
+    if(!scene && !lens && state.run)$('explorer-options').open=true;
     if(sceneApi){sceneApi.setActive(scene&&!!state.mapCapture);if(scene&&state.mapCapture)sceneApi.resize();}syncSceneControls();
   }
   function replaceSceneLayers(layers){
@@ -240,7 +262,7 @@
     $('model-replace-warning').hidden = !state.model && !state.run && !state.experiment;
   }
   function syncButtons() {
-    syncDownloads(); syncDeviceChoice();
+    syncDownloads(); syncDeviceChoice(); if (lensApi) lensApi.setBusy(state.busy);
     $('scene-toolbar').hidden = !state.run; $('explorer-options').hidden = !state.run;syncSceneControls();
     $('scene-reset').disabled = state.busy || sceneFailed || !sceneApi || !state.mapCapture || $('scene-view').value !== 'scene';
     const ready = state.model && state.model.state !== 'quarantined', vision = String(state.model?.family || '').toLowerCase().includes('vit');
@@ -440,13 +462,13 @@
     state.outputGeneration++; state.outputStep = 0; state.tokenOffset = 0; state.tokenTotal = 0;
     $('output-readout').replaceChildren(); $('input-token-strip').replaceChildren(); $('output-note').textContent = ''; $('input-token-note').textContent = ''; $('input-token-page').textContent = ''; $('output-step').value = '0';
     clearLayerMap();
-    clearExperiment(); clearSensitivity(); clearRepeat(); clearPatch(); for (const kind of ['sensitivity','repeat','patch']) setExperimentJobStatus(kind, ''); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
+    clearExperiment(); clearSensitivity(); clearRepeat(); clearPatch(); for (const kind of ['sensitivity','repeat','patch']) setExperimentJobStatus(kind, ''); resetVectorPicker(); clearTimeout(state.searchTimer); state.filterError = false; state.eventQuery = ''; $('source-options-summary').textContent = 'Exact source filters'; $('event-filter').value = ''; $('source-token').value = ''; $('source-forward').value = ''; $('source-stack').value = ''; state.eventTotalAll = 0; state.run = null; syncLens(); state.event = null; state.events = []; state.eventOffset = 0; state.eventTotal = 0; state.valueOffset = 0; state.valueTotal = 0; state.eventRequest++; state.valueRequest++;
     $('imported-control-warning').hidden = true; $('imported-comparison').hidden = true; clearDistribution('imported'); $('demo-capture-warning').hidden = true; $('result-panel').hidden = true; $('trace-panel').hidden = true; $('vector-panel').hidden = true; $('event-body').replaceChildren(); $('value-body').replaceChildren(); $('bin-body').replaceChildren(); $('bin-plot').replaceChildren(); $('answer').textContent = ''; $('capture-model').textContent = ''; $('capture-info').textContent = ''; $('event-metadata').textContent = ''; $('run-details').textContent = ''; $('save-status').textContent = 'Saving includes prompts, output, metadata and full tensor values; these may be sensitive.'; syncButtons();
   }
   function showRun(run) {
     $('scene-empty').hidden = true;
     state.outputStep = 0; state.tokenOffset = 0;
-    state.run = run; $('imported-comparison').hidden = run.run_kind !== 'intervention_comparison'; if (run.run_kind === 'intervention_comparison') { renderDistribution('imported', run.experiment || {}); if(controlWarning('imported-control-warning', run.experiment || {}, run.model))setDock('query',true); } else clearDistribution('imported'); $('result-panel').hidden = false; $('trace-panel').hidden = false; $('answer').textContent = display(run.answer ?? 'No textual output.'); $('task-badge').textContent = run.task || 'Observed run';
+    state.run = run; syncLens(); $('imported-comparison').hidden = run.run_kind !== 'intervention_comparison'; if (run.run_kind === 'intervention_comparison') { renderDistribution('imported', run.experiment || {}); if(controlWarning('imported-control-warning', run.experiment || {}, run.model))setDock('query',true); } else clearDistribution('imported'); $('result-panel').hidden = false; $('trace-panel').hidden = false; $('answer').textContent = display(run.answer ?? 'No textual output.'); $('task-badge').textContent = run.task || 'Observed run';
     const captureModel = run.model; $('demo-capture-warning').hidden = !isDemo(captureModel); if(isDemo(captureModel))setDock('query',true); $('capture-model').textContent = captureModel ? `Capture model: ${captureModel.name || captureModel.family || captureModel.architecture || 'recorded model'}${captureModel.device ? ' · ' + captureModel.device : ''} (may differ from loaded model).` : 'Model identity was not recorded in this capture.';
     $('capture-info').textContent = display({model: captureModel || null, settings: run.settings || null});
     $('run-metrics').replaceChildren();
@@ -1147,8 +1169,8 @@ Same feature coordinates—not token alignment. Inputs and source positions may 
   }) && $('session-options').open) focusModelInput(); });
   $('load-button').addEventListener('click', async () => { if (await action('Loading local model on the selected device. This may take a while…', async () => { const path = $('model-path').value.trim(); if (!path) throw new Error('Enter a local checkpoint folder.'); const execution = loadSettings(); const info = await api('load', {path, ...execution}); clearView(); resetChat(); setModel(info); await refreshReferenceOptional(); }) && $('session-options').open) focusModelInput(); });
   $('open-button').addEventListener('click', () => action('Opening saved capture into RAM…', async () => { const path = $('open-path').value.trim(); if (!path) throw new Error('Enter a saved capture folder.'); const opened = await api('open', {path}); clearView(); showRun(opened); await loadEvents(); $('saved-status').textContent = 'Selected capture opened and validated. Other listed exports remain unverified.'; await refreshReferenceOptional(); }));
-  $('scene-view').value = 'scene'; $('layer-map-body').setAttribute('data-view', 'scene');
-  $('scene-view').addEventListener('change', () => { const view = $('scene-view').value; if (!['scene','list'].includes(view)||sceneFailed) $('scene-view').value = 'list'; $('layer-map-body').setAttribute('data-view',$('scene-view').value);syncSceneVisibility(); });
+  initializeLens(); $('scene-view').value = lensApi ? 'lens' : 'scene'; $('layer-map-body').setAttribute('data-view', lensApi ? 'list' : 'scene');
+  $('scene-view').addEventListener('change', () => { const view = $('scene-view').value; viewChosen = true; if (!['lens','scene','list'].includes(view)||(view==='scene'&&sceneFailed)||(view==='lens'&&!lensApi)) $('scene-view').value = 'list'; if ($('scene-view').value === 'lens') $('explorer-options').open = false; syncSceneVisibility(); });
   function focusModelInput() {
     if (!state.model || state.model.state === 'quarantined') return;
     setDock('query', true); $('session-options').open = false;

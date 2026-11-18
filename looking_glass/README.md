@@ -10,6 +10,7 @@ Start here when changing the code. To use the app, follow the [app guide](../doc
 | Local model loading and inference | [app_runtime.py](app_runtime.py) |
 | Captures, coordinates and save/reopen | [app_storage.py](app_storage.py) |
 | Compare a reference vector | [app_reference.py](app_reference.py) |
+| Lens read-out (logit lens) | [app_lens.py](app_lens.py), [app_static/app_lens.js](app_static/app_lens.js) |
 | Controlled activation edits | [app_interventions.py](app_interventions.py) |
 | Browse local models or download a catalog model | [app_discovery.py](app_discovery.py), [app_downloads.py](app_downloads.py) |
 | GPU acceptance check | [app_selftest.py](app_selftest.py) |

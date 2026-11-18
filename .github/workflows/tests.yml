@@ -1,0 +1,40 @@
+name: App tests
+
+# Runs the browser-workbench tests on every pull request and push to main.
+# The research-study tests are not included: several need CUDA or older
+# dependency versions and should be triaged separately.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install CPU dependencies
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.15.0
+          python -m pip install -e ".[app,test]"
+      - name: Python app tests
+        run: python -m pytest tests -q -k "app_"
+      - name: Frontend contracts
+        run: |
+          node tests/app_ui_contract.cjs > /dev/null
+          node tests/app_scene_contract.cjs
+          node tests/app_lens_contract.cjs

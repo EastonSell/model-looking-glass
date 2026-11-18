@@ -1,6 +1,6 @@
 # Accessibility
 
-The interface should work without relying only on color, precise pointer movement or the 3D view. Accessibility is ongoing work; this project does not claim a verified WCAG conformance level.
+The interface should work without relying only on color, precise pointer movement or any one view. Accessibility is ongoing work; this project does not claim a verified WCAG conformance level.
 
 ## Report a problem
 
@@ -11,6 +11,7 @@ The interface should work without relying only on color, precise pointer movemen
 - Use native buttons, labels and inputs. Give controls understandable names.
 - Keep controls keyboard reachable, focus visible, and focus order sensible.
 - Preserve the list alternative to the 3D canvas and readable text output.
+- Keep the lens grid a real table with row and column headers, and keep the chart's table view.
 - Do not communicate a result by color alone.
 - Check contrast, zoom, narrow layouts and reduced-motion behavior.
 - Describe the checks you actually performed; a screenshot alone does not verify keyboard or screen-reader access.

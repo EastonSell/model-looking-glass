@@ -943,6 +943,38 @@ class LocalModelRuntime:
         with self._lock:
             return self._capture_binding
 
+    def lens_readout(self, binding, sources, *, top_k, pinned_ids, input_token_ids,
+                     position_offset=0, recorded_next_token_id=None, resolve=None):
+        """Read-only logit-lens decode of captured vectors on the live model's device.
+
+        No hooks are installed and no model state changes, so an ordinary
+        validation error does not quarantine the owner; a CUDA state error does.
+        """
+        from .app_lens import planned_bytes, project, resolve_text
+        with self._lock:
+            if self._quarantined:
+                raise RuntimeError("model owner is quarantined; restart the local app")
+            if binding is None or binding is not self._capture_binding or self.model is None:
+                raise ValueError("lens read-out requires the original live model binding")
+            family = self._info["family"]
+            options = {"top_k": top_k, "pinned_ids": pinned_ids, "input_token_ids": input_token_ids,
+                       "position_offset": position_offset, "recorded_next_token_id": recorded_next_token_id}
+            if self._device.type == "cuda":
+                try:
+                    with _cuda_operation(self._device, self._vram_limit) as telemetry:
+                        _cuda_admit(self._device, planned_bytes(len(input_token_ids), self.model.config.vocab_size),
+                                    telemetry["effective_limit_bytes"])
+                        result = project(self.model, self.tokenizer, family, sources, **options)
+                    result["gpu_memory"] = copy.deepcopy(telemetry)
+                except CudaStateError:
+                    self._quarantine()
+                    raise
+            else:
+                result = project(self.model, self.tokenizer, family, sources, **options)
+            result["resolved"] = None if resolve is None else resolve_text(self.tokenizer, resolve)
+            result["numerics"] = self._numerics()
+            return result
+
     def intervene_fixed_forward(self, binding, source, operation, feature_index=None,
                                 value=None, max_pair_bytes=128 * 1024**2, *, _include_baseline_digest=False):
         from .app_interventions import validate_request, execute

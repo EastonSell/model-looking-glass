@@ -1,10 +1,10 @@
 # Model Looking Glass
 
-A local PyTorch debugger for mechanistic interpretability. Explore captured layers, inspect full activation vectors, compare prompts, and try temporary edits—without changing checkpoint files.
+A local PyTorch debugger for mechanistic interpretability. See what each layer would say next, inspect full activation vectors, compare prompts, and try temporary edits—without changing checkpoint files.
 
-![Model Looking Glass showing two captured layers, a selected activation, model chat, and the icon toolbar.](docs/images/model-looking-glass-ui.png)
+![Model Looking Glass lens view: a grid of GPT-2's top next-token guess at every layer and input position, with the token " Paris" tracked from rank 6,060 at layer 0 to rank 1 at layer 10.](docs/images/model-looking-glass-lens.png)
 
-*Untrained CPU demo — real local UI with synthetic output.*
+*GPT-2 small on CPU, prompt "The Eiffel Tower is located in the city of". Rows are layers, columns are input tokens; each cell is that layer's top next-token guess, and colour is the rank of " Paris".*
 
 **[Download the app](https://github.com/EastonSell/model-looking-glass/releases/latest)** · [App guide](docs/LOCAL_APP.md) · [Discussions](https://github.com/EastonSell/model-looking-glass/discussions)
 
@@ -46,9 +46,23 @@ Reopen with `py -3 start.py` on Windows or `python3 start.py` on Linux/macOS. Ke
 
 <a id="your-first-comparison"></a>
 
+## The lens view
+
+After **Run & capture** on GPT-2 or a supported Llama, the centre of the app is a **layer × token grid**. Each cell answers one question: *if the model stopped at this layer, which token would it say next?* It is a [logit lens](https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens): the captured block output is passed through the model's own final norm and unembedding.
+
+- **Track a token** (type it, or click one in the read-out) to colour the grid by that token's rank and plot its rank through the layers.
+- **Click a cell** for its top tokens, then **Open exact vector** to inspect, edit or patch that same activation.
+- The last layer's read-out must equal the token the model really produced; the app checks this on every read-out and says so.
+
+Earlier layers were never trained to be read this way, so lower rows are an approximation—useful for seeing *when* an answer appears, not proof of *how*. [Lens guide](docs/LOCAL_APP.md#lens-what-each-layer-would-say-next).
+
+## How this relates to other tools
+
+This is a local app with a UI, not a research library. For programmatic work at scale, [TransformerLens](https://github.com/TransformerLensOrg/TransformerLens) and [nnsight](https://github.com/ndif-team/nnsight) are the mature choices for hooks, patching and lenses across many architectures. Model Looking Glass adds a no-code workbench around the same basic methods—capture, logit lens, zero/add/replace edits and cross-prompt patching—with exact-value inspection and explicit controls. It does **not** implement the Jacobian lens from Anthropic's 2026 global-workspace paper, sparse autoencoders or feature attribution.
+
 ## Before you run
 
-**Save captures before replacing them.** Keep the app local; exports can contain private prompts. Memory estimates aren't guarantees. Token predictions are whole-model output, not words decoded from hidden vectors.
+**Save captures before replacing them.** Keep the app local; exports can contain private prompts. Memory estimates aren't guarantees. In the result panel, token predictions are whole-model output; only the lens view decodes hidden vectors, and it labels itself as an approximation below the last layer.
 
 <a id="what-the-research-supports"></a>
 <a id="smaller-checkout-intact-evidence"></a>
