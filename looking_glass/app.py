@@ -27,6 +27,7 @@ STATIC_ROUTES = {
     "/app.css": ("app.css", "text/css; charset=utf-8"),
     "/app_scene.js": ("app_scene.js", "application/javascript; charset=utf-8"),
     "/app_lens.js": ("app_lens.js", "application/javascript; charset=utf-8"),
+    "/app_field.js": ("app_field.js", "application/javascript; charset=utf-8"),
     "/app_lens.css": ("app_lens.css", "text/css; charset=utf-8"),
     "/favicon.svg": ("favicon.svg", "image/svg+xml"),
     "/vendor/three-0.128.0.min.js": ("vendor/three-0.128.0.min.js", "application/javascript; charset=utf-8"),

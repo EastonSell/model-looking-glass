@@ -52,6 +52,7 @@ After **Run & capture** on GPT-2 or a supported Llama, the centre of the app is 
 
 - **Track a token** (type it, or click one in the read-out) to colour the grid by that token's rank and plot its rank through the layers.
 - **Click a cell** for its top tokens, then **Open exact vector** to inspect, edit or patch that same activation.
+- **Switch to Field** for the same read-out as a moving field of text, with a depth control that scrubs through the layers.
 - The last layer's read-out must equal the token the model really produced; the app checks this on every read-out and says so.
 
 Earlier layers were never trained to be read this way, so lower rows are an approximation—useful for seeing *when* an answer appears, not proof of *how*. [Lens guide](docs/LOCAL_APP.md#lens-what-each-layer-would-say-next).

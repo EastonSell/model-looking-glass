@@ -184,7 +184,8 @@ def test_lens_over_authenticated_http_and_static_assets(tmp_path):
         assert code == 200 and json.loads(data)["consistency"]["matches"]
         code, data, _ = call(endpoint, "/api/lens", "POST", {"capture_id": "stale"})
         assert code == 400 and "stale" in json.loads(data)["error"]
-        for path, kind in (("/app_lens.js", "application/javascript"), ("/app_lens.css", "text/css"),
+        for path, kind in (("/app_lens.js", "application/javascript"), ("/app_field.js", "application/javascript"),
+                           ("/app_lens.css", "text/css"),
                            ("/favicon.svg", "image/svg+xml")):
             code, body, headers = call(endpoint, path)
             assert code == 200 and body and headers["Content-Type"].startswith(kind), path
@@ -192,7 +193,8 @@ def test_lens_over_authenticated_http_and_static_assets(tmp_path):
         httpd.shutdown(); thread.join(5); httpd.server_close()
 
 
-def test_lens_view_encoding_contract_in_node():
+@pytest.mark.parametrize("script", ["app_lens_contract.cjs", "app_field_contract.cjs"])
+def test_lens_view_encoding_contracts_in_node(script):
     import shutil
     import subprocess
     from pathlib import Path
@@ -200,6 +202,6 @@ def test_lens_view_encoding_contract_in_node():
     if node is None:
         pytest.skip("node is not installed")
     root = Path(__file__).resolve().parents[1]
-    result = subprocess.run([node, str(root / "tests/app_lens_contract.cjs")], cwd=root,
+    result = subprocess.run([node, str(root / "tests" / script)], cwd=root,
                             capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stdout + result.stderr

@@ -13,6 +13,7 @@
   <script src="/vendor/OrbitControls-0.128.0.js" defer></script>
   <script src="/app_scene.js" defer></script>
   <script src="/app_lens.js" defer></script>
+  <script src="/app_field.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -194,6 +195,21 @@
           <button id="lens-window-prev" class="lens-step" type="button" aria-label="Earlier positions" title="Earlier positions">&lsaquo;</button>
           <span id="lens-window-status"></span>
           <button id="lens-window-next" class="lens-step" type="button" aria-label="Later positions" title="Later positions">&rsaquo;</button>
+        </div>
+        <div class="lens-display" role="group" aria-label="Display">
+          <button id="lens-display-grid" type="button" aria-pressed="true" title="Layer by token table">Grid</button>
+          <button id="lens-display-field" type="button" aria-pressed="false" title="Moving field of text with a depth control">Field</button>
+        </div>
+        <div id="lens-field" class="lens-field" hidden>
+          <div class="lens-knob">
+            <button id="lens-field-play" class="lens-step" type="button" aria-pressed="false" aria-label="Play through the layers" title="Play from the first layer to the last">&#9654;</button>
+            <label for="lens-field-depth">Depth</label>
+            <input id="lens-field-depth" type="range" min="0" max="1" step="0.05" value="1" aria-describedby="lens-field-key">
+            <span id="lens-field-depth-status" class="lens-knob-status" role="status" aria-live="polite"></span>
+            <button id="lens-field-motion" type="button" aria-pressed="true" title="Wave, flicker and settling add no data; turn them off for a still picture">Motion</button>
+          </div>
+          <div id="lens-field-scroll" class="lens-field-scroll"><canvas id="lens-field-canvas" role="img" aria-label="Field display of the same read-out as the grid. Each column is one position's next-token distribution at the chosen depth. Use the Grid display for a table."></canvas></div>
+          <p id="lens-field-key" class="lens-field-key">Each column is one position's next-token distribution at this depth. A word fills rows in proportion to its probability (16 rows = 100%), most likely on top. Grey fragments are probability outside the top 10 tokens. Choppier water and faster flicker mean higher entropy. Coloured blocks are tracked tokens; in the selected column, the outlined block is the model's answer. Motion adds no data.</p>
         </div>
         <div id="lens-grid-scroll" class="lens-grid-scroll" tabindex="-1">
           <table id="lens-grid" class="lens-grid"><caption id="lens-grid-caption" class="sr-only">Top next-token read-out for every captured layer and input position</caption><thead id="lens-grid-head"></thead><tbody id="lens-grid-body"></tbody></table>

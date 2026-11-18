@@ -306,6 +306,16 @@ For a live GPT-2 or supported Llama capture that includes **block** outputs, the
 - **Open exact vector** selects the same activation in the left panel for exact values, edits, experiments and references.
 - **Step** moves between generation steps. Each step is one full forward pass over the prompt plus the tokens generated so far.
 
+**Field display.** **Grid / Field** above the read-out switches between the table and a moving field of text. It shows the same numbers, drawn differently:
+
+- Each column is one position's next-token distribution at the chosen **Depth**. A word fills rows in proportion to its probability (16 rows = 100%), most likely on top. Grey fragments are the probability outside the top ten tokens.
+- **Depth** scrubs through the layers and blends between neighbours, so the field settles as it moves towards the last layer. Left and right arrows move one layer; Shift + arrow moves a small step. Play runs from the first layer to the last. The read-out and chart follow the nearest layer.
+- Wave height and flicker rise with entropy, so uncertain columns look choppy. **Motion** turns the wave, flicker and settling off. Motion adds no information the still picture lacks, is off by default when the system asks for reduced motion, and stops while the tab is hidden.
+- Tracked tokens are coloured blocks. In the selected column, the outlined block is the model's answer. Click a word to track it; click a column to select that position.
+- The field is drawn on a canvas, which assistive technology cannot read. The grid, read-out and chart table carry the same data as text.
+
+The depth control borrows the idea of a single scrub control from Chuanqi Sun's [Spaceship IDE](https://github.com/chuanqisun/spaceship); the code here is independent.
+
 **Built-in check.** At the model's last layer the lens is not an approximation: it is exactly the model's output distribution. Every read-out compares the last layer's top token at the final position with the token recorded during the run and reports whether they match. A mismatch is shown as an error and means the read-out should not be trusted.
 
 **Limits.**

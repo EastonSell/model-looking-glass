@@ -321,7 +321,7 @@ def test_real_scene_and_two_docks_replace_perspective_dashboard():
         assert ids[f'{side}-dock-toggle'].attrs['aria-controls'] == f'{side}-dock-body'
         assert ids[f'{side}-dock-toggle'].attrs['aria-expanded'] == 'true'
     sources=[e.attrs['src'] for e in doc.elements if e.tag=='script']
-    assert sources[-5:] == ['/vendor/three-0.128.0.min.js','/vendor/OrbitControls-0.128.0.js','/app_scene.js','/app_lens.js','/app.js']
+    assert sources[-6:] == ['/vendor/three-0.128.0.min.js','/vendor/OrbitControls-0.128.0.js','/app_scene.js','/app_lens.js','/app_field.js','/app.js']
     css=(ROOT/'looking_glass/app_static/app.css').read_text()
     assert '--bg:#f4f3ee' in css
     assert 'rotateY(' not in css and 'perspective:' not in css

@@ -91,6 +91,7 @@
       forward: 0, offset: 0, request: 0, data: null,
       pins: [],            // [{token_id, text, slot}]
       colorBy: 'probability', colorPin: null,
+      display: 'grid',     // 'grid' (table) or 'field' (moving text)
       selected: null,      // {layer, position}
       cells: new Map(),    // "layer:position" -> button
     };
@@ -346,12 +347,47 @@
       tip.style.left = left + 'px'; tip.style.top = top + 'px';
     }
     function hideTip() { $('lens-tooltip').hidden = true; }
+    /* Tooltip for the field display: a title, token rows and a note, anchored to a viewport rect. */
+    function showFieldTip(title, rows, note, rect) {
+      const tip = $('lens-tooltip');
+      tip.replaceChildren(element('strong', '', title));
+      if (rows.length) {
+        const list = element('ul');
+        for (const row of rows) {
+          const item = element('li');
+          item.append(tokenNode(row[0]), element('span', 'lens-tip-value', row[1]));
+          list.append(item);
+        }
+        tip.append(list);
+      }
+      if (note) tip.append(element('p', '', note));
+      placeTip(rect);
+    }
+    const field = global.MLGField && $('lens-field-canvas') ? global.MLGField.create(
+      {canvas: $('lens-field-canvas'), scroll: $('lens-field-scroll'), depth: $('lens-field-depth'),
+        status: $('lens-field-depth-status'), play: $('lens-field-play'), motion: $('lens-field-motion')},
+      {showTip: showFieldTip, hideTip,
+        layer: (layerIndex) => { if (view.data && view.selected && view.selected.layer !== layerIndex) select(layerIndex, view.selected.position, false); },
+        select: (position) => { if (view.data) select(view.selected ? view.selected.layer : view.data.layers[view.data.layers.length - 1].layer_index, position, true); },
+        track: (tokenId, text) => { if (track(tokenId, text)) load(); }}) : null;
+    function showDisplay() {
+      const useField = view.display === 'field' && !!field;
+      $('lens-grid-scroll').hidden = useField; $('lens-legend').hidden = useField; $('lens-field').hidden = !useField;
+      $('lens-display-grid').setAttribute('aria-pressed', String(!useField));
+      $('lens-display-field').setAttribute('aria-pressed', String(useField));
+      $('lens-color').disabled = view.busy || useField;
+      if (field) {
+        field.setActive(useField && view.active && !!view.data);
+        if (useField && view.data) field.setData(view.data, view.pins, view.selected);
+      }
+    }
 
     /* ---------- read-out and chart for the selected cell ---------- */
 
     function select(layerIndex, position, byUser) {
       view.selected = {layer: layerIndex, position};
       markSelected(); renderReadout(); renderChart();
+      if (field) field.setSelected(view.selected);
       if (byUser) hideTip();
     }
 
@@ -417,7 +453,7 @@
       const host = $('lens-chart'), series = chartSeries(), layers = view.data.layers.map((layer) => layer.layer_index);
       const token = view.data.tokens.find((entry) => entry.position === view.selected.position);
       $('lens-trajectory-context').replaceChildren(document.createTextNode('After position ' + view.selected.position + ' '),
-        tokenNode(token ? token.text : ''), document.createTextNode(' · rank #1 means this layer would already say it'));
+        tokenNode(token ? token.text : ''), document.createTextNode(' · rank #1 means this layer would already say it \u00b7 the vertical line is the selected layer'));
       host.replaceChildren();
       const legend = $('lens-chart-legend');
       legend.replaceChildren();
@@ -452,6 +488,8 @@
         label.textContent = 'L' + layer;
         chart.append(label);
       });
+      const current = layers.indexOf(view.selected.layer);
+      if (current >= 0) chart.append(svg('line', {x1: x(current), x2: x(current), y1: margin.top, y2: margin.top + plotHeight, class: 'lens-current'}));
       const marker = svg('line', {x1: 0, x2: 0, y1: margin.top, y2: margin.top + plotHeight, class: 'lens-crosshair', visibility: 'hidden'});
       chart.append(marker);
 
@@ -544,7 +582,7 @@
         ? ' Check passed: the last layer’s read-out equals the token the model actually produced.' : '');
       const last = data.tokens[data.tokens.length - 1].position, top = data.layers[data.layers.length - 1].layer_index;
       if (!view.selected || !cellAt(view.selected.layer, view.selected.position)) view.selected = {layer: top, position: last};
-      renderGrid(); renderLegend(); renderReadout(); renderChart();
+      renderGrid(); renderLegend(); renderReadout(); renderChart(); showDisplay();
     }
 
     function setRun(run) {
@@ -554,6 +592,7 @@
         view.request++; view.data = null; view.forward = 0; view.offset = 0; view.selected = null; view.pins = [];
         view.colorBy = 'probability'; view.colorPin = null; $('lens-color').value = 'probability';
         $('lens-body').hidden = true; hideTip(); renderPins();
+        if (field) { field.setData(null); field.setActive(false); }
       }
       if (!run) { status(''); return; }
       if (!run.lens_available) { $('lens-body').hidden = true; status(run.lens_reason || 'The lens read-out is unavailable for this capture.'); return; }
@@ -563,10 +602,13 @@
       view.active = !!active;
       if (view.active && view.run && view.run.lens_available && !view.data) load();
       if (view.active && view.data) renderChart();   // its width depends on being visible
+      if (field) field.setActive(view.active && view.display === 'field' && !!view.data);
+      if (view.active && view.data && view.display === 'field' && field) field.setData(view.data, view.pins, view.selected);
     }
     function setBusy(busy) {
       view.busy = !!busy;
-      for (const id of ['lens-pin-add', 'lens-pin-text', 'lens-color', 'lens-open-vector']) $(id).disabled = view.busy;
+      for (const id of ['lens-pin-add', 'lens-pin-text', 'lens-open-vector']) $(id).disabled = view.busy;
+      $('lens-color').disabled = view.busy || view.display === 'field';
       if (view.data) {
         $('lens-forward-prev').disabled = view.busy || view.data.forward <= 0;
         $('lens-forward-next').disabled = view.busy || view.data.forward >= view.data.forward_count - 1;
@@ -589,6 +631,11 @@
     $('lens-pin-add').addEventListener('click', trackTyped);
     $('lens-pin-text').addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); trackTyped(); } });
     $('lens-grid').addEventListener('keydown', moveFocus);
+    for (const display of ['grid', 'field']) {
+      $('lens-display-' + display).addEventListener('click', () => { view.display = display; hideTip(); showDisplay(); });
+    }
+    $('lens-display-field').hidden = !field;
+    $('lens-display-grid').hidden = !field;
     $('lens-open-vector').addEventListener('click', async () => {
       if (!view.selected || !view.data) return;
       const layer = layerByIndex(view.selected.layer);
@@ -600,5 +647,5 @@
     return {setRun, setActive, setBusy};
   }
 
-  global.MLGLens = {create, tokenParts, percent, rankMagnitude, rampColor, inkOn};
+  global.MLGLens = {create, tokenParts, tokenLabel, percent, rankText, rankMagnitude, rampColor, inkOn, SERIES};
 })(typeof window !== 'undefined' ? window : globalThis);

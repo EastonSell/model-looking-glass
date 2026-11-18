@@ -36,3 +36,4 @@ jobs:
           node tests/app_ui_contract.cjs > /dev/null
           node tests/app_scene_contract.cjs
           node tests/app_lens_contract.cjs
+          node tests/app_field_contract.cjs
