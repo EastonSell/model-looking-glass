@@ -95,9 +95,9 @@ python examples/distilbert_trace_example.py --cache-dir /path/to/huggingface/hub
 The example uses `local_files_only=True`, the pinned
 `distilbert/distilbert-base-uncased` revision
 `12040accade4e8a0f71eabdb258fecc2e7e948be`, and an already-public agreement
-row from the [CPU evaluation](../results/bert-agreement-cpu-evaluation-v1-20261029/README.md).
+row from the [CPU evaluation](https://github.com/EastonSell/model-looking-glass/blob/research-archive/results/bert-agreement-cpu-evaluation-v1-20261029/README.md).
 It compares clean and traced logits and saves metadata and four-value previews,
-not full logits or snapshots. The [sample summary](../examples/distilbert_trace_example.sample.json)
+not full logits or snapshots. The [sample summary](https://github.com/EastonSell/model-looking-glass/blob/research-archive/examples/distilbert_trace_example.sample.json)
 is illustrative and may vary by runtime. The adapter itself does not verify
 cache hashes, and the example requests a cached revision without independently
 verifying its bytes; use a trusted, independently verified checkpoint when
@@ -229,7 +229,7 @@ Add `--witnesses /path/to/new-witnesses.pt` to save the tensor witnesses. The
 output paths must be new. The example requests a cached revision with
 `local_files_only=True`; it does not independently verify the cached asset
 bytes. Its input is the already-public agreement sentence used by the
-[trace example](#running-the-cached-example). A [sample summary](../examples/distilbert_intervention_workflow.sample-summary.json)
+[trace example](#running-the-cached-example). A [sample summary](https://github.com/EastonSell/model-looking-glass/blob/research-archive/examples/distilbert_intervention_workflow.sample-summary.json)
 omits the detailed event/plan metadata and tensors; the actual JSON report
 includes the metadata. Numeric values can vary across runtimes. In that sample,
 both the later target and off-target replacements delivered nonzero, unequal

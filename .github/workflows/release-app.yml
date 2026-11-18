@@ -33,9 +33,8 @@ jobs:
           git sparse-checkout init --no-cone
           git sparse-checkout set --no-cone \
             '/looking_glass/' '/docs/' '/README.md' '/LICENSE' '/install.py' '/start.py' \
-            '/pyproject.toml' '/PROTOCOL.md' '/requirements-tested.txt' '/CONTRIBUTING.md' \
-            '/CODE_OF_CONDUCT.md' '/SECURITY.md' '/ACCESSIBILITY.md' '/RESULTS.md' \
-            '/archives/README.md' '/tools/build_app_bundle.py'
+            '/pyproject.toml' '/requirements-tested.txt' '/CONTRIBUTING.md' \
+            '/CODE_OF_CONDUCT.md' '/SECURITY.md' '/ACCESSIBILITY.md' '/tools/build_app_bundle.py'
           git fetch --depth=1 --filter=blob:none origin "$GITHUB_REF"
           actual=$(git rev-parse 'FETCH_HEAD^{commit}')
           test "$actual" = "$GITHUB_SHA"

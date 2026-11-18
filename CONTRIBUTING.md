@@ -19,10 +19,10 @@ Use Python 3.11 or newer. In a virtual environment, install the app and test dep
 python -m pip install -e ".[app,test]"
 ```
 
-Run the tests nearest your change. For example, an installer change can start with:
+Run the tests. The whole suite takes a few minutes on CPU, and CI runs it on every pull request:
 
 ```sh
-python -m pytest tests/test_app_install.py -q
+python -m pytest tests -q
 ```
 
 Record the commands and results in your PR, including anything you could not test. For UI changes, include a screenshot and check the [accessibility guidance](ACCESSIBILITY.md). For GPU changes, give the GPU, driver, PyTorch and CUDA versions; CPU results do not establish GPU behavior.
@@ -31,4 +31,4 @@ Keep generated captures, model weights, virtual environments and private prompts
 
 ## Find your way around
 
-The [code map](looking_glass/README.md) points to the app, shared capture tools and historical studies. Start with the files for your change rather than reading the whole package. Keep existing import paths and study records intact unless a change includes their dependencies and reproducibility checks.
+The [code map](looking_glass/README.md) points to the app and the capture tools it is built on. The earlier research studies live on the [`research-archive` branch](https://github.com/EastonSell/model-looking-glass/tree/research-archive), not on `main`.
