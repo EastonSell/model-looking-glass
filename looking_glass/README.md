@@ -11,6 +11,7 @@ Start here when changing the code. To use the app, follow the [app guide](../doc
 | Captures, coordinates and save/reopen | [app_storage.py](app_storage.py) |
 | Compare a reference vector | [app_reference.py](app_reference.py) |
 | Lens read-out (logit lens) | [app_lens.py](app_lens.py), [app_static/app_lens.js](app_static/app_lens.js) |
+| Field display of the lens | [app_static/app_field.js](app_static/app_field.js) |
 | Controlled activation edits | [app_interventions.py](app_interventions.py) |
 | Browse local models or download a catalog model | [app_discovery.py](app_discovery.py), [app_downloads.py](app_downloads.py) |
 | GPU acceptance check | [app_selftest.py](app_selftest.py) |
@@ -33,7 +34,7 @@ Everything in [tests/](../tests/) runs in CI on each pull request:
 
 ```sh
 python -m pytest tests -q
-node tests/app_ui_contract.cjs && node tests/app_scene_contract.cjs && node tests/app_lens_contract.cjs
+node tests/app_ui_contract.cjs && node tests/app_scene_contract.cjs && node tests/app_lens_contract.cjs && node tests/app_field_contract.cjs
 ```
 
 ## Research archive
