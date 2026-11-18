@@ -12,3 +12,6 @@ looking-glass-runs/
 
 # Explicit local model downloads are not repository source.
 looking-glass-models/
+
+# Fitted Jacobian lenses are derived from local model weights.
+looking-glass-lenses/

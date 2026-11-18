@@ -53,13 +53,14 @@ After **Run & capture** on GPT-2 or a supported Llama, the centre of the app is 
 - **Track a token** (type it, or click one in the read-out) to colour the grid by that token's rank and plot its rank through the layers.
 - **Click a cell** for its top tokens, then **Open exact vector** to inspect, edit or patch that same activation.
 - **Switch to Field** for the same read-out as a moving field of text, with a depth control that scrubs through the layers.
+- **Switch the read-out method to Jacobian lens** to carry each layer into the final layer's basis before decoding. It needs a lens for the model: fit one on an NVIDIA GPU, or import a published one.
 - The last layer's read-out must equal the token the model really produced; the app checks this on every read-out and says so.
 
 Earlier layers were never trained to be read this way, so lower rows are an approximation—useful for seeing *when* an answer appears, not proof of *how*. [Lens guide](docs/LOCAL_APP.md#lens-what-each-layer-would-say-next).
 
 ## How this relates to other tools
 
-This is a local app with a UI, not a research library. For programmatic work at scale, [TransformerLens](https://github.com/TransformerLensOrg/TransformerLens) and [nnsight](https://github.com/ndif-team/nnsight) are the mature choices for hooks, patching and lenses across many architectures. Model Looking Glass adds a no-code workbench around the same basic methods—capture, logit lens, zero/add/replace edits and cross-prompt patching—with exact-value inspection and explicit controls. It does **not** implement the Jacobian lens from Anthropic's 2026 global-workspace paper, sparse autoencoders or feature attribution.
+This is a local app with a UI, not a research library. For programmatic work at scale, [TransformerLens](https://github.com/TransformerLensOrg/TransformerLens) and [nnsight](https://github.com/ndif-team/nnsight) are the mature choices for hooks, patching and lenses across many architectures. Model Looking Glass adds a no-code workbench around the same basic methods—capture, logit lens, zero/add/replace edits and cross-prompt patching—with exact-value inspection and explicit controls. It also implements the Jacobian lens from Anthropic's 2026 global-workspace paper, fitted locally on a GPU or imported from a published file. It does **not** implement that paper's J-space analysis, sparse autoencoders or feature attribution.
 
 ## Before you run
 

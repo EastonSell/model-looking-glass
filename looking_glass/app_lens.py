@@ -13,8 +13,11 @@ gives a built-in correctness check.
 
 Scope: this is a read-out through the *final* layer's decoder.  Earlier layers
 were not trained to be read this way, so early-layer rows are a rough
-approximation, not a claim about what the model "thinks".  It is not the
-Jacobian lens and does not identify features or causes.
+approximation, not a claim about what the model "thinks".
+
+With a fitted Jacobian lens (see jacobian_lens.py) each layer's vector is first
+carried into the final layer's basis, which is the correction the Jacobian lens
+makes to the logit lens.  Neither method identifies features or causes.
 """
 from __future__ import annotations
 
@@ -109,7 +112,7 @@ def resolve_text(tokenizer, text):
 
 
 def project(model, tokenizer, family, sources, *, top_k, pinned_ids, input_token_ids,
-            position_offset=0, recorded_next_token_id=None):
+            position_offset=0, recorded_next_token_id=None, transport=None):
     """Decode each layer's captured vectors and summarise every (layer, position) cell.
 
     ``sources`` is a list of ``{"layer_index", "event_index", "module_path",
@@ -117,6 +120,11 @@ def project(model, tokenizer, family, sources, *, top_k, pinned_ids, input_token
     ordered by layer.  ``input_token_ids`` are the input tokens of the same
     position window, which starts at ``position_offset``.  The caller owns
     locking and device admission.
+
+    ``transport`` is an optional fitted Jacobian lens.  With it, every layer
+    below the model's last is first carried into the final layer's basis
+    (``J_l @ h``).  The last layer is never transported: it is already the
+    model's own output.
     """
     norm, unembed, decoder = decoder_modules(model, family)
     weight = unembed.weight
@@ -126,11 +134,17 @@ def project(model, tokenizer, family, sources, *, top_k, pinned_ids, input_token
     step = chunk_positions(vocabulary)
     layer_count = len(getattr(model.transformer, "h", ())) if family == "gpt2" else len(model.model.layers)
     reaches_output = sources[-1]["layer_index"] == layer_count - 1
+    if transport is not None:
+        require(transport.layer_count == layer_count and transport.width == weight.shape[1],
+                "The fitted Jacobian lens does not match this model")
 
-    def decode(hidden):
-        """Yield (start, logits, log_probabilities) for bounded position chunks."""
+    def decode(source):
+        """Yield (start, logits, log_probabilities) for bounded position chunks of one layer."""
+        hidden, layer = source["value"], source["layer_index"]
         for start in range(0, hidden.shape[0], step):
             part = hidden[start:start + step].to(device=weight.device, dtype=weight.dtype)
+            if transport is not None and layer < layer_count - 1:
+                part = transport.transport(part, layer)
             logits = unembed(norm(part)).to(torch.float32)
             require(bool(torch.isfinite(logits).all()), "Lens read-out produced nonfinite logits")
             yield start, logits, torch.log_softmax(logits, dim=-1)
@@ -139,7 +153,7 @@ def project(model, tokenizer, family, sources, *, top_k, pinned_ids, input_token
         # The top captured layer is the reference: when it is the model's last
         # layer, its top token is the model's actual prediction at each position.
         reference_ids = []
-        for _, logits, _ in decode(sources[-1]["value"]):
+        for _, logits, _ in decode(sources[-1]):
             reference_ids.extend(logits.argmax(dim=-1).tolist())
         reference = torch.tensor(reference_ids, dtype=torch.long, device=weight.device)
         pinned = torch.tensor(pinned_ids, dtype=torch.long, device=weight.device)
@@ -147,7 +161,7 @@ def project(model, tokenizer, family, sources, *, top_k, pinned_ids, input_token
         layers = []
         for source in sources:
             cells = []
-            for start, logits, log_probabilities in decode(source["value"]):
+            for start, logits, log_probabilities in decode(source):
                 rows = logits.shape[0]
                 probabilities = log_probabilities.exp()
                 entropy = -(probabilities * log_probabilities).sum(dim=-1)
@@ -185,7 +199,10 @@ def project(model, tokenizer, family, sources, *, top_k, pinned_ids, input_token
         consistency = {"recorded_next_token_id": recorded_next_token_id,
                        "lens_next_token_id": reference_ids[-1],
                        "matches": reference_ids[-1] == recorded_next_token_id}
-    return {"method": METHOD, "decoder": decoder, "vocabulary_size": vocabulary,
+    method = METHOD
+    if transport is not None:
+        method, decoder = "jacobian", "fitted J_l, then " + decoder
+    return {"method": method, "decoder": decoder, "vocabulary_size": vocabulary,
             "model_layer_count": layer_count, "reaches_model_output": reaches_output,
             "tokens": tokens, "layers": layers, "answers": answers, "consistency": consistency,
             "pinned": [{"token_id": token, "text": labels.text(token)} for token in pinned_ids]}
@@ -212,7 +229,7 @@ def status(state):
 
 def lens_readout(state, data):
     """Validate one browser request and return a bounded layer-by-position read-out."""
-    allowed = {"capture_id", "forward", "top_k", "pinned_token_ids", "position_offset", "position_limit", "resolve_text"}
+    allowed = {"capture_id", "forward", "top_k", "pinned_token_ids", "position_offset", "position_limit", "resolve_text", "method"}
     require(isinstance(data, dict) and not set(data) - allowed, "Unknown lens option")
     available, reason = status(state)
     require(available, reason)
@@ -227,6 +244,12 @@ def lens_readout(state, data):
             and all(type(token) is int and token >= 0 for token in pinned)
             and len(set(pinned)) == len(pinned),
             f"pinned_token_ids must be at most {MAX_PINNED} distinct token IDs")
+    method = data.get("method", METHOD)
+    require(method in (METHOD, "jacobian"), "method must be logit or jacobian")
+    transport = None
+    if method == "jacobian":
+        from .app_jlens import transport_for
+        transport = transport_for(state)
     family = state.runtime.info()["family"]
     found = state.store.lens_sources(forward, BLOCK_KINDS[family], offset, limit)
     require(len(found["sources"]) * found["position_count"] <= MAX_CELLS,
@@ -234,11 +257,16 @@ def lens_readout(state, data):
     answer = state.runtime.lens_readout(state._live_binding, found["sources"], top_k=top_k, pinned_ids=pinned,
                                         input_token_ids=found["input_token_ids"], position_offset=offset,
                                         recorded_next_token_id=found["recorded_next_token_id"],
-                                        resolve=data.get("resolve_text"))
+                                        resolve=data.get("resolve_text"), transport=transport)
+    answer["fit"] = None if transport is None else transport.summary()
     answer.update(capture_id=state._capture_id, forward=forward, forward_count=found["forward_count"],
                   position_offset=offset, position_total=found["position_total"],
                   skipped_events=found["skipped_events"],
-                  scope="Each cell is what the model's own final norm and unembedding read from one captured block "
-                        "output. Rows below the model's last layer are an approximation, not the model's reasoning; "
-                        "no features, causes or Jacobian lens are computed.")
+                  scope=("Jacobian lens: each captured block output is carried into the final layer's basis by a "
+                         "Jacobian averaged over the fitting text, then read by the model's own final norm and "
+                         "unembedding. Rows below the last layer are a fitted linear read-out, not the model's "
+                         "reasoning; no features or causes are computed." if transport is not None else
+                         "Each cell is what the model's own final norm and unembedding read from one captured block "
+                         "output. Rows below the model's last layer are an approximation, not the model's reasoning; "
+                         "no features or causes are computed."))
     return answer

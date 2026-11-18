@@ -131,3 +131,18 @@
 .lens-field-scroll { margin: 10px 0 0; overflow-x: auto; overflow-y: hidden; max-width: 100%; }
 .lens-field-scroll canvas { display: block; }
 .lens-field-key { margin: 8px 0 0; color: var(--text-3); font-size: 11.5px; max-width: 86ch; }
+
+/* Jacobian lens fit panel */
+.lens-jlens { margin: 14px 0 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.lens-jlens-setup { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 14px; margin-top: 10px; }
+.lens-jlens-setup input[type=number] { width: 90px; min-height: 30px; padding: 4px 8px; }
+.lens-jlens-setup select { min-height: 30px; font: 400 12px/1.4 Inter, sans-serif; }
+.lens-jlens-setup > button, .lens-jlens > button { min-height: 30px; font: 400 12px/1.4 Inter, sans-serif; }
+.lens-jlens > button { margin-top: 8px; }
+.lens-jlens-text { flex: 1 1 100%; }
+.lens-jlens-text label { display: block; margin: 0 0 2px; color: var(--muted); font: 400 11px/1.4 Inter, sans-serif; }
+.lens-jlens-text textarea { width: 100%; font: 400 12px/1.5 var(--mono); }
+.lens-jlens-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
+.lens-jlens-progress progress { flex: 1 1 200px; max-width: 360px; height: 8px; accent-color: var(--text); }
+.lens-jlens-path { flex: 1 1 320px; }
+.lens-jlens-path input { width: 100%; min-height: 30px; padding: 4px 8px; font: 400 12px/1.4 var(--mono); }

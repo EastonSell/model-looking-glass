@@ -175,6 +175,11 @@
             <span id="lens-forward-status" role="status" aria-live="polite">Step 1 of 1</span>
             <button id="lens-forward-next" class="lens-step" type="button" aria-label="Next generation step" title="Next generation step">&rsaquo;</button>
           </div>
+          <div class="lens-field"><label for="lens-method">Read-out method</label>
+            <select id="lens-method" aria-describedby="lens-subtitle">
+              <option value="logit">Logit lens</option>
+              <option value="jacobian">Jacobian lens</option>
+            </select></div>
           <div class="lens-field"><label for="lens-color">Colour cells by</label>
             <select id="lens-color">
               <option value="probability">Top token probability</option>
@@ -189,6 +194,30 @@
         <button id="lens-pin-add" type="button">Track</button>
         <ul id="lens-pin-list" class="lens-pin-list" aria-label="Tracked tokens"></ul>
       </div>
+      <section id="lens-jlens" class="lens-jlens" aria-labelledby="lens-jlens-heading" hidden>
+        <h3 id="lens-jlens-heading">Jacobian lens</h3>
+        <p id="lens-jlens-status" class="lens-sub" role="status" aria-live="polite"></p>
+        <div id="lens-jlens-setup" class="lens-jlens-setup" hidden>
+          <div class="lens-field"><label for="lens-jlens-source">Fitting text</label>
+            <select id="lens-jlens-source"><option value="builtin">Built-in passages</option><option value="text">My own text</option></select></div>
+          <div class="lens-field"><label for="lens-jlens-count">Prompts to fit on</label>
+            <input id="lens-jlens-count" type="number" min="1" max="1000" value="40" inputmode="numeric"></div>
+          <button id="lens-jlens-fit" type="button">Fit Jacobian lens</button>
+          <div id="lens-jlens-text-field" class="lens-jlens-text" hidden><label for="lens-jlens-text">Plain text; separate passages with a blank line</label>
+            <textarea id="lens-jlens-text" rows="5" maxlength="2097152" spellcheck="false" placeholder="Paste text here. Each passage should be longer than 17 tokens; long passages are cut into 128-token prompts."></textarea></div>
+        </div>
+        <div id="lens-jlens-import" class="lens-jlens-setup" hidden>
+          <div class="lens-field lens-jlens-path"><label for="lens-jlens-path">Or import a lens file fitted with Anthropic's jlens library</label>
+            <input id="lens-jlens-path" type="text" autocomplete="off" spellcheck="false" placeholder="/path/to/gpt2_jacobian_lens.pt"></div>
+          <button id="lens-jlens-import-button" type="button" class="secondary">Import lens</button>
+        </div>
+        <div id="lens-jlens-progress" class="lens-jlens-progress" hidden>
+          <progress id="lens-jlens-bar" max="1" value="0" aria-label="Fitting progress"></progress>
+          <span id="lens-jlens-eta" class="lens-sub"></span>
+          <button id="lens-jlens-stop" type="button" class="secondary">Stop</button>
+        </div>
+        <button id="lens-jlens-refit" type="button" class="secondary" hidden>Fit or import again</button>
+      </section>
       <p id="lens-status" class="lens-status" role="status" aria-live="polite"></p>
       <div id="lens-body" hidden>
         <div class="lens-window" id="lens-window" hidden>

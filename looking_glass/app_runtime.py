@@ -943,8 +943,58 @@ class LocalModelRuntime:
         with self._lock:
             return self._capture_binding
 
+    def jacobian_identity(self):
+        """Fingerprint and shape of the loaded model, cached for as long as that model stays loaded."""
+        from .jacobian_lens import decoder_stack, model_fingerprint
+        with self._lock:
+            if self._quarantined or self.model is None:
+                raise ValueError("load a supported local model first")
+            family = self._info["family"]
+            cached = getattr(self, "_jacobian_identity", None)
+            if cached is None or cached[0] is not self.model:
+                _, blocks = decoder_stack(self.model, family)
+                identity = {"fingerprint": model_fingerprint(self.model, family), "family": family,
+                            "layer_count": len(blocks), "width": int(self.model.lm_head.weight.shape[1])}
+                self._jacobian_identity = cached = (self.model, identity)
+            return {**cached[1], "device": self._device.type}
+
+    def jacobian_prompts(self, text, limit):
+        """Tokenise fitting text into prompts the model's context can hold."""
+        from .jacobian_lens import MAX_TOKENS, split_passages
+        with self._lock:
+            if self._quarantined or self.model is None:
+                raise ValueError("load a supported local model first")
+            context = getattr(self.model.config, "n_positions", getattr(self.model.config, "max_position_embeddings", MAX_TOKENS))
+            return split_passages(text, self.tokenizer, max_tokens=min(MAX_TOKENS, int(context)), limit=limit)
+
+    def jacobian_fit_prompt(self, token_ids, dim_batch):
+        """One prompt's Jacobian estimate on the loaded model. Model weights and state are unchanged."""
+        from .jacobian_lens import prompt_jacobians
+        with self._lock:
+            if self._quarantined:
+                raise RuntimeError("model owner is quarantined; restart the local app")
+            if self.model is None:
+                raise ValueError("load a supported local model first")
+            family, vocabulary = self._info["family"], self.model.config.vocab_size
+            if (type(token_ids) is not list or not token_ids
+                    or any(type(token) is not int or not 0 <= token < vocabulary for token in token_ids)):
+                raise ValueError("fitting prompt must be a nonempty list of vocabulary token IDs")
+            ids = torch.tensor([token_ids], dtype=torch.int64, device=self._device)
+            if self._device.type != "cuda":
+                return prompt_jacobians(self.model, family, ids, dim_batch=dim_batch)
+            width, layers = int(self.model.lm_head.weight.shape[1]), self._info["layers"]
+            # Activations retained for the backward passes; a planning estimate, not a peak bound.
+            planned = dim_batch * len(token_ids) * width * 4 * len(layers) * 24
+            try:
+                with _cuda_operation(self._device, self._vram_limit) as telemetry:
+                    _cuda_admit(self._device, planned, telemetry["effective_limit_bytes"])
+                    return prompt_jacobians(self.model, family, ids, dim_batch=dim_batch)
+            except CudaStateError:
+                self._quarantine()
+                raise
+
     def lens_readout(self, binding, sources, *, top_k, pinned_ids, input_token_ids,
-                     position_offset=0, recorded_next_token_id=None, resolve=None):
+                     position_offset=0, recorded_next_token_id=None, resolve=None, transport=None):
         """Read-only logit-lens decode of captured vectors on the live model's device.
 
         No hooks are installed and no model state changes, so an ordinary
@@ -958,7 +1008,8 @@ class LocalModelRuntime:
                 raise ValueError("lens read-out requires the original live model binding")
             family = self._info["family"]
             options = {"top_k": top_k, "pinned_ids": pinned_ids, "input_token_ids": input_token_ids,
-                       "position_offset": position_offset, "recorded_next_token_id": recorded_next_token_id}
+                       "position_offset": position_offset, "recorded_next_token_id": recorded_next_token_id,
+                       "transport": transport}
             if self._device.type == "cuda":
                 try:
                     with _cuda_operation(self._device, self._vram_limit) as telemetry:
