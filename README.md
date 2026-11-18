@@ -70,4 +70,4 @@ This is a local app with a UI, not a research library. For programmatic work at 
 <a id="contribute"></a>
 <a id="learn-more--contribute"></a>
 
-[Contribute](CONTRIBUTING.md) · [Code map](looking_glass/README.md) · [Research & API](docs/README.md) · [Security](SECURITY.md) · [MIT license](LICENSE)
+[Contribute](CONTRIBUTING.md) · [Code map](looking_glass/README.md) · [Docs](docs/README.md) · [Research archive](docs/README.md#research-archive) · [Security](SECURITY.md) · [MIT license](LICENSE)

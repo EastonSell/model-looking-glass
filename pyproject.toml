@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "model-looking-glass"
-version = "1.2.6"
+version = "1.3.0"
 description = "Local model debugger for inspecting and comparing activation vectors"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -32,4 +32,4 @@ test = ["numpy>=1.26", "pytest>=9.0.3,<10", "Pillow==13.0.0"]
 include = ["looking_glass*"]
 
 [tool.setuptools.package-data]
-looking_glass = ["PROTOCOL.md", "app_static/*.html", "app_static/*.js", "app_static/*.css", "app_static/*.svg", "app_static/vendor/*.js", "app_static/vendor/*.woff2", "app_static/vendor/*-LICENSE.txt", "app_static/vendor/provenance.json", "app_static/vendor/README.md"]
+looking_glass = ["app_static/*.html", "app_static/*.js", "app_static/*.css", "app_static/*.svg", "app_static/vendor/*.js", "app_static/vendor/*.woff2", "app_static/vendor/*-LICENSE.txt", "app_static/vendor/provenance.json", "app_static/vendor/README.md"]

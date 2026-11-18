@@ -13,7 +13,7 @@ SPEC = importlib.util.spec_from_file_location("app_bundle_builder", Path(__file_
 builder = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(builder)
 
-ROOT_FILES = ("README.md", "LICENSE", "install.py", "start.py", "pyproject.toml", "PROTOCOL.md",
+ROOT_FILES = ("README.md", "LICENSE", "install.py", "start.py", "pyproject.toml",
               "requirements-tested.txt", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "SECURITY.md", "ACCESSIBILITY.md")
 
 
@@ -55,7 +55,7 @@ def test_deterministic_committed_identity_allowlist_and_manifest(repo, tmp_path)
     assert one.read_bytes() == two.read_bytes()
     assert result["source_commit"] == commit
     assert result["sha256"] == hashlib.sha256(one.read_bytes()).hexdigest()
-    expected = {name for name in files if name in ROOT_FILES or name.startswith(("looking_glass/", "docs/")) or name in ("RESULTS.md", "archives/README.md")}
+    expected = {name for name in files if name in ROOT_FILES or name.startswith(("looking_glass/", "docs/"))}
     with zipfile.ZipFile(one) as archive:
         prefix = "model-looking-glass-app-1.2.3/"
         assert set(archive.namelist()) == {prefix + name for name in expected | {"APP_BUNDLE_MANIFEST.json"}}

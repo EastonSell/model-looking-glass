@@ -23,10 +23,10 @@ import zipfile
 import zlib
 
 ROOT_FILES = (
-    "README.md", "LICENSE", "install.py", "start.py", "pyproject.toml", "PROTOCOL.md",
+    "README.md", "LICENSE", "install.py", "start.py", "pyproject.toml",
     "requirements-tested.txt", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "SECURITY.md", "ACCESSIBILITY.md",
 )
-OPTIONAL_FILES = ("RESULTS.md", "archives/README.md")
+OPTIONAL_FILES = ()
 PREFIXES = ("looking_glass", "docs")
 REQUIRED_FILES = ROOT_FILES + ("looking_glass/__init__.py", "looking_glass/README.md", "docs/LOCAL_APP.md", "docs/README.md")
 MANIFEST = "APP_BUNDLE_MANIFEST.json"

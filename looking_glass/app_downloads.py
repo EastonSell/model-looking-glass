@@ -118,7 +118,7 @@ class ModelSpec:
 
 # Public/ungated Apache-2.0 registry metadata checked 2026-11-01. Immutable
 # per-file pins only; no live registry lookup occurs during application startup.
-# SmolLM2 pins also match results/local-app-smollm2-135m-cpu-20261031/record.json.
+# SmolLM2 pins also match results/local-app-smollm2-135m-cpu-20261031/record.json on the research-archive branch.
 # DistilGPT2 is metadata-verified, not a new runtime or GPU validation claim.
 CATALOG: tuple[ModelSpec, ...] = (
     ModelSpec(

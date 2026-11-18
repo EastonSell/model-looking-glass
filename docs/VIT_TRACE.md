@@ -91,7 +91,7 @@ forward and saves a report with hashes and metadata, not the raw image, logits
 or activation vectors. Omit `--verify-public-case` to use another local image;
 its hash will be included in the report. The check demonstrates mechanics on
 that input and runtime, not model accuracy, device performance or a visual
-explanation. The [sample report](../examples/vit-trace-cpu-sample.json) was
+explanation. The [sample report](https://github.com/EastonSell/model-looking-glass/blob/research-archive/examples/vit-trace-cpu-sample.json) was
 generated with Pillow 11.3.0 on the exposed v1 image; the image itself is not
 included and numeric hashes can vary across runtimes.
 

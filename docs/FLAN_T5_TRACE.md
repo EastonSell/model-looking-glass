@@ -93,7 +93,7 @@ it as a module from the repository root with `--assets <pinned-asset-dir>` and
 `--output <new-report.json>`. It checks block outputs against the untraced
 hidden-state outputs and wrapper outputs against independent baseline captures;
 no generation or model download is performed.
-The [saved CPU smoke report](../results/flan-t5-trace-cpu-smoke-v1.json) records
+The [saved CPU smoke report](https://github.com/EastonSell/model-looking-glass/blob/research-archive/results/flan-t5-trace-cpu-smoke-v1.json) records
 the pinned revision, asset and source hashes, eight trace metadata records and
 comparison results. It is a saved test record under a trusted runtime, not an
 attestation of execution.
@@ -182,7 +182,7 @@ CUDA_VISIBLE_DEVICES='' HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --assets /path/to/pinned-assets --output /path/to/new-report.json
 ```
 
-The [saved smoke report](../results/flan-t5-paired-compare-cpu-smoke-v1.json)
+The [saved smoke report](https://github.com/EastonSell/model-looking-glass/blob/research-archive/results/flan-t5-paired-compare-cpu-smoke-v1.json)
 records three CPU forwards: identical inputs compare equal, the predeclared
 source-token change produces a difference, and omitting that declaration is
 inconclusive. It records source and asset pins, event-value hashes and
@@ -298,5 +298,5 @@ feasibility pair, and checks encoder and decoder block patches. Its JSON report
 contains summaries and metadata, not the raw in-memory witnesses; retain those
 separately if an independent replay is needed. Values can differ across runtime
 and CPU environments, and the example is a mechanics check, not a result about
-translation. A [sample CPU report](../examples/flan-t5-donor-patch-cpu-sample.json)
+translation. A [sample CPU report](https://github.com/EastonSell/model-looking-glass/blob/research-archive/examples/flan-t5-donor-patch-cpu-sample.json)
 records one such run; it is a summary rather than independent execution proof.

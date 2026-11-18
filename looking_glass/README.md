@@ -16,20 +16,26 @@ Start here when changing the code. To use the app, follow the [app guide](../doc
 | GPU acceptance check | [app_selftest.py](app_selftest.py) |
 | Layout, interaction and captured-site scene | [app_static/](app_static/) |
 
-Install and restart commands live at the repository root: [install.py](../install.py) and [start.py](../start.py). Nearby regression tests are in [tests/](../tests/), usually named `test_app_*`.
+Install and restart commands live at the repository root: [install.py](../install.py) and [start.py](../start.py). App tests are in [tests/](../tests/), named `test_app_*`.
 
 ## Shared capture tools
 
 - Model adapters: [GPT-2](transformer_trace.py), [Llama](llama_trace.py), [DistilBERT](distilbert_trace.py), [T5](flan_t5_trace.py), [ViT](vit_trace.py).
-- Recorded data: [trace_schema.py](trace_schema.py) and [trace_store.py](trace_store.py).
+- Recorded data: [trace_schema.py](trace_schema.py).
 - Temporary edits and model access: [interventions.py](interventions.py), [intervention_plan.py](intervention_plan.py), [model_ownership.py](model_ownership.py).
+- Hook sessions: [probes.py](probes.py).
 
-See the [Python tutorial](../docs/GPT2_TRACE_WORKFLOW.md) for a complete workflow. The app supports specific model configurations; a module's presence is not a compatibility promise.
+The app supports specific model configurations; a module's presence is not a compatibility promise. Reference pages for these modules are in [docs/](../docs/README.md).
 
-## Research and history
+## Tests
 
-Many other modules belong to named studies or versioned inventories. An older suffix does **not** mean unused: later studies can import it or verify its exact source bytes. Import paths stay in place for those contracts.
+Everything in [tests/](../tests/) runs in CI on each pull request:
 
-[experiments/](../experiments/), [studies/](../studies/), [scripts/](../scripts/) and [tools/](../tools/) contain research runners and maintenance utilities. [results/](../results/), [evidence/](../evidence/), [audits/](../audits/) and [commitments/](../commitments/) retain their records. [REVIEW.md](../REVIEW.md) is an October 2026 historical review, not the current release checklist.
+```sh
+python -m pytest tests -q
+node tests/app_ui_contract.cjs && node tests/app_scene_contract.cjs && node tests/app_lens_contract.cjs
+```
 
-Use the [findings index](../docs/PROJECT_STATUS.md) and [archive guide](../archives/README.md) instead of reading every study file. Before moving or removing a research family, trace its imports, tests and source-hash references together.
+## Research archive
+
+The research studies that used to live in this package are on the [`research-archive` branch](https://github.com/EastonSell/model-looking-glass/tree/research-archive). See the [documentation index](../docs/README.md#research-archive).

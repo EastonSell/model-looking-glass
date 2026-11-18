@@ -1,3 +1,0 @@
-# Preserve recorded bytes and independent audit hashes on every checkout.
-*.json -text
-independent-review.py -text
