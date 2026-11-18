@@ -547,6 +547,53 @@ class TraceStore:
         return {"coordinate": _json_copy(coordinate), "step": _json_copy(step),
                 "model": _json_copy(model), "reference_value": reference}
 
+    def lens_sources(self, forward, block_kind, offset=0, limit=128):
+        """Copy one forward's block-output vectors, one [positions, width] tensor per layer.
+
+        Only single-sample block outputs that cover every input position in
+        order are used, so vector index == token position.  Anything else is
+        counted in ``skipped_events`` and left out rather than guessed.
+        """
+        import torch
+        if self._run is None: raise ValueError("No completed trace is loaded")
+        _integer(forward, "forward"); _integer(offset, "offset"); _integer(limit, "limit", 1, 4096)
+        steps = [step for step in self._run.get("steps", []) if step.get("app_forward_index") == forward]
+        if len(steps) != 1:
+            raise ValueError("Lens read-out requires one retained forward step; choose an existing forward")
+        step = steps[0]
+        ids = step.get("input_token_ids")
+        if type(ids) is not list or not ids or any(type(value) is not int or value < 0 for value in ids):
+            raise ValueError("Lens read-out requires the forward's exact input token IDs")
+        total = len(ids)
+        if offset >= total: raise ValueError("position_offset is beyond the last input position")
+        window = slice(offset, min(total, offset + limit))
+        by_layer, skipped = {}, 0
+        for event, value in zip(self._events, self._values):
+            metadata = event["metadata"]
+            if metadata.get("app_forward_index") != forward or metadata.get("module_kind") != block_kind:
+                continue
+            layer = metadata.get("layer_index")
+            if (type(layer) is not int or layer < 0 or layer in by_layer
+                    or metadata.get("identity", {}).get("run_id") != step.get("run_id")
+                    or metadata.get("batch_positions") != [0]
+                    or metadata.get("token_positions") != list(range(total))
+                    or list(value.shape[:-1]) != [1, total]):
+                skipped += 1
+                continue
+            by_layer[layer] = {"layer_index": layer, "event_index": event["index"],
+                               "module_path": metadata.get("module_path"),
+                               "value": value[0, window].detach().clone().contiguous()}
+        if not by_layer:
+            raise ValueError("This forward has no captured block outputs to decode; capture the block target")
+        width = {source["value"].shape[-1] for source in by_layer.values()}
+        if len(width) != 1: raise ValueError("Captured block outputs disagree on hidden width")
+        reaches_end = window.stop == total
+        return {"sources": [by_layer[layer] for layer in sorted(by_layer)],
+                "input_token_ids": ids[window], "position_total": total,
+                "position_count": window.stop - window.start,
+                "forward_count": len(self._run.get("steps", [])), "skipped_events": skipped,
+                "recorded_next_token_id": step.get("selected_token_id") if reaches_end else None}
+
     def intervention_candidates(self, forward, token_position, paths):
         """Find captured vectors at exact boundaries in one bounded inventory pass.
 

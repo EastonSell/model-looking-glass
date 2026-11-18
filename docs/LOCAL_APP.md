@@ -283,14 +283,43 @@ The next token selected by forward N becomes an input activation position only i
 
 For example, the previously verified pretrained SmolLM2 run of “Gravity is” selected “ the”, then “ force”, “ that”, and “ holds”. The first forward's “ the” score was 22.05638885498047; it is a logit, not a 22% probability. The new display can show that existing recorded evidence without rerunning the checkpoint. The output “ holds” is not an input position in that run's last captured forward. See the unchanged [CPU record](../results/local-app-smollm2-135m-cpu-20261031/record.json).
 
-**A hidden feature value is not a vocabulary ID.** Tokenizers cannot turn arbitrary float vectors into words. This view makes actual source tokens and observed output choices readable; it does not assign semantic names to neurons, decode an intermediate thought, or implement a logit lens. Exact raw values/bits, grouped display, references and controlled edits remain accessible.
+**A hidden feature value is not a vocabulary ID.** Tokenizers cannot turn arbitrary float vectors into words. This view makes actual source tokens and observed output choices readable; it does not assign semantic names to neurons or decode an intermediate thought. Decoding hidden vectors into words is a separate, clearly labelled view: the [lens](#lens-what-each-layer-would-say-next). Exact raw values/bits, grouped display, references and controlled edits remain accessible.
 
 </details>
+
+## Lens: what each layer would say next
+
+For a live GPT-2 or supported Llama capture that includes **block** outputs, the centre of the workspace is the **Lens** view. It is the default; the toolbar's view menu still offers **3D sites** and **Site list**.
+
+**What it computes.** For every captured block output `h` at (layer, position) the server computes `softmax(unembed(final_norm(h)))` using the loaded model's own final normalisation and output embedding (`transformer.ln_f` → `lm_head` for GPT-2, `model.norm` → `lm_head` for Llama). This is the logit lens. Nothing is trained or fitted, and no tensor is sent to the browser—only the top tokens, probabilities, entropies and ranks.
+
+**How to read it.**
+
+- **Columns** are input positions; the header shows the input token. **Rows** are layers, last layer on top.
+- The row above the grid, **model says**, is the model's actual next-token prediction after each position.
+- **Each cell** shows the top token that layer would predict. **Bold** means the cell already agrees with *model says*.
+- **Colour** is one blue scale, light to dark, chosen in **Colour cells by**: the top token's probability, the rank of the model's answer, or the rank of a tracked token (log scale; #1 is darkest). Colour never carries a value that is not also in the read-out, the tooltip and the table.
+- **Track a token** by typing it or by clicking a token in the read-out. Typed text offers both the plain and leading-space token, because GPT-style vocabularies treat `Paris` and ` Paris` as different tokens. A dot (`·`) marks a leading space. Up to eight tokens can be tracked.
+- **Read-out** lists the top ten tokens for the selected cell. **Rank through the layers** plots the rank of the model's answer and of each tracked token at the selected position; **Show as table** gives the same numbers as text.
+- **Open exact vector** selects the same activation in the left panel for exact values, edits, experiments and references.
+- **Step** moves between generation steps. Each step is one full forward pass over the prompt plus the tokens generated so far.
+
+**Built-in check.** At the model's last layer the lens is not an approximation: it is exactly the model's output distribution. Every read-out compares the last layer's top token at the final position with the token recorded during the run and reports whether they match. A mismatch is shown as an error and means the read-out should not be trusted.
+
+**Limits.**
+
+- Rows below the last layer are read through a decoder that was only trained for the last layer. They show when a token becomes readable to that decoder, not what the model "believes" or why.
+- This is not the tuned lens or the Jacobian lens, and it identifies no features or causes. Use the edit and patch experiments for causal questions.
+- If you capture only some layers, the top row is the highest captured layer and is labelled as *not* the model's output.
+- Reopened captures cannot be decoded, because the app cannot verify which model produced them. Run a fresh capture.
+- At most 128 positions are shown at a time and 4,096 cells per read-out; DistilBERT, T5 and ViT captures use the site views instead.
 
 <details>
 <summary>Optional layer map</summary>
 
 ## Optional layer map
+
+The layer map is the **3D sites** and **Site list** choice in the view menu. It shows which module outputs were recorded; it does not show values.
 
 The **Layers** view shows recorded module outputs. The central scene uses genuine Three.js planes, with a compact selected-vector inspector on the left and a narrow prompt/response panel on the right. Run stays beside its prompt or image input. The floating scene toolbar switches 3D/List and fits the current layers; it does not run the model. Layer labels remain visible; module labels appear only for the selected or hovered site to keep dense captures readable. Hover a band with a mouse or pen to preview its existing label before clicking. Hover uses the current page’s captured metadata, does not move the camera or select/read a vector, and clears while dragging or leaving the scene. Pointer updates are coalesced into the next render frame; no idle loop is added. The warm highlight identifies the selected captured site, not activation sign or importance. Drag to orbit, scroll to zoom, or use the native **List** buttons instead. Choose a forward and page through captured layers. There are no invented neuron dots, connections, activation-derived positions or semantic clusters. Only captured sites appear—not uncaptured layers inferred from configuration.
 

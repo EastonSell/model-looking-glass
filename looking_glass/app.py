@@ -26,6 +26,9 @@ STATIC_ROUTES = {
     "/app.js": ("app.js", "application/javascript; charset=utf-8"),
     "/app.css": ("app.css", "text/css; charset=utf-8"),
     "/app_scene.js": ("app_scene.js", "application/javascript; charset=utf-8"),
+    "/app_lens.js": ("app_lens.js", "application/javascript; charset=utf-8"),
+    "/app_lens.css": ("app_lens.css", "text/css; charset=utf-8"),
+    "/favicon.svg": ("favicon.svg", "image/svg+xml"),
     "/vendor/three-0.128.0.min.js": ("vendor/three-0.128.0.min.js", "application/javascript; charset=utf-8"),
     "/vendor/OrbitControls-0.128.0.js": ("vendor/OrbitControls-0.128.0.js", "application/javascript; charset=utf-8"),
     **{f"/vendor/{font}-latin-{weight}-normal.woff2":
@@ -69,7 +72,8 @@ class AppState:
         if type(max_vram_bytes) is not int or not 1 <= max_vram_bytes <= 64 * 1024**3:
             raise ValueError("max_vram_bytes must be a positive integer <= 64 GiB")
         self.max_vram_bytes = max_vram_bytes
-        if hasattr(self.runtime, "max_auto_vram_bytes"):
+        # Instance lookup only: strict test doubles (and proxies) must not see a probe as a model call.
+        if "max_auto_vram_bytes" in getattr(self.runtime, "__dict__", {}):
             self.runtime.max_auto_vram_bytes = min(self.runtime.max_auto_vram_bytes, max_vram_bytes)
         self.token = secrets.token_hex(32)
 
@@ -121,6 +125,8 @@ class AppState:
             summary["intervention_available"], summary["intervention_reason"] = self._intervention_status()
             summary["capture_id"] = self._capture_id
             summary["reference_available"], summary["reference_reason"] = self._intervention_status()
+            from .app_lens import status as lens_status
+            summary["lens_available"], summary["lens_reason"] = lens_status(self)
         return summary
 
     def _reference_summary(self):
@@ -276,6 +282,9 @@ class AppState:
             self._capture_id = secrets.token_hex(16)
             self._live_binding = getattr(self.runtime, "capture_binding", lambda: None)()
             return self._run_summary()
+        if action == "lens":
+            from .app_lens import lens_readout
+            return lens_readout(self, data)
         if action == "sensitivity":
             from .app_sensitivity import run_sensitivity
             return (run_sensitivity(self, data) if cancel_event is None
@@ -450,7 +459,7 @@ def create_server(state, port=0):
         def do_POST(self):
             if not self._allowed(api=True): return
             path = urlsplit(self.path).path
-            if path not in {"/api/inspect", "/api/load", "/api/demo", "/api/unload", "/api/browse-models", "/api/run", "/api/chat", "/api/intervene", "/api/sensitivity", "/api/sensitivity-repeat", "/api/patch-preview", "/api/patch-cross-prompt", "/api/experiment-reserve", "/api/experiment-cancel", "/api/experiment-status", "/api/save", "/api/save-experiment", "/api/open", "/api/clear", "/api/pin-reference", "/api/clear-reference", "/api/download", "/api/cancel-download"}:
+            if path not in {"/api/inspect", "/api/load", "/api/demo", "/api/unload", "/api/browse-models", "/api/run", "/api/chat", "/api/lens", "/api/intervene", "/api/sensitivity", "/api/sensitivity-repeat", "/api/patch-preview", "/api/patch-cross-prompt", "/api/experiment-reserve", "/api/experiment-cancel", "/api/experiment-status", "/api/save", "/api/save-experiment", "/api/open", "/api/clear", "/api/pin-reference", "/api/clear-reference", "/api/download", "/api/cancel-download"}:
                 self._send(404, {"error": "Not found"}); return
             if self.headers.get("Transfer-Encoding") or len(self.headers.get_all("Content-Length", [])) != 1:
                 self._send(400, {"error": "A single bounded Content-Length is required"}); return
