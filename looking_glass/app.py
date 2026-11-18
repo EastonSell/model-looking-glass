@@ -40,7 +40,7 @@ STATIC_ROUTES = {
 
 class AppState:
     def __init__(self, *, runtime=None, export_root="looking-glass-runs", models_dir=None,
-                 download_root="looking-glass-models",
+                 download_root="looking-glass-models", lens_root="looking-glass-lenses",
                  max_model_bytes=None, max_trace_bytes=512 * 1024**2,
                  max_vram_bytes=64 * 1024**3):
         if max_model_bytes is None:
@@ -57,6 +57,8 @@ class AppState:
         self.store = TraceStore(export_root, max_bytes=max_trace_bytes)
         self.experiment_store = TraceStore(export_root, max_bytes=max_trace_bytes)
         self.reference = ReferenceVector()
+        from .app_jlens import JacobianSession
+        self.jlens = JacobianSession(lens_root)
         self._reference_binding = None
         self._reference_id = None
         self._live_binding = None  # Process-local capability; never accepted from JSON/export.
@@ -286,6 +288,13 @@ class AppState:
         if action == "lens":
             from .app_lens import lens_readout
             return lens_readout(self, data)
+        if action in ("jlens-status", "jlens-fit-start", "jlens-fit-step", "jlens-fit-cancel", "jlens-import"):
+            from . import app_jlens
+            if action == "jlens-status":
+                if data: raise ValueError("Jacobian lens status takes no options")
+                return app_jlens.status(self)
+            return {"jlens-fit-start": app_jlens.start, "jlens-fit-step": app_jlens.step,
+                    "jlens-fit-cancel": app_jlens.cancel, "jlens-import": app_jlens.import_file}[action](self, data)
         if action == "sensitivity":
             from .app_sensitivity import run_sensitivity
             return (run_sensitivity(self, data) if cancel_event is None
@@ -460,7 +469,7 @@ def create_server(state, port=0):
         def do_POST(self):
             if not self._allowed(api=True): return
             path = urlsplit(self.path).path
-            if path not in {"/api/inspect", "/api/load", "/api/demo", "/api/unload", "/api/browse-models", "/api/run", "/api/chat", "/api/lens", "/api/intervene", "/api/sensitivity", "/api/sensitivity-repeat", "/api/patch-preview", "/api/patch-cross-prompt", "/api/experiment-reserve", "/api/experiment-cancel", "/api/experiment-status", "/api/save", "/api/save-experiment", "/api/open", "/api/clear", "/api/pin-reference", "/api/clear-reference", "/api/download", "/api/cancel-download"}:
+            if path not in {"/api/inspect", "/api/load", "/api/demo", "/api/unload", "/api/browse-models", "/api/run", "/api/chat", "/api/lens", "/api/jlens-status", "/api/jlens-fit-start", "/api/jlens-fit-step", "/api/jlens-fit-cancel", "/api/jlens-import", "/api/intervene", "/api/sensitivity", "/api/sensitivity-repeat", "/api/patch-preview", "/api/patch-cross-prompt", "/api/experiment-reserve", "/api/experiment-cancel", "/api/experiment-status", "/api/save", "/api/save-experiment", "/api/open", "/api/clear", "/api/pin-reference", "/api/clear-reference", "/api/download", "/api/cancel-download"}:
                 self._send(404, {"error": "Not found"}); return
             if self.headers.get("Transfer-Encoding") or len(self.headers.get_all("Content-Length", [])) != 1:
                 self._send(400, {"error": "A single bounded Content-Length is required"}); return
@@ -525,13 +534,14 @@ def main(argv=None):
     parser.add_argument("--models-dir", type=Path, help="Optional explicit directory whose immediate checkpoint subfolders appear in settings")
     parser.add_argument("--export-dir", type=Path, default=Path.cwd() / "looking-glass-runs")
     parser.add_argument("--download-dir", type=Path, default=Path.cwd() / "looking-glass-models", help="Managed folder for explicitly requested curated downloads")
+    parser.add_argument("--lens-dir", type=Path, default=Path.cwd() / "looking-glass-lenses", help="Folder for fitted Jacobian lenses, one file per model")
     parser.add_argument("--max-model-mib", type=int, default=None, help="Optional parameter-storage cap; default adapts to available host RAM, not peak RAM")
     parser.add_argument("--max-vram-mib", type=int, default=65536, help="Maximum selectable CUDA allocator allowance; not all GPU/driver memory")
     parser.add_argument("--max-trace-mib", type=int, default=512, help="Saved tensor payload cap, not peak RAM")
     args = parser.parse_args(argv)
     if not 0 <= args.port <= 65535 or (args.max_model_mib is not None and not 1 <= args.max_model_mib <= 16384) or not 1 <= args.max_trace_mib <= 512 or not 1 <= args.max_vram_mib <= 65536:
         parser.error("Invalid port or memory allowance")
-    state = AppState(export_root=args.export_dir, models_dir=args.models_dir, download_root=args.download_dir,
+    state = AppState(export_root=args.export_dir, models_dir=args.models_dir, download_root=args.download_dir, lens_root=args.lens_dir,
                      max_model_bytes=None if args.max_model_mib is None else args.max_model_mib * 1024**2, max_trace_bytes=args.max_trace_mib * 1024**2,
                      max_vram_bytes=args.max_vram_mib * 1024**2)
     server = create_server(state, args.port)

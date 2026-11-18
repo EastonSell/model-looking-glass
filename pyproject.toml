@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "model-looking-glass"
-version = "1.4.0"
+version = "1.5.0"
 description = "Local model debugger for inspecting and comparing activation vectors"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,6 +22,7 @@ Security = "https://github.com/EastonSell/model-looking-glass/security/policy"
 [project.scripts]
 model-looking-glass = "looking_glass.app:main"
 model-looking-glass-gpu-check = "looking_glass.app_selftest:main"
+model-looking-glass-jlens = "looking_glass.jlens_cli:main"
 
 [project.optional-dependencies]
 app = ["torch==2.15.0", "transformers==5.22.1", "safetensors>=0.4.3", "numpy>=1.26", "Pillow==13.0.0"]
@@ -32,4 +33,4 @@ test = ["numpy>=1.26", "pytest>=9.0.3,<10", "Pillow==13.0.0"]
 include = ["looking_glass*"]
 
 [tool.setuptools.package-data]
-looking_glass = ["app_static/*.html", "app_static/*.js", "app_static/*.css", "app_static/*.svg", "app_static/vendor/*.js", "app_static/vendor/*.woff2", "app_static/vendor/*-LICENSE.txt", "app_static/vendor/provenance.json", "app_static/vendor/README.md"]
+looking_glass = ["jlens_corpus.txt", "app_static/*.html", "app_static/*.js", "app_static/*.css", "app_static/*.svg", "app_static/vendor/*.js", "app_static/vendor/*.woff2", "app_static/vendor/*-LICENSE.txt", "app_static/vendor/provenance.json", "app_static/vendor/README.md"]

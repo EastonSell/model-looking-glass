@@ -92,6 +92,9 @@
       pins: [],            // [{token_id, text, slot}]
       colorBy: 'probability', colorPin: null,
       display: 'grid',     // 'grid' (table) or 'field' (moving text)
+      method: 'logit',     // 'logit' or 'jacobian'
+      jlens: null,         // last /api/jlens-status answer
+      fitting: false, fitStarted: 0, fitSetup: false,
       selected: null,      // {layer, position}
       cells: new Map(),    // "layer:position" -> button
     };
@@ -112,6 +115,10 @@
         position_offset: view.offset, position_limit: WINDOW,
         pinned_token_ids: view.pins.map((pin) => pin.token_id)};
       if (resolveText) body.resolve_text = resolveText;
+      if (view.method === 'jacobian') {
+        if (!view.jlens || !view.jlens.lens) { showJlensOnly(); return; }
+        body.method = 'jacobian';
+      }
       root.setAttribute('aria-busy', 'true');
       try {
         const data = await bridge.api('lens', body);
@@ -127,6 +134,89 @@
       } finally {
         if (request === view.request) root.removeAttribute('aria-busy');
       }
+    }
+
+    /* ---------- Jacobian lens: status, fitting ---------- */
+
+    function showJlensOnly() {
+      // Jacobian is chosen but no lens exists yet: show only the fit panel, never a logit read-out under that label.
+      view.request++; view.data = null;
+      $('lens-body').hidden = true; status('');
+      if (field) field.setActive(false);
+      renderJlens();
+    }
+    function duration(seconds) {
+      if (seconds < 90) return Math.max(1, Math.round(seconds)) + ' s';
+      if (seconds < 5400) return Math.round(seconds / 60) + ' min';
+      return (seconds / 3600).toFixed(1) + ' h';
+    }
+    function renderJlens() {
+      const panel = $('lens-jlens'), info = view.jlens, chosen = view.method === 'jacobian';
+      panel.hidden = !chosen;
+      $('lens-subtitle').textContent = chosen
+        ? 'Jacobian lens: each layer\u2019s vector is carried into the final layer\u2019s basis by a fitted Jacobian, then read through the model\u2019s own final norm and unembedding.'
+        : 'Logit lens: every captured block output, read through the model\u2019s own final norm and unembedding.';
+      if (!chosen) return;
+      const line = $('lens-jlens-status'), fit = info ? info.fit : null;
+      let text = 'Checking\u2026', setup = false;
+      if (info && !info.supported) text = info.reason;
+      else if (info && fit) text = 'Fitting on ' + fit.total + ' prompts. ' + info.fit_reason;
+      else if (info && info.lens) {
+        text = 'Lens ' + info.lens.origin + ': ' + info.lens.prompts + ' prompts'
+          + (info.lens.positions ? ' (' + info.lens.positions.toLocaleString('en-US') + ' token positions)' : '') + ', '
+          + info.lens.layers + (info.lens.layers === 1 ? ' layer' : ' layers') + '. Saved for this model and reused next time it is loaded.';
+        setup = view.fitSetup && info.can_fit;
+        if (view.fitSetup && !info.can_fit) text += ' ' + info.fit_reason;
+      } else if (info) {
+        text = 'No Jacobian lens is fitted for this model yet. ' + info.fit_reason;
+        setup = info.can_fit;
+      }
+      line.textContent = text;
+      $('lens-jlens-setup').hidden = !setup || view.fitting;
+      // Importing needs no GPU, so it is offered whenever a supported model is loaded and no lens is showing.
+      const importing = !!info && info.supported && !view.fitting && !fit && (!info.lens || view.fitSetup);
+      $('lens-jlens-import').hidden = !importing;
+      $('lens-jlens-text-field').hidden = $('lens-jlens-source').value !== 'text';
+      $('lens-jlens-progress').hidden = !fit && !view.fitting;
+      $('lens-jlens-refit').hidden = !(info && info.lens) || view.fitSetup || view.fitting;
+      if (fit) {
+        $('lens-jlens-bar').max = fit.total; $('lens-jlens-bar').value = fit.done;
+        let note = fit.done + ' of ' + fit.total + ' prompts';
+        if (fit.done > 0 && view.fitStarted) {
+          const each = (Date.now() - view.fitStarted) / 1000 / fit.done;
+          note += ' \u00b7 about ' + duration(each * (fit.total - fit.done)) + ' left';
+        }
+        if (fit.skipped) note += ' \u00b7 ' + fit.skipped + ' skipped';
+        $('lens-jlens-eta').textContent = note;
+      }
+    }
+    async function refreshJlens() {
+      try { view.jlens = await bridge.api('jlens-status', {}); }
+      catch (error) { view.jlens = {supported: false, reason: error.message || 'Jacobian lens status is unavailable.', lens: null, fit: null, can_fit: false}; }
+      renderJlens();
+    }
+    async function fitJlens() {
+      if (view.fitting || !view.jlens || !view.jlens.can_fit) return;
+      const body = {source: $('lens-jlens-source').value, max_prompts: Number($('lens-jlens-count').value)};
+      if (body.source === 'text') body.text = $('lens-jlens-text').value;
+      view.fitting = true; view.fitStarted = 0; setBusy(view.busy);
+      let failed = false;
+      try {
+        view.jlens = await bridge.api('jlens-fit-start', body);
+        view.fitStarted = Date.now(); renderJlens();
+        while (view.fitting && view.jlens.fit) {
+          view.jlens = await bridge.api('jlens-fit-step', {fit_id: view.jlens.fit.fit_id});
+          renderJlens();
+        }
+        if (view.jlens.fit) view.jlens = await bridge.api('jlens-fit-cancel', {fit_id: view.jlens.fit.fit_id});
+      } catch (error) {
+        failed = true;
+        await refreshJlens();
+        status(error.message || 'Fitting failed.', true);
+      } finally {
+        view.fitting = false; view.fitSetup = false; setBusy(view.busy); renderJlens();
+      }
+      if (!failed && view.method === 'jacobian' && view.jlens && view.jlens.lens && view.run && view.run.lens_available) load();
     }
 
     /* ---------- tracked tokens ---------- */
@@ -596,7 +686,10 @@
       }
       if (!run) { status(''); return; }
       if (!run.lens_available) { $('lens-body').hidden = true; status(run.lens_reason || 'The lens read-out is unavailable for this capture.'); return; }
-      if (changed && view.active) load();
+      if (changed && view.active) {
+        // A new capture may come from a different model, so the lens status is checked again first.
+        if (view.method === 'jacobian') refreshJlens().then(load); else load();
+      }
     }
     function setActive(active) {
       view.active = !!active;
@@ -607,7 +700,8 @@
     }
     function setBusy(busy) {
       view.busy = !!busy;
-      for (const id of ['lens-pin-add', 'lens-pin-text', 'lens-open-vector']) $(id).disabled = view.busy;
+      for (const id of ['lens-pin-add', 'lens-pin-text', 'lens-open-vector']) $(id).disabled = view.busy || view.fitting;
+      for (const id of ['lens-method', 'lens-jlens-fit', 'lens-jlens-refit', 'lens-jlens-import-button']) $(id).disabled = view.busy || view.fitting;
       $('lens-color').disabled = view.busy || view.display === 'field';
       if (view.data) {
         $('lens-forward-prev').disabled = view.busy || view.data.forward <= 0;
@@ -631,6 +725,24 @@
     $('lens-pin-add').addEventListener('click', trackTyped);
     $('lens-pin-text').addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); trackTyped(); } });
     $('lens-grid').addEventListener('keydown', moveFocus);
+    $('lens-method').addEventListener('change', async () => {
+      view.method = $('lens-method').value; view.fitSetup = false; hideTip();
+      if (view.method === 'jacobian') { renderJlens(); await refreshJlens(); } else renderJlens();
+      if (view.run && view.run.lens_available) load();
+    });
+    $('lens-jlens-source').addEventListener('change', renderJlens);
+    $('lens-jlens-fit').addEventListener('click', fitJlens);
+    $('lens-jlens-stop').addEventListener('click', () => { view.fitting = false; $('lens-jlens-eta').textContent = 'Stopping after this prompt\u2026'; });
+    $('lens-jlens-refit').addEventListener('click', () => { view.fitSetup = true; renderJlens(); });
+    $('lens-jlens-import-button').addEventListener('click', async () => {
+      const path = $('lens-jlens-path').value.trim();
+      if (!path || view.fitting || view.busy) return;
+      try {
+        view.jlens = await bridge.api('jlens-import', {path});
+        view.fitSetup = false; renderJlens();
+        if (view.run && view.run.lens_available) load();
+      } catch (error) { status(error.message || 'Could not import that lens file.', true); }
+    });
     for (const display of ['grid', 'field']) {
       $('lens-display-' + display).addEventListener('click', () => { view.display = display; hideTip(); showDisplay(); });
     }
