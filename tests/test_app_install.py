@@ -303,8 +303,10 @@ def test_actual_pip_config_inspection_ignores_conflicting_settings(tmp_path, mon
     monkeypatch.setenv("PIP_INDEX_URL", "https://invalid.example/environment")
     # Inject conflicting global AND site file locations in this read-only
     # child inspector, so the test proves os.devnull disables both categories.
+    # pip's private module renamed ``kinds`` to ``Kind`` in 26.3; accept either.
     code = ("import json,sys; import pip._internal.configuration as c; "
-            "c.get_configuration_files=lambda:{c.kinds.GLOBAL:[sys.argv[1]],c.kinds.USER:[sys.argv[1]],c.kinds.SITE:[sys.argv[1]]}; "
+            "k=getattr(c,'kinds',None) or c.Kind; "
+            "c.get_configuration_files=lambda:{k.GLOBAL:[sys.argv[1]],k.USER:[sys.argv[1]],k.SITE:[sys.argv[1]]}; "
             "cfg=c.Configuration(isolated=True); cfg.load(); print(json.dumps(dict(cfg.items())))")
     out = subprocess.run([sys.executable, "-I", "-B", "-c", code, str(conflict)], env=module.pip_environment(),
                          capture_output=True, text=True, check=True, timeout=15)
